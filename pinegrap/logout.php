@@ -38,17 +38,17 @@ if ((($session_token === '') || (!hash_equals($session_token, $request_token))) 
     }
 
     print output_header_secure(array('title' => lang('Logout'), 'icon' => 'account')) . '
-        <div class="container py-5">
+        <div class="container py-12">
             <div class="row justify-content-center">
-                <div class="col-12 col-md-6 col-lg-4">
+                <div class="col-12 md:col-6 lg:col-4">
                     <div class="card">
                         <div class="card-body text-center">
                             <p>' . lang('Do you want to log out?') . '</p>
                             <form method="post" action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/logout.php">
                                 ' . get_token_field() . '
                                 <input type="hidden" name="send_to" value="' . h($send_to) . '">
-                                <button type="submit" class="btn btn-primary"><i class="bi bi-box-arrow-right me-1"></i>' . lang('Logout') . '</button>
-                                <a href="javascript:history.go(-1)" class="btn btn-outline-secondary">' . lang('Cancel') . '</a>
+                                <button type="submit" class="btn btn-solid theme-primary"><i class="bi bi-box-arrow-right me-1"></i>' . lang('Logout') . '</button>
+                                <a href="javascript:history.go(-1)" class="btn btn-outline theme-secondary">' . lang('Cancel') . '</a>
                             </form>
                         </div>
                     </div>

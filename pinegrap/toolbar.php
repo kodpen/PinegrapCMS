@@ -137,7 +137,7 @@ if ($pg_toolbar_panel['panel'] !== '') {
                on the site) and id+class would otherwise outrank a plain id. */
             #software_seo_panel,
             #software_seo_panel.pg_seo_tb_dark{
-                --pg-sp-bg: rgb(var(--bs-navbar-bg-rgb));
+                --pg-sp-bg: rgb(var(--pg-navbar-bg-rgb));
                 --pg-sp-fg: var(--bs-body-color);
                 --pg-sp-muted: var(--bs-secondary-color);
                 --pg-sp-faint: var(--bs-tertiary-color);

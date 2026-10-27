@@ -777,7 +777,7 @@ function pg_code_editor_attach($properties)
                     var formats = ["css","javascript","json"];
                     var tools = document.createElement("div");
                     tools.className = "pg-code-field-tools";
-                    tools.innerHTML = \'<button type="button" class="btn btn-sm btn-outline-secondary pg-code-field-format" title="Shift+Alt+F"></button>\';
+                    tools.innerHTML = \'<button type="button" class="btn btn-sm btn-outline theme-secondary pg-code-field-format" title="Shift+Alt+F"></button>\';
                     tools.firstChild.textContent = ' . pg_code_editor_json(lang('Format code')) . ';
                     tools.firstChild.addEventListener("click", function () {
                         editor.format();

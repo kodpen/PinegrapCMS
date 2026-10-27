@@ -34,8 +34,8 @@ if (($user['role'] == '3') && ($user['create_pages'] == FALSE)) {
 if (!$_POST) {
     // if user role is Administrator, Designer, or Manager, then allow user to select style and mobile style for page
     if ($user['role'] < 3) {
-        $output_style = '<select class="form-select" id="style" name="style">' . select_style() . '</select>';
-        $output_mobile_style = '<select class="form-select" id="mobile_style_id" name="mobile_style_id">' . get_mobile_style_options() . '</select>';
+        $output_style = '<select class="form-control" id="style" name="style">' . select_style() . '</select>';
+        $output_mobile_style = '<select class="form-control" id="mobile_style_id" name="mobile_style_id">' . get_mobile_style_options() . '</select>';
 
     // else user has a user role
     } else {
@@ -55,17 +55,17 @@ if (!$_POST) {
 
     if (pg_page_noindex_ready() == TRUE) {
         $output_noindex_rows =
-            '<div class="col-12 my-3" id="noindex_row">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="noindex" name="noindex" value="1">
-                    <label class="form-check-label" for="noindex">' . lang('Close to Search Engines (noindex)') . '</label>
+            '<div class="col-12 my-5" id="noindex_row">
+                <div class="form-field">
+                    <div class="switch"><input class="" type="checkbox" id="noindex" name="noindex" value="1"></div>
+                    <label class="" for="noindex">' . lang('Close to Search Engines (noindex)') . '</label>
                 </div>
                 <div class="form-text">' . lang('The page is served with a noindex robots tag, is blocked in robots.txt and is left out of the site map.') . '</div>
-                <div class="form-check form-switch mt-3 ms-4">
-                    <input class="form-check-input" type="checkbox" id="nofollow" name="nofollow" value="1" disabled="disabled">
-                    <label class="form-check-label" for="nofollow">' . lang('Do Not Follow Links on This Page (nofollow)') . '</label>
+                <div class="form-field mt-5 ms-7">
+                    <div class="switch"><input class="" type="checkbox" id="nofollow" name="nofollow" value="1" disabled="disabled"></div>
+                    <label class="" for="nofollow">' . lang('Do Not Follow Links on This Page (nofollow)') . '</label>
                 </div>
-                <div class="form-text ms-4">' . lang('Leave this off so that search engines keep discovering the items this page links to. Turn it on for a widget page whose links already appear on a page that is indexed.') . '</div>
+                <div class="form-text ms-7">' . lang('Leave this off so that search engines keep discovering the items this page links to. Turn it on for a widget page whose links already appear on a page that is indexed.') . '</div>
             </div>';
     }
 
@@ -106,16 +106,16 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <div class="row">
                         ' . $page_type_fields['selector'] . '
-                        <div class="col-12 col-md-8 col-lg-9 col-xl-10">
+                        <div class="col-12 md:col-8 lg:col-9 xl:col-10">
                             <div class="row">
                                 <div class="col-12">
-                                    <div class="card my-4 position-sticky" style="top:56px;">
-                                        <label for="name" class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    <div class="card my-7 position-sticky" style="top:56px;">
+                                        <label for="name" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Main Informations') . '
                                         </label>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 col-md-8 col-lg-6 my-2">
+                                                <div class="col-12 md:col-8 lg:col-6 my-3">
                                                     <div class="input-group ">
                                                         <label for="name" class="input-group-text material-icons" title="' . lang('This option determines the url address of the page.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Page Name') . '}">public</label>
                                                         ' . $liveform_add_page->output_field(array('type'=>'text','id'=>'name','name'=>'name','placeholder'=>lang('Page Name'),'maxlength'=>'100', 'class'=>'form-control ', 'required'=>'required')) . '
@@ -126,24 +126,24 @@ if (!$_POST) {
                                     </div>
                                 </div>
                                 <div class="col-12">
-                                    <div class="card my-4">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    <div class="card my-7">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Content Options') . '
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 col-md-6 my-2">
+                                                <div class="col-12 md:col-6 my-3">
                                                     <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                                                    <select class="form-select" id="folder" name="folder">' . select_folder($page_folder) . '</select>
+                                                    <select class="form-control" id="folder" name="folder">' . select_folder($page_folder) . '</select>
                                                     <div class="form-text">' . lang('Page Access Control, Design &amp; Common Content') . '</div>
                                                 </div>
                                             </div>
-                                            <div class="row mt-4">
-                                                <div class="col-12 col-md-6 col-lg-auto my-2">
+                                            <div class="row mt-7">
+                                                <div class="col-12 md:col-6 lg:col-auto my-3">
                                                     <label for="style" class="form-label">' . lang('Desktop Page Style') . '</label>
                                                     ' . $output_style . '
                                                 </div>
-                                                <div class="col-12 col-md-6 col-lg-auto my-2">
+                                                <div class="col-12 md:col-6 lg:col-auto my-3">
                                                     <label for="mobile_style_id" class="form-label">' . lang('Mobile Page Style') . '</label>
                                                     ' . $output_mobile_style . '
                                                 </div>
@@ -153,17 +153,17 @@ if (!$_POST) {
                                     </div>
                                 </div>
                                 ' . $page_type_fields['properties'] . '
-                                <div class="col-12 my-3">
-                                    <div class="card my-4">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="col-12 my-5">
+                                    <div class="card my-7">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Search Engine Optimization') . '
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 my-2" id="sitemap_row">
-                                                    <div class="form-check form-switch">
-                                                        <input class="form-check-input" type="checkbox" id="sitemap" name="sitemap" value="1" checked="checked">
-                                                        <label class="form-check-label" for="sitemap">' . lang('Include in Site Map?') . '</label>
+                                                <div class="col-12 my-3" id="sitemap_row">
+                                                    <div class="form-field">
+                                                        <div class="switch"><input class="" type="checkbox" id="sitemap" name="sitemap" value="1" checked="checked"></div>
+                                                        <label class="" for="sitemap">' . lang('Include in Site Map?') . '</label>
                                                     </div>
                                                 </div>
                                                 ' . $output_noindex_rows . '
@@ -174,10 +174,10 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

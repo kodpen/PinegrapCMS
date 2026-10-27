@@ -183,11 +183,11 @@ if (!$_POST) {
 
             $output_invoice_picker = '
                         <div class="row">
-                            <div class="col-12 col-lg-8 my-2">
+                            <div class="col-12 lg:col-8 my-3">
                                 <label for="invoice_id" class="form-label">' . lang('Invoice to Close') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'select', 'id' => 'invoice_id', 'name' => 'invoice_id',
-                                    'class' => 'form-select', 'options' => $invoice_options)) . '
+                                    'class' => 'form-control', 'options' => $invoice_options)) . '
                                 <div class="form-text">' . lang('Optional. The invoice has to belong to the account chosen above. Anything over what it is short of stays on the open account.') . '</div>
                             </div>
                         </div>';
@@ -223,13 +223,13 @@ if (!$_POST) {
                 ' . (($preset_invoice !== null)
                     ? '<input type="hidden" name="invoice_id" value="' . $preset_invoice_id . '" />'
                     : '') . '
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . $page_title . '
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-12 col-lg-5 my-2">
+                            <div class="col-12 lg:col-5 my-3">
                                 <label for="account_id" class="form-label">' . lang('Account') . '</label>
                                 ' . (($preset_invoice !== null)
                                     ? '<input type="hidden" name="account_id" value="' . (int) $preset_invoice['account_id'] . '" />
@@ -240,16 +240,16 @@ if (!$_POST) {
                                     )) . '</div>'
                                     : $liveform->output_field(array(
                                         'type' => 'select', 'id' => 'account_id', 'name' => 'account_id',
-                                        'class' => 'form-select', 'data-pg-combobox' => '', 'options' => $account_options))
+                                        'class' => 'form-control', 'data-pg-combobox' => '', 'options' => $account_options))
                                     . erp_account_quick_link('#account_id', $is_collection ? 'customer' : 'supplier')) . '
                             </div>
-                            <div class="col-12 col-lg-4 my-2">
+                            <div class="col-12 lg:col-4 my-3">
                                 <label for="cash_account_id" class="form-label">' . lang('Till or Bank Account') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'select', 'id' => 'cash_account_id', 'name' => 'cash_account_id',
-                                    'class' => 'form-select', 'options' => $till_options)) . '
+                                    'class' => 'form-control', 'options' => $till_options)) . '
                             </div>
-                            <div class="col-12 col-sm-6 col-lg-3 my-2">
+                            <div class="col-12 sm:col-6 lg:col-3 my-3">
                                 <label for="amount" class="form-label">' . lang('Amount') . '</label>
                                 <div class="input-group">
                                     ' . $liveform->output_field(array(
@@ -262,7 +262,7 @@ if (!$_POST) {
                         </div>
                         ' . ($fx_on
                             ? '<div class="row">
-                            <div class="col-12 col-sm-4 col-lg-3 my-2">
+                            <div class="col-12 sm:col-4 lg:col-3 my-3">
                                 <label for="currency" class="form-label">' . lang('Currency') . '</label>
                                 ' . (($preset_invoice !== null)
                                     ? '<input type="hidden" name="currency" value="' . h($preset_currency) . '" />
@@ -270,10 +270,10 @@ if (!$_POST) {
                                 <div class="form-text">' . lang('The invoice\'s currency; the receipt is entered in it.') . '</div>'
                                     : $liveform->output_field(array(
                                         'type' => 'select', 'id' => 'currency', 'name' => 'currency',
-                                        'class' => 'form-select', 'options' => erp_fx_currency_options())) . '
+                                        'class' => 'form-control', 'options' => erp_fx_currency_options())) . '
                                 <div class="form-text">' . lang('Has to match the till and, when one is chosen, the invoice.') . '</div>') . '
                             </div>
-                            <div class="col-12 col-sm-4 col-lg-3 my-2">
+                            <div class="col-12 sm:col-4 lg:col-3 my-3">
                                 <label for="exchange_rate" class="form-label">' . lang('Exchange Rate') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'text', 'id' => 'exchange_rate', 'name' => 'exchange_rate',
@@ -285,20 +285,20 @@ if (!$_POST) {
                             : '') . '
                         ' . $output_invoice_picker . '
                         <div class="row">
-                            <div class="col-12 col-sm-4 col-lg-3 my-2">
+                            <div class="col-12 sm:col-4 lg:col-3 my-3">
                                 <label for="doc_date" class="form-label">' . lang('Date') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'text', 'id' => 'doc_date', 'data-pg-date' => '', 'name' => 'doc_date',
                                     'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                                     'autocomplete' => 'off')) . '
                                 ' . get_date_picker_format() . pg_fields_script() . '                            </div>
-                            <div class="col-12 col-sm-4 col-lg-3 my-2">
+                            <div class="col-12 sm:col-4 lg:col-3 my-3">
                                 <label for="payment_method" class="form-label">' . lang('Payment Method') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'select', 'id' => 'payment_method', 'name' => 'payment_method',
-                                    'class' => 'form-select', 'options' => $method_options)) . '
+                                    'class' => 'form-control', 'options' => $method_options)) . '
                             </div>
-                            <div class="col-12 col-lg-6 my-2">
+                            <div class="col-12 lg:col-6 my-3">
                                 <label for="description" class="form-label">' . lang('Description') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'text', 'id' => 'description', 'name' => 'description',
@@ -307,10 +307,10 @@ if (!$_POST) {
                         </div>
                     </div>
                 </div>
-                <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
                         </div>
                     </div>
                 </nav>

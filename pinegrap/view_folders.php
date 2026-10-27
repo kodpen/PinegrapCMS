@@ -908,7 +908,7 @@ echo
     );
 ?>
 <main id="content" class="container-fluid p-0">
-<style>
+<style>@layer custom {
 /* App-shell styles for the combined explorer. Everything derives from
    Bootstrap theme variables so light and dark software themes both work;
    the access control colors come from backend.src.css. */
@@ -972,9 +972,9 @@ echo
     #recycle_bin_button { order: 7; }
     #explorer_more_wrap { order: 8; }
 }
-#file_scope_menu .dropdown-item [data-role="check"] { opacity: 0; }
-#file_scope_menu .dropdown-item.active [data-role="check"] { opacity: 1; }
-#file_scope_menu .dropdown-item.active { background: var(--pg-bg-2); color: var(--pg-fg-body); }
+#file_scope_menu .menu-item [data-role="check"] { opacity: 0; }
+#file_scope_menu .menu-item.active [data-role="check"] { opacity: 1; }
+#file_scope_menu .menu-item.active { background: var(--pg-bg-2); color: var(--pg-fg-body); }
 #explorer_breadcrumb .breadcrumb { margin: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
 #explorer_breadcrumb .breadcrumb::-webkit-scrollbar { display: none; }
 #explorer_breadcrumb .breadcrumb-item { white-space: nowrap; }
@@ -1133,16 +1133,16 @@ tr.explorer-item.selected > td { background: var(--pg-primary-bg-subtle) !import
    table keeps everything and the pane scrolls sideways instead, which is the
    only way the detail reaches a phone at all -- see listBreakpointMet(), which
    decides the <colgroup> by the same rule and must stay in step with this. */
-@media (min-width: 768px) and (max-width: 991.98px) {
+@media (min-width: 768px) and (max-width: 1023.98px) {
     #explorer_list_table .pg-at-lg,
     #explorer_list_table .pg-at-xl,
     #explorer_list_table .pg-at-xxl { display: none; }
 }
-@media (min-width: 992px) and (max-width: 1199.98px) {
+@media (min-width: 1024px) and (max-width: 1279.98px) {
     #explorer_list_table .pg-at-xl,
     #explorer_list_table .pg-at-xxl { display: none; }
 }
-@media (min-width: 1200px) and (max-width: 1399.98px) {
+@media (min-width: 1280px) and (max-width: 1535.98px) {
     #explorer_list_table .pg-at-xxl { display: none; }
 }
 
@@ -1251,8 +1251,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 /* A product with no storefront name: the dash is the gap, said quietly. */
 #explorer_list_table .subname-empty { opacity: .45; }
 #explorer_menu { position: fixed; z-index: 1080; display: none; min-width: 230px; border-radius: .75rem; box-shadow: 0 10px 30px rgba(0,0,0,.25); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-#explorer_menu .dropdown-item { cursor: pointer; border-radius: .45rem; padding: .32rem .7rem; }
-#explorer_menu .dropdown-item .bi { width: 1.35rem; display: inline-block; }
+#explorer_menu .menu-item { cursor: pointer; border-radius: .45rem; padding: .32rem .7rem; }
+#explorer_menu .menu-item .bi { width: 1.35rem; display: inline-block; }
 #explorer_menu { padding: .35rem; }
 /* The upload window's drop area. Dashed rather than solid so it reads as a
    place to put something rather than a box that already holds something. */
@@ -1371,7 +1371,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 /* The strip a selection turns the status bar into. The gap is its own because
    the bar's 1rem is for separate readings and these are one control group. */
 #explorer_statusbar .selection-actions { display: flex; align-items: center; gap: .1rem; flex-wrap: wrap; }
-#explorer_statusbar .selection-actions .dropdown-menu { z-index: 1075; }
+#explorer_statusbar .selection-actions .menu { z-index: 1075; }
 
 /* Below the tablet width the labels come off and the icons carry the meaning
    the title attribute already spells out -- four labelled buttons and a count
@@ -1385,8 +1385,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 #explorer_menu .pg-submenu { display: none; position: absolute; top: -0.35rem; left: 100%; min-width: 200px; border-radius: .75rem; box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: .35rem; margin: 0; }
 #explorer_menu li.has-submenu.open > .pg-submenu { display: block; }
 #explorer_menu li.has-submenu.submenu-left > .pg-submenu { left: auto; right: 100%; }
-#explorer_menu .dropdown-item .menu-check { width: 1.1rem; display: inline-block; }
-#explorer_menu .dropdown-item .submenu-arrow { float: right; margin-top: .2rem; opacity: .6; }
+#explorer_menu .menu-item .menu-check { width: 1.1rem; display: inline-block; }
+#explorer_menu .menu-item .submenu-arrow { float: right; margin-top: .2rem; opacity: .6; }
 .bin-badge { font-size: .66rem; }
 /* ERP documents. A folder with nothing in it stays in the branch, quieter,
    so the set of folders does not change shape as documents are issued. A
@@ -1404,48 +1404,48 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 #explorer_preview_pane .erp-goto-detail { max-width: 55%; opacity: .7; }
 #explorer_preview_pane .erp-ettn { font-size: .72rem; word-break: break-all; }
 .explorer-item, .tree-row { -webkit-touch-callout: none; }
-@media (max-width: 991.98px) {
+@media (max-width: 1023.98px) {
     #explorer_tree_pane, #explorer_preview_pane { display: none !important; }
     #explorer_app { height: calc(100vh - 120px); }
 }
-</style>
+}</style>
 
 <?php echo $liveform->output_errors() . $liveform->get_warnings() . $liveform->output_notices(); ?>
 <?php echo $liveform_pages->output_errors() . $liveform_pages->output_notices(); ?>
 <?php echo $liveform_folders->output_errors() . $liveform_folders->output_notices(); ?>
 
-<div id="explorer_app" class="my-2" data-area="<?php echo $explorer_area; ?>">
+<div id="explorer_app" class="my-3" data-area="<?php echo $explorer_area; ?>">
     <div id="explorer_toolbar" class="pg-toolbar">
-        <div class="dropdown" id="new_menu_wrap">
-            <button type="button" id="new_menu_button" class="btn btn-sm btn-primary rounded-pill px-3 no-popover" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false"><span class="bi bi-plus-lg me-1"></span><?php echo lang('New'); ?></button>
-            <ul class="dropdown-menu shadow" style="border-radius:.75rem;">
+        <div class="pg-menu-wrap" id="new_menu_wrap">
+            <button type="button" id="new_menu_button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 no-popover" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false"><span class="bi bi-plus-lg me-1"></span><?php echo lang('New'); ?></button>
+            <ul class="menu shadow" style="border-radius:.75rem;">
                 <!-- Only ever shown in the backup folder, where nothing else
                      under New applies: the menu used to open there with four
                      greyed out lines and no way to take a backup at all, while
                      the only place to ask for one was the right-click menu. -->
-                <li id="create_backup_item" class="d-none"><button type="button" class="dropdown-item" id="create_backup_button"><span class="bi bi-database-add me-2"></span><?php echo lang('Create Backup'); ?></button></li>
-                <li id="new_folder_item"><button type="button" class="dropdown-item" id="new_folder_button"><span class="bi bi-folder-plus me-2"></span><?php echo lang('New Folder'); ?></button></li>
-                <li id="upload_file_item"><button type="button" class="dropdown-item" id="upload_file_button"><span class="bi bi-upload me-2"></span><?php echo lang('Upload Files or Folders'); ?></button></li>
-                <li id="create_file_item"><button type="button" class="dropdown-item" id="create_file_button"><span class="bi bi-file-earmark-plus me-2"></span><?php echo lang('Create File'); ?></button></li>
-                <li id="new_image_item"><button type="button" class="dropdown-item" id="new_image_button"><span class="bi bi-easel me-2"></span><?php echo lang('New image'); ?></button></li>
-                <li id="new_visual_page_item" class="d-none"><button type="button" class="dropdown-item" id="new_visual_page_button"><span class="bi bi-magic me-2"></span><?php echo lang('Add Page'); ?></button></li>
-                <li id="new_page_item" class="d-none"><a class="dropdown-item" id="new_page_button" href="add_page.php"><span class="bi bi-window-plus me-2"></span><?php echo lang('New Page'); ?></a></li>
-                <li id="new_short_link_item" class="d-none"><button type="button" class="dropdown-item" id="new_short_link_button"><span class="bi bi-link-45deg me-2"></span><?php echo lang('Short Link'); ?></button></li>
+                <li id="create_backup_item" class="d-none"><button type="button" class="menu-item" id="create_backup_button"><span class="bi bi-database-add me-3"></span><?php echo lang('Create Backup'); ?></button></li>
+                <li id="new_folder_item"><button type="button" class="menu-item" id="new_folder_button"><span class="bi bi-folder-plus me-3"></span><?php echo lang('New Folder'); ?></button></li>
+                <li id="upload_file_item"><button type="button" class="menu-item" id="upload_file_button"><span class="bi bi-upload me-3"></span><?php echo lang('Upload Files or Folders'); ?></button></li>
+                <li id="create_file_item"><button type="button" class="menu-item" id="create_file_button"><span class="bi bi-file-earmark-plus me-3"></span><?php echo lang('Create File'); ?></button></li>
+                <li id="new_image_item"><button type="button" class="menu-item" id="new_image_button"><span class="bi bi-easel me-3"></span><?php echo lang('New image'); ?></button></li>
+                <li id="new_visual_page_item" class="d-none"><button type="button" class="menu-item" id="new_visual_page_button"><span class="bi bi-magic me-3"></span><?php echo lang('Add Page'); ?></button></li>
+                <li id="new_page_item" class="d-none"><a class="menu-item" id="new_page_button" href="add_page.php"><span class="bi bi-window-plus me-3"></span><?php echo lang('New Page'); ?></a></li>
+                <li id="new_short_link_item" class="d-none"><button type="button" class="menu-item" id="new_short_link_button"><span class="bi bi-link-45deg me-3"></span><?php echo lang('Short Link'); ?></button></li>
             </ul>
         </div>
         <!-- Bringing things in and taking them out. One button rather than
              several, because what it offers depends on where you are standing
              and a toolbar with four transfer buttons on it would be mostly
              greyed out wherever you stood. -->
-        <div class="dropdown" id="explorer_transfer_wrap">
-            <button type="button" id="transfer_menu_button" class="btn btn-sm btn-ghost no-popover" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" title="<?php echo lang('Import / Export'); ?>"><span class="bi bi-arrow-down-up"></span></button>
-            <ul class="dropdown-menu shadow" style="border-radius:.75rem;">
-                <li id="import_zip_item"><button type="button" class="dropdown-item" id="import_zip_button"><span class="bi bi-file-earmark-zip me-2"></span><?php echo lang('Import ZIP File'); ?></button></li>
-                <li id="import_design_zip_item"><button type="button" class="dropdown-item" id="import_design_zip_button"><span class="bi bi-magic me-2"></span><?php echo lang('Import ZIP for the Visual Page Editor'); ?></button></li>
-                <li id="import_products_item"><a class="dropdown-item" id="import_products_button" href="import_products.php"><span class="bi bi-box-arrow-in-down me-2"></span><?php echo lang('Import Products'); ?></a></li>
-                <li id="export_products_divider"><hr class="dropdown-divider" /></li>
-                <li id="export_products_csv_item"><button type="button" class="dropdown-item" data-export-scope="all" data-export-format="csv"><span class="bi bi-filetype-csv me-2"></span><?php echo lang('Export Products'); ?> (CSV)</button></li>
-                <li id="export_products_xlsx_item"><button type="button" class="dropdown-item" data-export-scope="all" data-export-format="xlsx"><span class="bi bi-file-earmark-excel me-2"></span><?php echo lang('Export Products'); ?> (Excel)</button></li>
+        <div class="pg-menu-wrap" id="explorer_transfer_wrap">
+            <button type="button" id="transfer_menu_button" class="btn btn-sm btn-ghost no-popover" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" title="<?php echo lang('Import / Export'); ?>"><span class="bi bi-arrow-down-up"></span></button>
+            <ul class="menu shadow" style="border-radius:.75rem;">
+                <li id="import_zip_item"><button type="button" class="menu-item" id="import_zip_button"><span class="bi bi-file-earmark-zip me-3"></span><?php echo lang('Import ZIP File'); ?></button></li>
+                <li id="import_design_zip_item"><button type="button" class="menu-item" id="import_design_zip_button"><span class="bi bi-magic me-3"></span><?php echo lang('Import ZIP for the Visual Page Editor'); ?></button></li>
+                <li id="import_products_item"><a class="menu-item" id="import_products_button" href="import_products.php"><span class="bi bi-box-arrow-in-down me-3"></span><?php echo lang('Import Products'); ?></a></li>
+                <li id="export_products_divider"><hr class="menu-divider" /></li>
+                <li id="export_products_csv_item"><button type="button" class="menu-item" data-export-scope="all" data-export-format="csv"><span class="bi bi-filetype-csv me-3"></span><?php echo lang('Export Products'); ?> (CSV)</button></li>
+                <li id="export_products_xlsx_item"><button type="button" class="menu-item" data-export-scope="all" data-export-format="xlsx"><span class="bi bi-file-earmark-excel me-3"></span><?php echo lang('Export Products'); ?> (Excel)</button></li>
             </ul>
         </div>
         <button type="button" id="up_button" class="btn btn-sm btn-ghost no-popover" title="<?php echo lang('Up'); ?>"><span class="bi bi-arrow-90deg-up"></span></button>
@@ -1460,45 +1460,45 @@ body.col-resizing { cursor: col-resize; user-select: none; }
              the products with no photograph, the pages missing from the
              sitemap. Every test runs on the listing that is already on screen,
              so it costs a redraw and no request. -->
-        <div class="dropdown" id="explorer_filter_wrap">
-            <button type="button" id="explorer_filter_button" class="btn btn-sm btn-ghost no-popover position-relative" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" title="<?php echo lang('Filters'); ?>"><span class="bi bi-sliders"></span><span id="explorer_filter_count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-primary d-none" style="font-size:.6rem;"></span></button>
+        <div class="pg-menu-wrap" id="explorer_filter_wrap">
+            <button type="button" id="explorer_filter_button" class="btn btn-sm btn-ghost no-popover position-relative" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" title="<?php echo lang('Filters'); ?>"><span class="bi bi-sliders"></span><span id="explorer_filter_count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill theme-primary d-none" style="font-size:.6rem;"></span></button>
             <!-- Aligned to the button's left edge rather than its right: the
                  toolbar wraps on a narrow screen and this button can end up
                  near the left, where a right-aligned menu hangs off the side
                  of the screen with half its entries unreadable. -->
-            <ul class="dropdown-menu shadow" id="explorer_filter_menu" style="border-radius:.75rem;"></ul>
+            <ul class="menu shadow" id="explorer_filter_menu" style="border-radius:.75rem;"></ul>
         </div>
         <!-- The Files view, narrowed -- what view_files.php offered from a
              select. Only on that view: Pictures is a view of its own, and a
              folder is not something to narrow by type. -->
-        <div class="dropdown d-none" id="file_scope_wrap">
-            <button type="button" id="file_scope_button" class="btn btn-sm btn-ghost no-popover dropdown-toggle text-nowrap" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false"><span class="bi bi-funnel me-1"></span><span id="file_scope_label"></span></button>
-            <ul class="dropdown-menu shadow" id="file_scope_menu" style="border-radius:.75rem;">
-                <li><button type="button" class="dropdown-item" data-scope=""><span class="bi bi-check2 me-2" data-role="check"></span><?php echo lang('All files'); ?></button></li>
-                <li><h6 class="dropdown-header"><?php echo lang('By type'); ?></h6></li>
-                <li><button type="button" class="dropdown-item" data-scope="documents"><span class="bi bi-check2 me-2" data-role="check"></span><?php echo lang('Documents'); ?></button></li>
-                <li><button type="button" class="dropdown-item" data-scope="media"><span class="bi bi-check2 me-2" data-role="check"></span><?php echo lang('Media'); ?></button></li>
-                <li><button type="button" class="dropdown-item" data-scope="attachments"><span class="bi bi-check2 me-2" data-role="check"></span><?php echo lang('Attachments'); ?></button></li>
-                <li><button type="button" class="dropdown-item" data-scope="archived"><span class="bi bi-check2 me-2" data-role="check"></span><?php echo lang('Archived files'); ?></button></li>
-                <li><h6 class="dropdown-header"><?php echo lang('By access'); ?></h6></li>
-                <li><button type="button" class="dropdown-item" data-scope="public"><span class="bi bi-check2 me-2" data-role="check"></span><?php echo lang('Public'); ?></button></li>
-                <li><button type="button" class="dropdown-item" data-scope="guest"><span class="bi bi-check2 me-2" data-role="check"></span><?php echo lang('Guest'); ?></button></li>
-                <li><button type="button" class="dropdown-item" data-scope="registration"><span class="bi bi-check2 me-2" data-role="check"></span><?php echo lang('Registration'); ?></button></li>
-                <li><button type="button" class="dropdown-item" data-scope="membership"><span class="bi bi-check2 me-2" data-role="check"></span><?php echo lang('Membership'); ?></button></li>
-                <li><button type="button" class="dropdown-item" data-scope="private"><span class="bi bi-check2 me-2" data-role="check"></span><?php echo lang('Private'); ?></button></li>
+        <div class="pg-menu-wrap d-none" id="file_scope_wrap">
+            <button type="button" id="file_scope_button" class="btn btn-sm btn-ghost no-popover pg-menu-caret text-nowrap" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false"><span class="bi bi-funnel me-1"></span><span id="file_scope_label"></span></button>
+            <ul class="menu shadow" id="file_scope_menu" style="border-radius:.75rem;">
+                <li><button type="button" class="menu-item" data-scope=""><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('All files'); ?></button></li>
+                <li><h6 class="menu-header"><?php echo lang('By type'); ?></h6></li>
+                <li><button type="button" class="menu-item" data-scope="documents"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Documents'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="media"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Media'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="attachments"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Attachments'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="archived"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Archived files'); ?></button></li>
+                <li><h6 class="menu-header"><?php echo lang('By access'); ?></h6></li>
+                <li><button type="button" class="menu-item" data-scope="public"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Public'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="guest"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Guest'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="registration"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Registration'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="membership"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Membership'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="private"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Private'); ?></button></li>
             </ul>
         </div>
         <div class="btn-group btn-group-sm" id="explorer_view_group" role="group">
             <button type="button" id="view_grid_button" class="btn btn-ghost no-popover" title="<?php echo lang('Grid view'); ?>"><span class="bi bi-grid-3x3-gap"></span></button>
             <button type="button" id="view_list_button" class="btn btn-ghost no-popover" title="<?php echo lang('List view'); ?>"><span class="bi bi-list-ul"></span></button>
         </div>
-        <button type="button" id="recycle_bin_button" class="btn btn-sm btn-ghost no-popover position-relative d-none" title="<?php echo lang('Recycle Bin'); ?>"><span class="bi bi-trash3"></span><span id="recycle_bin_count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger d-none" style="font-size:.6rem;"></span></button>
-        <div class="dropdown" id="explorer_more_wrap">
-            <button type="button" id="explorer_more_button" class="btn btn-sm btn-ghost no-popover" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false"><span class="bi bi-three-dots-vertical"></span></button>
-            <ul class="dropdown-menu dropdown-menu-end shadow" style="border-radius:.75rem;">
-                <li class="d-none d-lg-block"><button type="button" class="dropdown-item" id="tree_toggle_button"><span class="bi bi-check2 me-2 opacity-0" data-role="check"></span><?php echo lang('Folder tree'); ?></button></li>
-                <li class="d-none d-lg-block"><button type="button" class="dropdown-item" id="preview_toggle_button"><span class="bi bi-check2 me-2 opacity-0" data-role="check"></span><?php echo lang('Preview panel'); ?></button></li>
-                <li class="d-none d-lg-block"><hr class="dropdown-divider" /></li>
+        <button type="button" id="recycle_bin_button" class="btn btn-sm btn-ghost no-popover position-relative d-none" title="<?php echo lang('Recycle Bin'); ?>"><span class="bi bi-trash3"></span><span id="recycle_bin_count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill theme-danger d-none" style="font-size:.6rem;"></span></button>
+        <div class="pg-menu-wrap" id="explorer_more_wrap">
+            <button type="button" id="explorer_more_button" class="btn btn-sm btn-ghost no-popover" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-display="static" aria-expanded="false"><span class="bi bi-three-dots-vertical"></span></button>
+            <ul class="menu pg-menu-end shadow" style="border-radius:.75rem;">
+                <li class="d-none lg:d-block"><button type="button" class="menu-item" id="tree_toggle_button"><span class="bi bi-check2 me-3 opacity-0" data-role="check"></span><?php echo lang('Folder tree'); ?></button></li>
+                <li class="d-none lg:d-block"><button type="button" class="menu-item" id="preview_toggle_button"><span class="bi bi-check2 me-3 opacity-0" data-role="check"></span><?php echo lang('Preview panel'); ?></button></li>
+                <li class="d-none lg:d-block"><hr class="menu-divider" /></li>
                 <!-- The same shortcuts the sidebar carries, for the screens that
                      do not show a sidebar: this menu is how a phone reaches the
                      views across everything. It has to belong to the area it is
@@ -1513,41 +1513,41 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                      root link in the breadcrumb is not where they were told to
                      look. Same for the store, where All Products has to lead
                      back to the groups. -->
-                <li class="area-files"><button type="button" class="dropdown-item" id="folders_root_menu_item"><span class="bi bi-hdd me-2"></span><?php echo lang('My Folders'); ?></button></li>
-                <li class="area-catalog"><button type="button" class="dropdown-item" id="catalog_root_menu_item"><span class="bi bi-boxes me-2"></span><?php echo lang('Product Groups'); ?></button></li>
-                <li><hr class="dropdown-divider" /></li>
-                <li class="area-files"><button type="button" class="dropdown-item" id="all_files_menu_item"><span class="bi bi-file-earmark-image me-2"></span><?php echo lang('Files'); ?></button></li>
-                <li class="area-files"><button type="button" class="dropdown-item" id="all_images_menu_item"><span class="bi bi-images me-2"></span><?php echo lang('Pictures'); ?></button></li>
-                <li class="area-files"><button type="button" class="dropdown-item" id="all_pages_menu_item"><span class="bi bi-window-stack me-2"></span><?php echo lang('Pages'); ?></button></li>
+                <li class="area-files"><button type="button" class="menu-item" id="folders_root_menu_item"><span class="bi bi-hdd me-3"></span><?php echo lang('My Folders'); ?></button></li>
+                <li class="area-catalog"><button type="button" class="menu-item" id="catalog_root_menu_item"><span class="bi bi-boxes me-3"></span><?php echo lang('Product Groups'); ?></button></li>
+                <li><hr class="menu-divider" /></li>
+                <li class="area-files"><button type="button" class="menu-item" id="all_files_menu_item"><span class="bi bi-file-earmark-image me-3"></span><?php echo lang('Files'); ?></button></li>
+                <li class="area-files"><button type="button" class="menu-item" id="all_images_menu_item"><span class="bi bi-images me-3"></span><?php echo lang('Pictures'); ?></button></li>
+                <li class="area-files"><button type="button" class="menu-item" id="all_pages_menu_item"><span class="bi bi-window-stack me-3"></span><?php echo lang('Pages'); ?></button></li>
                 <?php if ($user['role'] <= 2) { ?>
-                <li class="area-files"><button type="button" class="dropdown-item" id="short_links_menu_item"><span class="bi bi-link-45deg me-2"></span><?php echo lang('Short Links'); ?></button></li>
-                <li class="area-files"><button type="button" class="dropdown-item" id="shared_menu_item"><span class="bi bi-shield-lock me-2"></span><?php echo lang('Shared Folders'); ?></button></li>
-                <li class="area-files"><button type="button" class="dropdown-item" id="backups_menu_item"><span class="bi bi-database me-2"></span><?php echo lang('Backups'); ?></button></li>
+                <li class="area-files"><button type="button" class="menu-item" id="short_links_menu_item"><span class="bi bi-link-45deg me-3"></span><?php echo lang('Short Links'); ?></button></li>
+                <li class="area-files"><button type="button" class="menu-item" id="shared_menu_item"><span class="bi bi-shield-lock me-3"></span><?php echo lang('Shared Folders'); ?></button></li>
+                <li class="area-files"><button type="button" class="menu-item" id="backups_menu_item"><span class="bi bi-database me-3"></span><?php echo lang('Backups'); ?></button></li>
                 <?php } ?>
                 <?php if ($explorer_erp) { ?>
-                <li class="area-files"><button type="button" class="dropdown-item" id="erp_menu_item"><i class="bi bi-safe2 me-2" aria-hidden="true"></i><?php echo lang('ERP Files'); ?></button></li>
+                <li class="area-files"><button type="button" class="menu-item" id="erp_menu_item"><i class="bi bi-safe2 me-3" aria-hidden="true"></i><?php echo lang('ERP Files'); ?></button></li>
                 <?php } ?>
-                <li class="area-catalog"><button type="button" class="dropdown-item" id="all_products_menu_item"><span class="bi bi-box2-heart me-2"></span><?php echo lang('All Products'); ?></button></li>
-                <li class="area-catalog"><button type="button" class="dropdown-item" id="all_variant_sets_menu_item"><span class="bi bi-collection-fill me-2"></span><?php echo lang('All Variant Sets'); ?></button></li>
+                <li class="area-catalog"><button type="button" class="menu-item" id="all_products_menu_item"><span class="bi bi-box2-heart me-3"></span><?php echo lang('All Products'); ?></button></li>
+                <li class="area-catalog"><button type="button" class="menu-item" id="all_variant_sets_menu_item"><span class="bi bi-collection-fill me-3"></span><?php echo lang('All Variant Sets'); ?></button></li>
                 <?php if ($user['role'] <= 2) { ?>
-                <li class="area-catalog"><button type="button" class="dropdown-item" id="commerce_access_menu_item"><span class="bi bi-shield-lock me-2"></span><?php echo lang('Commerce Management Rights'); ?></button></li>
+                <li class="area-catalog"><button type="button" class="menu-item" id="commerce_access_menu_item"><span class="bi bi-shield-lock me-3"></span><?php echo lang('Commerce Management Rights'); ?></button></li>
                 <?php } ?>
-                <li><button type="button" class="dropdown-item" id="refresh_button"><span class="bi bi-arrow-clockwise me-2"></span><?php echo lang('Refresh'); ?></button></li>
-                <li><button type="button" class="dropdown-item" id="tour_menu_item"><span class="bi bi-signpost-split me-2"></span><?php echo lang('Watch the tour'); ?></button></li>
-                <li><hr class="dropdown-divider" /></li>
+                <li><button type="button" class="menu-item" id="refresh_button"><span class="bi bi-arrow-clockwise me-3"></span><?php echo lang('Refresh'); ?></button></li>
+                <li><button type="button" class="menu-item" id="tour_menu_item"><span class="bi bi-signpost-split me-3"></span><?php echo lang('Watch the tour'); ?></button></li>
+                <li><hr class="menu-divider" /></li>
                 <!-- No crossing to the other area from here either.  The
                      sidebar lost its bridge rows for reading as branches of
                      the tree they sat under; these read as one more view of
                      the screen you are already on, and are not.  The left menu
                      is where the software is navigated, and it lists both. -->
-                <li><h6 class="dropdown-header"><?php echo lang('Classic views'); ?></h6></li>
+                <li><h6 class="menu-header"><?php echo lang('Classic views'); ?></h6></li>
                 <!-- The classic files screen stays reachable from here for a
                      while longer: everything it did is on this screen now, but
                      the old screen is the yardstick while the new one settles.
                      It comes out of the left menu first and from here last. -->
-                <li class="area-files"><a class="dropdown-item" href="view_files.php"><span class="bi bi-file-earmark-image me-2"></span><?php echo lang('Files'); ?></a></li>
-                <li class="area-files"><a class="dropdown-item" href="view_pages.php"><span class="bi bi-window-stack me-2"></span><?php echo lang('Pages'); ?></a></li>
-                <li class="area-catalog"><a class="dropdown-item" href="view_products.php"><span class="bi bi-box2-heart me-2"></span><?php echo lang('Products'); ?></a></li>
+                <li class="area-files"><a class="menu-item" href="view_files.php"><span class="bi bi-file-earmark-image me-3"></span><?php echo lang('Files'); ?></a></li>
+                <li class="area-files"><a class="menu-item" href="view_pages.php"><span class="bi bi-window-stack me-3"></span><?php echo lang('Pages'); ?></a></li>
+                <li class="area-catalog"><a class="menu-item" href="view_products.php"><span class="bi bi-box2-heart me-3"></span><?php echo lang('Products'); ?></a></li>
             </ul>
         </div>
     </div>
@@ -1555,30 +1555,30 @@ body.col-resizing { cursor: col-resize; user-select: none; }
          not visible is a folder that looks half empty for no reason anybody can
          see, so this strip is drawn only when there is something to say and is
          the first thing under the toolbar when there is. -->
-    <div id="explorer_filters_bar" class="d-none align-items-center flex-wrap gap-2" style="padding:.4rem .9rem;border-bottom:1px solid var(--pg-border-color-translucent);font-size:.78rem;"></div>
-    <div id="recycle_banner" class="d-none align-items-center flex-wrap gap-2" style="padding:.45rem .9rem;border-bottom:1px solid var(--pg-border-color-translucent);background:var(--pg-warning-bg-subtle);font-size:.82rem;">
-        <span class="bi bi-trash3 text-warning-emphasis"></span>
-        <span id="recycle_banner_text" class="text-warning-emphasis"></span>
-        <button type="button" id="empty_bin_button" class="btn btn-sm btn-outline-danger ms-auto rounded-pill"><span class="bi bi-x-octagon me-1"></span><?php echo lang('Empty Recycle Bin'); ?></button>
+    <div id="explorer_filters_bar" class="d-none align-items-center flex-wrap gap-3" style="padding:.4rem .9rem;border-bottom:1px solid var(--pg-border-color-translucent);font-size:.78rem;"></div>
+    <div id="recycle_banner" class="d-none align-items-center flex-wrap gap-3" style="padding:.45rem .9rem;border-bottom:1px solid var(--pg-border-color-translucent);background:var(--pg-warning-bg-subtle);font-size:.82rem;">
+        <span class="bi bi-trash3 fg-emphasis-warning"></span>
+        <span id="recycle_banner_text" class="fg-emphasis-warning"></span>
+        <button type="button" id="empty_bin_button" class="btn btn-sm btn-outline theme-danger ms-auto rounded-pill"><span class="bi bi-x-octagon me-1"></span><?php echo lang('Empty Recycle Bin'); ?></button>
     </div>
     <div id="explorer_main">
-        <div id="explorer_tree_pane" class="d-none d-lg-block">
+        <div id="explorer_tree_pane" class="d-none lg:d-block">
             <!-- Both areas draw the same pane and hide what does not belong to
                  them, rather than each rendering its own: highlightTree() reaches
                  for these rows by id on every load, and a missing one would be a
                  null. The store rows lead to the other screen; the operator stays
                  in the same interface either way. -->
-            <div class="tree-row area-files" id="all_files_quick"><span class="tree-toggle"></span><span class="bi bi-file-earmark-image text-primary"></span><span class="tree-label"><?php echo lang('Files'); ?></span></div>
-            <div class="tree-row area-files" id="all_images_quick"><span class="tree-toggle"></span><span class="bi bi-images text-primary"></span><span class="tree-label"><?php echo lang('Pictures'); ?></span></div>
-            <div class="tree-row area-files" id="all_pages_quick"><span class="tree-toggle"></span><span class="bi bi-window-stack text-primary"></span><span class="tree-label"><?php echo lang('Pages'); ?></span></div>
+            <div class="tree-row area-files" id="all_files_quick"><span class="tree-toggle"></span><span class="bi bi-file-earmark-image fg-primary"></span><span class="tree-label"><?php echo lang('Files'); ?></span></div>
+            <div class="tree-row area-files" id="all_images_quick"><span class="tree-toggle"></span><span class="bi bi-images fg-primary"></span><span class="tree-label"><?php echo lang('Pictures'); ?></span></div>
+            <div class="tree-row area-files" id="all_pages_quick"><span class="tree-toggle"></span><span class="bi bi-window-stack fg-primary"></span><span class="tree-label"><?php echo lang('Pages'); ?></span></div>
             <?php if ($user['role'] <= 2) { ?>
-            <div class="tree-row area-files" id="short_links_quick"><span class="tree-toggle"></span><span class="bi bi-link-45deg text-primary"></span><span class="tree-label"><?php echo lang('Short Links'); ?></span></div>
+            <div class="tree-row area-files" id="short_links_quick"><span class="tree-toggle"></span><span class="bi bi-link-45deg fg-primary"></span><span class="tree-label"><?php echo lang('Short Links'); ?></span></div>
             <?php } ?>
-            <div class="tree-row area-catalog" id="all_products_quick"><span class="tree-toggle"></span><span class="bi bi-box2-heart text-primary"></span><span class="tree-label"><?php echo lang('All Products'); ?></span><span class="tree-count" id="all_products_count"></span></div>
+            <div class="tree-row area-catalog" id="all_products_quick"><span class="tree-toggle"></span><span class="bi bi-box2-heart fg-primary"></span><span class="tree-label"><?php echo lang('All Products'); ?></span><span class="tree-count" id="all_products_count"></span></div>
             <!-- A variant set is a group whose display type is 'select': one
                  product in several forms rather than a category. view_products.php
                  lists them on their own screen, so the store does too. -->
-            <div class="tree-row area-catalog" id="all_variant_sets_quick"><span class="tree-toggle"></span><span class="bi bi-collection-fill text-primary"></span><span class="tree-label"><?php echo lang('All Variant Sets'); ?></span><span class="tree-count" id="all_variant_sets_count"></span></div>
+            <div class="tree-row area-catalog" id="all_variant_sets_quick"><span class="tree-toggle"></span><span class="bi bi-collection-fill fg-primary"></span><span class="tree-label"><?php echo lang('All Variant Sets'); ?></span><span class="tree-count" id="all_variant_sets_count"></span></div>
 
             <!-- Two short lists above the tree: the ones marked to keep, and
                  the ones just visited. Both are drawn only when they hold
@@ -1599,8 +1599,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             <?php if ($user['role'] <= 2) { ?>
             <div class="tree-section-label area-files" id="shared_section_label"><?php echo lang('Shared Items'); ?></div>
-            <div class="tree-row area-files" id="shared_quick"><span class="tree-toggle"></span><span class="bi bi-shield-lock text-primary"></span><span class="tree-label"><?php echo lang('Shared Folders'); ?></span></div>
-            <div class="tree-row area-files" id="backups_quick"><span class="tree-toggle"></span><span class="bi bi-database text-primary"></span><span class="tree-label"><?php echo lang('Backups'); ?></span></div>
+            <div class="tree-row area-files" id="shared_quick"><span class="tree-toggle"></span><span class="bi bi-shield-lock fg-primary"></span><span class="tree-label"><?php echo lang('Shared Folders'); ?></span></div>
+            <div class="tree-row area-files" id="backups_quick"><span class="tree-toggle"></span><span class="bi bi-database fg-primary"></span><span class="tree-label"><?php echo lang('Backups'); ?></span></div>
             <?php } ?>
 
             <?php if ($explorer_erp) { ?>
@@ -1611,7 +1611,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                  menu or its drop targets take them for folders. -->
             <div class="tree-section-label area-files" id="erp_section_label"><?php echo lang('ERP'); ?></div>
             <div class="area-files" id="erp_tree_wrap">
-                <div class="tree-row" id="erp_quick"><span class="tree-toggle bi bi-chevron-right" data-role="erp-toggle"></span><i class="bi bi-safe2 text-primary" aria-hidden="true"></i><span class="tree-label"><?php echo lang('ERP Files'); ?></span></div>
+                <div class="tree-row" id="erp_quick"><span class="tree-toggle bi bi-chevron-right" data-role="erp-toggle"></span><i class="bi bi-safe2 fg-primary" aria-hidden="true"></i><span class="tree-label"><?php echo lang('ERP Files'); ?></span></div>
                 <ul id="erp_tree" style="display:none"></ul>
             </div>
             <?php } ?>
@@ -1624,16 +1624,16 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                  right, where the other ways off this screen already are. -->
         </div>
         <div id="explorer_content">
-            <div class="text-center my-5 empty-note"><span class="spinner-border spinner-border-sm me-2"></span><?php echo lang('Loading'); ?>...</div>
-            <div id="explorer_upload_overlay"><div class="text-center fw-bold text-primary"><span class="bi bi-cloud-arrow-up fs-1 d-block"></span><?php echo lang('Drop files here to upload them into this folder'); ?></div></div>
+            <div class="text-center my-12 empty-note"><span class="spinner-border spinner-border-sm me-3"></span><?php echo lang('Loading'); ?>...</div>
+            <div id="explorer_upload_overlay"><div class="text-center fw-bold fg-primary"><span class="bi bi-cloud-arrow-up fs-4xl d-block"></span><?php echo lang('Drop files here to upload them into this folder'); ?></div></div>
         </div>
-        <div id="explorer_preview_pane" class="d-none d-lg-block"></div>
+        <div id="explorer_preview_pane" class="d-none lg:d-block"></div>
     </div>
     <div id="explorer_statusbar"></div>
 </div>
 
 <!-- Right-click menu. Rebuilt for each target; positioned fixed. -->
-<ul id="explorer_menu" class="dropdown-menu"></ul>
+<ul id="explorer_menu" class="menu"></ul>
 
 <!-- Asking for a product file.
      A form rather than a link: a selection of several thousand products does
@@ -1654,18 +1654,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
      items afterwards. None of that is repeated here. A file upload is a real
      form post in any case, so posting to it is also the plain way to do this.
      send_to brings the operator back to this screen when it is finished. -->
-<div class="modal fade" id="import_zip_modal" tabindex="-1" aria-labelledby="import_zip_modal_label" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <form class="modal-content" style="border-radius:.9rem;" action="import_zip.php" method="post" enctype="multipart/form-data">
-            <div class="modal-header">
-                <h5 class="modal-title" id="import_zip_modal_label"><span class="bi bi-file-earmark-zip me-2"></span><?php echo lang('Import ZIP File'); ?></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?php echo lang('Close'); ?>"></button>
+<dialog class="dialog pg-dialog-centered" id="import_zip_modal" aria-labelledby="import_zip_modal_label">
+        <form class="d-contents" style="border-radius:.9rem;" action="import_zip.php" method="post" enctype="multipart/form-data">
+            <div class="dialog-header">
+                <h5 class="dialog-title" id="import_zip_modal_label"><span class="bi bi-file-earmark-zip me-3"></span><?php echo lang('Import ZIP File'); ?></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="<?php echo lang('Close'); ?>"></button>
             </div>
-            <div class="modal-body">
+            <div class="dialog-body">
                 <?php echo get_token_field(); ?>
                 <input type="hidden" name="send_to" id="import_zip_send_to" value="" />
                 <p class="form-text mt-0"><?php echo lang('Import web pages and files from a ZIP file.'); ?></p>
-                <div class="mb-3">
+                <div class="mb-5">
                     <label class="form-label" for="import_zip_file"><?php echo lang('Select .zip to Upload'); ?></label>
                     <input type="file" class="form-control" id="import_zip_file" name="file" accept=".zip,application/zip" required />
                 </div>
@@ -1675,31 +1674,29 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     <div class="form-text"><?php echo lang('appended to imported items and filenames for easy reference, recommended, e.g. \'mysite\''); ?></div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?php echo lang('Cancel'); ?></button>
-                <button type="submit" name="submit_import" value="Import" class="btn btn-primary"><span class="bi bi-upload me-1"></span><?php echo lang('Import'); ?></button>
+            <div class="dialog-footer">
+                <button type="button" class="btn btn-solid theme-secondary" data-bs-dismiss="dialog"><?php echo lang('Cancel'); ?></button>
+                <button type="submit" name="submit_import" value="Import" class="btn btn-solid theme-primary"><span class="bi bi-upload me-1"></span><?php echo lang('Import'); ?></button>
             </div>
         </form>
-    </div>
-</div>
+</dialog>
 
 <!-- Import ZIP for the Visual Page Editor.
      Posts to import_design_zip.php: the archive becomes a saved design (a
      style row plus one page per HTML file, all in Import/<project>/) and
      the browser lands in the editor on it. The plain Import ZIP above makes
      ordinary pages and files; this one makes a design. -->
-<div class="modal fade" id="import_design_zip_modal" tabindex="-1" aria-labelledby="import_design_zip_modal_label" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <form class="modal-content" style="border-radius:.9rem;" action="import_design_zip.php" method="post" enctype="multipart/form-data">
-            <div class="modal-header">
-                <h5 class="modal-title" id="import_design_zip_modal_label"><span class="bi bi-magic me-2"></span><?php echo lang('Import ZIP for the Visual Page Editor'); ?></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?php echo lang('Close'); ?>"></button>
+<dialog class="dialog pg-dialog-centered" id="import_design_zip_modal" aria-labelledby="import_design_zip_modal_label">
+        <form class="d-contents" style="border-radius:.9rem;" action="import_design_zip.php" method="post" enctype="multipart/form-data">
+            <div class="dialog-header">
+                <h5 class="dialog-title" id="import_design_zip_modal_label"><span class="bi bi-magic me-3"></span><?php echo lang('Import ZIP for the Visual Page Editor'); ?></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="<?php echo lang('Close'); ?>"></button>
             </div>
-            <div class="modal-body">
+            <div class="dialog-body">
                 <?php echo get_token_field(); ?>
                 <input type="hidden" name="send_to" id="import_design_zip_send_to" value="" />
                 <p class="form-text mt-0"><?php echo lang('An HTML project (pages plus their CSS, JavaScript, images and fonts) becomes a design: every HTML file a page, the files under Import / project name. The editor opens on it when the import is done.'); ?></p>
-                <div class="mb-3">
+                <div class="mb-5">
                     <label class="form-label" for="import_design_zip_file"><?php echo lang('Select .zip to Upload'); ?></label>
                     <input type="file" class="form-control" id="import_design_zip_file" name="file" accept=".zip,application/zip" required />
                 </div>
@@ -1709,13 +1706,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     <div class="form-text"><?php echo lang('Defaults to the file name'); ?></div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?php echo lang('Cancel'); ?></button>
-                <button type="submit" name="submit_import" value="Import" class="btn btn-primary"><span class="bi bi-upload me-1"></span><?php echo lang('Import'); ?></button>
+            <div class="dialog-footer">
+                <button type="button" class="btn btn-solid theme-secondary" data-bs-dismiss="dialog"><?php echo lang('Cancel'); ?></button>
+                <button type="submit" name="submit_import" value="Import" class="btn btn-solid theme-primary"><span class="bi bi-upload me-1"></span><?php echo lang('Import'); ?></button>
             </div>
         </form>
-    </div>
-</div>
+</dialog>
 
 <!-- Upload.
      add_file.php is still the upload screen and view_files.php still goes
@@ -1731,14 +1727,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
      things every file has -- name, folder, description, and for a designer
      the design flag. The tools along the bottom are the actions the file's
      kind allows and nothing more. -->
-<div class="modal fade" id="file_edit_modal" tabindex="-1" aria-labelledby="file_edit_modal_label" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
-        <div class="modal-content" style="border-radius:.9rem;">
-            <div class="modal-header">
-                <h5 class="modal-title" id="file_edit_modal_label"><span class="bi bi-pencil-square me-2"></span><?php echo lang('Edit File'); ?></h5>
+<dialog class="dialog pg-dialog-centered dialog-xl dialog-scrollable" id="file_edit_modal" aria-labelledby="file_edit_modal_label" style="border-radius:.9rem;">
+            <div class="dialog-header">
+                <h5 class="dialog-title" id="file_edit_modal_label"><span class="bi bi-pencil-square me-3"></span><?php echo lang('Edit File'); ?></h5>
                 <button type="button" class="btn-close" id="file_edit_close" aria-label="<?php echo lang('Close'); ?>"></button>
             </div>
-            <div class="modal-body">
+            <div class="dialog-body">
 
                 <div id="file_edit_preview"></div>
 
@@ -1747,51 +1741,47 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     <div class="form-text" id="file_edit_editor_note"></div>
                 </div>
 
-                <div class="row g-3 mt-0">
-                    <div class="col-12 col-md-6">
+                <div class="row g-5 mt-0">
+                    <div class="col-12 md:col-6">
                         <label class="form-label" for="file_edit_name"><?php echo lang('Name'); ?></label>
                         <input type="text" class="form-control" id="file_edit_name" autocomplete="off" />
                     </div>
-                    <div class="col-12 col-md-6">
+                    <div class="col-12 md:col-6">
                         <label class="form-label" for="file_edit_folder"><?php echo lang('Folder'); ?></label>
-                        <select class="form-select" id="file_edit_folder"></select>
+                        <select class="form-control" id="file_edit_folder"></select>
                     </div>
                     <div class="col-12">
                         <label class="form-label" for="file_edit_description"><?php echo lang('File Description / Photo Gallery Caption'); ?></label>
                         <textarea class="form-control" id="file_edit_description" rows="2"></textarea>
                     </div>
                     <div class="col-12<?php echo (($user['role'] <= 1) ? '' : ' d-none'); ?>" id="file_edit_design_wrap">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="file_edit_design" />
-                            <label class="form-check-label" for="file_edit_design"><?php echo lang('Design File'); ?></label>
+                        <div class="form-field">
+                            <div class="switch"><input class="" type="checkbox" id="file_edit_design" /></div>
+                            <label class="" for="file_edit_design"><?php echo lang('Design File'); ?></label>
                             <div class="form-text"><?php echo lang('Check if File is a Design File that is Managed by Site Designers'); ?></div>
                         </div>
                     </div>
                 </div>
 
-                <div class="small text-secondary mt-3" id="file_edit_facts"></div>
+                <div class="small fg-secondary mt-5" id="file_edit_facts"></div>
 
-                <div class="alert alert-danger mt-3 mb-0 d-none" id="file_edit_error"></div>
+                <div class="alert theme-danger mt-5 mb-0 d-none" id="file_edit_error"></div>
             </div>
-            <div class="modal-footer flex-wrap gap-2">
-                <div class="d-flex flex-wrap gap-2 me-auto" id="file_edit_tools"></div>
-                <span class="text-warning-emphasis small d-none" id="file_edit_unsaved"><span class="bi bi-exclamation-triangle me-1"></span><?php echo lang('You have unsaved changes.'); ?></span>
-                <button type="button" class="btn btn-outline-danger d-none" id="file_edit_discard"><?php echo lang('Close without saving'); ?></button>
-                <button type="button" class="btn btn-secondary" id="file_edit_cancel"><?php echo lang('Cancel'); ?></button>
-                <button type="button" class="btn btn-primary" id="file_edit_save"><span class="bi bi-check2 me-1"></span><?php echo lang('Save'); ?></button>
+            <div class="dialog-footer flex-wrap gap-3">
+                <div class="d-flex flex-wrap gap-3 me-auto" id="file_edit_tools"></div>
+                <span class="fg-emphasis-warning small d-none" id="file_edit_unsaved"><span class="bi bi-exclamation-triangle me-1"></span><?php echo lang('You have unsaved changes.'); ?></span>
+                <button type="button" class="btn btn-outline theme-danger d-none" id="file_edit_discard"><?php echo lang('Close without saving'); ?></button>
+                <button type="button" class="btn btn-solid theme-secondary" id="file_edit_cancel"><?php echo lang('Cancel'); ?></button>
+                <button type="button" class="btn btn-solid theme-primary" id="file_edit_save"><span class="bi bi-check2 me-1"></span><?php echo lang('Save'); ?></button>
             </div>
-        </div>
-    </div>
-</div>
+</dialog>
 
-<div class="modal fade" id="upload_modal" tabindex="-1" aria-labelledby="upload_modal_label" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-        <div class="modal-content" style="border-radius:.9rem;">
-            <div class="modal-header">
-                <h5 class="modal-title" id="upload_modal_label"><span class="bi bi-cloud-arrow-up me-2"></span><?php echo lang('Upload Files or Folders'); ?></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?php echo lang('Close'); ?>"></button>
+<dialog class="dialog pg-dialog-centered dialog-lg dialog-scrollable" id="upload_modal" aria-labelledby="upload_modal_label" style="border-radius:.9rem;">
+            <div class="dialog-header">
+                <h5 class="dialog-title" id="upload_modal_label"><span class="bi bi-cloud-arrow-up me-3"></span><?php echo lang('Upload Files or Folders'); ?></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="<?php echo lang('Close'); ?>"></button>
             </div>
-            <div class="modal-body">
+            <div class="dialog-body">
 
                 <!-- Two pickers behind one area. A drop takes whatever is
                      dropped; the links exist because a folder cannot be
@@ -1800,13 +1790,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 <div id="upload_dropzone">
                     <span class="bi bi-cloud-arrow-up d-block" style="font-size:2rem;"></span>
                     <div class="fw-semibold mt-1" id="upload_dropzone_title"><?php echo lang('Drag files or folders here'); ?></div>
-                    <div class="mt-2 d-flex flex-wrap justify-content-center gap-1">
-                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" id="upload_pick_files"><span class="bi bi-file-earmark me-1"></span><?php echo lang('Choose files'); ?></button>
-                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" id="upload_pick_images"><span class="bi bi-images me-1"></span><?php echo lang('Choose pictures'); ?></button>
-                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 d-none" id="upload_pick_zip"><span class="bi bi-file-earmark-zip me-1"></span><?php echo lang('Choose zip'); ?></button>
-                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" id="upload_pick_folder"><span class="bi bi-folder me-1"></span><?php echo lang('Choose folder'); ?></button>
+                    <div class="mt-3 d-flex flex-wrap justify-content-center gap-1">
+                        <button type="button" class="btn btn-sm btn-outline theme-primary rounded-pill px-5" id="upload_pick_files"><span class="bi bi-file-earmark me-1"></span><?php echo lang('Choose files'); ?></button>
+                        <button type="button" class="btn btn-sm btn-outline theme-primary rounded-pill px-5" id="upload_pick_images"><span class="bi bi-images me-1"></span><?php echo lang('Choose pictures'); ?></button>
+                        <button type="button" class="btn btn-sm btn-outline theme-primary rounded-pill px-5 d-none" id="upload_pick_zip"><span class="bi bi-file-earmark-zip me-1"></span><?php echo lang('Choose zip'); ?></button>
+                        <button type="button" class="btn btn-sm btn-outline theme-primary rounded-pill px-5" id="upload_pick_folder"><span class="bi bi-folder me-1"></span><?php echo lang('Choose folder'); ?></button>
                     </div>
-                    <div class="form-text mt-2" id="upload_limit_note"></div>
+                    <div class="form-text mt-3" id="upload_limit_note"></div>
                 </div>
 
                 <input type="file" id="upload_input_files" class="d-none" multiple />
@@ -1818,112 +1808,106 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                      is an archive, and a picture never is. -->
                 <input type="file" id="upload_input_zip" class="d-none" accept=".zip,application/zip,application/x-zip-compressed" multiple />
 
-                <div id="upload_picked" class="d-none mt-3"></div>
+                <div id="upload_picked" class="d-none mt-5"></div>
 
-                <div class="row g-3 mt-0">
-                    <div class="col-12 col-md-6">
+                <div class="row g-5 mt-0">
+                    <div class="col-12 md:col-6">
                         <label class="form-label" for="upload_folder"><?php echo lang('Folder'); ?></label>
-                        <select class="form-select" id="upload_folder"></select>
+                        <select class="form-control" id="upload_folder"></select>
                         <!-- In the backup folder there is nothing to choose:
                              the upload lands where you are standing, and it is
                              shown rather than picked. -->
                         <input type="text" class="form-control d-none" id="upload_backup_path" readonly />
                         <div class="form-text" id="upload_folder_note"><?php echo lang('A dropped folder is made inside this one, with what was in it.'); ?></div>
                     </div>
-                    <div class="col-12 col-md-6" id="upload_description_col">
+                    <div class="col-12 md:col-6" id="upload_description_col">
                         <label class="form-label" for="upload_description"><?php echo lang('File Description / Photo Gallery Caption'); ?></label>
                         <textarea class="form-control" id="upload_description" rows="2"></textarea>
                         <div class="form-text"><?php echo lang('Given to every file in this upload.'); ?></div>
                     </div>
                 </div>
 
-                <div class="mt-3" id="upload_switches">
-                    <div class="form-check form-switch<?php echo (($user['role'] <= 1) ? '' : ' d-none'); ?>">
-                        <input class="form-check-input" type="checkbox" id="upload_design" />
-                        <label class="form-check-label" for="upload_design"><?php echo lang('Design File'); ?></label>
+                <div class="mt-5" id="upload_switches">
+                    <div class="form-field<?php echo (($user['role'] <= 1) ? '' : ' d-none'); ?>">
+                        <div class="switch"><input class="" type="checkbox" id="upload_design" /></div>
+                        <label class="" for="upload_design"><?php echo lang('Design File'); ?></label>
                         <div class="form-text"><?php echo lang('Check if File is a Design File that is Managed by Site Designers'); ?></div>
                     </div>
-                    <div class="form-check form-switch mt-2">
-                        <input class="form-check-input" type="checkbox" id="upload_webp" />
-                        <label class="form-check-label" for="upload_webp"><?php echo lang('Convert images to WebP'); ?></label>
+                    <div class="form-field mt-3">
+                        <div class="switch"><input class="" type="checkbox" id="upload_webp" /></div>
+                        <label class="" for="upload_webp"><?php echo lang('Convert images to WebP'); ?></label>
                         <div class="form-text"><?php echo lang('The picture is re-encoded and the file takes the .webp name. Only pictures are touched.'); ?></div>
                     </div>
-                    <div class="form-check form-switch mt-2">
-                        <input class="form-check-input" type="checkbox" id="upload_optimize" />
-                        <label class="form-check-label" for="upload_optimize"><?php echo lang('Optimize images'); ?></label>
+                    <div class="form-field mt-3">
+                        <div class="switch"><input class="" type="checkbox" id="upload_optimize" /></div>
+                        <label class="" for="upload_optimize"><?php echo lang('Optimize images'); ?></label>
                         <div class="form-text"><?php echo lang('The same size ceiling and quality the picture settings apply everywhere else.'); ?></div>
                     </div>
                 </div>
 
-                <div class="alert alert-danger mt-3 mb-0 d-none" id="upload_error"></div>
+                <div class="alert theme-danger mt-5 mb-0 d-none" id="upload_error"></div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?php echo lang('Cancel'); ?></button>
-                <button type="button" class="btn btn-primary" id="upload_start_button" disabled><span class="bi bi-cloud-arrow-up me-1"></span><?php echo lang('Upload'); ?></button>
+            <div class="dialog-footer">
+                <button type="button" class="btn btn-solid theme-secondary" data-bs-dismiss="dialog"><?php echo lang('Cancel'); ?></button>
+                <button type="button" class="btn btn-solid theme-primary" id="upload_start_button" disabled><span class="bi bi-cloud-arrow-up me-1"></span><?php echo lang('Upload'); ?></button>
             </div>
-        </div>
-    </div>
-</div>
+</dialog>
 
 <!-- The short link wizard, which also changes an existing link. Nothing is
      written until Create or Save is pressed, so closing this at any point
      leaves no half-made link behind. -->
-<div class="modal fade" id="short_link_modal" tabindex="-1" aria-labelledby="short_link_modal_label" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius:.9rem;">
-            <div class="modal-header">
-                <h5 class="modal-title" id="short_link_modal_label"><span class="bi bi-link-45deg me-2"></span><?php echo lang('Short Link'); ?></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?php echo lang('Close'); ?>"></button>
+<dialog class="dialog pg-dialog-centered" id="short_link_modal" aria-labelledby="short_link_modal_label" style="border-radius:.9rem;">
+            <div class="dialog-header">
+                <h5 class="dialog-title" id="short_link_modal_label"><span class="bi bi-link-45deg me-3"></span><?php echo lang('Short Link'); ?></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="<?php echo lang('Close'); ?>"></button>
             </div>
-            <div class="modal-body" id="short_link_modal_body"></div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?php echo lang('Cancel'); ?></button>
-                <button type="button" class="btn btn-primary" id="short_link_create_button"><span class="bi bi-plus-lg me-1"></span><?php echo lang('Create'); ?></button>
+            <div class="dialog-body" id="short_link_modal_body"></div>
+            <div class="dialog-footer">
+                <button type="button" class="btn btn-solid theme-secondary" data-bs-dismiss="dialog"><?php echo lang('Cancel'); ?></button>
+                <button type="button" class="btn btn-solid theme-primary" id="short_link_create_button"><span class="bi bi-plus-lg me-1"></span><?php echo lang('Create'); ?></button>
             </div>
-        </div>
-    </div>
-</div>
+</dialog>
 
 <!-- Access permissions panel for one folder. -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="access_offcanvas" aria-labelledby="access_offcanvas_label">
-    <div class="offcanvas-header">
-        <h5 class="offcanvas-title" id="access_offcanvas_label"><span class="bi bi-shield-lock me-2"></span><?php echo lang('Access Permissions'); ?></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="<?php echo lang('Close'); ?>"></button>
+<dialog class="drawer drawer-end" id="access_offcanvas" aria-labelledby="access_offcanvas_label">
+    <div class="drawer-header">
+        <h5 class="drawer-title" id="access_offcanvas_label"><span class="bi bi-shield-lock me-3"></span><?php echo lang('Access Permissions'); ?></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="<?php echo lang('Close'); ?>"></button>
     </div>
-    <div class="offcanvas-body" id="access_offcanvas_body"></div>
-</div>
+    <div class="drawer-body" id="access_offcanvas_body"></div>
+</dialog>
 
 <!-- Folder settings: the everyday knobs from edit_folder.php (order, archive,
      page styles) without leaving the manager. The full edit screen stays
      reachable from the context menu until the manager replaces it. -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="settings_offcanvas" aria-labelledby="settings_offcanvas_label">
-    <div class="offcanvas-header">
-        <h5 class="offcanvas-title" id="settings_offcanvas_label"><span class="bi bi-sliders me-2"></span><?php echo lang('Folder Settings'); ?></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="<?php echo lang('Close'); ?>"></button>
+<dialog class="drawer drawer-end" id="settings_offcanvas" aria-labelledby="settings_offcanvas_label">
+    <div class="drawer-header">
+        <h5 class="drawer-title" id="settings_offcanvas_label"><span class="bi bi-sliders me-3"></span><?php echo lang('Folder Settings'); ?></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="<?php echo lang('Close'); ?>"></button>
     </div>
-    <div class="offcanvas-body" id="settings_offcanvas_body"></div>
-</div>
+    <div class="drawer-body" id="settings_offcanvas_body"></div>
+</dialog>
 
 <!-- Backup permissions: the one filesystem knob an operator actually needs
      out here, because a backup nobody can read or replace is not a backup. -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="perm_offcanvas" aria-labelledby="perm_offcanvas_label">
-    <div class="offcanvas-header">
-        <h5 class="offcanvas-title" id="perm_offcanvas_label"><span class="bi bi-key me-2"></span><?php echo lang('Permissions'); ?></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="<?php echo lang('Close'); ?>"></button>
+<dialog class="drawer drawer-end" id="perm_offcanvas" aria-labelledby="perm_offcanvas_label">
+    <div class="drawer-header">
+        <h5 class="drawer-title" id="perm_offcanvas_label"><span class="bi bi-key me-3"></span><?php echo lang('Permissions'); ?></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="<?php echo lang('Close'); ?>"></button>
     </div>
-    <div class="offcanvas-body" id="perm_offcanvas_body"></div>
-</div>
+    <div class="drawer-body" id="perm_offcanvas_body"></div>
+</dialog>
 
 <!-- Bulk page edit: the shared page switches (sitemap, search, comments,
      robots) and page styles applied to a whole selection at once. Every
      field defaults to "do not change". -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="bulk_pages_offcanvas" aria-labelledby="bulk_pages_offcanvas_label">
-    <div class="offcanvas-header">
-        <h5 class="offcanvas-title" id="bulk_pages_offcanvas_label"><span class="bi bi-ui-checks me-2"></span><?php echo lang('Bulk Edit Pages'); ?></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="<?php echo lang('Close'); ?>"></button>
+<dialog class="drawer drawer-end" id="bulk_pages_offcanvas" aria-labelledby="bulk_pages_offcanvas_label">
+    <div class="drawer-header">
+        <h5 class="drawer-title" id="bulk_pages_offcanvas_label"><span class="bi bi-ui-checks me-3"></span><?php echo lang('Bulk Edit Pages'); ?></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="<?php echo lang('Close'); ?>"></button>
     </div>
-    <div class="offcanvas-body" id="bulk_pages_offcanvas_body"></div>
-</div>
+    <div class="drawer-body" id="bulk_pages_offcanvas_body"></div>
+</dialog>
 
 <!-- Bulk file edit: what edit_files.php did to a checked list -- move to a
      folder, the design flag, a description -- applied to the selection, plus
@@ -1936,53 +1920,49 @@ body.col-resizing { cursor: col-resize; user-select: none; }
      of them is shown against the real names before anything is written, because
      a rename is the one bulk operation whose mistake is invisible afterwards:
      the files are all still there, just called the wrong thing. -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="bulk_rename_offcanvas" aria-labelledby="bulk_rename_offcanvas_label">
-    <div class="offcanvas-header">
-        <h5 class="offcanvas-title" id="bulk_rename_offcanvas_label"><span class="bi bi-input-cursor-text me-2"></span><?php echo lang('Bulk Rename'); ?></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="<?php echo lang('Close'); ?>"></button>
+<dialog class="drawer drawer-end" id="bulk_rename_offcanvas" aria-labelledby="bulk_rename_offcanvas_label">
+    <div class="drawer-header">
+        <h5 class="drawer-title" id="bulk_rename_offcanvas_label"><span class="bi bi-input-cursor-text me-3"></span><?php echo lang('Bulk Rename'); ?></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="<?php echo lang('Close'); ?>"></button>
     </div>
-    <div class="offcanvas-body" id="bulk_rename_offcanvas_body"></div>
-</div>
+    <div class="drawer-body" id="bulk_rename_offcanvas_body"></div>
+</dialog>
 
-<div class="offcanvas offcanvas-end" tabindex="-1" id="bulk_files_offcanvas" aria-labelledby="bulk_files_offcanvas_label">
-    <div class="offcanvas-header">
-        <h5 class="offcanvas-title" id="bulk_files_offcanvas_label"><span class="bi bi-ui-checks me-2"></span><?php echo lang('Bulk Edit Files'); ?></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="<?php echo lang('Close'); ?>"></button>
+<dialog class="drawer drawer-end" id="bulk_files_offcanvas" aria-labelledby="bulk_files_offcanvas_label">
+    <div class="drawer-header">
+        <h5 class="drawer-title" id="bulk_files_offcanvas_label"><span class="bi bi-ui-checks me-3"></span><?php echo lang('Bulk Edit Files'); ?></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="<?php echo lang('Close'); ?>"></button>
     </div>
-    <div class="offcanvas-body" id="bulk_files_offcanvas_body"></div>
-</div>
+    <div class="drawer-body" id="bulk_files_offcanvas_body"></div>
+</dialog>
 
 <!-- Bulk product edit: what edit_products.php did to a checked list --
      status, price, stock, tax, shipping zones, barcodes -- applied to the
      selection, plus group membership, which is this screen's own idea of what
      a product belongs to. Every field defaults to "do not change". -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="bulk_products_offcanvas" aria-labelledby="bulk_products_offcanvas_label">
-    <div class="offcanvas-header">
-        <h5 class="offcanvas-title" id="bulk_products_offcanvas_label"><span class="bi bi-ui-checks me-2"></span><?php echo lang('Bulk Edit Products'); ?></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="<?php echo lang('Close'); ?>"></button>
+<dialog class="drawer drawer-end" id="bulk_products_offcanvas" aria-labelledby="bulk_products_offcanvas_label">
+    <div class="drawer-header">
+        <h5 class="drawer-title" id="bulk_products_offcanvas_label"><span class="bi bi-ui-checks me-3"></span><?php echo lang('Bulk Edit Products'); ?></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="<?php echo lang('Close'); ?>"></button>
     </div>
-    <div class="offcanvas-body" id="bulk_products_offcanvas_body"></div>
-</div>
+    <div class="drawer-body" id="bulk_products_offcanvas_body"></div>
+</dialog>
 
 <!-- Recursive folder delete: pre-flight summary + type-the-name confirmation.
      Execution reuses edit_pages.php (pages), the explorer API (files) and
      edit_folder.php (each emptied folder), so every safety rule stays where
      it has always lived. -->
-<div class="modal fade" id="folder_delete_modal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content" style="border-radius: 1rem;">
-            <div class="modal-header border-0">
-                <h5 class="modal-title text-danger"><span class="bi bi-trash me-2"></span><span id="folder_delete_title_text"><?php echo lang('Delete Folder and Contents'); ?></span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?php echo lang('Close'); ?>"></button>
+<dialog class="dialog" id="folder_delete_modal" style="border-radius: 1rem;">
+            <div class="dialog-header border-0">
+                <h5 class="dialog-title fg-danger"><span class="bi bi-trash me-3"></span><span id="folder_delete_title_text"><?php echo lang('Delete Folder and Contents'); ?></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="<?php echo lang('Close'); ?>"></button>
             </div>
-            <div class="modal-body" id="folder_delete_body"></div>
-            <div class="modal-footer border-0">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?php echo lang('Cancel'); ?></button>
-                <button type="button" class="btn btn-danger" id="folder_delete_confirm_button" disabled><span class="bi bi-trash me-2"></span><span id="folder_delete_button_text"><?php echo lang('Delete'); ?></span></button>
+            <div class="dialog-body" id="folder_delete_body"></div>
+            <div class="dialog-footer border-0">
+                <button type="button" class="btn btn-solid theme-secondary" data-bs-dismiss="dialog"><?php echo lang('Cancel'); ?></button>
+                <button type="button" class="btn btn-solid theme-danger" id="folder_delete_confirm_button" disabled><span class="bi bi-trash me-3"></span><span id="folder_delete_button_text"><?php echo lang('Delete'); ?></span></button>
             </div>
-        </div>
-    </div>
-</div>
+</dialog>
 
 <!-- Picking a destination from a list.
      Dragging is the quick way when both ends are on screen, and it is the only
@@ -1991,59 +1971,51 @@ body.col-resizing { cursor: col-resize; user-select: none; }
      write into, with a filter box, and hands the choice to the same code the
      drop handler runs. In the store it lists product groups and offers the two
      operations separately, because there they mean different things. -->
-<div class="modal fade" id="transfer_modal" tabindex="-1" aria-labelledby="transfer_modal_label" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content" style="border-radius: 1rem;">
-            <div class="modal-header border-0">
-                <h5 class="modal-title" id="transfer_modal_label"><span class="bi bi-folder-symlink me-2"></span><span id="transfer_modal_title"></span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?php echo lang('Close'); ?>"></button>
+<dialog class="dialog pg-dialog-centered dialog-scrollable" id="transfer_modal" aria-labelledby="transfer_modal_label" style="border-radius: 1rem;">
+            <div class="dialog-header border-0">
+                <h5 class="dialog-title" id="transfer_modal_label"><span class="bi bi-folder-symlink me-3"></span><span id="transfer_modal_title"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="<?php echo lang('Close'); ?>"></button>
             </div>
-            <div class="modal-body pt-0">
-                <div id="transfer_summary" class="form-text mt-0 mb-2"></div>
-                <div class="input-group input-group-sm rounded-pill mb-2">
+            <div class="dialog-body pt-0">
+                <div id="transfer_summary" class="form-text mt-0 mb-3"></div>
+                <div class="input-group input-group-sm rounded-pill mb-3">
                     <span class="input-group-text rounded-start-pill bi bi-search border-end-0"></span>
                     <input type="search" id="transfer_filter" class="form-control rounded-end-pill border-start-0" placeholder="<?php echo lang('Filter'); ?>" autocomplete="off" />
                 </div>
                 <div id="transfer_targets" class="list-group list-group-flush" style="max-height: 46vh; overflow-y: auto;"></div>
                 <div id="transfer_note" class="form-text"></div>
             </div>
-            <div class="modal-footer border-0">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?php echo lang('Cancel'); ?></button>
-                <button type="button" class="btn btn-outline-primary d-none" id="transfer_secondary_button" disabled></button>
-                <button type="button" class="btn btn-primary" id="transfer_confirm_button" disabled></button>
+            <div class="dialog-footer border-0">
+                <button type="button" class="btn btn-solid theme-secondary" data-bs-dismiss="dialog"><?php echo lang('Cancel'); ?></button>
+                <button type="button" class="btn btn-outline theme-primary d-none" id="transfer_secondary_button" disabled></button>
+                <button type="button" class="btn btn-solid theme-primary" id="transfer_confirm_button" disabled></button>
             </div>
-        </div>
-    </div>
-</div>
+</dialog>
 
 <?php if ($explorer_ws_send) { ?>
 <!-- Sending a file to a Workspace channel: the channels the operator may
      write in, with a filter box, and the words to go beside the file. The
      channel gets a copy (includes/workspace/library.php). -->
-<div class="modal fade" id="ws_send_modal" tabindex="-1" aria-labelledby="ws_send_modal_label" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content" style="border-radius: 1rem;">
-            <div class="modal-header border-0">
-                <h5 class="modal-title text-truncate" id="ws_send_modal_label"><span class="bi bi-send me-2"></span><span id="ws_send_title"></span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<?php echo lang('Close'); ?>"></button>
+<dialog class="dialog pg-dialog-centered dialog-scrollable" id="ws_send_modal" aria-labelledby="ws_send_modal_label" style="border-radius: 1rem;">
+            <div class="dialog-header border-0">
+                <h5 class="dialog-title text-truncate" id="ws_send_modal_label"><span class="bi bi-send me-3"></span><span id="ws_send_title"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="<?php echo lang('Close'); ?>"></button>
             </div>
-            <div class="modal-body pt-0">
-                <div class="form-text mt-0 mb-2"><?php echo lang('The channel gets a copy of this file; the original stays where it is.'); ?></div>
-                <div class="input-group input-group-sm rounded-pill mb-2">
+            <div class="dialog-body pt-0">
+                <div class="form-text mt-0 mb-3"><?php echo lang('The channel gets a copy of this file; the original stays where it is.'); ?></div>
+                <div class="input-group input-group-sm rounded-pill mb-3">
                     <span class="input-group-text rounded-start-pill bi bi-search border-end-0"></span>
                     <input type="search" id="ws_send_filter" class="form-control rounded-end-pill border-start-0" placeholder="<?php echo lang('Filter'); ?>" aria-label="<?php echo lang('Filter'); ?>" autocomplete="off" />
                 </div>
-                <div id="ws_send_channels" class="list-group list-group-flush mb-3" style="max-height: 36vh; overflow-y: auto;"></div>
+                <div id="ws_send_channels" class="list-group list-group-flush mb-5" style="max-height: 36vh; overflow-y: auto;"></div>
                 <label for="ws_send_body" class="form-label small"><?php echo lang('Add a message (optional)'); ?></label>
                 <textarea id="ws_send_body" class="form-control" rows="2" maxlength="4000"></textarea>
             </div>
-            <div class="modal-footer border-0">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?php echo lang('Cancel'); ?></button>
-                <button type="button" class="btn btn-primary" id="ws_send_confirm_button" disabled><span class="bi bi-send me-1"></span><?php echo lang('Send'); ?></button>
+            <div class="dialog-footer border-0">
+                <button type="button" class="btn btn-solid theme-secondary" data-bs-dismiss="dialog"><?php echo lang('Cancel'); ?></button>
+                <button type="button" class="btn btn-solid theme-primary" id="ws_send_confirm_button" disabled><span class="bi bi-send me-1"></span><?php echo lang('Send'); ?></button>
             </div>
-        </div>
-    </div>
-</div>
+</dialog>
 <?php } ?>
 
 <!-- Quick look.
@@ -2067,7 +2039,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     <div class="ql-hint"><?php echo lang('Space closes, the arrow keys walk the folder'); ?></div>
 </div>
 
-<div class="toast-container position-fixed bottom-0 end-0 p-3" id="explorer_toasts"></div>
+<div class="toast-container position-fixed bottom-0 end-0 p-5" id="explorer_toasts"></div>
 
 <?php echo pg_code_editor_includes(); ?>
 <script type="text/javascript">
@@ -2307,8 +2279,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         element.className = 'toast align-items-center border-0 text-bg-' + (ok === false ? 'danger' : 'success');
         element.setAttribute('role', 'status');
         element.innerHTML = '<div class="d-flex"><div class="toast-body"></div>' +
-            (action ? '<button type="button" class="btn btn-sm btn-light my-auto me-1 text-nowrap" data-role="toast-action"></button>' : '') +
-            '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>';
+            (action ? '<button type="button" class="btn btn-sm btn-subtle theme-secondary my-auto me-1 text-nowrap" data-role="toast-action"></button>' : '') +
+            '<button type="button" class="btn-close fg-white me-3 m-auto" data-bs-dismiss="toast"></button></div>';
         element.querySelector('.toast-body').textContent = message;
         container.appendChild(element);
         var instance = pgUI.toast.get(element, { delay: action ? 9000 : 3500 });
@@ -2415,10 +2387,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var container = document.getElementById('explorer_content');
 
         if (container) {
-            container.innerHTML = '<div class="text-center my-5 empty-note">' +
-                '<span class="bi bi-wifi-off display-4 d-block mb-2"></span>' +
+            container.innerHTML = '<div class="text-center my-12 empty-note">' +
+                '<span class="bi bi-wifi-off pg-display-4 d-block mb-3"></span>' +
                 esc(message || L.load_failed) +
-                '<div class="mt-3"><button type="button" class="btn btn-outline-secondary btn-sm" data-role="load-retry">' +
+                '<div class="mt-5"><button type="button" class="btn btn-outline theme-secondary btn-sm" data-role="load-retry">' +
                 '<span class="bi bi-arrow-clockwise me-1"></span>' + esc(L.load_retry) + '</button></div></div>';
 
             var retry = container.querySelector('[data-role="load-retry"]');
@@ -2751,7 +2723,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         (state.erpTree || []).forEach(function (node) {
             html += '<li><div class="tree-row erp-tree-row' + ((node.count > 0) ? '' : ' is-empty') + '" data-erp-folder="' + esc(node.key) + '" title="' + esc(node.note || node.label) + '">' +
-                '<span class="tree-toggle"></span><i class="bi ' + esc(node.icon || 'bi-folder') + ' text-primary" aria-hidden="true"></i>' +
+                '<span class="tree-toggle"></span><i class="bi ' + esc(node.icon || 'bi-folder') + ' fg-primary" aria-hidden="true"></i>' +
                 '<span class="tree-label">' + esc(node.label) + '</span><span class="tree-count">' + (parseInt(node.count, 10) || 0) + '</span></div></li>';
         });
 
@@ -2827,7 +2799,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (item.kind === 'folder') {
             return '<span class="' + sizeClass + ' bi bi-folder-fill private">' +
-                '<span class="access-badge bi ' + esc(item.erp_icon || 'bi-safe2') + ' text-primary"></span></span>';
+                '<span class="access-badge bi ' + esc(item.erp_icon || 'bi-safe2') + ' fg-primary"></span></span>';
         }
 
         // The corner says the one thing about the document worth seeing
@@ -2851,15 +2823,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var flags = [];
 
         if (item.cancelled) {
-            flags.push('<i class="bi bi-x-octagon text-danger" title="' + esc(item.status_label || L.erp_cancelled) + '"></i>');
+            flags.push('<i class="bi bi-x-octagon fg-danger" title="' + esc(item.status_label || L.erp_cancelled) + '"></i>');
         } else if (item.status === 'paid') {
-            flags.push('<i class="bi bi-check2-circle text-success" title="' + esc(item.status_label) + '"></i>');
+            flags.push('<i class="bi bi-check2-circle fg-success" title="' + esc(item.status_label) + '"></i>');
         } else if (item.status === 'partially_paid') {
-            flags.push('<i class="bi bi-circle-half text-warning" title="' + esc(item.status_label) + '"></i>');
+            flags.push('<i class="bi bi-circle-half fg-warning" title="' + esc(item.status_label) + '"></i>');
         }
 
         if ((item.erp_kind === 'erp_invoice') && item.gib_number && (item.edoc_status && (item.edoc_status !== 'none'))) {
-            flags.push('<i class="bi bi-send-check text-success" title="' + esc(L.erp_edoc + ': ' + (item.edoc_status_label || '')) + '"></i>');
+            flags.push('<i class="bi bi-send-check fg-success" title="' + esc(L.erp_edoc + ': ' + (item.edoc_status_label || '')) + '"></i>');
         }
 
         var amount = item.total_label || item.balance_label || '';
@@ -2957,10 +2929,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             row(L.size, fmt(L.erp_docs_count, [item.counts.files]));
 
             pane.innerHTML =
-                '<div class="text-center my-3">' + erpIconHtml(item, true) + '</div>' +
-                '<div class="d-grid mb-3"><button type="button" class="btn btn-sm btn-outline-primary" data-role="erp-open-folder">' +
+                '<div class="text-center my-5">' + erpIconHtml(item, true) + '</div>' +
+                '<div class="d-grid mb-5"><button type="button" class="btn btn-sm btn-outline theme-primary" data-role="erp-open-folder">' +
                     '<i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' + esc(L.open_folder) + '</button></div>' +
-                (item.note ? ('<p class="small text-body-secondary">' + esc(item.note) + '</p>') : '') +
+                (item.note ? ('<p class="small fg-secondary">' + esc(item.note) + '</p>') : '') +
                 '<table class="table table-sm"><tbody>' + rows + '</tbody></table>';
 
             pane.querySelector('[data-role="erp-open-folder"]').addEventListener('click', function () { enterErp(item.erp_folder); });
@@ -2973,24 +2945,24 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // An expense's receipt can be a photograph: the kept file itself,
         // read from the disk, so it is shown straight away like a kept PDF.
         if (item.picture && item.kept && item.url) {
-            media = '<img src="' + esc(item.url) + '" alt="" class="img-fluid rounded border" style="max-height:24rem;" />';
+            media = '<img src="' + esc(item.url) + '" alt="" class="img-fluid rounded-4 border" style="max-height:24rem;" />';
         } else if (viewable && item.kept) {
             media = '<iframe loading="lazy" src="' + esc(item.url) + '"></iframe>';
         } else if (viewable) {
             media = '<div class="erp-preview-wait text-center">' +
-                '<span class="bi bi-filetype-pdf display-5 d-block mb-2 private"></span>' +
-                '<p class="small text-body-secondary mb-2">' + esc((item.source === 'provider') ? L.erp_preview_provider : L.erp_preview_generated) + '</p>' +
-                '<button type="button" class="btn btn-sm btn-outline-secondary no-popover" data-role="erp-preview"><i class="bi bi-eye me-1" aria-hidden="true"></i>' + esc(L.erp_show_preview) + '</button></div>';
+                '<span class="bi bi-filetype-pdf pg-display-5 d-block mb-3 private"></span>' +
+                '<p class="small fg-secondary mb-3">' + esc((item.source === 'provider') ? L.erp_preview_provider : L.erp_preview_generated) + '</p>' +
+                '<button type="button" class="btn btn-sm btn-outline theme-secondary no-popover" data-role="erp-preview"><i class="bi bi-eye me-1" aria-hidden="true"></i>' + esc(L.erp_show_preview) + '</button></div>';
         } else {
-            media = '<div class="text-center empty-note my-3"><span class="bi ' + ((item.source === 'draft') ? 'bi-pencil-square' : 'bi-file-earmark-x') + ' fs-1 d-block mb-2"></span>' +
+            media = '<div class="text-center empty-note my-5"><span class="bi ' + ((item.source === 'draft') ? 'bi-pencil-square' : 'bi-file-earmark-x') + ' fs-4xl d-block mb-3"></span>' +
                 esc((item.source === 'draft') ? L.erp_source_draft : L.no_preview) + '</div>';
         }
 
-        var tools = '<div class="btn-group btn-group-sm w-100 mb-2">' +
-            (item.url ? ('<a class="btn btn-outline-secondary no-popover" href="' + esc(item.url) + '" target="_blank" rel="noopener" title="' + esc(L.open_in_new_tab) + '"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>') : '') +
-            (item.download_url ? ('<a class="btn btn-outline-secondary no-popover" href="' + esc(item.download_url) + '" download="' + esc(item.name || '') + '" title="' + esc(L.download) + '"><i class="bi bi-download" aria-hidden="true"></i></a>') : '') +
-            (quickLookable(item) ? ('<button type="button" class="btn btn-outline-secondary no-popover" data-role="erp-quick-look" title="' + esc(L.quick_look) + '"><i class="bi bi-eye" aria-hidden="true"></i></button>') : '') +
-            '<button type="button" class="btn btn-outline-secondary no-popover" data-role="erp-copy-number" title="' + esc(L.erp_copy_number) + '"' + (item.number ? '' : ' disabled') + '><i class="bi bi-123" aria-hidden="true"></i></button>' +
+        var tools = '<div class="btn-group btn-group-sm w-100 mb-3">' +
+            (item.url ? ('<a class="btn btn-outline theme-secondary no-popover" href="' + esc(item.url) + '" target="_blank" rel="noopener" title="' + esc(L.open_in_new_tab) + '"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>') : '') +
+            (item.download_url ? ('<a class="btn btn-outline theme-secondary no-popover" href="' + esc(item.download_url) + '" download="' + esc(item.name || '') + '" title="' + esc(L.download) + '"><i class="bi bi-download" aria-hidden="true"></i></a>') : '') +
+            (quickLookable(item) ? ('<button type="button" class="btn btn-outline theme-secondary no-popover" data-role="erp-quick-look" title="' + esc(L.quick_look) + '"><i class="bi bi-eye" aria-hidden="true"></i></button>') : '') +
+            '<button type="button" class="btn btn-outline theme-secondary no-popover" data-role="erp-copy-number" title="' + esc(L.erp_copy_number) + '"' + (item.number ? '' : ' disabled') + '><i class="bi bi-123" aria-hidden="true"></i></button>' +
             '</div>';
 
         // Real links, so the operator can open any of them in a tab of its
@@ -2998,9 +2970,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var goto = '';
 
         erpGotoLinks(item).forEach(function (link) {
-            goto += '<a class="btn btn-sm ' + (link.primary ? 'btn-outline-primary' : 'btn-outline-secondary') + ' text-start d-flex align-items-center no-popover" href="' + esc(link.url) + '">' +
-                '<i class="bi ' + link.icon + ' me-2" aria-hidden="true"></i><span class="text-truncate">' + esc(link.label) + '</span>' +
-                (link.detail ? ('<span class="ms-auto ps-2 small text-truncate erp-goto-detail">' + esc(link.detail) + '</span>') : '') + '</a>';
+            goto += '<a class="btn btn-sm ' + (link.primary ? 'btn-outline theme-primary' : 'btn-outline theme-secondary') + ' text-start d-flex align-items-center no-popover" href="' + esc(link.url) + '">' +
+                '<i class="bi ' + link.icon + ' me-3" aria-hidden="true"></i><span class="text-truncate">' + esc(link.label) + '</span>' +
+                (link.detail ? ('<span class="ms-auto ps-3 small text-truncate erp-goto-detail">' + esc(link.detail) + '</span>') : '') + '</a>';
         });
 
         row(L.type, erpTypeLabel(item));
@@ -3038,12 +3010,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         pane.innerHTML =
-            '<div class="mb-2">' + media + '</div>' +
+            '<div class="mb-3">' + media + '</div>' +
             tools +
-            (goto ? ('<div class="d-grid gap-1 mb-3 erp-goto">' + goto + '</div>') : '') +
-            '<h6 class="text-uppercase text-secondary fw-bold" style="font-size:.72rem;letter-spacing:.05em;">' + esc(L.details) + '</h6>' +
+            (goto ? ('<div class="d-grid gap-1 mb-5 erp-goto">' + goto + '</div>') : '') +
+            '<h6 class="text-uppercase fg-secondary fw-bold" style="font-size:.72rem;letter-spacing:.05em;">' + esc(L.details) + '</h6>' +
             '<table class="table table-sm"><tbody>' + rows + '</tbody></table>' +
-            '<p class="small text-body-secondary mb-0"><i class="bi bi-lock me-1" aria-hidden="true"></i>' + esc(L.erp_read_only_note) + '</p>';
+            '<p class="small fg-secondary mb-0"><i class="bi bi-lock me-1" aria-hidden="true"></i>' + esc(L.erp_read_only_note) + '</p>';
 
         var previewButton = pane.querySelector('[data-role="erp-preview"]');
 
@@ -3456,24 +3428,24 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var current = item.permissions || '';
 
         body.innerHTML =
-            '<h6 class="text-break mb-1"><span class="bi ' + (isFolder ? 'bi-folder-fill text-warning' : 'bi-file-earmark') + ' me-2"></span>' + esc(item.name) + '</h6>' +
-            '<div class="form-text mb-3">' + esc(L.current_permissions) + ': <code>' + esc(current) + '</code></div>' +
-            '<div class="mb-3">' +
+            '<h6 class="text-break mb-1"><span class="bi ' + (isFolder ? 'bi-folder-fill fg-warning' : 'bi-file-earmark') + ' me-3"></span>' + esc(item.name) + '</h6>' +
+            '<div class="form-text mb-5">' + esc(L.current_permissions) + ': <code>' + esc(current) + '</code></div>' +
+            '<div class="mb-5">' +
             '<label class="form-label" for="perm_folder_mode">' + esc(L.folders) + '</label>' +
             '<input type="text" id="perm_folder_mode" class="form-control" inputmode="numeric" maxlength="3" value="755" />' +
             '</div>' +
-            '<div class="mb-3">' +
+            '<div class="mb-5">' +
             '<label class="form-label" for="perm_file_mode">' + esc(L.files) + '</label>' +
             '<input type="text" id="perm_file_mode" class="form-control" inputmode="numeric" maxlength="3" value="644" />' +
             '</div>' +
             (isFolder
-                ? ('<div class="form-check form-switch mb-3">' +
-                    '<input class="form-check-input" type="checkbox" role="switch" id="perm_recursive" checked />' +
-                    '<label class="form-check-label" for="perm_recursive">' + esc(L.apply_to_contents) + '</label>' +
+                ? ('<div class="form-field mb-5">' +
+                    '<div class="switch"><input class="" type="checkbox" role="switch" id="perm_recursive" checked /></div>' +
+                    '<label class="" for="perm_recursive">' + esc(L.apply_to_contents) + '</label>' +
                     '</div>')
                 : '') +
-            '<div class="form-text mb-3">' + esc(L.permissions_note) + '</div>' +
-            '<div class="text-end"><button type="button" id="perm_save_button" class="btn btn-success"><span class="bi bi-save me-2"></span>' + esc(L.save) + '</button></div>';
+            '<div class="form-text mb-5">' + esc(L.permissions_note) + '</div>' +
+            '<div class="text-end"><button type="button" id="perm_save_button" class="btn btn-solid theme-success"><span class="bi bi-save me-3"></span>' + esc(L.save) + '</button></div>';
 
         document.getElementById('perm_save_button').addEventListener('click', function () {
             var recursive = document.getElementById('perm_recursive');
@@ -3606,7 +3578,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (!container) { return; }
 
-        container.innerHTML = '<span class="text-body-secondary small">' + esc(L.appears_loading) + '</span>';
+        container.innerHTML = '<span class="fg-secondary small">' + esc(L.appears_loading) + '</span>';
 
         api({ type: 'explorer_catalog_pages', item_kind: item.kind, item_id: item.id }, function (response) {
 
@@ -3614,7 +3586,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             if (container.getAttribute('data-for') !== itemKey(item)) { return; }
 
             if ((response.status !== 'success') || (!response.pages) || (response.pages.length === 0)) {
-                container.innerHTML = '<span class="text-body-secondary small">' + esc(L.appears_nowhere) + '</span>';
+                container.innerHTML = '<span class="fg-secondary small">' + esc(L.appears_nowhere) + '</span>';
                 return;
             }
 
@@ -3735,7 +3707,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var groups = state.sharedGroups || [];
 
         if (groups.length === 0) {
-            container.innerHTML = '<div class="text-center my-5 empty-note"><span class="bi bi-shield-lock fs-1 d-block mb-2"></span>' + esc(L.shared_empty) + '</div>' +
+            container.innerHTML = '<div class="text-center my-12 empty-note"><span class="bi bi-shield-lock fs-4xl d-block mb-3"></span>' + esc(L.shared_empty) + '</div>' +
                 '<div id="explorer_upload_overlay"></div>';
             return;
         }
@@ -3748,11 +3720,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             group.grants.forEach(function (grant) {
                 var rightsLabel = (grant.rights === 2) ? L.edit_access : L.view_access;
-                var rightsClass = (grant.rights === 2) ? 'text-bg-primary' : 'text-bg-secondary';
+                var rightsClass = (grant.rights === 2) ? 'theme-primary' : 'theme-secondary';
                 var expiry = '';
 
                 if (grant.expiration_date) {
-                    expiry = '<span class="badge ' + (grant.expired ? 'text-bg-danger' : 'text-bg-warning') + ' ms-2">' +
+                    expiry = '<span class="badge ' + (grant.expired ? 'theme-danger' : 'theme-warning') + ' ms-3">' +
                         '<span class="bi bi-hourglass-split me-1"></span>' + esc(grant.expiration_date) + '</span>';
                 }
 
@@ -3760,12 +3732,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 // the row still has to name somebody, so the username stands
                 // on its own rather than leaving an empty column.
                 var contact = grant.contact_name
-                    ? ('<a class="link-secondary text-decoration-none" href="edit_contact.php?id=' + grant.contact_id + '">' +
+                    ? ('<a class="pg-link-secondary text-decoration-none" href="edit_contact.php?id=' + grant.contact_id + '">' +
                         '<span class="bi bi-person-lines-fill me-1"></span>' + esc(grant.contact_name) + '</a>')
                     : '<span class="empty-note">' + esc(L.no_contact) + '</span>';
 
                 rows += '<tr>' +
-                    '<td class="py-1"><a class="link-body-emphasis text-decoration-none" href="edit_user.php?id=' + grant.user_id + '">' +
+                    '<td class="py-1"><a class="pg-link-body-emphasis text-decoration-none" href="edit_user.php?id=' + grant.user_id + '">' +
                     '<span class="bi bi-person-badge me-1"></span>' + esc(grant.username) + '</a></td>' +
                     '<td class="py-1">' + contact + '</td>' +
                     '<td class="py-1"><span class="badge ' + rightsClass + '">' + esc(rightsLabel) + '</span>' + expiry + '</td>' +
@@ -3774,13 +3746,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             html += '<div class="shared-group">' +
                 '<div class="shared-group-head">' +
-                '<span class="bi bi-folder-fill me-2 ' + group.access_control_type + '"></span>' +
+                '<span class="bi bi-folder-fill me-3 ' + group.access_control_type + '"></span>' +
                 '<button type="button" class="btn btn-link p-0 text-decoration-none fw-semibold shared-open" data-folder-id="' + group.id + '">' + esc(group.name) + '</button>' +
-                '<span class="badge ms-2 ' + group.access_control_type + '" style="background:var(--pg-bg-2);">' +
+                '<span class="badge ms-3 ' + group.access_control_type + '" style="background:var(--pg-bg-2);">' +
                 '<span class="bi ' + group.access_icon + ' me-1"></span>' + esc(accessLabel(group.access_control_type)) + '</span>' +
-                (group.archived ? '<span class="badge text-bg-secondary ms-2"><span class="bi bi-archive me-1"></span>' + esc(L.archived) + '</span>' : '') +
-                '<span class="badge text-bg-light ms-2">' + esc(fmt(L.people_count, [group.grants.length])) + '</span>' +
-                (group.can_edit ? '<button type="button" class="btn btn-sm btn-outline-secondary ms-auto shared-access" data-folder-id="' + group.id + '"><span class="bi bi-shield-lock me-1"></span>' + esc(L.access_permissions) + '</button>' : '') +
+                (group.archived ? '<span class="badge theme-secondary ms-3"><span class="bi bi-archive me-1"></span>' + esc(L.archived) + '</span>' : '') +
+                '<span class="badge badge-subtle theme-secondary ms-3">' + esc(fmt(L.people_count, [group.grants.length])) + '</span>' +
+                (group.can_edit ? '<button type="button" class="btn btn-sm btn-outline theme-secondary ms-auto shared-access" data-folder-id="' + group.id + '"><span class="bi bi-shield-lock me-1"></span>' + esc(L.access_permissions) + '</button>' : '') +
                 '</div>' +
                 '<div class="shared-group-path empty-note">' + esc(group.path) + '</div>' +
                 '<table class="table table-sm mb-0"><thead><tr>' +
@@ -4162,27 +4134,27 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function renderBreadcrumb() {
         if (state.mode === 'catalog') {
 
-            var catalogCrumbs = '<li class="breadcrumb-item"><a data-catalog-id="0" class="link-secondary"><span class="bi bi-boxes me-1"></span>' + esc(L.catalog_root) + '</a></li>';
+            var catalogCrumbs = '<li class="breadcrumb-item"><a data-catalog-id="0" class="pg-link-secondary"><span class="bi bi-boxes me-1"></span>' + esc(L.catalog_root) + '</a></li>';
 
             if (state.allFilter === 'products') {
 
-                catalogCrumbs += '<li class="breadcrumb-item active text-body fw-semibold" aria-current="page">' + esc(L.all_products) + '</li>';
+                catalogCrumbs += '<li class="breadcrumb-item active fg-body fw-semibold" aria-current="page">' + esc(L.all_products) + '</li>';
 
             } else if (state.allFilter === 'variants') {
 
-                catalogCrumbs += '<li class="breadcrumb-item active text-body fw-semibold" aria-current="page"><span class="bi bi-collection-fill me-1"></span>' + esc(L.all_variant_sets) + '</li>';
+                catalogCrumbs += '<li class="breadcrumb-item active fg-body fw-semibold" aria-current="page"><span class="bi bi-collection-fill me-1"></span>' + esc(L.all_variant_sets) + '</li>';
 
             } else if (state.allFilter === 'recycled') {
 
-                catalogCrumbs += '<li class="breadcrumb-item active text-body fw-semibold" aria-current="page"><span class="bi bi-trash me-1"></span>' + esc(L.recycle_bin) + '</li>';
+                catalogCrumbs += '<li class="breadcrumb-item active fg-body fw-semibold" aria-current="page"><span class="bi bi-trash me-1"></span>' + esc(L.recycle_bin) + '</li>';
 
             } else {
 
                 (state.catalogCrumbs || []).forEach(function (crumb, index) {
                     var last = (index === (state.catalogCrumbs.length - 1));
                     catalogCrumbs += last
-                        ? ('<li class="breadcrumb-item active text-body fw-semibold" aria-current="page">' + esc(crumb.name) + '</li>')
-                        : ('<li class="breadcrumb-item"><a data-catalog-id="' + crumb.id + '" class="link-secondary">' + esc(crumb.name) + '</a></li>');
+                        ? ('<li class="breadcrumb-item active fg-body fw-semibold" aria-current="page">' + esc(crumb.name) + '</li>')
+                        : ('<li class="breadcrumb-item"><a data-catalog-id="' + crumb.id + '" class="pg-link-secondary">' + esc(crumb.name) + '</a></li>');
                 });
             }
 
@@ -4200,14 +4172,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         if (state.mode === 'backups') {
-            var backupCrumbs = '<li class="breadcrumb-item"><a data-folder-id="0" class="link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>' +
-                '<li class="breadcrumb-item"><button type="button" class="btn btn-link p-0 link-secondary text-decoration-none backup-crumb" data-path=""><span class="bi bi-database me-1"></span>' + esc(L.backups) + '</button></li>';
+            var backupCrumbs = '<li class="breadcrumb-item"><a data-folder-id="0" class="pg-link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>' +
+                '<li class="breadcrumb-item"><button type="button" class="btn btn-link p-0 pg-link-secondary text-decoration-none backup-crumb" data-path=""><span class="bi bi-database me-1"></span>' + esc(L.backups) + '</button></li>';
 
             (state.backupCrumbs || []).forEach(function (crumb, index) {
                 var last = (index === (state.backupCrumbs.length - 1));
                 backupCrumbs += last
-                    ? ('<li class="breadcrumb-item active text-body fw-semibold" aria-current="page">' + esc(crumb.name) + '</li>')
-                    : ('<li class="breadcrumb-item"><button type="button" class="btn btn-link p-0 link-secondary text-decoration-none backup-crumb" data-path="' + esc(crumb.path) + '">' + esc(crumb.name) + '</button></li>');
+                    ? ('<li class="breadcrumb-item active fg-body fw-semibold" aria-current="page">' + esc(crumb.name) + '</li>')
+                    : ('<li class="breadcrumb-item"><button type="button" class="btn btn-link p-0 pg-link-secondary text-decoration-none backup-crumb" data-path="' + esc(crumb.path) + '">' + esc(crumb.name) + '</button></li>');
             });
 
             var bar = document.getElementById('explorer_breadcrumb');
@@ -4221,13 +4193,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         if (state.mode === 'erp') {
-            var erpCrumbs = '<li class="breadcrumb-item"><a data-folder-id="0" class="link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>';
+            var erpCrumbs = '<li class="breadcrumb-item"><a data-folder-id="0" class="pg-link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>';
 
             if (state.erpFolder === '') {
-                erpCrumbs += '<li class="breadcrumb-item active text-body fw-semibold" aria-current="page"><i class="bi bi-safe2 me-1" aria-hidden="true"></i>' + esc(L.erp_files) + '</li>';
+                erpCrumbs += '<li class="breadcrumb-item active fg-body fw-semibold" aria-current="page"><i class="bi bi-safe2 me-1" aria-hidden="true"></i>' + esc(L.erp_files) + '</li>';
             } else {
-                erpCrumbs += '<li class="breadcrumb-item"><button type="button" class="btn btn-link p-0 link-secondary text-decoration-none" data-erp-crumb="1"><i class="bi bi-safe2 me-1" aria-hidden="true"></i>' + esc(L.erp_files) + '</button></li>' +
-                    '<li class="breadcrumb-item active text-body fw-semibold" aria-current="page">' + esc(state.erpFolderLabel || state.erpFolder) + '</li>';
+                erpCrumbs += '<li class="breadcrumb-item"><button type="button" class="btn btn-link p-0 pg-link-secondary text-decoration-none" data-erp-crumb="1"><i class="bi bi-safe2 me-1" aria-hidden="true"></i>' + esc(L.erp_files) + '</button></li>' +
+                    '<li class="breadcrumb-item active fg-body fw-semibold" aria-current="page">' + esc(state.erpFolderLabel || state.erpFolder) + '</li>';
             }
 
             var erpBar = document.getElementById('explorer_breadcrumb');
@@ -4243,8 +4215,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (state.mode === 'short_links') {
             document.getElementById('explorer_breadcrumb').innerHTML =
                 '<nav><ol class="breadcrumb">' +
-                '<li class="breadcrumb-item"><a data-folder-id="0" class="link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>' +
-                '<li class="breadcrumb-item active text-body fw-semibold" aria-current="page"><span class="bi bi-link-45deg me-1"></span>' + esc(L.short_links) + '</li>' +
+                '<li class="breadcrumb-item"><a data-folder-id="0" class="pg-link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>' +
+                '<li class="breadcrumb-item active fg-body fw-semibold" aria-current="page"><span class="bi bi-link-45deg me-1"></span>' + esc(L.short_links) + '</li>' +
                 '</ol></nav>';
             return;
         }
@@ -4252,8 +4224,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (state.mode === 'shared') {
             document.getElementById('explorer_breadcrumb').innerHTML =
                 '<nav><ol class="breadcrumb">' +
-                '<li class="breadcrumb-item"><a data-folder-id="0" class="link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>' +
-                '<li class="breadcrumb-item active text-body fw-semibold" aria-current="page"><span class="bi bi-shield-lock me-1"></span>' + esc(L.shared_folders) + '</li>' +
+                '<li class="breadcrumb-item"><a data-folder-id="0" class="pg-link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>' +
+                '<li class="breadcrumb-item active fg-body fw-semibold" aria-current="page"><span class="bi bi-shield-lock me-1"></span>' + esc(L.shared_folders) + '</li>' +
                 '</ol></nav>';
             return;
         }
@@ -4264,8 +4236,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             document.getElementById('explorer_breadcrumb').innerHTML =
                 '<nav><ol class="breadcrumb">' +
-                '<li class="breadcrumb-item"><a data-folder-id="0" class="link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>' +
-                '<li class="breadcrumb-item active text-body fw-semibold" aria-current="page"><span class="bi ' + allIcon + ' me-1"></span>' + esc(allName) + '</li>' +
+                '<li class="breadcrumb-item"><a data-folder-id="0" class="pg-link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>' +
+                '<li class="breadcrumb-item active fg-body fw-semibold" aria-current="page"><span class="bi ' + allIcon + ' me-1"></span>' + esc(allName) + '</li>' +
                 '</ol></nav>';
             return;
         }
@@ -4291,17 +4263,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var icon = crumb.icon ? '<span class="bi ' + crumb.icon + ' me-1"></span>' : '';
 
             if (last && crumb.id !== 0) {
-                html += '<li class="breadcrumb-item active text-body fw-semibold" aria-current="page">' + icon + esc(crumb.name) + '</li>';
+                html += '<li class="breadcrumb-item active fg-body fw-semibold" aria-current="page">' + icon + esc(crumb.name) + '</li>';
             } else {
-                html += '<li class="breadcrumb-item"><a data-folder-id="' + crumb.id + '" class="link-secondary" title="' + esc(crumb.name) + '">' + icon + esc(crumb.name) + '</a></li>';
+                html += '<li class="breadcrumb-item"><a data-folder-id="' + crumb.id + '" class="pg-link-secondary" title="' + esc(crumb.name) + '">' + icon + esc(crumb.name) + '</a></li>';
             }
 
             if ((index === 0) && (collapsed.length > 0)) {
                 var menu = '';
                 collapsed.forEach(function (middle) {
-                    menu += '<li><a class="dropdown-item" data-folder-id="' + middle.id + '"><span class="bi bi-folder me-2"></span>' + esc(middle.name) + '</a></li>';
+                    menu += '<li><a class="menu-item" data-folder-id="' + middle.id + '"><span class="bi bi-folder me-3"></span>' + esc(middle.name) + '</a></li>';
                 });
-                html += '<li class="breadcrumb-item dropdown"><a class="link-secondary" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" role="button">&hellip;</a><ul class="dropdown-menu shadow" style="border-radius:.75rem;">' + menu + '</ul></li>';
+                html += '<li class="breadcrumb-item pg-menu-wrap"><a class="pg-link-secondary" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" role="button">&hellip;</a><ul class="menu shadow" style="border-radius:.75rem;">' + menu + '</ul></li>';
             }
         });
 
@@ -4459,17 +4431,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             if (defs.length === 0) { return; }
 
-            if (group[1] !== '') { menu += '<li><h6 class="dropdown-header">' + esc(group[1]) + '</h6></li>'; }
+            if (group[1] !== '') { menu += '<li><h6 class="menu-header">' + esc(group[1]) + '</h6></li>'; }
 
             defs.forEach(function (def) {
-                menu += '<li><button type="button" class="dropdown-item" data-filter="' + esc(def.key) + '">' +
-                    '<i class="bi bi-check2 me-2' + (state.filters[def.key] ? '' : ' opacity-0') + '"></i>' + esc(def.label()) + '</button></li>';
+                menu += '<li><button type="button" class="menu-item" data-filter="' + esc(def.key) + '">' +
+                    '<i class="bi bi-check2 me-3' + (state.filters[def.key] ? '' : ' opacity-0') + '"></i>' + esc(def.label()) + '</button></li>';
             });
         });
 
         if (active.length > 0) {
-            menu += '<li><hr class="dropdown-divider" /></li>' +
-                '<li><button type="button" class="dropdown-item" data-filter-clear="1"><i class="bi bi-x-lg me-2"></i>' + esc(L.clear_filters) + '</button></li>';
+            menu += '<li><hr class="menu-divider" /></li>' +
+                '<li><button type="button" class="menu-item" data-filter-clear="1"><i class="bi bi-x-lg me-3"></i>' + esc(L.clear_filters) + '</button></li>';
         }
 
         document.getElementById('explorer_filter_menu').innerHTML = menu;
@@ -4483,11 +4455,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         var total = state.items.folders.length + state.items.pages.length + state.items.files.length;
 
-        var chips = '<span class="text-body-secondary"><i class="bi bi-sliders me-1"></i>' +
+        var chips = '<span class="fg-secondary"><i class="bi bi-sliders me-1"></i>' +
             esc(fmt(L.filters_on, [active.length])) + ' · ' + esc(fmt(L.filters_showing, [state.ordered.length, total])) + '</span>';
 
         active.forEach(function (def) {
-            chips += '<button type="button" class="btn btn-sm btn-outline-primary rounded-pill py-0 px-2 no-popover" data-filter="' + esc(def.key) + '">' +
+            chips += '<button type="button" class="btn btn-sm btn-outline theme-primary rounded-pill py-0 px-3 no-popover" data-filter="' + esc(def.key) + '">' +
                 esc(def.label()) + '<i class="bi bi-x ms-1"></i></button>';
         });
 
@@ -4682,7 +4654,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         // A page style waiting in the Recycle Bin: it has no folder and no
         // address, only a restore record.
-        if (item.kind === 'style') { return '<span class="' + sizeClass + ' bi bi-palette text-primary"></span>'; }
+        if (item.kind === 'style') { return '<span class="' + sizeClass + ' bi bi-palette fg-primary"></span>'; }
 
         var catalogRow = ((item.kind === 'group') || (item.kind === 'product'));
         var withPicture = (big || !catalogRow || productImagesOn());
@@ -4700,10 +4672,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             if (item.image_name && withPicture) {
                 return '<span class="thumb-wrap">' +
                     lazyThumb(path + item.image_name) +
-                    '<span class="access-badge bi ' + groupIcon + ' text-primary"></span></span>';
+                    '<span class="access-badge bi ' + groupIcon + ' fg-primary"></span></span>';
             }
 
-            return '<span class="' + sizeClass + ' bi ' + groupIcon + ' text-primary"></span>';
+            return '<span class="' + sizeClass + ' bi ' + groupIcon + ' fg-primary"></span>';
         }
 
         if (item.kind === 'product') {
@@ -4714,10 +4686,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             if (item.image_name && withPicture) {
                 return '<span class="thumb-wrap">' +
                     lazyThumb(path + item.image_name) +
-                    '<span class="access-badge bi bi-box2-heart text-body-secondary"></span></span>';
+                    '<span class="access-badge bi bi-box2-heart fg-secondary"></span></span>';
             }
 
-            return '<span class="' + sizeClass + ' bi bi-box2-heart text-body-secondary"></span>';
+            return '<span class="' + sizeClass + ' bi bi-box2-heart fg-secondary"></span>';
         }
 
         var badge = '<span class="access-badge bi ' + item.access_icon + ' ' + item.access_control_type + '"></span>';
@@ -4790,7 +4762,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         var title = fmt(L.days_left, [entry.days_left]) + (entry.origin_name ? ' \u2014 ' + entry.origin_name : '');
 
-        return '<span class="badge text-bg-warning bin-badge" title="' + esc(title) + '"><span class="bi bi-hourglass-split"></span> ' + entry.days_left + '</span>';
+        return '<span class="badge theme-warning bin-badge" title="' + esc(title) + '"><span class="bi bi-hourglass-split"></span> ' + entry.days_left + '</span>';
     }
 
     function itemFlagsHtml(item) {
@@ -4801,11 +4773,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if ((item.kind === 'group') || (item.kind === 'product')) {
 
             if (item.enabled === false) {
-                flags.push('<span class="bi bi-slash-circle text-warning" title="' + esc(L.group_disabled) + '"></span>');
+                flags.push('<span class="bi bi-slash-circle fg-warning" title="' + esc(L.group_disabled) + '"></span>');
             }
 
             if (item.featured) {
-                flags.push('<span class="bi bi-star-fill text-warning" title="' + esc(L.featured) + '"></span>');
+                flags.push('<span class="bi bi-star-fill fg-warning" title="' + esc(L.featured) + '"></span>');
             }
 
             // A product in more than one group is the difference between this
@@ -4816,7 +4788,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             }
 
             if ((item.kind === 'product') && outOfStock(item)) {
-                flags.push('<span class="catalog-chip text-danger" title="' + esc(L.out_of_stock) + '">0</span>');
+                flags.push('<span class="catalog-chip fg-danger" title="' + esc(L.out_of_stock) + '">0</span>');
             }
 
             var countdown = binCountdownHtml(item);
@@ -4826,11 +4798,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             return flags.join(' ');
         }
 
-        if (item.kind === 'page' && item.home) { flags.push('<span class="bi bi-house text-success" title="' + esc(L.home_page) + '"></span>'); }
-        if (item.kind === 'page' && item.draft) { flags.push('<span class="badge rounded-pill text-bg-warning" title="' + esc(L.draft_hint) + '"><span class="bi bi-eye-slash me-1"></span>' + esc(L.draft) + '</span>'); }
+        if (item.kind === 'page' && item.home) { flags.push('<span class="bi bi-house fg-success" title="' + esc(L.home_page) + '"></span>'); }
+        if (item.kind === 'page' && item.draft) { flags.push('<span class="badge rounded-pill theme-warning" title="' + esc(L.draft_hint) + '"><span class="bi bi-eye-slash me-1"></span>' + esc(L.draft) + '</span>'); }
         if (item.archived) { flags.push('<span class="bi bi-archive" title="' + esc(L.archived) + '"></span>'); }
         if (item.kind === 'file' && item.design) { flags.push('<span class="bi bi-palette2" title="' + esc(L.design_file) + '"></span>'); }
-        if (item.kind === 'file' && item.optimized) { flags.push('<span class="bi bi-check2-circle text-success" title="' + esc(L.optimized) + '"></span>'); }
+        if (item.kind === 'file' && item.optimized) { flags.push('<span class="bi bi-check2-circle fg-success" title="' + esc(L.optimized) + '"></span>'); }
         if (item.style_name) { flags.push('<span class="bi bi-palette" title="' + esc(L.style + ': ' + item.style_name) + '"></span>'); }
         if (item.kind === 'file' && item.timestamp && (Date.now() / 1000 - item.timestamp) < 900) {
             flags.push('<span class="bi bi-clock-history" title="' + esc(L.new_file) + '"></span>');
@@ -4948,7 +4920,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 emptyText = L.search_nothing_matches;
             }
 
-            html = '<div class="text-center my-5 empty-note"><span class="bi ' + emptyIcon + ' display-4 d-block mb-2 ' +
+            html = '<div class="text-center my-12 empty-note"><span class="bi ' + emptyIcon + ' pg-display-4 d-block mb-3 ' +
                 esc((state.current && !insideCatalog()) ? state.current.access_control_type : '') + '"></span>' +
                 esc(emptyText) + '</div>';
         } else if (state.viewType === 'grid') {
@@ -5025,13 +4997,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         // An ERP folder is listed a page at a time; the rest follows on request.
         if (insideErp() && (state.erpFolder !== '') && (state.erpTotal > state.items.files.length)) {
-            html += '<div class="text-center my-3"><button type="button" class="btn btn-sm btn-outline-secondary rounded-pill no-popover" data-role="erp-more">' +
+            html += '<div class="text-center my-5"><button type="button" class="btn btn-sm btn-outline theme-secondary rounded-pill no-popover" data-role="erp-more">' +
                 '<i class="bi bi-chevron-double-down me-1" aria-hidden="true"></i>' + esc(fmt(L.erp_load_more, [state.items.files.length, state.erpTotal])) + '</button></div>';
         }
 
         // A flat view spans every folder, so a drop there cannot promise "this
         // folder": the window that opens on it asks which one.
-        html += '<div id="explorer_upload_overlay"><div class="text-center fw-bold text-primary"><span class="bi bi-cloud-arrow-up fs-1 d-block"></span>' + esc((state.mode === 'all') ? L.drop_to_pick_folder : L.drop_to_upload) + '</div></div>';
+        html += '<div id="explorer_upload_overlay"><div class="text-center fw-bold fg-primary"><span class="bi bi-cloud-arrow-up fs-4xl d-block"></span>' + esc((state.mode === 'all') ? L.drop_to_pick_folder : L.drop_to_upload) + '</div></div>';
         container.innerHTML = html;
 
         // The tiles just drawn carry their address in data-src; hand them to
@@ -5198,7 +5170,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 // A document with no kept copy has no size until it is made.
                 if (item.erp && !item.size_known) {
                     var why = (item.source === 'provider') ? L.erp_source_provider : ((item.source === 'generated') ? L.erp_source_generated : '');
-                    return '<span class="text-body-secondary"' + (why ? (' title="' + esc(why) + '"') : '') + '>—</span>';
+                    return '<span class="fg-secondary"' + (why ? (' title="' + esc(why) + '"') : '') + '>—</span>';
                 }
 
                 if ((item.kind === 'file') || (item.kind === 'style')) { return esc(item.size_label || ''); }
@@ -5477,7 +5449,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             bar = '<div class="progress" style="width:110px;height:6px;"><div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%"></div></div>';
         }
 
-        return '<span class="d-flex align-items-center gap-2 ms-auto text-body-secondary">' +
+        return '<span class="d-flex align-items-center gap-3 ms-auto fg-secondary">' +
                '<span>' + esc(progress.label) + '</span>' + bar + '</span>';
     }
 
@@ -5685,11 +5657,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // picked out -- cutting or copying leaves the selection standing, so
         // this strip is what is on screen at the moment it happens.
         var clipboardNote = state.clipboard
-            ? ('<span class="text-warning-emphasis text-nowrap">' +
+            ? ('<span class="fg-emphasis-warning text-nowrap">' +
                 esc(fmt(state.clipboard.mode === 'cut' ? L.clipboard_cut : L.clipboard_copy, [state.clipboard.items.length])) + '</span>')
             : '';
 
-        var html = '<span class="text-primary text-nowrap">' + esc(fmt(L.items_selected, [selected.length])) + '</span>' +
+        var html = '<span class="fg-primary text-nowrap">' + esc(fmt(L.items_selected, [selected.length])) + '</span>' +
             '<button type="button" class="btn btn-sm btn-ghost no-popover py-0 px-1" data-role="clear-selection" title="' + esc(L.clear_selection) + '"><i class="bi bi-x-lg"></i></button>' +
             clipboardNote +
             progressHtml() +
@@ -5703,13 +5675,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (overflow.length > 0) {
 
-            html += '<span class="dropdown dropup">' +
-                '<button type="button" class="btn btn-sm btn-ghost no-popover" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" aria-label="' + esc(L.more_actions) + '"><i class="bi bi-three-dots-vertical"></i></button>' +
-                '<ul class="dropdown-menu dropdown-menu-end shadow" style="border-radius:.75rem;">';
+            html += '<span class="pg-menu-wrap">' +
+                '<button type="button" class="btn btn-sm btn-ghost no-popover" data-bs-toggle="menu" data-bs-placement="top-end" data-bs-display="static" aria-expanded="false" aria-label="' + esc(L.more_actions) + '"><i class="bi bi-three-dots-vertical"></i></button>' +
+                '<ul class="menu pg-menu-end shadow" style="border-radius:.75rem;">';
 
             overflow.forEach(function (entry) {
-                html += '<li><button type="button" class="dropdown-item' + (entry.off ? ' disabled' : '') + '" data-selection-action="' + esc(entry.action) + '"' +
-                    (entry.off ? ' disabled' : '') + '><i class="bi ' + entry.icon + ' me-2"></i>' + esc(entry.label) + '</button></li>';
+                html += '<li><button type="button" class="menu-item' + (entry.off ? ' disabled' : '') + '" data-selection-action="' + esc(entry.action) + '"' +
+                    (entry.off ? ' disabled' : '') + '><i class="bi ' + entry.icon + ' me-3"></i>' + esc(entry.label) + '</button></li>';
             });
 
             html += '</ul></span>';
@@ -5742,7 +5714,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             document.getElementById('explorer_statusbar').innerHTML =
                 '<span>' + esc(catalogCount) + '</span>' +
-                ((catalogSelected.length > 0) ? ('<span class="text-primary">' + esc(catalogSelected.length + ' ' + L.items + ' ' + L.selected) + '</span>') : '') +
+                ((catalogSelected.length > 0) ? ('<span class="fg-primary">' + esc(catalogSelected.length + ' ' + L.items + ' ' + L.selected) + '</span>') : '') +
                 progressHtml() +
                 '<span class="' + pushRightClass() + '">' + esc(fmt(L.catalog_totals, [totals.products, totals.groups])) + '</span>';
             return;
@@ -5786,7 +5758,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             document.getElementById('explorer_statusbar').innerHTML =
                 '<span>' + esc(fmt(L.short_links_count, [state.items.files.length])) + '</span>' +
-                ((shortLinkSelected.length > 0) ? ('<span class="text-primary">' + esc(shortLinkSelected.length + ' ' + L.items + ' ' + L.selected) + '</span>') : '') +
+                ((shortLinkSelected.length > 0) ? ('<span class="fg-primary">' + esc(shortLinkSelected.length + ' ' + L.items + ' ' + L.selected) + '</span>') : '') +
                 shortLinkClipboard +
                 progressHtml();
             return;
@@ -5816,8 +5788,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         document.getElementById('explorer_statusbar').innerHTML =
             '<span>' + esc(counts) + '</span>' +
-            (selectedInfo ? '<span class="text-primary">' + esc(selectedInfo) + '</span>' : '') +
-            (clipboardInfo ? '<span class="text-warning-emphasis">' + esc(clipboardInfo) + '</span>' : '') +
+            (selectedInfo ? '<span class="fg-primary">' + esc(selectedInfo) + '</span>' : '') +
+            (clipboardInfo ? '<span class="fg-emphasis-warning">' + esc(clipboardInfo) + '</span>' : '') +
             progressHtml() +
             '<span class="' + pushRightClass() + '">' + esc(L.disk_usage) + ': ' + esc(state.diskUsage) + '</span>';
     }
@@ -6229,11 +6201,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             rows += '<div class="prev-kv"><span>' + esc(label) + '</span><span>' + value + '</span></div>';
         }
 
-        var head = '<div class="text-center my-3"><span class="bi ' +
+        var head = '<div class="text-center my-5"><span class="bi ' +
             ((item.kind === 'product')
                 ? 'bi-box2-heart'
                 : (isVariantSet(item) ? 'bi-collection-fill' : 'bi-boxes')) +
-            ' display-4 text-primary"></span></div>';
+            ' pg-display-4 fg-primary"></span></div>';
 
         if ((item.kind === 'product') && item.image_name) {
             head = '<img class="preview-media" draggable="false" src="' + esc(path + item.image_name) + '" alt="" />';
@@ -6246,8 +6218,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         row(L.type, esc(itemTypeLabel(item)));
         row(L.status, (item.enabled === false)
-            ? ('<span class="text-warning-emphasis">' + esc(L.group_disabled) + '</span>')
-            : ('<span class="text-success">' + esc(L.group_published) + '</span>'));
+            ? ('<span class="fg-emphasis-warning">' + esc(L.group_disabled) + '</span>')
+            : ('<span class="fg-success">' + esc(L.group_published) + '</span>'));
 
         if (item.kind === 'group') {
             row(L.display_type, esc((item.display_type === 'select') ? L.display_select : L.display_browse));
@@ -6256,7 +6228,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             row(L.price_range, esc(priceRangeLabel(item)));
 
             if (outOfStock(item)) {
-                row(L.out_of_stock, '<span class="text-danger">' + esc(String(item.out_of_stock)) + '</span>');
+                row(L.out_of_stock, '<span class="fg-danger">' + esc(String(item.out_of_stock)) + '</span>');
             }
 
         } else {
@@ -6269,8 +6241,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 ? ((item.quantity > 0)
                     ? esc(String(item.quantity))
                     : (item.backorder
-                        ? ('<span class="text-warning-emphasis">' + esc(L.backorder_label) + '</span>')
-                        : ('<span class="text-danger">' + esc(L.out_of_stock) + '</span>')))
+                        ? ('<span class="fg-emphasis-warning">' + esc(L.backorder_label) + '</span>')
+                        : ('<span class="fg-danger">' + esc(L.out_of_stock) + '</span>')))
                 : esc(L.not_tracked));
         }
 
@@ -6299,8 +6271,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // what, and the operator is already looking at the record.
         if (item.seo && item.seo.scored) {
             seo = '<div class="prev-group"><div class="prev-group-title">' + esc(L.seo_score_label) + '</div>' +
-                '<div class="text-center my-2">' + seoChipHtml(item, 46) + '</div>' +
-                '<div id="preview_seo_detail"><div class="text-center my-2"><span class="spinner-border spinner-border-sm text-secondary"></span></div></div></div>';
+                '<div class="text-center my-3">' + seoChipHtml(item, 46) + '</div>' +
+                '<div id="preview_seo_detail"><div class="text-center my-3"><span class="spinner-border spinner-border-sm fg-secondary"></span></div></div></div>';
         }
 
         pane.innerHTML =
@@ -6311,8 +6283,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             seo +
             '<div class="prev-group"><div class="prev-group-title">' + esc(L.appears_on) + '</div>' +
             '<div id="catalog_pages_list" data-for="' + esc(itemKey(item)) + '"></div></div>' +
-            '<div class="d-grid gap-2 mt-3">' +
-            '<a class="btn btn-sm btn-outline-secondary" href="' + esc(item.edit_url) + '&send_to=' + encodeURIComponent(currentSendTo()) + '">' +
+            '<div class="d-grid gap-3 mt-5">' +
+            '<a class="btn btn-sm btn-outline theme-secondary" href="' + esc(item.edit_url) + '&send_to=' + encodeURIComponent(currentSendTo()) + '">' +
             '<span class="bi bi-pencil me-1"></span>' + esc(L.edit) + '</a></div>';
 
         if (item.seo && item.seo.scored) {
@@ -6356,7 +6328,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             return item.image_name
                 ? ('<img draggable="false" src="' + esc(path + item.image_name) + '" alt="" />')
-                : ('<div class="text-center empty-note"><i class="bi ' + ((item.kind === 'group') ? 'bi-boxes' : 'bi-box2-heart') + ' display-1 d-block mb-2"></i>' + esc(L.no_preview) + '</div>');
+                : ('<div class="text-center empty-note"><i class="bi ' + ((item.kind === 'group') ? 'bi-boxes' : 'bi-box2-heart') + ' pg-display-1 d-block mb-3"></i>' + esc(L.no_preview) + '</div>');
         }
 
         if (item.kind === 'page') { return '<iframe loading="lazy" src="' + esc(item.url) + '" referrerpolicy="no-referrer"></iframe>'; }
@@ -6369,7 +6341,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (PREVIEW_AUDIO_TYPES.indexOf(item.type) !== -1) { return '<audio controls autoplay preload="metadata" src="' + esc(item.url) + '" style="width:min(32rem,80vw);"></audio>'; }
 
         return '<div class="text-center empty-note"><i class="bi ' + (FILETYPE_ICONS[item.type] || 'bi-file-earmark') +
-            ' display-1 d-block mb-2"></i>' + esc(L.no_preview) + '</div>';
+            ' pg-display-1 d-block mb-3"></i>' + esc(L.no_preview) + '</div>';
     }
 
     function quickLookMeta(item) {
@@ -6498,8 +6470,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (!container) { return; }
 
-        container.innerHTML = '<div class="text-center small text-body-secondary py-2">' +
-            '<span class="spinner-border spinner-border-sm me-2"></span>' + esc(L.where_used_looking) + '</div>';
+        container.innerHTML = '<div class="text-center small fg-secondary py-3">' +
+            '<span class="spinner-border spinner-border-sm me-3"></span>' + esc(L.where_used_looking) + '</div>';
 
         api({ type: 'explorer_file_usage', file_id: item.id }, function (response) {
 
@@ -6507,12 +6479,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             if (!container.isConnected) { return; }
 
             if (response.status !== 'success') {
-                container.innerHTML = '<div class="small text-danger">' + esc(response.message || L.request_failed) + '</div>';
+                container.innerHTML = '<div class="small fg-danger">' + esc(response.message || L.request_failed) + '</div>';
                 return;
             }
 
             if (!response.total) {
-                container.innerHTML = '<div class="small text-body-secondary"><i class="bi bi-check2 me-1"></i>' + esc(L.where_used_none) + '</div>';
+                container.innerHTML = '<div class="small fg-secondary"><i class="bi bi-check2 me-1"></i>' + esc(L.where_used_none) + '</div>';
                 return;
             }
 
@@ -6529,7 +6501,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     // a setting is a value rather than a record. Those are
                     // named without a link rather than given one that goes
                     // nowhere.
-                    var label = esc(entry.name) + (entry.note ? (' <span class="text-body-secondary">· ' + esc(entry.note) + '</span>') : '');
+                    var label = esc(entry.name) + (entry.note ? (' <span class="fg-secondary">· ' + esc(entry.note) + '</span>') : '');
 
                     html += '<div class="prev-row text-truncate">' +
                         (entry.url ? ('<a href="' + esc(entry.url) + '">' + label + '</a>') : label) +
@@ -6553,7 +6525,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var pane = document.getElementById('explorer_preview_pane');
 
         if (!item) {
-            pane.innerHTML = '<div class="text-center empty-note my-5"><span class="bi bi-eye fs-1 d-block mb-2"></span>' + esc(L.preview) + '</div>';
+            pane.innerHTML = '<div class="text-center empty-note my-12"><span class="bi bi-eye fs-4xl d-block mb-3"></span>' + esc(L.preview) + '</div>';
             return;
         }
 
@@ -6579,10 +6551,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 (item.modified ? ('<tr><th>' + esc(L.last_modified) + '</th><td>' + item.modified + (item.username ? ' ' + fmt(L.modified_by, [esc(item.username)]) : '') + '</td></tr>') : '');
 
             pane.innerHTML =
-                '<div class="text-center my-3">' + shortLinkIconHtml(item, true) + '</div>' +
-                '<div class="text-center mb-3">' + (item.url ? ('<a class="btn btn-sm btn-outline-primary" href="' + esc(item.url) + '" target="_blank" rel="noopener">' +
+                '<div class="text-center my-5">' + shortLinkIconHtml(item, true) + '</div>' +
+                '<div class="text-center mb-5">' + (item.url ? ('<a class="btn btn-sm btn-outline theme-primary" href="' + esc(item.url) + '" target="_blank" rel="noopener">' +
                     '<span class="bi bi-box-arrow-up-right me-1"></span>' + esc(L.visit) + '</a> ') : '') +
-                    '<button type="button" class="btn btn-sm btn-outline-secondary" data-role="short-link-edit">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-role="short-link-edit">' +
                     '<span class="bi bi-pencil me-1"></span>' + esc(L.edit) + '</button></div>' +
                 '<table class="table table-sm"><tbody>' + shortLinkRows + '</tbody></table>';
 
@@ -6604,9 +6576,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (item.backup) {
             media = (item.kind === 'folder')
-                ? ('<div class="text-center my-3"><span class="bi bi-folder-fill display-4 text-warning"></span></div>')
-                : ('<div class="text-center my-3"><span class="bi bi-file-earmark-zip display-4 d-block mb-2"></span>' +
-                    '<a class="btn btn-sm btn-outline-primary" href="' + esc(backupDownloadUrl(item.path)) + '"><span class="bi bi-download me-1"></span>' + esc(L.download) + '</a></div>');
+                ? ('<div class="text-center my-5"><span class="bi bi-folder-fill pg-display-4 fg-warning"></span></div>')
+                : ('<div class="text-center my-5"><span class="bi bi-file-earmark-zip pg-display-4 d-block mb-3"></span>' +
+                    '<a class="btn btn-sm btn-outline theme-primary" href="' + esc(backupDownloadUrl(item.path)) + '"><span class="bi bi-download me-1"></span>' + esc(L.download) + '</a></div>');
 
         } else if (item.kind === 'page') {
             media = '<iframe loading="lazy" src="' + esc(item.url) + '" referrerpolicy="no-referrer"></iframe>';
@@ -6619,9 +6591,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         } else if (item.kind === 'file' && PREVIEW_AUDIO_TYPES.indexOf(item.type) !== -1) {
             media = '<audio controls preload="metadata" style="width:100%;" src="' + esc(item.url) + '"></audio>';
         } else if (item.kind === 'folder') {
-            media = '<div class="text-center my-3"><span class="bi bi-folder-fill display-4 ' + item.access_control_type + '"></span></div>';
+            media = '<div class="text-center my-5"><span class="bi bi-folder-fill pg-display-4 ' + item.access_control_type + '"></span></div>';
         } else {
-            media = '<div class="text-center empty-note my-3"><span class="bi ' + (FILETYPE_ICONS[item.type] || 'bi-file-earmark') + ' fs-1 d-block mb-2"></span>' + esc(L.no_preview) + '</div>';
+            media = '<div class="text-center empty-note my-5"><span class="bi ' + (FILETYPE_ICONS[item.type] || 'bi-file-earmark') + ' fs-4xl d-block mb-3"></span>' + esc(L.no_preview) + '</div>';
         }
 
         var rows = '';
@@ -6670,7 +6642,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if ((item.kind === 'page') && !item.backup) {
             rows += '<tr><th>' + esc(L.status) + '</th><td>' + (item.draft
-                ? '<span class="badge rounded-pill text-bg-warning" title="' + esc(L.draft_hint) + '"><span class="bi bi-eye-slash me-1"></span>' + esc(L.draft_status) + '</span>'
+                ? '<span class="badge rounded-pill theme-warning" title="' + esc(L.draft_hint) + '"><span class="bi bi-eye-slash me-1"></span>' + esc(L.draft_status) + '</span>'
                 : esc(L.live_on_site)) + '</td></tr>';
             rows += '<tr><th>' + esc(L.impact) + '</th><td>' + impactCellHtml(item) + '</td></tr>';
             rows += '<tr><th>' + esc(L.sitemap_label) + '</th><td>' + esc(item.sitemap ? L.yes : L.no) + '</td></tr>';
@@ -6687,22 +6659,22 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (item.kind === 'page' && item.seo) {
             var chip = seoChipHtml(item, 34);
             var flagNotes = (item.seo.scored && item.seo.labels && item.seo.labels.length > 0)
-                ? '<div class="form-text mt-0 mb-2">' + esc(item.seo.labels.join(' · ')) + '</div>' : '';
+                ? '<div class="form-text mt-0 mb-3">' + esc(item.seo.labels.join(' · ')) + '</div>' : '';
 
             seoSection =
-                '<h6 class="text-uppercase text-secondary fw-bold mt-3" style="font-size:.72rem;letter-spacing:.05em;">' + esc(L.seo_detail) + '</h6>' +
-                '<div class="d-flex align-items-center gap-2 mb-1">' + chip +
-                (item.seo.scored ? '<span class="small text-body-secondary">' + esc(L.seo_score_label) + ': ' + item.seo.score + '/100</span>'
-                    : '<span class="small text-body-secondary">' + esc(L.seo_not_ready) + '</span>') +
+                '<h6 class="text-uppercase fg-secondary fw-bold mt-5" style="font-size:.72rem;letter-spacing:.05em;">' + esc(L.seo_detail) + '</h6>' +
+                '<div class="d-flex align-items-center gap-3 mb-1">' + chip +
+                (item.seo.scored ? '<span class="small fg-secondary">' + esc(L.seo_score_label) + ': ' + item.seo.score + '/100</span>'
+                    : '<span class="small fg-secondary">' + esc(L.seo_not_ready) + '</span>') +
                 '</div>' + flagNotes +
-                '<div id="preview_seo_detail"><div class="text-center my-2"><span class="spinner-border spinner-border-sm text-secondary"></span></div></div>';
+                '<div id="preview_seo_detail"><div class="text-center my-3"><span class="spinner-border spinner-border-sm fg-secondary"></span></div></div>';
         }
 
         // The file window, from here as well as from the menu and the double
         // click -- the panel is where somebody is looking when they decide
         // the description is wrong.
         var editButton = ((item.kind === 'file') && item.can_edit && !item.backup && !item.short_link)
-            ? '<div class="d-grid mb-3"><button type="button" class="btn btn-sm btn-outline-secondary" data-role="file-edit">' +
+            ? '<div class="d-grid mb-5"><button type="button" class="btn btn-sm btn-outline theme-secondary" data-role="file-edit">' +
                 '<span class="bi bi-pencil-square me-1"></span>' + esc(L.edit) + '</button></div>'
             : '';
 
@@ -6715,12 +6687,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (((item.kind === 'file') || (item.kind === 'page')) && !item.backup && !item.short_link) {
 
             quickTools =
-                '<div class="btn-group btn-group-sm w-100 mb-3">' +
-                '<button type="button" class="btn btn-outline-secondary no-popover" data-role="copy-address" title="' + esc(L.copy_address) + '"><i class="bi bi-link-45deg"></i></button>' +
+                '<div class="btn-group btn-group-sm w-100 mb-5">' +
+                '<button type="button" class="btn btn-outline theme-secondary no-popover" data-role="copy-address" title="' + esc(L.copy_address) + '"><i class="bi bi-link-45deg"></i></button>' +
                 ((item.kind === 'file')
-                    ? ('<a class="btn btn-outline-secondary no-popover" href="' + esc(item.url) + '" download title="' + esc(L.download) + '"><i class="bi bi-download"></i></a>')
+                    ? ('<a class="btn btn-outline theme-secondary no-popover" href="' + esc(item.url) + '" download title="' + esc(L.download) + '"><i class="bi bi-download"></i></a>')
                     : '') +
-                '<a class="btn btn-outline-secondary no-popover" href="' + esc(item.url) + '" target="_blank" rel="noopener" title="' + esc(L.open_in_new_tab) + '"><i class="bi bi-box-arrow-up-right"></i></a>' +
+                '<a class="btn btn-outline theme-secondary no-popover" href="' + esc(item.url) + '" target="_blank" rel="noopener" title="' + esc(L.open_in_new_tab) + '"><i class="bi bi-box-arrow-up-right"></i></a>' +
                 '</div>';
         }
 
@@ -6730,16 +6702,16 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // it walks several text columns without an index, which is fine for a
         // press and would not be for every click on a grid.
         var usageBlock = ((item.kind === 'file') && !item.backup && !item.short_link)
-            ? ('<div id="preview_usage" class="mb-3"><button type="button" class="btn btn-sm btn-outline-secondary w-100 no-popover" data-role="where-used">' +
+            ? ('<div id="preview_usage" class="mb-5"><button type="button" class="btn btn-sm btn-outline theme-secondary w-100 no-popover" data-role="where-used">' +
                 '<i class="bi bi-diagram-3 me-1"></i>' + esc(L.where_used) + '</button></div>')
             : '';
 
         pane.innerHTML =
-            '<div class="mb-2">' + media + '</div>' +
+            '<div class="mb-3">' + media + '</div>' +
             quickTools +
             editButton +
             usageBlock +
-            '<h6 class="text-uppercase text-secondary fw-bold" style="font-size:.72rem;letter-spacing:.05em;">' + esc(L.details) + '</h6>' +
+            '<h6 class="text-uppercase fg-secondary fw-bold" style="font-size:.72rem;letter-spacing:.05em;">' + esc(L.details) + '</h6>' +
             '<table class="table table-sm"><tbody>' + rows + '</tbody></table>' +
             seoSection;
 
@@ -6771,7 +6743,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         var name = info.name || L.default;
 
-        return esc(name) + (info.inherited ? ' <span class="text-body-secondary">(' + esc(L.inherit) + ')</span>' : '');
+        return esc(name) + (info.inherited ? ' <span class="fg-secondary">(' + esc(L.inherit) + ')</span>' : '');
     }
 
     // The Impact figure the Pages screen shows: how much fixing this page
@@ -6782,11 +6754,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (item.kind !== 'page') { return ''; }
 
         if (item.impact === null || item.impact === undefined) {
-            return '<span class="text-body-secondary">–</span>';
+            return '<span class="fg-secondary">–</span>';
         }
 
         return '<span class="fw-semibold">' + item.impact + '</span>' +
-            '<div class="small text-body-secondary">' + esc(fmt(L.views_label, [item.views])) + '</div>';
+            '<div class="small fg-secondary">' + esc(fmt(L.views_label, [item.views])) + '</div>';
     }
 
     // Sitemap / search / comments as three small marks, colored when on.
@@ -6794,7 +6766,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (item.kind !== 'page') { return ''; }
 
         function mark(icon, on, label) {
-            return '<span class="bi ' + icon + ' mx-1 ' + (on ? 'text-success' : 'opacity-25') + '" title="' +
+            return '<span class="bi ' + icon + ' mx-1 ' + (on ? 'fg-success' : 'opacity-25') + '" title="' +
                 esc(label + ': ' + (on ? L.yes : L.no)) + '"></span>';
         }
 
@@ -6897,22 +6869,22 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function hideMenu() { menuElement.style.display = 'none'; }
 
     function menuItem(icon, label, action, disabled) {
-        return '<li><button type="button" class="dropdown-item' + (disabled ? ' disabled' : '') + '" data-menu-action="' + action + '">' +
-            '<span class="bi ' + icon + ' me-2"></span>' + esc(label) + '</button></li>';
+        return '<li><button type="button" class="menu-item' + (disabled ? ' disabled' : '') + '" data-menu-action="' + action + '">' +
+            '<span class="bi ' + icon + ' me-3"></span>' + esc(label) + '</button></li>';
     }
 
-    function menuDivider() { return '<li><hr class="dropdown-divider" /></li>'; }
+    function menuDivider() { return '<li><hr class="menu-divider" /></li>'; }
 
     function menuCheckItem(label, action, checked, disabled) {
-        return '<li><button type="button" class="dropdown-item' + (disabled ? ' disabled' : '') + '" data-menu-action="' + action + '">' +
+        return '<li><button type="button" class="menu-item' + (disabled ? ' disabled' : '') + '" data-menu-action="' + action + '">' +
             '<span class="menu-check bi ' + (checked ? 'bi-check2' : '') + '"></span>' + esc(label) + '</button></li>';
     }
 
     function menuSubmenu(icon, label, innerHtml, disabled) {
-        return '<li class="has-submenu"><button type="button" class="dropdown-item' + (disabled ? ' disabled' : '') + '" data-submenu="1">' +
-            '<span class="bi ' + icon + ' me-2"></span>' + esc(label) +
+        return '<li class="has-submenu"><button type="button" class="menu-item' + (disabled ? ' disabled' : '') + '" data-submenu="1">' +
+            '<span class="bi ' + icon + ' me-3"></span>' + esc(label) +
             '<span class="submenu-arrow bi bi-chevron-right"></span></button>' +
-            '<ul class="pg-submenu dropdown-menu">' + innerHtml + '</ul></li>';
+            '<ul class="pg-submenu menu">' + innerHtml + '</ul></li>';
     }
 
     function positionMenu(event) {
@@ -8417,20 +8389,20 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             shown++;
 
-            html += '<button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-2' +
+            html += '<button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3' +
                 (blocked ? ' disabled' : '') +
                 ((String(target.id) === String(transferState.picked)) ? ' active' : '') +
                 '" style="' + indent + '" data-target-id="' + target.id + '"' + (blocked ? ' disabled' : '') + '>' +
                 '<i class="bi ' + (insideCatalog() ? 'bi-boxes' : 'bi-folder-fill') + '"></i>' +
                 '<span class="text-truncate">' + esc(target.name) + '</span>' +
-                (target.archived ? ('<span class="badge text-bg-secondary ms-1">' + esc(L.archived) + '</span>') : '') +
-                ((String(target.id) === String(here)) ? ('<span class="ms-auto small text-body-secondary">' + esc(L.you_are_here) + '</span>') : '') +
+                (target.archived ? ('<span class="badge theme-secondary ms-1">' + esc(L.archived) + '</span>') : '') +
+                ((String(target.id) === String(here)) ? ('<span class="ms-auto small fg-secondary">' + esc(L.you_are_here) + '</span>') : '') +
                 '</button>';
         });
 
         container.innerHTML = (shown > 0)
             ? html
-            : ('<div class="text-center text-body-secondary small py-3">' + esc(L.no_target_match) + '</div>');
+            : ('<div class="text-center fg-secondary small py-5">' + esc(L.no_target_match) + '</div>');
 
         syncTransferButtons();
     }
@@ -8491,7 +8463,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         document.getElementById('transfer_note').innerHTML = notes;
-        container.innerHTML = '<div class="text-center py-3"><span class="spinner-border spinner-border-sm text-secondary"></span></div>';
+        container.innerHTML = '<div class="text-center py-5"><span class="spinner-border spinner-border-sm fg-secondary"></span></div>';
 
         confirmButton.innerHTML = '<i class="bi bi-arrow-right-circle me-1"></i>' +
             esc(catalog ? (offerMove ? L.move_into_group : L.add_to_group) : (copy ? L.copy_here : L.move_here));
@@ -8590,7 +8562,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 ? '<span class="ws-icon-badged" aria-hidden="true"' + tint + '><i class="bi ' + iconName + '"></i><i class="bi ' + badgeName + ' ws-icon-badge"></i></span>'
                 : '<i class="bi ' + iconName + '"' + tint + ' aria-hidden="true"></i>';
 
-            html += '<button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-2' +
+            html += '<button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3' +
                 ((String(channel.id) === String(wsSendState.picked)) ? ' active' : '') +
                 '" data-channel-id="' + Number(channel.id) + '">' +
                 sign +
@@ -8598,7 +8570,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         });
 
         if (html === '') {
-            html = '<div class="text-center text-body-secondary small py-3">' +
+            html = '<div class="text-center fg-secondary small py-5">' +
                 esc(wsSendState.channels.length ? L.no_target_match : L.ws_send_none) + '</div>';
         }
 
@@ -8639,7 +8611,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         document.getElementById('ws_send_body').value = '';
         document.getElementById('ws_send_confirm_button').disabled = true;
         document.getElementById('ws_send_channels').innerHTML =
-            '<div class="text-center py-3"><span class="spinner-border spinner-border-sm text-secondary"></span></div>';
+            '<div class="text-center py-5"><span class="spinner-border spinner-border-sm fg-secondary"></span></div>';
 
         wsSendModal.show();
 
@@ -8970,15 +8942,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var body = document.getElementById('short_link_modal_body');
 
         body.innerHTML =
-            '<p class="mb-2">' + esc(L.link_once_note) + '</p>' +
-            (qr ? '<div class="text-center mb-3"><div class="d-inline-block border rounded p-2 bg-white" style="width:200px">' + qr + '</div></div>' : '') +
+            '<p class="mb-3">' + esc(L.link_once_note) + '</p>' +
+            (qr ? '<div class="text-center mb-5"><div class="d-inline-block border rounded-4 p-3 bg-white" style="width:200px">' + qr + '</div></div>' : '') +
             '<div class="input-group">' +
                 '<input type="text" class="form-control font-monospace" id="sl_address" readonly value="' + esc(address) + '" />' +
-                '<button type="button" class="btn btn-outline-primary" id="sl_address_copy"><span class="bi bi-clipboard me-1"></span>' + esc(L.link_copy) + '</button>' +
+                '<button type="button" class="btn btn-outline theme-primary" id="sl_address_copy"><span class="bi bi-clipboard me-1"></span>' + esc(L.link_copy) + '</button>' +
             '</div>';
 
         document.getElementById('short_link_modal_label').innerHTML =
-            '<span class="bi bi-link-45deg me-2"></span>' + esc(L.link_once_title);
+            '<span class="bi bi-link-45deg me-3"></span>' + esc(L.link_once_title);
 
         document.getElementById('short_link_create_button').innerHTML =
             '<span class="bi bi-check-lg me-1"></span>' + esc(L.link_done);
@@ -9131,9 +9103,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     function shortLinkSelectHtml(id, label, list, note) {
 
-        var html = '<div class="mb-3">' +
+        var html = '<div class="mb-5">' +
             '<label class="form-label" for="' + id + '">' + esc(label) + '</label>' +
-            '<select class="form-select" id="' + id + '">' +
+            '<select class="form-control" id="' + id + '">' +
             '<option value="">- ' + esc(L.select_one) + ' -</option>';
 
         (list || []).forEach(function (option) {
@@ -9175,7 +9147,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             case 'url':
                 // As long as the column takes (2048 since 11.0.12, 255 before).
-                html = '<div class="mb-3">' +
+                html = '<div class="mb-5">' +
                     '<label class="form-label" for="sl_url">' + esc(L.url_word) + '</label>' +
                     '<input type="text" class="form-control" id="sl_url" maxlength="' + esc(String(options.url_max || 255)) + '" placeholder="' + esc(L.short_link_url_note) + '" />' +
                     '<div class="form-text">' + esc(L.short_link_url_stars) + '</div>' +
@@ -9283,7 +9255,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // to its path, so it is as long as an address may be; the rule
             // under it is the classic screens'.
             var nameHtml = (shortLinkEditing && !shortLinkEditing.token)
-                ? ('<div class="mb-3">' +
+                ? ('<div class="mb-5">' +
                         '<label class="form-label" for="sl_name">' + esc(L.name) + '</label>' +
                         '<input type="text" class="form-control" id="sl_name" maxlength="' + esc(String(shortLinkLists.name_max || 255)) + '" value="' + esc(shortLinkEditing.name || '') + '" />' +
                         '<div class="form-text">' + esc(L.short_link_name_note) + '</div>' +
@@ -9301,28 +9273,28 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             if (!shortLinkEditing && shortLinkLists.modes) {
                 modesHtml =
-                    '<div class="mb-3">' +
+                    '<div class="mb-5">' +
                         '<label class="form-label" for="sl_mode">' + esc(L.link_mode) + '</label>' +
-                        '<select class="form-select" id="sl_mode">' +
+                        '<select class="form-control" id="sl_mode">' +
                             '<option value="permanent">' + esc(L.link_mode_permanent) + '</option>' +
                             '<option value="once">' + esc(L.link_mode_once) + '</option>' +
                             '<option value="timed">' + esc(L.link_mode_timed) + '</option>' +
                         '</select>' +
                     '</div>' +
-                    '<div class="mb-3 d-none" id="sl_duration_wrap">' +
+                    '<div class="mb-5 d-none" id="sl_duration_wrap">' +
                         '<label class="form-label" for="sl_duration">' + esc(L.link_duration) + '</label>' +
-                        '<select class="form-select" id="sl_duration">' + durationOptions + '</select>' +
+                        '<select class="form-control" id="sl_duration">' + durationOptions + '</select>' +
                     '</div>';
             } else if (shortLinkEditing && (shortLinkEditing.link_mode && shortLinkEditing.link_mode !== 'permanent')) {
                 modesHtml =
-                    '<div class="alert alert-light border small py-2 mb-3">' +
+                    '<div class="alert theme-secondary border small py-3 mb-5">' +
                         '<span class="bi ' + ((shortLinkEditing.link_state === 'open') ? 'bi-hourglass-split' : 'bi-slash-circle') + ' me-1"></span>' +
                         esc(shortLinkEditing.link_note || '') +
                     '</div>' +
                     ((shortLinkEditing.link_mode === 'timed')
-                        ? ('<div class="mb-3">' +
+                        ? ('<div class="mb-5">' +
                                 '<label class="form-label" for="sl_renew">' + esc(L.link_renew) + '</label>' +
-                                '<select class="form-select" id="sl_renew"><option value="">' + esc(L.link_renew_keep) + '</option>' + durationOptions + '</select>' +
+                                '<select class="form-control" id="sl_renew"><option value="">' + esc(L.link_renew_keep) + '</option>' + durationOptions + '</select>' +
                             '</div>')
                         : '');
             }
@@ -9340,9 +9312,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 var answerNow = shortLinkEditing ? String(shortLinkEditing.redirect_code || 0) : '0';
 
                 answerHtml =
-                    '<div class="mb-3">' +
+                    '<div class="mb-5">' +
                         '<label class="form-label" for="sl_answer">' + esc(L.link_answer) + '</label>' +
-                        '<select class="form-select" id="sl_answer">' +
+                        '<select class="form-control" id="sl_answer">' +
                             answerOptions.map(function (option) {
                                 return '<option value="' + esc(option.v) + '"' + ((String(option.v) === answerNow) ? ' selected' : '') + '>' + esc(option.t) + '</option>';
                             }).join('') +
@@ -9356,9 +9328,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 nameHtml +
                 modesHtml +
                 answerHtml +
-                '<div class="mb-3">' +
+                '<div class="mb-5">' +
                     '<label class="form-label" for="sl_type">' + esc(L.destination_type) + '</label>' +
-                    '<select class="form-select" id="sl_type">' +
+                    '<select class="form-control" id="sl_type">' +
                         '<option value="">- ' + esc(L.select_one) + ' -</option>' +
                         '<option value="page">' + esc(L.page) + '</option>' +
                         '<option value="product_group">' + esc(L.product_group_word) + '</option>' +
@@ -9373,7 +9345,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     '<input type="text" class="form-control" id="sl_tracking" maxlength="100" />' +
                     '<div class="form-text">' + esc(L.tracking_code_note) + '</div>' +
                 '</div>' +
-                '<div class="alert alert-danger mt-3 mb-0 d-none" id="sl_error"></div>';
+                '<div class="alert theme-danger mt-5 mb-0 d-none" id="sl_error"></div>';
 
             document.getElementById('sl_type').addEventListener('change', renderShortLinkFields);
 
@@ -9386,7 +9358,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             }
 
             document.getElementById('short_link_modal_label').innerHTML =
-                '<span class="bi bi-link-45deg me-2"></span>' +
+                '<span class="bi bi-link-45deg me-3"></span>' +
                 esc(shortLinkEditing ? (L.edit + ' — ' + shortLinkEditing.name) : L.short_link);
 
             shortLinkResult = false;
@@ -9795,13 +9767,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             var note = row.clash ? L.rename_clash : (row.unchanged ? L.rename_unchanged : '');
 
-            html += '<div class="d-flex align-items-baseline gap-2 py-1 border-bottom small' +
+            html += '<div class="d-flex align-items-baseline gap-3 py-1 border-bottom small' +
                 (row.unchanged ? ' opacity-50' : '') + '">' +
                 '<span class="text-truncate" style="flex:1 1 0;">' + esc(row.item.name) + '</span>' +
-                '<i class="bi bi-arrow-right text-body-secondary"></i>' +
-                '<span class="text-truncate' + (row.clash ? ' text-danger' : '') + '" style="flex:1 1 0;">' +
+                '<i class="bi bi-arrow-right fg-secondary"></i>' +
+                '<span class="text-truncate' + (row.clash ? ' fg-danger' : '') + '" style="flex:1 1 0;">' +
                 esc(row.unchanged ? row.item.name : row.name) + '</span>' +
-                (note ? ('<span class="text-body-secondary text-nowrap">' + esc(note) + '</span>') : '') +
+                (note ? ('<span class="fg-secondary text-nowrap">' + esc(note) + '</span>') : '') +
                 '</div>';
         });
 
@@ -9883,50 +9855,50 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var anyFile = bulkRenameItems.some(function (item) { return item.kind === 'file'; });
 
         document.getElementById('bulk_rename_offcanvas_body').innerHTML =
-            '<div class="mb-3">' +
+            '<div class="mb-5">' +
             '<label class="form-label" for="rename_mode">' + esc(L.rename_mode) + '</label>' +
-            '<select class="form-select form-select-sm" id="rename_mode">' +
+            '<select class="form-control form-control-sm" id="rename_mode">' +
             '<option value="replace">' + esc(L.rename_mode_replace) + '</option>' +
             '<option value="affix">' + esc(L.rename_mode_affix) + '</option>' +
             '<option value="number">' + esc(L.rename_mode_number) + '</option>' +
             '</select></div>' +
 
             '<div id="rename_block_replace">' +
-            '<div class="mb-2"><label class="form-label" for="rename_find">' + esc(L.rename_find) + '</label>' +
+            '<div class="mb-3"><label class="form-label" for="rename_find">' + esc(L.rename_find) + '</label>' +
             '<input type="text" class="form-control form-control-sm" id="rename_find" /></div>' +
-            '<div class="mb-2"><label class="form-label" for="rename_replace">' + esc(L.rename_replace) + '</label>' +
+            '<div class="mb-3"><label class="form-label" for="rename_replace">' + esc(L.rename_replace) + '</label>' +
             '<input type="text" class="form-control form-control-sm" id="rename_replace" /></div>' +
-            '<div class="form-check form-switch mb-3">' +
-            '<input class="form-check-input" type="checkbox" role="switch" id="rename_case" />' +
-            '<label class="form-check-label" for="rename_case">' + esc(L.rename_case) + '</label></div>' +
+            '<div class="form-field mb-5">' +
+            '<div class="switch"><input class="" type="checkbox" role="switch" id="rename_case" /></div>' +
+            '<label class="" for="rename_case">' + esc(L.rename_case) + '</label></div>' +
             '</div>' +
 
             '<div id="rename_block_affix" class="d-none">' +
-            '<div class="mb-2"><label class="form-label" for="rename_prefix">' + esc(L.rename_prefix) + '</label>' +
+            '<div class="mb-3"><label class="form-label" for="rename_prefix">' + esc(L.rename_prefix) + '</label>' +
             '<input type="text" class="form-control form-control-sm" id="rename_prefix" /></div>' +
-            '<div class="mb-3"><label class="form-label" for="rename_suffix">' + esc(L.rename_suffix) + '</label>' +
+            '<div class="mb-5"><label class="form-label" for="rename_suffix">' + esc(L.rename_suffix) + '</label>' +
             '<input type="text" class="form-control form-control-sm" id="rename_suffix" /></div>' +
             '</div>' +
 
             '<div id="rename_block_number" class="d-none">' +
-            '<div class="mb-2"><label class="form-label" for="rename_pattern">' + esc(L.rename_pattern) + '</label>' +
+            '<div class="mb-3"><label class="form-label" for="rename_pattern">' + esc(L.rename_pattern) + '</label>' +
             '<input type="text" class="form-control form-control-sm" id="rename_pattern" value="' + esc(L.rename_pattern_default) + '" />' +
             '<div class="form-text">' + esc(L.rename_pattern_note) + '</div></div>' +
-            '<div class="mb-3" style="max-width:9rem;"><label class="form-label" for="rename_start">' + esc(L.rename_start) + '</label>' +
+            '<div class="mb-5" style="max-width:9rem;"><label class="form-label" for="rename_start">' + esc(L.rename_start) + '</label>' +
             '<input type="number" class="form-control form-control-sm" id="rename_start" value="1" min="0" /></div>' +
             '</div>' +
 
             (anyFile
-                ? ('<div class="form-check form-switch mb-3">' +
-                    '<input class="form-check-input" type="checkbox" role="switch" id="rename_keep_extension" checked />' +
-                    '<label class="form-check-label" for="rename_keep_extension">' + esc(L.rename_keep_extension) + '</label></div>')
+                ? ('<div class="form-field mb-5">' +
+                    '<div class="switch"><input class="" type="checkbox" role="switch" id="rename_keep_extension" checked /></div>' +
+                    '<label class="" for="rename_keep_extension">' + esc(L.rename_keep_extension) + '</label></div>')
                 : '') +
 
-            '<h6 class="text-uppercase text-secondary fw-bold" style="font-size:.72rem;letter-spacing:.05em;">' + esc(L.rename_preview) + '</h6>' +
-            '<div id="rename_preview_list" class="mb-2" style="max-height:40vh;overflow-y:auto;"></div>' +
-            '<div class="form-text mb-3">' + esc(L.rename_server_note) + '</div>' +
+            '<h6 class="text-uppercase fg-secondary fw-bold" style="font-size:.72rem;letter-spacing:.05em;">' + esc(L.rename_preview) + '</h6>' +
+            '<div id="rename_preview_list" class="mb-3" style="max-height:40vh;overflow-y:auto;"></div>' +
+            '<div class="form-text mb-5">' + esc(L.rename_server_note) + '</div>' +
 
-            '<div class="d-grid"><button type="button" class="btn btn-primary btn-sm" id="rename_apply_button"></button></div>';
+            '<div class="d-grid"><button type="button" class="btn btn-solid theme-primary btn-sm" id="rename_apply_button"></button></div>';
 
         var body = document.getElementById('bulk_rename_offcanvas_body');
 
@@ -10528,33 +10500,33 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             document.getElementById('folder_delete_button_text').textContent = (mode === 'bin') ? L.move_to_bin : L.delete;
 
             var summary = (mode === 'bin') ? L.bin_folder_confirm : L.delete_folder_summary;
-            var html = '<p class="mb-2">' + fmt(esc(summary), ['<strong>' + esc(response.folder.name) + '</strong>']) + '</p>';
+            var html = '<p class="mb-3">' + fmt(esc(summary), ['<strong>' + esc(response.folder.name) + '</strong>']) + '</p>';
 
             if ((counts.folders + counts.pages + counts.files) === 0) {
                 html += '<p class="empty-note">' + esc(L.delete_folder_empty) + '</p>';
             } else {
-                html += '<div class="d-flex gap-3 mb-3">' +
-                    '<span class="badge text-bg-secondary"><span class="bi bi-folder me-1"></span>' + counts.folders + ' ' + esc(L.folders) + '</span>' +
-                    '<span class="badge text-bg-secondary"><span class="bi bi-window me-1"></span>' + counts.pages + ' ' + esc(L.pages) + '</span>' +
-                    '<span class="badge text-bg-secondary"><span class="bi bi-file-earmark me-1"></span>' + counts.files + ' ' + esc(L.files) + '</span>' +
+                html += '<div class="d-flex gap-5 mb-5">' +
+                    '<span class="badge theme-secondary"><span class="bi bi-folder me-1"></span>' + counts.folders + ' ' + esc(L.folders) + '</span>' +
+                    '<span class="badge theme-secondary"><span class="bi bi-window me-1"></span>' + counts.pages + ' ' + esc(L.pages) + '</span>' +
+                    '<span class="badge theme-secondary"><span class="bi bi-file-earmark me-1"></span>' + counts.files + ' ' + esc(L.files) + '</span>' +
                     '</div>';
             }
 
             if (blocked) {
-                html += '<div class="alert alert-warning mb-0">';
+                html += '<div class="alert theme-warning mb-0">';
                 response.blockers.forEach(function (blocker) {
-                    html += '<p class="mb-1"><span class="bi bi-exclamation-triangle me-2"></span>' + esc(blocker) + '</p>';
+                    html += '<p class="mb-1"><span class="bi bi-exclamation-triangle me-3"></span>' + esc(blocker) + '</p>';
                 });
                 html += '</div>';
                 confirmButton.disabled = true;
             } else {
                 html += '<label class="form-label">' + esc(L.type_name_to_confirm) + '</label>' +
                     '<input type="text" id="folder_delete_name_input" class="form-control" autocomplete="off" placeholder="' + esc(response.folder.name) + '" />' +
-                    '<div class="form-text text-danger d-none" id="folder_delete_name_error">' + esc(L.name_does_not_match) + '</div>';
+                    '<div class="form-text fg-danger d-none" id="folder_delete_name_error">' + esc(L.name_does_not_match) + '</div>';
                 confirmButton.disabled = true;
             }
 
-            html += '<div id="folder_delete_progress" class="d-none mt-3"><div class="progress" style="height:6px;"><div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" style="width:100%"></div></div><p class="mt-2 mb-0 empty-note">' + esc(L.deleting) + '...</p></div>';
+            html += '<div id="folder_delete_progress" class="d-none mt-5"><div class="progress" style="height:6px;"><div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" style="width:100%"></div></div><p class="mt-3 mb-0 empty-note">' + esc(L.deleting) + '...</p></div>';
 
             body.innerHTML = html;
 
@@ -10610,16 +10582,16 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         document.getElementById('folder_delete_title_text').textContent = (mode === 'bin') ? L.move_to_bin : L.delete_many_title;
         document.getElementById('folder_delete_button_text').textContent = (mode === 'bin') ? L.move_to_bin : L.delete;
 
-        var html = '<p class="mb-2">' + esc((mode === 'bin') ? L.delete_many_bin : L.delete_many_hard) + '</p>';
+        var html = '<p class="mb-3">' + esc((mode === 'bin') ? L.delete_many_bin : L.delete_many_hard) + '</p>';
 
-        html += '<div class="d-flex gap-3 mb-3 flex-wrap">';
+        html += '<div class="d-flex gap-5 mb-5 flex-wrap">';
 
         kinds.forEach(function (entry) {
 
             var count = selected.filter(entry.match).length;
 
             if (count > 0) {
-                html += '<span class="badge text-bg-secondary"><span class="bi ' + entry.icon + ' me-1"></span>' + count + ' ' + esc(entry.label) + '</span>';
+                html += '<span class="badge theme-secondary"><span class="bi ' + entry.icon + ' me-1"></span>' + count + ' ' + esc(entry.label) + '</span>';
             }
         });
 
@@ -10628,7 +10600,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // Said out loud, because the badge above counts the folders the
         // operator picked and not what is standing inside them.
         if (folderCount > 0) {
-            html += '<p class="empty-note mb-3">' + esc(L.delete_many_folder_note) + '</p>';
+            html += '<p class="empty-note mb-5">' + esc(L.delete_many_folder_note) + '</p>';
         }
 
         // Typing the word is for a deletion that takes something away without
@@ -10640,10 +10612,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             html += '<label class="form-label">' + esc(fmt(L.type_word_to_confirm, [L.confirm_word])) + '</label>' +
                 '<input type="text" id="folder_delete_name_input" class="form-control" autocomplete="off" placeholder="' + esc(L.confirm_word) + '" />' +
-                '<div class="form-text text-danger d-none" id="folder_delete_name_error">' + esc(L.word_does_not_match) + '</div>';
+                '<div class="form-text fg-danger d-none" id="folder_delete_name_error">' + esc(L.word_does_not_match) + '</div>';
         }
 
-        html += '<div id="folder_delete_progress" class="d-none mt-3"><div class="progress" style="height:6px;"><div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" style="width:100%"></div></div><p class="mt-2 mb-0 empty-note">' + esc(L.deleting) + '...</p></div>';
+        html += '<div id="folder_delete_progress" class="d-none mt-5"><div class="progress" style="height:6px;"><div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" style="width:100%"></div></div><p class="mt-3 mb-0 empty-note">' + esc(L.deleting) + '...</p></div>';
 
         body.innerHTML = html;
         confirmButton.disabled = (mode !== 'purge');
@@ -11525,7 +11497,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             heading += ' — ' + fmt(backupArea ? L.upload_refused_count : L.upload_blocked_count, [refused]);
         }
 
-        box.innerHTML = '<div class="d-flex align-items-baseline gap-2 mb-1">' +
+        box.innerHTML = '<div class="d-flex align-items-baseline gap-3 mb-1">' +
             '<span class="fw-semibold flex-grow-1">' + esc(heading) + '</span>' +
             '<button type="button" class="btn btn-sm btn-link p-0" id="upload_clear">' + esc(L.clear) + '</button>' +
             '</div>' + html;
@@ -11825,7 +11797,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     '<div class="tree-row' + ((node.id === state.groupId) ? ' active' : '') + (node.enabled ? '' : ' catalog-off') + '" data-folder-id="' + node.id + '"' +
                     ' data-name="' + esc(node.name) + '" data-parent-id="' + node.parent_id + '" data-can-edit="0" data-is-root="' + (node.is_root ? '1' : '0') + '" data-empty="' + (node.empty ? '1' : '0') + '" data-has-children="' + (node.has_children ? '1' : '0') + '" data-enabled="' + (node.enabled ? '1' : '0') + '">' +
                     '<span class="tree-toggle bi ' + (node.has_children ? ('bi-chevron-right' + (expanded ? ' open' : '')) : '') + '"></span>' +
-                    '<span class="bi ' + icon + ' text-primary"></span>' +
+                    '<span class="bi ' + icon + ' fg-primary"></span>' +
                     '<span class="tree-label' + (node.enabled ? '' : ' archived') + '" data-role="tree-name" title="' + esc(node.name) + '">' + esc(node.name) + '</span>' +
                     ((node.count > 0) ? ('<span class="tree-count">' + node.count + '</span>') : '') +
                     '</div><ul style="display:' + (expanded ? 'block' : 'none') + '"></ul>';
@@ -11954,7 +11926,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
                 html += '<div class="tree-row' + ((live && (String(entry.id) === String(here))) ? ' active' : '') +
                     '" data-shortcut-id="' + entry.id + '" title="' + esc(entry.name) + '">' +
-                    '<span class="tree-toggle"></span><span class="bi ' + icon + ' text-primary"></span>' +
+                    '<span class="tree-toggle"></span><span class="bi ' + icon + ' fg-primary"></span>' +
                     '<span class="tree-label">' + esc(entry.name) + '</span></div>';
             });
 
@@ -12440,7 +12412,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var body = document.getElementById('access_offcanvas_body');
 
             document.getElementById('access_offcanvas_label').innerHTML =
-                '<span class="bi bi-shield-lock me-2"></span>' + esc(L.commerce_access);
+                '<span class="bi bi-shield-lock me-3"></span>' + esc(L.commerce_access);
 
             var html = '<p class="form-text mt-0">' + esc(L.commerce_access_note) + '</p>';
 
@@ -12455,7 +12427,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
                 response.users.forEach(function (userRow) {
 
-                    html += '<div class="border-bottom pb-2 mb-2" data-user-id="' + userRow.id + '">' +
+                    html += '<div class="border-bottom pb-3 mb-3" data-user-id="' + userRow.id + '">' +
                         '<div class="fw-semibold text-break mb-1">' + esc(userRow.username) + '</div>' +
                         switchRow('manage', userRow.id, L.commerce_manage, userRow.manage) +
                         switchRow('reports', userRow.id, L.commerce_reports, userRow.reports) +
@@ -12463,7 +12435,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                         '</div>';
                 });
 
-                html += '</div><div class="d-grid mt-3"><button type="button" class="btn btn-primary" id="commerce_access_save_button">' + esc(L.save) + '</button></div>';
+                html += '</div><div class="d-grid mt-5"><button type="button" class="btn btn-solid theme-primary" id="commerce_access_save_button">' + esc(L.save) + '</button></div>';
 
                 body.innerHTML = html;
 
@@ -12500,9 +12472,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         var id = 'commerce_' + right + '_' + userId;
 
-        return '<div class="form-check form-switch">' +
-            '<input class="form-check-input" type="checkbox" role="switch" id="' + id + '" data-right="' + right + '"' + (checked ? ' checked' : '') + ' />' +
-            '<label class="form-check-label small" for="' + id + '">' + esc(label) + '</label></div>';
+        return '<div class="form-field">' +
+            '<div class="switch"><input class="" type="checkbox" role="switch" id="' + id + '" data-right="' + right + '"' + (checked ? ' checked' : '') + ' /></div>' +
+            '<label class="small" for="' + id + '">' + esc(label) + '</label></div>';
     }
 
     function openAccessPanel(item) {
@@ -12513,7 +12485,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             // The two panels share one offcanvas, so each sets its own title.
             document.getElementById('access_offcanvas_label').innerHTML =
-                '<span class="bi bi-shield-lock me-2"></span>' + esc(L.access_permissions);
+                '<span class="bi bi-shield-lock me-3"></span>' + esc(L.access_permissions);
             var folder = response.folder;
 
             var options = '';
@@ -12543,13 +12515,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                         var inherited = '';
 
                         if (userRow.inherited_rights > 0) {
-                            inherited = '<span class="badge text-bg-secondary" title="' + esc(L.inherited_from_parent) + '">' +
+                            inherited = '<span class="badge theme-secondary" title="' + esc(L.inherited_from_parent) + '">' +
                                 esc(userRow.inherited_rights === 2 ? L.edit_access : L.view_access) + ' • ' + esc(L.inherit) + '</span>';
                         }
 
                         usersHtml += '<tr data-user-id="' + userRow.id + '">' +
                             '<td class="text-break">' + esc(userRow.username) + '<div>' + inherited + '</div></td>' +
-                            '<td><select class="form-select form-select-sm access-rights-select">' +
+                            '<td><select class="form-control form-control-sm access-rights-select">' +
                             '<option value="0"' + (userRow.rights === 0 ? ' selected' : '') + '>' + esc(L.no_access) + '</option>' +
                             '<option value="1"' + (userRow.rights === 1 ? ' selected' : '') + '>' + esc(L.view_access) + '</option>' +
                             '<option value="2"' + (userRow.rights === 2 ? ' selected' : '') + '>' + esc(L.edit_access) + '</option>' +
@@ -12563,15 +12535,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             }
 
             body.innerHTML =
-                '<h6 class="text-break mb-3"><span class="bi bi-folder-fill me-2 ' + folder.access_control_type + '"></span>' + esc(folder.name) + '</h6>' +
-                '<div class="mb-3">' +
+                '<h6 class="text-break mb-5"><span class="bi bi-folder-fill me-3 ' + folder.access_control_type + '"></span>' + esc(folder.name) + '</h6>' +
+                '<div class="mb-5">' +
                 '<label class="form-label">' + esc(L.access_control) + '</label>' +
-                '<select id="access_type_select" class="form-select">' + options + '</select>' +
+                '<select id="access_type_select" class="form-control">' + options + '</select>' +
                 inheritNote +
                 '<div class="form-text">' + esc(L.access_note) + '</div>' +
                 '</div>' +
                 (usersHtml ? '<hr /><h6>' + esc(L.access_permissions) + '</h6>' + usersHtml : '') +
-                '<div class="mt-3 text-end"><button type="button" id="access_save_button" class="btn btn-success"><span class="bi bi-save me-2"></span>' + esc(L.save) + '</button></div>';
+                '<div class="mt-5 text-end"><button type="button" id="access_save_button" class="btn btn-solid theme-success"><span class="bi bi-save me-3"></span>' + esc(L.save) + '</button></div>';
 
             body.querySelectorAll('.access-rights-select').forEach(function (select) {
                 select.addEventListener('change', function () {
@@ -12632,31 +12604,31 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             if (response.styles) {
                 stylesHtml =
                     '<hr />' +
-                    '<div class="mb-3">' +
+                    '<div class="mb-5">' +
                     '<label class="form-label" for="settings_style_select">' + esc(L.desktop_style) + '</label>' +
-                    '<select id="settings_style_select" class="form-select">' + response.styles.desktop + '</select>' +
+                    '<select id="settings_style_select" class="form-control">' + response.styles.desktop + '</select>' +
                     '</div>' +
-                    '<div class="mb-3">' +
+                    '<div class="mb-5">' +
                     '<label class="form-label" for="settings_mobile_style_select">' + esc(L.mobile_style) + '</label>' +
-                    '<select id="settings_mobile_style_select" class="form-select">' + response.styles.mobile + '</select>' +
+                    '<select id="settings_mobile_style_select" class="form-control">' + response.styles.mobile + '</select>' +
                     '<div class="form-text">' + esc(L.styles_note) + '</div>' +
                     '</div>';
             }
 
             body.innerHTML =
-                '<h6 class="text-break mb-3"><span class="bi bi-folder-fill me-2 ' + folder.access_control_type + '"></span>' + esc(folder.name) + '</h6>' +
-                '<div class="mb-3">' +
+                '<h6 class="text-break mb-5"><span class="bi bi-folder-fill me-3 ' + folder.access_control_type + '"></span>' + esc(folder.name) + '</h6>' +
+                '<div class="mb-5">' +
                 '<label class="form-label" for="settings_order_input">' + esc(L.sorting) + '</label>' +
                 '<input type="number" id="settings_order_input" class="form-control" inputmode="numeric" value="' + esc(String(folder.order)) + '" />' +
                 '<div class="form-text">' + esc(L.sorting_note) + '</div>' +
                 '</div>' +
-                '<div class="form-check form-switch mb-3">' +
-                '<input class="form-check-input" type="checkbox" role="switch" id="settings_archived_input"' + (folder.archived ? ' checked' : '') + ' />' +
-                '<label class="form-check-label" for="settings_archived_input">' + esc(L.archive) + '</label>' +
+                '<div class="form-field mb-5">' +
+                '<div class="switch"><input class="" type="checkbox" role="switch" id="settings_archived_input"' + (folder.archived ? ' checked' : '') + ' /></div>' +
+                '<label class="" for="settings_archived_input">' + esc(L.archive) + '</label>' +
                 '<div class="form-text">' + esc(L.archive_note) + '</div>' +
                 '</div>' +
                 stylesHtml +
-                '<div class="mt-3 text-end"><button type="button" id="settings_save_button" class="btn btn-success"><span class="bi bi-save me-2"></span>' + esc(L.save) + '</button></div>';
+                '<div class="mt-5 text-end"><button type="button" id="settings_save_button" class="btn btn-solid theme-success"><span class="bi bi-save me-3"></span>' + esc(L.save) + '</button></div>';
 
             document.getElementById('settings_save_button').addEventListener('click', function () {
                 var payload = {
@@ -12709,9 +12681,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var body = document.getElementById('bulk_pages_offcanvas_body');
 
             function tristate(id, label, note) {
-                return '<div class="mb-3">' +
+                return '<div class="mb-5">' +
                     '<label class="form-label" for="' + id + '">' + esc(label) + '</label>' +
-                    '<select id="' + id + '" class="form-select bulk-field" data-field="' + id.replace('bulk_', '') + '">' +
+                    '<select id="' + id + '" class="form-control bulk-field" data-field="' + id.replace('bulk_', '') + '">' +
                     '<option value="">' + esc(L.do_not_change) + '</option>' +
                     '<option value="1">' + esc(L.yes) + '</option>' +
                     '<option value="0">' + esc(L.no) + '</option>' +
@@ -12721,7 +12693,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             }
 
             var html =
-                '<p class="mb-3">' + esc(fmt(L.bulk_edit_pages_count, [pages.length])) + '</p>' +
+                '<p class="mb-5">' + esc(fmt(L.bulk_edit_pages_count, [pages.length])) + '</p>' +
                 tristate('bulk_sitemap', L.sitemap_label, L.bulk_sitemap_note) +
                 tristate('bulk_search', L.searchable_label, L.bulk_search_note) +
                 tristate('bulk_comments', L.comments_label, L.bulk_comments_note);
@@ -12736,14 +12708,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             if (response.styles) {
                 html +=
                     '<hr />' +
-                    '<div class="mb-3">' +
+                    '<div class="mb-5">' +
                     '<label class="form-label" for="bulk_style">' + esc(L.desktop_style) + '</label>' +
-                    '<select id="bulk_style" class="form-select bulk-field" data-field="style">' +
+                    '<select id="bulk_style" class="form-control bulk-field" data-field="style">' +
                     '<option value="">' + esc(L.do_not_change) + '</option>' + response.styles.desktop +
                     '</select></div>' +
-                    '<div class="mb-3">' +
+                    '<div class="mb-5">' +
                     '<label class="form-label" for="bulk_mobile_style_id">' + esc(L.mobile_style) + '</label>' +
-                    '<select id="bulk_mobile_style_id" class="form-select bulk-field" data-field="mobile_style_id">' +
+                    '<select id="bulk_mobile_style_id" class="form-control bulk-field" data-field="mobile_style_id">' +
                     '<option value="">' + esc(L.do_not_change) + '</option>' + response.styles.mobile +
                     '</select>' +
                     // Said before the save, not after: a page the visual
@@ -12754,7 +12726,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     '</div>';
             }
 
-            html += '<div class="mt-3 text-end"><button type="button" id="bulk_pages_save_button" class="btn btn-success" disabled><span class="bi bi-save me-2"></span>' + esc(L.save) + '</button></div>';
+            html += '<div class="mt-5 text-end"><button type="button" id="bulk_pages_save_button" class="btn btn-solid theme-success" disabled><span class="bi bi-save me-3"></span>' + esc(L.save) + '</button></div>';
 
             body.innerHTML = html;
 
@@ -12817,9 +12789,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     function bulkSelect(id, label, options, note) {
 
-        var html = '<div class="mb-3">' +
+        var html = '<div class="mb-5">' +
             '<label class="form-label" for="' + id + '">' + esc(label) + '</label>' +
-            '<select id="' + id + '" class="form-select bulk-field" data-field="' + esc(id.replace('bulk_', '')) + '">' +
+            '<select id="' + id + '" class="form-control bulk-field" data-field="' + esc(id.replace('bulk_', '')) + '">' +
             '<option value="">' + esc(L.do_not_change) + '</option>';
 
         options.forEach(function (option) {
@@ -12838,7 +12810,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // until then, because a box with nothing to attach itself to is a
     // question the operator cannot answer.
     function bulkCompanion(id, inner) {
-        return '<div class="mb-3 d-none" id="' + id + '">' + inner + '</div>';
+        return '<div class="mb-5 d-none" id="' + id + '">' + inner + '</div>';
     }
 
     // Reads the panel: every field that says something, by name. The
@@ -12889,10 +12861,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             });
 
             var html =
-                '<p class="mb-3">' + esc(fmt(L.bulk_edit_files_count, [files.length])) + '</p>' +
-                '<div class="mb-3">' +
+                '<p class="mb-5">' + esc(fmt(L.bulk_edit_files_count, [files.length])) + '</p>' +
+                '<div class="mb-5">' +
                 '<label class="form-label" for="bulk_folder_id">' + esc(L.bulk_move_to_folder) + '</label>' +
-                '<select id="bulk_folder_id" class="form-select bulk-field" data-field="folder_id"></select>' +
+                '<select id="bulk_folder_id" class="form-control bulk-field" data-field="folder_id"></select>' +
                 '</div>';
 
             if (response.is_designer) {
@@ -12911,9 +12883,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // with the rest and it is not undone by setting it back.
             if ((optimizable.length > 0) || (resizable.length > 0)) {
                 html += '<hr />' +
-                    '<div class="mb-3">' +
+                    '<div class="mb-5">' +
                     '<label class="form-label" for="bulk_optimize_mode">' + esc(L.bulk_optimize_label) + '</label>' +
-                    '<select id="bulk_optimize_mode" class="form-select">' +
+                    '<select id="bulk_optimize_mode" class="form-control">' +
                     '<option value="">' + esc(L.bulk_optimize_none) + '</option>' +
                     (optimizable.length > 0 ? '<option value="optimize">' + esc(L.bulk_optimize_only) + '</option>' : '') +
                     (resizable.length > 0 ? '<option value="resize">' + esc(fmt(L.resize_optimize, [state.caps.resize_target])) + '</option>' : '') +
@@ -12922,7 +12894,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     '</div>';
             }
 
-            html += '<div class="mt-3 text-end"><button type="button" id="bulk_files_save_button" class="btn btn-success" disabled><span class="bi bi-save me-2"></span>' + esc(L.save) + '</button></div>';
+            html += '<div class="mt-5 text-end"><button type="button" id="bulk_files_save_button" class="btn btn-solid theme-success" disabled><span class="bi bi-save me-3"></span>' + esc(L.save) + '</button></div>';
 
             body.innerHTML = html;
 
@@ -13040,12 +13012,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             function zoneChecks(name, label) {
 
-                var html = '<div class="mb-3"><label class="form-label">' + esc(label) + '</label>';
+                var html = '<div class="mb-5"><label class="form-label">' + esc(label) + '</label>';
 
                 (response.zones || []).forEach(function (zone) {
-                    html += '<div class="form-check">' +
-                        '<input class="form-check-input bulk-zone" type="checkbox" value="' + zone.id + '" id="' + name + '_' + zone.id + '" data-zone-list="' + name + '" />' +
-                        '<label class="form-check-label" for="' + name + '_' + zone.id + '">' + esc(zone.name) + '</label>' +
+                    html += '<div class="form-field">' +
+                        '<input class="check bulk-zone" type="checkbox" value="' + zone.id + '" id="' + name + '_' + zone.id + '" data-zone-list="' + name + '" />' +
+                        '<label class="" for="' + name + '_' + zone.id + '">' + esc(zone.name) + '</label>' +
                         '</div>';
                 });
 
@@ -13055,7 +13027,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var currency = response.currency_symbol || '';
 
             var html =
-                '<p class="mb-3">' + esc(fmt(L.bulk_edit_products_count, [products.length])) + '</p>' +
+                '<p class="mb-5">' + esc(fmt(L.bulk_edit_products_count, [products.length])) + '</p>' +
                 bulkSelect('bulk_enabled', L.bulk_status_label, [['1', L.bulk_publish], ['0', L.bulk_unpublish]]) +
                 '<hr />' +
                 bulkSelect('bulk_price_method', L.bulk_price_label, [
@@ -13092,14 +13064,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             if (response.groups && response.groups.length > 0) {
                 html += '<hr />' +
-                    '<div class="mb-3">' +
+                    '<div class="mb-5">' +
                     '<label class="form-label" for="bulk_add_group">' + esc(L.bulk_group_add) + '</label>' +
-                    '<select id="bulk_add_group" class="form-select bulk-field" data-field="add_group">' +
+                    '<select id="bulk_add_group" class="form-control bulk-field" data-field="add_group">' +
                     '<option value="">' + esc(L.do_not_change) + '</option>' + groupOptions() +
                     '</select></div>' +
-                    '<div class="mb-3">' +
+                    '<div class="mb-5">' +
                     '<label class="form-label" for="bulk_remove_group">' + esc(L.bulk_group_remove) + '</label>' +
-                    '<select id="bulk_remove_group" class="form-select bulk-field" data-field="remove_group">' +
+                    '<select id="bulk_remove_group" class="form-control bulk-field" data-field="remove_group">' +
                     '<option value="">' + esc(L.do_not_change) + '</option>' + groupOptions() +
                     '</select>' +
                     '<div class="form-text">' + esc(L.bulk_group_note) + '</div>' +
@@ -13107,13 +13079,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             }
 
             if (response.barcode_ready) {
-                html += '<hr /><div class="form-check form-switch mb-3">' +
-                    '<input class="form-check-input bulk-field" type="checkbox" id="bulk_assign_barcodes" data-field="assign_barcodes" />' +
-                    '<label class="form-check-label" for="bulk_assign_barcodes">' + esc(L.bulk_barcodes) + '</label>' +
+                html += '<hr /><div class="form-field mb-5">' +
+                    '<div class="switch"><input class="bulk-field" type="checkbox" id="bulk_assign_barcodes" data-field="assign_barcodes" /></div>' +
+                    '<label class="" for="bulk_assign_barcodes">' + esc(L.bulk_barcodes) + '</label>' +
                     '</div>';
             }
 
-            html += '<div class="mt-3 text-end"><button type="button" id="bulk_products_save_button" class="btn btn-success" disabled><span class="bi bi-save me-2"></span>' + esc(L.save) + '</button></div>';
+            html += '<div class="mt-5 text-end"><button type="button" id="bulk_products_save_button" class="btn btn-solid theme-success" disabled><span class="bi bi-save me-3"></span>' + esc(L.save) + '</button></div>';
 
             body.innerHTML = html;
 
@@ -13531,7 +13503,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var html = '';
 
         function tool(action, icon, label, extra) {
-            return '<button type="button" class="btn btn-sm btn-outline-secondary" data-file-tool="' + action + '"' + (extra || '') + '>' +
+            return '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-file-tool="' + action + '"' + (extra || '') + '>' +
                 '<span class="bi ' + icon + ' me-1"></span>' + esc(label) + '</button>';
         }
 
@@ -13544,7 +13516,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // alone, as asked -- the word is in the tooltip and for screen
         // readers.
         if ((kind === 'image') && file.on_disk && (ROTATABLE_TYPES.indexOf(file.type) !== -1)) {
-            html += '<button type="button" class="btn btn-sm btn-outline-secondary" data-file-tool="rotate" title="' + esc(L.rotate_right) + '" aria-label="' + esc(L.rotate_right) + '">' +
+            html += '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-file-tool="rotate" title="' + esc(L.rotate_right) + '" aria-label="' + esc(L.rotate_right) + '">' +
                 '<span class="bi bi-arrow-clockwise"></span></button>';
         }
 
@@ -14570,7 +14542,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // is measured once it is up and pulled inside.
     function clampToolbarMenu(menu) {
 
-        var wrap = menu.closest('.dropdown');
+        var wrap = menu.closest('.pg-menu-wrap');
 
         if (!wrap) { return; }
 
@@ -14594,8 +14566,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // menu is display:none, and a hidden element has no width to measure.
     pgUI.menu.on('#explorer_toolbar', 'shown', function (event) {
 
-        var wrap = event.target.closest('.dropdown');
-        var menu = wrap ? wrap.querySelector('.dropdown-menu') : null;
+        var wrap = event.target.closest('.pg-menu-wrap');
+        var menu = wrap ? wrap.querySelector('.menu') : null;
 
         if (menu) { clampToolbarMenu(menu); }
     });
@@ -14679,7 +14651,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // Any window that is open owns the keyboard. Naming the two that
         // existed meant every window added afterwards quietly let Delete and
         // the arrow keys through to the grid behind it.
-        if (document.querySelector('.modal.show, .offcanvas.show')) { return; }
+        if (document.querySelector('.dialog[open], .drawer[open]')) { return; }
 
         var key = event.key;
         var selected = selectedItems();

@@ -1164,19 +1164,19 @@ function pg_order_list_status_html($order, $paid_known)
     $html = '';
 
     if ($status == 'incomplete') {
-        $html = '<span class="badge bg-warning text-dark bg-gradient fw-light">' . lang('Incomplete') . '</span>';
+        $html = '<span class="badge theme-warning fg-black bg-gradient fw-light">' . lang('Incomplete') . '</span>';
     } elseif ($status == 'complete') {
-        $html = '<span class="badge bg-primary bg-gradient fw-light">' . lang('Complete') . '</span>';
+        $html = '<span class="badge theme-primary bg-gradient fw-light">' . lang('Complete') . '</span>';
     } elseif ($status == 'exported') {
-        $html = '<span class="badge bg-success bg-gradient fw-light">' . lang('Exported') . '</span>';
+        $html = '<span class="badge theme-success bg-gradient fw-light">' . lang('Exported') . '</span>';
     } elseif (($status == 'canceled') || ($status == 'cancelled')) {
-        $html = '<span class="badge bg-danger bg-gradient fw-light">' . lang('Cancelled') . '</span>';
+        $html = '<span class="badge theme-danger bg-gradient fw-light">' . lang('Cancelled') . '</span>';
     }
 
     // A bank transfer order whose money has not arrived is complete but not
     // paid; a second badge says so without changing the status itself.
     if ($paid_known && pg_order_awaiting_payment($order)) {
-        $html .= '<span class="badge bg-warning text-dark bg-gradient fw-light ms-1">' . lang('Awaiting Payment') . '</span>';
+        $html .= '<span class="badge theme-warning fg-black bg-gradient fw-light ms-1">' . lang('Awaiting Payment') . '</span>';
     }
 
     // parasut_exported is set by two different things: the spreadsheet export
@@ -1197,7 +1197,7 @@ function pg_order_list_status_html($order, $paid_known)
     }
 
     if ($parasut_unsure) {
-        $html .= '<span title="' . h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.')) . '" class="badge bg-warning text-dark bg-gradient fw-light ms-1">' . h(lang('Check Paraşüt')) . '</span>';
+        $html .= '<span title="' . h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.')) . '" class="badge theme-warning fg-black bg-gradient fw-light ms-1">' . h(lang('Check Paraşüt')) . '</span>';
     }
 
     return $html;

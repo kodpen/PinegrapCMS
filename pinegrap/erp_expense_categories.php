@@ -107,17 +107,17 @@ foreach ($ready ? erp_expense_categories() : array() as $category) {
             <td style="width:6rem"><input type="number" class="form-control form-control-sm text-end" name="' . h($field) . '[sort_order]" value="' . (int) $category['sort_order'] . '" step="10" aria-label="' . h(lang('Sort Order')) . '" /></td>
             <td><input type="text" class="form-control form-control-sm" name="' . h($field) . '[name]" value="' . h((string) $category['name']) . '" maxlength="100" required aria-label="' . h(lang('Name')) . '" /></td>
             <td style="width:10rem"><input type="text" class="form-control form-control-sm font-monospace" name="' . h($field) . '[code]" value="' . h((string) $category['code']) . '" maxlength="32" placeholder="770" aria-label="' . h(lang('Account code')) . '" /></td>
-            <td class="text-end text-body-secondary" style="width:6rem">' . (int) ($counts[$category_id] ?? 0) . '</td>
+            <td class="text-end fg-secondary" style="width:6rem">' . (int) ($counts[$category_id] ?? 0) . '</td>
             ' . ($with_deductible ? '<td style="width:11rem">
-                <div class="form-check form-switch mb-0">
-                    <input class="form-check-input" type="checkbox" id="category_deductible_' . $category_id . '" name="' . h($field) . '[tax_deductible]" value="1"' . (((int) $category['tax_deductible'] === 1) ? ' checked' : '') . ' />
-                    <label class="form-check-label small" for="category_deductible_' . $category_id . '">' . lang('Tax taken back') . '</label>
+                <div class="form-field mb-0">
+                    <div class="switch"><input class="" type="checkbox" id="category_deductible_' . $category_id . '" name="' . h($field) . '[tax_deductible]" value="1"' . (((int) $category['tax_deductible'] === 1) ? ' checked' : '') . ' /></div>
+                    <label class="small" for="category_deductible_' . $category_id . '">' . lang('Tax taken back') . '</label>
                 </div>
             </td>' : '') . '
             <td style="width:7rem">
-                <div class="form-check form-switch mb-0">
-                    <input class="form-check-input" type="checkbox" id="category_active_' . $category_id . '" name="' . h($field) . '[is_active]" value="1"' . (((int) $category['is_active'] === 1) ? ' checked' : '') . ' />
-                    <label class="form-check-label small" for="category_active_' . $category_id . '">' . lang('Offered') . '</label>
+                <div class="form-field mb-0">
+                    <div class="switch"><input class="" type="checkbox" id="category_active_' . $category_id . '" name="' . h($field) . '[is_active]" value="1"' . (((int) $category['is_active'] === 1) ? ' checked' : '') . ' /></div>
+                    <label class="small" for="category_active_' . $category_id . '">' . lang('Offered') . '</label>
                 </div>
             </td>
         </tr>';
@@ -138,14 +138,14 @@ pg_page_shell([
 ]) . '
 <main id="content" class="container-fluid">
     <div class="row">
-        <div class="col-12 col-xxl-9">
+        <div class="col-12 2xl:col-9">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
             <form method="post" action="erp_expense_categories.php">
                 ' . get_token_field() . '
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="card-body p-0 table-responsive">
                         <table class="table align-middle mb-0">
                             <thead>
@@ -159,15 +159,15 @@ pg_page_shell([
                                 </tr>
                             </thead>
                             <tbody>' . $output_rows . '
-                                <tr class="table-light">
-                                    <td class="text-body-secondary small">' . lang('New') . '</td>
+                                <tr class="pg-table-light">
+                                    <td class="fg-secondary small">' . lang('New') . '</td>
                                     <td><input type="text" class="form-control form-control-sm" name="new_name" maxlength="100" placeholder="' . h(lang('A new category')) . '" aria-label="' . h(lang('A new category')) . '" /></td>
                                     <td><input type="text" class="form-control form-control-sm font-monospace" name="new_code" maxlength="32" aria-label="' . h(lang('Account code')) . '" /></td>
                                     <td></td>
                                     ' . ($with_deductible ? '<td>
-                                        <div class="form-check form-switch mb-0">
-                                            <input class="form-check-input" type="checkbox" id="new_tax_deductible" name="new_tax_deductible" value="1" checked />
-                                            <label class="form-check-label small" for="new_tax_deductible">' . lang('Tax taken back') . '</label>
+                                        <div class="form-field mb-0">
+                                            <div class="switch"><input class="" type="checkbox" id="new_tax_deductible" name="new_tax_deductible" value="1" checked /></div>
+                                            <label class="small" for="new_tax_deductible">' . lang('Tax taken back') . '</label>
                                         </div>
                                     </td>' : '') . '
                                     <td></td>
@@ -175,11 +175,11 @@ pg_page_shell([
                             </tbody>
                         </table>
                     </div>
-                    <div class="form-text px-3 pb-3">' . lang('The account code is optional: the number the accountant books the category under (for example 770 for general expenses). It goes into the accountant\'s pack with each expense. A category switched off is no longer offered for new expenses; the ones already in it keep it.') . ($with_deductible ? ' ' . lang('"Tax taken back" is where a new expense of the category starts: switch it off for spending whose tax cannot be deducted (ask your accountant which). Each expense can still be changed, and the expenses already written keep theirs.') : '') . '</div>
+                    <div class="form-text px-5 pb-5">' . lang('The account code is optional: the number the accountant books the category under (for example 770 for general expenses). It goes into the accountant\'s pack with each expense. A category switched off is no longer offered for new expenses; the ones already in it keep it.') . ($with_deductible ? ' ' . lang('"Tax taken back" is where a new expense of the category starts: switch it off for spending whose tax cannot be deducted (ask your accountant which). Each expense can still be changed, and the expenses already written keep theirs.') : '') . '</div>
                 </div>
-                <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
-                        <button type="submit" class="btn my-1 btn-success"' . ($ready ? '' : ' disabled') . '><i class="bi bi-check-circle me-2" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
+                        <button type="submit" class="btn my-1 btn-solid theme-success"' . ($ready ? '' : ' disabled') . '><i class="bi bi-check-circle me-3" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
                     </div>
                 </nav>
             </form>

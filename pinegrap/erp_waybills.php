@@ -85,13 +85,13 @@ foreach ($waybills as $waybill) {
     $invoice_state = erp_waybill_invoice_state($waybill);
 
     if ($is_cancelled) {
-        $output_state = '<span class="text-danger">' . lang('Cancelled') . '</span>';
+        $output_state = '<span class="fg-danger">' . lang('Cancelled') . '</span>';
     } elseif ($invoice_state === 'invoiced') {
-        $output_state = '<span class="text-success">' . lang('Invoiced') . '</span>';
+        $output_state = '<span class="fg-success">' . lang('Invoiced') . '</span>';
     } elseif ($invoice_state === 'draft') {
-        $output_state = '<span class="text-warning">' . lang('Invoice drafted') . '</span>';
+        $output_state = '<span class="fg-warning">' . lang('Invoice drafted') . '</span>';
     } else {
-        $output_state = '<span class="text-primary">' . lang('Not yet invoiced') . '</span>';
+        $output_state = '<span class="fg-primary">' . lang('Not yet invoiced') . '</span>';
     }
 
     $output_invoice = '';
@@ -111,9 +111,9 @@ foreach ($waybills as $waybill) {
     }
 
     $output_rows .=
-        '<tr' . erp_drawer_row_attributes($id) . ($is_cancelled ? ' class="text-body-secondary"' : '') . '>
+        '<tr' . erp_drawer_row_attributes($id) . ($is_cancelled ? ' class="fg-secondary"' : '') . '>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('View') . '" onclick="window.location.href=\'edit_erp_waybill.php?id=' . $id . '\'"><i class="bi bi-eye"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('View') . '" onclick="window.location.href=\'edit_erp_waybill.php?id=' . $id . '\'"><i class="bi bi-eye"></i></button>
             </td>
             <td class="align-middle text-nowrap chart_label" data-order="' . h($waybill['full_number']) . '">' . h($waybill['full_number']) . '</td>
             <td class="align-middle text-nowrap" data-order="' . h($waybill['issue_date']) . '">' . h(prepare_form_data_for_output($waybill['issue_date'], 'date')) . '</td>
@@ -145,15 +145,15 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_waybill.php"><i class="bi bi-plus-lg me-1"></i>' . lang('New Delivery Note') . '</a>
+                <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_waybill.php"><i class="bi bi-plus-lg me-1"></i>' . lang('New Delivery Note') . '</a>
                 <form action="add_erp_waybill.php" method="get" class="d-flex align-items-center gap-1">
-                    <select name="order_id" class="form-select form-select-sm" aria-label="' . lang('Order') . '" style="max-width:20rem">' . $output_order_options . '</select>
-                    <button type="submit" class="btn btn-sm btn-outline-secondary text-nowrap"><i class="bi bi-cart me-1"></i>' . lang('Open') . '</button>
+                    <select name="order_id" class="form-control form-control-sm" aria-label="' . lang('Order') . '" style="max-width:20rem">' . $output_order_options . '</select>
+                    <button type="submit" class="btn btn-sm btn-outline theme-secondary text-nowrap"><i class="bi bi-cart me-1"></i>' . lang('Open') . '</button>
                 </form>
                 <div class="pg-toolbar-grow"></div>
                 ' . pg_filter_select('filter', array('' => lang('All')) + $filter_names, $filter, array('label' => lang('Status'), 'icon' => 'funnel', 'action' => 'erp_waybills.php')) . '
             </nav>
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none;">
                         <thead>

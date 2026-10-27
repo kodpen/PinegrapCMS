@@ -50,10 +50,10 @@ if (!$_POST) {
     if(!isset($_SESSION['software']['mass_edit']['tags']) || !is_string($_SESSION['software']['mass_edit']['tags']) || ($_SESSION['software']['mass_edit']['tags'] ?? '') == ''){
       
         $outputs = '
-        <div class="row justify-content-center mt-5 pt-5">
-            <div class="col position-relative mb-5">
+        <div class="row justify-content-center mt-12 pt-12">
+            <div class="col position-relative mb-12">
                 <label for="page_options" class="form-label">' . lang(array('string'=>'Select one or more {var:1}','vars'=>'Page Area' )) . '</label>
-                <select class="form-select" data-pg-combobox id="page_options" name="page_options[]" multiple="multiple">
+                <select class="form-control" data-pg-combobox id="page_options" name="page_options[]" multiple="multiple">
                     <optgroup value="" label="' . lang('Main Informations') . '">
                         <option value="page_name">' . lang('Page Name') . '</option>
                     </optgroup>
@@ -68,7 +68,7 @@ if (!$_POST) {
             <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data select buttons">
                 <div class="container">
                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                        <button type="button" id="get_form" value="Get Form" class=" btn mb-1 mt-1 btn-primary disabled"><span class="material-icons me-2">save</span>' . lang(array('string'=>'Get Edit Form') ) . '</button>
+                        <button type="button" id="get_form" value="Get Form" class=" btn mb-1 mt-1 btn-solid theme-primary disabled"><span class="material-icons me-3">save</span>' . lang(array('string'=>'Get Edit Form') ) . '</button>
                     </div>
                 </div>
             </nav>
@@ -152,14 +152,14 @@ if (!$_POST) {
             while ($row = mysqli_fetch_assoc($result)) {
                 //row for page
                 $outputs .= '
-                    <div class="col-12 col-lg-6">
-                        <div class="card my-4">
+                    <div class="col-12 lg:col-6">
+                        <div class="card my-7">
                             <div class="card-header no-popover " title="' . h($row['page_name']) . '">
-                                <span class="bi bi-window-fullscreen me-2"></span>
+                                <span class="bi bi-window-fullscreen me-3"></span>
                                 <span class="text-truncate">' . h($row['page_name']) . '</span>
                             </div>
                             <div class="card-body"> 
-                                <div class="row g-4">';
+                                <div class="row g-7">';
 
                 //page name change function not integrated yet.
                 if($output_page_name != false){
@@ -190,16 +190,16 @@ if (!$_POST) {
                 if($output_site_search != false || $output_page_search_keywords != false){
                     $outputs .= '
                                     <div class="col-12">
-                                        <div class="form-check form-switch">
+                                        <div class="form-field">
                                             <input type="hidden" name="page_search_' . $row['page_id'] . '" value="0" />
-                                            <input value="1"' . checkifchecked($row['page_search']) . ' id="page_search_' . $row['page_id'] . '" name="page_search_' . $row['page_id'] . '" class="form-check-input collapse-switcher" type="checkbox"  data-bs-target="#show_or_hide_search_' . $row['page_id'] . '"/>
-                                            <label class="form-check-label" for="page_search_' . $row['page_id'] . '">' . lang('Include in Site Search') . '</label>
+                                            <div class="switch"><input value="1"' . checkifchecked($row['page_search']) . ' id="page_search_' . $row['page_id'] . '" name="page_search_' . $row['page_id'] . '" class="collapse-switcher" type="checkbox"  data-bs-target="#show_or_hide_search_' . $row['page_id'] . '"/></div>
+                                            <label class="" for="page_search_' . $row['page_id'] . '">' . lang('Include in Site Search') . '</label>
                                         </div>
-                                        <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_search_' . $row['page_id'] . '">
+                                        <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_search_' . $row['page_id'] . '">
                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                             <div class="popover-body">
                                                 <div class="row">
-                                                    <div class="col-12 mt-3 mb-2">
+                                                    <div class="col-12 mt-5 mb-3">
                                                         <label for="page_search_keywords_' . $row['page_id'] . '" class="form-label">' . lang('Promote on Keyword') . '</label>
                                                         <input value="' . h($row['page_search_keywords']) . '" type="text" name="page_search_keywords_' . $row['page_id'] . '" id="page_search_keywords_' . $row['page_id'] . '" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"/>
                                                     </div>
@@ -227,7 +227,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
                     <div class="container">
                         <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                            <button type="submit" value="Save Changes" class=" btn mb-1 mt-1 btn-success" data-confirm-content="' . lang('WARNING: The changes you make will be applied permanently.') . '"><span class="material-icons me-2">send</span>' . lang(array('string'=>'Apply Changes') ) . '</button>
+                            <button type="submit" value="Save Changes" class=" btn mb-1 mt-1 btn-solid theme-success" data-confirm-content="' . lang('WARNING: The changes you make will be applied permanently.') . '"><span class="material-icons me-3">send</span>' . lang(array('string'=>'Apply Changes') ) . '</button>
                         </div>
                     </div>
                 </nav>';
@@ -235,8 +235,8 @@ if (!$_POST) {
 
     // --- Find & Replace card (always visible, separate form) ---
     $output_find_replace = '
-        <div class="card mb-4">
-            <div class="card-header d-flex align-items-center gap-2">
+        <div class="card mb-7">
+            <div class="card-header d-flex align-items-center gap-3">
                 <i class="bi bi-arrow-left-right"></i>
                 <strong>' . lang('Find & Replace') . '</strong>
             </div>
@@ -244,46 +244,46 @@ if (!$_POST) {
                 <form method="post" action="' . h($_SERVER['PHP_SELF']) . '" class="disable_shortcut">
                     ' . get_token_field() . '
                     <input type="hidden" name="action" value="find_replace">
-                    <div class="row g-3 align-items-end">
-                        <div class="col-12 col-md-auto">
-                            <label class="form-label fw-semibold mb-2">' . lang('Apply to Fields') . '</label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="fr_fields[]"
+                    <div class="row g-5 align-items-end">
+                        <div class="col-12 md:col-auto">
+                            <label class="form-label fw-semibold mb-3">' . lang('Apply to Fields') . '</label>
+                            <div class="form-field">
+                                <input class="check" type="checkbox" name="fr_fields[]"
                                     value="page_name" id="fr_page_name">
-                                <label class="form-check-label" for="fr_page_name">' . lang('Page Name') . '</label>
+                                <label class="" for="fr_page_name">' . lang('Page Name') . '</label>
                             </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="fr_fields[]"
+                            <div class="form-field">
+                                <input class="check" type="checkbox" name="fr_fields[]"
                                     value="page_title" id="fr_page_title" checked>
-                                <label class="form-check-label" for="fr_page_title">' . lang('Web Browser Title') . '</label>
+                                <label class="" for="fr_page_title">' . lang('Web Browser Title') . '</label>
                             </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="fr_fields[]"
+                            <div class="form-field">
+                                <input class="check" type="checkbox" name="fr_fields[]"
                                     value="page_meta_description" id="fr_meta_desc" checked>
-                                <label class="form-check-label" for="fr_meta_desc">' . lang('Web Browser Description') . '</label>
+                                <label class="" for="fr_meta_desc">' . lang('Web Browser Description') . '</label>
                             </div>
                         </div>
-                        <div class="col-12 col-sm-6 col-md">
+                        <div class="col-12 sm:col-6 md:col">
                             <label class="form-label" for="find_text">' . lang('Find') . '</label>
                             <input type="text" name="find_text" id="find_text"
                                 class="form-control font-monospace"
                                 placeholder="' . lang('Text to find...') . '">
                         </div>
-                        <div class="col-12 col-sm-6 col-md">
+                        <div class="col-12 sm:col-6 md:col">
                             <label class="form-label" for="replace_text">' . lang('Replace with') . '</label>
                             <input type="text" name="replace_text" id="replace_text"
                                 class="form-control font-monospace"
                                 placeholder="' . lang('Leave empty to delete') . '">
                         </div>
-                        <div class="col-12 col-md-auto d-flex flex-column gap-2">
-                            <div class="form-check form-switch mb-0">
-                                <input class="form-check-input" type="checkbox" name="use_regex" id="use_regex" value="1">
-                                <label class="form-check-label" for="use_regex">
+                        <div class="col-12 md:col-auto d-flex flex-column gap-3">
+                            <div class="form-field mb-0">
+                                <div class="switch"><input class="" type="checkbox" name="use_regex" id="use_regex" value="1"></div>
+                                <label class="" for="use_regex">
                                     ' . lang('Regex') . '
-                                    <small class="text-secondary d-block" style="font-size:.75em;">/pattern/flags</small>
+                                    <small class="fg-secondary d-block" style="font-size:.75em;">/pattern/flags</small>
                                 </label>
                             </div>
-                            <button type="submit" class="btn btn-sm btn-warning"
+                            <button type="submit" class="btn btn-sm btn-solid theme-warning"
                                 data-confirm-content="' . lang('WARNING: The changes you make will be applied permanently.') . '">
                                 <i class="bi bi-arrow-left-right me-1"></i>' . lang('Apply') . '
                             </button>
@@ -297,13 +297,13 @@ if (!$_POST) {
     if(isset($_SESSION['software']['mass_edit']['tags']) && ($_SESSION['software']['mass_edit']['tags'] ?? '') != ''){
         $output_clear_button = '
         <li class="nav-item me-1 mb-1">
-            <a href="?tags=clear" class="btn btn-sm"><i class="bi bi-trash me-2"></i>' . lang('Clear') . '</a>
+            <a href="?tags=clear" class="btn btn-sm"><i class="bi bi-trash me-3"></i>' . lang('Clear') . '</a>
         </li>';
     }
 
     $output_button_bar = '
-    <nav class="navbar navbar-expand px-3 py-2 flex-column flex-md-row">
-        <ul class="navbar-nav flex-column flex-md-row">
+    <nav class="navbar navbar-expand px-5 py-3 flex-column md:flex-row">
+        <ul class="navbar-nav flex-column md:flex-row">
             ' . $output_clear_button . '
         </ul>
     </nav>';
@@ -324,8 +324,8 @@ if (!$_POST) {
                     ' . $liveform->output_errors() . '
                     ' . $liveform->get_warnings() . '
                     ' . $liveform->output_notices() . '
-                    <div class="row mb-2  flex-wrap">
-                        <div class="col-12 text-center text-md-start">
+                    <div class="row mb-3  flex-wrap">
+                        <div class="col-12 text-center md:text-start">
                             
                             ' . $output_button_bar . '
                         </div>

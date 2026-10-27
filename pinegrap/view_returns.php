@@ -102,7 +102,7 @@ foreach ($rows as $row) {
 
     if ($refund_due !== '') {
         $output_refund_due = (strcmp($today, $refund_due) > 0)
-            ? '<span class="text-danger fw-semibold">' . h(pg_return_day_text($refund_due)) . '</span>'
+            ? '<span class="fg-danger fw-semibold">' . h(pg_return_day_text($refund_due)) . '</span>'
             : h(pg_return_day_text($refund_due));
     }
 
@@ -111,13 +111,13 @@ foreach ($rows as $row) {
 
     $output_rows .= '
             <tr id="' . $id . '"' . ($selectable ? '' : ' class="unselectable"') . '>
-                <td class="select-all align-middle text-start">' . ($selectable ? '<input class="form-check-input" type="checkbox" name="returns[]" value="' . $id . '" aria-label="' . h(lang(array('string' => 'Select return request #{var:1}', 'vars' => array($id)))) . '">' : '') . '</td>
+                <td class="select-all align-middle text-start">' . ($selectable ? '<input class="check" type="checkbox" name="returns[]" value="' . $id . '" aria-label="' . h(lang(array('string' => 'Select return request #{var:1}', 'vars' => array($id)))) . '">' : '') . '</td>
                 <td class="align-middle text-start col-reorder-none action-buttons">
-                    <a class="btn-data-control m-1 btn btn-outline-primary border-2" href="view_return.php?id=' . $id . '" title="' . h(lang('Open the return')) . '" aria-label="' . h(lang('Open the return')) . '"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i></a>
+                    <a class="btn-data-control m-1 btn btn-outline theme-primary border-2" href="view_return.php?id=' . $id . '" title="' . h(lang('Open the return')) . '" aria-label="' . h(lang('Open the return')) . '"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i></a>
                 </td>
                 <td class="align-middle" data-order="' . $id . '">#' . $id . '</td>
                 <td class="align-middle"><a href="view_order.php?id=' . (int) $row['order_id'] . '">' . h($order_number) . '</a></td>
-                <td class="align-middle">' . h($row['customer']) . (((string) $row['email'] !== '') ? '<div class="small text-muted">' . h((string) $row['email']) . '</div>' : '') . '</td>
+                <td class="align-middle">' . h($row['customer']) . (((string) $row['email'] !== '') ? '<div class="small fg-secondary">' . h((string) $row['email']) . '</div>' : '') . '</td>
                 <td class="align-middle" title="' . h(implode(', ', $names)) . '">' . h(lang(array('string' => '{var:1} item(s)', 'vars' => array($quantity)))) . '</td>
                 <td class="align-middle">' . h(isset($reasons[(string) $row['reason']]) ? $reasons[(string) $row['reason']] : '') . '</td>
                 <td class="align-middle"><span class="' . h(pg_return_badge_class($status)) . '">' . h(pg_return_status_label($status)) . '</span></td>
@@ -127,15 +127,15 @@ foreach ($rows as $row) {
 }
 
 $output_not_ready = $ready ? '' : '
-                <div class="alert alert-warning" role="status">' . h(lang('Returns are not installed yet: the database has to be updated first.')) . '</div>';
+                <div class="alert theme-warning" role="status">' . h(lang('Returns are not installed yet: the database has to be updated first.')) . '</div>';
 
 $output_limit = (count($rows) >= PG_RETURN_PANEL_LIMIT) ? '
-                <p class="small text-muted">' . h(lang(array('string' => 'The newest {var:1} returns are shown. Choose a status to narrow the list.', 'vars' => array(PG_RETURN_PANEL_LIMIT)))) . '</p>' : '';
+                <p class="small fg-secondary">' . h(lang(array('string' => 'The newest {var:1} returns are shown. Choose a status to narrow the list.', 'vars' => array(PG_RETURN_PANEL_LIMIT)))) . '</p>' : '';
 
 // The customers' side is switched off: staff are reminded that only the
 // requests they record or that came through the API will show up.
 $output_customer_switch = (pg_returns_customer_enabled() || !$ready) ? '' : '
-                <div class="alert alert-info small" role="status"><i class="bi bi-info-circle me-2" aria-hidden="true"></i>' . h(lang('Customers cannot ask for returns from their account yet. The switch is ECOMMERCE_ORDER_RETURNS_ALLOWED in the site\'s configuration file.')) . '</div>';
+                <div class="alert theme-info small" role="status"><i class="bi bi-info-circle me-3" aria-hidden="true"></i>' . h(lang('Customers cannot ask for returns from their account yet. The switch is ECOMMERCE_ORDER_RETURNS_ALLOWED in the site\'s configuration file.')) . '</div>';
 
 echo
     pg_page_shell(array(
@@ -158,13 +158,13 @@ echo
             ' . $output_not_ready . '
             ' . $output_customer_switch . '
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
-                ' . ($ready ? '<a class="btn btn-sm btn-primary rounded-pill px-3" href="add_return.php"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Record a Return')) . '</a>' : '') . '
+                ' . ($ready ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_return.php"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Record a Return')) . '</a>' : '') . '
                 <a class="btn btn-sm btn-ghost" href="view_orders.php"><i class="bi bi-cart4 me-1" aria-hidden="true"></i>' . h(lang('All Orders')) . '</a>
                 <div class="pg-toolbar-grow"></div>
                 ' . pg_filter_select('status', pg_return_filter_options(pg_return_status_counts()), $filter, array('label' => lang('Status'), 'action' => 'view_returns.php', 'id' => 'status')) . '
             </nav>
             ' . $output_limit . '
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <form name="form" action="view_returns.php" method="post">
                         ' . get_token_field() . '
@@ -172,8 +172,8 @@ echo
                             <thead>
                                 <tr>
                                     <th class="noVis">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" title="' . h(lang('Select/Deselect All')) . '" type="checkbox" id="select_all">
+                                        <div class="form-field">
+                                            <div class="switch"><input class="" title="' . h(lang('Select/Deselect All')) . '" type="checkbox" id="select_all"></div>
                                         </div>
                                     </th>
                                     <th class="noVis">' . h(lang('Action')) . '</th>
@@ -194,7 +194,7 @@ echo
                         <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('Actions on the selected returns')) . '">
                             <div class="container">
                                 <div class="btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                    <button type="submit" name="bulk" value="approve" class="btn mb-1 mt-1 btn-primary disabled" data-confirm-content="' . h(lang('The selected requests will be approved, each with the return carrier and code its own screen offers, and every customer is told by e-mail.')) . '"><i class="bi bi-check2-circle me-2" aria-hidden="true"></i>' . h(lang('Approve Selected')) . '</button>
+                                    <button type="submit" name="bulk" value="approve" class="btn mb-1 mt-1 btn-solid theme-primary disabled" data-confirm-content="' . h(lang('The selected requests will be approved, each with the return carrier and code its own screen offers, and every customer is told by e-mail.')) . '"><i class="bi bi-check2-circle me-3" aria-hidden="true"></i>' . h(lang('Approve Selected')) . '</button>
                                 </div>
                             </div>
                         </nav>

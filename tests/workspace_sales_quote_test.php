@@ -181,6 +181,6 @@ function test_workspace_sales_quote_menu_never_ends_on_a_divider()
 	$tail = ($last_divider === false) ? '' : substr($menu, $last_divider);
 
 	pg_assert_contains('channel.sales_quote_url', $menu, 'the item is in channelMenu()');
-	pg_assert_true((bool) preg_match("/if \\(menu\\.lastElementChild && menu\\.lastElementChild\\.querySelector\\('\\.dropdown-divider'\\)\\) \\{\\s*menu\\.removeChild\\(menu\\.lastElementChild\\);\\s*\\}\\s*$/", $tail),
+	pg_assert_true((bool) preg_match("/if \\(menu\\.lastElementChild && menu\\.lastElementChild\\.querySelector\\('\\.menu-divider'\\)\\) \\{\\s*menu\\.removeChild\\(menu\\.lastElementChild\\);\\s*\\}\\s*$/", $tail),
 		'a divider left last is dropped before the menu is drawn');
 }
