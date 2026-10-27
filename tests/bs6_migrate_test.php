@@ -58,7 +58,7 @@ function test_bs6_map_keeps_sizes()
 	pg_assert_same('md:mb-0', bs6_test_tokens('mb-md-0'));
 	pg_assert_same('ms--1', bs6_test_tokens('ms-n1'));
 	pg_assert_same('me--2', bs6_test_tokens('me-n2'));
-	pg_assert_same('REVIEW', bs6_test_tokens('mt-n1'), 'v6 has no block negative margins');
+	pg_assert_same('pg-mt-n1', bs6_test_tokens('mt-n1'), 'v6 has no block negative margins: the panel draws its own');
 	pg_assert_same('fs-4xl', bs6_test_tokens('fs-1'));
 	pg_assert_same('fs-xl', bs6_test_tokens('fs-4'));
 	pg_assert_same('fs-md', bs6_test_tokens('fs-6'));
@@ -109,13 +109,21 @@ function test_bs6_map_light_and_dark()
 	pg_assert_same('btn-subtle theme-secondary', bs6_test_tokens('btn-light'));
 	pg_assert_same('badge rounded-pill badge-subtle theme-secondary', bs6_convert_class_list('badge rounded-pill text-bg-light')['value'], 'a light badge');
 	pg_assert_same('badge theme-inverse', bs6_convert_class_list('badge bg-dark')['value'], 'a dark badge');
-	pg_assert_same('REVIEW', bs6_test_tokens('table-light'), 'a table row tint has no neutral twin');
+	pg_assert_same('pg-table-light', bs6_test_tokens('table-light'), 'a table row tint has no neutral twin: the panel draws its own');
+	pg_assert_same('fg-reset', bs6_test_tokens('text-reset'));
+	pg_assert_same('fg-3', bs6_test_tokens('text-body-tertiary'));
+	pg_assert_same('bg-1', bs6_test_tokens('bg-body-tertiary'));
+	pg_assert_same('bg-2', bs6_test_tokens('bg-body-secondary'));
+	pg_assert_same('pg-fg-emphasis', bs6_test_tokens('text-body-emphasis'));
+	pg_assert_same('fg-white', bs6_test_tokens('btn-close-white'), 'the v6 close icon is drawn in currentcolor');
+	pg_assert_same('pg-display-4', bs6_test_tokens('display-4'));
+	pg_assert_same('pg-lead', bs6_test_tokens('lead'));
+	pg_assert_same('btn btn-solid theme-primary', bs6_convert_class_list('btn btn-primary dropdown-menu-right')['value'], 'a Bootstrap 4 class goes');
 }
 
 function test_bs6_map_reviews_and_untouched()
 {
-	foreach (array('alert-dark', 'text-reset', 'bg-body-tertiary',
-		'display-4', 'lead', 'btn-close-white', 'alert-dismissible', 'needs-validation', 'd-print-none',
+	foreach (array('alert-dark', 'alert-dismissible', 'needs-validation', 'd-print-none',
 		'modal', 'modal-dialog', 'offcanvas-end', 'dropdown-menu', 'dropdown-toggle', 'form-check-input',
 		'form-switch', 'btn-check', 'accordion-button', 'form-range', 'opacity-50-hover', 'link-primary',
 		'text-opacity-75') as $token) {
@@ -424,4 +432,7 @@ function test_bs6_class_strings()
 	pg_assert_same(2, count($r['reviews']), 'the split button classes');
 	pg_assert_same($js, bs6_convert_source($js)['source'], 'not read unless asked');
 	pg_assert_false(bs6_reads_class_strings('assets/js/style_designer.js'), 'the editor names canvas classes as data');
+
+	$ids = "echo '<td id=\"modal-date\"></td>'; document.getElementById(\"modal-date\"); var s = 'lead';\n";
+	pg_assert_same(array(), bs6_find_class_strings($ids), 'an id, an element lookup and a lone word name no class');
 }
