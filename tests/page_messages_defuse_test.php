@@ -148,7 +148,7 @@ function test_page_message_upload_refusal_escapes_the_name_in_liveforms()
 	$unescaped = array();
 	$escaped = 0;
 
-	foreach (array('add_comment.php', 'custom_form.php', 'add_submitted_form.php', 'edit_submitted_form.php') as $name) {
+	foreach (array('add_comment.php', 'custom_form.php', 'includes/forms/submitted_form_form.php') as $name) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $name);
 
 		if (preg_match('/->(?:mark_error|add_error|add_notice|add_warning)\(\s*[^;]*pg_upload_blocked_message\(\s*\$_FILES/', $source)) {
@@ -159,7 +159,7 @@ function test_page_message_upload_refusal_escapes_the_name_in_liveforms()
 	}
 
 	pg_assert_same(array(), $unescaped, 'liveform doors that pass the raw file name to the message');
-	pg_assert_same(4, $escaped, 'the four liveform doors escape the file name');
+	pg_assert_same(3, $escaped, 'the three liveform doors escape the file name');
 }
 
 // A message is HTML; shown in a field's inline feedback (a text context) it is

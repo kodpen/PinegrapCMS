@@ -1141,6 +1141,13 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_folder_view($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'photo_gallery' — the classic photo gallery: the albums and
+            // photos of the page's folder (widgets_photo_gallery.php).
+            if ($region_type === 'photo_gallery') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_photo_gallery($tree_json, $sid, $cfg, $mode);
+            }
+
             // 'menu_region' — one of the site's menus, its items kept in
             // the menu screen (widgets_menu.php).
             if ($region_type === 'menu_region') {

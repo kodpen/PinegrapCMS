@@ -428,6 +428,7 @@
     "Empty = <code>inventory_quantity</code> when stock is tracked &amp; backorder is off; unlimited otherwise.": "Boş = stok takibi açık &amp; ön sipariş kapalı ise <code>inventory_quantity</code>; aksi halde sınırsız.",
     "Empty = the adjacent .dropdown-menu": "Boş = bitişik .dropdown-menu",
     "Empty = the product's <code>default_quantity</code> field (or 1 when it has none).": "Boş = ürünün <code>default_quantity</code> alanı (yoksa 1).",
+    "Empty Album": "Boş Albüm",
     "Empty Board": "Boş Pano",
     "Empty Cart": "Boş Sepet",
     "Empty Cell": "Boş Hücre",
