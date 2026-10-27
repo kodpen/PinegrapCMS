@@ -1658,6 +1658,18 @@ if (!$_POST) {
         $compare_at_column = array_key_exists('compare_at_price', $row) ? 'compare_at_price,' : '';
         $compare_at_value  = array_key_exists('compare_at_price', $row) ? pg_compare_at_price_sql($row['compare_at_price']) . ',' : '';
 
+        // products.ai_fields (2026.11.0) likewise: the copy keeps the marks of
+        // the texts it writes unchanged; the short description, whose last
+        // letters are replaced, keeps its mark only if it is still the same.
+        $ai_fields = pg_ai_fields_copy('product', $row, array(
+            'short_description' => $short_description,
+            'full_description'  => $row['full_description'],
+            'title'             => $row['title'],
+            'meta_description'  => $row['meta_description'],
+        ));
+        $ai_fields_column = ($ai_fields !== false) ? 'ai_fields,' : '';
+        $ai_fields_value  = ($ai_fields !== false) ? (($ai_fields === null) ? 'NULL' : "'" . e($ai_fields) . "'") . ',' : '';
+
         // insert row into product table
         $query        = "INSERT INTO products (
     
@@ -1842,6 +1854,8 @@ if (!$_POST) {
                 mpn,
     
                 " . $compare_at_column . "
+    
+                " . $ai_fields_column . "
     
                 user,
     
@@ -2030,6 +2044,8 @@ if (!$_POST) {
                 '" . escape($row['mpn']) . "',
     
                 " . $compare_at_value . "
+    
+                " . $ai_fields_value . "
     
                 '" . USER_ID . "',
     

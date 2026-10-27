@@ -325,6 +325,7 @@
 
             task.delegate = data.task.delegate;
             task.delegate_name = data.task.delegate_name;
+            task.delegate_icon = data.task.delegate_icon;
             update(data.task.delegation);
         }
 
@@ -624,10 +625,23 @@
 
     // ── A task row ─────────────────────────────────────────────────────
 
+    // An MCP server's alias carries its own icon (ws_assistant_mcp_icon()).
+    function delegateIcon(task) {
+        if (task.delegate === 'ai') {
+            return 'bi-cpu';
+        }
+
+        if (String(task.delegate).indexOf('mcp:') === 0) {
+            return /^bi-[a-z0-9-]+$/.test(task.delegate_icon || '') ? task.delegate_icon : 'bi-plug';
+        }
+
+        return 'bi-stars';
+    }
+
     function rowTag(container, task, h) {
         if (task.delegate_name) {
             var tag = h.el('span', 'ws-task-delegate-tag ms-2');
-            tag.appendChild(h.icon((task.delegate === 'ai') ? 'bi-cpu' : ((String(task.delegate).indexOf('mcp:') === 0) ? 'bi-plug' : 'bi-stars'), 'me-1'));
+            tag.appendChild(h.icon(delegateIcon(task), 'me-1'));
             tag.appendChild(document.createTextNode(task.delegate_name));
             tag.title = h.t('dg_with', task.delegate_name);
             container.appendChild(tag);
@@ -650,5 +664,5 @@
         container.appendChild(tag);
     }
 
-    window.PGWsTaskDelegate = { drawer: drawer, rowTag: rowTag };
+    window.PGWsTaskDelegate = { drawer: drawer, rowTag: rowTag, delegateIcon: delegateIcon };
 })();

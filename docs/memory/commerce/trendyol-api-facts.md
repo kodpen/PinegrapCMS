@@ -4,7 +4,7 @@ description: Trendyol seller API (V2) facts for the connector: hosts, Basic auth
 ---
 
 ## Where were these facts read, and how sure are they?
-- developers.trendyol.com (TR and EN Türkiye pages, last modified 2026-04..10), read 2026-10-20. Not one call has been made with real credentials: tests use fixtures shaped after the docs (`tests/fixtures/trendyol/`). The `/v3.0/` pages are Trendyol International (`storeFrontCode` header), not Türkiye.
+- developers.trendyol.com (TR and EN Türkiye pages, last modified 2026-04..10), read 2026-10-20. No call made with real credentials: tests use fixtures shaped after the docs (`tests/fixtures/trendyol/`). The `/v3.0/` pages are Trendyol International (`storeFrontCode` header), not Türkiye.
 
 ## Which hosts and paths?
 - Live `https://apigw.trendyol.com`, test `https://stageapigw.trendyol.com` (panel `stagepartner.trendyol.com`); stage credentials are separate. Paths start `/integration/`. The old base URL closed from 26 May 2025 (only third-party sources name it `api.trendyol.com/sapigw`). Product V1 was supported until 15 Sep 2026 and order V1 until 15 Oct 2026 (changelog entries of 21.07 and 30.07.2026): use only V2 paths or ones marked "V1-V2".
@@ -18,7 +18,7 @@ description: Trendyol seller API (V2) facts for the connector: hosts, Basic auth
 - Seller id: 1–20 digits (`mp_trendyol_seller_id()`). Package and line ids of the accept and ship calls: `mp_trendyol_id_fits()`, 1–18 digits, no leading zero; a line id is a JSON number, where (int) drops a leading zero and saturates past 18 digits (PR #1675).
 
 ## Which call tests the connection?
-- `GET /integration/product/sellers/{sellerId}/products/approved?page=0&size=1` (`totalElements`, `content`): seller-scoped, read group, writes nothing. Not the addresses endpoint (was 1 call/hour).
+- `GET /integration/product/sellers/{sellerId}/products/approved?page=0&size=1` (`totalElements`, `content`): seller-scoped, read group, writes nothing. Not the addresses endpoint (was 1 call/hour). Paged: `trendyol-remote-products.md`.
 
 ## What do category calls answer?
 - Tree: `GET /integration/product/product-categories` → `categories[{id,name,parentId?,subCategories[]}]`; leaf = empty/absent `subCategories`; only leaves take products; refresh about weekly.

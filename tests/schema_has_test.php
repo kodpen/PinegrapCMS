@@ -134,3 +134,16 @@ function test_schema_has_forget_drops_request_answer()
 
 	$state = $saved;
 }
+
+// The order view widget and the security settings save probe columns with
+// pg_schema_has(): SHOW COLUMNS ... LIKE treats `_` as a wildcard and runs a
+// query on every request.
+function test_schema_has_replaces_show_columns_probes()
+{
+	foreach (array('includes/fn/widgets.php', 'includes/settings/security.save.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+
+		pg_assert_true($source !== '', $file . ' read');
+		pg_assert_true(stripos($source, 'SHOW COLUMNS') === false, $file . ' has no SHOW COLUMNS probe');
+	}
+}

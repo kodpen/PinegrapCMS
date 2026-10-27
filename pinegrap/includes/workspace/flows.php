@@ -723,13 +723,15 @@ function ws_flow_for($viewer, $id, $need = 'view')
 /**
  * The flows the person reaches, the latest changed first: their own, the
  * live flows of others whose home channel they read, and the flows shared
- * with them or in a channel they read. Drafts are not read.
+ * with them or in a channel they read. Drafts are not read, except to find
+ * the start of a flow never published when the list is narrowed by it.
  *
  * @param array  $viewer
- * @param string $scope all | mine | shared
+ * @param string $scope   all | mine | shared
+ * @param array  $filters ws_flows_list_where() keys, and start (ws_flow_start_kind())
  * @return array[] rows without draft, each with access
  */
-function ws_flows_list($viewer, $scope = 'all')
+function ws_flows_list($viewer, $scope = 'all', $filters = array())
 {
     if (!ws_flows_ready() || empty($viewer['member'])) {
         return array();
@@ -744,7 +746,7 @@ function ws_flows_list($viewer, $scope = 'all')
 
     $rows = (array) db_items("SELECT id, owner_id, channel_id, name, status, draft_rev, version_id, updated_by, created_at, updated_at, binned_at
         FROM ws_flows
-        WHERE status <> 'binned' AND (owner_id = '" . (int) $viewer['id'] . "' OR (status = 'live' AND channel_id > 0)" . $shared . ")
+        WHERE status <> 'binned' AND (owner_id = '" . (int) $viewer['id'] . "' OR (status = 'live' AND channel_id > 0)" . $shared . ")" . ws_flows_list_where($filters) . "
         ORDER BY updated_at DESC, id DESC
         LIMIT 1000");
 
@@ -769,7 +771,192 @@ function ws_flows_list($viewer, $scope = 'all')
         }
     }
 
+    $start = (string) ($filters['start'] ?? '');
+
+    if (($start !== '') && !empty($out)) {
+        $kinds = ws_flows_start_kinds($out);
+        $out = array_values(array_filter($out, function ($row) use ($kinds, $start) {
+            return ($kinds[(int) $row['id']] ?? '') === $start;
+        }));
+    }
+
     return $out;
+}
+
+/**
+ * The conditions a narrowed flow list adds to its query, each led by AND:
+ * status (draft, live or paused), channel_id (the home channel) and
+ * updated_since (unix time, changed at or after it). A value outside them
+ * adds nothing; the API refuses it before.
+ *
+ * @param array $filters
+ * @return string
+ */
+function ws_flows_list_where($filters)
+{
+    $sql = '';
+    $status = (string) ($filters['status'] ?? '');
+
+    // Only the three literals reach the query.
+    if (in_array($status, array('draft', 'live', 'paused'), true)) {
+        $sql .= " AND status = '" . $status . "'";
+    }
+
+    if ((int) ($filters['channel_id'] ?? 0) > 0) {
+        $sql .= " AND channel_id = '" . (int) $filters['channel_id'] . "'";
+    }
+
+    if ((int) ($filters['updated_since'] ?? 0) > 0) {
+        $sql .= " AND updated_at >= '" . (int) $filters['updated_since'] . "'";
+    }
+
+    return $sql;
+}
+
+/**
+ * How a flow starts, by the kind of its start box: at a time, on an event,
+ * when somebody joins a channel, or by hand.
+ *
+ * @return array box kind => start
+ */
+function ws_flow_start_names()
+{
+    return array('schedule' => 'time', 'event' => 'event', 'join' => 'join', 'manual' => 'manual');
+}
+
+/**
+ * How a graph starts (ws_flow_start_names()), '' when it has no start box.
+ *
+ * @param array $graph
+ * @return string
+ */
+function ws_flow_start_kind($graph)
+{
+    $trigger = ws_flow_trigger_node($graph);
+
+    return $trigger ? (string) (ws_flow_start_names()[$trigger['kind']] ?? '') : '';
+}
+
+/**
+ * The graph a flow starts from: its live version once published, the draft
+ * of a flow never published.
+ *
+ * @param array      $flow    ws_flows row with draft
+ * @param array|null $version its live ws_flow_versions row
+ * @return array
+ */
+function ws_flow_start_graph($flow, $version)
+{
+    return is_array($version) ? ws_flow_graph_of($version) : ws_flow_graph_of($flow);
+}
+
+/**
+ * How each flow listed starts, its live version read for a published flow
+ * and the draft for one never published, in two reads.
+ *
+ * @param array[] $rows ws_flows rows without draft
+ * @return array flow id => ws_flow_start_kind()
+ */
+function ws_flows_start_kinds($rows)
+{
+    $versions = array();
+    $drafts = array();
+
+    foreach ($rows as $row) {
+        if ((int) $row['version_id'] > 0) {
+            $versions[(int) $row['version_id']] = (int) $row['id'];
+        } else {
+            $drafts[(int) $row['id']] = (int) $row['id'];
+        }
+    }
+
+    $out = array();
+
+    if (!empty($versions)) {
+        foreach ((array) db_items("SELECT id, graph FROM ws_flow_versions WHERE id IN (" . implode(',', array_keys($versions)) . ")") as $version) {
+            $out[$versions[(int) $version['id']]] = ws_flow_start_kind(ws_flow_graph_of(array('graph' => $version['graph'])));
+        }
+    }
+
+    if (!empty($drafts)) {
+        foreach ((array) db_items("SELECT id, draft FROM ws_flows WHERE id IN (" . implode(',', $drafts) . ")") as $flow) {
+            $out[(int) $flow['id']] = ws_flow_start_kind(ws_flow_graph_of(array('draft' => $flow['draft'])));
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * How a graph starts, in words: "By hand", the rule of a box that starts it
+ * on its own as a scheduled action says it ("Every week on Monday at
+ * 09:00, from 02.11.2026", "When a form is submitted: Contact"), or null
+ * when it has no start box.
+ *
+ * @param array         $viewer
+ * @param array         $graph
+ * @param callable|null $readable channel id => bool; ws_flow_channel_readable() when null
+ * @return string|null
+ */
+function ws_flow_start_text($viewer, $graph, $readable = null)
+{
+    $start = ws_flow_start_rule($graph, ($readable !== null) ? $readable : function ($channel_id) use ($viewer) {
+        return ws_flow_channel_readable($viewer, $channel_id);
+    });
+
+    if ($start === null) {
+        return null;
+    }
+
+    $text = (($start['rule'] !== null) && function_exists('ws_scheduled_rule_text')) ? ws_scheduled_rule_text($viewer, $start['rule']) : '';
+
+    return ($text !== '') ? $text : $start['text'];
+}
+
+/**
+ * What says how a graph starts: text, the words to use, and rule, the rule
+ * of a scheduled action to say in words instead when there is one (a box
+ * that starts the flow on its own). A channel the person does not read is
+ * not named: a join box then says only that somebody joins a channel, an
+ * event box leaves the channel out of its rule. A time box not filled in
+ * yet has no rule to read. Null when the graph has no start box.
+ *
+ * @param array    $graph
+ * @param callable $readable channel id => bool
+ * @return array|null text, rule (array or null)
+ */
+function ws_flow_start_rule($graph, $readable)
+{
+    $trigger = ws_flow_trigger_node($graph);
+
+    if (!$trigger) {
+        return null;
+    }
+
+    $kind = (string) $trigger['kind'];
+    $anchors = function_exists('ws_flow_anchor_kinds') ? ws_flow_anchor_kinds() : array();
+
+    if (!isset($anchors[$kind])) {
+        return array('text' => lang('By hand'), 'rule' => null);
+    }
+
+    $label = (string) $anchors[$kind]['label'];
+    $config = ws_flow_anchor_normalize($kind, $trigger['config'] ?? array());
+
+    if (((int) ($config['channel_id'] ?? 0) > 0) && !call_user_func($readable, (int) $config['channel_id'])) {
+        if ($kind === 'join') {
+            return array('text' => $label, 'rule' => null);
+        }
+
+        $config['channel_id'] = 0;
+    }
+
+    if (($kind === 'schedule') && (!preg_match('~^\d{4}-\d{2}-\d{2}$~', $config['date']) || !preg_match('~^\d{2}:\d{2}$~', $config['time'])
+        || (strtotime($config['date'] . ' ' . $config['time'] . ':00') === false))) {
+        return array('text' => $label, 'rule' => null);
+    }
+
+    return array('text' => $label, 'rule' => ws_flow_anchor_rule($kind, $config));
 }
 
 /**
