@@ -2415,7 +2415,7 @@ const StyleDesigner = (function () {
             html += row(_sdT('Kind'),
                 _cfSel('sd-cf-kind', kindNow, kinds, _sdT('— As its type —')) +
                 (kindNow === 'reference'
-                    ? '<select class="form-select form-select-sm mt-1 sd-cf-ref" aria-label="' + esc(_sdT('Form it points into')) + '">' +
+                    ? '<select class="form-control form-control-sm mt-1 sd-cf-ref" aria-label="' + esc(_sdT('Form it points into')) + '">' +
                           '<option value="0">' + esc(_sdT('— Choose a form —')) + '</option>' +
                           _swFormOptions(parseInt(rec.ref || 0, 10) || 0) +
                       '</select>' +
@@ -34959,9 +34959,9 @@ const StyleDesigner = (function () {
                         // forms' records point at (a category, an author),
                         // and its fields can be given a kind.
                         row(_sdT('Collection'),
-                            '<div class="form-check form-switch">' +
-                                '<input class="form-check-input sd-cf-sb" data-s="collection" type="checkbox" id="sd-sw-cf-collection"' + (_cfFS.collection ? ' checked' : '') + '>' +
-                                '<label class="form-check-label" for="sd-sw-cf-collection" style="font-size:.72rem">' + esc(_sdT('Use as a collection')) + '</label>' +
+                            '<div class="form-field">' +
+                                '<div class="switch"><input class="sd-cf-sb" data-s="collection" type="checkbox" id="sd-sw-cf-collection"' + (_cfFS.collection ? ' checked' : '') + '></div>' +
+                                '<label for="sd-sw-cf-collection" style="font-size:.72rem">' + esc(_sdT('Use as a collection')) + '</label>' +
                             '</div>' +
                             '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
                                 esc(_sdT('Each field can then be given a kind (number, image, a reference to another form) in Form Field → Kind. The records stay this form\'s submissions.')) +
