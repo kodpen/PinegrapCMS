@@ -33,9 +33,9 @@ Nothing open.
 - W9 done #1752 #1768 ([[widget-lists-product]]). W10 done (#1783, [[widget-lists-order]]). W11 done #1796 ([[widget-lists-cart]]). W12 paging: #1924 #1947 #1968 #1984, search count grouping #2245; done ([[widget-list-paging]]). W13 done (#1758).
 - W14 done (#1602, #1701, #1719, [[widget-fill-filters]], [[widget-fill-shop]]).
 - W15 done (#1734). W16 default parts: #1808 #1824 #1863 #1908 #1945 #1973 #2067 #2218, cart gift card #2260, schedule #2311, cancel and return forms #2330; left: each return's moves, then the product order form.
-- W17 Widget parts anywhere on the page. W18 visit facts done (#2308, [[page-conditions]]); page record context left.
+- W17 Parts anywhere, record values outside widgets. W18 done #2308 #2334 ([[page-conditions]]).
 - W19 done #1904 #1914 #1928, opening state #2232 ([[widget-condition-canvas]]).
-- W20 Parts palette, starter library. W21 a #2326, b filter. W22: W22a #2317 ([[layout-form-converter]]); W22b editor, after owner. W23 done #2225 #2307. W24 Express order lists (owner, 2026-10-27): W24a done (#2259, [[widget-lists-checkout]]); W24b done (#2304, offer texts in Translations).
+- W20 Parts palette, starter library. W21 done #2326 #2345. W22: W22a #2317 ([[layout-form-converter]]); W22b editor, after owner. W23 done #2225 #2307. W24 Express order lists (owner, 2026-10-27): W24a done (#2259, [[widget-lists-checkout]]); W24b done (#2304, offer texts in Translations).
 - W25 done (#2221, [[widget-condition-rows]]): up to three conditions per element, All or Any (owner, 2026-10-27).
 - W26 Words beside a value ([[sentence-with-values]]): order view's ended line left.
 

@@ -39,7 +39,7 @@ if(isset($_GET['from'])){
 
 $liveform_view_files = new liveform('view_files');
 // get file's folder in order to validate folder access
-$result = mysqli_query(db::$con, "SELECT design, folder FROM files WHERE id = '" . escape($_REQUEST['id']) . "'") or output_error('Query failed');
+$result = db_q("SELECT design, folder FROM files WHERE id = ?", array((string) $_REQUEST['id'])) or output_error('Query failed');
 $row = mysqli_fetch_assoc($result);
 
 // The id comes from the request and can point at a file that was deleted
@@ -99,8 +99,8 @@ if (!isset($_POST['name'])) {
             folder.folder_archived
         FROM files 
         LEFT JOIN folder ON files.folder = folder.folder_id
-        WHERE files.id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE files.id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_array($result);
     
     $file_folder = $row['folder'];
@@ -679,7 +679,7 @@ $liveform->remove_form('edit_file');
     validate_token_field();
 
     $file_id = escape($_POST['id'] ?? '');
-    $result = mysqli_query(db::$con, "SELECT name, folder FROM files WHERE id = '" . $file_id . "'") or output_error('Query failed');
+    $result = db_q("SELECT name, folder FROM files WHERE id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
     $row = mysqli_fetch_array($result);
 
     $name = prepare_file_name($_POST['name']);
@@ -697,8 +697,8 @@ $liveform->remove_form('edit_file');
 
     // DELETE
     if (!empty($_POST['delete'])) {
-        mysqli_query(db::$con, "DELETE FROM files WHERE id = '" . $file_id . "'") or output_error('Query failed');
-        mysqli_query(db::$con, "DELETE FROM system_theme_css_rules WHERE file_id = '" . $file_id . "'") or output_error('Query failed');
+        db_q("DELETE FROM files WHERE id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
+        db_q("DELETE FROM system_theme_css_rules WHERE file_id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
         db("DELETE FROM preview_styles WHERE theme_id = '" . $file_id . "'");
         @unlink(FILE_DIRECTORY_PATH . '/' . $row['name']);
 
@@ -832,14 +832,14 @@ $liveform->remove_form('edit_file');
         // outside the site's image profile, so the optimized mark no longer
         // holds and the optimize button is offered again.
         $query = "UPDATE files SET
-            size = '" . (int) filesize($stored_file_path) . "',
-            image_width = '" . (int) $rotate_report['width'] . "',
-            image_height = '" . (int) $rotate_report['height'] . "',
+            size = ?,
+            image_width = ?,
+            image_height = ?,
             optimized = '0',
             timestamp = UNIX_TIMESTAMP(),
-            user = '" . $user['id'] . "'
-            WHERE id = '" . $file_id . "'";
-        mysqli_query(db::$con, $query) or output_error('Query failed');
+            user = ?
+            WHERE id = ?";
+        db_q($query, array((string) (int) filesize($stored_file_path), (string) (int) $rotate_report['width'], (string) (int) $rotate_report['height'], (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed');
 
         pg_audit_record('update', 'files', (int) $file_id, $audit_before);
 
@@ -1142,8 +1142,8 @@ $liveform->remove_form('edit_file');
         copy(FILE_DIRECTORY_PATH . '/' . $original_name, $new_file_path);
 
         // Fetch folder and description from DB
-        $query = "SELECT folder, description, design FROM files WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT folder, description, design FROM files WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
         // The copy keeps the source file's design flag instead of deriving it

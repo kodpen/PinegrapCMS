@@ -42,8 +42,8 @@ $query =
         page.page_folder AS folder_id
     FROM order_form_pages
     LEFT JOIN page ON order_form_pages.page_id = page.page_id
-    WHERE order_form_pages.page_id = '" . escape($liveform->get_field_value('page_id')) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE order_form_pages.page_id = ?";
+$result = db_q($query, array((string) $liveform->get_field_value('page_id'))) or output_error('Query failed.');
 
 if (mysqli_num_rows($result) == 0) {
     output_error(lang('The page, for the order form you submitted, can no longer be found.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
@@ -90,9 +90,9 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                     products.backorder
                 FROM products_groups_xref
                 LEFT JOIN products ON products.id = products_groups_xref.product
-                WHERE products_groups_xref.product_group = '$product_group_id'
+                WHERE products_groups_xref.product_group = ?
                 ORDER BY products_groups_xref.sort_order, products.name";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $product_group_id)) or output_error('Query failed.');
             
             $products = array();
             
@@ -453,11 +453,15 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                     $query =
                         "UPDATE order_items
                         SET
-                            recurring_payment_period = '" . escape($recurring_payment_period) . "',
-                            recurring_number_of_payments = '" . escape($recurring_number_of_payments) . "',
-                            recurring_start_date = '" . escape($recurring_start_date) . "'
-                        WHERE id = '" . $order_item_id . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            recurring_payment_period = ?,
+                            recurring_number_of_payments = ?,
+                            recurring_start_date = ?
+                        WHERE id = ?";
+                    $result = db_q($query, array(
+                        (string) $recurring_payment_period,
+                        (string) $recurring_number_of_payments,
+                        (string) $recurring_start_date,
+                        (string) $order_item_id)) or output_error('Query failed.');
                 }
             }
 
@@ -484,8 +488,8 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                     inventory_quantity,
                     backorder
                 FROM products
-                WHERE id = '" . escape($liveform->get_field_value('product_id')) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                WHERE id = ?";
+            $result = db_q($query, array((string) $liveform->get_field_value('product_id'))) or output_error('Query failed');
             // No row when the id names no product (unknown, empty or posted as an array): the
             // product then counts as not available, without reading a row that is not there.
             $product = mysqli_fetch_assoc($result) ?: array('name' => '', 'enabled' => 0, 'short_description' => '', 'selection_type' => '', 'price' => 0, 'default_quantity' => 0, 'inventory' => 0, 'inventory_quantity' => 0, 'backorder' => 0);

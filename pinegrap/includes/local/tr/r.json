@@ -295,6 +295,7 @@
     "Record this run, so the next one can leave these out": "Bu çalıştırmayı kaydet; sonraki çalıştırma bunları dışarıda bıraksın",
     "Record updated successfully.": "Kayıt başarıyla güncellendi.",
     "Record voice message": "Sesli mesaj kaydet",
+    "Record: {var:1}": "Kayıt: {var:1}",
     "Recorded": "Kaydedildi",
     "Recorded as a movement rather than written straight onto the balance, so it can be traced later like any other entry.": "Bakiyeye doğrudan yazılmaz, hareket olarak kaydedilir; böylece diğer kayıtlar gibi sonradan izlenebilir.",
     "Recorded by {var:1} on {var:2}.": "{var:2} tarihinde {var:1} tarafından kaydedildi.",

@@ -136,8 +136,8 @@ function get_form_list_view($properties) {
             size,
             maxlength
         FROM form_fields
-        WHERE page_id = '" . escape($custom_form_page_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE page_id = ?";
+    $result = db_q($query, array((string) $custom_form_page_id)) or output_error('Query failed.');
     $custom_fields = mysqli_fetch_items($result);
 
     $sql_viewer_filter = "";
@@ -1549,9 +1549,9 @@ function get_form_list_view($properties) {
                             label,
                             value
                         FROM form_field_options
-                        WHERE form_field_id = '" . $field['id'] . "'
+                        WHERE form_field_id = ?
                         ORDER BY sort_order";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $field['id'])) or output_error('Query failed.');
                     $options = mysqli_fetch_items($result);
                 }
 
@@ -2103,9 +2103,9 @@ function get_form_list_view($properties) {
                     dynamic_value,
                     dynamic_value_attribute
                 FROM form_list_view_filters
-                WHERE page_id = '" . escape($page_id) . "'
+                WHERE page_id = ?
                 ORDER BY form_field_id ASC";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
             $filters = mysqli_fetch_items($result);
         }
 

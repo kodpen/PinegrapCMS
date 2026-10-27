@@ -33057,7 +33057,7 @@ const StyleDesigner = (function () {
     // stay the widget's; a placement only narrows its content.
     function _swPlacementKeys(kind) {
         if (['form_list_view', 'submitted_forms_list', 'form_list', 'blog_list'].indexOf(kind) !== -1) {
-            return ['max_results', 'order_by_field', 'order_by_direction'];
+            return ['filters', 'max_results', 'order_by_field', 'order_by_direction'];
         }
         var keys = {
             catalog_listing: ['product_group_id', 'max_results', 'order_by_field', 'order_by_direction'],
@@ -33101,7 +33101,15 @@ const StyleDesigner = (function () {
         };
         var body = '';
         keys.forEach(function (k) {
-            if (k === 'product_group_id') {
+            if (k === 'filters') {
+                var formId = parseInt(cfg.custom_form_page_id || cfg.form_page_id || 0, 10);
+                if (!(formId > 0)) return;
+                var fields = _formFieldsCache[formId] || null;
+                body += row(esc(_sdT('Filters')), '<div>' +
+                    _swFormListFiltersHtml(sid, Array.isArray(pl.filters) ? pl.filters : [], fields || [], fields === null,
+                        _sdT('Added to the widget\'s filters here: a record is listed only when it matches every filter of both.'), true, 'placement') +
+                    '</div>');
+            } else if (k === 'product_group_id') {
                 var g = _swProductGroupOptions(pl.product_group_id, _sdT('— As the widget —'));
                 body += row(esc(_sdT('Product Group')),
                     '<select class="form-control form-control-sm" data-sw-place="product_group_id" data-sw-place-kind="int">' + g + '</select>' +
@@ -36225,9 +36233,12 @@ const StyleDesigner = (function () {
         // when none.
         var _swFilterKey = function (el) { return (el && el.getAttribute('data-sw-filter-key')) || 'filters'; };
         var _swFilterEls = document.querySelectorAll('.sd-sw-filter');
-        var _swReadFilters = function () {
+        // The rows of one list: a widget's own filters and its placement's
+        // stand in the same panel.
+        var _swReadFilters = function (key) {
             var out = [];
             document.querySelectorAll('.sd-sw-filter').forEach(function (el) {
+                if (_swFilterKey(el) !== key) return;
                 var q = function (c) { return el.querySelector(c); };
                 var dyn = q('.sd-sw-filter-dyn') ? q('.sd-sw-filter-dyn').value : '';
                 var val = q('.sd-sw-filter-value') ? String(q('.sd-sw-filter-value').value || '') : '';
@@ -36252,29 +36263,41 @@ const StyleDesigner = (function () {
             });
             return out;
         };
-        _swFilterEls.forEach(function (el, idx) {
+        // A placement's rows go on the selected shared_ref node; a widget's
+        // into its config.
+        var _swSaveFilters = function (sid, key, list, rerender) {
+            if (key === 'placement') {
+                if (!selectedNode || selectedNode.type !== 'shared_ref') return;
+                if (!_collab.mayEdit) { _sdReadOnlyNudge(); renderProperties(); return; }
+                saveState();
+                _swPlacementSet(selectedNode, 'filters', list);
+                render();
+                return;
+            }
+            _patchSysCfg(sid, function (cfg) { cfg[key] = list; },
+                rerender ? { afterSave: function () { renderProperties(); } } : undefined);
+        };
+        _swFilterEls.forEach(function (el) {
             var sid = 0;
             var any = el.querySelector('[data-sw-id]');
             if (any) sid = parseInt(any.dataset.swId, 10);
             if (!sid) return;
             var key = _swFilterKey(el);
-            var save = function (list, rerender) {
-                _patchSysCfg(sid, function (cfg) { cfg[key] = list; },
-                    rerender ? { afterSave: function () { renderProperties(); } } : undefined);
-            };
+            var idx = parseInt(el.getAttribute('data-idx'), 10) || 0;
+            var save = function (list, rerender) { _swSaveFilters(sid, key, list, rerender); };
             var fieldEl = el.querySelector('.sd-sw-filter-field');
             if (fieldEl) fieldEl.addEventListener('change', function () {
-                var list = _swReadFilters();
+                var list = _swReadFilters(key);
                 // Another field has another type: its value and dynamic
                 // value no longer apply.
                 if (list[idx]) { list[idx].value = ''; list[idx].dynamic_value = ''; list[idx].dynamic_value_attribute = ''; }
                 save(list, true);
             });
             var dynEl = el.querySelector('.sd-sw-filter-dyn');
-            if (dynEl) dynEl.addEventListener('change', function () { save(_swReadFilters(), true); });
+            if (dynEl) dynEl.addEventListener('change', function () { save(_swReadFilters(key), true); });
             ['.sd-sw-filter-op', '.sd-sw-filter-value', '.sd-sw-filter-days'].forEach(function (c) {
                 var inp = el.querySelector(c);
-                if (inp) inp.addEventListener('change', function () { save(_swReadFilters(), false); });
+                if (inp) inp.addEventListener('change', function () { save(_swReadFilters(key), false); });
             });
             // The name being edited is stored normalised (lower case, a-z,
             // 0-9 and _ only, at most 32 characters; the re-rendered input
@@ -36283,26 +36306,25 @@ const StyleDesigner = (function () {
             var paramEl = el.querySelector('.sd-sw-filter-param');
             if (paramEl) paramEl.addEventListener('change', function () {
                 this.value = String(this.value || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 32);
-                save(_swReadFilters(), true);
+                save(_swReadFilters(key), true);
             });
             var delEl = el.querySelector('.sd-sw-filter-del');
             if (delEl) delEl.addEventListener('click', function () {
-                var list = _swReadFilters();
+                var list = _swReadFilters(key);
                 list.splice(idx, 1);
                 save(list, true);
             });
         });
-        var fAddEl = document.getElementById('sd-sw-filter-add');
-        if (fAddEl) {
+        document.querySelectorAll('.sd-sw-filter-add').forEach(function (fAddEl) {
             fAddEl.addEventListener('click', function () {
                 var sid = parseInt(this.dataset.swId, 10);
                 if (!sid) return;
                 var key = _swFilterKey(this);
-                var list = _swReadFilters();
+                var list = _swReadFilters(key);
                 list.push({ field: '', operator: 'is equal to', value: '', dynamic_value: '', dynamic_value_attribute: '' });
-                _patchSysCfg(sid, function (cfg) { cfg[key] = list; }, { afterSave: function () { renderProperties(); } });
+                _swSaveFilters(sid, key, list, true);
             });
-        }
+        });
 
         // ── Phase 2: Catalog group navigation (none / drill_down / page) ──
         var gnEl = document.getElementById('sd-sw-group-nav');
@@ -38252,7 +38274,9 @@ const StyleDesigner = (function () {
     // (_swBindTokenOptions(), the row position group inside a list
     // included) that a condition may read.
     function _sdCondTokenOptions(node) {
-        if (!_isInsideSystemWidget(node)) return SD_PAGE_FACTS.map(function (f) { return { token: f[0], label: f[1] }; });
+        if (!_isInsideSystemWidget(node)) {
+            return SD_PAGE_FACTS.map(function (f) { return { token: f[0], label: f[1] }; }).concat(_sdPageRecordOptions());
+        }
         return _swBindTokenOptions(node).filter(function (o) { return _sdCondTokenAllowed(o.token); });
     }
 
@@ -38265,13 +38289,57 @@ const StyleDesigner = (function () {
         ['__visit_cart_count',     _sdT('Number of products in the cart')]
     ];
 
-    // Whether every condition of `node` reads a fact of the visit, as the
-    // page needs to decide it (pg_page_fact_spec()).
+    // The page's record (pg_page_record_tokens()): whether the record the
+    // address opens was found, and the allow-listed values of the kinds
+    // whose detail widget the page holds (a product, an event, a form
+    // record), each read as __record<token>.
+    var SD_PAGE_RECORD_KINDS = {
+        catalog_item_view:   function () { return SW_PRODUCT_ENTITY_TOKENS; },
+        calendar_event_view: function () { return SW_EVENT_ENTITY_TOKENS; },
+        form_item_view:      function () { return SW_FORM_RECORD_ENTITY_TOKENS; }
+    };
+    function _sdPageRecordOptions() {
+        var kinds = {}, seen = {};
+        var walk = function (n) {
+            if (!n) return;
+            if (n.type === 'shared_ref') {
+                var sid = parseInt(n.props && n.props.sharedId, 10) || 0;
+                if (!sid || seen[sid]) return;
+                seen[sid] = true;
+                var cached = _sharedCache[sid];
+                var cfg = null;
+                try { cfg = (cached && cached.system_region_config) ? JSON.parse(cached.system_region_config) : null; } catch (e) { cfg = null; }
+                var kind = _swKindOf(cfg);
+                if (SD_PAGE_RECORD_KINDS[kind]) kinds[kind] = true;
+                else if (cached && cached.tree) walk(cached.tree);
+                return;
+            }
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        };
+        walk(tree);
+        var out = [], names = Object.keys(kinds);
+        if (!names.length) return out;
+        out.push({ token: '__record_found', label: _sdT('This page\'s record is found') });
+        names.forEach(function (kind) {
+            SD_PAGE_RECORD_KINDS[kind]().forEach(function (t) {
+                out.push({ token: '__record' + t[0], label: _sdT('Record: {var:1}', [t[1]]) });
+            });
+        });
+        return out;
+    }
+
+    // Whether `token` is one the page decides (pg_page_fact_spec()).
+    function _sdPageCondToken(token) {
+        var t = String(token || '').toLowerCase();
+        return t === '__record_found' || t.indexOf('__record__') === 0
+            || SD_PAGE_FACTS.some(function (f) { return f[0] === t; });
+    }
+
+    // Whether every condition of `node` reads a fact of the visit or the
+    // page's record, as the page needs to decide it (pg_page_fact_spec()).
     function _sdPageFactRows(node) {
         var rows = _sdCondRowsOf(node);
-        return rows.length > 0 && rows.every(function (r) {
-            return SD_PAGE_FACTS.some(function (f) { return f[0] === String(r.token).toLowerCase(); });
-        });
+        return rows.length > 0 && rows.every(function (r) { return _sdPageCondToken(r.token); });
     }
 
     // The conditions of `node` as rows, [{token, op, value}] in the order of
@@ -38348,7 +38416,8 @@ const StyleDesigner = (function () {
         var any = _sdCondJoin(node) === 'any';
         return rows.map(function (r, i) {
             var entry = _sdCondOp(r.op);
-            var fact = kind ? null : SD_PAGE_FACTS.filter(function (f) { return f[0] === r.token; })[0];
+            var fact = kind ? null : SD_PAGE_FACTS.concat(_sdPageRecordOptions().map(function (o) { return [o.token, o.label]; }))
+                .filter(function (f) { return f[0] === r.token; })[0];
             var parts = [fact ? fact[1] : _swBindLabel(kind, r.token), entry ? entry[1] : String(r.op), (entry && entry[2]) ? r.value : ''];
             if (!i) return _sdT('Only when: {var:1} {var:2} {var:3}', parts);
             return any ? _sdT('or {var:1} {var:2} {var:3}', parts) : _sdT('and {var:1} {var:2} {var:3}', parts);
@@ -38593,7 +38662,8 @@ const StyleDesigner = (function () {
                 ? _sdT('The page and Preview leave the element out while the value does not pass; the canvas keeps showing it. Numbers are compared as numbers, other values as text.')
                 : (rows.length && !_sdPageFactRows(node))
                     ? _sdT('Outside a system widget only the facts of the visit decide: with another value here the element is always shown.')
-                    : _sdT('Each visit decides it: the page leaves the element out while the fact does not pass; the canvas keeps showing it. Nothing about the visitor is shown.'));
+                    : _sdT('Each visit decides it: the page leaves the element out while the fact does not pass; the canvas keeps showing it. Nothing about the visitor is shown.')
+                        + ' ' + _sdT('The page\'s record is the product, event or form record its address opens.'));
         return row(label, html);
     }
 
@@ -55349,7 +55419,8 @@ const StyleDesigner = (function () {
         return !hit || _swPageBinned(hit);
     }
     // `key`: the config key the rows are written to, 'filters' unless
-    // another is named (a recent comments list's recent_filters).
+    // another is named (a recent comments list's recent_filters); 'placement'
+    // writes them to the selected placement (_swPlacementSet()).
     function _swFormListFiltersHtml(sid, filters, fields, loading, note, withUrl, key) {
         var formFields = _swFilterFormFields(fields);
         var keyAttr = (key && key !== 'filters') ? ' data-sw-filter-key="' + esc(key) + '"' : '';
@@ -55449,7 +55520,7 @@ const StyleDesigner = (function () {
                 '</div>';
         });
         html +=
-            '<button type="button" class="btn btn-sm btn-outline theme-primary" id="sd-sw-filter-add" data-sw-id="' + sid + '"' + keyAttr + '><span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add Filter')) + '</button>' +
+            '<button type="button" class="btn btn-sm btn-outline theme-primary sd-sw-filter-add"' + (keyAttr ? '' : ' id="sd-sw-filter-add"') + ' data-sw-id="' + sid + '"' + keyAttr + '><span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add Filter')) + '</button>' +
             '<div style="font-size:.66rem;color:#888;margin-top:6px">' + esc(note || _sdT('A record is listed only when it matches every filter. Leave the value empty and pick a dynamic value (today, a number of days ago, the signed-in visitor) to have it worked out on every visit.')) + '</div>';
         return html;
     }

@@ -1437,6 +1437,7 @@
     "Added to imported item names for easy identification.": "İçe aktarılan öğe adlarına kolay tanımlama için eklenir.",
     "Added to the address as ?t= so this link can be told apart in the reports.": "Adrese ?t= olarak ekleniyor; raporlarda bu bağlantı böyle ayırt ediliyor.",
     "Added to the channel: {var:1}. The mention reached them.": "Kanala eklendi: {var:1}. Anma kendisine iletildi.",
+    "Added to the widget's filters here: a record is listed only when it matches every filter of both.": "Burada widget'ın filtrelerine eklenir: bir kayıt yalnızca ikisinin de her filtresine uyduğunda listelenir.",
     "Added to {var:1} on Claude's proposal. {var:2}": "Claude'un önerisiyle {var:1} grubuna eklendi. {var:2}",
     "Added: {var:1}": "Eklendi: {var:1}",
     "Added: {var:1}. Already on the order: {var:2}. Not imported: {var:3}.": "Eklenen: {var:1}. Siparişte zaten olan: {var:2}. İçe aktarılmayan: {var:3}.",

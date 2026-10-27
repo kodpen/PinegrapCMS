@@ -518,6 +518,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // (widgets_comments.php); the classic comments block below leaves them
     // alone.
     $pg_cw_pages = array();
+    // The record the page opens, published by its widget (page_facts.php).
+    $pg_pr_prev = pg_page_record_begin();
     if (strpos($content, '<!--pg-system-widget:') !== false) {
         // The drawn page's id wins over a dynamic property of that name: a
         // widget whose data is the page's own (its comment thread) reads it
@@ -538,12 +540,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     }
 
     // ── Page conditions ─────────────────────────────────────────────────────────
-    // Elements shown by a fact of the visit (signed in, cart) stand between
+    // Elements shown by a fact of the visit (signed in, cart) or by the
+    // page's record stand between
     // markers in the stored body and in shared components; decided here, once
     // every shared component and widget is drawn (page_facts.php).
     if (strpos($content, '<!--pg-pf:') !== false) {
         $content = pg_page_facts_apply($content, $email);
     }
+    pg_page_record_end($pg_pr_prev);
 
     // ── Custom PHP marker expansion ─────────────────────────────────────────────
     // Visual-designer `custom_php` content nodes are emitted as `<!--pg-custom-php:BASE64-->`

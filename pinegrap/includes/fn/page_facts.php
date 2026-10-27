@@ -8,8 +8,9 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
-// A module of functions.php: conditions on the facts of the visit, for
-// elements of a page outside any system widget.
+// A module of functions.php: conditions on the facts of the visit and on
+// the record the page opens, for elements of a page outside any system
+// widget.
 //
 // Loaded by functions.php through require_once, never on its own.
 //
@@ -38,12 +39,89 @@ function pg_page_fact_tokens()
     return array('__visit_signed_in', '__visit_cart_has_items', '__visit_cart_count');
 }
 
+// The record a page opens by its address: the product of a product page,
+// the event of an event page, the record of a form record page. Its widget
+// publishes it while it draws (pg_page_record_publish()); an element
+// anywhere on the page may be shown by whether it was found
+// (__record_found) and by its allow-listed values, each read as
+// __record<token> (__record__is_free_shipping). The values come from
+// pg_sw_entity_fields(), the same allow-list the widget offers. Output that
+// depends on them depends on the address alone, so a cached copy stays
+// right.
+function pg_page_record_entities()
+{
+    return array('product', 'calendar_event', 'form_record');
+}
+
+// The record tokens a page condition may read.
+function pg_page_record_tokens()
+{
+    $out = array('__record_found');
+    foreach (pg_page_record_entities() as $entity) {
+        foreach (array_keys(pg_sw_entity_fields($entity)) as $token) $out[] = '__record' . $token;
+    }
+    return array_values(array_unique($out));
+}
+
+// The record slot of the page being drawn: null while no widget published
+// one, else array('entity' => ..., 'values' => token => value, or null for
+// a record the address named and the widget did not find).
+function &_pg_page_record_slot()
+{
+    static $slot = null;
+    return $slot;
+}
+
+// The record of the page, published by the widget that opens it. The first
+// one counts: a second detail widget on the page does not change it.
+function pg_page_record_publish($entity, $values)
+{
+    $slot = &_pg_page_record_slot();
+    if ($slot !== null || !in_array($entity, pg_page_record_entities(), true)) return;
+    $slot = array('entity' => $entity, 'values' => is_array($values) ? $values : null);
+}
+
+// A page draw starts with no record and gives back the slot it found when
+// it ends (pg_page_record_end()): an e-mail drawn while a page is drawn
+// keeps neither's record.
+function pg_page_record_begin()
+{
+    $slot = &_pg_page_record_slot();
+    $prev = $slot;
+    $slot = null;
+    return $prev;
+}
+
+function pg_page_record_end($prev)
+{
+    $slot = &_pg_page_record_slot();
+    $slot = $prev;
+}
+
+// The record tokens with the published record's values: every token is
+// there, '' when there is no record or it does not have the value.
+function pg_page_record_values()
+{
+    $slot = _pg_page_record_slot();
+    $out = array_fill_keys(pg_page_record_tokens(), '');
+    if (is_array($slot) && is_array($slot['values'])) {
+        $out['__record_found'] = '1';
+        foreach (array_keys(pg_sw_entity_fields($slot['entity'])) as $token) {
+            if (isset($slot['values'][$token]) && is_scalar($slot['values'][$token])) {
+                $out['__record' . $token] = (string)$slot['values'][$token];
+            }
+        }
+    }
+    return $out;
+}
+
 // Whether every condition of $cond (pg_sw_cond_specs()) reads a fact of
-// the visit. A node that mixes a fact with any other value draws as before.
+// the visit or the page's record. A node that mixes one with any other
+// value draws as before.
 function pg_page_fact_spec($cond)
 {
     if (!is_array($cond) || empty($cond['conds'])) return false;
-    $facts = pg_page_fact_tokens();
+    $facts = array_merge(pg_page_fact_tokens(), pg_page_record_tokens());
     foreach ($cond['conds'] as $c) {
         if (!in_array(strtolower((string)$c['token']), $facts, true)) return false;
     }
@@ -134,7 +212,7 @@ function pg_page_fact_values($email = false)
         '__visit_signed_in'      => $signed_in ? '1' : '',
         '__visit_cart_has_items' => ($count > 0) ? '1' : '',
         '__visit_cart_count'     => ($count > 0) ? (string)$count : '',
-    );
+    ) + pg_page_record_values();
 }
 
 // The page conditions of a drawn page decided for this visit; the facts are

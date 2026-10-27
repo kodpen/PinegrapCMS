@@ -161,7 +161,9 @@ function test_page_facts_fail_closed()
 // Background renders belong to no visit.
 function test_page_facts_values_of_an_email()
 {
-	pg_assert_same(_pf_facts(false, 0), pg_page_fact_values(true));
+	$prev = pg_page_record_begin();
+	pg_assert_same(_pf_facts(false, 0) + pg_page_record_values(), pg_page_fact_values(true));
+	pg_page_record_end($prev);
 }
 
 // The editor offers the facts the server reads (SD_PAGE_FACTS).
@@ -173,4 +175,57 @@ function test_page_facts_editor_list_matches()
 	$block = substr($js, $from, strpos($js, "\n    ];\n", $from) - $from);
 	preg_match_all("/\\['(__[a-z_]+)'/", $block, $m);
 	pg_assert_same(pg_page_fact_tokens(), $m[1]);
+}
+
+// The page's record: whether it was found and its allow-listed values,
+// published by the widget that opens it.
+function test_page_facts_record()
+{
+	$tokens = pg_page_record_tokens();
+	pg_assert_true(in_array('__record_found', $tokens, true));
+	pg_assert_true(in_array('__record__is_free_shipping', $tokens, true), 'a product value');
+	pg_assert_true(in_array('__record__event_reservations_open', $tokens, true), 'an event value');
+	pg_assert_true(in_array('__record__quiz_score', $tokens, true), 'a form record value');
+	pg_assert_false(in_array('__record__price', $tokens, true), 'only the allow-list');
+
+	$tree = _pf_root(array(
+		_pf_node('Free shipping', '__record__is_free_shipping'),
+		_pf_node('Not found', '__record_found', 'empty'),
+		_pf_node('Member and found', '__visit_signed_in', 'not_empty', '', array(array('__record_found', 'not_empty', ''))),
+	));
+	$body = _render_tree_node($tree, 0, 0);
+	pg_assert_same(3, substr_count($body, '<!--pg-pf:'), 'record conditions are page conditions');
+
+	$prev = pg_page_record_begin();
+	try {
+		$none = pg_page_facts_resolve($body, pg_page_record_values() + _pf_facts(true, 0));
+		pg_assert_contains('Not found', $none, 'no record published');
+		pg_assert_false(strpos($none, 'Free shipping') !== false);
+
+		pg_page_record_publish('product', array('__is_free_shipping' => '1', '__price' => '9'));
+		pg_page_record_publish('calendar_event', null);
+		$found = pg_page_facts_resolve($body, pg_page_record_values() + _pf_facts(true, 0));
+		pg_assert_contains('Free shipping', $found);
+		pg_assert_contains('Member and found', $found);
+		pg_assert_false(strpos($found, 'Not found') !== false, 'the first record counts');
+		$values = pg_page_record_values();
+		pg_assert_false(isset($values['__record__price']), 'a value off the list is not read');
+
+		// An e-mail drawn meanwhile keeps its own record and gives the page's back.
+		$inner = pg_page_record_begin();
+		pg_page_record_publish('form_record', null);
+		$mail = pg_page_record_values();
+		pg_assert_same('', $mail['__record_found']);
+		pg_page_record_end($inner);
+		$again = pg_page_record_values();
+		pg_assert_same('1', $again['__record__is_free_shipping']);
+	} finally {
+		pg_page_record_end($prev);
+	}
+
+	pg_page_record_begin();
+	pg_page_record_publish('product', null);
+	$missing = pg_page_facts_resolve($body, pg_page_record_values() + _pf_facts(false, 0));
+	pg_assert_same('<p class="x">Not found</p>' . "\n", $missing);
+	pg_page_record_end($prev);
 }
