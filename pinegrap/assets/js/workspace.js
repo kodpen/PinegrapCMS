@@ -1684,6 +1684,25 @@
         }
     }
 
+    // The ":" emoji list at the caret, from what is written before it
+    // (chips as U+FFFC): ":" and at least two letters at a line's start,
+    // after a space or a chip. Never after a letter or digit, so "::", a
+    // time ("10:30") and a URL ("https://") do not open it. Answers null or
+    // { start, word }.
+    function colonEmojiAt(before) {
+        var match = /(^|[\s￼]):([A-Za-zÇĞİÖŞÜÂÎÛçğıöşüâîû]{2,20})$/.exec(before);
+
+        return match ? { start: before.length - match[2].length - 1, word: match[2] } : null;
+    }
+
+    // The matches (findEmoji()) with the recent ones first, in the recent
+    // order, then the rest in the picker's; at most limit.
+    function colonEmojiList(found, recent, limit) {
+        var first = recent.filter(function (emoji) { return found.indexOf(emoji) !== -1; });
+
+        return first.concat(found.filter(function (emoji) { return first.indexOf(emoji) === -1; })).slice(0, limit);
+    }
+
     // ── How near the composer's text is to the server's limit ──
     // WS_MESSAGE_MAX (CFG.message_max) counts the posted body after trim()
     // in characters as mb_strlen() does: code points, so a surrogate pair is
@@ -2982,6 +3001,8 @@
                     event.stopPropagation();
                     emojiPicker(box.left, box.bottom + 4, function (picked) { editor.insertText(picked); });
                 });
+                // ":" and two letters suggest emoji where the button is.
+                field.colonEmoji = true;
 
                 return window.PGWsEditor.toolbar(editor, [mention, tag, emoji].concat(withList ? ['bullets', 'numbers', 'quote', 'checklist'] : []), { className: 'ws-note-actions' });
             }
@@ -11473,6 +11494,8 @@
                 emojiPicker(box.left, box.top - 6, function (picked) { self.insertText(picked); }, true);
             });
             parts.push(emoji);
+            // ":" and two letters suggest emoji in this box too.
+            self.colonEmoji = true;
 
             // A table, a calculation, a checklist or a poll: the things that are
             // more than a line.
@@ -13030,6 +13053,18 @@
                 self.drawCommandStrip(argument);
             }
 
+            // ":" and two letters suggest emoji in a box with the emoji
+            // button; not while a word is composed, nor in code, a link, a
+            // cell or a card. Escape leaves that ":" alone (emojiSkip).
+            var colon = (self.colonEmoji && self.rich && !self.rich.node.wsComposing && !self.rich.caretBlocked()) ? colonEmojiAt(before) : null;
+
+            if (!colon) {
+                self.emojiSkip = -1;
+            } else if ((colon.start !== self.emojiSkip) && findEmoji(colon.word).length) {
+                self.openPicker('emoji', colon.word, colon.start);
+                return;
+            }
+
             // A chip right before the sigil counts as a word boundary.
             if ((match = /(^|[\s\uFFFC])@([^\s@#<>\uFFFC]{0,30})$/.exec(before))) {
                 self.openPicker('people', match[2], before.length - match[2].length - 1);
@@ -13532,6 +13567,15 @@
                 return;
             }
 
+            // The emoji matching the word after ":", the recent ones first.
+            if (mode === 'emoji') {
+                self.picker.setAttribute('aria-label', t('emoji_suggest'));
+                self.drawPicker(colonEmojiList(findEmoji(query), recentEmoji(), 8).map(function (emoji) {
+                    return { emoji: emoji, glyph: emoji, label: (EMOJI_WORDS[emoji] || '').split(' ').slice(0, 3).join(' ') };
+                }));
+                return;
+            }
+
             // Every name a command answers to, Turkish or English: the name
             // as typed first ("/gö" shows /görev), then with the Turkish
             // letters folded ("/go" finds it too, "/YARDIM" finds /yardım).
@@ -13790,7 +13834,9 @@
                 var row = el('button', 'ws-picker-item' + ((index === 0) ? (argMode ? ' ws-picker-next' : ' active') : ''));
                 row.type = 'button';
 
-                if (item.avatar) {
+                if (item.glyph) {
+                    row.appendChild(el('span', 'ws-picker-emoji', item.glyph));
+                } else if (item.avatar) {
                     var img = el('img');
                     img.src = item.avatar;
                     img.alt = '';
@@ -13873,6 +13919,11 @@
                     this.argDismissed = this.argumentKey(this.argument);
                 }
 
+                // An emoji list stays away for this ":".
+                if (this.pickerMode === 'emoji') {
+                    this.emojiSkip = this.pickerStart;
+                }
+
                 this.closePicker();
                 return true;
             }
@@ -13918,6 +13969,21 @@
         },
 
         pick: function (item) {
+            // An emoji in place of the ":word", as one step of the box's
+            // undo: one Ctrl+Z brings the ":word" back.
+            if (item.emoji && this.rich) {
+                var rich = this.rich;
+                var word = Math.max(0, this.beforeCaret().length - this.pickerStart);
+
+                rememberEmoji(item.emoji);
+                this.closePicker();
+                rich.change(function () {
+                    rich.replaceTyped(word, { text: item.emoji });
+                    return true;
+                });
+                return;
+            }
+
             // A titled block: what was typed goes, the block comes in its place.
             if (item.block) {
                 var self = this;
