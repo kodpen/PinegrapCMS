@@ -8,14 +8,16 @@
  * whose Chips, Combobox and Datepicker replace tagin, select2 and the jQuery
  * UI pickers. Screens mark a field with a data-pg-* hook and read or write it
  * through these objects, so the swap changes the engine here, not the
- * screens. Chips run on Bootstrap 6 ('v6'); the other kinds still on the
- * engine the panel always used ('v5').
+ * screens. Chips and comboboxes run on Bootstrap 6 ('v6'); a combobox that
+ * searches the server and the date and time kinds still on the engine the
+ * panel always used ('v5').
  *
  *   <input data-pg-chips>                 Bootstrap 6 Chips drawn after the hidden
  *                                         input, which keeps the joined list: comma
  *                                         or data-pg-separator (" " for classes)
- *   <select data-pg-combobox>             select2; the native <select> keeps the value
- *     data-pg-source="url"                options searched on the server as you type:
+ *   <select data-pg-combobox>             Bootstrap 6 Combobox drawn after the hidden
+ *                                         <select>, which keeps the value; data-placeholder
+ *     data-pg-source="url"                select2: options searched on the server as you type:
  *                                         GET url?q=<text> answers {results: [{id, text}]};
  *                                         data-pg-min-length, data-pg-free-text (a typed
  *                                         value is kept), data-placeholder
@@ -203,6 +205,17 @@
                     drawChips(el);
                 },
                 destroy: removeChips
+            },
+            combobox: {
+                ready: function () { return !!(window.pgUI && window.pgUI.version() === 6); },
+                later: function () { return !!(window.pgUI && window.pgUI.version() === 0); },
+                init: drawCombobox,
+                // Combobox reads its items only when it is created.
+                redraw: function (el) {
+                    removeCombobox(el);
+                    drawCombobox(el);
+                },
+                destroy: removeCombobox
             }
         },
         v5: {
@@ -273,6 +286,166 @@
         }
     }
 
+    // A combobox offers a search box from this many options on.
+    var COMBOBOX_SEARCH_FROM = 8;
+
+    var CARET = '<svg class="combobox-caret" width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true"><path d="M.47 5.47a.75.75 0 0 1 1.06 0L5 8.94l3.47-3.47a.75.75 0 1 1 1.06 1.06l-4 4a.75.75 0 0 1-1.06 0l-4-4a.75.75 0 0 1 0-1.06Z" fill="currentcolor"/></svg>';
+
+    // The select's own classes the toggle takes over: sizes, validation,
+    // margins; not the control class, which the toggle has anyway.
+    var COMBOBOX_SKIP = { 'form-control': 1, 'form-select': 1, 'select2': 1, 'pg-combobox-native': 1 };
+
+    function comboboxItem(option, multiple) {
+        var item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'menu-item';
+        item.setAttribute('data-bs-value', option.value);
+        // An empty value is the "nothing chosen" item: it stands for the
+        // placeholder and is never shown as the choice.
+        if (option.selected && (multiple || option.value !== '')) {
+            item.className += ' selected';
+            item.setAttribute('aria-selected', 'true');
+        }
+        if (option.disabled) {
+            item.disabled = true;
+        }
+        item.textContent = option.textContent.trim() || (option.value === '' ? '\u2014' : option.value);
+        return item;
+    }
+
+    // The chosen options' texts, as the toggle shows them: every one for a
+    // multiple select (Bootstrap's own count is English), the placeholder
+    // when nothing is chosen.
+    function comboboxText(el) {
+        var out = [];
+        for (var i = 0; i < el.options.length; i++) {
+            var o = el.options[i];
+            if (o.selected && o.value !== '') {
+                out.push(o.textContent.trim());
+            }
+        }
+        return out.join(', ');
+    }
+
+    function showComboboxText(el) {
+        var value = el.pgComboboxToggle.querySelectorAll('.combobox-value')[0], text = comboboxText(el);
+        value.textContent = text || el.getAttribute('data-placeholder') || '';
+        value.className = 'combobox-value' + (text ? '' : ' combobox-placeholder');
+    }
+
+    // A toggle and a .menu after the hidden <select>, an item per option and
+    // a header per option group; the chosen items are marked in the markup,
+    // so drawing announces nothing. A choice writes the <select> and fires its
+    // native change, which the ERP account fields re-rate taxes on.
+    function drawCombobox(el) {
+        var multiple = !!el.multiple, toggle = document.createElement('button'), menu = document.createElement('div');
+        var classes = ['form-control', 'combobox-toggle', 'pg-combobox'], own = String(el.className || '').split(/\s+/);
+        for (var i = 0; i < own.length; i++) {
+            if (own[i] && !COMBOBOX_SKIP[own[i]]) {
+                classes.push(own[i]);
+            }
+        }
+        toggle.type = 'button';
+        toggle.className = classes.join(' ');
+        toggle.disabled = !!el.disabled;
+        var shown = document.createElement('span');
+        shown.className = 'combobox-value';
+        toggle.appendChild(shown);
+        toggle.insertAdjacentHTML('beforeend', CARET);
+        menu.className = 'menu pg-combobox-menu';
+        var count = el.options.length, search = count >= COMBOBOX_SEARCH_FROM;
+        if (search) {
+            var box = document.createElement('div'), input = document.createElement('input'), none = document.createElement('div');
+            box.className = 'combobox-search';
+            input.type = 'text';
+            input.className = 'form-control combobox-search-input';
+            input.setAttribute('autocomplete', 'off');
+            input.setAttribute('placeholder', label('search', 'Search'));
+            input.setAttribute('aria-label', label('search', 'Search'));
+            box.appendChild(input);
+            menu.appendChild(box);
+            none.className = 'combobox-no-results d-none';
+            none.textContent = label('no-results', 'No results');
+            menu.appendChild(none);
+        }
+        var children = el.children;
+        for (var j = 0; j < children.length; j++) {
+            var child = children[j];
+            if (child.tagName === 'OPTGROUP') {
+                var header = document.createElement('div');
+                header.className = 'menu-header';
+                header.textContent = child.getAttribute('label') || '';
+                menu.appendChild(header);
+                for (var k = 0; k < child.children.length; k++) {
+                    menu.appendChild(comboboxItem(child.children[k], multiple));
+                }
+            } else if (child.tagName === 'OPTION') {
+                menu.appendChild(comboboxItem(child, multiple));
+            }
+        }
+        el.classList.add('pg-combobox-native');
+        el.parentNode.insertBefore(menu, el.nextSibling);
+        el.parentNode.insertBefore(toggle, menu);
+        el.pgComboboxToggle = toggle;
+        el.pgComboboxMenu = menu;
+        // The field's label names the toggle, which is what people reach.
+        var named = el.id ? document.querySelector('label[for="' + el.id + '"]') : null;
+        if (named) {
+            named.id = named.id || (el.id + '_label');
+            toggle.setAttribute('aria-labelledby', named.id);
+        }
+        var combobox = window.pgUI.combobox.get(toggle, {
+            multiple: multiple,
+            search: search,
+            placeholder: el.getAttribute('data-placeholder') || ''
+        });
+        showComboboxText(el);
+        var offs = [
+            window.pgUI.combobox.on(toggle, 'change', function () {
+                var items = menu.querySelectorAll('.menu-item'), chosen = {};
+                for (var n = 0; n < items.length; n++) {
+                    if ((' ' + items[n].className + ' ').indexOf(' selected ') >= 0) {
+                        chosen[items[n].getAttribute('data-bs-value')] = true;
+                    }
+                }
+                for (var m = 0; m < el.options.length; m++) {
+                    el.options[m].selected = !!chosen[el.options[m].value];
+                }
+                if (!multiple && !Object.keys(chosen).length) {
+                    el.value = '';
+                }
+                showComboboxText(el);
+                fireChange(el);
+            }),
+            // The menu is at least as wide as its field.
+            window.pgUI.combobox.on(toggle, 'show', function () {
+                menu.style.minWidth = toggle.offsetWidth + 'px';
+            })
+        ];
+        el.pgComboboxOff = function () {
+            offs.forEach(function (off) { off(); });
+        };
+        return combobox;
+    }
+
+    function removeCombobox(el) {
+        if (el.pgComboboxOff) {
+            el.pgComboboxOff();
+        }
+        if (el.pgComboboxToggle) {
+            window.pgUI.combobox.dispose(el.pgComboboxToggle);
+            [el.pgComboboxToggle, el.pgComboboxMenu].forEach(function (node) {
+                if (node && node.parentNode) {
+                    node.parentNode.removeChild(node);
+                }
+            });
+        }
+        el.classList.remove('pg-combobox-native');
+        el.pgComboboxToggle = null;
+        el.pgComboboxMenu = null;
+        el.pgComboboxOff = null;
+    }
+
     // The jQuery UI picker's one box moves into the field's overlay host each
     // time it opens (the open dialog holding the field, else <body>); a
     // field's own beforeShow still runs.
@@ -299,17 +472,18 @@
     // sizes and margins, not the control and hook classes.
     var CHIPS_SKIP = { 'tagin': 1, 'form-control': 1, 'form-control-sm': 1, 'form-control-lg': 1 };
 
-    // The translated label of a chip's remove button, which Bootstrap
-    // hard-codes as "Remove"; pg_fields_script() prints it on its tag.
-    function removeLabel() {
-        var tag = document.querySelector('script[data-pg-remove-label]');
-        return (tag && tag.getAttribute('data-pg-remove-label')) || 'Remove';
+    // Translated words the widgets show, printed by pg_fields_script() on its
+    // tag as data-pg-<name>-label: 'remove' (a chip's button, which Bootstrap
+    // hard-codes as "Remove"), 'search' and 'no-results' (a combobox).
+    function label(name, fallback) {
+        var attr = 'data-pg-' + name + '-label', tag = document.querySelector('script[' + attr + ']');
+        return (tag && tag.getAttribute(attr)) || fallback;
     }
 
     function labelDismissButtons(box) {
-        var buttons = box.querySelectorAll('.chip-dismiss'), label = removeLabel();
+        var buttons = box.querySelectorAll('.chip-dismiss'), text = label('remove', 'Remove');
         for (var i = 0; i < buttons.length; i++) {
-            buttons[i].setAttribute('aria-label', label);
+            buttons[i].setAttribute('aria-label', text);
         }
     }
 
@@ -381,12 +555,18 @@
         jq()(el).datepicker('destroy');
     }
 
-    function engineName(kind) {
+    // The engine of a kind; a combobox that searches the server
+    // (data-pg-source) stays on select2, Combobox searches only its items.
+    function engineName(kind, el) {
+        if (kind === 'combobox' && el && el.hasAttribute && el.hasAttribute('data-pg-source')) {
+            return 'v5';
+        }
         return ENGINES.v6[kind] ? 'v6' : 'v5';
     }
 
-    function engine(kind) {
-        return ENGINES[engineName(kind)][kind];
+    // The engine that drew the field, else the one that would draw it.
+    function engine(kind, el) {
+        return ENGINES[(el && el.pgFieldEngine) || engineName(kind, el)][kind];
     }
 
     // ------------------------------------------------------------ fields
@@ -408,7 +588,7 @@
         if (!el || !kind || el.pgFieldKind) {
             return el;
         }
-        var e = engine(kind);
+        var e = engine(kind, el);
         if (!e.ready()) {
             if (e.later && e.later() && !el.pgFieldWaiting) {
                 el.pgFieldWaiting = true;
@@ -420,6 +600,7 @@
             return el;
         }
         el.pgFieldKind = kind;
+        el.pgFieldEngine = engineName(kind, el);
         e.init(el);
         return el;
     }
@@ -441,8 +622,9 @@
     function destroy(el) {
         el = element(el);
         if (el && el.pgFieldKind) {
-            engine(el.pgFieldKind).destroy(el);
+            engine(el.pgFieldKind, el).destroy(el);
             el.pgFieldKind = '';
+            el.pgFieldEngine = '';
         }
         return el;
     }
@@ -484,7 +666,7 @@
         el.value = text;
         fireChange(el);
         if (el.pgFieldKind) {
-            engine(kind).redraw(el);
+            engine(kind, el).redraw(el);
         }
     }
 
@@ -559,14 +741,14 @@
             }
             fireChange(el);
             if (el.pgFieldKind) {
-                engine('combobox').redraw(el);
+                engine('combobox', el).redraw(el);
             }
         },
         // After options were added or removed by a script.
         refresh: function (el) {
             el = element(el);
             if (el && el.pgFieldKind) {
-                engine('combobox').redraw(el);
+                engine('combobox', el).redraw(el);
             }
         }
     };
@@ -613,7 +795,7 @@
         onChange: onChange,
         destroy: destroy,
         switchKind: switchKind,
-        // 'v6' or 'v5': the engine that draws a kind.
+        // 'v6' or 'v5': the engine that draws a kind (a field's, if given).
         engine: engineName,
         hooks: HOOKS
     };

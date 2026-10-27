@@ -85,10 +85,33 @@ function FakeElement(doc, tag, attrs) {
     this.className = this.attributes['class'] || '';
     this.children = [];
     this.parentNode = null;
-    this.textContent = '';
+    this.id = this.attributes.id || '';
+    this.textContent = this.attributes.text || '';
+    this.selected = 'selected' in this.attributes;
+    this.disabled = 'disabled' in this.attributes;
+    var self = this;
+    this.classList = {
+        add: function (c) { if (!this.contains(c)) { self.className = (self.className + ' ' + c).trim(); } },
+        remove: function (c) { self.className = self.className.split(/\s+/).filter(function (x) { return x && x !== c; }).join(' '); },
+        contains: function (c) { return (' ' + self.className + ' ').indexOf(' ' + c + ' ') >= 0; }
+    };
+    // A select's value follows its options, as in a browser.
+    if (this.tagName === 'SELECT') {
+        Object.defineProperty(this, 'value', {
+            get: function () { var o = self.options.filter(function (x) { return x.selected; })[0]; return o ? o.value : ''; },
+            set: function (v) { self.options.forEach(function (x) { x.selected = (x.value === String(v)); }); }
+        });
+    }
     doc.all.push(this);
 }
-FakeElement.prototype.appendChild = function (c) { c.parentNode = this; this.children.push(c); return c; };
+FakeElement.prototype.insertAdjacentHTML = function () {};
+FakeElement.prototype.appendChild = function (c) {
+    c.parentNode = this;
+    this.children.push(c);
+    var select = this.tagName === 'SELECT' ? this : (this.tagName === 'OPTGROUP' && this.parentNode && this.parentNode.tagName === 'SELECT' ? this.parentNode : null);
+    if (select && c.tagName === 'OPTION') { select.options.push(c); }
+    return c;
+};
 FakeElement.prototype.insertBefore = function (c, ref) {
     var i = ref ? this.children.indexOf(ref) : -1;
     c.parentNode = this;
@@ -122,7 +145,10 @@ function makeDocument() {
     doc.create = function (tag, attrs) { return new FakeElement(doc, tag, attrs); };
     doc.querySelectorAll = function (sel) { return doc.all.filter(function (el) { return el.matches(sel); }); };
     doc.querySelector = function (sel) {
-        if (sel === 'script[data-pg-remove-label]') { return doc.all.filter(function (el) { return el.tagName === 'SCRIPT' && el.hasAttribute('data-pg-remove-label'); })[0] || null; }
+        var lab = /^label\[for="([^"]+)"\]$/.exec(sel);
+        if (lab) { return doc.all.filter(function (el) { return el.tagName === 'LABEL' && el.getAttribute('for') === lab[1]; })[0] || null; }
+        var word = /^script\[([\w-]+)\]$/.exec(sel);
+        if (word) { return doc.all.filter(function (el) { return el.tagName === 'SCRIPT' && el.hasAttribute(word[1]); })[0] || null; }
         return doc.all.filter(function (el) { return '#' + el.attributes.id === sel; })[0] || null;
     };
     doc.createElement = function (tag) { return new FakeElement(doc, tag, {}); };
@@ -184,6 +210,28 @@ function makePgUI(calls, late) {
             },
             on: function (box, name, fn) { box.addEventListener(name + '.bs.chips', fn); return function () { box.removeEventListener(name + '.bs.chips', fn); }; },
             dispose: function (box) { calls.push(['chips-dispose', box.className]); }
+        },
+        // Combobox over a toggle whose next sibling is the menu: pick(value)
+        // marks the item as Bootstrap does (one item, or toggled when
+        // multiple) and fires change.bs.combobox.
+        combobox: {
+            get: function (toggle, opts) {
+                calls.push(['combobox', toggle.className, opts]);
+                var menu = toggle.nextSibling;
+                toggle.instance = {
+                    pick: function (v) {
+                        menu.querySelectorAll('.menu-item').forEach(function (item) {
+                            var hit = item.getAttribute('data-bs-value') === v;
+                            if (opts.multiple) { if (hit) { item.classList[item.classList.contains('selected') ? 'remove' : 'add']('selected'); } }
+                            else { item.classList[hit ? 'add' : 'remove']('selected'); }
+                        });
+                        (toggle.listeners['change.bs.combobox'] || []).forEach(function (f) { f({}); });
+                    }
+                };
+                return toggle.instance;
+            },
+            on: function (toggle, name, fn) { toggle.addEventListener(name + '.bs.combobox', fn); return function () { toggle.removeEventListener(name + '.bs.combobox', fn); }; },
+            dispose: function (toggle) { calls.push(['combobox-dispose', toggle.className]); }
         }
     };
     return ui;
@@ -199,7 +247,13 @@ function load(opts) {
     if (!opts.noBootstrap) { win.pgUI = makePgUI(calls, opts.late); }
     var form = doc.create('form', {});
     (opts.fields || []).forEach(function (f) { form.appendChild(doc.create(f[0], f[1])); });
-    if (opts.label) { doc.create('script', { 'data-pg-remove-label': opts.label }); }
+    (opts.options || []).forEach(function (o) {
+        var host = doc.querySelector('#' + o[0]), group = o[2] ? host.children.filter(function (g) { return g.getAttribute('label') === o[2]; })[0] : null;
+        if (o[2] && !group) { group = host.appendChild(doc.create('optgroup', { label: o[2] })); }
+        (group || host).appendChild(doc.create('option', o[1]));
+    });
+    (opts.labels || []).forEach(function (l) { form.appendChild(doc.create('label', l)); });
+    if (opts.label) { doc.create('script', { 'data-pg-remove-label': opts.label, 'data-pg-search-label': 'Ara', 'data-pg-no-results-label': 'Sonuç bulunamadı' }); }
     new Function('window', 'document', PG_FIELDS_SOURCE)(win, doc);
     return { win: win, doc: doc, calls: calls };
 }
@@ -229,11 +283,11 @@ function main() {
         ['input', { id: 'cutoff', 'data-pg-time': '', value: '5:00 PM' }],
         ['input', { id: 'plain' }]
     ];
-    var a = load({ jquery: true, format: 'd/m/yy', time: true, fields: fields });
+    var a = load({ jquery: true, format: 'd/m/yy', time: true, fields: fields, options: [['zones', { value: '1', text: 'One' }], ['zones', { value: '2', text: 'Two' }], ['zones', { value: '3', text: 'Three' }]] });
     a.win.pgFields.init();
-    out.engine = [a.win.pgFields.engine('chips'), a.win.pgFields.engine('date')];
+    var sourced = a.doc.create('select', { 'data-pg-source': 'x.php' });
+    out.engine = [a.win.pgFields.engine('chips'), a.win.pgFields.engine('combobox'), a.win.pgFields.engine('combobox', sourced), a.win.pgFields.engine('date')];
     out.init_calls = a.calls.map(function (c) { return c[0] + ':' + c[1]; });
-    out.select2_options = a.calls.filter(function (c) { return c[0] === 'select2'; })[0][2];
     out.time_options = a.calls.filter(function (c) { return c[0] === 'timepicker'; })[0][2];
     out.chips_options = a.calls.filter(function (c) { return c[0] === 'chips'; }).map(function (c) { return c[2]; });
 
@@ -281,10 +335,14 @@ function main() {
     out.texts = [get('start').value, get('cutoff').value, get('tags').value, get('classes').value];
 
     var zones = get('zones');
-    ['1', '2', '3'].forEach(function (v) { zones.options.push({ value: v, selected: false }); });
     a.calls.length = 0;
     a.win.pgCombobox.set(zones, ['1', 3]);
-    out.combobox = { get: a.win.pgCombobox.get(zones), redraw: a.calls.slice() };
+    out.combobox = {
+        get: a.win.pgCombobox.get(zones),
+        redraw: a.calls.map(function (c) { return c[0]; }),
+        text: zones.nextSibling.children[0].textContent,
+        selected: zones.nextSibling.nextSibling.querySelectorAll('.selected').map(function (i) { return i.getAttribute('data-bs-value'); })
+    };
 
     // Loaded again with injected markup: the first copy draws the new field
     // and the drawn ones are left alone.
@@ -318,6 +376,7 @@ function main() {
     ] });
     c.win.pgFields.init();
     var catOpts = c.calls.filter(function (x) { return x[0] === 'select2'; })[0][2];
+    out.select2_theme = catOpts.theme;
     out.plain_date = c.calls.filter(function (x) { return x[0] === 'datepicker'; })[0][2];
     out.remote = {
         url: catOpts.ajax.url,
@@ -327,6 +386,42 @@ function main() {
         data: catOpts.ajax.data({ term: 'shoe' }),
         results: [catOpts.ajax.processResults({ results: [{ id: 'a', text: 'a' }] }), catOpts.ajax.processResults(null)]
     };
+
+    // Combobox: a toggle and a menu after the hidden select; an item per
+    // option, a header per group, a search box from eight options on, the
+    // translated words; a pick writes the select and fires its change.
+    var opts = [['acct', { value: '', text: '' }]];
+    ['100', '102', '120', '153'].forEach(function (v) { opts.push(['acct', { value: v, text: 'Account ' + v }, 'Assets']); });
+    ['320', '335', '360'].forEach(function (v) { opts.push(['acct', { value: v, text: 'Account ' + v, selected: v === '335' ? '' : undefined }, 'Liabilities']); });
+    opts.forEach(function (o) { if (o[1].selected === undefined) { delete o[1].selected; } });
+    opts.push(['few', { value: 'a', text: 'A' }], ['few', { value: 'b', text: 'B' }]);
+    var cb = load({ label: 'Kaldır', labels: [{ 'for': 'acct', text: 'Account' }], fields: [
+        ['select', { id: 'acct', name: 'account_id', 'data-pg-combobox': '', 'class': 'form-control form-control-sm is-invalid', 'data-placeholder': 'Choose an account' }],
+        ['select', { id: 'few', 'data-pg-combobox': '', 'data-placeholder': 'Pick one' }]
+    ], options: opts });
+    cb.win.pgFields.init();
+    var acct = cb.doc.querySelector('#acct'), toggle = acct.nextSibling, menu = toggle.nextSibling;
+    var menuShape = function (m) { return m.children.map(function (c) {
+        if (c.className === 'combobox-search') { return 'search:' + c.children[0].getAttribute('placeholder'); }
+        if (c.tagName === 'BUTTON') { return 'item:' + c.getAttribute('data-bs-value') + ':' + c.textContent + (c.classList.contains('selected') ? ':selected' : ''); }
+        return c.className + ':' + c.textContent;
+    }); };
+    var acctHeard = [];
+    acct.addEventListener('change', function (e) { acctHeard.push(acct.value + ':' + e.bubbles); });
+    out.combobox_markup = {
+        calls: cb.calls.map(function (c) { return c[0] + ':' + c[1]; }),
+        options: cb.calls.map(function (c) { return c[2]; }),
+        native: acct.className,
+        toggle: [toggle.tagName, toggle.type, toggle.getAttribute('aria-labelledby'), toggle.children[0].textContent, toggle.children[0].className],
+        menu: menuShape(menu),
+        few: menuShape(cb.doc.querySelector('#few').nextSibling.nextSibling),
+        few_text: [cb.doc.querySelector('#few').nextSibling.children[0].textContent, cb.doc.querySelector('#few').nextSibling.children[0].className],
+        heard_on_draw: acctHeard.length
+    };
+    toggle.instance.pick('120');
+    out.combobox_pick = { value: acct.value, heard: acctHeard.slice(), text: toggle.children[0].textContent, get: cb.win.pgCombobox.get(acct) };
+    cb.win.pgFields.destroy(acct);
+    out.combobox_destroy = { native: acct.className, siblings: acct.parentNode.children.length, value: acct.value, calls: cb.calls.slice(-1).map(function (c) { return c[0]; }) };
 
     // Without the library the field stays a plain one; no error.
     var b = load({ noBootstrap: true, fields: [['select', { id: 's', 'data-pg-combobox': '' }], ['input', { id: 'c', 'data-pg-chips': '' }]] });
@@ -405,13 +500,13 @@ function test_pg_fields_hooks_drawn_by_their_engine()
 		return;
 	}
 
-	pg_assert_same(array('v6', 'v5'), $r['engine'], 'chips on Bootstrap 6, the other kinds still on v5');
+	pg_assert_same(array('v6', 'v6', 'v5', 'v5'), $r['engine'], 'chips and comboboxes on Bootstrap 6; a server-searched combobox and the dates still on v5');
 	pg_assert_same(
-		array('chips:chip-input pg-chips min-height-tagin border-subtle-danger', 'chips:chip-input pg-chips pg-chips-sm', 'select2:zones', 'datepicker:day', 'datetimepicker:start', 'timepicker:cutoff'),
+		array('chips:chip-input pg-chips min-height-tagin border-subtle-danger', 'chips:chip-input pg-chips pg-chips-sm', 'combobox:form-control combobox-toggle pg-combobox', 'datepicker:day', 'datetimepicker:start', 'timepicker:cutoff'),
 		$r['init_calls'],
 		'each hook once, the plain field untouched, a second init() draws nothing'
 	);
-	pg_assert_same(array('theme' => 'bootstrap-5', 'allowClear' => true), $r['select2_options'], 'select2 as backend.src.js drew it');
+	pg_assert_same('bootstrap-5', $r['select2_theme'], 'a server-searched combobox is a select2 as before');
 	pg_assert_same(array('timeFormat' => 'h:mm TT'), $r['time_options'], 'time fields read timepicker_options');
 	pg_assert_same(array(array('separator' => ','), array('separator' => ' ')), $r['chips_options'], 'Chips gets the data-pg-separator, a comma without one');
 	pg_assert_same(array('chips' => array('a', 'b', 'c'), 'classes' => array('one', 'two'), 'date' => '2026-10-26', 'datetime' => '2026-10-26 17:00', 'time' => '17:00'), $r['get']);
@@ -427,7 +522,7 @@ function test_pg_fields_switch_kind_and_destroy()
 	}
 
 	pg_assert_same(
-		array('datepicker:start:destroy', 'datepicker:start', 'datepicker:start:destroy', 'datetimepicker:start', 'datepicker:plain', 'select2:zones:destroy'),
+		array('datepicker:start:destroy', 'datepicker:start', 'datepicker:start:destroy', 'datetimepicker:start', 'datepicker:plain', 'combobox-dispose:form-control combobox-toggle pg-combobox'),
 		$r['switch_kind']['calls'],
 		'the old widget destroyed, the new one drawn, the same kind again a no-op'
 	);
@@ -459,9 +554,9 @@ function test_pg_fields_set_writes_the_posted_field()
 	);
 	pg_assert_same(array('1/2/2026 12:30 AM', '1:45 PM', 'x,y', 'x y'), $r['texts'], 'site text in the posted field');
 	pg_assert_same(
-		array('get' => array('1', '3'), 'redraw' => array(array('trigger', 'zones', 'change.select2'))),
+		array('get' => array('1', '3'), 'redraw' => array('combobox-dispose', 'combobox'), 'text' => 'One, Three', 'selected' => array('1', '3')),
 		$r['combobox'],
-		'the native select keeps the value, select2 only redraws'
+		'the native select keeps the value; Combobox is drawn again with the chosen items and their texts'
 	);
 }
 
@@ -535,5 +630,52 @@ function test_pg_fields_chips_on_bootstrap_6()
 		array('before' => 0, 'after' => array('chips'), 'kind' => 'chips', 'label' => 'Kaldır', 'destroyed' => array('children' => 1, 'calls' => array('chips', 'chips-dispose'), 'value' => 'a')),
 		$r['late'],
 		'drawn once after Bootstrap\'s module ran, the remove label from pg_fields_script(), destroy() leaves the input with its value'
+	);
+}
+
+function test_pg_fields_combobox_on_bootstrap_6()
+{
+	$r = pg_fields_test_result();
+	if (!$r) {
+		return;
+	}
+
+	$m = $r['combobox_markup'];
+	pg_assert_same(
+		array('combobox:form-control combobox-toggle pg-combobox form-control-sm is-invalid', 'combobox:form-control combobox-toggle pg-combobox'),
+		$m['calls'],
+		'the toggle takes the select\'s sizes and validation state'
+	);
+	pg_assert_same(
+		array(
+			array('multiple' => false, 'search' => true, 'placeholder' => 'Choose an account'),
+			array('multiple' => false, 'search' => false, 'placeholder' => 'Pick one'),
+		),
+		$m['options'],
+		'search from eight options on, the placeholder from data-placeholder'
+	);
+	pg_assert_same('form-control form-control-sm is-invalid pg-combobox-native', $m['native'], 'the select stays, hidden by its class');
+	pg_assert_same(array('BUTTON', 'button', 'acct_label', 'Account 335', 'combobox-value'), $m['toggle'], 'a button named by the field\'s label, showing the chosen option');
+	pg_assert_same(
+		array(
+			'search:Ara', 'combobox-no-results d-none:Sonuç bulunamadı', "item::\u{2014}",
+			'menu-header:Assets', 'item:100:Account 100', 'item:102:Account 102', 'item:120:Account 120', 'item:153:Account 153',
+			'menu-header:Liabilities', 'item:320:Account 320', 'item:335:Account 335:selected', 'item:360:Account 360',
+		),
+		$m['menu'],
+		'translated search words, the empty option as an item, a header per group, the chosen item marked'
+	);
+	pg_assert_same(array('item:a:A', 'item:b:B'), $m['few'], 'no search box under eight options');
+	pg_assert_same(array('Pick one', 'combobox-value combobox-placeholder'), $m['few_text'], 'nothing chosen: the placeholder');
+	pg_assert_same(0, $m['heard_on_draw'], 'drawing fires no change');
+	pg_assert_same(
+		array('value' => '120', 'heard' => array('120:true'), 'text' => 'Account 120', 'get' => '120'),
+		$r['combobox_pick'],
+		'a pick writes the select and fires one bubbling change'
+	);
+	pg_assert_same(
+		array('native' => 'form-control form-control-sm is-invalid', 'siblings' => 5, 'value' => '120', 'calls' => array('combobox-dispose')),
+		$r['combobox_destroy'],
+		'destroy() leaves the plain select with its value'
 	);
 }
