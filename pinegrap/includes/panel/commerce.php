@@ -36,6 +36,8 @@
  *   delete_product_barcode       deletes one barcode
  *   bulk_assign_barcodes         assigns barcodes to the chosen products
  *   save_barcode_template        the barcode label template
+ *   product_name_check           the product that already holds a product
+ *                                code, for the product screen's code field
  *   offer_editor                 the offer editor (edit_offer_f.php)
  *
  * Called by pg_panel_dispatch() (includes/panel/actions.php); see that file
@@ -960,7 +962,7 @@ function pg_panel_get_unselected_products($request, $action)
     $rows_html = '';
     foreach ($products as $product) {
         $product['price'] = $product['price'] / 100;
-        $status_class = $product['enabled'] == 1 ? 'text-success' : 'text-danger';
+        $status_class = $product['enabled'] == 1 ? 'fg-success' : 'fg-danger';
 
         $output_image_column = '';
         if ($show_image) {
@@ -970,8 +972,8 @@ function pg_panel_get_unselected_products($request, $action)
 
         $rows_html .=
             '<tr id="' . $product['id'] . '">' .
-            '<td class="select-all align-middle text-start"><input class="form-check-input" type="checkbox" name="products[]" value="' . $product['id'] . '"/></td>' .
-            '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $product['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
+            '<td class="select-all align-middle text-start"><input class="check" type="checkbox" name="products[]" value="' . $product['id'] . '"/></td>' .
+            '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $product['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
             $output_image_column .
             '<td class="chart_label align-middle ' . $status_class . '">' . h($product['name']) . '</td>' .
             '<td class="align-middle ' . $status_class . '">' . h($product['short_description']) . '</td>' .
@@ -1322,4 +1324,47 @@ function pg_panel_offer_editor($request, $action)
     // The sub-actions live in their own include and respond themselves.
     require_once(PG_FUNCTIONS_DIR . '/edit_offer_f.php');
     pg_offer_editor_handle($request);
+}
+
+function pg_panel_product_name_check($request, $action)
+{
+    // The product screen's code field asks while the operator types, so a
+    // code another product holds is named before the form is posted and
+    // nothing typed is lost. pg_pb_validate_product_post() refuses it again
+    // on save.
+
+    // Kept global: helpers read the session user through `global $user`;
+    // see includes/panel/actions.php.
+    global $user;
+
+    if (!USER_LOGGED_IN) {
+        respond(array(
+            'status' => 'error',
+            'message' => 'Invalid login.'
+        ));
+    }
+    $user = validate_user();
+    // The product screens' own rule, answered in JSON: roles 0-2, or a
+    // basic user with manage_ecommerce.
+    if (($user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
+        log_activity(lang('access denied to commerce'), $_SESSION['sessionusername']);
+        respond(array(
+            'status' => 'error',
+            'message' => lang('Access denied')));
+    }
+    validate_token();
+
+    $name = trim((string) ($request['name'] ?? ''));
+    $holder = pg_product_name_holder($name, (int) ($request['product_id'] ?? 0));
+
+    if (!$holder) {
+        respond(array('status' => 'success', 'taken' => false));
+    }
+
+    respond(array(
+        'status' => 'success',
+        'taken' => true,
+        'message' => pg_product_name_taken_text($name, $holder),
+        'url' => PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . (int) $holder['id'],
+        'link' => lang('Open it')));
 }

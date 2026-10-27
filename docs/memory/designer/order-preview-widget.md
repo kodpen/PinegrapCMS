@@ -1,6 +1,7 @@
 ---
 name: order-preview-widget
 description: The Order Preview widget (last classic checkout step): values from get_order_preview()'s custom-layout branch, page row, controls by name, sections, what is left out.
+module: widgets_order_preview
 ---
 
 ## What is it?

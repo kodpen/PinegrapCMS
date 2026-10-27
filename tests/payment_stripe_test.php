@@ -130,7 +130,7 @@ function test_payment_stripe_driver_is_shipped()
 	$names = array_map(function ($field) {
 		return $field['name'] . ':' . $field['type'] . ($field['required'] ? '!' : '');
 	}, pg_payment_fields('stripe'));
-	pg_assert_same(array('publishable_key:text!', 'secret_key:secret!', 'link:switch'), $names);
+	pg_assert_same(array('publishable_key:text!', 'secret_key:secret!', 'webhook_secret:secret', 'link:switch'), $names);
 
 	pg_assert_contains('<option value="Stripe PaymentIntents">Stripe</option>', pg_payment_settings_gateway_options('Iyzipay'));
 	pg_assert_contains('selected="selected"', pg_payment_settings_gateway_options('Stripe PaymentIntents'));

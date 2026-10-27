@@ -150,7 +150,7 @@
         }
 
         if (change.can_apply) {
-            var apply = h.button('btn btn-sm btn-primary rounded-pill px-3', h.t('change_apply'), 'bi-check2');
+            var apply = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', h.t('change_apply'), 'bi-check2');
 
             apply.addEventListener('click', function () {
                 var go = change.warning ? h.ask(change.warning, h.t('change_apply'), true) : Promise.resolve(true);
@@ -180,7 +180,7 @@
         // A call of an MCP server's tool runs with the asker's own account,
         // connected from here; the sign-in comes back to this task.
         if (change.connect) {
-            var connect = h.button('btn btn-sm btn-outline-primary rounded-pill px-3', h.t(change.connect.again ? 'mcp_connect_again' : 'mcp_connect_me'), 'bi-box-arrow-in-right');
+            var connect = h.button('btn btn-sm btn-outline theme-primary rounded-pill px-5', h.t(change.connect.again ? 'mcp_connect_again' : 'mcp_connect_me'), 'bi-box-arrow-in-right');
 
             connect.addEventListener('click', function () {
                 connect.disabled = true;
@@ -225,9 +225,9 @@
         } else if (change.status === 'dismissed') {
             card.appendChild(h.el('div', 'ws-draft-done', h.t('change_dismissed', change.decided_by)));
         } else if (change.status === 'stale') {
-            card.appendChild(h.el('div', 'ws-draft-done text-warning-emphasis', change.proposer ? h.t('proposal_change_stale', change.proposer) : h.t((agent === 'ai') ? 'ai_change_stale' : 'change_stale')));
+            card.appendChild(h.el('div', 'ws-draft-done fg-emphasis-warning', change.proposer ? h.t('proposal_change_stale', change.proposer) : h.t((agent === 'ai') ? 'ai_change_stale' : 'change_stale')));
         } else if (change.status === 'failed') {
-            card.appendChild(h.el('div', 'ws-draft-done text-danger-emphasis', h.t('change_failed', change.error)));
+            card.appendChild(h.el('div', 'ws-draft-done fg-emphasis-danger', h.t('change_failed', change.error)));
         }
 
         return card;
@@ -262,7 +262,7 @@
         // Read again only while the drawer that holds the part is open: a
         // drawer drawn again for another task leaves this part behind.
         function visible() {
-            var panel = wrap.closest('.offcanvas, dialog.drawer');
+            var panel = wrap.closest('.drawer, dialog.drawer');
 
             return document.body.contains(wrap) && (!panel || pgUI.drawer.isOpen(panel) || panel.classList.contains('showing'));
         }
@@ -325,6 +325,7 @@
 
             task.delegate = data.task.delegate;
             task.delegate_name = data.task.delegate_name;
+            task.delegate_icon = data.task.delegate_icon;
             update(data.task.delegation);
         }
 
@@ -397,7 +398,7 @@
                     html(asked, item.instruction);
                 } else {
                     asked.textContent = h.t('dg_no_instruction');
-                    asked.classList.add('text-body-secondary');
+                    asked.classList.add('fg-secondary');
                 }
 
                 main.appendChild(asked);
@@ -467,8 +468,8 @@
             text.setAttribute('aria-label', (withKey === '') ? h.t('dg_hand') : h.t('dg_follow'));
             form.appendChild(text);
 
-            var send = h.button('btn btn-sm btn-outline-primary rounded-pill px-3', (withKey === '') ? h.t('dg_hand') : h.t('dg_send'), (withKey === '') ? 'bi-stars' : 'bi-send');
-            var connect = h.button('btn btn-sm btn-outline-primary rounded-pill px-3 d-none', h.t('mcp_connect_me'), 'bi-box-arrow-in-right');
+            var send = h.button('btn btn-sm btn-outline theme-primary rounded-pill px-5', (withKey === '') ? h.t('dg_hand') : h.t('dg_send'), (withKey === '') ? 'bi-stars' : 'bi-send');
+            var connect = h.button('btn btn-sm btn-outline theme-primary rounded-pill px-5 d-none', h.t('mcp_connect_me'), 'bi-box-arrow-in-right');
             var hint = h.el('div', 'form-text mt-0 d-none');
 
             function chosen() {
@@ -561,7 +562,7 @@
 
                 var who = h.el('div', 'ws-grow');
                 who.appendChild(h.el('div', 'fw-semibold', h.t('dg_with', state.delegate.name)));
-                who.appendChild(h.el('div', 'small text-body-secondary', h.t('dg_with_meta', state.delegate.by, state.delegate.at)));
+                who.appendChild(h.el('div', 'small fg-secondary', h.t('dg_with_meta', state.delegate.by, state.delegate.at)));
                 badge.appendChild(who);
 
                 if (state.can_take) {
@@ -577,7 +578,7 @@
                 }
 
                 wrap.appendChild(badge);
-                wrap.appendChild(h.el('div', 'form-text mt-0 mb-2', h.t('dg_responsible')));
+                wrap.appendChild(h.el('div', 'form-text mt-0 mb-3', h.t('dg_responsible')));
             }
 
             if (state.waiting) {
@@ -588,7 +589,7 @@
             }
 
             if (!state.runs.length) {
-                wrap.appendChild(h.el('div', 'small text-body-secondary mb-2', h.t('dg_none')));
+                wrap.appendChild(h.el('div', 'small fg-secondary mb-3', h.t('dg_none')));
             } else {
                 var list = h.el('div', 'ws-task-note-list');
 
@@ -624,10 +625,23 @@
 
     // ── A task row ─────────────────────────────────────────────────────
 
+    // An MCP server's alias carries its own icon (ws_assistant_mcp_icon()).
+    function delegateIcon(task) {
+        if (task.delegate === 'ai') {
+            return 'bi-cpu';
+        }
+
+        if (String(task.delegate).indexOf('mcp:') === 0) {
+            return /^bi-[a-z0-9-]+$/.test(task.delegate_icon || '') ? task.delegate_icon : 'bi-plug';
+        }
+
+        return 'bi-stars';
+    }
+
     function rowTag(container, task, h) {
         if (task.delegate_name) {
-            var tag = h.el('span', 'ws-task-delegate-tag ms-2');
-            tag.appendChild(h.icon((task.delegate === 'ai') ? 'bi-cpu' : ((String(task.delegate).indexOf('mcp:') === 0) ? 'bi-plug' : 'bi-stars'), 'me-1'));
+            var tag = h.el('span', 'ws-task-delegate-tag ms-3');
+            tag.appendChild(h.icon(delegateIcon(task), 'me-1'));
             tag.appendChild(document.createTextNode(task.delegate_name));
             tag.title = h.t('dg_with', task.delegate_name);
             container.appendChild(tag);
@@ -643,12 +657,12 @@
             return;
         }
 
-        var tag = h.el('span', 'ws-task-delegate-tag ws-task-delegate-tag-waiting ms-2');
+        var tag = h.el('span', 'ws-task-delegate-tag ws-task-delegate-tag-waiting ms-3');
         tag.appendChild(h.icon('bi-hourglass-split', 'me-1'));
         tag.appendChild(document.createTextNode(h.t('dg_waiting_short', task.waiting_changes)));
         tag.title = h.t('dg_waiting', task.waiting_changes);
         container.appendChild(tag);
     }
 
-    window.PGWsTaskDelegate = { drawer: drawer, rowTag: rowTag };
+    window.PGWsTaskDelegate = { drawer: drawer, rowTag: rowTag, delegateIcon: delegateIcon };
 })();

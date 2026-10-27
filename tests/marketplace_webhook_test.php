@@ -394,7 +394,7 @@ function test_marketplace_webhook_screen_never_draws_the_key()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/marketplace_settings.php');
 
-	$writes_end = strpos($source, '// The two-step mapping for one article');
+	$writes_end = strpos($source, '// When something last happened, in words.');
 
 	pg_assert_true($writes_end !== false);
 
@@ -513,7 +513,7 @@ function test_marketplace_webhook_account_delete_removes_the_webhook_first()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/marketplace_settings.php');
 
 	$start = strpos($source, "if (\$action === 'delete' && \$account) {");
-	$end = strpos($source, "if (\$action === 'categories' && \$account) {");
+	$end = strpos($source, "if (\$action === 'clear_stale_matches' && \$account) {");
 
 	pg_assert_true(($start !== false) && ($end !== false) && ($start < $end));
 

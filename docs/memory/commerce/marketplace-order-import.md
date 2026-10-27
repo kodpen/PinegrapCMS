@@ -4,11 +4,11 @@ description: Rules for importing marketplace orders (includes/api/outbound/order
 ---
 
 ## What is the unit of import?
-- The unit is the PACKAGE, not the order: `marketplace_order_map` is UNIQUE on `(account_id, remote_package_id)`. Keying on the order number would count a second package of the same order as a duplicate.
+- The unit is the PACKAGE: `marketplace_order_map` is UNIQUE on `(account_id, remote_package_id)`. Keying on the order number would count a second package of the same order as a duplicate.
 
 ## In what order is the map row written?
-- The map row is written BEFORE the order. There is no transaction; on a retry this is the only thing preventing the order being written twice.
-- A half-finished import = an `importing` row whose `order_id` is 0.
+- The map row is written BEFORE the order. No transaction: on a retry it alone stops a second order.
+- a half-finished import = an `importing` row with `order_id` 0.
 - An `imported` row whose `order_id` is 0 = a package already cancelled when first seen; no order is written for it (`marketplace-order-status-sync.md`).
 
 ## Which checkout side effects are used?
@@ -18,7 +18,7 @@ description: Rules for importing marketplace orders (includes/api/outbound/order
 
 ## What happens with unmatched or code-matched lines?
 - One unmatched line makes the WHOLE order rejected: an order missing a line shows an incomplete shipment and decrements stock from the wrong product.
-- Match order (`mp_order_match_product()`): mapping (`remote_code = code`); `product_barcodes.barcode = code` for a barcode-keyed provider (Trendyol); `products.name = sku` (Trendyol `stockCode`); `products.name = code` (n11).
+- Match order (`mp_order_match_product()`): mapping (`remote_code`, bytes; case-blind if one alone: `mp_order_single_match()`); `product_barcodes.barcode = code` for a barcode-keyed provider (Trendyol); `products.name = sku` (Trendyol `stockCode`); `products.name = code` (n11).
 - A product matched without a mapping is mapped then under `code`, or its stock change never enters the queue. `INSERT IGNORE`: one already mapped under another code (a second barcode) keeps its row; a plain INSERT would end the job on the duplicate key (PR #1452).
 
 ## How do packages arrive?

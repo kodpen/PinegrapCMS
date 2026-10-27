@@ -726,7 +726,15 @@ if (!defined('PG_DB_GUARD_LOADED')) {
                 $cached['proxies'][] = $value;
 
             } elseif ($line[0] === 'B' && $fresh) {
-                $cached['blocks'][] = $value;
+
+                // A line carries its ban's end, so a ban that ran out stops
+                // being enforced here at once rather than when the mirror
+                // goes stale; on a quiet site nothing else rewrites the file.
+                $entry = pg_ban_shield_block_entry($value, time());
+
+                if ($entry !== null) {
+                    $cached['blocks'][] = $entry;
+                }
 
             } elseif ($line[0] === 'A') {
 
@@ -750,6 +758,110 @@ if (!defined('PG_DB_GUARD_LOADED')) {
     }
 
     /**
+     * Read one block line's value: the pattern, then the ban's end as a Unix
+     * time (0 for a ban without an end).
+     *
+     * A line written before the end was added carries the pattern alone and
+     * reads as a ban without an end, which the mirror's six-hour staleness
+     * still bounds. An end that is not a number is treated the same way: the
+     * firewall itself enforces the ban a moment later in either case.
+     *
+     * @param string $value the line without its "B " prefix
+     * @param int    $now   the current Unix time
+     * @return array|null array('pattern' => string, 'expires' => int), or
+     *                    null for an empty or expired line
+     */
+    function pg_ban_shield_block_entry($value, $now)
+    {
+        $parts = preg_split('/\s+/', trim((string) $value));
+
+        if (!$parts || $parts[0] === '') {
+            return null;
+        }
+
+        $expires = (isset($parts[1]) && ctype_digit($parts[1])) ? (int) $parts[1] : 0;
+
+        if ($expires > 0 && $expires <= (int) $now) {
+            return null;
+        }
+
+        return array('pattern' => $parts[0], 'expires' => $expires);
+    }
+
+    /**
+     * The reference printed on the shield's page and stored with the drained
+     * row, in the shape of waf_reference(), which this file cannot load.
+     *
+     * @return string twelve upper-case hexadecimal characters
+     */
+    function pg_ban_shield_reference()
+    {
+        $remote = isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
+
+        return strtoupper(substr(sha1($remote . '|' . microtime(true) . '|' . mt_rand()), 0, 12));
+    }
+
+    /**
+     * The request path without its query, one token for a tab separated or
+     * space separated line.
+     *
+     * @return string
+     */
+    function pg_ban_shield_request_path()
+    {
+        $path = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
+
+        $question = strpos($path, '?');
+
+        if ($question !== false) {
+            $path = substr($path, 0, $question);
+        }
+
+        return substr(str_replace(array("\t", "\n", "\r"), '', $path), 0, 200);
+    }
+
+    /**
+     * The page the shield answers a banned address with: a twin of the one
+     * waf_deny() draws, so a reader turned away before the database sees the
+     * same firewall page as one turned away after it, with the ban's end and
+     * a reference the operator can find in the firewall log.
+     *
+     * English only: lang() and functions.php are not loaded this early.
+     *
+     * @param string $reference pg_ban_shield_reference()
+     * @param int    $expires   the ban's end as a Unix time, 0 for none
+     * @return string
+     */
+    function pg_ban_shield_page($reference, $expires)
+    {
+        $body = 'Requests from your address are blocked by the site firewall.';
+
+        if ((int) $expires > 0) {
+            $body .= ' The block ends at ' . date('Y-m-d H:i T', (int) $expires) . '.';
+        }
+
+        $body .= ' If you believe this is a mistake, please contact the site owner and quote the reference below.';
+
+        return '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
+            . '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            . '<meta name="robots" content="noindex, nofollow">'
+            . '<title>Request Blocked</title>'
+            . '<style>body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;'
+            . 'background:#f6f7f9;color:#212529;margin:0;display:flex;min-height:100vh;'
+            . 'align-items:center;justify-content:center;padding:1.5rem}'
+            . '.b{background:#fff;border:1px solid #dee2e6;border-radius:.75rem;padding:2rem;'
+            . 'max-width:34rem;box-shadow:0 .5rem 1rem rgba(0,0,0,.05)}'
+            . 'h1{font-size:1.25rem;margin:0 0 .75rem}p{margin:0 0 1rem;line-height:1.6;color:#495057}'
+            . 'code{background:#f1f3f5;padding:.2rem .45rem;border-radius:.25rem;font-size:.875rem}'
+            . '.l{color:#868e96;font-size:.8125rem;text-transform:uppercase;letter-spacing:.03em}'
+            . '</style></head><body><div class="b"><h1>Request Blocked</h1><p>'
+            . htmlspecialchars($body, ENT_QUOTES, 'UTF-8') . '</p><p>'
+            . '<span class="l">Reference</span> <code>'
+            . htmlspecialchars((string) $reference, ENT_QUOTES, 'UTF-8')
+            . '</code></p></div></body></html>';
+    }
+
+    /**
      * Note one refusal for the firewall log.
      *
      * A line per refused request: when, who, and which path. Capped at a
@@ -759,9 +871,10 @@ if (!defined('PG_DB_GUARD_LOADED')) {
      * the cap the file simply stops growing; the rows already in it carry the
      * counter that says an attack is under way, which is the part an operator
      * needs. Tab separated: a path can contain almost anything, a tab is the
-     * one thing it cannot.
+     * one thing it cannot. The fourth field is the reference the page showed,
+     * which waf_shield_drain() stores on the row.
      */
-    function pg_ban_shield_record($ip)
+    function pg_ban_shield_record($ip, $reference)
     {
         $file = pg_db_guard_dir() . '/shield_pending.log';
         $size = @filesize($file);
@@ -770,17 +883,11 @@ if (!defined('PG_DB_GUARD_LOADED')) {
             return;
         }
 
-        $path = isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : '';
-
-        $question = strpos($path, '?');
-
-        if ($question !== false) {
-            $path = substr($path, 0, $question);
-        }
-
-        $path = substr(str_replace(array("\t", "\n", "\r"), '', $path), 0, 200);
-
-        @file_put_contents($file, time() . "\t" . $ip . "\t" . $path . "\n", FILE_APPEND | LOCK_EX);
+        @file_put_contents(
+            $file,
+            time() . "\t" . $ip . "\t" . pg_ban_shield_request_path() . "\t" . $reference . "\n",
+            FILE_APPEND | LOCK_EX
+        );
     }
 
     /**
@@ -791,7 +898,7 @@ if (!defined('PG_DB_GUARD_LOADED')) {
      * Same cap, too - five megabytes and one rotated copy - because a refused
      * flood is exactly when this line is written most.
      */
-    function pg_ban_shield_text_log($ip)
+    function pg_ban_shield_text_log($ip, $reference)
     {
         $file = dirname(dirname(__FILE__)) . '/data/firewall.log';
         $size = @filesize($file);
@@ -803,9 +910,22 @@ if (!defined('PG_DB_GUARD_LOADED')) {
 
         @file_put_contents(
             $file,
-            date('Y-m-d H:i:s') . ' pinegrap-firewall DENY ip=' . $ip . ' status=403 rule=ip-list-shield' . "\n",
+            date('Y-m-d H:i:s') . ' pinegrap-firewall DENY ip=' . $ip . ' status=403 rule=ip-list-shield ref=' . $reference
+                . ' path=' . pg_ban_shield_text_log_path() . "\n",
             FILE_APPEND | LOCK_EX
         );
+    }
+
+    /**
+     * The path= value of the shield's line, the twin of waf_text_log_path().
+     *
+     * @return string
+     */
+    function pg_ban_shield_text_log_path()
+    {
+        $path = preg_replace('/\s+/', '_', pg_ban_shield_request_path());
+
+        return ($path === '') ? '-' : $path;
     }
 
     /**
@@ -863,10 +983,12 @@ if (!defined('PG_DB_GUARD_LOADED')) {
     /**
      * Refuse the request when this address is on the mirrored block list.
      *
-     * Answers 403 and nothing else - no explanation, no reference number. The
-     * firewall's own block page can say more because it has a database to log
-     * the event in; this path has none, and a code the operator cannot look up
-     * later would only be noise.
+     * Answers 403 with the firewall's block page (pg_ban_shield_page()): the
+     * ban's end and a reference. The reference reaches the firewall log
+     * through the pending line waf_shield_drain() writes to the database, so
+     * the operator can look up the code a banned reader quotes. A bare
+     * "Forbidden" told a reader banned by mistake nothing, not even that the
+     * site's firewall had done it (#1989).
      */
     function pg_ban_shield_check()
     {
@@ -889,8 +1011,10 @@ if (!defined('PG_DB_GUARD_LOADED')) {
             }
         }
 
-        foreach ($list['blocks'] as $pattern) {
-            if (waf_ip_matches_simple($ip, $pattern)) {
+        foreach ($list['blocks'] as $block) {
+            if (waf_ip_matches_simple($ip, $block['pattern'])) {
+
+                $reference = pg_ban_shield_reference();
 
                 // Recorded for the firewall log, which this file cannot write
                 // to: waf_shield_drain() picks the line up on the next request
@@ -899,20 +1023,25 @@ if (!defined('PG_DB_GUARD_LOADED')) {
                 // the event making it onto the screen at all, and a rule that
                 // is enforced unconditionally has to be visible
                 // unconditionally.
-                pg_ban_shield_record($ip);
+                pg_ban_shield_record($ip, $reference);
 
                 if (!empty($list['log'])) {
-                    pg_ban_shield_text_log($ip);
+                    pg_ban_shield_text_log($ip, $reference);
                 }
 
                 if (!headers_sent()) {
                     header('HTTP/1.1 403 Forbidden');
                     header('Status: 403 Forbidden');
                     header('Cache-Control: no-store, max-age=0');
-                    header('Content-Type: text/plain; charset=utf-8');
+                    header('Content-Type: text/html; charset=utf-8');
+                    header('X-Content-Type-Options: nosniff');
+
+                    if ($block['expires'] > 0) {
+                        header('Retry-After: ' . max(1, $block['expires'] - time()));
+                    }
                 }
 
-                echo 'Forbidden';
+                echo pg_ban_shield_page($reference, $block['expires']);
                 exit();
             }
         }

@@ -18,7 +18,7 @@ description: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: ta
 - A start (Run, API, the anchor's step) writes the run (start_key `manual:<token hash>`, `sched:<scheduled run id>`), its trigger step done.
 - A step that ends marks itself, then INSERT IGNOREs each next box whose arrows in are all settled; untaken branches skip their boxes, so a join fires once.
 - `ws_flow_advance()` claims a ready step (`UPDATE … AND status='ready'`, affected_rows 1), runs it, follows its outcome.
-- Task, approval: `effect` (`task:12`), then waiting; an approval needs a channel, ends approved, rejected, expired or withdrawn. Delay: a later `ready_at`.
+- Task, approval: `effect` (`task:12`), then waiting; an approval needs a channel, ends approved, rejected, expired or withdrawn. Delay: `wake_at` (F5b).
 - No open step: done or failed, the owner told once (conditional UPDATE). Publish adds a version, syncs the anchor; runs keep theirs.
 
 ## How do events wake it?
@@ -32,11 +32,12 @@ description: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: ta
 - `WS_FLOW_*`: 100 boxes, 200 box runs a run, 60 starts a flow an hour, 500 open runs, result 16 KB, finished runs kept 30 days.
 
 ## Shared steps and idempotency?
-- Built (F4a): steps.php, workspace/workspace-flows-steps.md. Left: steps return `approval_id`; change, row save `effect` at once; a stale begun step turns interrupted (F5: a person retries or skips). Webhook: `Idempotency-Key` from run, node, pass.
+- Built (F4a): steps.php, workspace/workspace-flows-steps.md. Left: change, row save `effect` at once; a stale begun step fails and its owner retries or skips it (F5a). Webhook: `Idempotency-Key` from run, node, pass.
 
 ## API and MCP?
 - /workspace/flows, /{id}, /publish, /resume (`ws_api_own_words_only()`, `'mcp' => false`), /pause, /runs; /workspace/flow-runs/{id}, /cancel, /steps/{node}/retry, /skip; `dry_run`; `workspace:read`, `:write`.
 
 ## Where to start?
-- Built: F1 #1503, F3a #1551 (workspace-flows-runner.md)
-- F4: a) #1835 post, email; b) #1857 notify, task_open, webhook, web_check; b2) #1923 task_digest, report, checkin, start_action; b3) #1957 change; c) condition; d) anchor triggers; e) box dry-run. Then F5.
+- Built: F1 #1503, F3a #1551 (workspace-flows-runner.md).
+- F4 done: a #1835, b #1857, b2 #1923, b3 #1957 (step kinds), c #1980 condition, d #2006 anchors, e #2024 box try, f #2070 starter's rights.
+- F5: a) #2098 retry or skip a failed box (workspace-flows-retry-skip.md); b) #2135 delay box (workspace-flows-delay-box.md); c) #2142 approval box (workspace-flows-approval-box.md); d) #2153 wait with a timeout outcome on the task box (workspace-flows-wait-timeout.md).

@@ -296,7 +296,7 @@ function test_code_editor_escape_it_used_stays_in_the_editor()
 	$modal = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/codemirror_modal.js');
 
 	pg_assert_contains("{ key: 'Escape', run: _leaveFullscreen }", $modal, 'Escape leaves the full window first');
-	pg_assert_contains("if (!dlg || !dlg.classList.contains('modal-fullscreen')) return false;", $modal, 'outside the full window it is the dialog\'s');
+	pg_assert_contains("if (!_modalEl || !_modalEl.classList.contains('dialog-fullscreen')) return false;", $modal, 'outside the full window it is the dialog\'s');
 }
 
 // Runs PgCodeEditor.findAll() under Node: the function cut from the facade
@@ -579,8 +579,98 @@ function test_code_editor_minimap_option()
 	pg_assert_contains("if (typeof opts.minimap === 'boolean') _cfg.minimap = opts.minimap;", $facade, 'configure() takes the page default');
 	pg_assert_contains('minimapComp.of(_minimapExtension(cm, _minimapOn(opts)))', $facade, 'the editor reads the option');
 	pg_assert_contains('inst.setMinimap = function', $facade, 'the instance can switch it');
+	pg_assert_contains('inst.hasMinimap = function () { return _minimapOn(opts); };', $facade, 'and tells whether it is on');
 
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
 
 	pg_assert_contains('PgCodeEditor.configure({ minimap: true, bundle:', $screen, 'the designer turns it on');
+}
+
+// A code field that can be edited gets a "Format code" button that follows
+// the editor's language (create_file.php changes it after the start); a
+// read-only field gets none. The button runs the instance's format().
+// Drawn in a PHP process of its own: the field's first script names the
+// facade on OUTPUT_PATH, which the tests after this one must not find defined.
+function test_code_editor_attach_offers_a_format_button()
+{
+	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
+		return;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgcodeattach');
+
+	if ($file === false) {
+		return;
+	}
+
+	file_put_contents($file, '<?php' . "\n"
+		. "define('PG_TEST_RUNNER', true);\n"
+		. "define('OUTPUT_PATH', '/');\n"
+		. "define('OUTPUT_SOFTWARE_DIRECTORY', 'pinegrap');\n"
+		. 'require ' . var_export(PG_FUNCTIONS_DIR . '/functions.php', true) . ";\n"
+		. "echo json_encode(array("
+		. "'css' => pg_code_editor_attach(array('id' => 'code', 'code_type' => 'css')),"
+		. "'ro' => pg_code_editor_attach(array('id' => 'code', 'code_type' => 'css', 'readonly' => true))));\n");
+
+	$out = array();
+	$code = 1;
+	@exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+	$res = json_decode(implode("\n", $out), true);
+
+	pg_assert_same(0, $code, 'drawn: ' . implode("\n", array_slice($out, 0, 8)));
+	if (!is_array($res)) {
+		pg_assert_true(false, 'the process answers');
+		return;
+	}
+
+	$css = $res['css'];
+	$ro = $res['ro'];
+
+	pg_assert_contains('pg-code-field-format', $css, 'an editable field draws the button');
+	pg_assert_contains(lang('Format code'), $css, 'with a translated label');
+	pg_assert_contains('editor.format()', $css, 'which runs the instance\'s format()');
+	pg_assert_contains('["css","javascript","json"]', $css, 'shown only for the languages with a formatter');
+	pg_assert_contains('editor.setLanguage = function', $css, 'and kept in step with a language change');
+	pg_assert_false(strpos($ro, 'pg-code-field-format') !== false, 'a read-only field has no button');
+
+	// Every field, read-only too, gets the minimap toggle, which starts from
+	// the editor's own state and switches it with setMinimap().
+	foreach (array('css' => $css, 'ro' => $ro) as $kind => $html) {
+		pg_assert_contains('pg-code-field-minimap', $html, $kind . ': the minimap toggle is drawn');
+		pg_assert_contains(lang('Minimap'), $html, $kind . ': with a translated label');
+		pg_assert_contains('aria-pressed', $html, $kind . ': as a toggle button');
+		pg_assert_contains('editor.hasMinimap()', $html, $kind . ': starting from the current state');
+		pg_assert_contains('editor.setMinimap(', $html, $kind . ': switching the instance');
+	}
+}
+
+// The code editor dialog's footer shows "Format code" only for CSS,
+// JavaScript and JSON when it is not read-only; its label comes from the
+// designer's PgCodeModalLabels map.
+function test_code_editor_dialog_offers_a_format_button()
+{
+	$modal = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/codemirror_modal.js');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+
+	pg_assert_contains('id="pgCodeEditorFormat"', $modal, 'the footer has the button');
+	pg_assert_contains("_t('Format code')", $modal, 'its label is read from the map');
+	pg_assert_contains('_editor.format()', $modal, 'it runs the editor\'s format()');
+	pg_assert_contains("_formatBtn.classList.toggle('d-none', !!opts.readonly || !_formats(opts.mode));", $modal, 'hidden for read-only and other languages');
+	pg_assert_contains("'Format code'  => lang('Format code'),", $screen, 'the designer prints the label');
+}
+
+// The dialog's footer has a minimap toggle beside "Format code": a toggle
+// button (aria-pressed) that starts from the editor's state and switches it.
+function test_code_editor_dialog_offers_a_minimap_toggle()
+{
+	$modal = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/codemirror_modal.js');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+
+	pg_assert_contains('id="pgCodeEditorMinimap"', $modal, 'the footer has the toggle');
+	pg_assert_contains('aria-pressed="false"', $modal, 'as a toggle button');
+	pg_assert_contains("_t('Minimap')", $modal, 'its label is read from the map');
+	pg_assert_contains('_editor.setMinimap(', $modal, 'it switches the editor');
+	pg_assert_contains('_editor.hasMinimap()', $modal, 'and starts from the editor\'s state');
+	pg_assert_contains("'Minimap'      => lang('Minimap'),", $screen, 'the designer prints the label');
 }

@@ -1,6 +1,7 @@
 ---
 name: layout-code-tab
 description: A classic page's custom layout (data/layouts/<id>.php) as a code tab of the visual designer: who may edit it, the layout_code endpoint, regenerate, unmodified on save, Ctrl+G, hosted sites
+module: layouts
 ---
 
 ## What opens it?
@@ -12,8 +13,11 @@ description: A classic page's custom layout (data/layouts/<id>.php) as a code ta
 - `_design.openLayout` (`pg_layout_open_page_id()`): the landed page only, when it is in `layoutPages`; the editor drops `layout` from the address and calls `_sdLayoutCodeOpen()`, so a tree that lost its `system` node still reaches the layout.
 - Every page whose custom layout is drawn qualifies: a `layout_modified` page with layout type `system` draws the system template; a standard page never calls `render_layout()`.
 
+## Where does "Edit Layout" land?
+- `pg_layout_edit_url()` in `view_fields.php` (#2137) and `edit_page.php` (#2148): a page whose own style is a visual design opens the Ctrl+G target (`edit_system_style.php?id=<style>&page=<id>` + `pg_layout_tab_param()`); a classic-style page keeps `page_designer.php?type=layout` (`edit_page.php`: `?from=` in `url=`, `target="_top"`). `edit_page.php` sends a designed page to the designer before this link.
+
 ## Who may edit it?
-- Role 1 or better (designers and administrators), the right of the classic layout editor (`page_designer.php?type=layout`: `validate_area_access($user, 'designer')`; `get_layout`/`update_layout` sit behind the general gate). Wider than the dynamic region tab (administrators only, `dynamic-region-in-designer.md`), on purpose: the classic rule is kept, never widened.
+- Role 1 or better (designers and administrators), the classic layout editor's right (`validate_area_access($user, 'designer')`). Wider than the dynamic region tab (administrators only, `dynamic-region-in-designer.md`), on purpose: the classic rule is kept, never widened.
 - `_design.layoutCode` shows the buttons; api.php action `layout_code` (`includes/panel/designer.php`), not exempt, then `validate_token()` and a role <= 1 check before any query; refuses a page without a custom layout.
 
 ## Where do read and save live?
@@ -28,5 +32,5 @@ description: A classic page's custom layout (data/layouts/<id>.php) as a code ta
 - The field-change warning (`add_field.php`, `edit_field.php`, `delete_fields.php`) for a modified custom layout.
 
 ## Tests?
-- `tests/designer_layout_retirement_test.php`: the Ctrl+G parameter and the page opened on load.
+- `tests/designer_layout_retirement_test.php`: the Ctrl+G parameter, the page opened on load, the "Edit Layout" target.
 - `tests/designer_layout_code_test.php`: file names, the comparison, the action row, the handler's check order, the screen flags, the save path, page cache lists.

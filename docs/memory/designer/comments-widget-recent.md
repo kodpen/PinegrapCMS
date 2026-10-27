@@ -1,6 +1,7 @@
 ---
 name: comments-widget-recent
 description: The Comments widget's recent mode (kind comments_recent): what a list shows, options, record filters, what it never does, tokens and flags, checks
+module: widgets_comments_recent
 ---
 
 ## What is it?

@@ -506,12 +506,24 @@ function ws_inbox_describe($viewer, $row)
                 $title = lang(array('string' => '{var:1} answered on {var:2}', 'vars' => array($name, $number)));
             }
 
+            // An MCP server's alias has its own icon (mcp_catalogue.php),
+            // not Claude's.
+            $server_id = function_exists('ws_assistant_mcp_id') ? ws_assistant_mcp_id($agent) : 0;
+
+            if ($proposal) {
+                $icon = 'bi-plug';
+            } elseif (($server_id > 0) && function_exists('ws_mcp_agent_identity_for_id')) {
+                $icon = ws_mcp_agent_identity_for_id($server_id)['icon'];
+            } else {
+                $icon = ($agent === 'ai') ? 'bi-cpu' : 'bi-stars';
+            }
+
             return array(
                 'title' => $title,
                 'body'  => ($task ? (string) $task['title'] : '')
                     . (($waiting > 0) ? ' — ' . lang(array('string' => '{var:1} proposed change(s) wait for approval', 'vars' => $waiting)) : ''),
                 'url'   => $base . 'workspace_tasks.php?task=' . (int) $row['task_id'],
-                'icon'  => $proposal ? 'bi-plug' : (($agent === 'ai') ? 'bi-cpu' : 'bi-stars'),
+                'icon'  => $icon,
             );
 
         // A note on a task one is on, written by somebody else

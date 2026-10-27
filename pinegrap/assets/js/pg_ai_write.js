@@ -37,6 +37,13 @@
  * (announce()); the screens that mark the texts written with AI listen for
  * it (assets/js/pg_ai_fields.js).
  *
+ * A box that is no form field (the Workspace writing box) gives its button
+ * an adapter, button.pgAiWrite: context() the values to send, place(panel)
+ * puts the panel on the screen, use(text) takes the draft in through the
+ * box's own change path. Such buttons are drawn by a script after this one
+ * has run: window.PinegrapAiWrite.ready says a model writes in this browser,
+ * and pg:ai-write-ready is sent on the document when it becomes true.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -168,7 +175,7 @@
     /* --------------------------------------------------------------- panel */
 
     function buildPanel(button, settings) {
-        var panel = make('div', 'pg-ai-draft border rounded-3 p-2 mb-2 bg-body-tertiary');
+        var panel = make('div', 'pg-ai-draft border rounded-5 p-3 mb-3 bg-1');
         panel.id = panelId(settings);
 
         // On a dark screen that does not use Bootstrap's colour modes (the
@@ -179,15 +186,15 @@
         panel.setAttribute('role', 'group');
         panel.setAttribute('aria-label', label('panel'));
 
-        var head = make('div', 'd-flex flex-wrap align-items-center gap-2 mb-2');
-        var title = make('span', 'small fw-semibold text-primary');
+        var head = make('div', 'd-flex flex-wrap align-items-center gap-3 mb-3');
+        var title = make('span', 'small fw-semibold fg-primary');
         var icon = make('i', 'bi bi-stars me-1');
         icon.setAttribute('aria-hidden', 'true');
         title.appendChild(icon);
         title.appendChild(document.createTextNode((engine === 'browser') ? label('title_browser') : label('title')));
         head.appendChild(title);
 
-        var tone = make('select', 'form-select form-select-sm w-auto ms-auto pg-ai-draft-tone');
+        var tone = make('select', 'form-control form-control-sm w-auto ms-auto pg-ai-draft-tone');
         tone.setAttribute('aria-label', label('tone'));
 
         for (var i = 0; i < tones.length; i++) {
@@ -209,20 +216,20 @@
         body.setAttribute('aria-live', 'polite');
         panel.appendChild(body);
 
-        var hint = make('input', 'form-control form-control-sm mt-2 pg-ai-draft-hint');
+        var hint = make('input', 'form-control form-control-sm mt-3 pg-ai-draft-hint');
         hint.type = 'text';
         hint.maxLength = 300;
         hint.placeholder = label('hint');
         hint.setAttribute('aria-label', label('hint'));
         panel.appendChild(hint);
 
-        var foot = make('div', 'd-flex flex-wrap align-items-center gap-2 mt-2');
-        var use = make('button', 'btn btn-sm btn-primary pg-ai-draft-use', label('use'));
+        var foot = make('div', 'd-flex flex-wrap align-items-center gap-3 mt-3');
+        var use = make('button', 'btn btn-sm btn-solid theme-primary pg-ai-draft-use', label('use'));
         use.type = 'button';
         use.disabled = true;
         foot.appendChild(use);
 
-        var again = make('button', 'btn btn-sm btn-outline-secondary pg-ai-draft-again');
+        var again = make('button', 'btn btn-sm btn-outline theme-secondary pg-ai-draft-again');
         again.type = 'button';
         var againIcon = make('i', 'bi bi-arrow-clockwise me-1');
         againIcon.setAttribute('aria-hidden', 'true');
@@ -234,6 +241,7 @@
 
         panel._pgAi = {
             button: button, settings: settings, seq: 0, over: 0, result: null, held: [],
+            adapter: button.pgAiWrite || null,
             tone: tone, hint: hint, body: body, use: use, again: again
         };
 
@@ -294,9 +302,15 @@
 
         var panel = buildPanel(button, settings);
 
-        // Under the label row the button sits in, right above the field.
-        var row = button.parentNode;
-        row.parentNode.insertBefore(panel, row.nextSibling);
+        // Under the label row the button sits in, right above the field;
+        // where the box's adapter says.
+        if (button.pgAiWrite && (typeof button.pgAiWrite.place === 'function')) {
+            button.pgAiWrite.place(panel);
+        } else {
+            var row = button.parentNode;
+            row.parentNode.insertBefore(panel, row.nextSibling);
+        }
+
         button.setAttribute('aria-expanded', 'true');
 
         ask(panel);
@@ -330,11 +344,11 @@
     // What is going on, with a spinner: writing, a download, a translation.
     function showStatus(panel, text) {
         var body = panel._pgAi.body;
-        var spinner = make('span', 'spinner-border spinner-border-sm me-2');
+        var spinner = make('span', 'spinner-border spinner-border-sm me-3');
         spinner.setAttribute('aria-hidden', 'true');
 
         body.textContent = '';
-        body.className = 'pg-ai-draft-body small text-body-secondary';
+        body.className = 'pg-ai-draft-body small fg-secondary';
         body.appendChild(spinner);
         body.appendChild(document.createTextNode(text));
     }
@@ -342,14 +356,14 @@
     function showError(panel, message) {
         var body = panel._pgAi.body;
 
-        body.className = 'pg-ai-draft-body small text-danger';
+        body.className = 'pg-ai-draft-body small fg-danger';
         body.textContent = message;
     }
 
     function showDraft(panel, result) {
         var state = panel._pgAi;
         var body = state.body;
-        var box = make('div', 'pg-ai-draft-text border rounded bg-body p-2');
+        var box = make('div', 'pg-ai-draft-text border rounded-4 bg-body p-3');
 
         box.style.maxHeight = '18rem';
         box.style.overflow = 'auto';
@@ -415,7 +429,7 @@
             record: settings.record,
             record_id: recordIdOf(settings),
             field_id: settings.field_id || 0,
-            context: contextOf(settings),
+            context: (state.adapter && (typeof state.adapter.context === 'function')) ? state.adapter.context() : contextOf(settings),
             tone: state.tone.value,
             hint: state.hint.value
         };
@@ -874,6 +888,12 @@
             return;
         }
 
+        if (state.adapter && (typeof state.adapter.use === 'function')) {
+            closePanel(panel, false);
+            state.adapter.use(String(result.text || ''));
+            return;
+        }
+
         var editor = editorOf(settings.field);
         var tiny = editor ? null : tinyOf(settings.field);
         var field = document.getElementById(settings.field);
@@ -938,6 +958,15 @@
         }
     });
 
+    // Tells the buttons drawn later by a script that a model writes here.
+    function ready() {
+        cfg.ready = true;
+
+        try {
+            document.dispatchEvent(new CustomEvent('pg:ai-write-ready'));
+        } catch (e) { /* no CustomEvent: such a button stays hidden */ }
+    }
+
     // The buttons come hidden for the browser's AI: shown where it writes.
     if (engine === 'browser') {
         planBrowser().then(function (mode) {
@@ -947,11 +976,18 @@
                 return;
             }
 
+            ready();
+
             var buttons = document.querySelectorAll('.pg-ai-write-btn.d-none');
 
+            // A button with an adapter is shown by its own box.
             for (var i = 0; i < buttons.length; i++) {
-                buttons[i].classList.remove('d-none');
+                if (!buttons[i].pgAiWrite) {
+                    buttons[i].classList.remove('d-none');
+                }
             }
         });
+    } else {
+        ready();
     }
 }());

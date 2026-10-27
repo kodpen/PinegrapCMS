@@ -161,7 +161,7 @@ function ws_record_kinds()
             'right'      => 'contacts',
             'scope'      => 'customers:read',
             'change'     => 'contact',
-            'audit'      => '',
+            'audit'      => 'contacts',
             'quick_edit' => true,
             'customer'   => true,
         ),

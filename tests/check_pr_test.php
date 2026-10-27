@@ -135,3 +135,19 @@ function test_check_pr_product_lines()
 
 	pg_assert_same(0, check_pr_product_lines(array()));
 }
+
+// git's --format keeps its % signs on a Windows command line; a double quote
+// and the backslashes before it, or before the closing quote, are escaped as
+// the C runtime reads them back, other backslashes stay single.
+function test_check_pr_windows_arg()
+{
+	pg_assert_same('"--format=%H%x1f%an%x1f%B%x1e"', check_pr_windows_arg('--format=%H%x1f%an%x1f%B%x1e'));
+	pg_assert_same('"origin/development..HEAD"', check_pr_windows_arg('origin/development..HEAD'));
+	pg_assert_same('""', check_pr_windows_arg(''));
+	pg_assert_same('"a b!c"', check_pr_windows_arg('a b!c'));
+	pg_assert_same('"say \\"hi\\""', check_pr_windows_arg('say "hi"'));
+	pg_assert_same('"C:\\dir\\file"', check_pr_windows_arg('C:\\dir\\file'));
+	pg_assert_same('"a\\\\\\"b"', check_pr_windows_arg('a\\"b'));
+	pg_assert_same('"C:\\dir\\\\"', check_pr_windows_arg('C:\\dir\\'));
+	pg_assert_same("\"a\\\nb\"", check_pr_windows_arg("a\\\nb"));
+}

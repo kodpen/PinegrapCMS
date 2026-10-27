@@ -337,6 +337,7 @@ function pg_audit_view_record_url($type, $id)
         'user'    => 'edit_user.php?id=',
         'order'   => 'view_order.php?id=',
         'offer'   => 'edit_offer.php?id=',
+        'contact' => 'edit_contact.php?id=',
     );
 
     if (isset($screens[$type]) && ($id > 0)) {
@@ -366,6 +367,7 @@ function pg_audit_view_label($kind, $word)
             'order_return' => lang('Return'),
             'file'         => lang('File'),
             'offer'        => lang('Offer'),
+            'contact'      => lang('Contact'),
             'api_app'      => lang('Application'),
             'api_key'      => lang('API key'),
             'api_device'   => lang('Device'),

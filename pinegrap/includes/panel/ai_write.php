@@ -5,11 +5,12 @@
  * Panel actions - "Write with AI".
  *
  *   ai_write   a draft for one field of a product, a page or a custom
- *              form's record, written by Pinegrap AI from the form's current
- *              values; nothing is saved
+ *              form's record, or a Workspace message rewritten, written by
+ *              Pinegrap AI from the form's current values; nothing is saved
  *
  * Request: target (product_description | product_short | seo_title |
- * seo_description | record_field), record (product | page | form),
+ * seo_description | record_field | ws_message), record (product | page |
+ * form | message),
  * record_id (the product or page, 0 for one not saved yet; for a form record
  * the custom form's page), field_id (the form field, for record_field),
  * context (field => value as the form holds it now), tone (neutral |

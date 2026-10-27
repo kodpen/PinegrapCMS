@@ -1138,66 +1138,37 @@ function mailchimp_request($request) {
         $quiet = false;
     }
 
-    $ch = curl_init();
-    // Identify this installation on outgoing requests. Sent with no
-    // User-Agent, a request looks like an anonymous client to the receiving
-    // server's firewall and gets rejected — which is how Pinegrap ended up
-    // blocking its own licence and update checks.
-    curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-
     $url = 'https://' . $dc . '.api.mailchimp.com/3.0' . $path;
 
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_USERPWD,  'key:' . $key);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
+    // pg_curl_run() sends this installation's User-Agent, goes through
+    // PROXY_ADDRESS when set and applies pg_curl_tls(). HTTP/1.0 resolved
+    // an issue where MailChimp sometimes returned an empty response to a
+    // patch request that updates a product (cURL error 52, empty reply
+    // from server); the cause is unknown.
+    $options = array(
+        'headers'         => array('Content-Type: application/json'),
+        'userpwd'         => 'key:' . $key,
+        'timeout'         => 30,
+        'connect_timeout' => 30,
+        'http_version'    => '1.0',
+    );
 
-    $data_json = '';
-
-    switch ($method) {
-
-        case 'post':
-            curl_setopt($ch, CURLOPT_POST, true);
-            $data_json = json_encode($data);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $data_json);
-            break;
-
-        case 'delete':
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
-            break;
-
-        case 'patch':
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');
-            $data_json = json_encode($data);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $data_json);
-            break;
-
-        case 'put':
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
-            $data_json = json_encode($data);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $data_json);
-            break;
+    if (in_array($method, array('post', 'patch', 'put'), true)) {
+        $options['body'] = json_encode($data);
     }
 
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $answer = pg_curl_run(in_array($method, array('post', 'delete', 'patch', 'put'), true) ? $method : 'get', $url, $options);
 
-    // We added the following in order to resolve issue where MailChimp returned an empty response
-    // sometimes for a patch request to update a product. cURL Error: Empty reply from server (52).
-    // We don't know why.
-    curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+    $response = $answer['body'];
 
-    $response = curl_exec($ch);
+    $curl_errno = $answer['errno'];
+    $curl_error = $answer['error'];
 
-    $curl_errno = curl_errno($ch);
-    $curl_error = curl_error($ch);
+    $response_code = $answer['status'];
 
-    $response_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-    unset($ch);
-
-    // If there was a cURL problem, then log and return error.
-    if ($curl_errno) {
+    // If there was a cURL problem (or no cURL at all: no answer, errno 0),
+    // then log and return error.
+    if ($curl_errno || $response_code === 0) {
 
         $message = 
             lang('MailChimp Error') . "\n" .

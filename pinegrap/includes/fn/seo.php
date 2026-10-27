@@ -319,7 +319,7 @@ function pg_sync_mysql_timezone()
 
     $done = true;
 
-    @mysqli_query(db::$con, "SET time_zone = '" . e(date('P')) . "'");
+    db_q("SET time_zone = ?", array((string) date('P')));
 }
 
 /**
@@ -419,21 +419,23 @@ function pg_record_visitor_page_view($page_id, $page_name)
     // them would defeat the aggregation exactly when it matters most.
     $bucket_key = sha1($date . '|' . $hour . '|' . (int) $page_id . '|' . $item_type . '|' . $item_id);
 
-    @mysqli_query(
-        db::$con,
+    db_q(
         "INSERT INTO visitor_content_hourly
             (bucket_key, stat_date, stat_hour, page_id, page_name, item_type, item_id, views)
          VALUES
-            ('" . e($bucket_key) . "', '" . e($date) . "', $hour, " . (int) $page_id . ",
-             '" . e(mb_substr((string) $page_name, 0, 100)) . "', '" . e($item_type) . "', $item_id, 1)
-         ON DUPLICATE KEY UPDATE views = views + 1"
+            (?, ?, ?, ?,
+             ?, ?, ?, 1)
+         ON DUPLICATE KEY UPDATE views = views + 1",
+        array(
+            (string) $bucket_key, (string) $date, (int) $hour, (int) $page_id,
+            (string) mb_substr((string) $page_name, 0, 100), (string) $item_type, (int) $item_id)
     );
 
-    @mysqli_query(
-        db::$con,
+    db_q(
         "INSERT INTO visitor_stats_hourly (stat_date, stat_hour, new_visitors, page_views)
-         VALUES ('" . e($date) . "', $hour, 0, 1)
-         ON DUPLICATE KEY UPDATE page_views = page_views + 1"
+         VALUES (?, ?, 0, 1)
+         ON DUPLICATE KEY UPDATE page_views = page_views + 1",
+        array((string) $date, (int) $hour)
     );
 }
 
@@ -450,11 +452,11 @@ function pg_record_visitor_session()
         return;
     }
 
-    @mysqli_query(
-        db::$con,
+    db_q(
         "INSERT INTO visitor_stats_hourly (stat_date, stat_hour, new_visitors, page_views)
-         VALUES ('" . e(date('Y-m-d')) . "', " . (int) date('G') . ", 1, 0)
-         ON DUPLICATE KEY UPDATE new_visitors = new_visitors + 1"
+         VALUES (?, ?, 1, 0)
+         ON DUPLICATE KEY UPDATE new_visitors = new_visitors + 1",
+        array((string) date('Y-m-d'), (int) date('G'))
     );
 }
 
@@ -591,8 +593,7 @@ function pg_visitor_backfill_step($budget_seconds = 5, $chunk = 20000, $recheck 
         // times were never recorded. Sessions from here on are counted view
         // by view at the moment each view happens, so this approximation
         // applies to history only.
-        @mysqli_query(
-            db::$con,
+        db_q(
             "INSERT INTO visitor_stats_hourly (stat_date, stat_hour, new_visitors, page_views)
              SELECT
                  DATE(FROM_UNIXTIME(start_timestamp)) AS d,
@@ -600,12 +601,13 @@ function pg_visitor_backfill_step($budget_seconds = 5, $chunk = 20000, $recheck 
                  COUNT(*),
                  COALESCE(SUM(page_views), 0)
              FROM visitors
-             WHERE id > " . (int) $cursor . " AND id <= " . (int) $upper . "
+             WHERE id > ? AND id <= ?
                AND start_timestamp > 0
              GROUP BY d, h
              ON DUPLICATE KEY UPDATE
                  new_visitors = new_visitors + VALUES(new_visitors),
-                 page_views   = page_views   + VALUES(page_views)"
+                 page_views   = page_views   + VALUES(page_views)",
+            array((int) $cursor, (int) $upper)
         );
 
         // Per-content hourly totals.
@@ -2051,11 +2053,11 @@ function pg_sfv_record_view($submitted_form_id, $page_id)
     // CURDATE() reads MySQL's clock. init.php sets the session time zone from
     // PHP on every request, so the live writer and the backfill -- which
     // buckets with DATE(FROM_UNIXTIME(...)) -- agree on where a day starts.
-    @mysqli_query(
-        db::$con,
+    db_q(
         "INSERT INTO submitted_form_view_stats (submitted_form_id, page_id, view_date, views)
-         VALUES (" . (int) $submitted_form_id . ", " . (int) $page_id . ", CURDATE(), 1)
-         ON DUPLICATE KEY UPDATE views = views + 1"
+         VALUES (?, ?, CURDATE(), 1)
+         ON DUPLICATE KEY UPDATE views = views + 1",
+        array((int) $submitted_form_id, (int) $page_id)
     );
 
     return true;
@@ -2097,32 +2099,33 @@ function pg_sfv_count_view($submitted_form_id, $page_id)
 
     $update = "UPDATE submitted_form_info
                SET number_of_views = number_of_views + 1
-               WHERE submitted_form_id = '" . $submitted_form_id . "'
-                 AND page_id = '" . $page_id . "'";
+               WHERE submitted_form_id = ?
+                 AND page_id = ?";
+    $ids = array((string) $submitted_form_id, (string) $page_id);
 
-    if (!@mysqli_query(db::$con, $update)) {
+    if (!db_q($update, $ids)) {
         return;
     }
 
     if (mysqli_affected_rows(db::$con) === 0) {
         // Under 64 characters whatever the ids; no database prefix, which
         // could push it over the limit and make every call fail.
-        $lock = "'pg_sfi_" . $submitted_form_id . "_" . $page_id . "'";
+        $lock = array('pg_sfi_' . $submitted_form_id . '_' . $page_id);
         $insert = "INSERT INTO submitted_form_info (submitted_form_id, page_id, number_of_views)
-                   VALUES ('" . $submitted_form_id . "', '" . $page_id . "', 1)";
-        $result = @mysqli_query(db::$con, "SELECT GET_LOCK($lock, 1)");
+                   VALUES (?, ?, 1)";
+        $result = db_q("SELECT GET_LOCK(?, 1)", $lock);
         $row = ($result instanceof mysqli_result) ? mysqli_fetch_row($result) : null;
         $lock_state = ($row && $row[0] !== null) ? (string) $row[0] : null;
 
         if ($lock_state === '1') {
-            if (@mysqli_query(db::$con, $update) && mysqli_affected_rows(db::$con) === 0) {
-                @mysqli_query(db::$con, $insert);
+            if (db_q($update, $ids) && mysqli_affected_rows(db::$con) === 0) {
+                db_q($insert, $ids);
             }
 
-            @mysqli_query(db::$con, "SELECT RELEASE_LOCK($lock)");
+            db_q("SELECT RELEASE_LOCK(?)", $lock);
         } elseif ($lock_state === null) {
             // No lock service: insert unlocked (legacy behaviour).
-            @mysqli_query(db::$con, $insert);
+            db_q($insert, $ids);
         }
         // '0': the lock timed out while another request holds it; drop this view.
     }
@@ -2261,8 +2264,7 @@ function pg_sfv_backfill_step($budget_seconds = 3, $recheck = false)
         // += rather than = because the final chunk is a partial day that the
         // live writer has already written rows for. Adding is correct there and
         // harmless everywhere else: the cursor guarantees no chunk runs twice.
-        @mysqli_query(
-            db::$con,
+        db_q(
             "INSERT INTO submitted_form_view_stats (submitted_form_id, page_id, view_date, views)
              SELECT sid, pid, d, c FROM (
                  SELECT
@@ -2271,10 +2273,11 @@ function pg_sfv_backfill_step($budget_seconds = 3, $recheck = false)
                      DATE(FROM_UNIXTIME(timestamp)) AS d,
                      COUNT(*)                       AS c
                  FROM submitted_form_views
-                 WHERE timestamp >= " . (int) $cursor . " AND timestamp < " . (int) $upper . "
+                 WHERE timestamp >= ? AND timestamp < ?
                  GROUP BY sid, pid, d
              ) x
-             ON DUPLICATE KEY UPDATE views = views + VALUES(views)"
+             ON DUPLICATE KEY UPDATE views = views + VALUES(views)",
+            array((int) $cursor, (int) $upper)
         );
 
         $cursor = $upper;
@@ -2489,14 +2492,14 @@ function pg_visitor_top_content($start_date, $end_date, $limit = 5)
     }
 
     $limit  = max(1, (int) $limit);
-    $result = @mysqli_query(
-        db::$con,
+    $result = db_q(
         "SELECT page_id, page_name, item_type, item_id, SUM(views) AS views
          FROM visitor_content_hourly
-         WHERE stat_date >= '" . e($start_date) . "' AND stat_date <= '" . e($end_date) . "'
+         WHERE stat_date >= ? AND stat_date <= ?
          GROUP BY page_id, item_type, item_id, page_name
          ORDER BY views DESC, page_id ASC, item_type ASC, item_id ASC, page_name ASC
-         LIMIT " . $limit
+         LIMIT ?",
+        array((string) $start_date, (string) $end_date, (int) $limit)
     );
 
     $rows = array();
@@ -2527,25 +2530,25 @@ function pg_visitor_top_content_by_hour($date)
         return $hours;
     }
 
-    $date = e($date);
+    $date = (string) $date;
 
     // Ties are broken in PHP rather than with a GROUP BY on the outer query.
     // Selecting ungrouped columns alongside a GROUP BY is rejected outright
     // under ONLY_FULL_GROUP_BY, which MySQL 5.7 turned on by default, and the
     // widget would fail on any reasonably current server. The inner aggregate
     // is unaffected: it groups and aggregates nothing else.
-    $result = @mysqli_query(
-        db::$con,
+    $result = db_q(
         "SELECT c.stat_hour, c.page_id, c.page_name, c.item_type, c.item_id, c.views
          FROM visitor_content_hourly c
          INNER JOIN (
              SELECT stat_hour, MAX(views) AS top_views
              FROM visitor_content_hourly
-             WHERE stat_date = '$date'
+             WHERE stat_date = ?
              GROUP BY stat_hour
          ) m ON m.stat_hour = c.stat_hour AND m.top_views = c.views
-         WHERE c.stat_date = '$date'
-         ORDER BY c.stat_hour, c.id"
+         WHERE c.stat_date = ?
+         ORDER BY c.stat_hour, c.id",
+        array($date, $date)
     );
 
     if (!$result) {
@@ -2592,11 +2595,11 @@ function pg_visitor_stats_range($start_date, $end_date)
         return $out;
     }
 
-    $result = @mysqli_query(
-        db::$con,
+    $result = db_q(
         "SELECT stat_date, stat_hour, new_visitors, page_views
          FROM visitor_stats_hourly
-         WHERE stat_date >= '" . e($start_date) . "' AND stat_date <= '" . e($end_date) . "'"
+         WHERE stat_date >= ? AND stat_date <= ?",
+        array((string) $start_date, (string) $end_date)
     );
 
     if (!$result) {
@@ -2764,18 +2767,18 @@ function init_tracking()
 
                  WHERE
 
-                    (ip_address = IFNULL(INET_ATON('" . escape($visitor_ip_address) . "'), 0))
+                    (ip_address = IFNULL(INET_ATON(?), 0))
 
-                    AND (stop_timestamp > '$thirty_minutes_ago')
+                    AND (stop_timestamp > ?)
 
-                    AND (tracking_code = '" . escape($tracking_code) . "')
+                    AND (tracking_code = ?)
 
-                    AND (affiliate_code = '" . escape($affiliate_code) . "')
+                    AND (affiliate_code = ?)
 
                  ORDER BY stop_timestamp DESC
 
                  LIMIT 1";
-		$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+		$result = db_q($query, array((string) $visitor_ip_address, (string) $thirty_minutes_ago, (string) $tracking_code, (string) $affiliate_code)) or output_error(lang('Query failed.'));
 		// if a matching visitor was found, connect visitor to existing record
 		if (mysqli_num_rows($result) > 0)
 		{
@@ -2957,12 +2960,14 @@ function init_tracking()
 			// view with an unknown-column error.
 			$sql_user_agent_column = '';
 			$sql_user_agent_value = '';
+			$values = array();
 
 			if (function_exists('waf_table_has_column')
 				&& waf_table_has_column('visitors', 'user_agent')
 			) {
 				$sql_user_agent_column = 'user_agent,';
-				$sql_user_agent_value = "'" . escape($visitor_user_agent) . "',";
+				$sql_user_agent_value = '?,';
+				$values[] = (string) $visitor_user_agent;
 			}
 
 			// Since 2026.4.10 (10.6) the referring address and the user agent
@@ -2984,7 +2989,7 @@ function init_tracking()
 					$sql_referer = '';
 
 					if ($sql_user_agent_column !== '') {
-						$sql_user_agent_value = "'',";
+						$values = array('');
 					}
 				}
 			}
@@ -3023,28 +3028,38 @@ function init_tracking()
 
                         $sql_text_values
 
-                        IFNULL(INET_ATON('" . escape($visitor_ip_address) . "'), 0),
+                        IFNULL(INET_ATON(?), 0),
 
-                        '" . escape($sql_referer) . "',
+                        ?,
 
-                        '" . escape($referring_host_name) . "',
+                        ?,
 
-                        '" . escape($referring_search_engine) . "',
+                        ?,
 
-                        '" . escape($referring_search_terms) . "',
+                        ?,
 
-                        '$first_visit',
+                        ?,
 
-                        '" . escape($tracking_code) . "',
+                        ?,
 
-                        '" . escape($visitor_currency_code) . "',
+                        ?,
 
-                        '" . escape($affiliate_code) . "',
+                        ?,
 
                         UNIX_TIMESTAMP(),
 
                         UNIX_TIMESTAMP())";
-			$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+			$values = array_merge($values, array(
+				(string) $visitor_ip_address,
+				(string) $sql_referer,
+				(string) $referring_host_name,
+				(string) $referring_search_engine,
+				(string) $referring_search_terms,
+				(string) $first_visit,
+				(string) $tracking_code,
+				(string) $visitor_currency_code,
+				(string) $affiliate_code));
+			$result = db_q($query, $values) or output_error(lang('Query failed.'));
 			$_SESSION['software']['visitor_id'] = mysqli_insert_id(db::$con);
 
 			// Count the new session in the hourly rollup. Placed here rather
@@ -3266,8 +3281,8 @@ function update_visitor_page_data($page_name, $page_id = 0)
 
              FROM visitors
 
-             WHERE id = '" . $visitor_id . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+             WHERE id = ?";
+    $result = db_q($query, array((string) $visitor_id)) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
     // The session can name a row that is gone: a restored backup, a table
     // emptied by hand.
@@ -3277,9 +3292,11 @@ function update_visitor_page_data($page_name, $page_id = 0)
     $existing_landing_page_name = $row['landing_page_name'];
     // if there is not an existing landing page name, prepare sql for landing page name update
     if (!$existing_landing_page_name) {
-        $sql_landing_page_name = "landing_page_name = '" . escape($page_name) . "',";
+        $sql_landing_page_name = "landing_page_name = ?,";
+        $values = array((string) $page_name, (string) $visitor_id);
     } else {
         $sql_landing_page_name = '';
+        $values = array((string) $visitor_id);
     }
     // update visitor record
     $query = "UPDATE visitors
@@ -3292,8 +3309,8 @@ function update_visitor_page_data($page_name, $page_id = 0)
 
                 stop_timestamp = UNIX_TIMESTAMP()
 
-             WHERE id = '" . $visitor_id . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+             WHERE id = ?";
+    $result = db_q($query, $values) or output_error(lang('Query failed.'));
 }
 // this function lowercases a keyword and folds the four forms of the letter i onto one
 // another. turkish treats the dotless "ı" and the dotted "i" as two different letters,
@@ -3462,8 +3479,8 @@ function update_tag_cloud_keywords_for_page($page_id, $new_page_search, $new_sea
                 }
                 // if a keyword was not found, then remove it from the database
                 if ($found_keyword == false) {
-                    $query = "DELETE FROM tag_cloud_keywords WHERE ((keyword = '" . escape($original_keyword) . "') AND (item_id = '" . escape($page_id) . "') AND (item_type = 'page'))";
-                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    $query = "DELETE FROM tag_cloud_keywords WHERE ((keyword = ?) AND (item_id = ?) AND (item_type = 'page'))";
+                    $result = db_q($query, array((string) $original_keyword, (string) $page_id)) or output_error(lang('Query failed.'));
                 }
             }
         }
@@ -3483,20 +3500,20 @@ function update_tag_cloud_keywords_for_page($page_id, $new_page_search, $new_sea
 
                     ) VALUES (
 
-                        '" . escape($new_keyword) . "',
+                        ?,
 
-                        '" . escape($page_id) . "',
+                        ?,
 
                         'page'
 
                     )";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                $result = db_q($query, array((string) $new_keyword, (string) $page_id)) or output_error(lang('Query failed.'));
             }
         }
         // else if the original page search is on and the original keywords are not blank, then remove any keywords for this page from the database
     } elseif (($original_page_search == 1) && ($original_search_keywords != '')) {
-        $query = "DELETE FROM tag_cloud_keywords WHERE item_id = '" . escape($page_id) . "' AND item_type = 'page'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "DELETE FROM tag_cloud_keywords WHERE item_id = ? AND item_type = 'page'";
+        $result = db_q($query, array((string) $page_id)) or output_error(lang('Query failed.'));
     }
 }
 // this function gets all product groups within the parent product group that was passed into this function
@@ -3551,8 +3568,8 @@ function get_product_groups_in_product_group_tree($parent_product_group_id = 0, 
 function update_tag_cloud_keywords_for_search_results_page_type($page_id, $new_search_results_search_catalog_items, $new_search_results_product_group_id, $extra = '')
 {
     // get search catalog items and product group id for this page
-    $query = "SELECT search_catalog_items, product_group_id FROM search_results_pages WHERE page_id = '" . escape($page_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT search_catalog_items, product_group_id FROM search_results_pages WHERE page_id = ?";
+    $result = db_q($query, array((string) $page_id)) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
     $original_search_catalog_items = $row['search_catalog_items'];
     $original_product_group_id = $row['product_group_id'];
@@ -3616,12 +3633,12 @@ function delete_tag_cloud_keywords_for_search_results_page($page_id)
         }
         // if the keywords can be deleted, then delete them
         if ($delete_keywords == true) {
-            $query = "DELETE FROM tag_cloud_keywords WHERE (item_id = '" . escape($item_to_delete['item_id']) . "') AND (item_type = '" . escape($item_to_delete['item_type']) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            $query = "DELETE FROM tag_cloud_keywords WHERE (item_id = ?) AND (item_type = ?)";
+            $result = db_q($query, array((string) $item_to_delete['item_id'], (string) $item_to_delete['item_type'])) or output_error(lang('Query failed.'));
         }
         // delete the xref record for this item
-        $query = "DELETE FROM tag_cloud_keywords_xref WHERE ((search_results_page_id = '" . escape($page_id) . "') AND (item_id = '" . escape($item_to_delete['item_id']) . "') AND (item_type = '" . escape($item_to_delete['item_type']) . "'))";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "DELETE FROM tag_cloud_keywords_xref WHERE ((search_results_page_id = ?) AND (item_id = ?) AND (item_type = ?))";
+        $result = db_q($query, array((string) $page_id, (string) $item_to_delete['item_id'], (string) $item_to_delete['item_type'])) or output_error(lang('Query failed.'));
     }
 }
 function update_tag_cloud_keywords_for_search_results_page_product_group($page_id, $new_search_results_product_group_id)
@@ -3774,14 +3791,14 @@ function update_tag_cloud_keywords_for_search_results_page_product_group($page_i
 
                         ) VALUES (
 
-                            '" . escape($item_keyword) . "',
+                            ?,
 
-                            '" . escape($item['id']) . "',
+                            ?,
 
-                            '" . escape($item['type']) . "'
+                            ?
 
                         )";
-                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    $result = db_q($query, array((string) $item_keyword, (string) $item['id'], (string) $item['type'])) or output_error(lang('Query failed.'));
                     // add keyword to the inserted keywords array so that it wont be added again
                     $inserted_keywords[] = array(
                         'keyword' => $item_keyword,
@@ -3813,14 +3830,14 @@ function update_tag_cloud_keywords_for_search_results_page_product_group($page_i
 
                 ) VALUES (
 
-                    '" . escape($page_id) . "',
+                    ?,
 
-                    '" . escape($item['id']) . "',
+                    ?,
 
-                    '" . escape($item['type']) . "'
+                    ?
 
                 )";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            $result = db_q($query, array((string) $page_id, (string) $item['id'], (string) $item['type'])) or output_error(lang('Query failed.'));
             // add item to array so that it is not inserted again
             $inserted_items[] = $item;
         }
@@ -3858,36 +3875,29 @@ function update_sitemap_and_ping()
                     "urlList" => [$sitemap_url]
                 ]);
 
-                $ch = curl_init($indexnow_url);
-                // Identify this installation on outgoing requests. Sent with no
-                // User-Agent, a request looks like an anonymous client to the receiving
-                // server's firewall and gets rejected — which is how Pinegrap ended up
-                // blocking its own licence and update checks.
-                curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-                curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+                // pg_curl_run() sends this installation's User-Agent, goes
+                // through PROXY_ADDRESS when set and applies pg_curl_tls().
+                // Any HTTP answer counts as sent, as before.
+                $answer = pg_curl_run('POST', $indexnow_url, array(
+                    'body'            => $post_data,
+                    'headers'         => array('Content-Type: application/json'),
+                    'timeout'         => 10,
+                    'connect_timeout' => 8,
+                ));
 
-                $response = curl_exec($ch);
-
-                if ($response === false) {
-                    log_activity(lang('IndexNow ping failed: ') . curl_error($ch), '');
+                if ($answer['status'] === 0) {
+                    log_activity(lang('IndexNow ping failed: ') . $answer['error'], '');
                 } else {
                     log_activity(lang('IndexNow ping sent successfully.'), '');
                 }
-
-                unset($ch);
             } else {
                 log_activity(lang('IndexNow skipped: INDEXNOW_KEY not defined or empty.'), '');
             }
 
             log_activity(lang('daily sitemap.xml check detected updated sitemap.xml'), '');
 
-            $query = "UPDATE config SET last_sitemap_check_hash = '" . escape($sitemap_check_hash) . "'";
-            mysqli_query(db::$con, $query);
+            $query = "UPDATE config SET last_sitemap_check_hash = ?";
+            db_q($query, array((string) $sitemap_check_hash));
 
             return true;
         }
@@ -4166,7 +4176,7 @@ function perf_monitor_shutdown()
 
     if ($has_entity_columns) {
         $sql_entity_columns = ', entity_type, entity_id';
-        $sql_entity_values = ", '" . escape($entity_type) . "', " . (int) $entity_id;
+        $sql_entity_values = ", ?, " . (int) $entity_id;
     }
 
     // The query counts, once the upgrade has added their columns; until then
@@ -4183,14 +4193,20 @@ function perf_monitor_shutdown()
             max_queries  = GREATEST(max_queries, ' . (int) $query_count . ')';
     }
 
-    @mysqli_query(
-        db::$con,
+    $values = array((string) $bucket_key, (string) $label, (string) $area);
+
+    if ($has_entity_columns) {
+        $values[] = (string) $entity_type;
+    }
+
+    // The counters are PHP ints written inline; only the texts are bound.
+    db_q(
         "INSERT INTO perf_stats
             (bucket_key, hour_start, label, area, hits, slow_hits,
              total_ms, min_ms, max_ms, total_kb, max_kb, total_cpu_ms" . $sql_entity_columns . $sql_query_columns . ")
          VALUES
-            ('" . escape($bucket_key) . "', " . (int) $hour_start . ",
-             '" . escape($label) . "', '" . escape($area) . "', 1, " . $is_slow . ",
+            (?, " . (int) $hour_start . ",
+             ?, ?, 1, " . $is_slow . ",
              " . $duration_ms . ", " . $duration_ms . ", " . $duration_ms . ",
              " . $peak_memory_kb . ", " . $peak_memory_kb . ",
              " . ($cpu_user_ms + $cpu_system_ms) . $sql_entity_values . $sql_query_values . ")
@@ -4202,7 +4218,8 @@ function perf_monitor_shutdown()
             max_ms       = GREATEST(max_ms, " . $duration_ms . "),
             total_kb     = total_kb + " . $peak_memory_kb . ",
             max_kb       = GREATEST(max_kb, " . $peak_memory_kb . "),
-            total_cpu_ms = total_cpu_ms + " . ($cpu_user_ms + $cpu_system_ms) . $sql_query_update
+            total_cpu_ms = total_cpu_ms + " . ($cpu_user_ms + $cpu_system_ms) . $sql_query_update,
+        $values
     );
 
     // ── Slow requests only: keep the full detail ─────────────────────────
@@ -4228,30 +4245,44 @@ function perf_monitor_shutdown()
 
         $has_query_count = pg_schema_has('perf_log', 'query_count');
 
-        @mysqli_query(
-            db::$con,
+        db_q(
             "INSERT INTO perf_log
                 (request_url, query_string, script_name, area, method, http_status,
                  duration_ms, peak_memory_kb, cpu_user_ms, cpu_system_ms,
                  ip_address, user_agent, user_id, is_ajax, log_timestamp" . ($has_query_count ? ", query_count" : "") . ")
              VALUES (
-                '" . escape($request_url) . "',
-                '" . escape($query_string) . "',
-                '" . escape($script_name) . "',
-                '" . escape($area) . "',
-                '" . escape($method) . "',
-                " . (int) $http_status . ",
-                " . (int) $duration_ms . ",
-                " . (int) $peak_memory_kb . ",
-                " . (int) $cpu_user_ms . ",
-                " . (int) $cpu_system_ms . ",
-                '" . escape($ip_address) . "',
-                '" . escape($user_agent) . "',
-                " . (int) $user_id . ",
-                " . (int) $is_ajax . ",
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
                 UNIX_TIMESTAMP()" . ($has_query_count ? ",
-                " . (int) $query_count : "") . "
-            )"
+                ?" : "") . "
+            )",
+            array_merge(array(
+                (string) $request_url,
+                (string) $query_string,
+                (string) $script_name,
+                (string) $area,
+                (string) $method,
+                (int) $http_status,
+                (int) $duration_ms,
+                (int) $peak_memory_kb,
+                (int) $cpu_user_ms,
+                (int) $cpu_system_ms,
+                (string) $ip_address,
+                (string) $user_agent,
+                (int) $user_id,
+                (int) $is_ajax), ($has_query_count ? array((int) $query_count) : array()))
         );
     }
 
@@ -4272,8 +4303,8 @@ function perf_monitor_shutdown()
 
     if ($retention > 0) {
         $cutoff = time() - ($retention * 86400);
-        @mysqli_query(db::$con, "DELETE FROM perf_stats WHERE hour_start < " . (int) $cutoff . " LIMIT 2000");
-        @mysqli_query(db::$con, "DELETE FROM perf_log WHERE log_timestamp < " . (int) $cutoff . " LIMIT 1000");
+        db_q("DELETE FROM perf_stats WHERE hour_start < ? LIMIT 2000", array((int) $cutoff));
+        db_q("DELETE FROM perf_log WHERE log_timestamp < ? LIMIT 1000", array((int) $cutoff));
     }
 
     // Row cap as a backstop. Both tables are bounded by design now, but a site
@@ -4282,13 +4313,13 @@ function perf_monitor_shutdown()
     $max_rows = defined('PERF_MONITOR_MAX_ROWS') ? (int) PERF_MONITOR_MAX_ROWS : 200000;
 
     if ($max_rows > 0) {
-        $oldest = @mysqli_query(db::$con,
-            "SELECT hour_start FROM perf_stats ORDER BY hour_start DESC LIMIT 1 OFFSET " . (int) $max_rows);
+        $oldest = db_q(
+            "SELECT hour_start FROM perf_stats ORDER BY hour_start DESC LIMIT 1 OFFSET ?", array((int) $max_rows));
 
         if ($oldest && @mysqli_num_rows($oldest)) {
             $row = @mysqli_fetch_assoc($oldest);
-            @mysqli_query(db::$con,
-                "DELETE FROM perf_stats WHERE hour_start <= " . (int) $row['hour_start'] . " LIMIT 5000");
+            db_q(
+                "DELETE FROM perf_stats WHERE hour_start <= ? LIMIT 5000", array((int) $row['hour_start']));
         }
     }
 }

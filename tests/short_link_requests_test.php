@@ -67,7 +67,7 @@ function test_short_link_list_values_are_not_given()
 
 function test_short_link_wizard_reads_the_rest_of_a_request_as_one_value()
 {
-	$explorer = short_link_requests_test_source('view_folder_and_files_f.php');
+	$explorer = short_link_requests_test_source('includes/explorer/handle_short_links.php');
 
 	pg_assert_contains("(isset(\$request[\$key]) && is_scalar(\$request[\$key])) ? trim((string) \$request[\$key]) : ''", short_link_requests_test_function_body(short_link_requests_test_source('includes/explorer/short_links.php'), 'pg_short_link_read_request'), 'every field the wizard posts');
 	pg_assert_contains("(pg_short_link_modes_ready() && is_scalar(\$request['link_mode'] ?? null)) ? (string) \$request['link_mode'] : 'permanent'", $explorer, 'how it opens');
@@ -84,7 +84,7 @@ function test_short_link_save_refuses_the_bin_but_keeps_its_own()
 	pg_assert_contains("((\$product_id !== (int) (\$current['product_id'] ?? 0)) && pg_catalog_product_binned(\$product_id))", $body, 'product');
 	pg_assert_contains("((\$group_id !== (int) (\$current['product_group_id'] ?? 0)) && pg_catalog_group_binned(\$group_id))", $body, 'product group');
 
-	$explorer = short_link_requests_test_source('view_folder_and_files_f.php');
+	$explorer = short_link_requests_test_source('includes/explorer/handle_short_links.php');
 
 	pg_assert_contains('$short_link_read = pg_short_link_read_request($request, $user, $short_link_row);', $explorer, 'the wizard\'s change');
 	pg_assert_contains('$short_link_read = pg_short_link_read_request($request, $user);', $explorer, 'the wizard\'s create keeps nothing');
@@ -103,7 +103,7 @@ function test_short_link_save_refuses_the_bin_but_keeps_its_own()
 
 function test_short_link_wizard_lists_leave_the_bin_out_but_keep_the_links_own()
 {
-	$explorer = short_link_requests_test_source('view_folder_and_files_f.php');
+	$explorer = short_link_requests_test_source('includes/explorer/handle_short_links.php');
 
 	pg_assert_contains("get_product_group_options(0, 0, 0, 0, array(), TRUE, 'array', TRUE, TRUE, FALSE, \$short_link_keep_group)", $explorer, 'groups: the bin is left out, the link\'s own group stays');
 	pg_assert_contains('get_product_options(true, $short_link_keep_product)', $explorer, 'products: the link\'s own product stays');
@@ -164,7 +164,7 @@ function test_short_link_lists_leave_binned_pages_and_files_out_but_keep_the_lin
 	pg_assert_contains("if ((int) \$row['id'] !== \$keep_id) {", $files, 'binned files are left out unless kept');
 	pg_assert_contains('pg_recycle_parked_original($file_name, $row[\'id\'])', $files, 'the kept file is shown under the name it had');
 
-	$explorer = short_link_requests_test_source('view_folder_and_files_f.php');
+	$explorer = short_link_requests_test_source('includes/explorer/handle_short_links.php');
 
 	pg_assert_contains("get_page_options('', '', 'edit', false, \$short_link_keep_page)", $explorer, 'wizard: pages');
 	pg_assert_contains("get_page_options('', 'catalog detail', 'edit', false, \$short_link_keep_page)", $explorer, 'wizard: catalog detail pages');
@@ -194,7 +194,7 @@ function test_short_link_classic_delete_goes_to_the_bin()
 	pg_assert_contains("lang('This short link will be moved to the Recycle Bin.')", $edit, 'the confirmation says so');
 	pg_assert_contains("lang('This short link is in the recycle bin. Restore it in the file manager before changing it.')", $edit, 'a binned link is not opened');
 
-	$explorer = short_link_requests_test_source('view_folder_and_files_f.php');
+	$explorer = short_link_requests_test_source('includes/explorer/handle_short_links.php');
 
 	pg_assert_contains('pg_short_link_to_bin($short_link_row[\'id\'], $user);', $explorer, 'the File Manager uses the same step');
 	pg_assert_contains("db(\"UPDATE short_links SET recycled = '1' WHERE id = '\" . e(\$short_link_id) . \"'\");", short_link_requests_test_function_body(short_link_requests_test_source('includes/explorer/short_links.php'), 'pg_short_link_to_bin'), 'the row is flagged');
@@ -225,7 +225,7 @@ function test_short_link_restore_checks_loops_before_the_link_goes_live()
 // refused in the classic screens' words.
 function test_short_link_wizard_offers_the_answer_and_the_classic_checks()
 {
-	$explorer = short_link_requests_test_source('view_folder_and_files_f.php');
+	$explorer = short_link_requests_test_source('includes/explorer/handle_short_links.php');
 
 	pg_assert_contains("array_keys(pg_short_link_answer_options()), array_values(pg_short_link_answer_options()))", $explorer, 'the classic screens\' choices');
 	pg_assert_same(2, substr_count($explorer, "pg_short_link_answer_posted(\$request['redirect_code'] ?? null)"), 'create and change read the answer');

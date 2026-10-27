@@ -114,7 +114,7 @@ function test_widget_parts_apply_leaves_other_trees()
 {
 	$tree = json_encode(_parts_tree(array(
 		_parts_node('semantic', array('tag' => 'div', '_bindings' => array('text' => '__order_no'))),
-		_parts_node('semantic', array('tag' => 'div', '_bindings' => array('text' => '__returns'))),
+		_parts_node('semantic', array('tag' => 'div', '_bindings' => array('text' => '__return_form'))),
 		_parts_node('semantic', array('tag' => 'a', '_bindings' => array('href' => '__legal_contract_url'))),
 	)));
 	pg_assert_same($tree, pg_sw_default_parts_apply($tree, 'order_view'), 'no old token, the cards placed: as it is');
@@ -211,9 +211,10 @@ function test_widget_parts_editor_twin()
 	$src = $cut("\n    var SD_OV_STATUS_CLASS_DEFAULTS = {", "\n    };\n")
 		. $cut("\n    var SW_DEFAULT_PARTS = {", "\n    };\n")
 		. $cut("\n    var SD_OV_STATUS_STAGES = ", ";\n")
-		. $cut("\n    var SW_DEFAULT_TAILS = {", "\n    };\n");
+		. $cut("\n    var SW_DEFAULT_TAILS = {", "\n    };\n")
+		. $cut("\n    var SD_RETURN_BADGE_CLASSES = {", "\n    };\n");
 	foreach (array('_sdDefaultParts', '_sdPartTokenOf', '_sdPartHost', '_sdPartEl', '_sdPartWhen', '_sdPartOrderTimeline', '_sdPartOrderStatusBadge',
-		'_sdPartPlaced', '_sdDefaultTails', '_sdPartOrderCard', '_sdPartOrderReturns', '_sdPartOrderLegal') as $fn) {
+		'_sdPartPlaced', '_sdPartValue', '_sdDefaultTails', '_sdPartOrderCard', '_sdPartOrderReturns', '_sdPartOrderReturnsList', '_sdPartOrderLegal') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
 	}
 	$tree = _parts_tree(array(
@@ -320,7 +321,9 @@ function test_widget_parts_order_tail_cards_match_the_old_blocks()
 	$layout = _parts_tree(array(_parts_node('semantic', array('tag' => 'p', 'cssClass' => 'lead', 'text' => 'Thanks'))));
 	$urls = array('preinfo' => '/p/legal_document.php?order_id=7&type=preinfo', 'contract' => '/p/legal_document.php?order_id=7&type=contract');
 	$line = 'Last day of the right of withdrawal: 03.11.2026 <est>';
-	$list = '<div class="pg-ov-returns"><div class="pg-ov-return border rounded p-3 mb-3">Return request #12</div></div>';
+	// The requests are a list of their own, without rows here
+	// (widget_default_parts_returns_test.php).
+	$list = '';
 	$form = '<form class="pg-ov-return-form" method="post"><input type="hidden" name="token" value="t"><input type="number" name="return_qty[5]" value="0"><select name="reason"></select><button type="submit" name="request_return">Go</button></form>';
 	$static = array(
 		'__legal_preinfo_url' => h($urls['preinfo']), '__legal_contract_url' => h($urls['contract']),

@@ -9,8 +9,8 @@ description: Escape inside a code editor that sits in a dialog: an Escape the ed
 
 ## How is it done?
 - `pgCeCreate()` in `assets/js/pg_code_editor.js` puts a keydown listener on the editor's outer box (`view.dom`, so the search panel's fields are covered): `Escape` with `defaultPrevented` gets `stopPropagation()`. The engine prevents the default of every key a keymap command handled; a command that did nothing (no list, no panel, no full window, a single empty selection) returns false and the Escape goes on.
-- Bootstrap 5.3's modal closes on every Escape that reaches its element (`keydown.dismiss.bs.modal`) without looking at `defaultPrevented`, so preventing alone was not enough.
-- The designer's code dialog binds `Escape` to `_leaveFullscreen()` next to F11: the first Escape leaves `.modal-fullscreen`, the next cancels.
+- Bootstrap 5.3's modal closed on every Escape that reached its element (`keydown.dismiss.bs.modal`) without looking at `defaultPrevented`, so preventing alone was not enough. Bootstrap 6 opens a dialog with `showModal()` and closes it from the native `cancel` event, which the browser fires as the default action of an Escape keydown (its own keydown listener serves only a non-modal dialog); `stopPropagation()` also keeps the panel's bubbling Escape listeners out.
+- The designer's code dialog binds `Escape` to `_leaveFullscreen()` next to F11: the first Escape leaves `.dialog-fullscreen`, the next cancels.
 - The rich text Source dialog's own `keepKeys()` (`pg_ckeditor_source.js`) still stops Enter, Tab and used keys for CKEditor's dialog.
 
 ## What was the symptom?
@@ -18,4 +18,4 @@ description: Escape inside a code editor that sits in a dialog: an Escape the ed
 
 ## How was it checked?
 - `tests/code_editor_test.php` (`test_code_editor_escape_it_used_stays_in_the_editor`).
-- Headless Chromium (Playwright) on a page with Bootstrap 5.3.8, the facade and the bundle: designer dialog (completion, search, F11) and an attached field in a `keyboard: true` modal (search, F11) stay open after the first Escape; a free Escape still closes them. Before the fix each first Escape closed the dialog.
+- Before the panel moved to Bootstrap 6 (not re-run since): headless Chromium (Playwright) on a page with Bootstrap 5.3.8, the facade and the bundle: designer dialog (completion, search, F11) and an attached field in a `keyboard: true` modal (search, F11) stay open after the first Escape; a free Escape still closes them. Before the fix each first Escape closed the dialog.

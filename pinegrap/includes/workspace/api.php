@@ -45,7 +45,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_day.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_sync.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_inbox.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mcp.php');
-require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_scheduled.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_commands.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -164,11 +164,12 @@ function ws_openapi_objects()
         'WorkspaceNoteRemoval'    => 'ws_api_note_removal_schema',
         'WorkspaceTemplate'        => 'ws_api_template_schema',
         'WorkspaceTemplateApplied' => 'ws_api_template_applied_schema',
+        'WorkspaceCommand'         => 'ws_api_command_schema',
+        'WorkspaceCommandArgument' => 'ws_api_command_argument_schema',
         'WorkspaceTaskTime'       => 'ws_api_task_time_schema',
         'WorkspaceApproval'       => 'ws_api_approval_schema',
         'WorkspaceThread'           => 'ws_api_thread_schema',
         'WorkspaceScheduledMessage' => 'ws_api_scheduled_message_schema',
-        'WorkspaceScheduledAction'  => 'ws_api_scheduled_action_schema',
         'WorkspaceNoteVersion'      => 'ws_api_note_version_schema',
         'WorkspacePlanItem'         => 'ws_api_plan_item_schema',
         'WorkspaceSearchHit'        => 'ws_api_search_hit_schema',
@@ -202,6 +203,7 @@ function ws_openapi_objects()
         'WorkspaceFlowRun'          => 'ws_api_flow_run_schema',
         'WorkspaceFlowRunStep'      => 'ws_api_flow_run_step_schema',
         'WorkspaceFlowShare'        => 'ws_api_flow_share_schema',
+        'WorkspaceFlowBoxTry'       => 'ws_api_flow_box_try_schema',
         'WorkspaceMcpConnector'     => 'ws_api_mcp_connector_schema',
         'WorkspaceMcpServer'        => 'ws_api_mcp_server_schema',
         'WorkspaceMcpTool'          => 'ws_api_mcp_tool_schema',
@@ -1440,6 +1442,23 @@ function ws_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.messages.item_task',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/item-task',
+            'scope'       => 'tasks:write',
+            'handler'     => 'ws_api_messages_item_task',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceTask',
+            'status'      => 201,
+            'summary'     => 'Make one checklist item of a message a task',
+            'description' => 'Makes one item of a message\'s checklist ("- [ ] " lines) a task in the message\'s channel, the way the button beside the item does in the panel. The item\'s words are read as /task reads them: a day or date, a time, an estimate such as "1.5 saat", tagged people and typed usernames of team members; a task given to nobody is the owner\'s own. The task\'s description is the item as written and its source_message_id the message; no card is posted, the item shows the task\'s tag instead. item counts the checklist items of the message from 0. Whoever may write in the channel may, for the people they may give tasks to; a message of a guest, a task card or a message in an earlier version of the conversation is refused, and so is an item a task was already made of (422), so a retried call does not make two tasks. A clash with somebody\'s leave is refused too: /task shows it and may hand the task over anyway. A dry run makes the same checks and its detail gives the task\'s title, channel and people.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'item', 'in' => 'body', 'type' => 'int', 'min' => 0, 'required' => true, 'description' => 'The checklist item, counted from 0 in the order of the message.'),
+            ),
+        ),
+
+        array(
             'id'           => 'workspace.tasks.update',
             'method'       => 'POST',
             'also_accepts' => array('PATCH'),
@@ -1813,6 +1832,19 @@ function ws_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.commands.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/commands',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_commands_list',
+            'returns'     => array('list' => 'WorkspaceCommand'),
+            'mcp'         => false,
+            'summary'     => 'List the channel commands',
+            'description' => 'The / commands the owner of the application may type into a channel, in the order the panel\'s picker lists them, for an app that offers the same picker: names holds every name a command answers to (Turkish and English, each with its slash), name the one shown first in the language of the site, usage the name and its arguments (<required> [optional]), and args each argument in the order it is typed, with its kind and where the panel suggests values for it (suggest: people, people_departments, tasks, records, products, dates, estimates, priorities, statuses, or null). anywhere true means the argument is read wherever it is written on the line; live true means the panel shows a line under the command while it is typed. A command the owner may not use is left out: /price, /stock and /product without the product rights, /claude and /ai until they are set up. Nothing is run here: what a command does has its own endpoint.',
+            'params'      => array(),
+        ),
+
+        array(
             'id'          => 'workspace.channels.apply_template',
             'method'      => 'POST',
             'path'        => '/workspace/channels/{id}/apply-template',
@@ -1836,9 +1868,13 @@ function ws_api_routes()
             'handler'     => 'ws_api_flows_list',
             'returns'     => array('list' => 'WorkspaceFlow'),
             'summary'     => 'List flows',
-            'description' => 'The flows of the owner of the application - drafts, live and paused ones - the live flows of others whose home channel (channel_id) the owner reads, which the owner may run, and the flows shared with the owner, themselves or in a channel they read (GET /workspace/flows/{id}/shares); the latest changed first. A flow is seen by nobody but its owner until it is published with a home channel or shared, administrators included. access says edit (the owner\'s own while they build flows, which is for staff in the team, or one shared with them at edit while they are staff), run (a live flow of a home channel they read, or one shared with them at run, or at edit while they are not staff) or view (shared with them at view, or in a channel they read). version is the live version, null before the first publish. draft, graph and problems are null in the listing; GET /workspace/flows/{id} carries them. Deleted flows are not listed. The application Claude works through lists the flows of others only when they are shared with the owner in person, shared in a channel where Claude may be asked, or live with such a channel as their home.',
+            'description' => 'The flows of the owner of the application - drafts, live and paused ones - the live flows of others whose home channel (channel_id) the owner reads, which the owner may run, and the flows shared with the owner, themselves or in a channel they read (GET /workspace/flows/{id}/shares); the latest changed first. A flow is seen by nobody but its owner until it is published with a home channel or shared, administrators included. access says edit (the owner\'s own while they build flows, which is for staff in the team, or one shared with them at edit while they are staff), run (a live flow of a home channel they read, or one shared with them at run, or at edit while they are not staff) or view (shared with them at view, or in a channel they read). version is the live version, null before the first publish. draft, graph, problems, start and start_text are null in the listing; GET /workspace/flows/{id} carries them. start, status, channel_id and updated_since narrow the list, together. Deleted flows are not listed. The application Claude works through lists the flows of others only when they are shared with the owner in person, shared in a channel where Claude may be asked, or live with such a channel as their home.',
             'params'      => array(
                 array('name' => 'scope', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'mine', 'shared'), 'default' => 'all', 'description' => 'mine keeps the owner\'s own, shared the ones of others.'),
+                array('name' => 'start', 'in' => 'query', 'type' => 'enum', 'values' => array('time', 'event', 'join', 'manual'), 'description' => 'Only the flows that start this way: time (at a time, once or again and again), event (when something happens on the site or in the workspace), join (when somebody joins a channel) or manual (by hand). A published flow starts as its live version does, one never published as its draft; a draft without a start box matches none.'),
+                array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('draft', 'live', 'paused'), 'description' => 'Only the flows in this state. Deleted flows are never listed.'),
+                array('name' => 'channel_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the flows with this home channel.'),
+                array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only the flows changed at or after this moment: the draft saved, published or paused. Sharing a flow changes nothing in it, so a flow shared with the owner since then is not among them.'),
             ),
         ),
 
@@ -1850,7 +1886,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_flows_get',
             'returns'     => 'WorkspaceFlow',
             'summary'     => 'One flow, with its graph',
-            'description' => 'A flow the owner of the application reaches. To its owner it carries draft, the graph being edited, with draft_rev, the number to send back with a change, and problems, what stops the draft from being published (an empty list when nothing does): each has a code (too_many, bad_id, duplicate_id, unknown_kind, bad_config, no_trigger, two_triggers, bad_edge, arrow_into_trigger, bad_outcome, duplicate_edge, cycle, unreachable), the box (node) or the place of the arrow in edges (edge) it is about, and a text to show. graph is the live version as it was published, null before the first publish. To somebody who may only run the flow or look at it, problems are null, and so is draft, except on a flow never published: shared before its first publish, it is read as its draft, read-only. The application Claude works through reaches the flow of somebody else only when it is shared with the owner in person, shared in a channel where Claude may be asked, or live with such a channel as its home.',
+            'description' => 'A flow the owner of the application reaches. To its owner it carries draft, the graph being edited, with draft_rev, the number to send back with a change, and problems, what stops the draft from being published (an empty list when nothing does): each has a code (too_many, bad_id, duplicate_id, unknown_kind, bad_config, no_trigger, two_triggers, bad_edge, arrow_into_trigger, bad_outcome, duplicate_edge, cycle, unreachable), the box (node) or the place of the arrow in edges (edge) it is about, and a text to show. graph is the live version as it was published, null before the first publish. To somebody who may only run the flow or look at it, problems are null, and so is draft, except on a flow never published: shared before its first publish, it is read as its draft, read-only. start says how the flow starts - time, event, join or manual, as the start of GET /workspace/flows narrows the list - and start_text says it in words in the site\'s language ("Every week on Monday at 09:00, from 02.11.2026", "When a form is submitted: Contact", "By hand"); both follow the live version once the flow is published and the draft before, and are null for a draft without a start box. A channel the owner of the application does not read is not named in start_text. The application Claude works through reaches the flow of somebody else only when it is shared with the owner in person, shared in a channel where Claude may be asked, or live with such a channel as its home.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
@@ -2029,6 +2065,25 @@ function ws_api_routes()
             ),
         ),
 
+        // A box tried reads the draft and looks at counts and records with
+        // the flow owner's rights: offered to no MCP client as a tool.
+        array(
+            'id'          => 'workspace.flows.box_try',
+            'method'      => 'GET',
+            'path'        => '/workspace/flows/{id}/boxes/{node}/try',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_flows_box_try',
+            'mcp'         => false,
+            'returns'     => 'WorkspaceFlowBoxTry',
+            'summary'     => 'Try one box of a flow\'s draft',
+            'description' => 'What one box of the draft of a flow of the owner of the application\'s own would do, in words, without doing it: nothing is sent, written or called. The box is checked with the rights the flow\'s owner holds now, as publishing and the run check it. A step box answers said, what it would do, and texts, its texts with the {{node.ID.FIELD}} values of the run named by run_id filled in (a run of this flow the owner of the application reaches); empty lists the values that run does not give, or all of them without run_id, which are filled in empty. {{date}} and the other placeholders are filled when the box runs. A condition box is looked at now and answers outcome yes or no with its reason in said; a start box at a time names its next times in next. outcome is the arrow the box would leave on (null when it would fail or waits for a task); refusal, when set, is why the box would fail. A box not in the draft, or a run of another flow, is a 404. Only the flow\'s owner tries its boxes, as only they publish it: a colleague it is shared with at edit is refused with 403, since the box is looked at with the owner\'s rights. An MCP client is offered no tool for it, and the application an assistant works through (Claude, Pinegrap AI) is refused with 403 forbidden.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'node', 'in' => 'path', 'type' => 'string', 'max_length' => 32, 'required' => true, 'description' => 'The id of the box in the draft.'),
+                array('name' => 'run_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'A run of this flow whose settled boxes give the {{node.*}} values.'),
+            ),
+        ),
+
         // The runs of a flow (flow_runs.php). A run opens tasks in the flow
         // owner's name: an AI app is to ask the person before it starts or
         // cancels one, which the MCP server cannot do yet, so the two writes
@@ -2095,6 +2150,40 @@ function ws_api_routes()
             'description' => 'Cancels a run that is still going: its status becomes cancelled and its open boxes are skipped. The flow\'s owner and the person who started the run may cancel it; anybody else who reads it is refused with 403, and a run that has ended with 422 (409 when it ended at that moment). The tasks the run opened stay as they are, open or not: a person decides what becomes of them; the boxes that waited for one say so. A dry run answers how many boxes are open and which tasks stay. The activity log gets a line. An MCP client is offered no tool for it until it can ask the person first, and the application an assistant works through (Claude, Pinegrap AI) is refused with 403 forbidden.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.flow_runs.step_retry',
+            'method'      => 'POST',
+            'path'        => '/workspace/flow-runs/{id}/steps/{node}/retry',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_flow_runs_step_retry',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceFlowRun',
+            'summary'     => 'Try a failed box of a run again',
+            'description' => 'Tries a box of a run that failed (status failed, a box that stopped half way included) again as a new attempt: it is ready again, forgets what it began and the task it waited for, and the boxes after it follow how it goes; the boxes skipped behind it are walked again, and a run that had failed goes on (running). A step box that may have posted or sent before it stopped does so again, and a task box opens a new task (one an earlier try opened stays as it is). The box\'s result says who tried it again and how it had failed until it settles again. Only the flow\'s owner may: the box runs in their name and with their rights; anybody else who reads the run is refused with 403. A box the run has not reached is a 404, one that has not failed or a run done or cancelled 422, and a box tried again or skipped at that very moment 409, so two calls never run it twice. A dry run answers which boxes would be walked again. The activity log gets a line. An MCP client is offered no tool for it, and the application an assistant works through (Claude, Pinegrap AI) is refused with 403 forbidden.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'node', 'in' => 'path', 'type' => 'string', 'max_length' => 32, 'required' => true, 'description' => 'The id of the box in the version the run follows.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.flow_runs.step_skip',
+            'method'      => 'POST',
+            'path'        => '/workspace/flow-runs/{id}/steps/{node}/skip',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_flow_runs_step_skip',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceFlowRun',
+            'summary'     => 'Skip a failed box of a run',
+            'description' => 'Skips a box of a run that failed (status failed, a box that stopped half way included): its status becomes skipped and the run goes on as for a branch not taken, so a box after it that another taken arrow leads into still runs; the boxes skipped behind it are walked again, and a run that had failed goes on or ends done. The box\'s result says who skipped it and how it had failed. Only the flow\'s owner may; anybody else who reads the run is refused with 403. A box the run has not reached is a 404, one that has not failed or a run done or cancelled 422, and a box tried again or skipped at that very moment 409. A dry run answers which boxes would be walked again. The activity log gets a line. An MCP client is offered no tool for it, and the application an assistant works through (Claude, Pinegrap AI) is refused with 403 forbidden.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'node', 'in' => 'path', 'type' => 'string', 'max_length' => 32, 'required' => true, 'description' => 'The id of the box in the version the run follows.'),
             ),
         ),
 
@@ -2203,8 +2292,7 @@ function ws_api_routes()
 
     );
 
-    // Asking Claude in a channel (api_claude.php), the changes an
-    // application proposes (api_proposals.php) and the scheduled actions
-    // (api_scheduled.php).
-    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_scheduled_api_routes());
+    // Asking Claude in a channel (api_claude.php) and the changes an
+    // application proposes (api_proposals.php).
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes());
 }

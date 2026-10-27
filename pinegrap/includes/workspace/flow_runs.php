@@ -35,7 +35,9 @@
  * due, and the queue of the workspace's events (watch.php) keeps the event a
  * waiting box needs and wakes the box with it (ws_flow_wake()). An event that
  * was lost is made up for: a waiting box looks at its task again every
- * WS_FLOW_RECHECK seconds.
+ * WS_FLOW_RECHECK seconds. A delay box waits the same way, with its next
+ * look at the moment its time is up; an approval box waits for its request
+ * as a task box waits for its task.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -85,6 +87,15 @@ define('WS_FLOW_TOKEN_MAX', 56);
 
 /** The event a task box waits for (ws_event(), tasks.php). */
 define('WS_FLOW_TASK_WAIT', 'workspace.task.status_changed');
+
+/** The event an approval box waits for (ws_event(), approvals.php). */
+define('WS_FLOW_APPROVAL_WAIT', 'workspace.approval.decided');
+
+/** The longest a delay box waits, in minutes: a scheduled action's start delay (a week). */
+define('WS_FLOW_DELAY_MAX', 10080);
+
+/** The longest a task box waits before it leaves on timeout, in hours: as long as an approval waits for its decision (30 days). */
+define('WS_FLOW_TIMEOUT_MAX', 720);
 
 /* ---------------------------------------------------------------------------
    States and the walk (pure)
@@ -395,6 +406,93 @@ function ws_flow_task_settlement($task_status, $cancel_routed)
 }
 
 /**
+ * The hours a task box waits for its task before it leaves on timeout
+ * (its timeout setting), 0 for no timeout.
+ *
+ * @param array $config the box's settings
+ * @return int
+ */
+function ws_flow_timeout_hours($config)
+{
+    $hours = $config['timeout'] ?? '';
+
+    return (is_int($hours) && ($hours > 0)) ? min(WS_FLOW_TIMEOUT_MAX, $hours) : 0;
+}
+
+/**
+ * The moment a task box runs out: so many hours after it began (its claim),
+ * 0 for a box without a timeout or without a known start.
+ *
+ * @param array $config the box's settings
+ * @param int   $since  when the box began
+ * @return int
+ */
+function ws_flow_timeout_at($config, $since)
+{
+    $hours = ws_flow_timeout_hours($config);
+
+    return (($hours > 0) && ((int) $since > 0)) ? (int) $since + $hours * 3600 : 0;
+}
+
+/**
+ * The next look of a waiting box: in WS_FLOW_RECHECK seconds, or at its
+ * deadline when that comes sooner (at once when it has passed).
+ *
+ * @param int $now
+ * @param int $timeout_at ws_flow_timeout_at(), 0 for none
+ * @return int
+ */
+function ws_flow_timeout_next_look($now, $timeout_at)
+{
+    $next = (int) $now + WS_FLOW_RECHECK;
+
+    return ((int) $timeout_at > 0) ? max((int) $now, min($next, (int) $timeout_at)) : $next;
+}
+
+/**
+ * Has a box's deadline come?
+ *
+ * @param int $timeout_at ws_flow_timeout_at(), 0 for none
+ * @param int $now
+ * @return bool
+ */
+function ws_flow_timed_out($timeout_at, $now)
+{
+    return ((int) $timeout_at > 0) && ((int) $now >= (int) $timeout_at);
+}
+
+/**
+ * How a task box whose deadline came settles: done on timeout where an arrow
+ * leaves it on timeout, failed where none does (the run fails), as a
+ * cancelled task fails a box without an arrow on cancelled.
+ *
+ * @param bool $routed an arrow leaves the box on timeout
+ * @return array status, outcome
+ */
+function ws_flow_timeout_settlement($routed)
+{
+    return array('status' => $routed ? 'done' : 'failed', 'outcome' => 'timeout');
+}
+
+/**
+ * The publish problems of a task box's timeout: an arrow on timeout from a
+ * box that never runs out would never be followed.
+ *
+ * @param array  $config the box's settings
+ * @param string $name   the box's name
+ * @param bool   $routed an arrow leaves the box on timeout
+ * @return string[]
+ */
+function ws_flow_timeout_problems($config, $name, $routed)
+{
+    if ($routed && (ws_flow_timeout_hours($config) === 0)) {
+        return array(lang(array('string' => 'An arrow leaves the task box {var:1} on timeout, but the box has no timeout.', 'vars' => $name)));
+    }
+
+    return array();
+}
+
+/**
  * Which waiting boxes an event of the workspace is for: the key they wait on
  * (wait_key), '' for an event no box waits for.
  *
@@ -404,9 +502,17 @@ function ws_flow_task_settlement($task_status, $cancel_routed)
  */
 function ws_flow_wake_key($event, $payload)
 {
-    $task_id = (int) ($payload['id'] ?? 0);
+    $id = (int) ($payload['id'] ?? 0);
 
-    return (((string) $event === WS_FLOW_TASK_WAIT) && ($task_id > 0)) ? 'task:' . $task_id : '';
+    if ($id <= 0) {
+        return '';
+    }
+
+    if ((string) $event === WS_FLOW_APPROVAL_WAIT) {
+        return ws_flow_approval_key($id);
+    }
+
+    return ((string) $event === WS_FLOW_TASK_WAIT) ? 'task:' . $id : '';
 }
 
 /**
@@ -429,6 +535,12 @@ function ws_flow_effect_task_id($effect)
  */
 function ws_flow_effect_wait($effect)
 {
+    $approval_id = ws_flow_effect_approval_id($effect);
+
+    if ($approval_id > 0) {
+        return array('event' => WS_FLOW_APPROVAL_WAIT, 'key' => ws_flow_approval_key($approval_id));
+    }
+
     $task_id = ws_flow_effect_task_id($effect);
 
     return ($task_id > 0) ? array('event' => WS_FLOW_TASK_WAIT, 'key' => 'task:' . $task_id) : null;
@@ -450,7 +562,8 @@ function ws_flow_effect_began($effect)
  * WS_FLOW_LOCK). One whose effect is written did its work: it waits for it
  * again. A step box that began (ws_flow_effect_began()) fails, since it may
  * have posted or sent already. One without an effect is tried once more,
- * then fails; nobody can retry or skip a box by hand yet.
+ * then fails; its owner may then try it again or skip it by hand
+ * (ws_flow_step_mend()).
  *
  * @param array $step ws_flow_run_steps row
  * @return string resume | retry | fail
@@ -467,6 +580,206 @@ function ws_flow_stale_action($step)
     }
 
     return ((int) ($step['attempt'] ?? 0) < 2) ? 'retry' : 'fail';
+}
+
+/* ---------------------------------------------------------------------------
+   The delay box (pure)
+   --------------------------------------------------------------------------- */
+
+/**
+ * The units a delay box counts its time in, as minutes.
+ *
+ * @return int[] unit => minutes
+ */
+function ws_flow_delay_units()
+{
+    return array('minutes' => 1, 'hours' => 60, 'days' => 1440);
+}
+
+/**
+ * A delay box's settings as it keeps them: amount ('' when none is set, else
+ * a whole number of at least 0, held below a size the problems still name)
+ * and unit (ws_flow_delay_units()).
+ *
+ * @param array $config
+ * @return array amount, unit
+ */
+function ws_flow_delay_normalize($config)
+{
+    $amount = $config['amount'] ?? '';
+    $unit = is_string($config['unit'] ?? null) ? $config['unit'] : '';
+
+    return array(
+        'amount' => (is_bool($amount) || !is_numeric($amount)) ? '' : (int) max(0, min(99999, (float) $amount)),
+        'unit'   => isset(ws_flow_delay_units()[$unit]) ? $unit : 'minutes',
+    );
+}
+
+/**
+ * How many minutes a delay box waits, 0 when no time is set.
+ *
+ * @param array $config ws_flow_delay_normalize()
+ * @return int
+ */
+function ws_flow_delay_minutes($config)
+{
+    $config = ws_flow_delay_normalize($config);
+
+    return ($config['amount'] === '') ? 0 : $config['amount'] * ws_flow_delay_units()[$config['unit']];
+}
+
+/**
+ * Why a delay box may not be published: no time to wait, or more than a
+ * scheduled action's start may be put off (WS_FLOW_DELAY_MAX minutes).
+ *
+ * @param array  $config
+ * @param string $name the box as the problems name it
+ * @return string[]
+ */
+function ws_flow_delay_problems($config, $name)
+{
+    $minutes = ws_flow_delay_minutes($config);
+
+    if ($minutes < 1) {
+        return array(lang(array('string' => 'The delay box {var:1} needs a time to wait.', 'vars' => $name)));
+    }
+
+    if ($minutes > WS_FLOW_DELAY_MAX) {
+        return array(lang(array('string' => 'The delay box {var:1} waits at most a week (10,080 minutes).', 'vars' => $name)));
+    }
+
+    return array();
+}
+
+/**
+ * The time a delay box waits, in words: "2 hours".
+ *
+ * @param array $config
+ * @return string
+ */
+function ws_flow_delay_text($config)
+{
+    $config = ws_flow_delay_normalize($config);
+    $amount = (int) $config['amount'];
+
+    switch ($config['unit']) {
+        case 'days':
+            return ($amount === 1) ? lang('1 day') : lang(array('string' => '{var:1} days', 'vars' => $amount));
+
+        case 'hours':
+            return ($amount === 1) ? lang('1 hour') : lang(array('string' => '{var:1} hours', 'vars' => $amount));
+    }
+
+    return ($amount === 1) ? lang('1 minute') : lang(array('string' => '{var:1} minutes', 'vars' => $amount));
+}
+
+/**
+ * The moment a delay box that starts waiting at $from waits until.
+ *
+ * @param array $config
+ * @param int   $from unix time
+ * @return int
+ */
+function ws_flow_delay_until($config, $from)
+{
+    return (int) $from + ws_flow_delay_minutes($config) * 60;
+}
+
+/**
+ * The key a waiting delay box keeps (wait_key and effect): delay:<until>.
+ *
+ * @param int $until
+ * @return string
+ */
+function ws_flow_delay_key($until)
+{
+    return 'delay:' . (int) $until;
+}
+
+/**
+ * The moment a delay box's key waits until, 0 for a key of another kind.
+ *
+ * @param string $key
+ * @return int
+ */
+function ws_flow_delay_key_until($key)
+{
+    return preg_match('/^delay:([1-9][0-9]{0,11})$/', (string) $key, $match) ? (int) $match[1] : 0;
+}
+
+/**
+ * How a look at a waiting delay box settles it: done once its moment has
+ * come, with the moment as its output (waited_until); before it, it goes on
+ * waiting (status '').
+ *
+ * @param string $key ws_flow_delay_key()
+ * @param int    $now
+ * @return array status (done | ''), outcome, data
+ */
+function ws_flow_delay_settlement($key, $now)
+{
+    $until = ws_flow_delay_key_until($key);
+
+    if (($until <= 0) || ((int) $now < $until)) {
+        return array('status' => '', 'outcome' => '', 'data' => array());
+    }
+
+    return array('status' => 'done', 'outcome' => 'done', 'data' => array('waited_until' => ws_flow_time($until)));
+}
+
+/* ---------------------------------------------------------------------------
+   The approval box (pure)
+   --------------------------------------------------------------------------- */
+
+/**
+ * The key an approval box waits on (effect and wait_key): approval:<id>.
+ *
+ * @param int $approval_id
+ * @return string
+ */
+function ws_flow_approval_key($approval_id)
+{
+    return 'approval:' . (int) $approval_id;
+}
+
+/**
+ * The approval request a box's effect names (approval:<id>), 0 for none.
+ *
+ * @param string $effect
+ * @return int
+ */
+function ws_flow_effect_approval_id($effect)
+{
+    return preg_match('/^approval:([1-9][0-9]{0,9})$/', (string) $effect, $match) ? (int) $match[1] : 0;
+}
+
+/**
+ * How the way a request ended settles the approval box that asked it.
+ * Approved and rejected are decisions: the box is done on them, and a
+ * decision no arrow leaves on ends the branch. Expired and withdrawn
+ * decided nothing: the box leaves on them where an arrow does, and fails
+ * where none does, as a cancelled task fails a task box. A request that is
+ * gone counts as withdrawn; one still open keeps the box waiting
+ * (status '').
+ *
+ * @param string|null $outcome what the request ended with ('' while open,
+ *                             null when it is gone)
+ * @param bool        $routed  an arrow leaves the box on that outcome
+ * @return array status (done | failed | ''), outcome
+ */
+function ws_flow_approval_settlement($outcome, $routed)
+{
+    if ($outcome === '') {
+        return array('status' => '', 'outcome' => '');
+    }
+
+    if (in_array($outcome, array('approved', 'rejected'), true)) {
+        return array('status' => 'done', 'outcome' => $outcome);
+    }
+
+    $outcome = ($outcome === 'expired') ? 'expired' : 'withdrawn';
+
+    return array('status' => $routed ? 'done' : 'failed', 'outcome' => $outcome);
 }
 
 /**
@@ -746,6 +1059,64 @@ function ws_flow_run_access_from($flow_access, $is_starter, $channel_readable, $
 function ws_flow_run_cancel_allowed($access, $is_starter)
 {
     return ($access === 'edit') || (($access === 'read') && $is_starter);
+}
+
+/**
+ * Why a box of a run may not be tried again or skipped by hand, '' when it
+ * may: only a failed box (one that stopped half way included), of a run that
+ * is still going or ended failed. Pure.
+ *
+ * @param string $run_status  the run's status
+ * @param string $step_status the box's status
+ * @return string '' | not_failed | ended
+ */
+function ws_flow_step_mend_refusal($run_status, $step_status)
+{
+    if ((string) $step_status !== 'failed') {
+        return 'not_failed';
+    }
+
+    return in_array((string) $run_status, array('running', 'waiting', 'failed'), true) ? '' : 'ended';
+}
+
+/**
+ * The boxes skipped behind a box: those an arrow from it leads into that are
+ * skipped, and on through the skipped boxes after them, in the order they
+ * are reached. When the box is tried again or skipped by hand these are
+ * taken back and walked again (ws_flow_walk() works out each one anew from
+ * the boxes before it, so one also skipped for another reason is skipped
+ * again). Pure.
+ *
+ * @param array  $graph   ws_flow_graph_normalize()
+ * @param array  $steps   node id => status, outcome
+ * @param string $node_id
+ * @return string[]
+ */
+function ws_flow_skipped_behind($graph, $steps, $node_id)
+{
+    $out = array();
+    $seen = array((string) $node_id => true);
+    $queue = array((string) $node_id);
+
+    while (!empty($queue)) {
+        $from = array_shift($queue);
+
+        foreach ((array) ($graph['edges'] ?? array()) as $edge) {
+            $to = (string) $edge['to'];
+
+            if (((string) $edge['from'] !== $from) || isset($seen[$to])) {
+                continue;
+            }
+
+            if ((string) ($steps[$to]['status'] ?? '') === 'skipped') {
+                $seen[$to] = true;
+                $out[] = $to;
+                $queue[] = $to;
+            }
+        }
+    }
+
+    return $out;
 }
 
 /**
@@ -1654,6 +2025,11 @@ function ws_flow_step_run($step)
             ws_flow_step_settle($step, 'running', 'done', '', lang('The flow reached its end.'));
             return;
 
+        // A wait acts on nothing, so it needs nobody's rights.
+        case 'delay':
+            ws_flow_delay_run($step, $node);
+            return;
+
         // The owner's rights as they are now: somebody who has left the staff
         // opens no task in the team's name.
         case 'task':
@@ -1665,6 +2041,18 @@ function ws_flow_step_run($step)
             }
 
             ws_flow_step_task($run, $flow, $step, $node, $owner);
+            return;
+
+        // A condition, looked at with the owner's rights now.
+        case 'condition':
+            $owner = ws_change_viewer_for_id($run['actor_id']);
+
+            if (!is_array($owner) || !ws_can_schedule($owner)) {
+                ws_flow_step_settle($step, 'running', 'failed', '', lang('The owner of the flow is no longer on the staff, so the box did not run.'));
+                return;
+            }
+
+            ws_flow_condition_run($run, $step, $node, $owner);
             return;
     }
 
@@ -1775,7 +2163,8 @@ function ws_flow_step_task_find($owner, $run_id, $title, $marker, $since)
  * opened, and looks at it at once when it finds it: the task may have been
  * finished meanwhile, and the event that said so woke no box. A run
  * cancelled while the box was on its way opens no task; one cancelled while
- * the task was being opened keeps its id on the box.
+ * the task was being opened keeps its id on the box. A box with a timeout
+ * says in its result when it runs out; its next look is no later than that.
  *
  * @param array $run
  * @param array $flow
@@ -1827,12 +2216,16 @@ function ws_flow_step_task($run, $flow, $step, $node, $owner)
         $unassigned = $people['unassigned'];
     }
 
-    $text = lang(array('string' => 'task {var:1} “{var:2}” opened', 'vars' => array(ws_task_number($task_id), $title)))
-        . ($unassigned ? ' · ' . lang('with nobody on it: the people it was meant for could not be given it') : '');
+    // Counted from the claim this request made a moment ago, which the
+    // look counts from too (claimed_at).
     $now = time();
+    $timeout_at = ws_flow_timeout_at($config, $now);
+    $text = lang(array('string' => 'task {var:1} “{var:2}” opened', 'vars' => array(ws_task_number($task_id), $title)))
+        . ($unassigned ? ' · ' . lang('with nobody on it: the people it was meant for could not be given it') : '')
+        . (($timeout_at > 0) ? ' · ' . lang(array('string' => 'leaves on timeout at {var:1}', 'vars' => ws_scheduled_moment($timeout_at))) : '');
 
     db("UPDATE ws_flow_run_steps SET effect = 'task:" . $task_id . "', status = 'waiting',
-            wait_event = '" . e(WS_FLOW_TASK_WAIT) . "', wait_key = 'task:" . $task_id . "', wake_at = '" . ($adopted ? $now : $now + WS_FLOW_RECHECK) . "',
+            wait_event = '" . e(WS_FLOW_TASK_WAIT) . "', wait_key = 'task:" . $task_id . "', wake_at = '" . ($adopted ? $now : ws_flow_timeout_next_look($now, $timeout_at)) . "',
             result = '" . e(ws_flow_result_pack($text, array('task_id' => $task_id))) . "'
         WHERE id = '" . (int) $step['id'] . "' AND status = 'running'");
 
@@ -1858,15 +2251,26 @@ function ws_flow_step_task($run, $flow, $step, $node, $owner)
 
 /**
  * A waiting box looks at its task: done, cancelled or gone settles it
- * (ws_flow_task_settlement()); still open, it goes on waiting. The task's
- * state now is what counts, not what an event said about it. A box of a run
- * that ended is let go.
+ * (ws_flow_task_settlement()); still open past the box's timeout
+ * (ws_flow_timeout_at(), counted from its claim), it leaves on timeout
+ * (ws_flow_timeout_settlement()) and the task stays open; still open before
+ * it, it goes on waiting. The task's state now is what counts, not what an
+ * event said about it, and a task that ended counts before the deadline. A
+ * box of a run that ended is let go.
  *
  * @param array $step ws_flow_run_steps row, waiting
  * @return bool whether this request settled it
  */
 function ws_flow_step_recheck($step)
 {
+    if (ws_flow_delay_key_until($step['wait_key']) > 0) {
+        return ws_flow_delay_recheck($step);
+    }
+
+    if (ws_flow_effect_approval_id($step['wait_key']) > 0) {
+        return ws_flow_approval_recheck($step);
+    }
+
     $task_id = ws_flow_effect_task_id($step['wait_key']);
     $run = ($task_id > 0) ? ws_flow_run($step['run_id']) : null;
 
@@ -1881,14 +2285,37 @@ function ws_flow_step_recheck($step)
     }
 
     $task = ws_task($task_id);
-    $routed = ws_flow_outcome_routed(ws_flow_run_graph($run), $step['node_id'], 'cancelled');
+    $graph = ws_flow_run_graph($run);
+    $routed = ws_flow_outcome_routed($graph, $step['node_id'], 'cancelled');
     $settled = ws_flow_task_settlement($task ? (string) $task['status'] : null, $routed);
-
-    if ($settled['status'] === '') {
-        return false;
-    }
-
     $number = ws_task_number($task_id);
+
+    // The task still open: the box runs out at its deadline, or goes on
+    // waiting with its next look no later than it. Both ends go through
+    // ws_flow_step_settle(), whose write holds only while the box waits, so
+    // a task finished at that moment and the deadline never both settle it.
+    if ($settled['status'] === '') {
+        $node = ws_flow_graph_node($graph, $step['node_id']);
+        $timeout_at = $node ? ws_flow_timeout_at($node['config'] ?? array(), (int) $step['claimed_at']) : 0;
+        $now = time();
+
+        if (!ws_flow_timed_out($timeout_at, $now)) {
+            if ($timeout_at > 0) {
+                db("UPDATE ws_flow_run_steps SET wake_at = '" . ws_flow_timeout_next_look($now, $timeout_at) . "'
+                    WHERE id = '" . (int) $step['id'] . "' AND status = 'waiting' AND wake_at > '" . (int) $timeout_at . "'");
+            }
+
+            return false;
+        }
+
+        $timeout = ws_flow_timeout_settlement(ws_flow_outcome_routed($graph, $step['node_id'], 'timeout'));
+        $hours = ws_flow_timeout_hours($node['config']);
+        $text = ($timeout['status'] === 'done')
+            ? lang(array('string' => 'Task {var:1} was not finished within {var:2} hours; it stays open.', 'vars' => array($number, $hours)))
+            : lang(array('string' => 'Task {var:1} was not finished within {var:2} hours, and no arrow leaves the box on timeout; it stays open.', 'vars' => array($number, $hours)));
+
+        return ws_flow_step_settle($step, 'waiting', $timeout['status'], $timeout['outcome'], $text, array('task_id' => $task_id));
+    }
 
     switch ($settled['reason']) {
         case 'done':
@@ -1908,6 +2335,178 @@ function ws_flow_step_recheck($step)
     }
 
     return ws_flow_step_settle($step, 'waiting', $settled['status'], $settled['outcome'], $text, array('task_id' => $task_id));
+}
+
+/**
+ * A delay box claimed by this request starts to wait: in one conditional
+ * write it keeps the moment it waits until (effect and wait_key, see
+ * ws_flow_delay_key()), waits on no event, and has its next look then
+ * (wake_at), which ws_flow_due() and ws_flow_steps_recheck() read. Its
+ * result says until when, which the run view shows while it waits. A box
+ * whose time is out of range (a graph published before the check) fails.
+ *
+ * @param array $step ws_flow_run_steps row, now running
+ * @param array $node its box
+ */
+function ws_flow_delay_run($step, $node)
+{
+    $minutes = ws_flow_delay_minutes($node['config'] ?? array());
+
+    if (($minutes < 1) || ($minutes > WS_FLOW_DELAY_MAX)) {
+        ws_flow_step_settle($step, 'running', 'failed', '', lang('The delay box has no time to wait within a week.'));
+        return;
+    }
+
+    $until = ws_flow_delay_until($node['config'], time());
+    $key = ws_flow_delay_key($until);
+    $text = lang(array('string' => 'Waits until {var:1}.', 'vars' => ws_scheduled_moment($until)));
+
+    db("UPDATE ws_flow_run_steps SET effect = '" . e($key) . "', status = 'waiting',
+            wait_event = '', wait_key = '" . e($key) . "', wake_at = '" . $until . "',
+            result = '" . e(ws_flow_result_pack($text, array('waited_until' => ws_flow_time($until)))) . "'
+        WHERE id = '" . (int) $step['id'] . "' AND status = 'running'");
+
+    if ((int) mysqli_affected_rows(db::$con) === 1) {
+        ws_flow_run_refresh((int) $step['run_id']);
+    }
+}
+
+/**
+ * A waiting delay box looks at its time (ws_flow_delay_settlement()): come,
+ * it settles done; not yet (a look before it, as a clock moved), its next
+ * look goes back to the moment. A run that ended meanwhile lets it go.
+ *
+ * @param array $step ws_flow_run_steps row, waiting
+ * @return bool whether the box settled
+ */
+function ws_flow_delay_recheck($step)
+{
+    $run = ws_flow_run($step['run_id']);
+
+    if (!$run) {
+        return false;
+    }
+
+    if (!ws_flow_run_open($run['status'])) {
+        return ws_flow_step_settle($step, 'waiting', 'skipped', '', lang('Not reached in this run.'));
+    }
+
+    $settled = ws_flow_delay_settlement((string) $step['wait_key'], time());
+    $until = ws_flow_delay_key_until($step['wait_key']);
+
+    if ($settled['status'] === '') {
+        db("UPDATE ws_flow_run_steps SET wake_at = '" . $until . "'
+            WHERE id = '" . (int) $step['id'] . "' AND status = 'waiting'");
+
+        return false;
+    }
+
+    return ws_flow_step_settle($step, 'waiting', 'done', 'done', lang(array('string' => 'Waited until {var:1}.', 'vars' => ws_scheduled_moment($until))), $settled['data']);
+}
+
+/**
+ * An approval box whose request is out (steps.php, ws_step_run()) waits for
+ * it: in one conditional write it keeps the request (effect and wait_key,
+ * ws_flow_approval_key()), waits for its decision (WS_FLOW_APPROVAL_WAIT)
+ * and has its next look in WS_FLOW_RECHECK seconds, in case the event is
+ * lost. A step that gave no request fails. A box that ended while its
+ * request was being asked (the run cancelled at that moment) still names
+ * the request, which stays as it is.
+ *
+ * @param array  $step        ws_flow_run_steps row, running
+ * @param int    $approval_id the request asked
+ * @param string $text        the step's sentence
+ * @param array  $data        ws_step_result_data()
+ */
+function ws_flow_approval_wait($step, $approval_id, $text, $data)
+{
+    if ((int) $approval_id <= 0) {
+        ws_flow_step_settle($step, 'running', 'failed', '', lang('The approval request could not be asked.'), $data);
+        return;
+    }
+
+    $key = ws_flow_approval_key($approval_id);
+
+    db("UPDATE ws_flow_run_steps SET effect = '" . e($key) . "', status = 'waiting',
+            wait_event = '" . e(WS_FLOW_APPROVAL_WAIT) . "', wait_key = '" . e($key) . "', wake_at = '" . (time() + WS_FLOW_RECHECK) . "',
+            result = '" . e(ws_flow_result_pack($text, $data)) . "'
+        WHERE id = '" . (int) $step['id'] . "' AND status = 'running'");
+
+    if ((int) mysqli_affected_rows(db::$con) === 1) {
+        // The awaited events this request read may predate the wait: read
+        // again, so a decision later in the same request is kept for it.
+        ws_events_awaited(true);
+        ws_flow_run_refresh((int) $step['run_id']);
+
+        return;
+    }
+
+    db("UPDATE ws_flow_run_steps SET effect = '" . e($key) . "'
+        WHERE id = '" . (int) $step['id'] . "' AND effect = '" . e(WS_STEP_BEGAN . 'approval') . "' AND status IN ('skipped', 'failed')");
+}
+
+/**
+ * A waiting approval box looks at its request: ended, it settles
+ * (ws_flow_approval_settlement()) with the request and its message as its
+ * values; still open, it goes on waiting. The request as it stands now is
+ * what counts, not what an event said. A box of a run that ended is let go;
+ * its request stays as it is.
+ *
+ * @param array $step ws_flow_run_steps row, waiting
+ * @return bool whether this request settled it
+ */
+function ws_flow_approval_recheck($step)
+{
+    $approval_id = ws_flow_effect_approval_id($step['wait_key']);
+    $run = ws_flow_run($step['run_id']);
+
+    if (!$run) {
+        return false;
+    }
+
+    if (!ws_flow_run_open($run['status'])) {
+        return ws_flow_step_settle($step, 'waiting', 'skipped', '', lang('The run ended before this box did; its approval request stays as it is.'));
+    }
+
+    $approval = function_exists('ws_approval') ? ws_approval($approval_id) : null;
+    $outcome = $approval ? (((int) $approval['closed_at'] > 0) ? (string) $approval['outcome'] : '') : null;
+
+    // Closed with no outcome written: nobody decided.
+    if (($outcome === '') && $approval && ((int) $approval['closed_at'] > 0)) {
+        $outcome = 'withdrawn';
+    }
+
+    $routed = ($outcome !== '') && ws_flow_outcome_routed(ws_flow_run_graph($run), $step['node_id'], ($outcome === 'expired') ? 'expired' : 'withdrawn');
+    $settled = ws_flow_approval_settlement($outcome, $routed);
+
+    if ($settled['status'] === '') {
+        return false;
+    }
+
+    $title = $approval ? (string) $approval['title'] : '';
+
+    switch ($settled['outcome']) {
+        case 'approved':
+            $text = lang(array('string' => 'The approval request “{var:1}” was approved.', 'vars' => $title));
+            break;
+
+        case 'rejected':
+            $text = lang(array('string' => 'The approval request “{var:1}” was rejected.', 'vars' => $title));
+            break;
+
+        case 'expired':
+            $text = lang(array('string' => 'The approval request “{var:1}” expired without a decision.', 'vars' => $title));
+            break;
+
+        default:
+            $text = $approval
+                ? lang(array('string' => 'The approval request “{var:1}” was closed without a decision.', 'vars' => $title))
+                : lang('The approval request is gone.');
+    }
+
+    $data = array('approval_id' => $approval_id, 'message_id' => $approval ? (((int) $approval['message_id'] > 0) ? (int) $approval['message_id'] : null) : null);
+
+    return ws_flow_step_settle($step, 'waiting', $settled['status'], $settled['outcome'], $text, $data);
 }
 
 /**
@@ -2073,6 +2672,143 @@ function ws_flow_run_cancel($viewer, $run)
     $flow = ws_flow($run['flow_id']);
 
     log_activity(lang(array('string' => 'workspace flow ({var:1}) run {var:2} was cancelled', 'vars' => array($flow ? $flow['name'] : '', (int) $run['id']))), (string) ($_SESSION['sessionusername'] ?? ''));
+
+    return $check;
+}
+
+/**
+ * Whether the person may try a failed box of the run again or skip it: the
+ * checks of ws_flow_step_mend(), made on their own so that the API's dry run
+ * meets the same refusals. Only the flow's owner may: a box tried again runs
+ * in their name and with their rights, as publishing does
+ * (ws_flow_share_manager()).
+ *
+ * @param array  $viewer
+ * @param array  $run
+ * @param string $node_id the box
+ * @return array ok, error, status, field, step (the box's row), behind (the boxes skipped behind it)
+ */
+function ws_flow_step_mend_check($viewer, $run, $node_id)
+{
+    if (!ws_flows_ready()) {
+        return ws_flow_refusal(lang('The database has to be updated first.'), 503);
+    }
+
+    $flow = ws_flow($run['flow_id']);
+
+    if (ws_flow_run_access($viewer, $flow, $run) === '') {
+        return ws_flow_refusal(lang('That run could not be found.'), 404);
+    }
+
+    if (!ws_flow_share_manager($viewer, $flow)) {
+        return ws_flow_refusal(lang('Only the owner of the flow can try a box again or skip it.'), 403);
+    }
+
+    $rows = ws_flow_run_steps($run['id']);
+    $step = null;
+
+    foreach ($rows as $row) {
+        if ((string) $row['node_id'] === (string) $node_id) {
+            $step = $row;
+        }
+    }
+
+    if (!$step) {
+        return ws_flow_refusal(lang('That box has not been reached in this run.'), 404, 'node_id');
+    }
+
+    switch (ws_flow_step_mend_refusal($run['status'], $step['status'])) {
+        case 'not_failed':
+            return ws_flow_refusal(lang('Only a box that failed can be tried again or skipped.'), 422, 'node_id');
+
+        case 'ended':
+            return ws_flow_refusal(lang('This run has ended already.'));
+    }
+
+    return array(
+        'ok'     => true,
+        'error'  => '',
+        'status' => 200,
+        'field'  => '',
+        'step'   => $step,
+        'behind' => ws_flow_skipped_behind(ws_flow_run_graph($run), ws_flow_step_states($rows), $step['node_id']),
+    );
+}
+
+/**
+ * Tries a failed box of the run again ($how retry: it is ready again as a
+ * new attempt, forgets what it began and the task it waited for, and the
+ * boxes after it follow how it goes) or skips it ($how skip: the run goes on
+ * as for a branch not taken). The box changes only from failed, so of two
+ * clicks only one does it. The boxes the walk skipped behind it are taken
+ * back and the run, reopened when it had failed, is walked again. A task
+ * box tried again opens a new task: one its earlier tries opened stays as it
+ * is. The box keeps the sentence it failed with in its result until it
+ * settles again, and the activity log gets a line.
+ *
+ * @param array  $viewer
+ * @param array  $run
+ * @param string $node_id
+ * @param string $how     retry | skip
+ * @return array ok, error, status, field, step, behind
+ */
+function ws_flow_step_mend($viewer, $run, $node_id, $how)
+{
+    $check = ws_flow_step_mend_check($viewer, $run, $node_id);
+
+    if (!$check['ok']) {
+        return $check;
+    }
+
+    $now = time();
+    $step = $check['step'];
+    $name = ws_person_name($viewer['id']);
+    $was = ws_flow_result_text($step['result']);
+
+    if ($how === 'retry') {
+        $text = lang(array('string' => 'Tried again by {var:1} after: {var:2}', 'vars' => array($name, $was)));
+
+        db("UPDATE ws_flow_run_steps SET status = 'ready', outcome = '', effect = '', wait_event = '', wait_key = '', wake_at = 0,
+                ready_at = '" . $now . "', claimed_at = 0, finished_at = 0, result = '" . e(ws_flow_result_pack($text)) . "'
+            WHERE id = '" . (int) $step['id'] . "' AND status = 'failed'");
+    } else {
+        $text = lang(array('string' => 'Skipped by {var:1} after: {var:2}', 'vars' => array($name, $was)));
+
+        db("UPDATE ws_flow_run_steps SET status = 'skipped', outcome = '', finished_at = '" . $now . "',
+                result = '" . e(ws_flow_result_pack($text)) . "'
+            WHERE id = '" . (int) $step['id'] . "' AND status = 'failed'");
+    }
+
+    if ((int) mysqli_affected_rows(db::$con) !== 1) {
+        return ws_flow_refusal(lang('The box was tried again or skipped at this moment already.'), 409);
+    }
+
+    // Only rows the walk wrote (never run): ws_flow_run_refresh() writes
+    // them again as the box now stands.
+    if (!empty($check['behind'])) {
+        db("DELETE FROM ws_flow_run_steps WHERE run_id = '" . (int) $run['id'] . "'
+            AND node_id IN ('" . implode("', '", array_map('e', $check['behind'])) . "')
+            AND status = 'skipped' AND attempt = 0");
+    }
+
+    db("UPDATE ws_flow_runs SET status = 'running', finished_at = 0, updated_at = '" . $now . "'
+        WHERE id = '" . (int) $run['id'] . "' AND status IN ('running', 'waiting', 'failed')");
+
+    ws_flow_run_refresh((int) $run['id']);
+
+    $flow = ws_flow($run['flow_id']);
+    $node = ws_flow_graph_node(ws_flow_run_graph($run), $step['node_id']);
+    $box = $node ? ws_flow_box_name($node) : (string) $step['node_id'];
+
+    $vars = array($flow ? $flow['name'] : '', (int) $run['id'], $box);
+
+    log_activity(($how === 'retry')
+        ? lang(array('string' => 'workspace flow ({var:1}) run {var:2}: the box {var:3} was tried again', 'vars' => $vars))
+        : lang(array('string' => 'workspace flow ({var:1}) run {var:2}: the box {var:3} was skipped', 'vars' => $vars)), (string) ($_SESSION['sessionusername'] ?? ''));
+
+    if ($how === 'retry') {
+        ws_flow_advance(WS_FLOW_BUDGET_TICK, (int) $run['id']);
+    }
 
     return $check;
 }

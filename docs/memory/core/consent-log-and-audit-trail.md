@@ -1,6 +1,7 @@
 ---
 name: consent-log-and-audit-trail
 description: consent_log and audit_log (11.0.16): the person token, consent row rules, what pg_audit() keeps (changed fields, masked secrets, size limits), who writes them
+module: privacy, audit
 ---
 
 ## What are the two tables?
@@ -15,7 +16,7 @@ description: consent_log and audit_log (11.0.16): the person token, consent row 
 - Current answer: `pg_consent_log_current(pg_consent_log_rows($person))`, the newest row per `channel:purpose` (time, then id); `$person` may add `previous_email`.
 
 ## Who writes consent rows today?
-- Double opt-in forms (`form-double-opt-in.md`); a person's own e-mail marketing answers when changed (`consent-log-writers.md`); the cookie notice (`consent-log-cookie-notice.md`). None yet for `contract`, `sms`, `call`, `iys`.
+- Double opt-in forms (`form-double-opt-in.md`); own e-mail marketing answers when changed and accepted checkout documents on `contract` (`consent-log-writers.md`); the cookie notice (`consent-log-cookie-notice.md`). None yet for `sms`, `call`, `iys`.
 
 ## What does pg_audit() keep?
 - Only the fields that differ, compared as text (a DB row and a posted form disagree only on type). A side not given (before a create, after a delete) is `NULL`. An update that changed nothing writes nothing; an event given no fields (a key revoked) is always written.

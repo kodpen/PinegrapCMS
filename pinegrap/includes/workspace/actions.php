@@ -311,7 +311,7 @@ function ws_handle_action($action, $request)
     if (function_exists('ws_message_in_past') && ws_eras_ready()) {
         $touched = null;
 
-        if (in_array($action, array('ws_edit', 'ws_mark', 'ws_react', 'ws_check', 'ws_ack', 'ws_ack_request'), true)
+        if (in_array($action, array('ws_edit', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request'), true)
             || (($action === 'ws_delete') && ((string) ($request['scope'] ?? '') !== 'me'))) {
             $touched = ws_message((int) ($request['message_id'] ?? 0));
         } elseif (in_array($action, array('ws_poll_edit', 'ws_poll_vote', 'ws_poll_close'), true)) {
@@ -712,7 +712,31 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(($action === 'ws_flow_bin') ? array() : array('flow' => ws_flow_detail($viewer, ws_flow_for($viewer, $flow['id'], 'edit'))));
 
-        // The runs of a flow (includes/workspace/flow_runs.php), shown on the
+        // The setup panel of a template just placed (flow_templates.php): its
+        // answers checked here, written into the draft and, with publish,
+        // published through Publish's own checks.
+        case 'ws_flow_template_setup':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'edit');
+
+            if (!$flow) {
+                return ws_action_error(lang('Only the owner of a flow can change it.'));
+            }
+
+            $result = ws_flow_template_setup($viewer, $flow, array(
+                'key'       => (string) ($request['key'] ?? ''),
+                'answers'   => is_array($request['answers'] ?? null) ? $request['answers'] : array(),
+                'draft_rev' => (int) ($request['draft_rev'] ?? 0),
+                'publish'   => !empty($request['publish']),
+            ));
+
+            if (!$result['ok']) {
+                return ws_action_flow_refused($result);
+            }
+
+            return ws_action_ok(array('flow' => ws_flow_detail($viewer, ws_flow_for($viewer, $flow['id'], 'edit')),
+                'published' => $result['published'], 'publish_error' => $result['publish_error']));
+
+
         // canvas: started, listed, read and cancelled through the runner's
         // own checks, the ones the API's run routes make, and answered in
         // the shape those routes give.
@@ -778,6 +802,45 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(array('run' => ws_action_flow_run_answer($viewer, $run['id'])));
+
+        // A failed box of a run tried again or skipped by the flow's owner
+        // (flow_runs.php); the check the API's retry and skip routes make.
+        case 'ws_flow_step_mend':
+            $run = ws_flow_run_for($viewer, (int) ($request['run_id'] ?? 0));
+
+            if (!$run) {
+                return ws_action_error(lang('That run could not be found.'));
+            }
+
+            $result = ws_flow_step_mend($viewer, $run, (string) ($request['node_id'] ?? ''), ((string) ($request['how'] ?? '') === 'skip') ? 'skip' : 'retry');
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], (string) $result['field']);
+            }
+
+            return ws_action_ok(array('run' => ws_action_flow_run_answer($viewer, $run['id'])));
+
+        // One box of the draft tried on the canvas (steps.php): what it would
+        // do, nothing sent or written; the check the API's try route makes.
+        case 'ws_flow_box_try':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'edit');
+
+            if (!$flow) {
+                return ws_action_error(lang('Only the owner of a flow can change it.'));
+            }
+
+            $result = ws_flow_box_try($viewer, $flow, array(
+                'node_id' => (string) ($request['node_id'] ?? ''),
+                'run_id'  => (int) ($request['run_id'] ?? 0),
+            ));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], (string) $result['field']);
+            }
+
+            unset($result['ok'], $result['error'], $result['status'], $result['field']);
+
+            return ws_action_ok(array('try' => $result));
 
         // The shares of a flow (includes/workspace/flow_shares.php), in the
         // canvas's Share dialog: whoever reaches the flow reads them, the
@@ -1615,6 +1678,24 @@ function ws_handle_action($action, $request)
             $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
 
             return ws_action_ok(array('message' => $payload[0]));
+
+        // One checklist item made into a task (task_work.php).
+        case 'ws_check_task':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!$message || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            $result = ws_checklist_item_task($viewer, $message, (int) ($request['item'] ?? -1));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
+
+            return ws_action_ok(array('message' => $payload[0], 'task_id' => $result['task_id']));
 
         case 'ws_poll_create':
             $channel = ws_action_channel($viewer, $request, 'post');

@@ -739,6 +739,16 @@ if (function_exists('pg_geo_db_due') && pg_geo_db_due()) {
 
 }
 
+// The firewall's pre-database ban mirror (waf_ban_shield_refresh() in
+// waf.php). A web request refreshes it only when it is not banned, and the
+// firewall does not run on the command line, so on a quiet site a lifted ban
+// stayed in the file for hours; the job rewrites it on every tick.
+if (function_exists('waf_ban_shield_refresh')) {
+
+    waf_ban_shield_refresh(true);
+
+}
+
 // Operations alerts (includes/fn/ops_alerts.php): a backup gone stale, a
 // scheduled task that stopped, software files that no longer match the
 // release - to the bell, the subscribed devices and the alert recipients, at

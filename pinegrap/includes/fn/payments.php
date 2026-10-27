@@ -424,7 +424,7 @@ function pg_payment_fields_normalize($fields)
 
     $normalized = array();
     // Taken by the card's own inputs (pg_payment_input_name()).
-    $names = array('present' => true, 'enabled' => true, 'row' => true);
+    $names = array('present' => true, 'enabled' => true, 'row' => true, 'callback' => true);
 
     foreach ($fields as $field) {
         if (!is_array($field) || !isset($field['name']) || !is_string($field['name'])) {
@@ -841,7 +841,7 @@ function pg_payment_settings_fields_html($definition, $fields, $settings)
 
     if (!$settings['readable']) {
         $html .= '
-                                                                                        <div class="col-12"><div class="alert alert-warning mb-0">' . lang(array(
+                                                                                        <div class="col-12"><div class="alert theme-warning mb-0">' . lang(array(
                                                                                             'string' => 'The stored keys of {var:1} cannot be read with this site\'s encryption key. Enter them again.',
                                                                                             'vars'   => array(h($definition['label'])))) . '</div></div>';
     }
@@ -851,6 +851,19 @@ function pg_payment_settings_fields_html($definition, $fields, $settings)
                                                                                         <div class="col-12 form-text">' . lang(array(
                                                                                             'string' => 'The keys are in your {var:1} account.',
                                                                                             'vars'   => array('<a href="' . h($definition['portal']) . '" target="_blank" rel="noopener">' . h($definition['label']) . '</a>'))) . '</div>';
+    }
+
+    // A service that sends its own messages needs this site's address
+    // entered on its side; the operator copies it from here.
+    if (pg_payment_can($key, 'notify')) {
+        $html .= '
+                                                                                        <div class="col-12">
+                                                                                            <label class="form-label" for="' . h(pg_payment_input_name($key, 'callback')) . '">' . h(lang('Webhook Address')) . '</label>
+                                                                                            <input class="form-control" type="text" id="' . h(pg_payment_input_name($key, 'callback')) . '" value="' . h(pg_payment_callback_url($key)) . '" readonly="readonly"/>
+                                                                                            <div class="form-text">' . h(lang(array(
+                                                                                                'string' => 'Add this address as a webhook endpoint in your {var:1} account.',
+                                                                                                'vars'   => array($definition['label'])))) . '</div>
+                                                                                        </div>';
     }
 
     foreach ($fields as $field) {
@@ -863,9 +876,9 @@ function pg_payment_settings_fields_html($definition, $fields, $settings)
             case 'switch':
                 $html .= '
                                                                                         <div class="col-12">
-                                                                                            <div class="form-check form-switch">
-                                                                                                <input value="1"' . (($value === '1') ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="' . h($id) . '" name="' . h($id) . '"/>
-                                                                                                <label class="form-check-label" for="' . h($id) . '">' . h($field['label']) . '</label>
+                                                                                            <div class="form-field">
+                                                                                                <div class="switch"><input value="1"' . (($value === '1') ? ' checked="checked"' : '') . ' class="" type="checkbox" id="' . h($id) . '" name="' . h($id) . '"/></div>
+                                                                                                <label class="" for="' . h($id) . '">' . h($field['label']) . '</label>
                                                                                             </div>' . $help . '
                                                                                         </div>';
                 break;
@@ -880,7 +893,7 @@ function pg_payment_settings_fields_html($definition, $fields, $settings)
                 $html .= '
                                                                                         <div class="pg-f-md">
                                                                                             <label class="form-label" for="' . h($id) . '">' . h($field['label']) . '</label>
-                                                                                            <select class="form-select" id="' . h($id) . '" name="' . h($id) . '">' . $options . '</select>' . $help . '
+                                                                                            <select class="form-control" id="' . h($id) . '" name="' . h($id) . '">' . $options . '</select>' . $help . '
                                                                                         </div>';
                 break;
 
@@ -906,6 +919,22 @@ function pg_payment_settings_fields_html($definition, $fields, $settings)
     }
 
     return $html;
+}
+
+/**
+ * The address a driver's service posts its own messages to
+ * (payment_callback.php, notify()).
+ *
+ * @param string $key
+ * @return string
+ */
+function pg_payment_callback_url($key)
+{
+    // init.php defines the site's address; without it (a unit test run) the
+    // address is relative.
+    $base = defined('URL_SCHEME') ? URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY : '';
+
+    return $base . '/payment_callback.php?driver=' . rawurlencode((string) $key);
 }
 
 /**
@@ -952,7 +981,7 @@ function pg_payment_settings_card_rows($gateway, $card_enabled)
 
         $html .= '
                                                                                         <div class="col-12" data-pg-payment-gateway="' . h($definition['gateway']) . '"' . ($shown ? '' : ' style="display: none"') . '>
-                                                                                            <div class="row gy-3">' . pg_payment_settings_fields_html($definition, $fields, pg_payment_settings($key)) . '
+                                                                                            <div class="row gy-5">' . pg_payment_settings_fields_html($definition, $fields, pg_payment_settings($key)) . '
                                                                                             </div>
                                                                                         </div>';
     }
@@ -980,14 +1009,14 @@ function pg_payment_settings_redirect_rows()
 
         $html .= '
                                                         <div class="col-12 ">
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . ($settings['enabled'] ? ' checked="checked"' : '') . ' class="form-check-input collapse-switcher" type="checkbox" id="' . h($switch) . '" name="' . h($switch) . '" data-bs-target="#' . h($row) . '"/>
-                                                                <label class="form-check-label" for="' . h($switch) . '">' . h($definition['label']) . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . ($settings['enabled'] ? ' checked="checked"' : '') . ' class="collapse-switcher" type="checkbox" id="' . h($switch) . '" name="' . h($switch) . '" data-bs-target="#' . h($row) . '"/></div>
+                                                                <label class="" for="' . h($switch) . '">' . h($definition['label']) . '</label>
                                                             </div>
                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="' . h($row) . '">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                 <div class="popover-body">
-                                                                    <div class="row gy-3">' . pg_payment_settings_fields_html($definition, pg_payment_fields($key), $settings) . '
+                                                                    <div class="row gy-5">' . pg_payment_settings_fields_html($definition, pg_payment_fields($key), $settings) . '
                                                                     </div>
                                                                 </div>
                                                             </div>

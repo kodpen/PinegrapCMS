@@ -154,34 +154,34 @@ if ($action != 'import') {
                 get_token_field() . '
                 <div class="row">
                     <div class="col-12">
-                        <div class="card my-4">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Import Settings') . '</div>
+                        <div class="card my-7">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Import Settings') . '</div>
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-12 my-2">
-                                        <label for="url" class="form-label">' . lang('Website URL') . ' <span class="text-danger">*</span></label>
-                                        ' . $liveform->output_field(array('type'=>'text','name'=>'url','id'=>'url','class'=>'form-control','placeholder'=>'https://www.example.com')) . '
-                                        <div class="form-text text-muted">' . lang('Enter the full address of the website to import pages and files from.') . '</div>
-                                    </div>
-                                    <div class="col-12 col-md-6 my-2">
-                                        <label for="import_name" class="form-label">' . lang('Tag') . ' <span class="text-muted fw-normal">(' . lang('optional') . ')</span></label>
-                                        ' . $liveform->output_field(array('type'=>'text','name'=>'import_name','id'=>'import_name','class'=>'form-control','placeholder'=>lang('e.g. mysite'))) . '
-                                        <div class="form-text text-muted">' . lang('Added to imported item names for easy identification.') . '</div>
-                                    </div>
                                     <div class="col-12 my-3">
-                                        <label class="form-label d-block mb-2">' . lang('Scan Mode') . '</label>
-                                        <div class="form-check mb-3">
-                                            <input class="form-check-input" type="radio" name="max_link_level" id="depth_0" value="0"' . ($current_max_link_level == '0' ? ' checked' : '') . '>
-                                            <label class="form-check-label" for="depth_0">
+                                        <label for="url" class="form-label">' . lang('Website URL') . ' <span class="fg-danger">*</span></label>
+                                        ' . $liveform->output_field(array('type'=>'text','name'=>'url','id'=>'url','class'=>'form-control','placeholder'=>'https://www.example.com')) . '
+                                        <div class="form-text fg-secondary">' . lang('Enter the full address of the website to import pages and files from.') . '</div>
+                                    </div>
+                                    <div class="col-12 md:col-6 my-3">
+                                        <label for="import_name" class="form-label">' . lang('Tag') . ' <span class="fg-secondary fw-normal">(' . lang('optional') . ')</span></label>
+                                        ' . $liveform->output_field(array('type'=>'text','name'=>'import_name','id'=>'import_name','class'=>'form-control','placeholder'=>lang('e.g. mysite'))) . '
+                                        <div class="form-text fg-secondary">' . lang('Added to imported item names for easy identification.') . '</div>
+                                    </div>
+                                    <div class="col-12 my-5">
+                                        <label class="form-label d-block mb-3">' . lang('Scan Mode') . '</label>
+                                        <div class="form-field mb-5">
+                                            <input class="radio" type="radio" name="max_link_level" id="depth_0" value="0"' . ($current_max_link_level == '0' ? ' checked' : '') . '>
+                                            <label class="" for="depth_0">
                                                 <strong>' . lang('This page only') . '</strong>
-                                                <span class="text-muted d-block small">' . lang('Only the entered URL is scanned along with its assets (images, CSS, JS).') . '</span>
+                                                <span class="fg-secondary d-block small">' . lang('Only the entered URL is scanned along with its assets (images, CSS, JS).') . '</span>
                                             </label>
                                         </div>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="max_link_level" id="depth_1" value="1"' . ($current_max_link_level != '0' ? ' checked' : '') . '>
-                                            <label class="form-check-label" for="depth_1">
+                                        <div class="form-field">
+                                            <input class="radio" type="radio" name="max_link_level" id="depth_1" value="1"' . ($current_max_link_level != '0' ? ' checked' : '') . '>
+                                            <label class="" for="depth_1">
                                                 <strong>' . lang('All linked content') . '</strong>
-                                                <span class="text-muted d-block small">' . lang('All pages linked from the starting URL are also scanned.') . '</span>
+                                                <span class="fg-secondary d-block small">' . lang('All pages linked from the starting URL are also scanned.') . '</span>
                                             </label>
                                         </div>
                                     </div>
@@ -191,7 +191,7 @@ if ($action != 'import') {
                     </div>
                 </div>';
 
-            $output_buttons = '<button type="submit" name="submit_button" value="Scan" class="btn my-1  btn-primary"><span class="material-icons me-2">search</span><span class="pg-btn-label">' . lang(array('string'=>'Scan') ) . '</span></button>';
+            $output_buttons = '<button type="submit" name="submit_button" value="Scan" class="btn my-1  btn-solid theme-primary"><span class="material-icons me-3">search</span><span class="pg-btn-label">' . lang(array('string'=>'Scan') ) . '</span></button>';
 
             break;
 
@@ -229,9 +229,9 @@ if ($action != 'import') {
         ob_end_flush();
 
         echo
-            '<div class="card my-4">
-            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Scan Results') . '</div>
-            <div class="p-3">';
+            '<div class="card my-7">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Scan Results') . '</div>
+            <div class="p-5">';
 
         // set folder name to URL
         $folder_name = $url;
@@ -254,9 +254,9 @@ if ($action != 'import') {
         //echo '<div>Folder: ' . h($folder_name) . '</div>';
 
         echo '<div class="import-tree">'
-            . '<div class="d-flex align-items-center gap-2 py-1"><i class="bi bi-folder2-open text-warning"></i><span class="small fw-medium">Import My Site</span></div>'
-            . '<div class="ms-3 d-flex align-items-center gap-2 py-1"><i class="bi bi-folder2 text-warning"></i><span class="small text-secondary">' . h($folder_name) . '</span></div>'
-            . '<div class="ms-4 ps-3 border-start">';
+            . '<div class="d-flex align-items-center gap-3 py-1"><i class="bi bi-folder2-open fg-warning"></i><span class="small fw-medium">Import My Site</span></div>'
+            . '<div class="ms-5 d-flex align-items-center gap-3 py-1"><i class="bi bi-folder2 fg-warning"></i><span class="small fg-secondary">' . h($folder_name) . '</span></div>'
+            . '<div class="ms-7 ps-5 border-start">';
         flush();
 
         // Create an array that will keep track of which URLs have already been scanned.
@@ -284,9 +284,9 @@ if ($action != 'import') {
         echo '</div></div></div>'; // close border-start + import-tree + card p-3
 
         if ($result === false) {
-            echo '<div class="card-footer"><div class="alert alert-danger mb-0"><strong>' . lang('Sorry, the scan could not be completed at this time.') . '</strong> ' . lang('Please try again later.') . '</div></div>';
+            echo '<div class="card-footer"><div class="alert theme-danger mb-0"><strong>' . lang('Sorry, the scan could not be completed at this time.') . '</strong> ' . lang('Please try again later.') . '</div></div>';
 
-            $output_buttons = '<button type="button" class="btn btn-primary" onclick="window.location.href=\'import_design.php\'"><span class="material-icons me-2">refresh</span><span class="pg-btn-label">' . lang(array('string'=>'Restart') ) . '</span></button>';
+            $output_buttons = '<button type="button" class="btn btn-solid theme-primary" onclick="window.location.href=\'import_design.php\'"><span class="material-icons me-3">refresh</span><span class="pg-btn-label">' . lang(array('string'=>'Restart') ) . '</span></button>';
         } else {
             $output_max_imported_items_warning = '';
 
@@ -294,11 +294,11 @@ if ($action != 'import') {
                 $output_max_imported_items_warning = '<br><strong>' . lang(array('string' => 'Warning: The scan limit of {var:1} items has been reached.', 'vars' => array(pg_format_number($max_imported_items, 0)))) . '</strong>';
             }
 
-            echo '<div class="card-footer"><div class="alert alert-success mb-0"><strong>' . lang('Scan completed successfully.') . '</strong> ' . lang('Click Import to transfer items to your site, or Restart to adjust settings and scan again.') . $output_max_imported_items_warning . '</div></div>';
+            echo '<div class="card-footer"><div class="alert theme-success mb-0"><strong>' . lang('Scan completed successfully.') . '</strong> ' . lang('Click Import to transfer items to your site, or Restart to adjust settings and scan again.') . $output_max_imported_items_warning . '</div></div>';
 
             $output_buttons = '
-            <button type="submit" name="submit_button" value="Import" class="btn btn-primary"><span class="material-icons me-2">download</span><span class="pg-btn-label">' . lang(array('string'=>'Import') ) . '</span></button>
-            <button type="button" class="btn btn-warning" onclick="window.location.href=\'import_design.php\'"><span class="material-icons me-2">refresh</span><span class="pg-btn-label">' . lang(array('string'=>'Restart') ) . '</span></button>';
+            <button type="submit" name="submit_button" value="Import" class="btn btn-solid theme-primary"><span class="material-icons me-3">download</span><span class="pg-btn-label">' . lang(array('string'=>'Import') ) . '</span></button>
+            <button type="button" class="btn btn-solid theme-warning" onclick="window.location.href=\'import_design.php\'"><span class="material-icons me-3">refresh</span><span class="pg-btn-label">' . lang(array('string'=>'Restart') ) . '</span></button>';
         }        
 
 
@@ -306,7 +306,7 @@ if ($action != 'import') {
     }
 
     echo
-        '       <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+        '       <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                     <div class="container">
                         <div class=" btn-group flex-wrap justify-content-center">
                             ' . $output_buttons . '
@@ -1052,12 +1052,12 @@ function scan($properties) {
             'type' => 'style'));
 
         echo '<div class="tree-page-group mb-1">'
-            . '<div class="d-flex gap-2 align-items-center py-1">'
-            . '<span class="text-muted small" style="min-width:2rem;text-align:right">' . $number_of_items . '</span>'
+            . '<div class="d-flex gap-3 align-items-center py-1">'
+            . '<span class="fg-secondary small" style="min-width:2rem;text-align:right">' . $number_of_items . '</span>'
             . '<i class="bi bi-window me-1 pages-color"></i>'
             . '<span class="" title="' . lang('Page Style') . ': ' . h($style_name) . '">' . h($page_name) . '</span>'
             . '</div>'
-            . '<div class="tree-page-children ms-4 ps-3 border-start border-secondary-subtle">';
+            . '<div class="tree-page-children ms-7 ps-5 border-start border-subtle-secondary">';
         flush();
 
         //echo '<div>Page:' . h($page_name) . '</div>';
@@ -1126,13 +1126,13 @@ function scan($properties) {
         ) {
             $design = true;
 
-            echo '<div class="d-flex gap-2 align-items-center py-1"><span class="text-muted small" style="min-width:2rem;text-align:right">' . $number_of_items . '</span><i class="bi ' . get_filetype_icon($extension_lowercase) . ' me-1 design-color"></i><span class="badge">' . h($name) . '</span></div>';
+            echo '<div class="d-flex gap-3 align-items-center py-1"><span class="fg-secondary small" style="min-width:2rem;text-align:right">' . $number_of_items . '</span><i class="bi ' . get_filetype_icon($extension_lowercase) . ' me-1 design-color"></i><span class="badge">' . h($name) . '</span></div>';
             flush();
 
         } else {
             $design = false;
 
-            echo '<div class="d-flex gap-2 align-items-center py-1"><span class="text-muted small" style="min-width:2rem;text-align:right">' . $number_of_items . '</span><i class="bi ' . get_filetype_icon($extension_lowercase) . ' me-1 files-color"></i><span class="badge">' . h($name) . '</span></div>';
+            echo '<div class="d-flex gap-3 align-items-center py-1"><span class="fg-secondary small" style="min-width:2rem;text-align:right">' . $number_of_items . '</span><i class="bi ' . get_filetype_icon($extension_lowercase) . ' me-1 files-color"></i><span class="badge">' . h($name) . '</span></div>';
             flush();
         }
 
@@ -1431,20 +1431,63 @@ function import_design_redirect_target($location, $from)
     return is_string($location) ? $location : '';
 }
 
+// The importer reads pages the way a browser asks for them.
+function import_design_user_agent()
+{
+    return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+}
+
+// The api_http_request() options of one hop: plain http allowed, HEAD asked
+// again with GET on a 405, compressed answers undone, the whole body kept,
+// and the answer's headers back for Content-Type and Location. Redirects are
+// walked by import_design_fetch(), one checked hop at a time.
+function import_design_fetch_options()
+{
+    return array(
+        'allow_http' => true,
+        'head_get_on_405' => true,
+        'user_agent' => import_design_user_agent(),
+        'decode' => true,
+        'timeout' => 30,
+        'max_body' => 0,
+        'response_headers' => true,
+    );
+}
+
+// An api_http_request() answer in the importer's shape, or false when nothing
+// answered (an address refused or a cURL error).
+function import_design_http_answer($result)
+{
+    if ((int) $result['status'] === 0) {
+        return false;
+    }
+
+    $headers = isset($result['headers']) ? $result['headers'] : array();
+
+    return array(
+        'status' => (int) $result['status'],
+        'content' => (string) $result['body'],
+        'content_type' => isset($headers['content-type']) ? (string) $headers['content-type'] : '',
+        'location' => isset($headers['location']) ? (string) $headers['location'] : '',
+    );
+}
+
 // One request without redirects. Answers
 // array('status' => int, 'content' => string, 'content_type' => string,
 // 'location' => string) or false when nothing answered.
 function import_design_fetch_once($url, $head_only)
 {
-    $check = import_design_check_url($url);
-
-    if (!$check['ok']) {
-        return false;
+    if (!function_exists('api_http_request')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
     }
 
-    $user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-
     if (!function_exists('curl_init')) {
+        $check = import_design_check_url($url);
+
+        if (!$check['ok']) {
+            return false;
+        }
+
         $context = get_http_stream_context($head_only ? 'HEAD' : 'GET');
 
         // The response headers are taken from the stream on every PHP version.
@@ -1491,50 +1534,8 @@ function import_design_fetch_once($url, $head_only)
         );
     }
 
-    $parts = parse_url($url);
-    $port = isset($parts['port'])
-        ? (int) $parts['port']
-        : ((strtolower($parts['scheme']) === 'https') ? 443 : 80);
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-    curl_setopt($ch, CURLOPT_USERAGENT, $user_agent);
-    curl_setopt($ch, CURLOPT_ENCODING, ''); // Accept all encodings (gzip, deflate) and auto-decompress
-    // The address that was checked is the address that is called.
-    curl_setopt($ch, CURLOPT_RESOLVE, array($parts['host'] . ':' . $port . ':' . $check['ip']));
-    if ($head_only) {
-        curl_setopt($ch, CURLOPT_NOBODY, true);
-    }
-    pg_curl_tls($ch);
-
-    $content = curl_exec($ch);
-    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-    // If HEAD is not supported, retry with GET
-    if ($head_only && ($status == 405)) {
-        curl_setopt($ch, CURLOPT_NOBODY, false);
-        curl_setopt($ch, CURLOPT_HTTPGET, true);
-        $content = curl_exec($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    }
-
-    $content_type = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-    $location = curl_getinfo($ch, CURLINFO_REDIRECT_URL);
-    unset($ch);
-
-    if (($content === false) && !$head_only) {
-        return false;
-    }
-
-    return array(
-        'status' => $status,
-        'content' => is_string($content) ? $content : '',
-        'content_type' => ($content_type !== null) ? (string) $content_type : '',
-        'location' => ($location !== null) ? (string) $location : '',
-    );
+    // api_http_request() checks the address and pins cURL to it.
+    return import_design_http_answer(api_http_request($head_only ? 'HEAD' : 'GET', $url, import_design_fetch_options()));
 }
 
 // The request with its redirects walked, at most five hops.
@@ -1601,7 +1602,7 @@ function get_http_stream_context($method = 'GET')
     return stream_context_create(array(
         'http' => array(
             'method' => $method,
-            'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'user_agent' => import_design_user_agent(),
             'follow_location' => 0,
             'ignore_errors' => true,
             'timeout' => 30,

@@ -4,7 +4,7 @@ description: What Pinegrap is, supported PHP range, stack, repo layout (pinegrap
 ---
 
 ## What is Pinegrap?
-- PHP monolithic CMS, developed since 2017 by Erdal Güral (Kodpen); a LiveSite fork with the 2019 LiveSite update merged in. Bootstrap 5 + jQuery; MySQL/MariaDB through `mysqli`.
+- PHP monolithic CMS, developed since 2017 by Erdal Güral (Kodpen); a LiveSite fork with the 2019 LiveSite update merged in. jQuery, Bootstrap 6 (6.0.0-alpha.1, `assets/lib/bootstrap-6`) in the panel and Bootstrap 5.3.8 on sites; MySQL/MariaDB through `mysqli`.
 - Goal: international-standard CMS with key integrations built in, near one-click site building.
 
 ## Which PHP versions?

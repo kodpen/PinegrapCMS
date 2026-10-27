@@ -38,7 +38,7 @@ function test_ai_write_targets_are_complete()
 	$fields = pg_ai_write_record_fields();
 
 	foreach (pg_ai_write_targets() as $target => $row) {
-		pg_assert_true(in_array($row['format'], array('html', 'line', 'text'), true), $target . ' format');
+		pg_assert_true(in_array($row['format'], array('html', 'line', 'text', 'message'), true), $target . ' format');
 		pg_assert_true($row['max'] > 0 && $row['tokens'] > 0, $target . ' sizes');
 		pg_assert_true(!empty($row['records']), $target . ' records');
 
@@ -57,7 +57,7 @@ function test_ai_write_targets_are_complete()
 			continue;
 		}
 
-		$rules = pg_ai_write_target_rules($target, 'product');
+		$rules = pg_ai_write_target_rules($target, ($target === 'ws_message') ? 'message' : 'product');
 		pg_assert_true($rules['field'] !== '' && $rules['shape'] !== '' && $rules['length'] !== '', $target . ' rules');
 	}
 
@@ -422,7 +422,7 @@ function test_ai_write_button_config()
 function test_ai_write_label_row()
 {
 	pg_assert_same('<label>A</label>', pg_ai_write_label_row('<label>A</label>', ''));
-	pg_assert_same('<div class="d-flex flex-wrap align-items-baseline justify-content-between column-gap-2"><label>A</label><button></button></div>', pg_ai_write_label_row('<label>A</label>', '<button></button>'));
+	pg_assert_same('<div class="d-flex flex-wrap align-items-baseline justify-content-between column-gap-3"><label>A</label><button></button></div>', pg_ai_write_label_row('<label>A</label>', '<button></button>'));
 }
 
 // The script's words: every key the panel reads, a tone for each of the
@@ -655,4 +655,67 @@ function test_ai_write_js_config_engine()
 	pg_assert_same('browser', $config['engine']);
 	pg_assert_same('pt', $config['language']);
 	pg_assert_same('pinegrap', pg_ai_write_js_config('claude', 'tr')['engine'], 'unknown engine');
+}
+
+// A Workspace message is rewritten, not invented: its own text is the
+// person's, kept as written (marks, tags, line breaks), and only the
+// channel's name goes along with it.
+function test_ai_write_message_target_and_context()
+{
+	$row = pg_ai_write_target('ws_message');
+
+	pg_assert_same(array('message' => 'text'), $row['records'], 'records');
+	pg_assert_same('message', $row['format'], 'format');
+	pg_assert_same(defined('WS_MESSAGE_MAX') ? WS_MESSAGE_MAX : 4000, $row['max'], 'the message limit');
+
+	$context = pg_ai_write_context('message', array(
+		'text'    => "  Hi <@user:12>, **see** _this_:\r\n- one\n\n\n\n    code  <b>x</b> &amp; ==done==  ",
+		'channel' => '<b>Sales</b>',
+		'other'   => 'Another person\'s message',
+		'replies' => array('a', 'b'),
+	));
+
+	pg_assert_same(array('text', 'channel'), array_keys($context), 'known keys only');
+	pg_assert_same("Hi <@user:12>, **see** _this_:\n- one\n\n    code  <b>x</b> &amp; ==done==", $context['text'], 'the text as written');
+	pg_assert_same('Sales', $context['channel'], 'the channel as plain text');
+	pg_assert_same(array(), pg_ai_write_context('message', array('text' => array('x'))), 'not a string');
+	pg_assert_same(4000, mb_strlen(pg_ai_write_message_text(str_repeat('ğ', 5000), 4000)), 'cut');
+}
+
+// The rules ask for the same text in another tone: its language, its tags,
+// links, numbers and marks kept, nothing added.
+function test_ai_write_message_rules()
+{
+	$out = ai_write_test_messages(array(
+		'target'   => 'ws_message',
+		'record'   => 'message',
+		'context'  => array('text' => 'pls send <#order:5> today', 'channel' => 'Sales'),
+		'tone'     => 'friendly',
+		'language' => 'Turkish',
+	));
+
+	pg_assert_same('pls send <#order:5> today', $out['user']['current_text']);
+	pg_assert_same(array('Channel' => 'Sales'), $out['user']['data']);
+	pg_assert_same('Workspace message', $out['user']['record']);
+	pg_assert_contains('a message the person is about to post', $out['system']);
+	pg_assert_contains('Write in the language of current_text', $out['system']);
+	pg_assert_false(strpos($out['system'], 'Write in Turkish') !== false, 'not the site\'s language');
+	pg_assert_contains('<@user:12>', $out['system'], 'tokens named');
+	pg_assert_contains('Do not add facts', $out['system']);
+	pg_assert_contains('Write in a warm, friendly tone', $out['system']);
+	pg_assert_false(strpos($out['system'], 'Write a better version') !== false, 'the rewrite rule instead');
+
+	// The browser's bridge writes English that is translated afterwards.
+	$bridge = ai_write_test_messages(array('target' => 'ws_message', 'record' => 'message', 'context' => array('text' => 'x'), 'language' => 'English', 'translated_to' => 'Turkish'));
+	pg_assert_contains('Write in English', $bridge['system']);
+}
+
+// The answer keeps the message's marks and line breaks; only blank runs and
+// the length are tidied.
+function test_ai_write_message_tidy_keeps_marks()
+{
+	$text = "**Hi** <@user:12>,\r\n\n\n\n_please_ send ~~it~~ ==today==:\n- one\n    `code`  ";
+
+	pg_assert_same("**Hi** <@user:12>,\n\n_please_ send ~~it~~ ==today==:\n- one\n    `code`", pg_ai_write_tidy('message', $text, 4000));
+	pg_assert_same(10, mb_strlen(pg_ai_write_tidy('message', str_repeat('a', 30), 10)), 'cut');
 }

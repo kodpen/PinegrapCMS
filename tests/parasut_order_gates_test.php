@@ -287,7 +287,7 @@ function test_parasut_order_gates_create_shipment_refuses_before_any_request()
 function test_parasut_order_gates_invoice_badge_says_sent_only_when_confirmed()
 {
 	$sent = parasut_order_invoice_status_badge('5001', false, true);
-	pg_assert_contains('bg-success">' . lang('Sent') . '</span>', $sent);
+	pg_assert_contains('theme-success">' . lang('Sent') . '</span>', $sent);
 	pg_assert_contains(lang('Parasut ID') . ': 5001', $sent);
 	pg_assert_contains('>' . lang('Sent') . '</span>', parasut_order_invoice_status_badge('5001', true, true));
 
@@ -295,7 +295,7 @@ function test_parasut_order_gates_invoice_badge_says_sent_only_when_confirmed()
 		$open = parasut_order_invoice_status_badge($case[0], $case[1], false);
 
 		pg_assert_false(strpos($open, '>' . lang('Sent') . '<') !== false, 'not "Sent"');
-		pg_assert_contains('bg-warning', $open);
+		pg_assert_contains('theme-warning', $open);
 		pg_assert_contains(lang('Parasut ID') . ': 5001', $open);
 		pg_assert_contains(h(lang('Pinegrap did not see the conversion finish: the e-document failed, was rejected or was still being processed. Check the invoice in Paraşüt.')), $open);
 	}
@@ -319,7 +319,7 @@ function test_parasut_order_gates_row_badge_names_the_erps_invoice()
 	$rows = parasut_order_gates_test_erp_rows();
 
 	$erp = parasut_order_invoice_row_badge('', false, parasut_order_erp_invoice_record($rows['parasut']));
-	pg_assert_contains('bg-success">' . h(lang('Invoiced through the ERP')) . '</span>', $erp);
+	pg_assert_contains('theme-success">' . h(lang('Invoiced through the ERP')) . '</span>', $erp);
 	pg_assert_contains('SF2026000041', $erp);
 	pg_assert_contains(lang('Parasut ID') . ': 1104358636', $erp);
 	pg_assert_false(strpos($erp, lang('Not Sent')) !== false, 'not "Not Sent"');
@@ -359,13 +359,13 @@ function test_parasut_order_gates_erp_badge_follows_the_edoc_state()
 	$labels = erp_edoc_status_labels();
 	$rows = parasut_order_gates_test_erp_rows();
 	$classes = array(
-		'accepted' => 'bg-success',
-		'sent' => 'bg-primary',
-		'created' => 'bg-warning text-dark',
-		'error' => 'bg-danger',
-		'rejected' => 'bg-danger',
-		'cancelled' => 'bg-secondary',
-		'' => 'bg-secondary',
+		'accepted' => 'theme-success',
+		'sent' => 'theme-primary',
+		'created' => 'theme-warning',
+		'error' => 'theme-danger',
+		'rejected' => 'theme-danger',
+		'cancelled' => 'theme-secondary',
+		'' => 'theme-secondary',
 	);
 
 	foreach (array('parasut', 'other') as $kind) {
@@ -386,7 +386,7 @@ function test_parasut_order_gates_erp_badge_follows_the_edoc_state()
 
 	// A send that got no answer is a warning, whatever state the row was left in.
 	$unsure = parasut_order_erp_invoice_badge(parasut_order_erp_invoice_record($rows['unsure']));
-	pg_assert_contains('<span class="badge bg-warning text-dark">' . h(lang('Invoiced through the ERP')) . '</span>', $unsure);
+	pg_assert_contains('<span class="badge theme-warning">' . h(lang('Invoiced through the ERP')) . '</span>', $unsure);
 	pg_assert_contains(h(lang('Check Paraşüt')), $unsure);
 
 	// The order screen reads the state with the rest of the row.

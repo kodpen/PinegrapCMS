@@ -3017,24 +3017,20 @@ function pg_designer_target_modal()
     );
 
     return '
-    <div class="modal fade" id="pgDesignTargetModal" tabindex="-1" aria-labelledby="pgDesignTargetTitle" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title fs-5" id="pgDesignTargetTitle"></h2>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="small text-body-secondary" id="pgDesignTargetIntro"></p>
-                    <div class="list-group" id="pgDesignTargetList" role="radiogroup" aria-labelledby="pgDesignTargetTitle"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
-                    <button type="button" class="btn btn-sm btn-primary" id="pgDesignTargetGo" disabled>' . lang('Continue') . '</button>
-                </div>
-            </div>
+    <dialog class="dialog pg-dialog-centered dialog-scrollable" id="pgDesignTargetModal" aria-labelledby="pgDesignTargetTitle">
+        <div class="dialog-header">
+            <h2 class="dialog-title fs-lg" id="pgDesignTargetTitle"></h2>
+            <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . lang('Close') . '"></button>
         </div>
-    </div>
+        <div class="dialog-body">
+            <p class="small fg-secondary" id="pgDesignTargetIntro"></p>
+            <div class="list-group" id="pgDesignTargetList" role="radiogroup" aria-labelledby="pgDesignTargetTitle"></div>
+        </div>
+        <div class="dialog-footer">
+            <button type="button" class="btn btn-sm btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+            <button type="button" class="btn btn-sm btn-solid theme-primary" id="pgDesignTargetGo" disabled>' . lang('Continue') . '</button>
+        </div>
+    </dialog>
     <script>
         (function () {
             var T = ' . encode_json($text) . ';
@@ -3045,10 +3041,10 @@ function pg_designer_target_modal()
             var esc = function (v) { var d = document.createElement("div"); d.textContent = String(v == null ? "" : v); return d.innerHTML; };
             var row = function (value, title, sub, checked, badge) {
                 return "<label class=\"list-group-item list-group-item-action d-flex gap-3 align-items-center\">" +
-                    "<input class=\"form-check-input flex-shrink-0 m-0\" type=\"radio\" name=\"pg_design_target\" value=\"" + esc(value) + "\"" + (checked ? " checked" : "") + ">" +
+                    "<input class=\"radio flex-shrink-0 m-0\" type=\"radio\" name=\"pg_design_target\" value=\"" + esc(value) + "\"" + (checked ? " checked" : "") + ">" +
                     "<span class=\"flex-grow-1 text-truncate\"><span class=\"fw-semibold\">" + esc(title) + "</span>" +
-                    (badge ? " <span class=\"badge text-bg-primary fw-normal ms-1\">" + esc(badge) + "</span>" : "") +
-                    (sub ? "<span class=\"d-block small text-body-secondary\">" + esc(sub) + "</span>" : "") + "</span></label>";
+                    (badge ? " <span class=\"badge theme-primary fw-normal ms-1\">" + esc(badge) + "</span>" : "") +
+                    (sub ? "<span class=\"d-block small fg-secondary\">" + esc(sub) + "</span>" : "") + "</span></label>";
             };
             var target = function () {
                 var c = list.querySelector("input[name=pg_design_target]:checked");
@@ -3079,7 +3075,7 @@ function pg_designer_target_modal()
                     var mode = (opts.mode === "move" || opts.mode === "copy") ? opts.mode : "add";
                     document.getElementById("pgDesignTargetTitle").textContent = T[mode + "_title"];
                     document.getElementById("pgDesignTargetIntro").textContent = T[mode + "_intro"];
-                    list.innerHTML = "<div class=\"list-group-item small text-body-secondary\">" + esc(T.loading) + "</div>";
+                    list.innerHTML = "<div class=\"list-group-item small fg-secondary\">" + esc(T.loading) + "</div>";
                     go.disabled = true;
                     pgUI.dialog.show(modal);
                     fetch("api.php", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
@@ -3092,7 +3088,7 @@ function pg_designer_target_modal()
                             return row(d.style_id, d.name, T.pages + ": " + d.pages, d.style_id === res["default"], d.style_id === res.folder ? T.folder : "");
                         }).join("");
                         if (mode === "add") html += row("new", T.new_design, T.new_text, !(res.designs || []).length, "");
-                        list.innerHTML = html || "<div class=\"list-group-item small text-body-secondary\">" + esc(T.empty) + "</div>";
+                        list.innerHTML = html || "<div class=\"list-group-item small fg-secondary\">" + esc(T.empty) + "</div>";
                         go.disabled = !target();
                         var c = list.querySelector("input:checked");
                         if (c) c.focus();
@@ -5020,7 +5016,9 @@ function _render_region_tag($props)
 // $title: also write the node's title and tooltip (_pg_node_title_attrs())
 //   and its interaction (pg_fx_attrs()) after the id. Content, semantic and grid nodes pass true; a component's
 //   props.title is its heading text, not an attribute.
-function _render_extra_attrs($props, $skip_names = array(), $title = false)
+// $fx: write the interaction without the title (a component's element);
+//   null follows $title.
+function _render_extra_attrs($props, $skip_names = array(), $title = false, $fx = null)
 {
     $skip_map = array();
     foreach ($skip_names as $n) $skip_map[strtolower((string)$n)] = true;
@@ -5033,8 +5031,9 @@ function _render_extra_attrs($props, $skip_names = array(), $title = false)
     }
     // Content, semantic and grid nodes also carry their interaction
     // (pg_fx_attrs()); its own names typed into the panel are left out.
-    $fx = $title ? pg_fx_attrs($props) : '';
-    if ($title) $out .= _pg_node_title_attrs($props) . $fx;
+    $fx = (($fx === null) ? $title : $fx) ? pg_fx_attrs($props) : '';
+    if ($title) $out .= _pg_node_title_attrs($props);
+    $out .= $fx;
     if (!empty($props['_attrs']) && is_array($props['_attrs'])) {
         foreach ($props['_attrs'] as $a) {
             if (!is_array($a) || empty($a['name'])) continue;
@@ -5141,6 +5140,9 @@ function _render_component_html($props, $pad, $kids = '')
 {
     // Apply data bindings — components inside a system widget can have text/href bound
     $props = _apply_bindings($props);
+    // The element that takes the component's id and attributes also takes
+    // its interaction (pg_fx_attrs()); the language switcher is a
+    // placeholder drawn later and has none.
     $ct = isset($props['componentType']) ? $props['componentType'] : '';
     $html = '';
 
@@ -5153,7 +5155,7 @@ function _render_component_html($props, $pad, $kids = '')
             $fixed = !empty($props['fixed']) ? ' ' . h($props['fixed']) : '';
             $nav_uid = 'navbarNav' . substr(md5(uniqid()), 0, 5);
             $u_style = _user_attr_value($props, 'style');
-            $extra_attrs = _render_extra_attrs($props);
+            $extra_attrs = _render_extra_attrs($props, array(), false, true);
             $html .= $pad . '<nav class="navbar navbar-expand-' . h($expand) . ' navbar-' . h($theme) . ' bg-' . h($bg) . $fixed . '"'
                 . ($u_style !== '' ? ' style="' . h($u_style) . '"' : '')
                 . $extra_attrs . '>' . "\n";
@@ -5176,7 +5178,7 @@ function _render_component_html($props, $pad, $kids = '')
             $hero_style_parts = array('background:' . $bgColor);
             $u_style = _user_attr_value($props, 'style');
             if ($u_style !== '') $hero_style_parts[] = $u_style;
-            $extra_attrs = _render_extra_attrs($props);
+            $extra_attrs = _render_extra_attrs($props, array(), false, true);
             $html .= $pad . '<div class="py-' . h($padding) . ' text-center text-' . h($textColor) . '" style="' . implode(';', $hero_style_parts) . '"' . $extra_attrs . '>' . "\n";
             $html .= $pad . '    <div class="container">' . "\n";
             $html .= $pad . '        <h1 class="display-4 fw-bold">' . $title . '</h1>' . "\n";
@@ -5188,7 +5190,7 @@ function _render_component_html($props, $pad, $kids = '')
 
         case 'card':
             $u_style = _user_attr_value($props, 'style');
-            $extra_attrs = _render_extra_attrs($props);
+            $extra_attrs = _render_extra_attrs($props, array(), false, true);
             $html .= $pad . '<div class="card"'
                 . ($u_style !== '' ? ' style="' . h($u_style) . '"' : '')
                 . $extra_attrs . '>' . "\n";
@@ -5208,7 +5210,7 @@ function _render_component_html($props, $pad, $kids = '')
             $u_style = _user_attr_value($props, 'style');
             // Skip 'id' / 'data-bs-ride' so user attrs don't duplicate the
             // built-ins emitted just below.
-            $extra_attrs = _render_extra_attrs($props, array('id', 'data-bs-ride'));
+            $extra_attrs = _render_extra_attrs($props, array('id', 'data-bs-ride'), false, true);
             $html .= $pad . '<div id="mainCarousel" class="carousel slide' . $fade . '" data-bs-ride="carousel"'
                 . ($u_style !== '' ? ' style="' . h($u_style) . '"' : '')
                 . $extra_attrs . '>' . "\n";
@@ -5233,7 +5235,7 @@ function _render_component_html($props, $pad, $kids = '')
             $dismissible = !empty($props['dismissible']) ? ' alert-dismissible fade show' : '';
             $u_style = _user_attr_value($props, 'style');
             // Skip 'role' from user attrs so the built-in role="alert" wins.
-            $extra_attrs = _render_extra_attrs($props, array('role'));
+            $extra_attrs = _render_extra_attrs($props, array('role'), false, true);
             $html .= $pad . '<div class="alert alert-' . h($alertType) . $dismissible . '" role="alert"'
                 . ($u_style !== '' ? ' style="' . h($u_style) . '"' : '')
                 . $extra_attrs . '>' . $text;
@@ -5245,7 +5247,7 @@ function _render_component_html($props, $pad, $kids = '')
             $items = isset($props['items']) ? intval($props['items']) : 3;
             $flush = !empty($props['flush']) ? ' accordion-flush' : '';
             $u_style = _user_attr_value($props, 'style');
-            $extra_attrs = _render_extra_attrs($props, array('id'));
+            $extra_attrs = _render_extra_attrs($props, array('id'), false, true);
             $html .= $pad . '<div class="accordion' . $flush . '" id="accordionMain"'
                 . ($u_style !== '' ? ' style="' . h($u_style) . '"' : '')
                 . $extra_attrs . '>' . "\n";
@@ -5263,7 +5265,7 @@ function _render_component_html($props, $pad, $kids = '')
             $pill = !empty($props['pill']);
             $u_style = _user_attr_value($props, 'style');
             // Skip 'role' (built-in) — id flows through; user can override.
-            $extra_attrs = _render_extra_attrs($props, array('role'));
+            $extra_attrs = _render_extra_attrs($props, array('role'), false, true);
             $html .= $pad . '<ul class="nav nav-' . ($pill ? 'pills' : 'tabs') . '" role="tablist"'
                 . ($u_style !== '' ? ' style="' . h($u_style) . '"' : '')
                 . $extra_attrs . '>' . "\n";
@@ -5345,17 +5347,17 @@ function _render_component_html($props, $pad, $kids = '')
                 $btn_skip = array('type', 'href');
                 if ($target !== '') $btn_skip[] = 'target';
                 if ($rel !== '')    $btn_skip[] = 'rel';
-                $btn_extra = _render_extra_attrs($props, $btn_skip);
+                $btn_extra = _render_extra_attrs($props, $btn_skip, false, true);
                 $html .= $pad . '<a href="' . $href . '"' . $target . $rel . ' class="' . $cls . '"' . $style_attr . $btn_extra . '>' . $btn_inner . '</a>' . "\n";
             } elseif ($tag === 'input') {
                 // <input> uses the button label as its `value` attr — skip
                 // any user-supplied 'value' in _attrs so the explicit one wins.
-                $btn_extra = _render_extra_attrs($props, array('type', 'value', 'href', 'target', 'rel'));
+                $btn_extra = _render_extra_attrs($props, array('type', 'value', 'href', 'target', 'rel'), false, true);
                 $btn_type  = isset($props['btnType']) ? h($props['btnType']) : 'button';
                 $html .= $pad . '<input type="' . $btn_type . '" value="' . $text . '" class="' . $cls . '"' . $style_attr . $btn_extra . '>' . "\n";
             } else {
                 // <button> — keep `value` in _attrs (required for form submit).
-                $btn_extra = _render_extra_attrs($props, array('type', 'href', 'target', 'rel'));
+                $btn_extra = _render_extra_attrs($props, array('type', 'href', 'target', 'rel'), false, true);
                 $btn_type  = isset($props['btnType']) ? h($props['btnType']) : 'button';
                 $html .= $pad . '<button type="' . $btn_type . '" class="' . $cls . '"' . $style_attr . $btn_extra . '>' . $btn_inner . '</button>' . "\n";
             }
@@ -5372,7 +5374,7 @@ function _render_component_html($props, $pad, $kids = '')
             $badge_cls = 'badge bg-' . h(isset($props['bg']) && $props['bg'] !== '' ? $props['bg'] : 'primary')
                 . (!empty($props['rounded']) ? ' rounded-pill' : '')
                 . (!empty($props['cssClass']) ? ' ' . h($props['cssClass']) : '');
-            $html .= $pad . '<span class="' . $badge_cls . '"' . _compose_inline_style($props) . _render_extra_attrs($props) . '>'
+            $html .= $pad . '<span class="' . $badge_cls . '"' . _compose_inline_style($props) . _render_extra_attrs($props, array(), false, true) . '>'
                 . h(isset($props['text']) ? $props['text'] : '')
                 . ($kids !== '' ? "\n" . $kids . $pad : '') . '</span>' . "\n";
             break;

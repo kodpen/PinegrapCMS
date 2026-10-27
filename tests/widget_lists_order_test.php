@@ -97,7 +97,7 @@ function _widget_ord_finished($tree, $kind, $family, $rows, $static)
 function test_widget_lists_order_sources()
 {
 	$sources = pg_sw_list_order_sources();
-	$order = array('order.shipments', 'order.items', 'order.parcels', 'order.steps', 'order.item_forms', 'order.item_form_fields', 'order.item_gift_cards');
+	$order = array('order.shipments', 'order.items', 'order.parcels', 'order.steps', 'order.item_forms', 'order.item_form_fields', 'order.item_gift_cards', 'order.returns', 'order.return_lines');
 	pg_assert_same(array_merge($order, array('account.orders')), array_keys($sources));
 	foreach ($sources as $source => $d) {
 		pg_assert_same(array('family', 'key', 'label', 'arg', 'arg_required', 'tokens'), array_keys($d), $source . ' shape');
@@ -153,6 +153,32 @@ function test_widget_lists_order_rows()
 	$acc = pg_sw_list_account_rows(7, array(array('id' => 9, 'status' => 'complete')), '/view-order', 'd.m.Y');
 	pg_assert_same('/view-order?id=9', $acc['account.orders'][7][0]['__order_url']);
 	pg_assert_same('', $acc['account.orders'][7][0]['__order_is_cancelled']);
+}
+
+// The order view's parcels read the stored row: the carrier and the link a
+// carrier API or the panel saved win over the guess from the method code; a
+// row without them (or before the 11.0.20 columns) is guessed as before.
+function test_widget_lists_order_parcels_read_the_row()
+{
+	$parcels = pg_sw_order_parcels(array(
+		array('number' => ' 12345678901 ', 'ship_to_id' => '5', 'shipping_method_code' => 'Standart Teslimat', 'carrier' => 'aras', 'tracking_url' => ''),
+		array('number' => '73001234567', 'ship_to_id' => '6', 'shipping_method_code' => 'MNG Ertesi Gün', 'carrier' => 'yurtici', 'tracking_url' => 'https://www.n11.com/kargo/73001234567'),
+		array('number' => '55500011122', 'ship_to_id' => '6', 'shipping_method_code' => 'MNG Ertesi Gün', 'carrier' => ''),
+		array('number' => '99988877766', 'ship_to_id' => '7', 'shipping_method_code' => 'Standart Teslimat'),
+	), 'surat');
+
+	$carriers = pg_shipping_carriers();
+	pg_assert_same(array('12345678901', '73001234567', '55500011122', '99988877766'), array_column($parcels, 'number'));
+	pg_assert_same(array(5, 6, 6, 7), array_column($parcels, 'ship_to'));
+	pg_assert_same(array($carriers['aras']['name'], $carriers['yurtici']['name'], $carriers['mng']['name'], $carriers['surat']['name']), array_column($parcels, 'carrier'), 'stored carrier, then method code, then the default');
+	pg_assert_same(str_replace('{code}', '12345678901', $carriers['aras']['url']), $parcels[0]['url'], 'the stored carrier builds the link');
+	pg_assert_same('https://www.n11.com/kargo/73001234567', $parcels[1]['url'], 'the stored link wins');
+	pg_assert_same(get_shipping_tracking_url('99988877766', 'Standart Teslimat', 'surat'), $parcels[3]['url'], 'without the columns: the old guess');
+
+	$rows = pg_sw_list_order_rows(array(), array(), $parcels, array());
+	pg_assert_same($carriers['aras']['name'], $rows['order.parcels'][5][0]['__tracking_company_name']);
+	pg_assert_same('https://www.n11.com/kargo/73001234567', $rows['order.parcels'][6][0]['__tracking_link']);
+	pg_assert_same(array(), pg_sw_order_parcels(array(array('number' => '  ')), ''), 'an empty number is no parcel');
 }
 
 // Recipients as cards, each with its items and parcels; the order's own

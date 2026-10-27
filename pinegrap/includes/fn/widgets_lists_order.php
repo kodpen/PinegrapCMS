@@ -24,6 +24,9 @@
 //                          ^^__form_key^^;
 //   order.item_gift_cards  an item's gift cards, keyed by ^^__item_id^^:
 //                          what the item form and gift card parts draw;
+//   order.returns    the order's return requests, what the returns part
+//                    draws;
+//   order.return_lines     a return's products, keyed by ^^__return_id^^;
 //   account.orders   the signed-in member's orders, what the my account
 //                    widget's order history section draws.
 //
@@ -164,6 +167,42 @@ function pg_sw_list_order_sources()
                 array('__gift_card_from_name', lang('Your Name')),
                 array('__gift_card_message_html', lang('Message (HTML)')),
                 array('__gift_card_delivery', lang('Delivery Date')),
+            ),
+        ),
+        'order.returns' => array(
+            'family'       => 'order',
+            'key'          => '__ship_to_key',
+            'label'        => lang('Return requests of the order'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__return_id', lang('Return request ID')),
+                array('__return_title', lang('Heading (Return request #12)')),
+                array('__return_asked', lang('Date asked (Asked on …)')),
+                array('__return_status', lang('Status code (requested, approved, rejected, shipped, received, refunded, closed)')),
+                array('__return_status_label', lang('Status')),
+                array('__return_has_lines', lang('Has products (1 or empty)')),
+                array('__return_reason', lang('Reason')),
+                array('__return_customer_note', lang('Your note')),
+                array('__return_customer_note_html', lang('Your note (HTML)')),
+                array('__return_decision_note', lang('Note from the shop')),
+                array('__return_decision_note_html', lang('Note from the shop (HTML)')),
+                array('__return_how', lang('How to send the goods back')),
+                array('__return_code', lang('Return code')),
+                array('__return_tracking_number', lang('Tracking number')),
+                array('__return_refund_deadline', lang('Refund due by')),
+                array('__return_actions_html', lang('The customer\'s moves: sent, withdraw (HTML)')),
+            ),
+        ),
+        'order.return_lines' => array(
+            'family'       => 'order',
+            'key'          => '__return_id',
+            'label'        => lang('Products of the return request'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__return_line_name', lang('Product name')),
+                array('__return_line_qty', lang('Quantity')),
             ),
         ),
         'account.orders' => array(
@@ -311,6 +350,31 @@ function pg_sw_list_order_item_row($item)
         '__item_has_form_data'     => !empty($item['has_form_data']) ? '1' : '',
         '__item_has_gift_card'     => !empty($item['has_gift_card']) ? '1' : '',
     ) + $entity;
+}
+
+// The order view's parcels from its shipping_tracking_numbers rows (number,
+// ship_to_id, shipping_method_code, and since 11.0.20 carrier and
+// tracking_url): array('number', 'url', 'carrier', 'ship_to') each, the
+// carrier as its name. Every row goes through pg_shipment_view(), so the
+// carrier and the link the row names win, and a row without them is
+// recognised from the method code, $default and the number's shape, as the
+// order screen, the e-mails and the SMS show it. A row without a number is
+// no parcel.
+function pg_sw_order_parcels($rows, $default)
+{
+    $parcels = array();
+    foreach ((array)$rows as $row) {
+        if (!is_array($row)) continue;
+        $view = pg_shipment_view($row, isset($row['shipping_method_code']) ? trim((string)$row['shipping_method_code']) : '', (string)$default);
+        if ($view['number'] === '') continue;
+        $parcels[] = array(
+            'number'  => $view['number'],
+            'url'     => $view['url'],
+            'carrier' => $view['carrier_name'],
+            'ship_to' => isset($row['ship_to_id']) ? (int)$row['ship_to_id'] : 0,
+        );
+    }
+    return $parcels;
 }
 
 // The rows of the order lists, as pg_sw_list_publish('order') files them:
@@ -563,6 +627,47 @@ function pg_sw_list_order_item_parts_rows(&$items, $fields, $data, $gift_cards, 
                 $out['order.item_gift_cards'] += $rows['order.item_gift_cards'];
             }
         }
+    }
+    return $out;
+}
+
+// The rows of the returns lists: array('order.returns' => array(0 =>
+// rows), 'order.return_lines' => array(return id => rows)). $returns:
+// pg_return_present() rows; $form: what pg_return_actions_html() posts
+// with. Words as pg_returns_list_html() writes them, raw: the pass escapes
+// them once; the notes keep their line breaks and the customer's moves are
+// the forms returns.php builds, both HTML.
+function pg_sw_list_order_return_rows($returns, $form)
+{
+    $out = array('order.returns' => array(), 'order.return_lines' => array());
+    foreach ((array)$returns as $return) {
+        if (!is_array($return)) continue;
+        $id = (int)$return['id'];
+        $lines = array();
+        foreach ((array)$return['lines'] as $line) {
+            $lines[] = array('__return_line_name' => (string)$line['name'], '__return_line_qty' => (string)(int)$line['quantity']);
+        }
+        if ($lines) $out['order.return_lines'][$id] = $lines;
+        $how = ((string)$return['status'] === 'approved') ? pg_return_how($return) : array('text' => '');
+        $asked = (string)$return['requested'];
+        $out['order.returns'][0][] = array(
+            '__return_id'                 => (string)$id,
+            '__return_title'              => lang(array('string' => 'Return request #{var:1}', 'vars' => array($id))),
+            '__return_asked'              => ($asked !== '') ? lang(array('string' => 'Asked on {var:1}', 'vars' => array($asked))) : '',
+            '__return_status'             => (string)$return['status'],
+            '__return_status_label'       => (string)$return['status_label'],
+            '__return_has_lines'          => $lines ? '1' : '',
+            '__return_reason'             => (string)$return['reason_label'],
+            '__return_customer_note'      => (string)$return['customer_note'],
+            '__return_customer_note_html' => nl2br(h((string)$return['customer_note'])),
+            '__return_decision_note'      => (string)$return['decision_note'],
+            '__return_decision_note_html' => nl2br(h((string)$return['decision_note'])),
+            '__return_how'                => $how['text'],
+            '__return_code'               => (string)$return['carrier_code'],
+            '__return_tracking_number'    => (string)$return['tracking_number'],
+            '__return_refund_deadline'    => (string)$return['refund_deadline'],
+            '__return_actions_html'       => pg_return_actions_html($return, $form),
+        );
     }
     return $out;
 }

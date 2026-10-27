@@ -95,7 +95,7 @@ if (!defined('PG_INIT_LOADED')) {
                                 <dt><?=lang('Operating System')?></dt>
                                 <dd> 
                                     <?php if (defined('PHP_OS_FAMILY')): ?> 
-                                        <?=h(PHP_OS_FAMILY)?> 
+                                        <?=h(PHP_OS_FAMILY) // phpcs:ignore PHPCompatibility.Constants.NewConstants.php_os_familyFound -- guarded by defined() above ?> 
                                     <?php else:?> 
                                         <?=h(PHP_OS)?> 
                                     <?php endif; ?> 

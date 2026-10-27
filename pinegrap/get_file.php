@@ -328,10 +328,7 @@ if (
 
             // else the user is not logged in, so forward user to login screen
             } else {
-                initialize_url_constants();
-
-                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/index.php?send_to=' . urlencode(get_request_uri()));
-                exit();
+                get_file_sign_in_redirect('index.php');
             }
 
             break;
@@ -343,10 +340,7 @@ if (
                 (USER_LOGGED_IN == FALSE)
                 && ($_SESSION['software']['guest'] !== TRUE)
             ) {
-                initialize_url_constants();
-
-                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?allow_guest=true&send_to=' . urlencode(get_request_uri()));
-                exit();
+                get_file_sign_in_redirect('registration_entrance.php?allow_guest=true');
             }
 
             break;
@@ -354,10 +348,7 @@ if (
         case 'registration':
             // if the user is not logged in, then forward user to registration entrance screen
             if (USER_LOGGED_IN == FALSE) {
-                initialize_url_constants();
-
-                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(get_request_uri()));
-                exit();
+                get_file_sign_in_redirect('registration_entrance.php');
             }
 
             break;
@@ -365,10 +356,7 @@ if (
         case 'membership':
             // if the user is not logged in, the forward user to membership entrance screen
             if (USER_LOGGED_IN == FALSE) {
-                initialize_url_constants();
-
-                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/membership_entrance.php?send_to=' . urlencode(get_request_uri()));
-                exit();
+                get_file_sign_in_redirect('membership_entrance.php');
             }
 
             // if the user does not have edit rights to this file's folder,
@@ -821,10 +809,7 @@ if ($file['attachment'] == 1) {
     if ($attachment_access == false) {
         // If the visitor is not logged in, then forward visitor to login/register screen.
         if (USER_LOGGED_IN == false) {
-            initialize_url_constants();
-
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(get_request_uri()));
-            exit();
+            get_file_sign_in_redirect('registration_entrance.php');
 
         // Otherwise the visitor is logged in, so we know the visitor
         // should not have access, so log activity and output error.
@@ -1538,6 +1523,45 @@ function initialize_user()
         define('USER_LOGGED_IN', FALSE);
         define('USER_ID', '');
     }
+}
+
+/**
+ * Send a visitor who is not signed in to a sign-in screen, and back to this
+ * file once they are.
+ *
+ * Only for a request that draws a page. A page's sub-resource fetch - an
+ * <img>, a style sheet, a font - cannot show a sign-in form in its place: the
+ * browser follows the redirect, is handed HTML where it expected pixels and
+ * drops it, and the firewall has counted one more call to the sign-in screen
+ * on the visitor's address. A page with forty such images spent the whole
+ * sign-in allowance in one second and had its reader banned for an hour. Such
+ * a fetch is refused here, with a status the page's script can read, and goes
+ * nowhere. router.php loads waf.php, which judges the request's kind, before
+ * it dispatches this file.
+ *
+ * @param string $screen the screen's file name, with a query of its own when
+ *                       it has one (registration_entrance.php?allow_guest=true)
+ */
+function get_file_sign_in_redirect($screen)
+{
+    $subresource = function_exists('waf_fetch_is_subresource') && waf_fetch_is_subresource(
+        isset($_SERVER['REQUEST_METHOD']) ? $_SERVER['REQUEST_METHOD'] : '',
+        isset($_SERVER['HTTP_SEC_FETCH_DEST']) ? $_SERVER['HTTP_SEC_FETCH_DEST'] : '',
+        isset($_SERVER['HTTP_ACCEPT']) ? $_SERVER['HTTP_ACCEPT'] : ''
+    );
+
+    if ($subresource) {
+        // An answer for this visitor on a file address a CDN may cache by its
+        // extension.
+        header('Cache-Control: no-store');
+        output_error(get_file_text('Sorry, you need to sign in to view this file.'), 403);
+    }
+
+    initialize_url_constants();
+
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . $screen
+        . ((strpos($screen, '?') === false) ? '?' : '&') . 'send_to=' . urlencode(get_request_uri()));
+    exit();
 }
 
 function initialize_url_constants()

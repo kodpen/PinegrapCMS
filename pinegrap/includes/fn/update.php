@@ -99,12 +99,23 @@ function pg_curl_tls($ch)
  *   forbid_reuse     true to close the connection afterwards
  *   user_agent       replaces $env['user_agent']
  *   userpwd          "user:password" for HTTP basic authentication
+ *   http_version     '1.0' or '1.1' to hold the request to that HTTP
+ *                    version (default: libcurl's choice)
+ *   response_headers true to keep the answer's header block: pg_curl_run()
+ *                    then answers it as 'headers', apart from 'body'
+ *   allow_http       true to accept http as well as https for this request
+ *                    (never for a redirect): only for an address the
+ *                    operator types and the site reaches itself, such as a
+ *                    migration source on the same host or LAN; leave
+ *                    check_address off with it
  *
  * $env: 'user_agent', 'proxy' (PROXY_ADDRESS or ''), 'resolve' (the
  * "host:port:ip" pin of a checked address, or '').
  *
- * @return array option name => value; a value naming a cURL constant
- *               ('CURLPROTO_HTTPS', 'CURLPROXY_HTTP') is that constant
+ * @return array option name => value; a value naming cURL constants
+ *               ('CURLPROTO_HTTPS', 'CURLPROTO_HTTP|CURLPROTO_HTTPS',
+ *               'CURLPROXY_HTTP', 'CURL_HTTP_VERSION_1_0') is those
+ *               constants or-ed together
  */
 function pg_curl_run_options($method, $url, $options, $env)
 {
@@ -120,7 +131,7 @@ function pg_curl_run_options($method, $url, $options, $env)
         'CURLOPT_TIMEOUT'        => $timeout,
         'CURLOPT_CONNECTTIMEOUT' => $connect,
         'CURLOPT_FOLLOWLOCATION' => ($follow > 0),
-        'CURLOPT_PROTOCOLS'      => 'CURLPROTO_HTTPS',
+        'CURLOPT_PROTOCOLS'      => empty($options['allow_http']) ? 'CURLPROTO_HTTPS' : 'CURLPROTO_HTTP|CURLPROTO_HTTPS',
     );
 
     if ($follow > 0) {
@@ -159,8 +170,18 @@ function pg_curl_run_options($method, $url, $options, $env)
         $out['CURLOPT_FORBID_REUSE'] = true;
     }
 
+    if (!empty($options['response_headers'])) {
+        $out['CURLOPT_HEADER'] = true;
+    }
+
     if (isset($options['userpwd']) && (string) $options['userpwd'] !== '') {
         $out['CURLOPT_USERPWD'] = (string) $options['userpwd'];
+    }
+
+    $versions = array('1.0' => 'CURL_HTTP_VERSION_1_0', '1.1' => 'CURL_HTTP_VERSION_1_1');
+
+    if (isset($options['http_version']) && isset($versions[(string) $options['http_version']])) {
+        $out['CURLOPT_HTTP_VERSION'] = $versions[(string) $options['http_version']];
     }
 
     if (isset($env['proxy']) && (string) $env['proxy'] !== '') {
@@ -194,6 +215,21 @@ function pg_curl_run_pin($url, $ip)
 }
 
 /**
+ * A raw answer read with CURLOPT_HEADER cut into its header block and its
+ * body, at CURLINFO_HEADER_SIZE (which counts every header block, those of a
+ * followed redirect included).
+ *
+ * @return array array(headers, body)
+ */
+function pg_curl_run_split($raw, $header_size)
+{
+    $raw = (string) $raw;
+    $header_size = max(0, min((int) $header_size, strlen($raw)));
+
+    return array((string) substr($raw, 0, $header_size), (string) substr($raw, $header_size));
+}
+
+/**
  * One request to a fixed vendor host (update server, CA bundle source,
  * Cloudflare, GitHub): this installation's User-Agent, pg_curl_tls(), the
  * proxy when PROXY_ADDRESS is set, no redirect unless 'follow' asks for one.
@@ -204,18 +240,25 @@ function pg_curl_run_pin($url, $ip)
  *
  * Answers like api_http_request(): array('ok' => bool (2xx), 'status' => int,
  * 'body' => string, 'errno' => int, 'error' => string, 'connect' => int,
- * 'request_size' => int). errno is cURL's error number when the request
+ * 'request_size' => int, 'content_length' => int). errno is cURL's error number when the request
  * failed in cURL, 0 otherwise - also for an address refused before cURL ran,
  * whose reason is in error alone. error is cURL's own text;
  * pg_curl_tls_hint($errno) is for the caller to append. connect is the status
  * a proxy answered the tunnel request with (0 without a proxy) and
  * request_size the bytes of request headers written (0 when nothing went
  * out); together they tell whether a failed request can have reached the
- * other side.
+ * other side. content_length is the Content-Length the server announced (-1
+ * when it sent none), against which a caller can tell a body cut short. With
+ * 'response_headers' the answer also has 'headers', the raw header block
+ * ('' when no answer came), and 'body' holds only the body.
  */
 function pg_curl_run($method, $url, $options = array())
 {
-    $result = array('ok' => false, 'status' => 0, 'body' => '', 'errno' => 0, 'error' => '', 'connect' => 0, 'request_size' => 0);
+    $result = array('ok' => false, 'status' => 0, 'body' => '', 'errno' => 0, 'error' => '', 'connect' => 0, 'request_size' => 0, 'content_length' => -1);
+
+    if (!empty($options['response_headers'])) {
+        $result['headers'] = '';
+    }
 
     if (!function_exists('curl_init')) {
         $result['error'] = 'cURL is not available on this server.';
@@ -247,8 +290,14 @@ function pg_curl_run($method, $url, $options = array())
     $ch = curl_init();
 
     foreach (pg_curl_run_options($method, $url, $options, $env) as $name => $value) {
-        if (in_array($name, array('CURLOPT_PROTOCOLS', 'CURLOPT_REDIR_PROTOCOLS', 'CURLOPT_PROXYTYPE'), true)) {
-            $value = constant($value);
+        if (in_array($name, array('CURLOPT_PROTOCOLS', 'CURLOPT_REDIR_PROTOCOLS', 'CURLOPT_PROXYTYPE', 'CURLOPT_HTTP_VERSION'), true)) {
+            $bits = 0;
+
+            foreach (explode('|', $value) as $constant) {
+                $bits |= constant($constant);
+            }
+
+            $value = $bits;
         }
 
         curl_setopt($ch, constant($name), $value);
@@ -266,6 +315,12 @@ function pg_curl_run($method, $url, $options = array())
     } else {
         $result['status'] = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $result['body'] = (string) $body;
+
+        if (!empty($options['response_headers'])) {
+            list($result['headers'], $result['body']) = pg_curl_run_split($body, curl_getinfo($ch, CURLINFO_HEADER_SIZE));
+        }
+
+        $result['content_length'] = (int) curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD);
         $result['ok'] = ($result['status'] >= 200 && $result['status'] < 300);
     }
 
@@ -290,6 +345,25 @@ function pg_license_request_options($data, $follow)
         'connect_timeout' => 10,
         'forbid_reuse'    => true,
         'follow'          => (int) $follow,
+    );
+}
+
+/**
+ * The pg_curl_run() options of migration.php's request to the source site's
+ * API ($data is the JSON body): the explicit Content-Length it always sent,
+ * 60 s, a fresh connection, no redirect. The operator types the source
+ * address, and a source on the same host or LAN may answer on plain http, so
+ * http is allowed; the address is not checked, because api_http_check_url()
+ * refuses exactly those private addresses.
+ */
+function pg_migration_request_options($data)
+{
+    return array(
+        'body'         => $data,
+        'headers'      => array('Content-Type: application/json', 'Content-Length: ' . strlen($data)),
+        'timeout'      => 60,
+        'forbid_reuse' => true,
+        'allow_http'   => true,
     );
 }
 
@@ -1455,34 +1529,34 @@ function pg_update_permissions_block($user)
     $permissions_rows = '';
 
     foreach (array_slice($permissions['directories'], 0, 12, true) as $permissions_path => $permissions_mode) {
-        $permissions_rows .= '<li><code>' . h($permissions_path) . '/</code> <span class="text-body-secondary">' . h($permissions_mode) . '</span></li>';
+        $permissions_rows .= '<li><code>' . h($permissions_path) . '/</code> <span class="fg-secondary">' . h($permissions_mode) . '</span></li>';
     }
 
     if ($permissions['directories_count'] > 12) {
-        $permissions_rows .= '<li class="text-body-secondary">' . h(lang(array('string' => 'and {var:1} more', 'vars' => pg_format_number($permissions['directories_count'] - 12, 0)))) . '</li>';
+        $permissions_rows .= '<li class="fg-secondary">' . h(lang(array('string' => 'and {var:1} more', 'vars' => pg_format_number($permissions['directories_count'] - 12, 0)))) . '</li>';
     }
 
     if ((int) $user['role'] === 0) {
         $permissions_action = '
-                <button type="button" class="btn btn-danger" id="write_permissions_fix"
+                <button type="button" class="btn btn-solid theme-danger" id="write_permissions_fix"
                         data-busy-label="' . h(lang('Fixing')) . '"
                         data-idle-label="' . h(lang('Set the file permissions')) . '"
                         data-failed-label="' . h(lang('The permissions could not be changed.')) . '">
                     <i class="bi bi-wrench-adjustable me-1"></i><span id="write_permissions_fix_state">' . h(lang('Set the file permissions')) . '</span>
                 </button>
-                <span class="form-text d-block mt-2">' . h(lang('Sets these folders to 0777 and the files in them that refuse to 0666, so that both the web server and your FTP or file manager user can replace them. Folders that belong to another system user cannot be changed from here and are listed afterwards.')) . '</span>
-                <div class="form-text mt-2 d-none" id="write_permissions_fix_result"></div>';
+                <span class="form-text d-block mt-3">' . h(lang('Sets these folders to 0777 and the files in them that refuse to 0666, so that both the web server and your FTP or file manager user can replace them. Folders that belong to another system user cannot be changed from here and are listed afterwards.')) . '</span>
+                <div class="form-text mt-3 d-none" id="write_permissions_fix_result"></div>';
     } else {
-        $permissions_action = '<span class="form-text d-block mt-2">' . h(lang('An administrator can open them from this screen, or set them writable over FTP.')) . '</span>';
+        $permissions_action = '<span class="form-text d-block mt-3">' . h(lang('An administrator can open them from this screen, or set them writable over FTP.')) . '</span>';
     }
 
     $block['html'] = '
-            <div class="alert alert-danger">
-                <p class="form-text mb-2"><i class="bi bi-folder-x me-1"></i>' . h(lang(array(
+            <div class="alert theme-danger">
+                <p class="form-text mb-3"><i class="bi bi-folder-x me-1"></i>' . h(lang(array(
                     'string' => 'The web server cannot write into {var:1} folder(s) of the software. The update cannot add or replace files there, so it does not start until they are opened:',
                     'vars' => pg_format_number($permissions['directories_count'], 0)
                 ))) . '</p>
-                <ul class="mb-2 small">' . $permissions_rows . '</ul>
+                <ul class="mb-3 small">' . $permissions_rows . '</ul>
                 ' . $permissions_action . '
             </div>';
 

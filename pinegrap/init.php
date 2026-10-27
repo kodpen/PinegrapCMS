@@ -988,7 +988,7 @@ if (!empty($_SERVER['HTTP_HOST'])) {
     // screen re-issues it as None for a payment gateway's return
     // (pg_session_cookie_allow_cross_site()). The setting exists from 7.3.
     if (version_compare(PHP_VERSION, '7.3.0', '>=')) {
-        ini_set('session.cookie_samesite', 'Lax');
+        ini_set('session.cookie_samesite', 'Lax'); // phpcs:ignore PHPCompatibility.IniDirectives.NewIniDirectives.session_cookie_samesiteFound -- guarded by version_compare() above
     }
 
     // The id in the cookie must be one this server issued: with strict mode
@@ -1031,6 +1031,13 @@ initialize_user();
 // needs to know whether the request comes from an authenticated designer
 // (who edits HTML, JavaScript and SQL for a living) or from a stranger.
 waf_run('init');
+
+// Ban notices waf.php queued without a database or mail (includes/fn/
+// waf_notice.php): sent by this request, and by the general job, which loads
+// this file too. One file check when nothing is queued.
+if (function_exists('pg_waf_ban_notice_send')) {
+    pg_waf_ban_notice_send();
+}
 
 // Page cache: a write by a signed-in user or an API client may change what
 // pages show, so every stored page is made old once the request ends

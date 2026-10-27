@@ -19,6 +19,9 @@ description: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, 
 ## Why is GitHub allowed as committer?
 - GitHub commits as `GitHub <noreply@github.com>` whatever it makes for the signed-in account: a "Merge branch 'development' into …" from the web UI or "Update branch", the web editor, the contents API (MCP `push_files`). The author of such a commit is the account's own identity and is judged like any other, so a web merge by an account whose identity is not Erdal Güral still fails; only the committer is let through.
 
+## Why does it quote git's arguments itself on Windows?
+- `check_pr_git()` starts git without cmd.exe (`bypass_shell`), but Windows `escapeshellarg()` turns `%`, `!` and `"` into spaces for cmd.exe: git got `--format= H x1f an …` and failed with `invalid --pretty format`, so every push from Windows stopped in the hook (#2086 went up with `--no-verify`). Since #2091 `check_pr_windows_arg()` quotes as git's C runtime splits a command line; Linux keeps `escapeshellarg()`. The argument-list form of `proc_open()` would do it too, but needs PHP 7.4.
+
 ## How is a failing branch fixed?
 - A wrong author on your own unpushed commits: `git config user.name/user.email`, then `git rebase --exec 'git commit --amend --no-edit --reset-author' origin/development` (a trailer: amend the message). On a pushed branch nobody else uses, the same and a `--force-with-lease` push.
 - A `changelog.txt` edit: revert it on the branch and name the line in the PR body.

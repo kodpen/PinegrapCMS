@@ -85,22 +85,42 @@ function ws_flows_ready()
    --------------------------------------------------------------------------- */
 
 /**
- * The kinds of box a flow knows: whether the box starts the flow, and the
- * outcomes an arrow may leave it on.
+ * The kinds of box a flow knows: whether the box starts the flow, the
+ * outcomes an arrow may leave it on, and the values it gives the boxes after
+ * it ({{node.<id>.<key>}}; key, type, label): a task box its task, a step
+ * box those of ws_step_kinds().
  *
- * @return array kind => label, trigger, outcomes
+ * @return array kind => label, trigger, outcomes, step, outputs
  */
 function ws_flow_kinds()
 {
     $kinds = array(
-        'manual' => array('label' => lang('Started by hand'), 'trigger' => true, 'outcomes' => array('next'), 'step' => false),
-        'task'   => array('label' => lang('Task'), 'trigger' => false, 'outcomes' => array('done', 'cancelled'), 'step' => false),
-        'end'    => array('label' => lang('End'), 'trigger' => false, 'outcomes' => array(), 'step' => false),
+        'manual' => array('label' => lang('Started by hand'), 'trigger' => true, 'outcomes' => array('next'), 'step' => false, 'outputs' => array()),
+        'task'   => array('label' => lang('Task'), 'trigger' => false, 'outcomes' => array('done', 'cancelled', 'timeout'), 'step' => false,
+            'outputs' => array(array('key' => 'task_id', 'type' => 'number', 'label' => lang('Task')))),
+        'end'    => array('label' => lang('End'), 'trigger' => false, 'outcomes' => array(), 'step' => false, 'outputs' => array()),
     );
+
+    // The boxes that start a flow on their own, through its anchor
+    // (flow_anchors.php).
+    foreach ((function_exists('ws_flow_anchor_kinds') ? ws_flow_anchor_kinds() : array()) as $kind => $info) {
+        $kinds[$kind] = array('label' => $info['label'], 'trigger' => true, 'outcomes' => array('next'), 'step' => false, 'outputs' => array());
+    }
+
+    // One condition of a scheduled action (flow_conditions.php).
+    if (function_exists('ws_flow_condition_outcomes')) {
+        $kinds['condition'] = array('label' => lang('Condition'), 'trigger' => false, 'outcomes' => ws_flow_condition_outcomes(), 'step' => false, 'outputs' => array());
+    }
+
+    // A wait before the boxes after it (flow_runs.php).
+    if (function_exists('ws_flow_delay_normalize')) {
+        $kinds['delay'] = array('label' => lang('Wait'), 'trigger' => false, 'outcomes' => array('done'), 'step' => false,
+            'outputs' => array(array('key' => 'waited_until', 'type' => 'text', 'label' => lang('Waited until'))));
+    }
 
     // The steps of a scheduled action, each a box of its own (steps.php).
     foreach ((function_exists('ws_step_kinds') ? ws_step_kinds() : array()) as $kind => $info) {
-        $kinds[$kind] = array('label' => $info['label'], 'trigger' => false, 'outcomes' => ws_step_outcomes(), 'step' => true);
+        $kinds[$kind] = array('label' => $info['label'], 'trigger' => false, 'outcomes' => $info['outcomes'] ?? ws_step_outcomes(), 'step' => true, 'outputs' => $info['outputs']);
     }
 
     return $kinds;
@@ -213,7 +233,12 @@ function ws_flow_lines($value, $length)
  * manual: subject ('' or a kind of record a run is about)
  * task:   title, description, assignees (up to 20 user ids) or assign (a
  *         rule of ws_template_assign_valid(), 'creator' being whoever starts
- *         the run), due_in ('' or 0-3650 days), priority
+ *         the run), due_in ('' or 0-3650 days), priority, timeout ('' for
+ *         none, else 1 to WS_FLOW_TIMEOUT_MAX hours: the box leaves on
+ *         timeout when its task is still open by then)
+ * condition: ws_flow_condition_normalize()
+ * delay: ws_flow_delay_normalize()
+ * schedule, event, join: ws_flow_anchor_normalize()
  * a step: ws_step_config_normalize()
  *
  * @param string $kind
@@ -241,6 +266,7 @@ function ws_flow_config_normalize($kind, $config)
 
             $due_in = $config['due_in'] ?? '';
             $priority = ws_flow_text($config['priority'] ?? '');
+            $timeout = $config['timeout'] ?? '';
 
             return array(
                 'title'       => ws_flow_line($config['title'] ?? '', 200),
@@ -249,7 +275,19 @@ function ws_flow_config_normalize($kind, $config)
                 'assign'      => ws_flow_line($config['assign'] ?? '', 40),
                 'due_in'      => (is_bool($due_in) || !is_numeric($due_in)) ? '' : max(0, min(3650, (int) $due_in)),
                 'priority'    => in_array($priority, array('low', 'normal', 'high', 'urgent'), true) ? $priority : 'normal',
+                'timeout'     => (is_bool($timeout) || !is_numeric($timeout)) ? '' : max(1, min(defined('WS_FLOW_TIMEOUT_MAX') ? WS_FLOW_TIMEOUT_MAX : 720, (int) $timeout)),
             );
+
+        case 'condition':
+            return function_exists('ws_flow_condition_normalize') ? ws_flow_condition_normalize($config) : array();
+
+        case 'delay':
+            return function_exists('ws_flow_delay_normalize') ? ws_flow_delay_normalize($config) : array();
+
+        case 'schedule':
+        case 'event':
+        case 'join':
+            return function_exists('ws_flow_anchor_normalize') ? ws_flow_anchor_normalize($kind, $config) : array();
     }
 
     return function_exists('ws_step_config_normalize') ? ws_step_config_normalize($kind, $config) : array();
@@ -428,10 +466,34 @@ function ws_flow_graph_check($graph)
             } elseif (($config['assign'] !== '') && !ws_template_assign_valid($config['assign'])) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, lang(array('string' => 'The task box {var:1} has a rule for whom it goes to that the flow does not know.', 'vars' => $name)));
             }
+
+            if (function_exists('ws_flow_timeout_problems')) {
+                foreach (ws_flow_timeout_problems($config, $name, ws_flow_outcome_routed($graph, $id, 'timeout')) as $text) {
+                    $problems[] = ws_flow_problem('bad_config', $id, null, $text);
+                }
+            }
         }
 
         if ($kinds[$node['kind']]['step']) {
             foreach (ws_step_config_problems($node['kind'], $node['config'], $name) as $text) {
+                $problems[] = ws_flow_problem('bad_config', $id, null, $text);
+            }
+        }
+
+        if (in_array($node['kind'], array('schedule', 'event', 'join'), true)) {
+            foreach (ws_flow_anchor_problems($node['kind'], $node['config'], $name) as $text) {
+                $problems[] = ws_flow_problem('bad_config', $id, null, $text);
+            }
+        }
+
+        if ($node['kind'] === 'condition') {
+            foreach (ws_flow_condition_problems($node['config'], $name) as $text) {
+                $problems[] = ws_flow_problem('bad_config', $id, null, $text);
+            }
+        }
+
+        if ($node['kind'] === 'delay') {
+            foreach (ws_flow_delay_problems($node['config'], $name) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
         }
@@ -687,13 +749,15 @@ function ws_flow_for($viewer, $id, $need = 'view')
 /**
  * The flows the person reaches, the latest changed first: their own, the
  * live flows of others whose home channel they read, and the flows shared
- * with them or in a channel they read. Drafts are not read.
+ * with them or in a channel they read. Drafts are not read, except to find
+ * the start of a flow never published when the list is narrowed by it.
  *
  * @param array  $viewer
- * @param string $scope all | mine | shared
+ * @param string $scope   all | mine | shared
+ * @param array  $filters ws_flows_list_where() keys, and start (ws_flow_start_kind())
  * @return array[] rows without draft, each with access
  */
-function ws_flows_list($viewer, $scope = 'all')
+function ws_flows_list($viewer, $scope = 'all', $filters = array())
 {
     if (!ws_flows_ready() || empty($viewer['member'])) {
         return array();
@@ -708,7 +772,7 @@ function ws_flows_list($viewer, $scope = 'all')
 
     $rows = (array) db_items("SELECT id, owner_id, channel_id, name, status, draft_rev, version_id, updated_by, created_at, updated_at, binned_at
         FROM ws_flows
-        WHERE status <> 'binned' AND (owner_id = '" . (int) $viewer['id'] . "' OR (status = 'live' AND channel_id > 0)" . $shared . ")
+        WHERE status <> 'binned' AND (owner_id = '" . (int) $viewer['id'] . "' OR (status = 'live' AND channel_id > 0)" . $shared . ")" . ws_flows_list_where($filters) . "
         ORDER BY updated_at DESC, id DESC
         LIMIT 1000");
 
@@ -733,7 +797,192 @@ function ws_flows_list($viewer, $scope = 'all')
         }
     }
 
+    $start = (string) ($filters['start'] ?? '');
+
+    if (($start !== '') && !empty($out)) {
+        $kinds = ws_flows_start_kinds($out);
+        $out = array_values(array_filter($out, function ($row) use ($kinds, $start) {
+            return ($kinds[(int) $row['id']] ?? '') === $start;
+        }));
+    }
+
     return $out;
+}
+
+/**
+ * The conditions a narrowed flow list adds to its query, each led by AND:
+ * status (draft, live or paused), channel_id (the home channel) and
+ * updated_since (unix time, changed at or after it). A value outside them
+ * adds nothing; the API refuses it before.
+ *
+ * @param array $filters
+ * @return string
+ */
+function ws_flows_list_where($filters)
+{
+    $sql = '';
+    $status = (string) ($filters['status'] ?? '');
+
+    // Only the three literals reach the query.
+    if (in_array($status, array('draft', 'live', 'paused'), true)) {
+        $sql .= " AND status = '" . $status . "'";
+    }
+
+    if ((int) ($filters['channel_id'] ?? 0) > 0) {
+        $sql .= " AND channel_id = '" . (int) $filters['channel_id'] . "'";
+    }
+
+    if ((int) ($filters['updated_since'] ?? 0) > 0) {
+        $sql .= " AND updated_at >= '" . (int) $filters['updated_since'] . "'";
+    }
+
+    return $sql;
+}
+
+/**
+ * How a flow starts, by the kind of its start box: at a time, on an event,
+ * when somebody joins a channel, or by hand.
+ *
+ * @return array box kind => start
+ */
+function ws_flow_start_names()
+{
+    return array('schedule' => 'time', 'event' => 'event', 'join' => 'join', 'manual' => 'manual');
+}
+
+/**
+ * How a graph starts (ws_flow_start_names()), '' when it has no start box.
+ *
+ * @param array $graph
+ * @return string
+ */
+function ws_flow_start_kind($graph)
+{
+    $trigger = ws_flow_trigger_node($graph);
+
+    return $trigger ? (string) (ws_flow_start_names()[$trigger['kind']] ?? '') : '';
+}
+
+/**
+ * The graph a flow starts from: its live version once published, the draft
+ * of a flow never published.
+ *
+ * @param array      $flow    ws_flows row with draft
+ * @param array|null $version its live ws_flow_versions row
+ * @return array
+ */
+function ws_flow_start_graph($flow, $version)
+{
+    return is_array($version) ? ws_flow_graph_of($version) : ws_flow_graph_of($flow);
+}
+
+/**
+ * How each flow listed starts, its live version read for a published flow
+ * and the draft for one never published, in two reads.
+ *
+ * @param array[] $rows ws_flows rows without draft
+ * @return array flow id => ws_flow_start_kind()
+ */
+function ws_flows_start_kinds($rows)
+{
+    $versions = array();
+    $drafts = array();
+
+    foreach ($rows as $row) {
+        if ((int) $row['version_id'] > 0) {
+            $versions[(int) $row['version_id']] = (int) $row['id'];
+        } else {
+            $drafts[(int) $row['id']] = (int) $row['id'];
+        }
+    }
+
+    $out = array();
+
+    if (!empty($versions)) {
+        foreach ((array) db_items("SELECT id, graph FROM ws_flow_versions WHERE id IN (" . implode(',', array_keys($versions)) . ")") as $version) {
+            $out[$versions[(int) $version['id']]] = ws_flow_start_kind(ws_flow_graph_of(array('graph' => $version['graph'])));
+        }
+    }
+
+    if (!empty($drafts)) {
+        foreach ((array) db_items("SELECT id, draft FROM ws_flows WHERE id IN (" . implode(',', $drafts) . ")") as $flow) {
+            $out[(int) $flow['id']] = ws_flow_start_kind(ws_flow_graph_of(array('draft' => $flow['draft'])));
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * How a graph starts, in words: "By hand", the rule of a box that starts it
+ * on its own as a scheduled action says it ("Every week on Monday at
+ * 09:00, from 02.11.2026", "When a form is submitted: Contact"), or null
+ * when it has no start box.
+ *
+ * @param array         $viewer
+ * @param array         $graph
+ * @param callable|null $readable channel id => bool; ws_flow_channel_readable() when null
+ * @return string|null
+ */
+function ws_flow_start_text($viewer, $graph, $readable = null)
+{
+    $start = ws_flow_start_rule($graph, ($readable !== null) ? $readable : function ($channel_id) use ($viewer) {
+        return ws_flow_channel_readable($viewer, $channel_id);
+    });
+
+    if ($start === null) {
+        return null;
+    }
+
+    $text = (($start['rule'] !== null) && function_exists('ws_scheduled_rule_text')) ? ws_scheduled_rule_text($viewer, $start['rule']) : '';
+
+    return ($text !== '') ? $text : $start['text'];
+}
+
+/**
+ * What says how a graph starts: text, the words to use, and rule, the rule
+ * of a scheduled action to say in words instead when there is one (a box
+ * that starts the flow on its own). A channel the person does not read is
+ * not named: a join box then says only that somebody joins a channel, an
+ * event box leaves the channel out of its rule. A time box not filled in
+ * yet has no rule to read. Null when the graph has no start box.
+ *
+ * @param array    $graph
+ * @param callable $readable channel id => bool
+ * @return array|null text, rule (array or null)
+ */
+function ws_flow_start_rule($graph, $readable)
+{
+    $trigger = ws_flow_trigger_node($graph);
+
+    if (!$trigger) {
+        return null;
+    }
+
+    $kind = (string) $trigger['kind'];
+    $anchors = function_exists('ws_flow_anchor_kinds') ? ws_flow_anchor_kinds() : array();
+
+    if (!isset($anchors[$kind])) {
+        return array('text' => lang('By hand'), 'rule' => null);
+    }
+
+    $label = (string) $anchors[$kind]['label'];
+    $config = ws_flow_anchor_normalize($kind, $trigger['config'] ?? array());
+
+    if (((int) ($config['channel_id'] ?? 0) > 0) && !call_user_func($readable, (int) $config['channel_id'])) {
+        if ($kind === 'join') {
+            return array('text' => $label, 'rule' => null);
+        }
+
+        $config['channel_id'] = 0;
+    }
+
+    if (($kind === 'schedule') && (!preg_match('~^\d{4}-\d{2}-\d{2}$~', $config['date']) || !preg_match('~^\d{2}:\d{2}$~', $config['time'])
+        || (strtotime($config['date'] . ' ' . $config['time'] . ':00') === false))) {
+        return array('text' => $label, 'rule' => null);
+    }
+
+    return array('text' => $label, 'rule' => ws_flow_anchor_rule($kind, $config));
 }
 
 /**
@@ -969,6 +1218,25 @@ function ws_flow_publish_check($viewer, $flow, $data = array())
                 return ws_flow_refusal(lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(ws_flow_box_name($node), $step['error']))));
             }
         }
+
+        // A box that starts the flow on its own: a time still to come, an
+        // event whose records the owner sees, a channel they read.
+        if (isset(ws_flow_anchor_kinds()[$node['kind']])) {
+            $anchor = ws_flow_anchor_check($viewer, $node['kind'], $node['config']);
+
+            if (!$anchor['ok']) {
+                return ws_flow_refusal(lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(ws_flow_box_name($node), $anchor['error']))));
+            }
+        }
+
+        // A condition: a count or a record the owner may read.
+        if ($node['kind'] === 'condition') {
+            $condition = ws_flow_condition_check($viewer, $node['config']);
+
+            if (!$condition['ok']) {
+                return ws_flow_refusal(lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(ws_flow_box_name($node), $condition['error']))));
+            }
+        }
     }
 
     foreach ($graph['nodes'] as $node) {
@@ -1038,6 +1306,10 @@ function ws_flow_publish($viewer, $flow, $data = array())
     db("UPDATE ws_flows SET status = 'live', version_id = '" . $version_id . "', updated_by = '" . (int) $viewer['id'] . "', updated_at = '" . $now . "'
         WHERE id = '" . $flow_id . "' AND status <> 'binned'");
 
+    // The hidden scheduled action that starts it on its own, written from
+    // the version now live (checked a moment ago by the publish check).
+    ws_flow_anchor_sync($viewer, $flow, ws_flow_graph_normalize($check['json']));
+
     log_activity(lang(array('string' => 'workspace flow ({var:1}) was published as version {var:2}', 'vars' => array($flow['name'], $n))), (string) ($_SESSION['sessionusername'] ?? ''));
 
     return array('ok' => true, 'error' => '', 'status' => 200, 'field' => '', 'version_id' => $version_id, 'n' => $n);
@@ -1092,6 +1364,8 @@ function ws_flow_pause($viewer, $flow)
         return ws_flow_refusal(lang('Only a live flow can be paused.'), 409);
     }
 
+    ws_flow_anchor_set_status($flow['id'], 'paused');
+
     log_activity(lang(array('string' => 'workspace flow ({var:1}) was paused', 'vars' => $flow['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
 
     return $check;
@@ -1143,6 +1417,7 @@ function ws_flow_bin($viewer, $flow)
         WHERE id = '" . (int) $flow['id'] . "' AND status <> 'binned'");
 
     ws_flow_runs_cancel_for_flow($flow);
+    ws_flow_anchor_set_status($flow['id'], 'cancelled');
 
     log_activity(lang(array('string' => 'workspace flow ({var:1}) was deleted', 'vars' => $flow['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
 
@@ -1176,7 +1451,9 @@ function ws_flow_url_masked($url)
  * the whole address of a webhook or web check box (ws_flow_url_masked()),
  * and which record a change box changes and to what: the record may be one
  * the reader may not open, and its values a customer's data. They read the
- * kind of record, the action and the names of the fields.
+ * kind of record, the action and the names of the fields. A condition box's
+ * record and the value it compares with are kept back the same way
+ * (ws_flow_condition_masked()).
  *
  * @param array $graph ws_flow_graph_normalize()
  * @param bool  $edit  the reader may change the flow
@@ -1194,6 +1471,10 @@ function ws_flow_graph_present($graph, $edit = false)
             if (!$edit && ((string) $node['kind'] === 'change')) {
                 $node['config']['id'] = 0;
                 $node['config']['fields'] = array_fill_keys(array_keys((array) ($node['config']['fields'] ?? array())), '');
+            }
+
+            if (!$edit && ((string) $node['kind'] === 'condition')) {
+                $node['config'] = ws_flow_condition_masked($node['config']);
             }
 
             $node['config'] = (object) $node['config'];
@@ -1470,7 +1751,97 @@ function ws_flow_js_strings()
         'fl_start_target'     => lang('Scheduled action to start'),
         'fl_start_delay'      => lang('Minutes later'),
         'fl_start_delay_help' => lang('0 starts it at once; at most a week (10,080 minutes).'),
+        'fl_kind_delay'       => lang('Wait'),
+        'fl_delay_amount'     => lang('How long'),
+        'fl_delay_unit'       => lang('Counted in'),
+        'fl_delay_unit_minutes' => lang('Minutes'),
+        'fl_delay_unit_hours' => lang('Hours'),
+        'fl_delay_unit_days'  => lang('Days'),
+        'fl_delay_help'       => lang('The boxes after it start when the time is up: at least a minute, at most a week.'),
+        'fl_delay_none'       => lang('No time set'),
+        'fl_delay_minutes'    => ws_js_template('{var:1} minutes', 1),
+        'fl_delay_hours'      => ws_js_template('{var:1} hours', 1),
+        'fl_delay_days'       => ws_js_template('{var:1} days', 1),
+        'fl_delay_minute'     => lang('1 minute'),
+        'fl_delay_hour'       => lang('1 hour'),
+        'fl_delay_day'        => lang('1 day'),
+        'fl_kind_approval'    => lang('Ask for approval'),
+        'fl_on_approved'      => lang('Approved'),
+        'fl_on_rejected'      => lang('Rejected'),
+        'fl_on_expired'       => lang('Expired'),
+        'fl_on_withdrawn'     => lang('Closed without a decision'),
+        'fl_on_timeout'       => lang('Not done in time'),
+        'fl_timeout'          => lang('Timeout (hours)'),
+        'fl_timeout_help'     => lang('Empty to wait as long as it takes; at most 720 hours (30 days). Still open by then, the box leaves on Not done in time and the task stays open.'),
+        'fl_timeout_meta'     => ws_js_template('{var:1} · timeout {var:2} h', 2),
+        'fl_approval_channel' => lang('Channel to ask in'),
+        'fl_approval_no_channel' => lang('No channel to ask in'),
+        'fl_approval_who'     => lang('People asked to approve'),
+        'fl_approval_who_help' => lang('People of the channel who may write in it.'),
+        'fl_approval_rule'    => lang('Settled by'),
+        'fl_approval_any'     => lang('Any one of them'),
+        'fl_approval_all'     => lang('All of them'),
+        'fl_approval_closes'  => lang('Hours to decide'),
+        'fl_approval_closes_help' => lang('Empty for no deadline; at most 720 hours (30 days). A request with no decision by then expires.'),
         'fl_kind_change'      => lang('Change a record'),
+        'fl_kind_lead'        => lang('Bring a customer into a channel'),
+        'fl_lead_meta'        => lang('The customer of the submitted form'),
+        'fl_lead_meta_private' => lang('The customer of the submitted form, privately'),
+        'fl_lead_private'     => lang('A channel it opens is private'),
+        'fl_lead_help'        => lang('Starts after a form is submitted. A channel the customer already has is used; otherwise one is opened with the New customer template, at most 20 an hour.'),
+        'fl_lead_people'      => lang('People put in a channel it opens'),
+        'fl_kind_condition'   => lang('Condition'),
+        'fl_kind_schedule'    => lang('At a time'),
+        'fl_kind_event'       => lang('When something happens'),
+        'fl_kind_join'        => lang('When somebody joins a channel'),
+        'fl_when_none'        => lang('Not set yet'),
+        'fl_when_date'        => lang('First day'),
+        'fl_when_help'        => lang('Publishing the flow sets it to start on its own then, as its owner.'),
+        'fl_when_time'        => lang('Time'),
+        'fl_when_repeat'      => lang('Repeat'),
+        'fl_when_every'       => lang('Every'),
+        'fl_when_until'       => lang('Last day'),
+        'fl_when_until_help'  => lang('Empty for no last day.'),
+        'fl_event'            => lang('What happens'),
+        'fl_event_pick'       => lang('Choose what happens'),
+        'fl_event_help'       => lang('Each time it happens a run starts, as the flow\'s owner, while the flow is live.'),
+        'fl_event_form'       => lang('Form'),
+        'fl_event_any_form'   => lang('Any form'),
+        'fl_event_status'     => lang('Status it moves to'),
+        'fl_event_any_status' => lang('Any status'),
+        'fl_event_channel'    => lang('Channel'),
+        'fl_event_any_channel' => lang('Any channel'),
+        'fl_join_channel'     => lang('Channel joined'),
+        'fl_join_any'         => lang('Any public channel'),
+        'fl_day_mon'         => lang('Monday'),
+        'fl_day_tue'         => lang('Tuesday'),
+        'fl_day_wed'         => lang('Wednesday'),
+        'fl_day_thu'         => lang('Thursday'),
+        'fl_day_fri'         => lang('Friday'),
+        'fl_day_sat'         => lang('Saturday'),
+        'fl_day_sun'         => lang('Sunday'),
+        'fl_cond_pick'        => lang('Choose a condition'),
+        'fl_cond_none'        => lang('No condition chosen'),
+        'fl_cond_kind'        => lang('Condition'),
+        'fl_cond_help'        => lang('An arrow on Yes is taken when it holds, one on No when it does not. Without an arrow on No the flow stops there, and the run keeps the reason.'),
+        'fl_cond_workday'     => lang('A working day'),
+        'fl_cond_weekdays'    => lang('Days of the week'),
+        'fl_cond_hours'       => lang('Hours of the day'),
+        'fl_cond_from'        => lang('Starts at'),
+        'fl_cond_to'          => lang('Ends at'),
+        'fl_cond_metric'      => lang('A count'),
+        'fl_cond_metric_pick' => lang('Choose a count'),
+        'fl_cond_any_channel' => lang('Every channel'),
+        'fl_cond_threshold'   => lang('At most'),
+        'fl_cond_record'      => lang('A field of a record'),
+        'fl_cond_field'       => lang('Field'),
+        'fl_cond_field_pick'  => lang('Choose a field'),
+        'fl_cond_op'          => lang('Comparison'),
+        'fl_cond_value'       => lang('Value'),
+        'fl_cond_value_pick'  => lang('Choose a value'),
+        'fl_cond_within_help' => lang('A number of days.'),
+        'fl_cond_id_help'     => lang('The number of the record, as its page or the record drawer shows it. It is checked with your rights as you publish and again each time the box runs.'),
+        'fl_cond_hidden'      => lang('Which record, and the value it is compared with, are shown only to whoever may change the flow.'),
         'fl_change_pick'      => lang('Choose a kind of record'),
         'fl_change_none'      => lang('No record chosen'),
         'fl_change_kind'      => lang('Kind of record'),
@@ -1559,6 +1930,16 @@ function ws_flow_js_strings()
         'fl_added'            => ws_js_template('Added: {var:1}', 1),
         'fl_removed'          => ws_js_template('Removed: {var:1}', 1),
         'fl_remove_box'       => lang('Remove the box'),
+        // A box tried without running it (ws_flow_box_try()).
+        'fl_try'              => lang('Try this box'),
+        'fl_try_help'         => lang('See what this box would do now: nothing is sent, written or called.'),
+        'fl_try_run'          => lang('Values of the boxes before it'),
+        'fl_try_no_run'       => lang('No run: left empty'),
+        'fl_try_run_item'     => ws_js_template('Run #{var:1} · {var:2}', 2),
+        'fl_try_fails'        => ws_js_template('It would fail: {var:1}', 1),
+        'fl_try_empty'        => ws_js_template('Left empty: {var:1}', 1),
+        'fl_try_next'         => ws_js_template('Next times: {var:1}', 1),
+        'fl_try_outcome'      => ws_js_template('Leaves on: {var:1}', 1),
         'fl_remove_arrow'     => lang('Remove the arrow'),
         'fl_remove_arrow_to'  => ws_js_template('Remove the arrow to {var:1}', 1),
         'fl_arrow'            => lang('Arrow'),
@@ -1567,8 +1948,30 @@ function ws_flow_js_strings()
         'fl_on_done'          => lang('Done'),
         'fl_on_cancelled'     => lang('Cancelled'),
         'fl_on_failed'        => lang('Failed'),
+        'fl_on_yes'           => lang('Yes'),
+        'fl_on_no'            => lang('No'),
         'fl_on_box'           => lang('Followed when the box ends'),
         'fl_one_start'        => lang('A flow has one box that starts it.'),
+        'fl_tpl_title'        => lang('Templates'),
+        'fl_tpl_start'        => lang('Start a new flow'),
+        'fl_tpl_empty'        => lang('Empty canvas'),
+        'fl_tpl_empty_help'   => lang('Start with nothing and add the boxes yourself.'),
+        'fl_tpl_from_template' => lang('Start from a template'),
+        'fl_tpl_back'         => lang('Back to the flow'),
+        'fl_tpl_use'          => lang('Use'),
+        'fl_tpl_boxes'        => ws_js_template('{var:1} boxes', 1),
+        'fl_tpl_threads'      => ws_js_template('{var:1} data threads', 1),
+        'fl_tpl_setup'        => lang('Set it up'),
+        'fl_tpl_setup_help'   => ws_js_template('{var:1} is on the canvas. Only these are left to choose; the rest can be changed on the canvas.', 1),
+        'fl_tpl_open'         => lang('Open on canvas'),
+        'fl_tpl_publish'      => lang('Publish now'),
+        'fl_tpl_published'    => lang('The flow is published.'),
+        'fl_tpl_close'        => lang('Close'),
+        'fl_tpl_set_channel'  => lang('Channel'),
+        'fl_tpl_set_person'   => lang('Who'),
+        'fl_tpl_set_time'     => lang('Time'),
+        'fl_tpl_set_url'      => lang('Web address'),
+        'fl_tpl_set_address'  => lang('E-mail addresses'),
         'fl_too_many_boxes'   => ws_js_template('A flow can hold at most {var:1} boxes.', 1),
         'fl_flow_settings'    => lang('The flow'),
         'fl_flow_help'        => lang('Select a box to change it. Nothing runs until the flow is published.'),
@@ -1628,6 +2031,12 @@ function ws_flow_js_strings()
         'fl_step_failed'      => lang('Failed'),
         'fl_step_skipped'     => lang('Skipped'),
         'fl_step_none'        => lang('Not reached yet'),
+        'fl_step_retry'       => lang('Try again'),
+        'fl_step_skip'        => lang('Skip'),
+        'fl_step_retry_ask'   => ws_js_template('Try the box {var:1} again? It runs once more in the name of the owner of the flow: a message or e-mail it may have sent already can go out again, and a task box opens a new task.', 1),
+        'fl_step_skip_ask'    => ws_js_template('Skip the box {var:1}? The run goes on as if its branch had not been taken.', 1),
+        'fl_step_retried'     => lang('The box will run again.'),
+        'fl_step_skipped_by_hand' => lang('The box was skipped.'),
         // A flow shared with the team (flow_shares.php).
         'fl_level_view'       => lang('Can view'),
         'fl_level_run'        => lang('Can run'),
@@ -1691,7 +2100,8 @@ function ws_flow_js_config($viewer, $mode)
     // counts the person may read, the task e-mail's filters, and the
     // scheduled actions a box may start.
     $build = ws_flows_ready() && ws_can_schedule($viewer);
-    $steps = array('metrics' => array(), 'digest_only' => array(), 'targets' => array(), 'changes' => (object) array());
+    $steps = array('metrics' => array(), 'digest_only' => array(), 'targets' => array(), 'changes' => (object) array(),
+        'records' => (object) array(), 'operators' => (object) array(), 'counts' => array(), 'repeats' => (object) array(), 'events' => null);
 
     if ($build && function_exists('ws_scheduled_metrics')) {
         foreach (ws_scheduled_metrics() as $key => $metric) {
@@ -1707,12 +2117,42 @@ function ws_flow_js_config($viewer, $mode)
         // fields, as the scheduled form offers them.
         $scheduled = function_exists('ws_scheduled_js_config') ? ws_scheduled_js_config($viewer) : null;
         $steps['changes'] = (object) (is_array($scheduled) ? $scheduled['changes'] : array());
+
+        // What a condition box looks at: the kinds of record with their
+        // fields, and how a value or a count is compared.
+        $steps['records'] = (object) (is_array($scheduled) ? $scheduled['records'] : array());
+        $steps['operators'] = (object) (is_array($scheduled) ? $scheduled['operators'] : array());
+        $steps['counts'] = is_array($scheduled) ? $scheduled['counts'] : array();
+
+        // What the boxes that start a flow on their own offer: the ways a
+        // time repeats, and the events the person may wait for.
+        $steps['repeats'] = (object) (is_array($scheduled) ? $scheduled['repeats'] : array());
+        $steps['events'] = is_array($scheduled) ? $scheduled['events'] : null;
+    }
+
+    // The values each kind of box gives the boxes after it (a report's
+    // counts follow from the counts it is set to send: ws_step_outputs()).
+    $outputs = array();
+
+    foreach (ws_flow_kinds() as $kind => $info) {
+        $outputs[$kind] = $info['outputs'];
+    }
+
+    // The ready-made flows the gallery offers to whoever builds flows
+    // (flow_templates.php), filled for the person: their texts go to them.
+    $templates = array();
+
+    if ($build && is_array($scheduled ?? null) && function_exists('ws_flow_templates_for')) {
+        $templates = ws_flow_templates_for($viewer, $scheduled);
     }
 
     return $config + array(
         'ready'    => ws_flows_ready(),
         'build'    => $build,
+        'templates' => $templates,
+        'template_categories' => function_exists('ws_flow_template_categories') ? ws_flow_template_categories() : array(),
         'steps'    => $steps,
+        'outputs'  => $outputs,
         'subjects' => $subjects,
         'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'coord' => WS_FLOW_COORD_MAX),
     );

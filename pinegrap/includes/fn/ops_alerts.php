@@ -94,6 +94,11 @@ function pg_ops_alert_codes()
             'type'  => 'warning',
             'url'   => 'api_settings.php#events',
         ),
+        'payment_notice' => array(
+            'label' => lang('A payment service reported a payment to check'),
+            'type'  => 'warning',
+            'url'   => 'view_log.php',
+        ),
         'cert_expiring' => array(
             'label' => lang('The SSL certificate is about to expire'),
             'type'  => 'error',

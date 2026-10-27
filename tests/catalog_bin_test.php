@@ -159,8 +159,8 @@ function test_catalog_bin_binned_subgroups_are_not_left_without_a_parent()
 	pg_assert_true($binned !== false, 'permanent delete counts binned subgroups');
 	pg_assert_true(($binned !== false) && ($binned < strpos($delete, 'DELETE FROM product_groups WHERE')), 'and refuses before deleting');
 
-	$explorer = catalog_bin_test_source('view_folder_and_files_f.php');
-	$start = strpos($explorer, "case 'explorer_catalog_restore':");
+	$explorer = catalog_bin_test_source('includes/explorer/handle_catalog.php');
+	$start = strpos($explorer, 'function pg_explorer_handle_catalog_restore(');
 	$restore = ($start === false) ? '' : (string) substr($explorer, $start, 4000);
 
 	pg_assert_contains("SELECT id FROM product_groups WHERE parent_id = '0'", $restore, 'restore finds the root group for an orphan');
@@ -181,7 +181,7 @@ function test_catalog_bin_panel_screens_send_deletes_to_the_bin()
 	pg_assert_contains('pg_pb_bin_variant_set($group_id', catalog_bin_test_source('variant_set_action.php'), 'variant set list');
 	pg_assert_contains('pg_catalog_bin_group(', catalog_bin_test_source('edit_product_group.php'), 'product group screen');
 
-	$explorer = catalog_bin_test_source('view_folder_and_files_f.php');
+	$explorer = catalog_bin_test_source('includes/explorer/handle_catalog.php');
 
 	pg_assert_contains("pg_catalog_bin_product(\$item_id", $explorer, 'Catalog Manager: products');
 	pg_assert_contains("pg_catalog_bin_statements('product_group'", $explorer, 'Catalog Manager: groups');
@@ -237,7 +237,7 @@ function test_catalog_bin_product_pickers_leave_the_bin_out()
 	pg_assert_contains("pg_catalog_bin_live_sql('products')", catalog_bin_test_source('includes/workspace/refs.php'), 'Workspace references');
 	pg_assert_contains("pg_catalog_bin_live_sql('products')", catalog_bin_test_source('includes/panel/search.php'), 'panel search: products');
 	pg_assert_contains("pg_catalog_bin_live_sql('product_groups')", catalog_bin_test_source('includes/panel/search.php'), 'panel search: groups');
-	pg_assert_contains("pg_catalog_bin_live_sql('products')", catalog_bin_test_source('marketplace_settings.php'), 'marketplace matching');
+	pg_assert_contains("pg_catalog_bin_live_sql('products')", catalog_bin_test_source('includes/api/outbound/product_matches.php'), 'marketplace matching');
 
 	// The offer editor keeps the products an offer already names, flagged,
 	// and offers only the rest.
@@ -380,7 +380,7 @@ function test_catalog_bin_group_screen_does_not_write_a_binned_group()
 	pg_assert_true($guard < strpos($source, 'DELETE FROM product_groups_images_xref'), 'before the save');
 
 	pg_assert_contains("lang('This product group is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.')", $source, 'it says so');
-	pg_assert_contains("(\$group_binned\n                                    ? '<a class=\"btn my-1 btn-secondary\"", $source, 'the bin instead of Save');
+	pg_assert_contains("(\$group_binned\n                                    ? '<a class=\"btn my-1 btn-solid theme-secondary\"", $source, 'the bin instead of Save');
 	pg_assert_contains("if (\$group_binned) {\n        \$output_delete_button = '';", $source, 'and no Delete');
 }
 

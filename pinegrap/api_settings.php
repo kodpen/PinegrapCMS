@@ -1122,15 +1122,15 @@ function api_settings_oauth_guide($id_prefix, $button_class) {
 	return '
 	<label class="form-label small">' . lang('MCP server address') . '</label>
 	' . $box($id_prefix . '_mcp', $mcp_file) . '
-	<div class="form-text mb-3">' . lang('Give this address to an AI application that speaks MCP, such as Claude or ChatGPT. It is the server\'s own file, so it works on every server.') . '</div>
+	<div class="form-text mb-5">' . lang('Give this address to an AI application that speaks MCP, such as Claude or ChatGPT. It is the server\'s own file, so it works on every server.') . '</div>
 
 	<label class="form-label small">' . lang('Short address') . '</label>
 	' . $box($id_prefix . '_mcp_short', $mcp_short) . '
-	<div class="form-text mb-3">' . lang('The same server at the site\'s own address. It works wherever the site\'s page addresses work; if an application cannot reach it, use the address above.') . '</div>
+	<div class="form-text mb-5">' . lang('The same server at the site\'s own address. It works wherever the site\'s page addresses work; if an application cannot reach it, use the address above.') . '</div>
 
 	<label class="form-label small">' . lang('Discovery address') . '</label>
 	' . $box($id_prefix . '_meta', $metadata_url) . '
-	<div class="form-text mb-3">' . lang('Applications find this on their own from the MCP server address. It is shown for checking the setup.') . '</div>
+	<div class="form-text mb-5">' . lang('Applications find this on their own from the MCP server address. It is shown for checking the setup.') . '</div>
 
 	<div class="api-guide">
 		<div class="api-guide-title"><i class="bi bi-signpost-2 me-1"></i>' . lang('How to connect') . '</div>
@@ -1328,7 +1328,7 @@ if (!empty($webhook_all)) {
 					<span class="api-status ' . $status_class . '">' . h($status_label) . '</span>
 				</div>
 				<div class="api-hook-events">' . $chips . '</div>
-				<div class="api-hook-meta' . ($blocked ? ' text-danger' : '') . '">
+				<div class="api-hook-meta' . ($blocked ? ' fg-danger' : '') . '">
 					<i class="bi bi-' . ($blocked ? 'exclamation-triangle' : 'key') . ' me-1"></i>' . h($owner)
 					. ($meta ? ' &middot; ' . h(implode(' · ', $meta)) : '') . '</div>'
 				. ($hook['error'] !== ''
@@ -1340,13 +1340,13 @@ if (!empty($webhook_all)) {
 					<input type="hidden" name="webhook_id" value="' . (int)$hook['id'] . '">'
 					. (($hook['given_up'] > 0 || $hook['held'] > 0 || $hook['status'] === 'failing')
 						? '<button type="submit" name="api_action" value="webhook_retry"
-							class="btn btn-sm btn-outline-primary">' . lang('Send again') . '</button>'
+							class="btn btn-sm btn-outline theme-primary">' . lang('Send again') . '</button>'
 						: '') . '
 					<button type="submit" name="api_action" value="webhook_status"
-						class="btn btn-sm btn-outline-secondary">'
+						class="btn btn-sm btn-outline theme-secondary">'
 						. (($hook['status'] === 'disabled') ? lang('Resume') : lang('Stop')) . '</button>
 					<button type="submit" name="api_action" value="webhook_delete"
-						class="btn btn-sm btn-outline-danger api-confirm"
+						class="btn btn-sm btn-outline theme-danger api-confirm"
 						data-confirm="' . h(lang('The subscription will be removed and the application will stop being told.')) . '">'
 						. lang('Remove') . '</button>
 				</form>
@@ -1355,13 +1355,13 @@ if (!empty($webhook_all)) {
 	}
 
 	$webhook_card = '
-	<div class="card mt-3" id="events">
+	<div class="card mt-5" id="events">
 		<div class="card-header d-flex align-items-center">
-			<i class="bi bi-send me-2"></i><b>' . lang('Event notifications') . '</b>
-			<span class="ms-auto small opacity-75 d-none d-lg-inline">'
+			<i class="bi bi-send me-3"></i><b>' . lang('Event notifications') . '</b>
+			<span class="ms-auto small opacity-75 d-none lg:d-inline">'
 				. lang('Every address this site is telling, whoever registered it.') . '</span>
 		</div>
-		<div class="card-body px-3 py-2">' . $hook_blocks . '
+		<div class="card-body px-5 py-3">' . $hook_blocks . '
 		</div>
 	</div>';
 
@@ -1456,9 +1456,9 @@ if ($oauth_in_use || !empty($oauth_clients)) {
 					' . get_token_field() . '
 					<input type="hidden" name="oauth_client_row" value="' . (int)$client['id'] . '">
 					<button type="submit" name="api_action" value="oauth_client_status"
-						class="btn btn-sm btn-outline-secondary">' . h($client_on ? lang('Turn off') : lang('Turn on')) . '</button>
+						class="btn btn-sm btn-outline theme-secondary">' . h($client_on ? lang('Turn off') : lang('Turn on')) . '</button>
 					<button type="submit" name="api_action" value="oauth_client_delete"
-						class="btn btn-sm btn-outline-danger api-confirm"
+						class="btn btn-sm btn-outline theme-danger api-confirm"
 						data-confirm="' . h(lang('The application will be removed and every connection it has will be ended. If it registered itself, it can register again.')) . '">'
 						. h(lang('Remove')) . '</button>
 				</form>
@@ -1468,19 +1468,19 @@ if ($oauth_in_use || !empty($oauth_clients)) {
 
 	if ($client_blocks === '') {
 
-		$client_blocks = '<p class="small opacity-50 py-3 mb-0">' . h(lang('No application has connected yet.')) . '</p>';
+		$client_blocks = '<p class="small opacity-50 py-5 mb-0">' . h(lang('No application has connected yet.')) . '</p>';
 
 	}
 
 	$oauth_clients_card = '
-	<div class="card mt-3" id="oauth_clients">
+	<div class="card mt-5" id="oauth_clients">
 		<div class="card-header d-flex align-items-center">
-			<i class="bi bi-plug me-2"></i><b>' . lang('Connected applications') . '</b>
-			<span class="ms-auto small opacity-75 d-none d-lg-inline">'
+			<i class="bi bi-plug me-3"></i><b>' . lang('Connected applications') . '</b>
+			<span class="ms-auto small opacity-75 d-none lg:d-inline">'
 				. lang('Applications people connected with OAuth, and where each sends its answers.') . '</span>
 		</div>
-		<div class="card-body px-3 py-2">' . $client_blocks . '
-			<div class="alert alert-primary py-2 px-3 small mt-2 mb-1">
+		<div class="card-body px-5 py-3">' . $client_blocks . '
+			<div class="alert theme-primary py-3 px-5 small mt-3 mb-1">
 				<i class="bi bi-info-circle me-1"></i>'
 				. lang('Turning an application off stops it at once and keeps its connections for when it is turned on again. Removing it ends its connections. An application that registered itself can register again, and each person is then asked again on the consent screen.') . '
 			</div>
@@ -1615,27 +1615,27 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 		' . $liveform_messages . '
 	</div></div>
 
-	<div class="d-flex align-items-center gap-2 mb-3">
+	<div class="d-flex align-items-center gap-3 mb-5">
 		<div class="input-group input-group-sm" style="max-width:280px">
 			<span class="input-group-text"><i class="bi bi-search"></i></span>
 			<input type="text" class="form-control" id="api_filter" placeholder="' . lang('Search application') . '" autocomplete="off">
 		</div>
 		<div class="flex-grow-1"></div>
-		<a class="btn btn-sm btn-outline-secondary" href="api_docs.php">
+		<a class="btn btn-sm btn-outline theme-secondary" href="api_docs.php">
 			<i class="bi bi-file-earmark-text me-1"></i>' . lang('API Documentation') . '</a>
-		<a class="btn btn-sm btn-outline-secondary" href="settings_api.php">
+		<a class="btn btn-sm btn-outline theme-secondary" href="settings_api.php">
 			<i class="bi bi-sliders me-1"></i>' . lang('API Settings') . '</a>
-		<button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#api_new">
+		<button type="button" class="btn btn-sm btn-solid theme-primary" data-bs-toggle="dialog" data-bs-target="#api_new">
 			<i class="bi bi-key me-1"></i>' . lang('New Application') . '</button>
 	</div>
 
 	<div class="card">
 		<div class="card-header d-flex align-items-center">
-			<i class="bi bi-key me-2"></i><b>' . lang('Applications') . '</b>
-			<span class="ms-auto small opacity-75 d-none d-lg-inline">'
+			<i class="bi bi-key me-3"></i><b>' . lang('Applications') . '</b>
+			<span class="ms-auto small opacity-75 d-none lg:d-inline">'
 				. lang('Every application has its own key and secret. The secret is shown only when it is made.') . '</span>
 		</div>
-		<div class="card-body px-2 py-3">
+		<div class="card-body px-3 py-5">
 			<div class="api-scroll">
 			<div class="api-head">
 				<span>' . lang('Application') . '</span><span>' . lang('Permissions') . '</span>
@@ -1651,7 +1651,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 
 	' . $webhook_card . '
 
-	<p class="small opacity-50 mt-3">
+	<p class="small opacity-50 mt-5">
 		<i class="bi bi-info-circle me-1"></i>'
 		. lang('The key is not shown in the list, only its prefix. The secret cannot be read back anywhere.') . '
 	</p>
@@ -1659,7 +1659,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 
 <!-- The drawer. One of them, filled from the row that was clicked: a drawer per
      application would put every application\'s settings into the page at once. -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="api_drawer" style="width:min(520px,100%)">
+<dialog class="drawer drawer-end" id="api_drawer" style="width:min(520px,100%)">
 	<form method="post" action="api_settings.php" autocomplete="off" class="disable_shortcut d-flex flex-column h-100">
 		' . get_token_field() . '
 		<input type="hidden" name="api_action" value="update" id="d_action">
@@ -1667,15 +1667,15 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 		<input type="hidden" name="device_id" value="" id="d_device_id">
 		<input type="hidden" name="app_id" id="d_app_id" value="">
 
-		<div class="offcanvas-header pb-1 d-block">
+		<div class="drawer-header pb-1 d-block">
 			<div class="d-flex align-items-start">
-				<h5 class="offcanvas-title mb-0" id="d_title"></h5>
-				<button type="button" class="btn-close ms-auto" data-bs-dismiss="offcanvas"></button>
+				<h5 class="drawer-title mb-0" id="d_title"></h5>
+				<button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer"></button>
 			</div>
 			<p class="small opacity-75 mb-0 mt-1" id="d_sub"></p>
 		</div>
 
-		<ul class="nav nav-tabs px-3" role="tablist">
+		<ul class="nav nav-tabs px-5" role="tablist">
 			<li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#d_general" type="button">' . lang('General') . '</button></li>
 			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_perms" type="button">' . lang('Permissions') . '</button></li>
 			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_security" type="button">' . lang('Security') . '</button></li>
@@ -1685,74 +1685,74 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_log" type="button">' . lang('Log') . '</button></li>
 		</ul>
 
-		<div class="offcanvas-body tab-content flex-grow-1 overflow-auto">
+		<div class="drawer-body tab-content flex-grow-1 overflow-auto">
 
 			<div class="tab-pane fade show active" id="d_general">
-				<div class="mb-3">
+				<div class="mb-5">
 					<label class="form-label small">' . lang('Name') . '</label>
 					<input type="text" class="form-control form-control-sm" name="name" id="d_name" maxlength="190">
 				</div>
-				<div class="mb-3">
+				<div class="mb-5">
 					<label class="form-label small">' . lang('Description') . '</label>
 					<input type="text" class="form-control form-control-sm" name="description" id="d_description" maxlength="500">
 				</div>
-				<div class="mb-3">
+				<div class="mb-5">
 					<label class="form-label small">' . lang('API Key') . '</label>
 					<div class="api-secret-box"><code id="d_key"></code>
-						<button type="button" class="btn btn-sm btn-outline-secondary api-copy" data-copy="#d_key">' . lang('Copy') . '</button></div>
+						<button type="button" class="btn btn-sm btn-outline theme-secondary api-copy" data-copy="#d_key">' . lang('Copy') . '</button></div>
 					<div class="form-text">' . lang('Public identifier. Safe to share with the integrator.') . '</div>
 				</div>
-				<div class="mb-3" id="d_secret_block">
+				<div class="mb-5" id="d_secret_block">
 					<label class="form-label small">' . lang('Secret') . '</label>
 					<div class="api-secret-box"><code id="d_hint" class="opacity-50"></code>
-						<button type="submit" class="btn btn-sm btn-outline-warning" name="api_action" value="rotate">
+						<button type="submit" class="btn btn-sm btn-outline theme-warning" name="api_action" value="rotate">
 							<i class="bi bi-arrow-clockwise me-1"></i>' . lang('Issue a new secret') . '</button></div>
 					<div class="form-text">'
 						. lang('Only the last four characters are kept for display. A new secret is shown once; the previous one keeps working for 24 hours.') . '</div>
 				</div>
-				<div class="mb-3 d-none" id="d_nosecret_block">
+				<div class="mb-5 d-none" id="d_nosecret_block">
 					<label class="form-label small">' . lang('Secret') . '</label>
 					<div class="form-text mt-0">' . h(lang('This application was made without a secret and is never given one, so it cannot sign in.')) . '</div>
 				</div>
-				<div class="mb-3" id="d_device_block">
+				<div class="mb-5" id="d_device_block">
 					<label class="form-label small">' . lang('Signing in') . '</label>
 					<div class="api-secret-box"><code id="d_login">POST ' . h($api_base_url) . '/auth/login</code>
-						<button type="button" class="btn btn-sm btn-outline-secondary api-copy" data-copy="#d_login">' . lang('Copy') . '</button></div>
+						<button type="button" class="btn btn-sm btn-outline theme-secondary api-copy" data-copy="#d_login">' . lang('Copy') . '</button></div>
 					<div class="form-text">'
 						. lang('Staff sign in on the app with their own user name and password. Each person gets at most what their own account may do, and never more than the permissions chosen here. The key is not a secret; the app sends it as client_key, and can leave it out while this is the only team devices application.') . '</div>
 				</div>
-				<div class="mb-3" id="d_oauth_block">
-					' . api_settings_oauth_guide('d_oauth', 'btn-outline-secondary') . '
+				<div class="mb-5" id="d_oauth_block">
+					' . api_settings_oauth_guide('d_oauth', 'btn-outline theme-secondary') . '
 				</div>
-				<div class="mb-3" id="d_auth_block">
+				<div class="mb-5" id="d_auth_block">
 					<label class="form-label small">' . lang('Authentication') . '</label>
 					<div class="api-secret-box"><code id="d_curl">curl -u APPLICATION_KEY:SECRET_KEY "'
 						. h($api_base_url) . '/meta"</code>
-						<button type="button" class="btn btn-sm btn-outline-secondary api-copy" data-copy="#d_curl">' . lang('Copy') . '</button></div>
+						<button type="button" class="btn btn-sm btn-outline theme-secondary api-copy" data-copy="#d_curl">' . lang('Copy') . '</button></div>
 					<div class="form-text">'
 						. lang('HTTP Basic: the user name is the key above, the password is the secret. This line is the whole handshake - hand it to the integrator with the key.') . '</div>
 				</div>
-				<div class="form-check form-switch">
-					<input class="form-check-input" type="checkbox" name="status" value="active" id="d_status">
-					<label class="form-check-label small" for="d_status">' . lang('Active') . '</label>
+				<div class="form-field">
+					<div class="switch"><input class="" type="checkbox" name="status" value="active" id="d_status"></div>
+					<label class="small" for="d_status">' . lang('Active') . '</label>
 				</div>
 			</div>
 
 			<div class="tab-pane fade" id="d_perms">
 				' . $permission_rows . '
-				<div class="alert alert-primary py-2 px-3 small mt-3 mb-2">
+				<div class="alert theme-primary py-3 px-5 small mt-5 mb-3">
 					<i class="bi bi-info-circle me-1"></i>
 					<b>' . lang('Write covers read.') . '</b> '
 					. lang('Choosing Write holds the read position open; the record keeps only what you chose.') . '
 				</div>
-				<div class="alert alert-secondary py-2 px-3 small mb-0">
+				<div class="alert theme-secondary py-3 px-5 small mb-0">
 					<i class="bi bi-shield-check me-1"></i>'
 					. lang('An application can never do more than the account that owns it. Narrowing the owner narrows the application immediately.') . '
 				</div>
 			</div>
 
 			<div class="tab-pane fade" id="d_security">
-				<div class="mb-3">
+				<div class="mb-5">
 					<label class="form-label small">' . lang('Allowed addresses') . '</label>
 					<input type="text" class="form-control tagin min-height-tagin" name="ip_allowlist" id="d_ip" data-pg-chips
 						data-placeholder="' . lang('Add an address') . '" value="">' . pg_fields_script() . '
@@ -1760,7 +1760,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 						. lang('Leave empty to let this application connect from anywhere. Once an address is added, requests from anywhere else are refused.')
 						. '<br>' . lang('Wildcards and CIDR ranges are supported. For example: 192.168.0.1, 192.168.1.*, 10.0.0.0/8, 2001:db8::/32') . '</div>
 				</div>
-				<div class="row g-3">
+				<div class="row g-5">
 					<div class="col-6">
 						<label class="form-label small">' . lang('Expires on') . '</label>
 						<input type="date" class="form-control form-control-sm" name="expires_at" id="d_expires">
@@ -1773,48 +1773,48 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 					</div>
 				</div>
 				<div class="api-danger-zone">
-					<button type="button" class="btn btn-sm btn-outline-danger" id="d_delete_ask">
+					<button type="button" class="btn btn-sm btn-outline theme-danger" id="d_delete_ask">
 						<i class="bi bi-trash me-1"></i>' . lang('Delete this application') . '</button>
 					<div id="d_delete_confirm" class="d-none">
-						<p class="small mb-2">' . lang('Any integration using this key stops working immediately. This cannot be undone.') . '</p>
-						<button type="submit" class="btn btn-sm btn-danger" name="api_action" value="delete">' . lang('Yes, delete') . '</button>
-						<button type="button" class="btn btn-sm btn-outline-secondary" id="d_delete_no">' . lang('Cancel') . '</button>
+						<p class="small mb-3">' . lang('Any integration using this key stops working immediately. This cannot be undone.') . '</p>
+						<button type="submit" class="btn btn-sm btn-solid theme-danger" name="api_action" value="delete">' . lang('Yes, delete') . '</button>
+						<button type="button" class="btn btn-sm btn-outline theme-secondary" id="d_delete_no">' . lang('Cancel') . '</button>
 					</div>
 				</div>
 			</div>
 
 			<div class="tab-pane fade" id="d_devices">
-				<div class="d-flex align-items-center mb-2">
+				<div class="d-flex align-items-center mb-3">
 					<span class="small opacity-75">' . lang('Who is signed in through this application') . '</span>
 				</div>
 				<div id="d_device_rows"></div>
-				<div class="alert alert-primary py-2 px-3 small mt-3 mb-0">
+				<div class="alert theme-primary py-3 px-5 small mt-5 mb-0">
 					<i class="bi bi-info-circle me-1"></i>'
 					. lang('Signing a device out ends it at once; the person has to sign in again. A new password, or signing out everywhere, signs out all of that person\'s devices too.') . '
 				</div>
 			</div>
 
 			<div class="tab-pane fade" id="d_hooks">
-				<div class="d-flex align-items-center mb-2">
+				<div class="d-flex align-items-center mb-3">
 					<span class="small opacity-75">' . lang('Addresses this application asked to be told at') . '</span>
 				</div>
 				<div id="d_hook_rows"></div>
-				<div class="alert alert-primary py-2 px-3 small mt-3 mb-0">
+				<div class="alert theme-primary py-3 px-5 small mt-5 mb-0">
 					<i class="bi bi-info-circle me-1"></i>'
 					. lang('The application registers these itself through the API, so it can move its own address without asking you. Here you can stop one, send what is waiting again, or remove it.') . '
 				</div>
 			</div>
 
 			<div class="tab-pane fade" id="d_log">
-				<div class="d-flex align-items-center mb-2">
+				<div class="d-flex align-items-center mb-3">
 					<span class="small opacity-75">' . lang('Most recent requests') . '</span>
-					<div class="form-check form-switch ms-auto">
-						<input class="form-check-input" type="checkbox" id="d_log_errors">
-						<label class="form-check-label small" for="d_log_errors">' . lang('Errors only') . '</label>
+					<div class="form-field ms-auto">
+						<div class="switch"><input class="" type="checkbox" id="d_log_errors"></div>
+						<label class="small" for="d_log_errors">' . lang('Errors only') . '</label>
 					</div>
 				</div>
 				<div id="d_log_rows"></div>
-				<div class="alert alert-primary py-2 px-3 small mt-3 mb-0">
+				<div class="alert theme-primary py-3 px-5 small mt-5 mb-0">
 					<i class="bi bi-info-circle me-1"></i>'
 					. lang('403 means a permission the application does not hold was tried; 409 means the same operation was sent twice and was not applied again.') . '
 				</div>
@@ -1822,90 +1822,86 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 
 		</div>
 
-		<div class="offcanvas-footer border-top p-3 d-flex gap-2">
+		<div class="drawer-footer border-top p-5 d-flex gap-3">
 			<span class="flex-grow-1"></span>
-			<button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="offcanvas">' . lang('Cancel') . '</button>
-			<button type="submit" class="btn btn-sm btn-success">' . lang('Save') . '</button>
+			<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-dismiss="drawer">' . lang('Cancel') . '</button>
+			<button type="submit" class="btn btn-sm btn-solid theme-success">' . lang('Save') . '</button>
 		</div>
 	</form>
-</div>
+</dialog>
 
 <!-- New application -->
-<div class="modal fade" id="api_new" tabindex="-1">
-	<div class="modal-dialog modal-lg modal-dialog-scrollable">
-		<form method="post" action="api_settings.php" autocomplete="off" class="modal-content disable_shortcut">
+<dialog class="dialog dialog-lg dialog-scrollable" id="api_new">
+		<form method="post" action="api_settings.php" autocomplete="off" class="d-contents disable_shortcut">
 			' . get_token_field() . '
 			<input type="hidden" name="api_action" value="create">
-			<div class="modal-header">
-				<h5 class="modal-title"><i class="bi bi-key me-2"></i>' . lang('New Application') . '</h5>
-				<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+			<div class="dialog-header">
+				<h5 class="dialog-title"><i class="bi bi-key me-3"></i>' . lang('New Application') . '</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="dialog"></button>
 			</div>
-			<div class="modal-body">
-				<div class="mb-3">
-					<label class="form-label small">' . lang('Name') . ' <span class="text-danger">*</span></label>
+			<div class="dialog-body">
+				<div class="mb-5">
+					<label class="form-label small">' . lang('Name') . ' <span class="fg-danger">*</span></label>
 					<input type="text" class="form-control form-control-sm" name="name" maxlength="190" required
 						placeholder="' . lang('For example: marketplace sync') . '">
 				</div>
-				<div class="mb-3">
+				<div class="mb-5">
 					<label class="form-label small">' . lang('Description') . '</label>
 					<input type="text" class="form-control form-control-sm" name="description" maxlength="500">
 				</div>
-				<div class="mb-4">
+				<div class="mb-7">
 					<label class="form-label small">' . lang('Who connects') . '</label>
-					<div class="form-check">
-						<input class="form-check-input" type="radio" name="kind" value="server" id="n_kind_server" checked>
-						<label class="form-check-label small" for="n_kind_server"><b>' . lang('An integration') . '</b><br>
+					<div class="form-field">
+						<input class="radio" type="radio" name="kind" value="server" id="n_kind_server" checked>
+						<label class="small" for="n_kind_server"><b>' . lang('An integration') . '</b><br>
 							<span class="opacity-75">' . lang('An outside system calls with a key and a secret, with the rights of the account that creates it.') . '</span></label>
 					</div>
-					<div class="form-check mt-2">
-						<input class="form-check-input" type="radio" name="kind" value="device" id="n_kind_device">
-						<label class="form-check-label small" for="n_kind_device"><b>' . lang('Team devices') . '</b><br>
+					<div class="form-field mt-3">
+						<input class="radio" type="radio" name="kind" value="device" id="n_kind_device">
+						<label class="small" for="n_kind_device"><b>' . lang('Team devices') . '</b><br>
 							<span class="opacity-75">' . lang('Staff sign in on a mobile app with their own panel account. There is no secret; the permissions below are the most any device may reach.') . '</span></label>
 					</div>
-					<div class="form-check mt-2">
-						<input class="form-check-input" type="radio" name="kind" value="oauth" id="n_kind_oauth">
-						<label class="form-check-label small" for="n_kind_oauth"><b>' . lang('Connected apps (OAuth)') . '</b><br>
+					<div class="form-field mt-3">
+						<input class="radio" type="radio" name="kind" value="oauth" id="n_kind_oauth">
+						<label class="small" for="n_kind_oauth"><b>' . lang('Connected apps (OAuth)') . '</b><br>
 							<span class="opacity-75">' . lang('A person connects an outside application, such as an MCP client, after signing in on the site and agreeing to what it may do. There is no secret; the permissions below are the most any connection may reach.') . '</span></label>
 					</div>
 				</div>
 				<label class="form-label small">' . lang('Permissions') . '</label>
 				' . api_settings_permission_rows('scope', 'n_scope') . '
 			</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
-				<button type="submit" class="btn btn-sm btn-primary" id="n_submit"
+			<div class="dialog-footer">
+				<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+				<button type="submit" class="btn btn-sm btn-solid theme-primary" id="n_submit"
 					data-server="' . h(lang('Create and show the secret')) . '" data-device="' . h(lang('Create')) . '">' . lang('Create and show the secret') . '</button>
 			</div>
 		</form>
-	</div>
-</div>';
+</dialog>';
 
 /* An OAuth application has nothing to reveal either. What the operator needs is
    the address an outside application is pointed at. */
 if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_credentials['kind'] === 'oauth')) {
 
 	echo '
-<div class="modal fade show" id="api_secret_sheet" tabindex="-1" style="display:block; background:rgba(0,0,0,.6)">
-	<div class="modal-dialog modal-lg modal-dialog-centered">
-		<div class="modal-content">
-			<div class="modal-header border-0 pb-0">
-				<h5 class="modal-title"><i class="bi bi-plug me-2 text-primary"></i>' . lang('Connecting applications with OAuth is switched on') . '</h5>
+<div class="pg-open-sheet" id="api_secret_sheet" style="background:rgba(0,0,0,.6)">
+	<dialog class="dialog dialog-lg pg-dialog-centered" open>
+			<div class="dialog-header border-0 pb-0">
+				<h5 class="dialog-title"><i class="bi bi-plug me-3 fg-primary"></i>' . lang('Connecting applications with OAuth is switched on') . '</h5>
 			</div>
-			<div class="modal-body">
-				<p class="mb-3">' . lang('Outside applications can now ask a person to connect. The person signs in on this site, sees what the application asks for and agrees or refuses; the application never sees the password. Nothing here has to be kept secret.') . '</p>
+			<div class="dialog-body">
+				<p class="mb-5">' . lang('Outside applications can now ask a person to connect. The person signs in on this site, sees what the application asks for and agrees or refuses; the application never sees the password. Nothing here has to be kept secret.') . '</p>
 
-				' . api_settings_oauth_guide('nc', 'btn-outline-primary') . '
+				' . api_settings_oauth_guide('nc', 'btn-outline theme-primary') . '
 
-				<div class="alert alert-primary py-2 px-3 small mb-0">
+				<div class="alert theme-primary py-3 px-5 small mb-0">
 					<i class="bi bi-info-circle me-1"></i>'
 					. lang('Applications register themselves the first time they connect. Each connection appears on this application\'s Connections tab, where it can be ended; a new password, or signing out everywhere, ends a person\'s connections too.') . '
 				</div>
 			</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-sm btn-success" id="nc_close">' . lang('Close') . '</button>
+			<div class="dialog-footer">
+				<button type="button" class="btn btn-sm btn-solid theme-success" id="nc_close">' . lang('Close') . '</button>
 			</div>
-		</div>
-	</div>
+	</dialog>
 </div>';
 
 	$new_credentials = null;
@@ -1918,37 +1914,35 @@ if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_cred
 if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_credentials['kind'] === 'device')) {
 
 	echo '
-<div class="modal fade show" id="api_secret_sheet" tabindex="-1" style="display:block; background:rgba(0,0,0,.6)">
-	<div class="modal-dialog modal-lg modal-dialog-centered">
-		<div class="modal-content">
-			<div class="modal-header border-0 pb-0">
-				<h5 class="modal-title"><i class="bi bi-phone me-2 text-primary"></i>' . lang('Signing in from devices is switched on') . '</h5>
+<div class="pg-open-sheet" id="api_secret_sheet" style="background:rgba(0,0,0,.6)">
+	<dialog class="dialog dialog-lg pg-dialog-centered" open>
+			<div class="dialog-header border-0 pb-0">
+				<h5 class="dialog-title"><i class="bi bi-phone me-3 fg-primary"></i>' . lang('Signing in from devices is switched on') . '</h5>
 			</div>
-			<div class="modal-body">
-				<p class="mb-3">' . lang('Staff can now sign in on the app with their own user name and password. Nothing here has to be kept secret.') . '</p>
+			<div class="dialog-body">
+				<p class="mb-5">' . lang('Staff can now sign in on the app with their own user name and password. Nothing here has to be kept secret.') . '</p>
 
 				<label class="form-label small text-uppercase opacity-75">' . lang('Sign-in address') . '</label>
-				<div class="api-secret-box mb-3">
+				<div class="api-secret-box mb-5">
 					<code id="nc_login">POST ' . h($api_base_url) . '/auth/login</code>
-					<button type="button" class="btn btn-sm btn-outline-primary api-copy" data-copy="#nc_login">' . lang('Copy') . '</button>
+					<button type="button" class="btn btn-sm btn-outline theme-primary api-copy" data-copy="#nc_login">' . lang('Copy') . '</button>
 				</div>
 
 				<label class="form-label small text-uppercase opacity-75">client_key</label>
-				<div class="api-secret-box mb-3">
+				<div class="api-secret-box mb-5">
 					<code id="nc_key">' . h($new_credentials['key']) . '</code>
-					<button type="button" class="btn btn-sm btn-outline-primary api-copy" data-copy="#nc_key">' . lang('Copy') . '</button>
+					<button type="button" class="btn btn-sm btn-outline theme-primary api-copy" data-copy="#nc_key">' . lang('Copy') . '</button>
 				</div>
 
-				<div class="alert alert-primary py-2 px-3 small mb-0">
+				<div class="alert theme-primary py-3 px-5 small mb-0">
 					<i class="bi bi-info-circle me-1"></i>'
 					. lang('The app can leave client_key out while this is the only team devices application. Signed-in devices appear on its Devices tab, where each can be signed out.') . '
 				</div>
 			</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-sm btn-success" id="nc_close">' . lang('Close') . '</button>
+			<div class="dialog-footer">
+				<button type="button" class="btn btn-sm btn-solid theme-success" id="nc_close">' . lang('Close') . '</button>
 			</div>
-		</div>
-	</div>
+	</dialog>
 </div>';
 
 	$new_credentials = null;
@@ -1960,47 +1954,45 @@ if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_cred
 if ($new_credentials !== null) {
 
 	echo '
-<div class="modal fade show" id="api_secret_sheet" tabindex="-1" style="display:block; background:rgba(0,0,0,.6)">
-	<div class="modal-dialog modal-lg modal-dialog-centered">
-		<div class="modal-content">
-			<div class="modal-header border-0 pb-0">
-				<h5 class="modal-title"><i class="bi bi-key me-2 text-warning"></i>'
+<div class="pg-open-sheet" id="api_secret_sheet" style="background:rgba(0,0,0,.6)">
+	<dialog class="dialog dialog-lg pg-dialog-centered" open>
+			<div class="dialog-header border-0 pb-0">
+				<h5 class="dialog-title"><i class="bi bi-key me-3 fg-warning"></i>'
 					. ((isset($new_credentials['rotated']) && $new_credentials['rotated'])
 						? lang('A new secret was issued')
 						: lang('The application was created')) . '</h5>
 			</div>
-			<div class="modal-body">
-				<p class="mb-3"><b>' . lang('Once this window is closed the secret is never shown again.') . '</b><br>
+			<div class="dialog-body">
+				<p class="mb-5"><b>' . lang('Once this window is closed the secret is never shown again.') . '</b><br>
 					<span class="small opacity-75">'
 					. lang('Only a verification hash is stored. If it is lost, issue a new one.') . '</span></p>
 
 				<label class="form-label small text-uppercase opacity-75">' . lang('Key') . '</label>
-				<div class="api-secret-box mb-3">
+				<div class="api-secret-box mb-5">
 					<code id="nc_key">' . h($new_credentials['key']) . '</code>
-					<button type="button" class="btn btn-sm btn-outline-primary api-copy" data-copy="#nc_key">' . lang('Copy') . '</button>
+					<button type="button" class="btn btn-sm btn-outline theme-primary api-copy" data-copy="#nc_key">' . lang('Copy') . '</button>
 				</div>
 
 				<label class="form-label small text-uppercase opacity-75">' . lang('Secret') . '</label>
-				<div class="api-secret-box mb-3">
+				<div class="api-secret-box mb-5">
 					<code id="nc_secret">' . h($new_credentials['secret']) . '</code>
-					<button type="button" class="btn btn-sm btn-outline-primary api-copy" data-copy="#nc_secret">' . lang('Copy') . '</button>
+					<button type="button" class="btn btn-sm btn-outline theme-primary api-copy" data-copy="#nc_secret">' . lang('Copy') . '</button>
 				</div>
 
-				<div class="alert alert-warning py-2 px-3 small mb-0">
+				<div class="alert theme-warning py-3 px-5 small mb-0">
 					<i class="bi bi-lock me-1"></i>'
 					. lang('Keep the secret like a password. Do not put it in a URL, an email or a shared file - server logs record those too.') . '
 					<br>' . lang('Connecting:') . ' <code>Authorization: Basic base64(' . lang('key') . ':' . lang('secret') . ')</code>
 				</div>
 			</div>
-			<div class="modal-footer">
-				<div class="form-check me-auto">
-					<input class="form-check-input" type="checkbox" id="nc_ack">
-					<label class="form-check-label small" for="nc_ack">' . lang('I have copied it and stored it somewhere safe') . '</label>
+			<div class="dialog-footer">
+				<div class="form-field me-auto">
+					<input class="check" type="checkbox" id="nc_ack">
+					<label class="small" for="nc_ack">' . lang('I have copied it and stored it somewhere safe') . '</label>
 				</div>
-				<button type="button" class="btn btn-sm btn-success disabled" id="nc_close">' . lang('Close') . '</button>
+				<button type="button" class="btn btn-sm btn-solid theme-success disabled" id="nc_close">' . lang('Close') . '</button>
 			</div>
-		</div>
-	</div>
+	</dialog>
 </div>';
 
 }
@@ -2039,7 +2031,7 @@ echo '
 		var box = document.getElementById("d_log_rows");
 		var shown = rows.filter(function (r) { return !errorsOnly || r.status >= 400; });
 		if (!shown.length) {
-			box.innerHTML = "<p class=\'small opacity-50 py-3 mb-0\'>" +
+			box.innerHTML = "<p class=\'small opacity-50 py-5 mb-0\'>" +
 				' . json_encode(lang('No request recorded yet.'), JSON_UNESCAPED_UNICODE) . ' + "</p>";
 			return;
 		}
@@ -2064,7 +2056,7 @@ echo '
 	function renderHooks(hooks) {
 		var box = document.getElementById("d_hook_rows");
 		if (!hooks.length) {
-			box.innerHTML = "<p class=\'small opacity-50 py-3 mb-0\'>" +
+			box.innerHTML = "<p class=\'small opacity-50 py-5 mb-0\'>" +
 				' . json_encode(lang('This application is not subscribed to any event.'), JSON_UNESCAPED_UNICODE) . ' + "</p>";
 			return;
 		}
@@ -2093,14 +2085,14 @@ echo '
 				(h.error ? "<div class=\'api-hook-error\'><i class=\'bi bi-exclamation-triangle me-1\'></i>" + esc(h.error) + "</div>" : "") +
 				"<div class=\'api-hook-acts\'>" +
 					((h.given_up || h.held || h.status === "failing")
-						? "<button type=\'button\' class=\'btn btn-sm btn-outline-primary api-hook-act\' data-act=\'webhook_retry\' data-id=\'" + h.id + "\'>" +
+						? "<button type=\'button\' class=\'btn btn-sm btn-outline theme-primary api-hook-act\' data-act=\'webhook_retry\' data-id=\'" + h.id + "\'>" +
 							' . json_encode(lang('Send again'), JSON_UNESCAPED_UNICODE) . ' + "</button>"
 						: "") +
-					"<button type=\'button\' class=\'btn btn-sm btn-outline-secondary api-hook-act\' data-act=\'webhook_status\' data-id=\'" + h.id + "\'>" +
+					"<button type=\'button\' class=\'btn btn-sm btn-outline theme-secondary api-hook-act\' data-act=\'webhook_status\' data-id=\'" + h.id + "\'>" +
 						(h.status === "disabled"
 							? ' . json_encode(lang('Resume'), JSON_UNESCAPED_UNICODE) . '
 							: ' . json_encode(lang('Stop'), JSON_UNESCAPED_UNICODE) . ') + "</button>" +
-					"<button type=\'button\' class=\'btn btn-sm btn-outline-danger api-hook-act\' data-act=\'webhook_delete\' data-id=\'" + h.id + "\'" +
+					"<button type=\'button\' class=\'btn btn-sm btn-outline theme-danger api-hook-act\' data-act=\'webhook_delete\' data-id=\'" + h.id + "\'" +
 						" data-confirm=\'" + ' . json_encode(lang('The subscription will be removed and the application will stop being told.'), JSON_UNESCAPED_UNICODE) . ' + "\'>" +
 						' . json_encode(lang('Remove'), JSON_UNESCAPED_UNICODE) . ' + "</button>" +
 				"</div>" +
@@ -2113,7 +2105,7 @@ echo '
 	function renderDevices(devices) {
 		var box = document.getElementById("d_device_rows");
 		if (!devices.length) {
-			box.innerHTML = "<p class=\'small opacity-50 py-3 mb-0\'>" +
+			box.innerHTML = "<p class=\'small opacity-50 py-5 mb-0\'>" +
 				' . json_encode(lang('Nobody has signed in through this application yet.'), JSON_UNESCAPED_UNICODE) . ' + "</p>";
 			return;
 		}
@@ -2127,7 +2119,7 @@ echo '
 				"</div>" +
 				"<div class=\'api-hook-meta\'>" + meta.join(" &middot; ") + "</div>" +
 				"<div class=\'api-hook-acts\'>" +
-					"<button type=\'button\' class=\'btn btn-sm btn-outline-danger api-device-act\' data-id=\'" + d.id + "\'" +
+					"<button type=\'button\' class=\'btn btn-sm btn-outline theme-danger api-device-act\' data-id=\'" + d.id + "\'" +
 						" data-confirm=\'" + esc(' . json_encode(lang('This device will be signed out and will have to sign in again.'), JSON_UNESCAPED_UNICODE) . ') + "\'>" +
 						' . json_encode(lang('Sign out'), JSON_UNESCAPED_UNICODE) . ' + "</button>" +
 				"</div>" +

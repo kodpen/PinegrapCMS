@@ -1,10 +1,12 @@
 ---
 name: mobile-api-shelved
-description: SHELVED team-app API work: what M1–M6 built, what M7 (native push) and M8 would add, earlier decisions, restart point; docs never say "mobile app"
+description: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what M1–M6 built, what M7 (native push) and M8 add, decisions, how its needs arrive
 ---
 
 ## What is the status?
-- The mobile app is shelved (owner decision 2026-10-14). The endpoints built for it stay: they are general team-device capabilities. Docs never say "mobile app"; the twelve app and Claude-channel questions are not asked again unless the owner restarts the work. Restart point: this file and docs/memory/plans/claude-code-channel.md
+- Restarted (owner, 2026-10-24; shelved from 2026-10-14): Kodpen develops Pinegrap Mobile, a closed-source app that is not part of this open-source repository, in the private repository `kodpen/PinegrapMobile`. Its plans, questions and store work live there.
+- The endpoints built for it stay general team-device capabilities: no app-specific endpoints, and route descriptions and user-facing texts name a team device, not the app.
+- What the app needs from this repository arrives as an issue (`[iş] <topic>`, or `[plan:mobile-api-shelved.md] M7 — <topic>` for native push) and is done as an ordinary task here. The file keeps its name because those issues refer to it. The Claude-channel plan (docs/memory/plans/claude-code-channel.md) stays shelved.
 
 ## Which decisions were made before? (2026-09-27)
 - Users are the team / panel users, not shop customers. Sign-in is a panel login + device token.
@@ -25,12 +27,12 @@ description: SHELVED team-app API work: what M1–M6 built, what M7 (native push
 - M7 native push (needs answers 1, 3, 4): `POST /push/devices` {provider fcm | apns, token, bundle_id}, delete; the push queue sends one signed request to a Kodpen push broker (`push.pinegrap.com`) with token, provider, badge, no text; the app fetches `GET /notifications?unread=true` itself. New table (`user_id`, `device_id`, `provider`, `token`, `bundle_id`, timestamps, last error), a free label of the open version.
 - M8 when a real client needs it: batch requests, tombstone list, `sort=`, CORS allow-list for a web shell.
 
-## Which questions were open? (recommendation)
-1. Which app: (a) one Kodpen store app for every site, (b) better PWA, (c) branded per customer → a.
-2. Sign-in: (a) OAuth in the browser (2FA and Google / Microsoft / Apple for free), (b) `/auth/login` → a first, b fallback.
-3. Native push: (a) Kodpen broker, (b) each site's own Firebase / APNs keys, (c) web push only → a.
-4. Broker open to: (a) licensed sites, (b) everyone → a.
+## How were the open questions answered? (owner, 2026-10-24)
+1. Which app: one Kodpen store app for every site (not a PWA, not branded per customer).
+2. Sign-in: a Team devices session (`/auth/login`) and QR pairing (#1640), no OAuth in the browser.
+3. Native push: a Kodpen broker; the push shape (M7) is handed to this repository as an issue.
+4. Broker access for free and licensed sites: still open in the app repository.
 - Questions 5–12 concern Claude in channels: docs/memory/plans/claude-code-channel.md
 
-## What must a restart check?
-- Apple's current rule on offering an extra sign-in option when external sign-in is used; prefer verified `https` links (Universal / App Links) over a custom scheme; tokens in Keychain / Keystore.
+## What must the team-device work still check?
+- Prefer verified `https` links (Universal / App Links) over a custom scheme; tokens in Keychain / Keystore.

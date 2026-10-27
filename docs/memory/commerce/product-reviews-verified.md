@@ -1,6 +1,7 @@
 ---
 name: product-reviews-verified
 description: Product reviews only from buyers (2026.11.0, 11.0.14, PR #698): which comments are reviews, the purchase check, the product rating and its refresh, aggregateRating
+module: reviews
 ---
 
 ## Which comments are product reviews?

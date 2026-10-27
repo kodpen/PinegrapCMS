@@ -10,7 +10,12 @@ A code that is no gift card in this system goes to Givex when
 the order is charged, then a redemption in `submit_order()`.
 `send_givex_request()` (`includes/fn/ecommerce.php`) posts XML-RPC to
 `https://<primary host>:50042`, the secondary host after a cURL error, through
-`pg_curl_tls()` (so `CURL_CA_BUNDLE` applies).
+`pg_curl_run()` (15 s, connect 10 s, fresh connection; `PROXY_ADDRESS`,
+`CURL_CA_BUNDLE` and `ALLOW_INSECURE_UPDATE_TLS` apply). A cURL error on both
+hosts is answered as `curl_errno` / `curl_error`; any HTTP answer is read by
+`pg_givex_parse_response()`. Since #2124 it sends the Pinegrap User-Agent and
+refuses http; before, two hand-written cURL blocks had no connect timeout of
+their own.
 
 ## How is a reply read?
 `pg_givex_parse_response($type, $body)` returns either `error_message` or the

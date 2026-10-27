@@ -15,6 +15,7 @@ description: Finished steps of the Bootstrap 6 panel plan with their PRs and top
 - B6 Wrappers `pgChips`/`pgCombobox`/`pgDatePicker`/`pgDateTimeField` (v5 engine) and `data-pg-*` hooks on every panel call site (`ui/pg-field-wrappers.md`). Slices #1733, #1741, #1750, #1764, #1775, #1787, #1794, #1820 (form preview pickers, visual editor keyword box).
 - B7 Visual editor stage 0: `/* @pg-site-output */` on the site-output members of style_designer.js with a CI test (`ui/bootstrap-6-editor-markers.md`), editor calls through `pgUI`, editor CSS on `--pg-*` tokens. Slices #1822, #1841.
 - B5 Server: `validate_time()` and `prepare_form_data_for_input()` accept 24-hour time, with tests; a JS port of `validate_password_strength()` tested against the PHP cases through node. Done (#1698): `ui/form-time-24-hour.md`, `ui/password-strength-js.md`.
+- B8 Switch: rehearsed seven times on `feature/bootstrap-6`, merged as #1866 (tag `bs6-switch`): `bs6_migrate.php --all` and `--switch`, the bridge, CI's `check_bs6.php --strict` (`ui/bootstrap-6.md`, `ui/bootstrap-6-codemod.md`, `ui/panel-screenshots.md`).
 
 ## When does a step move here?
 - When its last part is done: its line moves from `bootstrap-6-panel-steps.md` with its PR numbers. A step done in parts (B2b, B3) stays there until then. Keeps the steps file under 4 KB, which parallel step PRs all edit.

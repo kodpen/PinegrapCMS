@@ -736,3 +736,50 @@ function test_legal_documents_deleted_with_the_order()
 	pg_assert_true(($orders !== false) && ($documents !== false) && ($orders < $documents), 'the copies go with the order');
 	pg_assert_contains("pg_schema_has('order_documents')", $source, 'only where the table is there');
 }
+
+// Each stored and accepted document becomes one granted contract consent,
+// tied to the order's buyer and stamped with the document's own ip, user
+// agent and acceptance time. An unaccepted or unstored type gives none.
+function test_legal_documents_consent_events()
+{
+	$order = array('billing_email_address' => ' Buyer@Example.com ', 'user_id' => '12', 'contact_id' => '34');
+	$events = pg_legal_documents_consent_events($order, array('preinfo', 'contract'), array('contract', 'kvkk'), '203.0.113.9', 'Agent/1.0', 1700000000);
+
+	pg_assert_same(array(array(
+		'channel'    => 'contract',
+		'purpose'    => 'contract',
+		'status'     => 'granted',
+		'source'     => 'checkout',
+		'email'      => ' Buyer@Example.com ',
+		'user_id'    => 12,
+		'contact_id' => 34,
+		'ip'         => '203.0.113.9',
+		'user_agent' => 'Agent/1.0',
+		'created_at' => 1700000000,
+	)), $events, 'only the stored and accepted type; kvkk was not stored');
+
+	pg_assert_same(array(), pg_legal_documents_consent_events($order, array('preinfo', 'contract'), array(), '', '', 1), 'nothing accepted');
+
+	$both = pg_legal_documents_consent_events(array(), array('preinfo', 'contract'), array('preinfo', 'contract'), '', '', 1);
+	pg_assert_same(array('preinfo', 'contract'), array_column($both, 'purpose'), 'in the stored order');
+	pg_assert_same(array(0, 0, ''), array($both[0]['user_id'], $both[0]['contact_id'], $both[0]['email']), 'a missing order field is empty');
+
+	// The rows pass the consent log's own checks.
+	$event = $events[0];
+	$row = pg_consent_log_row($event, 1);
+	pg_assert_true(is_array($row), 'a valid consent row');
+	pg_assert_same(pg_privacy_person_token('buyer@example.com', null), pg_privacy_person_token($event['email'], null), 'the token is made from the normalised address');
+}
+
+// The store writes the consent rows after its documents, only for what it
+// wrote: the repeat call returns before them.
+function test_legal_documents_store_records_contract_consents()
+{
+	$section = legal_documents_test_function_source((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php'), 'pg_legal_documents_store');
+	$repeat = strpos($section, 'return 0;', strpos($section, 'SELECT COUNT(*) FROM order_documents'));
+	$stored = strpos($section, 'INSERT INTO order_documents');
+	$consent = strpos($section, 'pg_consent_log_record(');
+
+	pg_assert_true(($repeat !== false) && ($stored !== false) && ($consent !== false) && ($repeat < $stored) && ($stored < $consent), 'consents after the documents, never on the repeat call');
+	pg_assert_contains('pg_legal_documents_consent_events(', $section, 'rows built by the tested helper');
+}

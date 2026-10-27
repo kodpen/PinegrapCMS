@@ -1794,7 +1794,8 @@ function erp_edoc_parasut_find_written($payload, $contact_id, $context, $skip_id
  * An order the order screen's Create Invoice already invoiced at Paraşüt
  * is refused first, before the invoice's own checks and any write there
  * (erp_edoc_parasut_legacy_invoice_check()); the id of such a record
- * deleted at Paraşüt since is cleared, and the refusal or 'message' says so.
+ * deleted at Paraşüt since is cleared once the invoice's own refusals have
+ * passed, and from then on the refusal or 'message' says so.
  *
  * @param array $options  'party' (erp_edoc_invoice_party() output) when the caller has it
  * @return array ['success' => bool, 'external_id' => string, 'gib_uuid' => string,
@@ -1857,9 +1858,10 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
     // card of an invoice that cannot go anyway, and before the buyer's card
     // is looked for or opened, so a refused send writes nothing at Paraşüt.
     // A record deleted there since is no invoice of the sale: its id is
-    // cleared, only while the order still holds it, and every outcome of
-    // the send says so.
+    // cleared once the invoice's own refusals have passed (a refused send
+    // keeps it, and the next send reads it again).
     $legacy_notice = '';
+    $legacy_gone = '';
 
     if ((int) ($invoice['order_id'] ?? 0) > 0) {
         $legacy = erp_edoc_parasut_legacy_invoice_check((string) ($invoice['order_parasut_invoice_id'] ?? ''), function ($path) use ($context) {
@@ -1871,11 +1873,7 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
         }
 
         if ($legacy['state'] === 'gone') {
-            _parasut_order_forget_record((int) $invoice['order_id'], 'parasut_invoice_id', $legacy['id']);
-            $legacy_notice = $legacy['notice'];
-            $fail = function ($error) use ($fail, $legacy_notice) {
-                return $fail($legacy_notice . ' ' . $error);
-            };
+            $legacy_gone = (string) $legacy['id'];
         }
     }
 
@@ -1949,6 +1947,17 @@ function erp_edoc_parasut_send_invoice($invoice, $lines, $options = array())
 
     if (isset($payload['error'])) {
         return $fail($payload['error']);
+    }
+
+    // Every local refusal has passed and the invoice is about to be written:
+    // the order's deleted legacy record is cleared, only while the order
+    // still holds it, and every outcome from here says so.
+    if ($legacy_gone !== '') {
+        _parasut_order_forget_record((int) $invoice['order_id'], 'parasut_invoice_id', $legacy_gone);
+        $legacy_notice = $legacy['notice'];
+        $fail = function ($error) use ($fail, $legacy_notice) {
+            return $fail($legacy_notice . ' ' . $error);
+        };
     }
 
     $mark = function ($value) use ($invoice) {
@@ -2698,16 +2707,34 @@ function erp_edoc_parasut_invoice_gone($result, $external_id)
  * company switch a 'created' or 'error' row may still stand for an
  * e-document in the earlier company: one issued on Paraşüt's own screen, or
  * one a hand-over made whose answer was lost (a failed hand-over leaves the
- * row 'created'). Such a row is freed too, and sending it again would issue
- * the sale at GİB a second time.
+ * row 'created'). Sending it again would issue the sale at GİB a second
+ * time. So the row is freed only when the connected company holds another
+ * record the row names ($witnesses, erp_edoc_parasut_gone_witnesses()):
+ * the first that answers as itself frees it. When every one answers 404,
+ * another company is taken to be connected; when the row names none, the
+ * two cannot be told apart. Either way the row stays as it was ('forget'
+ * empty, no 'gone') with a warning naming the way out: connect the earlier
+ * company and ask again, or cancel the invoice and raise it again. Any
+ * other answer (no token, a timeout, a 5xx, another record) writes
+ * nothing, and the question is asked again later.
  *
- * @param array $invoice     An erp_invoices row
- * @param bool  $job_failed  This question read the conversion job, and it had failed
- * @return array|null  ['answer' => the poll answer with 'gone' => true,
- *                      'forget' => parasut_* column => value]; null when the
- *                      row is not freed
+ * A conversion job this question read as failed is a record of the
+ * connected company itself (the job path is per company), so such a row
+ * is freed without another read.
+ *
+ * A card the ERP linked again, or a product synced again, after the switch
+ * lives in the new company and frees the row all the same.
+ *
+ * @param array    $invoice     An erp_invoices row
+ * @param bool     $job_failed  This question read the conversion job, and it had failed
+ * @param string[] $witnesses   Paths of the other records the row names
+ * @param callable $request     erp_edoc_parasut_request() or a stand-in with its
+ *                              arguments and answer (the tests)
+ * @return array|null  ['answer' => the poll answer ('gone' => true when freed),
+ *                      'forget' => parasut_* column => value, empty when held];
+ *                      null when the row is not one a 404 may free
  */
-function erp_edoc_parasut_gone_answer($invoice, $job_failed = false)
+function erp_edoc_parasut_gone_answer($invoice, $job_failed = false, $witnesses = array(), $request = 'erp_edoc_parasut_request')
 {
     $status = (string) ($invoice['edoc_status'] ?? '');
 
@@ -2716,6 +2743,48 @@ function erp_edoc_parasut_gone_answer($invoice, $job_failed = false)
     }
 
     $external_id = trim((string) ($invoice['edoc_external_id'] ?? ''));
+    $held = function ($answer) use ($status) {
+        return array(
+            'answer' => $answer + array('success' => true, 'status' => $status, 'gib_uuid' => '', 'gib_number' => '', 'kind' => '', 'message' => '', 'error' => '', 'party' => array()),
+            'forget' => array(),
+        );
+    };
+
+    if (!$job_failed) {
+        $context = array('doc_type' => 'invoice', 'doc_id' => (int) ($invoice['id'] ?? 0));
+        $witnessed = false;
+
+        foreach ((array) $witnesses as $path) {
+            $read = call_user_func($request, 'GET', (string) $path, null, $context);
+
+            if ((string) ($read['login_error'] ?? '') !== '') {
+                return $held(array('success' => false, 'error' => (string) $read['login_error']));
+            }
+
+            if (((string) ($read['error'] ?? '') === '') && ((int) ($read['http_code'] ?? 0) === 404)) {
+                continue;
+            }
+
+            $id = substr((string) $path, strrpos((string) $path, '/') + 1);
+
+            if (!erp_edoc_parasut_ok($read) || (trim((string) ($read['body']['data']['id'] ?? '')) !== $id)) {
+                return $held(array('success' => false, 'error' => lang(array(
+                    'string' => 'Paraşüt does not have this invoice\'s record (id {var:1}), and it would not show another record the invoice names, to tell a record deleted there from another company connected now: {var:2}',
+                    'vars' => array($external_id, erp_edoc_parasut_error_text($read)),
+                ))));
+            }
+
+            $witnessed = true;
+            break;
+        }
+
+        if (!$witnessed) {
+            return $held(array('message' => ($witnesses !== array())
+                ? lang(array('string' => 'The connected Paraşüt company has neither this invoice\'s record (id {var:1}) nor the other records the invoice names, so another company is probably connected now; the invoice is kept as it was. Connect the earlier company on the settings card and ask after the status again. If that company has no e-document for the invoice either, cancel the invoice here and raise it again.', 'vars' => array($external_id)))
+                : lang(array('string' => 'The connected Paraşüt company does not have this invoice\'s record (id {var:1}), and the invoice names no other Paraşüt record to tell a record deleted there from another company connected now; the invoice is kept as it was. If another company is connected, connect the earlier one on the settings card and ask after the status again. If the record was deleted at Paraşüt, cancel the invoice here and raise it again.', 'vars' => array($external_id)))));
+        }
+    }
+
     $marked = (erp_edoc_parasut_unsure_read($invoice['parasut_invoice_id'] ?? '') !== null);
     $forget = array('parasut_edoc_id' => '', 'parasut_job_id' => '', 'parasut_job_expires_at' => 0);
 
@@ -2738,6 +2807,65 @@ function erp_edoc_parasut_gone_answer($invoice, $job_failed = false)
             'party' => array(),
         ),
         'forget' => $forget,
+    );
+}
+
+/**
+ * The other Paraşüt records an invoice names, as paths to read, for the
+ * company guard of erp_edoc_parasut_gone_answer(): the contact of an
+ * unanswered send's unsure mark, the buyer account's linked card, then the
+ * lines' product cards. Real ids only, each once, three at most.
+ *
+ * @param array    $invoice        An erp_invoices row (parasut_invoice_id)
+ * @param string   $linked_card    The contact id the account is linked to, '' for none
+ * @param string[] $product_cards  The cards the lines' products keep
+ * @return string[]
+ */
+function erp_edoc_parasut_gone_witnesses($invoice, $linked_card, $product_cards)
+{
+    $unsure = erp_edoc_parasut_unsure_read($invoice['parasut_invoice_id'] ?? '');
+    $contacts = array(($unsure !== null) ? (string) $unsure['contact_id'] : '', (string) $linked_card);
+    $paths = array();
+
+    foreach ($contacts as $id) {
+        $id = trim($id);
+
+        if (preg_match('/^[1-9][0-9]*$/', $id)) {
+            $paths['/contacts/' . $id] = true;
+        }
+    }
+
+    foreach ((array) $product_cards as $id) {
+        $id = trim((string) $id);
+
+        if (preg_match('/^[1-9][0-9]*$/', $id)) {
+            $paths['/products/' . $id] = true;
+        }
+    }
+
+    return array_slice(array_keys($paths), 0, 3);
+}
+
+/**
+ * erp_edoc_parasut_gone_witnesses() of an invoice as the database holds it:
+ * the account's card linked at Paraşüt and its lines' product cards.
+ *
+ * @param array $invoice  An erp_invoices row
+ * @return string[]
+ */
+function erp_edoc_parasut_gone_witnesses_of($invoice)
+{
+    $card = function_exists('erp_edoc_account_card_of') ? erp_edoc_account_card_of('parasut', (int) ($invoice['account_id'] ?? 0)) : null;
+    $product_ids = array();
+
+    foreach ((array) db_items("SELECT product_id FROM erp_invoice_items WHERE invoice_id = '" . (int) $invoice['id'] . "'") as $line) {
+        $product_ids[] = (int) $line['product_id'];
+    }
+
+    return erp_edoc_parasut_gone_witnesses(
+        $invoice,
+        is_array($card) ? trim((string) $card['code']) : '',
+        function_exists('parasut_kept_product_cards') ? parasut_kept_product_cards($product_ids) : array()
     );
 }
 
@@ -2817,16 +2945,18 @@ function erp_edoc_parasut_poll($invoice, $job_id, $free_gone = true)
     // document is freed, so the invoice is sent again instead of being
     // refused at every press.
     if ($free_gone && erp_edoc_parasut_invoice_gone($detail, $external_id)) {
-        $gone = erp_edoc_parasut_gone_answer($invoice, $job_failed);
+        $gone = erp_edoc_parasut_gone_answer($invoice, $job_failed, erp_edoc_parasut_gone_witnesses_of($invoice));
 
         if ($gone !== null) {
-            $columns = array();
+            if ($gone['forget'] !== array()) {
+                $columns = array();
 
-            foreach ($gone['forget'] as $column => $value) {
-                $columns[] = $column . " = '" . escape((string) $value) . "'";
+                foreach ($gone['forget'] as $column => $value) {
+                    $columns[] = $column . " = '" . escape((string) $value) . "'";
+                }
+
+                erp_query("UPDATE erp_invoices SET " . implode(', ', $columns) . " WHERE id = '" . (int) $invoice['id'] . "'");
             }
-
-            erp_query("UPDATE erp_invoices SET " . implode(', ', $columns) . " WHERE id = '" . (int) $invoice['id'] . "'");
 
             return $gone['answer'];
         }

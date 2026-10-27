@@ -1107,12 +1107,12 @@ if (!$_POST) {
                     ' . $output_javascript . '
                 }); 
             </script>
-            <style>
+            <style>@layer custom {
             #button_bar{height:50px;}
             #button_bar * {
                 width: 30%;
             }
-            </style>
+            }</style>
         </head>
         <body class="design coloron">
             <div id="theme_designer_toolbar">

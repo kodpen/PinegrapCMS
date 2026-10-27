@@ -471,7 +471,7 @@ function pg_error_format_line(array $entry, $timestamp)
     // PHP 7.2+. Without it a message with broken UTF-8 would fail to encode
     // altogether; on 7.1 only that value is lost.
     if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
-        $flags |= JSON_INVALID_UTF8_SUBSTITUTE;
+        $flags |= JSON_INVALID_UTF8_SUBSTITUTE; // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined() above
     } else {
         $flags |= JSON_PARTIAL_OUTPUT_ON_ERROR;
     }

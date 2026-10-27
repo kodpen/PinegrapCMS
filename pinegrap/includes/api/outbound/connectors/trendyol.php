@@ -23,8 +23,9 @@
 // packages (pulled, or delivered by their webhook), accept one (Picking),
 // report one shipped with the seller's own carrier, send the link of a
 // package's invoice, read the buyers' returns and approve or reject the ones
-// that came back, read the buyers' questions and answer them, and register or remove
-// that webhook. What it does not
+// that came back, read the buyers' questions and answer them, register or remove
+// that webhook, and read the seller's catalogue a page at a time for matching
+// it to the shop's products. What it does not
 // name in the table below mp_can() answers no for, so nothing queues work this
 // connector cannot do.
 //
@@ -89,7 +90,8 @@ function mp_trendyol_connector() {
 		'answer_question'     => 'mp_trendyol_answer_question',
 		'webhook_packages'    => 'mp_trendyol_webhook_packages',
 		'register_webhook'    => 'mp_trendyol_register_webhook',
-		'remove_webhook'      => 'mp_trendyol_remove_webhook'
+		'remove_webhook'      => 'mp_trendyol_remove_webhook',
+		'remote_products'     => 'mp_trendyol_remote_products'
 	);
 
 }
@@ -3655,5 +3657,152 @@ function mp_trendyol_webhook_id($value) {
 	$value = is_scalar($value) ? trim((string)$value) : '';
 
 	return (preg_match('/^[A-Za-z0-9_-]{1,64}$/', $value) === 1) ? $value : '';
+
+}
+
+/* ------------------------------------------------------- their catalogue */
+
+// One page of the seller's approved products on Trendyol, for matching them to
+// the shop's (includes/api/outbound/remote_products.php).
+//
+// GET /integration/product/sellers/{id}/products/approved lists the seller's
+// contents a page at a time, pages counted from 0, each content with its
+// variants. One row is given per variant: a variant is what Trendyol sells,
+// stocks and prices, and its barcode is the key every stock and price push
+// names, so the barcode is the code a match is written with. A variant
+// without a barcode is left out.
+//
+// remote_id is the content id, the one the listing status read writes on a
+// mapping row; group_code is productMainId, shared by a content's variants.
+//
+// Answers data: products (remote_code, remote_id, group_code, barcode, title,
+// image_url, price in minor units as sold there, quantity, status), page,
+// pages, total, last.
+function mp_trendyol_remote_products($account, $page, $transport = null) {
+
+	$page = max(0, (int) $page);
+
+	$result = mp_trendyol_call($account,
+		'/integration/product/sellers/' . mp_trendyol_seller_id($account)
+			. '/products/approved?page=' . $page . '&size=' . mp_trendyol_remote_page_size(),
+		8388608, $transport);
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	$data = $result['data'];
+
+	$content = (isset($data['content']) && is_array($data['content'])) ? $data['content'] : array();
+
+	$products = array();
+
+	foreach ($content as $entry) {
+
+		if (!is_array($entry)) {
+
+			continue;
+
+		}
+
+		$variants = (isset($entry['variants']) && is_array($entry['variants'])) ? $entry['variants'] : array();
+
+		$content_image = mp_trendyol_remote_image($entry);
+
+		foreach ($variants as $variant) {
+
+			if (!is_array($variant)) {
+
+				continue;
+
+			}
+
+			$barcode = mp_trendyol_text($variant, array('barcode'));
+
+			if ($barcode === '') {
+
+				continue;
+
+			}
+
+			$image = mp_trendyol_remote_image($variant);
+
+			$price = (isset($variant['price']) && is_array($variant['price']))
+				? mp_trendyol_first($variant['price'], array('salePrice'))
+				: mp_trendyol_first($variant, array('salePrice'));
+
+			$quantity = (isset($variant['stock']) && is_array($variant['stock']))
+				? mp_trendyol_first($variant['stock'], array('quantity'))
+				: mp_trendyol_first($variant, array('quantity'));
+
+			$status = array();
+
+			foreach (array('onSale', 'locked', 'archived', 'blacklisted') as $flag) {
+
+				if (!empty($variant[$flag])) {
+
+					$status[] = $flag;
+
+				}
+
+			}
+
+			$products[] = array(
+				'remote_code' => $barcode,
+				'remote_id'   => mp_trendyol_text($entry, array('contentId')),
+				'group_code'  => mp_trendyol_text($entry, array('productMainId')),
+				'barcode'     => $barcode,
+				'title'       => mp_trendyol_text($entry, array('title')),
+				'image_url'   => ($image !== '') ? $image : $content_image,
+				'price'       => mp_trendyol_minor($price),
+				'quantity'    => is_numeric($quantity) ? (int) round((float) $quantity) : 0,
+				'status'      => implode('/', $status)
+			);
+
+		}
+
+	}
+
+	$pages = isset($data['totalPages']) ? (int) $data['totalPages'] : 0;
+
+	// An empty page or the page count, whichever says so first.
+	$last = !$content || (($pages > 0) && ($page + 1 >= $pages));
+
+	return mp_ok(array(
+		'products' => $products,
+		'page'     => $page,
+		'pages'    => $pages,
+		'total'    => isset($data['totalElements']) ? (int) $data['totalElements'] : count($products),
+		'last'     => $last
+	));
+
+}
+
+function mp_trendyol_remote_page_size() {
+
+	return 100;
+
+}
+
+// The first https picture in $row's images[] ({url} objects or plain
+// addresses), or ''. Shown on a panel served over https, so a plain http
+// address of theirs is not kept.
+function mp_trendyol_remote_image($row) {
+
+	foreach ((isset($row['images']) && is_array($row['images'])) ? $row['images'] : array() as $image) {
+
+		$url = is_array($image) ? (isset($image['url']) ? $image['url'] : '') : $image;
+
+		if (is_string($url) && preg_match('#^https://[^\s"<>]+$#i', $url)) {
+
+			return $url;
+
+		}
+
+	}
+
+	return '';
 
 }

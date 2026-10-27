@@ -100,7 +100,10 @@ function test_bs6_site_output_codemod_scope()
 	pg_assert_true(bs6_codemod_converts('view_orders.php'), 'panel file');
 	pg_assert_false(bs6_codemod_converts('assets/css/style_designer.css'), 'unmarked editor file');
 	pg_assert_false(bs6_codemod_converts('assets/js/pg_style_predict.js'), 'the designer vocabulary is data');
-	pg_assert_false(bs6_codemod_converts('includes/fn/output.php'), 'shared file');
+	pg_assert_true(bs6_codemod_converts('includes/fn/forms.php'), 'shared file with panel functions');
+	pg_assert_false(bs6_codemod_converts('liveform.class.php'), 'shared file with no panel function');
+	pg_assert_true(bs6_codemod_converts('includes/fn/output.php'), 'the panel head, menu and footer');
+	pg_assert_true(bs6_codemod_converts('includes/designer_screen.php'), 'the editor screen');
 	pg_assert_false(bs6_codemod_converts('get_page.php'), 'site file');
 }
 
@@ -153,4 +156,124 @@ function test_bs6_site_output_node_builders_marked()
 			"$name builds nodes: mark it /* @pg-site-output */ (docs/memory/ui/bootstrap-6-codemod.md)"
 		);
 	}
+}
+
+// A function of a panel file that a site renderer calls (directly or through
+// another such function) prints into site pages: when the codemod would
+// change a class in it, it must be listed in bs6_site_functions(), or a site
+// page would get Bootstrap 6 classes.
+function test_bs6_site_called_functions_are_listed()
+{
+	$root = PG_FUNCTIONS_DIR;
+	$called = array();
+	$bodies = array();
+
+	foreach (bs6_scope_files($root) as $path => $kind) {
+		if (!preg_match('/\.(php|js)$/', $path)) {
+			continue;
+		}
+
+		$source = (string) file_get_contents($root . '/' . $path);
+
+		if ($kind === 'site') {
+			preg_match_all('/\b([A-Za-z_][A-Za-z0-9_]*)\s*\(/', $source, $m);
+			$called += array_fill_keys($m[1], true);
+		} elseif ($kind === 'panel' && preg_match('#^includes/.*\.php$#', $path)) {
+			preg_match_all('/^function ([A-Za-z_][A-Za-z0-9_]*)\s*\(/m', $source, $m);
+			foreach ($m[1] as $name) {
+				$range = bs6_function_ranges($source, array($name));
+				if ($range) {
+					$bodies[$name] = array($path, substr($source, $range[0][0], $range[0][1] - $range[0][0]));
+				}
+			}
+		}
+	}
+
+	$used = array();
+	do {
+		$grew = false;
+		foreach ($bodies as $name => $body) {
+			if (!isset($used[$name]) && isset($called[$name])) {
+				$used[$name] = true;
+				preg_match_all('/\b([A-Za-z_][A-Za-z0-9_]*)\s*\(/', $body[1], $m);
+				$called += array_fill_keys($m[1], true);
+				$grew = true;
+			}
+		}
+	} while ($grew);
+
+	$listed = bs6_site_functions();
+	$missing = array();
+
+	// After the switch a class Bootstrap 6 defines is not a v5 one.
+	if (bs6_panel_head_is_v6($root)) {
+		bs6_converted_tree_classes(bs6_dist_classes((string) file_get_contents($root . '/assets/lib/bootstrap-6/css/bootstrap.css')));
+	}
+
+	foreach (array_keys($used) as $name) {
+		list($path, $body) = $bodies[$name];
+
+		if (strpos($path, 'includes/oauth/') === 0 || (isset($listed[$path]) && in_array($name, $listed[$path], true))) {
+			continue;
+		}
+
+		$result = bs6_convert_source($body, null, true);
+
+		if ($result['changed'] > 0) {
+			$missing[] = $path . ' ' . $name;
+		}
+	}
+
+	bs6_converted_tree_classes(false);
+	pg_assert_same(array(), $missing, 'site-called functions with Bootstrap classes');
+}
+
+function test_bs6_site_output_shared_file_outside_its_panel_functions()
+{
+	$source = "<?php\n\$top = '<p class=\"mb-2\">';\nfunction get_page_type_checkboxes_and_labels() {\n    return '<p class=\"mb-2\">';\n}\nfunction site_form() {\n    return '<p class=\"mb-2\">';\n}\n";
+	bs6_current_path('includes/fn/forms.php');
+	$ranges = bs6_site_output_ranges($source);
+	$r = bs6_convert_source($source);
+	bs6_current_path(false);
+
+	pg_assert_same(2, count($ranges));
+	pg_assert_contains("function get_page_type_checkboxes_and_labels() {\n    return '<p class=\"mb-3\">';", $r['source']);
+	pg_assert_contains("\$top = '<p class=\"mb-2\">';", $r['source']);
+	pg_assert_contains("function site_form() {\n    return '<p class=\"mb-2\">';", $r['source']);
+}
+
+function test_bs6_shared_panel_functions_exist()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+	foreach (bs6_shared_panel_functions() as $path => $names) {
+		pg_assert_same('shared', bs6_scope_kind($path), $path);
+		$source = (string) file_get_contents($root . $path);
+		pg_assert_same(count($names), count(bs6_function_ranges($source, $names)), $path);
+	}
+}
+
+function test_bs6_shared_panel_blocks_exist()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+	foreach (bs6_shared_panel_blocks() as $path => $blocks) {
+		pg_assert_same('shared', bs6_scope_kind($path), $path);
+		$source = (string) file_get_contents($root . $path);
+		foreach ($blocks as $function => $anchor) {
+			pg_assert_true(count(bs6_block_ranges($source, $function, $anchor)) > 0, "$path $function");
+		}
+	}
+}
+
+function test_bs6_site_output_shared_function_panel_block()
+{
+	$source = "<?php\nfunction get_calendar(\$user) {\n    if (\$user) {\n        \$a = '<a class=\"btn btn-outline-primary\">{';\n        if (\$x) { \$y = 1; }\n    } else {\n        \$a = '<a class=\"btn btn-outline-primary\">';\n    }\n    if (\$user) {\n        \$b = '<select class=\"form-select\">';\n    }\n}\nfunction other() {\n    if (\$user) {\n        return '<p class=\"mb-2\">';\n    }\n}\n";
+	bs6_current_path('includes/fn/calendar.php');
+	$r = bs6_convert_source($source);
+	bs6_current_path(false);
+
+	pg_assert_same(2, count(bs6_block_ranges($source, 'get_calendar', 'if ($user) {')));
+	pg_assert_contains("if (\$user) {\n        \$a = '<a class=\"btn btn-outline theme-primary\">{';", $r['source']);
+	pg_assert_contains("} else {\n        \$a = '<a class=\"btn btn-outline-primary\">';", $r['source']);
+	pg_assert_contains("\$b = '<select class=\"form-control\">';", $r['source']);
+	pg_assert_contains("return '<p class=\"mb-2\">';", $r['source']);
 }

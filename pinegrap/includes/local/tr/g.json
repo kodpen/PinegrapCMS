@@ -105,6 +105,8 @@
     "Gifts they will keep": "Saklayacakları hediyeler",
     "GitHub, the documentation, …": "GitHub, dokümantasyon, …",
     "Give a task": "Görev ver",
+    "Give a time of day, such as 09:00.": "Günün bir saatini yazın, örneğin 09:00.",
+    "Give a web address that starts with http:// or https://.": "http:// veya https:// ile başlayan bir web adresi yazın.",
     "Give access": "Yetki ver",
     "Give an address that starts with https://": "https:// ile başlayan bir adres yazın",
     "Give an outside system a key, choose what it may see, and watch what it asks for.": "Dışarıdaki bir sisteme anahtar verin, ne görebileceğini seçin, ne istediğini izleyin.",

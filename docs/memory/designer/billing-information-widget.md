@@ -1,6 +1,7 @@
 ---
 name: billing-information-widget
 description: The Billing Information widget (third classic checkout step): handler and page row, prefill from order and contact, parts the page turns off, helpers shared with step 1.
+module: widgets_billing_information
 ---
 
 ## What is it?

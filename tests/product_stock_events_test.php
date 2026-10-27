@@ -228,7 +228,7 @@ function product_stock_events_test_case($code, $label)
 // flags a product it empties and announces product.updated on a real change.
 function test_product_stock_explorer_quick_edit_announces_the_change()
 {
-	$code = product_stock_events_test_case(product_stock_events_test_source('view_folder_and_files_f.php'), 'explorer_catalog_quick_edit');
+	$code = product_stock_events_test_function('includes/explorer/handle_catalog_edit.php', 'pg_explorer_handle_catalog_quick_edit');
 
 	pg_assert_true($code !== '', 'quick edit handler found');
 	pg_assert_contains('pg_product_stock_changed(', $code);
@@ -239,7 +239,7 @@ function test_product_stock_explorer_quick_edit_announces_the_change()
 
 function test_product_stock_explorer_bulk_edit_announces_the_change()
 {
-	$code = product_stock_events_test_case(product_stock_events_test_source('view_folder_and_files_f.php'), 'explorer_products_bulk_edit');
+	$code = product_stock_events_test_function('includes/explorer/handle_products_bulk.php', 'pg_explorer_handle_products_bulk_edit');
 
 	pg_assert_true($code !== '', 'bulk edit handler found');
 	pg_assert_contains('pg_product_stock_delta(', $code);

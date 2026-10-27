@@ -1164,19 +1164,19 @@ function pg_order_list_status_html($order, $paid_known)
     $html = '';
 
     if ($status == 'incomplete') {
-        $html = '<span class="badge bg-warning text-dark bg-gradient fw-light">' . lang('Incomplete') . '</span>';
+        $html = '<span class="badge theme-warning fg-black bg-gradient fw-light">' . lang('Incomplete') . '</span>';
     } elseif ($status == 'complete') {
-        $html = '<span class="badge bg-primary bg-gradient fw-light">' . lang('Complete') . '</span>';
+        $html = '<span class="badge theme-primary bg-gradient fw-light">' . lang('Complete') . '</span>';
     } elseif ($status == 'exported') {
-        $html = '<span class="badge bg-success bg-gradient fw-light">' . lang('Exported') . '</span>';
+        $html = '<span class="badge theme-success bg-gradient fw-light">' . lang('Exported') . '</span>';
     } elseif (($status == 'canceled') || ($status == 'cancelled')) {
-        $html = '<span class="badge bg-danger bg-gradient fw-light">' . lang('Cancelled') . '</span>';
+        $html = '<span class="badge theme-danger bg-gradient fw-light">' . lang('Cancelled') . '</span>';
     }
 
     // A bank transfer order whose money has not arrived is complete but not
     // paid; a second badge says so without changing the status itself.
     if ($paid_known && pg_order_awaiting_payment($order)) {
-        $html .= '<span class="badge bg-warning text-dark bg-gradient fw-light ms-1">' . lang('Awaiting Payment') . '</span>';
+        $html .= '<span class="badge theme-warning fg-black bg-gradient fw-light ms-1">' . lang('Awaiting Payment') . '</span>';
     }
 
     // parasut_exported is set by two different things: the spreadsheet export
@@ -1197,7 +1197,7 @@ function pg_order_list_status_html($order, $paid_known)
     }
 
     if ($parasut_unsure) {
-        $html .= '<span title="' . h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.')) . '" class="badge bg-warning text-dark bg-gradient fw-light ms-1">' . h(lang('Check Paraşüt')) . '</span>';
+        $html .= '<span title="' . h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.')) . '" class="badge theme-warning fg-black bg-gradient fw-light ms-1">' . h(lang('Check Paraşüt')) . '</span>';
     }
 
     return $html;
@@ -6976,64 +6976,22 @@ function send_givex_request($type, $gift_card_code, $amount = 0)
             </params>
 
         </methodCall>';
-    // initialize cURL
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://' . ECOMMERCE_GIVEX_PRIMARY_HOSTNAME . ':50042');
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-        'Content-Type: text/xml'
-    ));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-    pg_curl_tls($ch);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $request);
-    curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    // if there is a proxy address, then send cURL request through proxy
-    if (PROXY_ADDRESS != '') {
-        curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
-        curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-        curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
-    }
-    // get cURL response
-    $response_data = curl_exec($ch);
-    $curl_errno = curl_errno($ch);
-    $curl_error = curl_error($ch);
-    unset($ch);
-    // if there was a cURL error, then send the same request to the secondary Givex server
-    if ($curl_errno != 0) {
-        // initialize cURL
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, 'https://' . ECOMMERCE_GIVEX_SECONDARY_HOSTNAME . ':50042');
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-            'Content-Type: text/xml'
+    // send the request to the primary Givex server, and to the secondary one when cURL fails on the primary
+    foreach (array(ECOMMERCE_GIVEX_PRIMARY_HOSTNAME, ECOMMERCE_GIVEX_SECONDARY_HOSTNAME) as $hostname) {
+        $response = pg_curl_run('POST', 'https://' . $hostname . ':50042', array(
+            'body' => $request,
+            'headers' => array('Content-Type: text/xml'),
+            'timeout' => 15,
+            'forbid_reuse' => true,
         ));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-        pg_curl_tls($ch);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $request);
-        curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        // if there is a proxy address, then send cURL request through proxy
-        if (PROXY_ADDRESS != '') {
-            curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
-            curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-            curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
-        }
-        // get cURL response
-        $response_data = curl_exec($ch);
-        $curl_errno = curl_errno($ch);
-        $curl_error = curl_error($ch);
-        unset($ch);
-        // if there was also a cURL error for the secondary Givex server, then return error
-        if ($curl_errno != 0) {
-            $result['curl_errno'] = $curl_errno;
-            $result['curl_error'] = $curl_error;
-            return $result;
+        if ($response['errno'] == 0) {
+            return pg_givex_parse_response($type, $response['body']);
         }
     }
-    return pg_givex_parse_response($type, $response_data);
+    // there was also a cURL error for the secondary Givex server, so return error
+    $result['curl_errno'] = $response['errno'];
+    $result['curl_error'] = $response['error'];
+    return $result;
 }
 // Reads a Givex reply: a list of strings, the transaction code, the result (0 for success),
 // then the balance of a balance check, or the authorization number and the new balance of a
@@ -9790,7 +9748,7 @@ function pg_key_code_list_cells($key_code, $today)
     $username = (string) ($key_code['last_modified_username'] ?? '');
 
     return array(
-        'code'          => array('class' => 'chart_label align-middle ' . (pg_key_code_active($key_code, $today) ? 'status_enabled text-success' : 'status_disabled text-danger')),
+        'code'          => array('class' => 'chart_label align-middle ' . (pg_key_code_active($key_code, $today) ? 'status_enabled fg-success' : 'status_disabled fg-danger')),
         'enabled'       => array('html' => !empty($key_code['enabled']) ? '<span class="material-icons">task_alt</span>' : '', 'class' => 'align-middle text-center'),
         'last_modified' => array(
             'html'  => get_relative_time(array('timestamp' => $key_code['last_modified_timestamp']))
@@ -12055,4 +12013,95 @@ function pg_products_import_row_value($row, $key)
     }
 
     return (string) $row[$key];
+}
+
+/**
+ * The product that already holds a product code (products.name, the
+ * "Product ID / SKU" of the product screen), other than $except_id; null
+ * while the code is free. Compared by the column's collation, as the external
+ * API compares it (api_products_name_or_fail()): a case difference is the
+ * same code. A product in the Recycle Bin still holds its code, since
+ * restoring it brings the code back.
+ *
+ * @param string $name
+ * @param int    $except_id the product being edited
+ * @return array|null id, name, short_description, recycled ('0' or '1')
+ */
+function pg_product_name_holder($name, $except_id = 0)
+{
+    $name = trim((string) $name);
+
+    if ($name === '') {
+        return null;
+    }
+
+    $holder = db_item(
+        "SELECT id, name, short_description, " . (pg_catalog_bin_ready() ? "recycled" : "'0' AS recycled") . "
+        FROM products
+        WHERE (name = '" . e($name) . "')" . (((int) $except_id > 0) ? " AND (id != '" . e((int) $except_id) . "')" : '') . "
+        LIMIT 1");
+
+    return $holder ? $holder : null;
+}
+
+/**
+ * The first code written twice among $names, compared case aside as the
+ * catalogue compares them; '' when every code is different. Empty rows are
+ * not codes.
+ *
+ * @param array $names
+ * @return string
+ */
+function pg_product_names_repeated($names)
+{
+    $seen = array();
+
+    foreach ($names as $name) {
+        $name = trim((string) $name);
+
+        if ($name === '') {
+            continue;
+        }
+
+        $key = mb_strtolower($name, 'UTF-8');
+
+        if (isset($seen[$key])) {
+            return $name;
+        }
+
+        $seen[$key] = true;
+    }
+
+    return '';
+}
+
+/**
+ * What the product screen says about a code another product holds: the code
+ * and the product, by its title, else by its number. With $html the values
+ * are escaped for a page.
+ *
+ * @param string $name   the code as typed
+ * @param array  $holder pg_product_name_holder()
+ * @param bool   $html
+ * @return string
+ */
+function pg_product_name_taken_text($name, $holder, $html = false)
+{
+    $label = trim((string) $holder['short_description']);
+
+    if ($label === '') {
+        $label = '#' . (int) $holder['id'];
+    }
+
+    $vars = array((string) $name, $label);
+
+    if ($html) {
+        $vars = array_map('h', $vars);
+    }
+
+    return lang(array(
+        'string' => !empty($holder['recycled'])
+            ? 'The product code {var:1} is already used by {var:2}, which is in the Recycle Bin. Restore it and change its code, or delete it for good.'
+            : 'The product code {var:1} is already used by {var:2}.',
+        'vars' => $vars));
 }

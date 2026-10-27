@@ -964,6 +964,8 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
  * not, so the order shows what was in front of the customer; accepted_at is
  * set only for the types the customer ticked. A second call for the same
  * order stores nothing (the copy is the one from the moment of the order).
+ * Each stored and accepted type also writes a granted contract row to the
+ * consent log (pg_legal_documents_consent_events()).
  *
  * @param int      $order_id
  * @param string[] $accepted_types  types the customer accepted
@@ -986,7 +988,7 @@ function pg_legal_documents_store($order_id, array $accepted_types)
     // trusted proxy REMOTE_ADDR is the proxy, the same for every customer.
     $ip = substr((string) (function_exists('waf_client_ip') ? waf_client_ip() : ($_SERVER['REMOTE_ADDR'] ?? '')), 0, 45);
     $agent = mb_substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255);
-    $stored = 0;
+    $stored = array();
 
     foreach (pg_legal_documents_for_order($order_id) as $type => $html) {
         if (trim($html) === '') {
@@ -999,11 +1001,60 @@ function pg_legal_documents_store($order_id, array $accepted_types)
             "INSERT INTO order_documents (order_id, type, html, accepted_at, ip, user_agent, created_at)
             VALUES ('" . $order_id . "', '" . e($type) . "', '" . e($html) . "', " . $accepted . ", '" . e($ip) . "', '" . e($agent) . "', '" . $now . "')"
         ) !== false) {
-            $stored++;
+            $stored[] = (string) $type;
         }
     }
 
-    return $stored;
+    // Each accepted document is also a consent the buyer gave, kept in the
+    // consent log as proof that outlives the order's personal fields.
+    if ($stored && function_exists('pg_consent_log_record')) {
+        $order = db_item("SELECT billing_email_address, user_id, contact_id FROM orders WHERE id = '" . $order_id . "'");
+
+        foreach (pg_legal_documents_consent_events(is_array($order) ? $order : array(), $stored, $accepted_types, $ip, $agent, $now) as $event) {
+            pg_consent_log_record($event);
+        }
+    }
+
+    return count($stored);
+}
+
+/**
+ * The consent rows an order's stored documents give: one granted row on the
+ * contract channel per type that was both stored and accepted, for the
+ * order's buyer, with the ip, user agent and time the document was kept with.
+ *
+ * @param array    $order           orders row: billing_email_address, user_id, contact_id
+ * @param string[] $stored_types    types written to order_documents
+ * @param string[] $accepted_types  types the customer accepted
+ * @param string   $ip
+ * @param string   $agent
+ * @param int      $now             the documents' accepted_at
+ * @return array[]  events for pg_consent_log_record()
+ */
+function pg_legal_documents_consent_events(array $order, array $stored_types, array $accepted_types, $ip, $agent, $now)
+{
+    $events = array();
+
+    foreach ($stored_types as $type) {
+        if (!in_array($type, $accepted_types, true)) {
+            continue;
+        }
+
+        $events[] = array(
+            'channel'    => 'contract',
+            'purpose'    => (string) $type,
+            'status'     => 'granted',
+            'source'     => 'checkout',
+            'email'      => (string) ($order['billing_email_address'] ?? ''),
+            'user_id'    => (int) ($order['user_id'] ?? 0),
+            'contact_id' => (int) ($order['contact_id'] ?? 0),
+            'ip'         => (string) $ip,
+            'user_agent' => (string) $agent,
+            'created_at' => (int) $now,
+        );
+    }
+
+    return $events;
 }
 
 /**
@@ -1516,10 +1567,10 @@ function pg_legal_documents_panel_card($order_id)
         $accepted = (int) $row['accepted_at'];
         $status = ($accepted > 0)
             ? h(pg_legal_document_time_text($accepted))
-            : '<span class="text-danger">' . h(lang('Not accepted')) . '</span>';
+            : '<span class="fg-danger">' . h(lang('Not accepted')) . '</span>';
 
         $rows .= '<div class="row">
-                        <span class="col text-muted"><a class="link-secondary" href="' . h(pg_legal_document_copy_url($order_id, $type)) . '" target="_blank" rel="noopener">' . h($types[$type]) . '</a>:</span>
+                        <span class="col fg-secondary"><a class="pg-link-secondary" href="' . h(pg_legal_document_copy_url($order_id, $type)) . '" target="_blank" rel="noopener">' . h($types[$type]) . '</a>:</span>
                         <span class="col text-end" title="' . h((string) $row['ip']) . '">' . $status . '</span>
                     </div>';
     }
@@ -1538,16 +1589,16 @@ function pg_legal_documents_panel_card($order_id)
             : ($withdrawal['estimated'] ? lang('Estimated') : '');
 
         $rows .= '<div class="row">
-                        <span class="col text-muted">' . h(lang('Right of withdrawal until')) . ':</span>
+                        <span class="col fg-secondary">' . h(lang('Right of withdrawal until')) . ':</span>
                         <span class="col text-end"' . ($withdrawal['estimated'] ? ' title="' . h(lang('Estimated from the ship date or the expected delivery date; the 14 days run from delivery.')) . '"' : '') . '>'
                             . h(pg_return_day_text($withdrawal['deadline']))
-                            . (($note !== '') ? ' <span class="text-muted small">(' . h($note) . ')</span>' : '')
+                            . (($note !== '') ? ' <span class="fg-secondary small">(' . h($note) . ')</span>' : '')
                         . '</span>
                     </div>';
     }
 
-    return '<div class="card mt-3">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+    return '<div class="card mt-5">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . h(lang('Legal Documents')) . '
                 </div>
                 <div class="card-body">

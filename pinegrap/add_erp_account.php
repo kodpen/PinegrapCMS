@@ -109,10 +109,10 @@ if (!$_POST) {
             <form name="form" action="add_erp_account.php" method="post">
                 ' . get_token_field() . '
                 ' . erp_account_form_cards($liveform, true, false, $linked_contact) . '
-                <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-success"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Create')) . '</span></button>
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><i class="bi bi-plus-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Create')) . '</span></button>
                         </div>
                     </div>
                 </nav>

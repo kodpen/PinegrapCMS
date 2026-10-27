@@ -2515,6 +2515,25 @@ function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0, $f
 
         $type = (string) ($change['type'] ?? '');
 
+        // A scheduled action an application proposes (scheduled_draft.php):
+        // no record kind, but a draft the person opens in its form and saves
+        // in their own name. A task's drawer has no form to open it in.
+        if (($type === 'scheduled') && $for_proposal && function_exists('ws_scheduled_draft_proposal_row')) {
+            if ((int) $task_id > 0) {
+                return $refuse(lang('A scheduled action is proposed in a channel, not on a task.'));
+            }
+
+            $drafted = ws_scheduled_draft_proposal_row($asker_id, $change, $channel_id);
+
+            if (!$drafted['ok']) {
+                return $refuse($drafted['error']);
+            }
+
+            $out['rows'][] = $drafted['row'];
+
+            continue;
+        }
+
         if (!isset($types[$type])) {
             return $refuse(lang(array('string' => 'type is one of {var:1}.', 'vars' => implode(', ', array_keys($types)))));
         }
@@ -3105,7 +3124,7 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
         }
 
         if ($scheduled) {
-            $out[(int) $row[$by]][] = ws_scheduled_draft_change_entry($viewer, $row, $people, !empty($can_post[$place]));
+            $out[(int) $row[$by]][] = ws_scheduled_draft_change_entry($viewer, $row, $people, !empty($can_post[$place]), $proposer);
             continue;
         }
 
@@ -3766,6 +3785,7 @@ function ws_change_audit_target($type, $action, array $done, array $values = arr
         'page'    => 'page',
         'file'    => 'files',
         'offer'   => 'offers',
+        'contact' => 'contacts',
     );
 
     $type = (string) $type;

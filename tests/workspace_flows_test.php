@@ -242,7 +242,7 @@ function test_workspace_flows_normalize_keeps_the_shape()
 	pg_assert_same(array(7, 9), $job['config']['assignees'], 'whole numbers above 0, once each');
 	pg_assert_same(3650, $job['config']['due_in']);
 	pg_assert_same('normal', $job['config']['priority']);
-	pg_assert_same(array('title', 'description', 'assignees', 'assign', 'due_in', 'priority'), array_keys($job['config']));
+	pg_assert_same(array('title', 'description', 'assignees', 'assign', 'due_in', 'priority', 'timeout'), array_keys($job['config']));
 
 	pg_assert_same(20, count($graph['nodes'][2]['config']['assignees']), 'at most 20 people');
 	pg_assert_same('', $graph['nodes'][2]['config']['due_in'], 'no due day');

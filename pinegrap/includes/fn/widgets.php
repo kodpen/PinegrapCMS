@@ -804,6 +804,11 @@ function pg_sw_raw_token_keys()
         '__field_value_html',
         '__field_info_html',
         '__gift_card_message_html',
+        // Order view: a return's notes with their line breaks and the
+        // customer's moves, forms built by returns.php.
+        '__return_customer_note_html',
+        '__return_decision_note_html',
+        '__return_actions_html',
         // Ad Region widget: the ad's own markup.
         '__ad_content_html',
         '__ad_caption_html',
@@ -6658,11 +6663,10 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // they exist only where they were added by hand. Both are reserved
     // for the ERP module, which will add them through its own migration;
     // once that ships this probe becomes unnecessary. Until then, probe
-    // once via SHOW COLUMNS so the SELECT never hard-fails.
+    // with pg_schema_has() so the SELECT never hard-fails.
     static $_order_view_has_notes_col = null;
     if ($_order_view_has_notes_col === null) {
-        $_probe = db_value("SHOW COLUMNS FROM orders LIKE 'notes'");
-        $_order_view_has_notes_col = ($_probe !== '' && $_probe !== null);
+        $_order_view_has_notes_col = pg_schema_has('orders', 'notes');
     }
     $order_notes = '';
     if ($_order_view_has_notes_col) {
@@ -6794,8 +6798,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // optional columns and read once here; the timeline below reuses it.
     static $_order_view_has_paid_at_col = null;
     if ($_order_view_has_paid_at_col === null) {
-        $_probe_pa = db_value("SHOW COLUMNS FROM orders LIKE 'paid_at'");
-        $_order_view_has_paid_at_col = ($_probe_pa !== '' && $_probe_pa !== null);
+        $_order_view_has_paid_at_col = pg_schema_has('orders', 'paid_at');
     }
     $paid_at_ts = 0;
     if ($_order_view_has_paid_at_col) {
@@ -6976,36 +6979,26 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // campaign code as a parcel number, under a link to a courier that had
     // never heard of it.
     //
-    // The carrier comes from the shipping method the customer chose, failing
+    // Since 11.0.20 the row holds the carrier and the link the panel, the API
+    // or a marketplace saved; they win, as on the order screen. Without them
+    // the carrier comes from the shipping method the customer chose, failing
     // that from the carrier the site names for the whole shop
     // (ECOMMERCE_DEFAULT_TRACKING_PROVIDER), and failing that from the number's
-    // own shape (pg_shipping_carrier). The helpers read the site's default
-    // themselves, as they do on every other order screen.
+    // own shape (pg_sw_order_parcels(), pg_shipment_view()).
+    $tracking_columns = pg_shipment_rows_ready()
+        ? ', shipping_tracking_numbers.carrier, shipping_tracking_numbers.tracking_url, shipping_tracking_numbers.status'
+        : '';
+
     $tracking_rows = db_items("SELECT shipping_tracking_numbers.number,
             shipping_tracking_numbers.ship_to_id,
-            ship_tos.shipping_method_code
+            ship_tos.shipping_method_code" . $tracking_columns . "
         FROM shipping_tracking_numbers
         LEFT JOIN ship_tos ON ship_tos.id = shipping_tracking_numbers.ship_to_id
         WHERE (shipping_tracking_numbers.order_id = '$oid_esc')
             AND (TRIM(shipping_tracking_numbers.number) != '')
         ORDER BY shipping_tracking_numbers.id ASC");
 
-    if (!is_array($tracking_rows)) {
-        $tracking_rows = array();
-    }
-
-    $tracking_parcels = array();
-
-    foreach ($tracking_rows as $tracking_row) {
-        $parcel_number = trim((string)$tracking_row['number']);
-        $parcel_method = trim((string)($tracking_row['shipping_method_code'] ?? ''));
-        $tracking_parcels[] = array(
-            'number'  => $parcel_number,
-            'url'     => get_shipping_tracking_url($parcel_number, $parcel_method),
-            'carrier' => get_shipping_carrier_name($parcel_number, $parcel_method),
-            'ship_to' => (int)($tracking_row['ship_to_id'] ?? 0),
-        );
-    }
+    $tracking_parcels = pg_sw_order_parcels(is_array($tracking_rows) ? $tracking_rows : array(), pg_shipping_default_carrier());
 
     // The first parcel answers the singular tokens, which is what a one-parcel
     // order - nearly all of them - needs; __tracking_codes carries the rest.
@@ -7034,8 +7027,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // arrives — closest to what customers actually want to see).
     static $_order_view_has_cancelled_at_col = null;
     if ($_order_view_has_cancelled_at_col === null) {
-        $_probe_ca = db_value("SHOW COLUMNS FROM orders LIKE 'cancelled_at'");
-        $_order_view_has_cancelled_at_col = ($_probe_ca !== '' && $_probe_ca !== null);
+        $_order_view_has_cancelled_at_col = pg_schema_has('orders', 'cancelled_at');
     }
     $cancelled_at_ts = 0;
     $cancellation_reason = '';
@@ -7217,14 +7209,15 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
 
     // ── Returns (includes/fn/returns.php) ──────────────────────────────
     // Only the signed-in owner reads or asks for returns; a guest who has
-    // just ordered and the receipt e-mail see none. __returns lists every
-    // request of the order, __return_form shows while one may still be made
+    // just ordered and the receipt e-mail see none. The order.returns list
+    // (the returns part) lists every request of the order, the rows built
+    // here; __return_form shows while one may still be made
     // (ECOMMERCE_ORDER_RETURNS_ALLOWED, the goods sent, the window open).
     // Both post to order_return.php, whose answer comes back through this
     // widget's messages node (liveform 'order_receipt').
     $_ov_returns      = ($is_owner && empty($sw_ctx['email'])) ? pg_return_customer_view($order_id, $fmt_gc_date) : null;
     $_ov_return_form  = '';
-    $_ov_returns_list = '';
+    $_ov_return_rows  = array('order.returns' => array(), 'order.return_lines' => array());
     if (is_array($_ov_returns) && ($_ov_returns['has_returns'] || $_ov_returns['can_request'])) {
         $_ov_return_cfg = array(
             'action'   => (defined('PATH') ? PATH : '/') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : 'software') . '/order_return.php',
@@ -7233,8 +7226,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'order_id' => (int)$order['id'],
         );
         $_ov_return_form  = $_ov_returns['can_request'] ? pg_return_form_html($_ov_returns['deliveries'], $_ov_return_cfg) : '';
-        $_ov_returns_list = pg_returns_list_html($_ov_returns['returns'], $_ov_return_cfg);
+        $_ov_return_rows  = pg_sw_list_order_return_rows($_ov_returns['returns'], $_ov_return_cfg);
     }
+    $_ov_has_returns = !empty($_ov_return_rows['order.returns']);
     // A layout made before returns existed places neither token: it is
     // given the returns card, shown while the setting is on
     // (show_returns_card, widgets_parts.php).
@@ -7271,11 +7265,11 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         'cancel_flash_shipped'     => $_ov_cancel_flash === 'shipped',
         // Returns: the card shows when there is a request to follow or one
         // may be made; the form part only in the second case.
-        'show_returns'             => ($_ov_returns_list !== '' || $_ov_return_form !== ''),
+        'show_returns'             => ($_ov_has_returns || $_ov_return_form !== ''),
         'show_returns_card'        => is_array($_ov_returns) && $_ov_returns['enabled']
-                                      && ($_ov_returns_list !== '' || $_ov_return_form !== ''),
+                                      && ($_ov_has_returns || $_ov_return_form !== ''),
         'can_request_return'       => $_ov_return_form !== '',
-        'has_returns'              => $_ov_returns_list !== '',
+        'has_returns'              => $_ov_has_returns,
         // The carrier link surfaces only when a parcel number is recorded AND
         // its carrier could be identified.
         'has_tracking_link'        => $tracking_link !== '',
@@ -7338,7 +7332,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         }
         // First: it marks the items that have form answers or gift cards.
         $_ov_item_rows = pg_sw_list_order_item_parts_read($items, $_ov_listed, $fmt_money, $fmt_gc_date);
-        pg_sw_list_publish('order', pg_sw_list_order_rows($_ov_shipments, $items, $tracking_parcels, $timeline_events) + $_ov_item_rows);
+        pg_sw_list_publish('order', pg_sw_list_order_rows($_ov_shipments, $items, $tracking_parcels, $timeline_events) + $_ov_item_rows + $_ov_return_rows);
     }
 
     // Build loop output
@@ -7443,11 +7437,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         '__cancel_status'         => _eo_render_cancel_status_alert($_ov_cancel_flash),
 
         // ── Returns ───────────────────────────────────────────────────
-        // __returns: the order's return requests, each with its status and
-        //   the customer's own moves (withdraw, "I have sent it").
         // __return_form: the request form, one per delivery that still has
-        //   something to give back. Both pre-built HTML, '' when empty.
-        '__returns'               => $_ov_returns_list,
+        //   something to give back, pre-built HTML, '' when empty. The
+        //   requests are the order.returns list's (the returns part).
         '__return_form'           => $_ov_return_form,
 
         // ── Payment ───────────────────────────────────────────────────

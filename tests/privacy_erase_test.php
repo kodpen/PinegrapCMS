@@ -344,6 +344,7 @@ function test_privacy_erase_audit_fields_are_pinned()
 			'user'         => array('user_username' => '{name}', 'user_email' => '{token}', 'user_password_hint' => '', 'user_google_id' => ''),
 			'order'        => $tables['orders']['fields'],
 			'order_return' => $tables['order_returns']['fields'],
+			'contact'      => pg_privacy_erase_audit_fields()['contact'],
 			'person'       => array(),
 		),
 		pg_privacy_erase_audit_fields(),
@@ -404,6 +405,28 @@ function test_privacy_erase_audit_row()
 
 	$export = array('entity_type' => 'person', 'label' => 'ali@example.com', 'before_json' => null, 'after_json' => '{"format":"json","person":"' . $token . '"}');
 	pg_assert_same(array('label' => ''), pg_privacy_erase_audit_row($export, 'x', 'k1'), 'export: label cleared, token kept');
+
+	$contact = array(
+		'entity_type' => 'contact',
+		'label'       => 'ali@example.com',
+		'before_json' => '{"first_name":"Ali","last_name":"Veli","email_address":"ali@example.com","mobile_phone":"555","opt_in":"1","lead_source":"Web"}',
+		'after_json'  => '{"opt_in":"0"}',
+	);
+
+	$changes = pg_privacy_erase_audit_row($contact, 'Deleted customer', 'k1');
+
+	pg_assert_same(array('before_json', 'label'), array_keys($changes), 'contact: the side that names the person and the label');
+	pg_assert_same(
+		array('first_name' => 'Deleted customer', 'last_name' => '', 'email_address' => $token, 'mobile_phone' => '', 'opt_in' => '1', 'lead_source' => 'Web'),
+		json_decode($changes['before_json'], true),
+		'contact: the token in place of the address, opt-in kept'
+	);
+	pg_assert_same('', $changes['label'], 'contact: label cleared');
+	pg_assert_same(array(), pg_privacy_erase_audit_row(array_merge($contact, $changes), 'Deleted customer', 'k1'), 'contact: second run');
+
+	foreach (array('first_name', 'last_name', 'company', 'email_address', 'mobile_phone', 'home_address_1', 'business_address_1', 'tax_number', 'description', 'image') as $column) {
+		pg_assert_true(isset(pg_privacy_erase_audit_fields()['contact'][$column]), 'contact: ' . $column . ' is replaced');
+	}
 
 	pg_assert_same(array(), pg_privacy_erase_audit_row(array('entity_type' => 'product', 'label' => 'Shoe', 'before_json' => '{"name":"Shoe"}'), 'x', 'k1'), 'another type');
 	pg_assert_same(array(), pg_privacy_erase_audit_row(array('entity_type' => 'order', 'label' => '1', 'before_json' => 'not json', 'after_json' => '[]'), 'x', 'k1'), 'nothing to read');

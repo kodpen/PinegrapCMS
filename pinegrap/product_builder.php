@@ -2112,14 +2112,14 @@ function pg_pb_render_empty_state($icon, $title, $message, $action_url = '', $ac
 
     if ($action_url !== '' && $action_label !== '') {
         $output_action =
-            '<a href="' . h($action_url) . '" class="btn btn-sm btn-outline-primary mt-2">
-                <i class="bi bi-plus-circle me-2"></i>' . h($action_label) . '</a>';
+            '<a href="' . h($action_url) . '" class="btn btn-sm btn-outline theme-primary mt-3">
+                <i class="bi bi-plus-circle me-3"></i>' . h($action_label) . '</a>';
     }
 
     return
-        '<div class="text-center text-muted border border-2 border-dashed rounded py-4 px-3">
-            <i class="bi ' . h($icon) . ' d-block mb-2" style="font-size:1.75rem;opacity:.5;"></i>
-            <div class="fw-semibold text-body">' . h($title) . '</div>
+        '<div class="text-center fg-secondary border border-2 border-dashed rounded-4 py-7 px-5">
+            <i class="bi ' . h($icon) . ' d-block mb-3" style="font-size:1.75rem;opacity:.5;"></i>
+            <div class="fw-semibold fg-body">' . h($title) . '</div>
             <div class="small">' . h($message) . '</div>
             ' . $output_action . '
         </div>';
@@ -2148,11 +2148,11 @@ function pg_pb_render_preview($show_summary = TRUE)
     $bar = '<div class="pg-pb-wf-bar"></div>';
 
     return
-        '<div class="card mb-3" id="pg_pb_preview">
-            <div class="card-body p-2">
+        '<div class="card mb-5" id="pg_pb_preview">
+            <div class="card-body p-3">
 
-                <div class="d-flex align-items-center gap-2 mb-1">
-                    <i class="bi bi-eye text-primary"></i>
+                <div class="d-flex align-items-center gap-3 mb-1">
+                    <i class="bi bi-eye fg-primary"></i>
                     <span class="small fw-semibold">' . lang('Preview') . '</span>
                 </div>
 
@@ -2170,41 +2170,41 @@ function pg_pb_render_preview($show_summary = TRUE)
                     actually describes.
                 -->
 ' . ($show_summary
-                    ? '<div id="pg_pb_summary" class="d-flex align-items-start gap-2 small text-body-secondary border-bottom pb-2 mb-3">
+                    ? '<div id="pg_pb_summary" class="d-flex align-items-start gap-3 small fg-secondary border-bottom pb-3 mb-5">
                         <i id="pg_pb_summary_icon" class="bi bi-box mt-1"></i>
                         <span id="pg_pb_summary_text">' . lang('A single product will be created. No catalog group is added.') . '</span>
                     </div>'
                     : '') . '
 
                 <!-- catalog card -->
-                <div class="pg-pb-wf mb-2">
+                <div class="pg-pb-wf mb-3">
                     <div class="pg-pb-wf-caption">' . lang('In the catalog') . '</div>
                     <div class="pg-pb-wf-box pg-pb-wf-card">
                         <div class="pg-pb-wf-image" id="pg_pb_wf_image">
                             <i class="bi bi-image"></i>
                         </div>
                         <div class="pg-pb-wf-line fw-semibold" id="pg_pb_wf_name">' . $bar . '</div>
-                        <div class="pg-pb-wf-line text-muted" id="pg_pb_wf_short">' . $bar . '</div>
+                        <div class="pg-pb-wf-line fg-secondary" id="pg_pb_wf_short">' . $bar . '</div>
                         <div class="pg-pb-wf-line" id="pg_pb_wf_price">' . $bar . '</div>
                     </div>
                 </div>
 
                 <!-- detail page, symbolic -->
-                <div class="pg-pb-wf mb-2">
+                <div class="pg-pb-wf mb-3">
                     <div class="pg-pb-wf-caption">' . lang('On the product page') . '</div>
                     <div class="pg-pb-wf-box">
-                        <div class="d-flex gap-2">
+                        <div class="d-flex gap-3">
                             <div class="pg-pb-wf-image pg-pb-wf-image-sm flex-shrink-0" id="pg_pb_wf_image2">
                                 <i class="bi bi-image"></i>
                             </div>
                             <div class="flex-grow-1 min-w-0">
                                 <div class="pg-pb-wf-line fw-semibold" id="pg_pb_wf_name2">' . $bar . '</div>
-                                <div class="pg-pb-wf-line text-muted" id="pg_pb_wf_short2">' . $bar . '</div>
+                                <div class="pg-pb-wf-line fg-secondary" id="pg_pb_wf_short2">' . $bar . '</div>
                                 <div class="pg-pb-wf-line" id="pg_pb_wf_price2">' . $bar . '</div>
                             </div>
                         </div>
-                        <div class="d-flex flex-wrap gap-1 mt-2" id="pg_pb_wf_options"></div>
-                        <div class="pg-pb-wf-block mt-2">
+                        <div class="d-flex flex-wrap gap-1 mt-3" id="pg_pb_wf_options"></div>
+                        <div class="pg-pb-wf-block mt-3">
                             <div class="pg-pb-wf-blocklabel">' . lang('Details') . '</div>
                             <div id="pg_pb_wf_details">' . $bar . $bar . $bar . '</div>
                         </div>
@@ -2222,7 +2222,7 @@ function pg_pb_render_preview($show_summary = TRUE)
                     and seeing where the cut falls is worth more than a
                     character count on its own.
                 -->
-                <div class="pg-pb-wf mb-2">
+                <div class="pg-pb-wf mb-3">
                     <div class="pg-pb-wf-caption">' . lang('In search results') . '</div>
                     <div class="pg-pb-wf-box">
                         <div class="pg-pb-serp-url" id="pg_pb_wf_url"></div>
@@ -2313,7 +2313,7 @@ function pg_pb_render_option_chip($option, $checked = FALSE)
             id="pg_pb_opt_' . h($option['id']) . '"
             value="' . h($option['id']) . '"
             data-label="' . h($option['label']) . '"' . $checked_attribute . ' />
-        <label class="btn btn-sm btn-outline-primary rounded-pill" for="pg_pb_opt_' . h($option['id']) . '">' . h($option['label']) . '</label>';
+        <label class="btn btn-sm btn-outline theme-primary rounded-pill" for="pg_pb_opt_' . h($option['id']) . '">' . h($option['label']) . '</label>';
 }
 
 
@@ -2345,12 +2345,12 @@ function pg_pb_render_attribute_card($attribute, $selected_option_ids = array(),
     }
 
     return
-        '<div class="pg-pb-attribute card mb-2" data-attr-id="' . h($attribute['id']) . '" data-attr-name="' . h($attribute['name']) . '">
-            <div class="card-body py-2 px-3">
+        '<div class="pg-pb-attribute card mb-3" data-attr-id="' . h($attribute['id']) . '" data-attr-name="' . h($attribute['name']) . '">
+            <div class="card-body py-3 px-5">
 
-                <div class="d-flex align-items-center gap-2 mb-2">
+                <div class="d-flex align-items-center gap-3 mb-3">
                     <span class="fw-semibold">' . h($attribute['name']) . '</span>
-                    <span class="badge text-bg-primary pg-pb-attr-count d-none">0</span>
+                    <span class="badge theme-primary pg-pb-attr-count d-none">0</span>
                     <div class="ms-auto d-flex align-items-center gap-1">
                         ' . ($single_choice
                             /* A product carries one option per attribute, so
@@ -2359,19 +2359,19 @@ function pg_pb_render_attribute_card($attribute, $selected_option_ids = array(),
                             ? ''
                             : '<button type="button" class="btn btn-sm btn-link text-decoration-none pg-pb-attr-toggle-all">' . lang('Select All') . '</button>') . '
                         <div class="btn-group btn-group-sm">
-                            <button type="button" class="btn btn-outline-secondary pg-pb-attr-up" title="' . lang('Move Up') . '"><i class="bi bi-arrow-up"></i></button>
-                            <button type="button" class="btn btn-outline-secondary pg-pb-attr-down" title="' . lang('Move Down') . '"><i class="bi bi-arrow-down"></i></button>
+                            <button type="button" class="btn btn-outline theme-secondary pg-pb-attr-up" title="' . lang('Move Up') . '"><i class="bi bi-arrow-up"></i></button>
+                            <button type="button" class="btn btn-outline theme-secondary pg-pb-attr-down" title="' . lang('Move Down') . '"><i class="bi bi-arrow-down"></i></button>
                         </div>
                     </div>
                 </div>
 
-                <div class="d-flex flex-wrap gap-1 align-items-center mb-2 pg-pb-chiprow">' . $output_options . '
+                <div class="d-flex flex-wrap gap-1 align-items-center mb-3 pg-pb-chiprow">' . $output_options . '
                     <span class="pg-pb-option-add d-inline-flex align-items-center gap-1">
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill pg-pb-option-add-open" title="' . lang('Add Option') . '"><i class="bi bi-plus-lg"></i></button>
+                        <button type="button" class="btn btn-sm btn-outline theme-secondary rounded-pill pg-pb-option-add-open" title="' . lang('Add Option') . '"><i class="bi bi-plus-lg"></i></button>
                         <span class="pg-pb-option-add-form d-none input-group input-group-sm" style="width:16rem;">
                             <input type="text" class="form-control pg-pb-option-add-input" maxlength="255" placeholder="' . lang('Label') . '" />
-                            <button type="button" class="btn btn-primary pg-pb-option-add-save" title="' . lang('Save') . '"><i class="bi bi-check-lg"></i></button>
-                            <button type="button" class="btn btn-outline-secondary pg-pb-option-add-cancel" title="' . lang('Cancel') . '"><i class="bi bi-x-lg"></i></button>
+                            <button type="button" class="btn btn-solid theme-primary pg-pb-option-add-save" title="' . lang('Save') . '"><i class="bi bi-check-lg"></i></button>
+                            <button type="button" class="btn btn-outline theme-secondary pg-pb-option-add-cancel" title="' . lang('Cancel') . '"><i class="bi bi-x-lg"></i></button>
                         </span>
                     </span>
                 </div>
@@ -2381,9 +2381,9 @@ function pg_pb_render_attribute_card($attribute, $selected_option_ids = array(),
                        one a visitor lands on. A single product has no choice to
                        default to — it is the choice. */
                     ? ''
-                    : '<div class="d-none align-items-center gap-2 pg-pb-attr-default-wrap">
-                    <span class="text-muted small">' . lang('Default Option') . ':</span>
-                    <select class="form-select form-select-sm pg-pb-attr-default" style="max-width:220px;">' . $output_default_options . '</select>
+                    : '<div class="d-none align-items-center gap-3 pg-pb-attr-default-wrap">
+                    <span class="fg-secondary small">' . lang('Default Option') . ':</span>
+                    <select class="form-control form-control-sm pg-pb-attr-default" style="max-width:220px;">' . $output_default_options . '</select>
                 </div>') . '
 
             </div>
@@ -2407,45 +2407,41 @@ function pg_pb_render_attribute_card($attribute, $selected_option_ids = array(),
 function pg_pb_render_attribute_modal()
 {
     return
-        '<div class="modal fade" id="pg_pb_attribute_modal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-lg modal-dialog-scrollable">
-                <div class="modal-content">
+        '<dialog class="dialog dialog-lg dialog-scrollable" id="pg_pb_attribute_modal">
 
-                    <div class="modal-header">
-                        <h5 class="modal-title"><i class="bi bi-tags me-2"></i>' . lang('New Attribute') . '</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
+                    <div class="dialog-header">
+                        <h5 class="dialog-title"><i class="bi bi-tags me-3"></i>' . lang('New Attribute') . '</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . lang('Close') . '"></button>
                     </div>
 
-                    <div class="modal-body">
+                    <div class="dialog-body">
 
-                        <div id="pg_pb_attribute_modal_error" class="alert alert-danger d-none"></div>
+                        <div id="pg_pb_attribute_modal_error" class="alert theme-danger d-none"></div>
 
                         <div class="row">
-                            <div class="col-12 col-sm-5 mb-3">
+                            <div class="col-12 sm:col-5 mb-5">
                                 <label class="form-label" for="pg_pb_attr_name">*' . lang('Name') . '</label>
                                 <input type="text" id="pg_pb_attr_name" class="form-control" maxlength="100" placeholder="' . lang('Attribute Name') . '" />
                             </div>
-                            <div class="col-12 col-sm-7 mb-3">
+                            <div class="col-12 sm:col-7 mb-5">
                                 <label class="form-label" for="pg_pb_attr_label">' . lang('Label') . '</label>
                                 <input type="text" id="pg_pb_attr_label" class="form-control" maxlength="255" placeholder="' . lang('Attribute Label') . '" />
                             </div>
                             <div class="col-12">
                                 <label class="form-label">' . lang('Atribute Options') . '</label>
                                 <div id="pg_pb_attr_options"></div>
-                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="pg_pb_attr_add_option"><i class="bi bi-plus-circle me-2"></i>' . lang('Add Option') . '</button>
+                                <button type="button" class="btn btn-sm btn-outline theme-primary mt-3" id="pg_pb_attr_add_option"><i class="bi bi-plus-circle me-3"></i>' . lang('Add Option') . '</button>
                             </div>
                         </div>
 
                     </div>
 
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
-                        <button type="button" class="btn btn-success" id="pg_pb_attr_save"><i class="bi bi-check-circle me-2"></i>' . lang('Create') . '</button>
+                    <div class="dialog-footer">
+                        <button type="button" class="btn btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                        <button type="button" class="btn btn-solid theme-success" id="pg_pb_attr_save"><i class="bi bi-check-circle me-3"></i>' . lang('Create') . '</button>
                     </div>
 
-                </div>
-            </div>
-        </div>';
+        </dialog>';
 }
 
 
@@ -2577,7 +2573,7 @@ function pg_pb_render_image_picker_assets()
         'image_too_small'  => lang('Smaller than {min} pixels, which Google Merchant Center will not accept from 2027: {files}'));
 
     return
-        '<style>' . pg_pb_render_image_picker_css() . '</style>
+        '<style>@layer custom {' . pg_pb_render_image_picker_css() . '}</style>
         <script>
             /* "<\/" is escaped: a translation containing a literal closing
                script tag would end this block early and leave the object
@@ -2656,9 +2652,9 @@ function pg_pb_render_image_picker($images = array(), $extra_action = '')
             '<div class="item col">
                 <div class="card bg-transparent border-0 shadow-none cursor-pointer image">
                     <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent">
-                        <button type="button" class="btn btn-link link-danger bi bi-x-lg p-0" title="' . lang('Remove') . '" onclick="$(this).closest(\'.item\').remove();"></button>
+                        <button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="' . lang('Remove') . '" onclick="$(this).closest(\'.item\').remove();"></button>
                     </div>
-                    <div class="card-body overflow-hidden position-relative rounded ratio ratio-2x1 w-100" style="--bs-aspect-ratio: 80%;background: radial-gradient(transparent, #00000024);">
+                    <div class="card-body overflow-hidden position-relative rounded-4 ratio ratio-2x1 w-100" style="--bs-aspect-ratio: 80%;background: radial-gradient(transparent, #00000024);">
                         <input type="hidden" name="selected_images[]" value="' . h($image) . '" />
                         <img class="object-fit-contain w-100 h-100" src="' . h($source) . '" alt="" draggable="false" />
                     </div>
@@ -2680,21 +2676,21 @@ function pg_pb_render_image_picker($images = array(), $extra_action = '')
                 <!-- The drop area doubles as the sortable list. Files dropped
                      here upload straight to the site; double-clicking still
                      opens the full picker for files already uploaded. -->
-                <div id="pg_pb_image_drop" class="pg-pb-dropzone rounded p-3"
+                <div id="pg_pb_image_drop" class="pg-pb-dropzone rounded-4 p-5"
                     ondblclick="software_image_picker({initialize:true});">
 
                     <div id="software_image_picker_container"
-                        class="user-select-none sortable-list img-list row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6 g-3">' . $output_tiles . '</div>
+                        class="user-select-none sortable-list img-list row row-cols-2 sm:row-cols-3 md:row-cols-4 lg:row-cols-5 xl:row-cols-6 g-5">' . $output_tiles . '</div>
 
-                    <div id="pg_pb_image_empty" class="d-none text-center text-muted py-4">
-                        <i class="bi bi-cloud-arrow-up d-block mb-2" style="font-size:2rem;opacity:.5;"></i>
-                        <div class="fw-semibold text-body">' . lang('Drop images here') . '</div>
+                    <div id="pg_pb_image_empty" class="d-none text-center fg-secondary py-7">
+                        <i class="bi bi-cloud-arrow-up d-block mb-3" style="font-size:2rem;opacity:.5;"></i>
+                        <div class="fw-semibold fg-body">' . lang('Drop images here') . '</div>
                         <div class="small">' . lang('Or choose from files already uploaded. The first image becomes the cover image.') . '</div>
                     </div>
 
                     <div id="pg_pb_image_overlay" class="pg-pb-dropzone-overlay d-none">
                         <div class="text-center">
-                            <i class="bi bi-cloud-arrow-up d-block mb-2" style="font-size:2rem;"></i>
+                            <i class="bi bi-cloud-arrow-up d-block mb-3" style="font-size:2rem;"></i>
                             <div class="fw-semibold">' . lang('Drop images here') . '</div>
                         </div>
                     </div>
@@ -2702,10 +2698,10 @@ function pg_pb_render_image_picker($images = array(), $extra_action = '')
                 </div>
 
                 ' . (($output_upload_rule !== '')
-                    ? '<div class="form-text mt-2 mb-0"><i class="bi bi-info-circle me-1"></i>' . $output_upload_rule . '</div>'
+                    ? '<div class="form-text mt-3 mb-0"><i class="bi bi-info-circle me-1"></i>' . $output_upload_rule . '</div>'
                     : '') . '
 
-                <div id="pg_pb_image_progress" class="progress mt-3 d-none" style="height:.4rem;">
+                <div id="pg_pb_image_progress" class="progress mt-5 d-none" style="height:.4rem;">
                     <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%"></div>
                 </div>
 
@@ -2716,11 +2712,11 @@ function pg_pb_render_image_picker($images = array(), $extra_action = '')
                     screen while the operator decides whether to go and find a
                     bigger photo.
                 -->
-                <div id="pg_pb_image_notice" class="mt-3"></div>
+                <div id="pg_pb_image_notice" class="mt-5"></div>
 
-                <div class="d-flex align-items-center flex-wrap gap-2 mt-3">
-                    <button type="button" class="btn btn-primary" onclick="software_image_picker({initialize:true});"><i class="bi bi-images me-2"></i>' . lang('Choose from Files') . '</button>
-                    <button type="button" class="btn btn-outline-primary" id="pg_pb_image_upload"><i class="bi bi-upload me-2"></i>' . lang('Upload') . '</button>
+                <div class="d-flex align-items-center flex-wrap gap-3 mt-5">
+                    <button type="button" class="btn btn-solid theme-primary" onclick="software_image_picker({initialize:true});"><i class="bi bi-images me-3"></i>' . lang('Choose from Files') . '</button>
+                    <button type="button" class="btn btn-outline theme-primary" id="pg_pb_image_upload"><i class="bi bi-upload me-3"></i>' . lang('Upload') . '</button>
                     <input type="file" id="pg_pb_image_file" class="d-none" accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/tiff" multiple />
 
                     <!--
@@ -2743,9 +2739,9 @@ function pg_pb_render_image_picker($images = array(), $extra_action = '')
                         on a wide screen, and the label is pushed to its own line
                         rather than squeezed when there is no room.
                     -->
-                    <div class="d-flex align-items-center gap-2 ms-md-auto flex-grow-1 flex-md-grow-0" style="min-width:0;">
-                        <label for="pg_pb_upload_folder" class="form-label mb-0 small text-muted text-nowrap">' . lang('Upload to') . '</label>
-                        <select class="form-select form-select-sm" id="pg_pb_upload_folder" name="pg_pb_upload_folder" style="min-width:0; max-width:18rem;">' . select_folder(pg_default_upload_folder('product_upload_folder_id'), 0) . '</select>
+                    <div class="d-flex align-items-center gap-3 md:ms-auto flex-grow-1 md:flex-grow-0" style="min-width:0;">
+                        <label for="pg_pb_upload_folder" class="form-label mb-0 small fg-secondary text-nowrap">' . lang('Upload to') . '</label>
+                        <select class="form-control form-control-sm" id="pg_pb_upload_folder" name="pg_pb_upload_folder" style="min-width:0; max-width:18rem;">' . select_folder(pg_default_upload_folder('product_upload_folder_id'), 0) . '</select>
                     </div>
                     ' . $extra_action . '
                 </div>
@@ -2778,7 +2774,7 @@ function pg_pb_render_switch_row($content, $extra_class = '')
 {
     $extra_class = ($extra_class !== '') ? ' ' . $extra_class : '';
 
-    return '<div class="col-12 my-3' . $extra_class . '">' . $content . '</div>';
+    return '<div class="col-12 my-5' . $extra_class . '">' . $content . '</div>';
 }
 
 
@@ -2847,7 +2843,7 @@ function pg_pb_render_switch($props)
     // up" to something that is already decided elsewhere.
     $output_name = isset($props['name']) ? ' name="' . h($props['name']) . '"' : '';
 
-    $classes = 'form-check-input';
+    $classes = '';
     $target  = '';
 
     if ($panel !== '') {
@@ -2875,7 +2871,7 @@ function pg_pb_render_switch($props)
             // backend.src.js only reacts to a change event, so a panel that is
             // already meant to be open renders shut on an edit screen and the
             // operator sees an enabled feature with no settings under it.
-            '<div class="collapse popover fade bs-popover-bottom p-0 w-100 mb-2' . (($checked !== '') ? ' show' : '') . '" id="' . h($panel_id) . '">
+            '<div class="collapse popover fade bs-popover-bottom p-0 w-100 mb-3' . (($checked !== '') ? ' show' : '') . '" id="' . h($panel_id) . '">
                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                 <div class="popover-body">
                     <div class="row">' . $panel . '</div>
@@ -2884,9 +2880,9 @@ function pg_pb_render_switch($props)
     }
 
     return
-        '<div class="form-check form-switch">
-            <input class="' . $classes . '" type="checkbox" role="switch" id="' . h($id) . '"' . $output_name . ' value="1"' . $checked . $target . ' />
-            <label class="form-check-label fw-semibold" for="' . h($id) . '">' . $label . '</label>
+        '<div class="form-field">
+            <div class="switch"><input class="' . $classes . '" type="checkbox" role="switch" id="' . h($id) . '"' . $output_name . ' value="1"' . $checked . $target . ' /></div>
+            <label class="fw-semibold" for="' . h($id) . '">' . $label . '</label>
         </div>
         ' . $output_help . '
         ' . $output_panel;
@@ -2905,7 +2901,7 @@ function pg_pb_render_switch($props)
 function pg_pb_render_styles()
 {
     return
-        '<style>
+        '<style>@layer custom {
             .border-dashed { border-style: dashed !important; }
 
             /* The rule that keeps a heading clear of the header now lives in
@@ -3095,7 +3091,7 @@ function pg_pb_render_styles()
                becomes a block, so a row reads as a small card. Bootstrap has
                the display utilities but not the per-cell labels, which are
                plain elements toggled with d-lg-none. */
-            @media (max-width: 991.98px) {
+            @media (max-width: 1023.98px) {
                 .pg-pb-vtable tbody tr { border-bottom: 2px solid var(--pg-border-color); }
             }
 
@@ -3107,7 +3103,7 @@ function pg_pb_render_styles()
             .pg-pb-pr-option .pg-pb-pr-unit { width: 4.25rem; flex: 0 0 auto; }
             .pg-pb-pr-mode { width: auto; }
             .pg-pb-v-formula { font-variant-numeric: tabular-nums; }
-        </style>';
+        }</style>';
 }
 
 
@@ -3339,26 +3335,26 @@ function pg_pb_variant_sets_screen()
         // error rather than as "no image chosen yet".
         if ($set['image_name'] != '') {
             $output_image =
-                '<img src="' . OUTPUT_PATH . h($set['image_name']) . '" alt="" class="rounded"
+                '<img src="' . OUTPUT_PATH . h($set['image_name']) . '" alt="" class="rounded-4"
                     style="width:44px;height:44px;object-fit:cover;" onerror="this.style.display=\'none\'" />';
         } else {
             $output_image =
-                '<span class="d-inline-flex align-items-center justify-content-center bg-body-tertiary rounded text-muted"
+                '<span class="d-inline-flex align-items-center justify-content-center bg-1 rounded-4 fg-secondary"
                     style="width:44px;height:44px;"><i class="bi bi-image"></i></span>';
         }
 
         $output_enabled = $set['enabled']
-            ? '<span class="badge text-bg-success">' . lang('Enabled') . '</span>'
-            : '<span class="badge text-bg-secondary">' . lang('Disabled') . '</span>';
+            ? '<span class="badge theme-success">' . lang('Enabled') . '</span>'
+            : '<span class="badge theme-secondary">' . lang('Disabled') . '</span>';
 
         // A set with no products is not a normal state — it means the products were
         // deleted out from under the group, and it is worth surfacing rather than
         // printing a quiet zero.
         if ((int) $set['variant_count'] === 0) {
-            $output_variants = '<span class="badge text-bg-warning">' . lang('No products') . '</span>';
+            $output_variants = '<span class="badge theme-warning">' . lang('No products') . '</span>';
         } else {
             $output_variants =
-                '<span class="badge text-bg-primary">' .
+                '<span class="badge theme-primary">' .
                 lang(array(
                     'string' => '{var:1} variant{suffix:1}',
                     'vars'   => array((int) $set['variant_count']),
@@ -3370,10 +3366,10 @@ function pg_pb_variant_sets_screen()
 
         if (!empty($attribute_labels[$set['id']])) {
             foreach ($attribute_labels[$set['id']] as $attribute_label) {
-                $output_attributes .= '<span class="badge text-bg-light border me-1">' . h($attribute_label) . '</span>';
+                $output_attributes .= '<span class="badge badge-subtle theme-secondary border me-1">' . h($attribute_label) . '</span>';
             }
         } else {
-            $output_attributes = '<span class="text-muted">&mdash;</span>';
+            $output_attributes = '<span class="fg-secondary">&mdash;</span>';
         }
 
         // One price for the whole set when the variants agree, a span when they do
@@ -3385,7 +3381,7 @@ function pg_pb_variant_sets_screen()
         // instead of the symbol. Every legacy screen outputs it raw for this
         // reason; the value is a setting, not visitor input.
         if ((int) $set['variant_count'] === 0) {
-            $output_price = '<span class="text-muted">&mdash;</span>';
+            $output_price = '<span class="fg-secondary">&mdash;</span>';
         } elseif ((int) $set['min_price'] === (int) $set['max_price']) {
             $output_price = prepare_amount(((int) $set['min_price']) / 100);
         } else {
@@ -3396,7 +3392,7 @@ function pg_pb_variant_sets_screen()
 
         $output_parent = ($set['parent_name'] != '')
             ? h($set['parent_name'])
-            : '<span class="text-muted">' . lang('None') . '</span>';
+            : '<span class="fg-secondary">' . lang('None') . '</span>';
 
         $output_username = ($set['username'] != '')
             ? ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($set['username']))))
@@ -3410,20 +3406,20 @@ function pg_pb_variant_sets_screen()
         $output_rows .=
             '<tr>
                 <td class="select-all align-middle text-start">
-                    <input class="form-check-input" type="checkbox" name="group_ids[]" value="' . $set_id . '" />
+                    <input class="check" type="checkbox" name="group_ids[]" value="' . $set_id . '" />
                 </td>
                 <td class="align-middle text-start action-buttons text-nowrap">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2"
+                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2"
                         title="' . lang('Edit') . '" onclick="window.location.href=\'' . $edit_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-secondary border-2"
+                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2"
                         title="' . lang('Duplicate') . '" onclick="window.location.href=\'duplicate_product_group.php?id=' . $set_id . '\'"><i class="bi bi-files"></i></button>
                 </td>
                 <td class="chart_label align-middle">
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-3">
                         ' . $output_image . '
                         <div>
                             <a href="' . $edit_url . '" class="fw-semibold text-decoration-none">' . h($set['name']) . '</a>
-                            <div class="text-muted small">' . h($set['short_description']) . '</div>
+                            <div class="fg-secondary small">' . h($set['short_description']) . '</div>
                         </div>
                     </div>
                 </td>
@@ -3460,8 +3456,8 @@ function pg_pb_variant_sets_screen()
                 <thead>
                     <tr>
                         <th class="noVis">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" title="' . lang('Select/Deselect All') . '" type="checkbox" id="select_all" />
+                            <div class="form-field">
+                                <div class="switch"><input class="" title="' . lang('Select/Deselect All') . '" type="checkbox" id="select_all" /></div>
                             </div>
                         </th>
                         <th class="noVis">' . lang('Action') . '</th>
@@ -3480,9 +3476,9 @@ function pg_pb_variant_sets_screen()
                 <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . lang('Action') . '">
                     <div class="container">
                         <div class="btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                            <button type="button" value="Enable Selected" class="btn mb-1 mt-1 btn-secondary disabled pg-vs-status" data-pg-vs-status="enabled"><i class="bi bi-toggle-on me-2"></i>' . lang('Enable This') . '</button>
-                            <button type="button" value="Disable Selected" class="btn mb-1 mt-1 btn-secondary disabled pg-vs-status" data-pg-vs-status="disabled"><i class="bi bi-toggle-off me-2"></i>' . lang('Disable This') . '</button>
-                            <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . h(pg_catalog_bin_ready() ? lang('Move the selected variant sets and all of their products to the Recycle Bin? They can be restored from the Recycle Bin in the Catalog Manager.') : lang('Delete the selected variant sets and all of their products? This cannot be undone.')) . '"><i class="bi bi-trash me-2"></i>' . lang('Delete') . '</button>
+                            <button type="button" value="Enable Selected" class="btn mb-1 mt-1 btn-solid theme-secondary disabled pg-vs-status" data-pg-vs-status="enabled"><i class="bi bi-toggle-on me-3"></i>' . lang('Enable This') . '</button>
+                            <button type="button" value="Disable Selected" class="btn mb-1 mt-1 btn-solid theme-secondary disabled pg-vs-status" data-pg-vs-status="disabled"><i class="bi bi-toggle-off me-3"></i>' . lang('Disable This') . '</button>
+                            <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . h(pg_catalog_bin_ready() ? lang('Move the selected variant sets and all of their products to the Recycle Bin? They can be restored from the Recycle Bin in the Catalog Manager.') : lang('Delete the selected variant sets and all of their products? This cannot be undone.')) . '"><i class="bi bi-trash me-3"></i>' . lang('Delete') . '</button>
                         </div>
                     </div>
                 </nav>
@@ -3498,7 +3494,7 @@ function pg_pb_variant_sets_screen()
 
         if ($filters_active) {
             $output_empty =
-                '<div class="p-4">' .
+                '<div class="p-7">' .
                 pg_pb_render_empty_state(
                     'bi-funnel',
                     lang('No results'),
@@ -3506,7 +3502,7 @@ function pg_pb_variant_sets_screen()
                 </div>';
         } else {
             $output_empty =
-                '<div class="p-4">' .
+                '<div class="p-7">' .
                 pg_pb_render_empty_state(
                     'bi-diagram-3',
                     lang('Variant Sets'),
@@ -3567,27 +3563,27 @@ function pg_pb_variant_sets_screen()
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
 
-                <div class="row mb-2 flex-wrap">
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
+                <div class="row mb-3 flex-wrap">
+                    <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
                         
                         <nav id="button_bar" class="navigation" aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1" href="add_product.php"><i class="bi bi-plus-circle me-2"></i>' . lang('Create') . '</a>
-                            <a class="btn btn-sm btn-outline-secondary m-1" href="view_products.php?mode=products"><i class="bi bi-list-ul me-2"></i>' . lang('All Products') . '</a>
+                            <a class="btn btn-sm btn-solid theme-primary m-1" href="add_product.php"><i class="bi bi-plus-circle me-3"></i>' . lang('Create') . '</a>
+                            <a class="btn btn-sm btn-outline theme-secondary m-1" href="view_products.php?mode=products"><i class="bi bi-list-ul me-3"></i>' . lang('All Products') . '</a>
                         </nav>
                     </div>
 
                     <!-- Filters live top right, where every other list screen puts
                          them. A GET form so the URL is shareable and the back button
                          behaves; the choice is also kept in the session. -->
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-3">
-                        <div class="row justify-content-center justify-content-md-end">
+                    <div class="col-12 sm:col-12 md:col-6 xl:col-3">
+                        <div class="row justify-content-center md:justify-content-end">
                             <form id="search_form" action="view_products.php?mode=variant_sets" method="get" class="search_form col-auto">
                                 <div class="input-group input-group-sm">
                                     <label class="input-group-text mt-1 mb-1" for="status" title="' . lang('Enabled') . '"><i class="bi bi-eye"></i></label>
-                                    <select id="status" name="status" class="form-select mt-1 mb-1" title="' . lang('Enabled') . '" onchange="submit_form(\'search_form\')">' . $output_status_options . '</select>
-                                    <select id="parent" name="parent" class="form-select mt-1 mb-1" title="' . lang('Parent Product Group') . '" onchange="submit_form(\'search_form\')">' . $output_parent_options . '</select>
+                                    <select id="status" name="status" class="form-control mt-1 mb-1" title="' . lang('Enabled') . '" onchange="submit_form(\'search_form\')">' . $output_status_options . '</select>
+                                    <select id="parent" name="parent" class="form-control mt-1 mb-1" title="' . lang('Parent Product Group') . '" onchange="submit_form(\'search_form\')">' . $output_parent_options . '</select>
                                     ' . ($filters_active
-                                        ? '<a class="btn btn-outline-secondary mt-1 mb-1 no-submit" href="view_products.php?mode=variant_sets&amp;status=&amp;parent=0" title="' . lang('Clear Filters') . '"><i class="bi bi-x-lg"></i></a>'
+                                        ? '<a class="btn btn-outline theme-secondary mt-1 mb-1 no-submit" href="view_products.php?mode=variant_sets&amp;status=&amp;parent=0" title="' . lang('Clear Filters') . '"><i class="bi bi-x-lg"></i></a>'
                                         : '') . '
                                 </div>
                             </form>
@@ -3595,7 +3591,7 @@ function pg_pb_variant_sets_screen()
                     </div>
                 </div>
 
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         ' . $output_empty . '
                         ' . $output_table . '
@@ -3664,7 +3660,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     // here (edit_product.php refuses the write too); the way back is
     // restoring it in the Catalog Manager, so that is what the screen offers.
     $pg_recycled = ($pg_mode === 'edit') && !empty($context['recycled']);
-    $pg_bin_link = '<a class="btn my-1 btn-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin"><span class="bi bi-trash3 me-2"></span><span class="pg-btn-label">' . lang('Open the Recycle Bin') . '</span></a>';
+    $pg_bin_link = '<a class="btn my-1 btn-solid theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin"><span class="bi bi-trash3 me-3"></span><span class="pg-btn-label">' . lang('Open the Recycle Bin') . '</span></a>';
 
     // What a new product starts as. Written as values rather than as markup
     // defaults so that the create screen and the edit screen read from the same
@@ -3777,25 +3773,25 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     $output_submit_form_block = '' . '
                                                         <div class="col-12 my-1">
                                                             <label class="form-label" for="submit_form_custom_form_page_id">' . lang('Custom Form') . '</label>
-                                                            <select class="form-select collapse-if-selected" id="submit_form_custom_form_page_id" name="submit_form_custom_form_page_id" onchange="product_submit_form_update_custom_form_fields()" data-bs-target="#submit_form_custom_form_page_row"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Form')) )) . '-</option>' .  select_page($v('submit_form_custom_form_page_id'), 'custom form') . '</select>
+                                                            <select class="form-control collapse-if-selected" id="submit_form_custom_form_page_id" name="submit_form_custom_form_page_id" onchange="product_submit_form_update_custom_form_fields()" data-bs-target="#submit_form_custom_form_page_row"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Form')) )) . '-</option>' .  select_page($v('submit_form_custom_form_page_id'), 'custom form') . '</select>
                                                             <script>product_submit_form_update_custom_form_fields();</script>
-                                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="submit_form_custom_form_page_row">
+                                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="submit_form_custom_form_page_row">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                                 <div class="popover-body">
                                                                     <div class="row">
                                                                         <div class="col-12 my-1">
-                                                                            <div class="form-check form-switch">
-                                                                                <input value="1" ' . ($v('submit_form_create') ? ' checked="checked"' : '') . ' id="submit_form_create" name="submit_form_create" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#submit_form_create_row" />
-                                                                                <label class="form-check-label" for="submit_form_create">' . lang('Create Submitted Form') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input value="1" ' . ($v('submit_form_create') ? ' checked="checked"' : '') . ' id="submit_form_create" name="submit_form_create" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#submit_form_create_row" /></div>
+                                                                                <label class="" for="submit_form_create">' . lang('Create Submitted Form') . '</label>
                                                                             </div>
-                                                                            <div class="collapse popover  fade bs-popover-bottom p-0 mb-2" id="submit_form_create_row">
+                                                                            <div class="collapse popover  fade bs-popover-bottom p-0 mb-3" id="submit_form_create_row">
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                                                 <div class="popover-body">
                                                                                     <div class="row">
                                                                                         <div class="col-12 my-1">
-                                                                                            <div class="alert alert-primary">' . lang(array('string'=>'Please configure the fields below that should be set when a Submitted Form is {var:1}.','vars'=>array( lang('created') ) )) . '</div>
+                                                                                            <div class="alert theme-primary">' . lang(array('string'=>'Please configure the fields below that should be set when a Submitted Form is {var:1}.','vars'=>array( lang('created') ) )) . '</div>
                                                                                             <div id="submit_form_create_field"></div>
-                                                                                            <button type="button" onclick="product_submit_form_add_field({action: \'create\'})" class="btn btn-sm btn-primary my-3"><span class="bi bi-plus-circle me-2"></span>' . lang('Add Field') . '</button>
+                                                                                            <button type="button" onclick="product_submit_form_add_field({action: \'create\'})" class="btn btn-sm btn-solid theme-primary my-5"><span class="bi bi-plus-circle me-3"></span>' . lang('Add Field') . '</button>
                                                                                             <input type="hidden" id="last_submit_form_create_field_number" name="last_submit_form_create_field_number" value="0" />
                                                                                             <script>
                                                                                                 var last_submit_form_field_number = [];                            
@@ -3808,18 +3804,18 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 my-1">
-                                                                            <div class="form-check form-switch">
-                                                                                <input value="1" ' . ($v('submit_form_update') ? ' checked="checked"' : '') . ' id="submit_form_update" name="submit_form_update" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#submit_form_update_row" />
-                                                                                <label class="form-check-label" for="submit_form_update">' . lang('Update Submitted Form') . '</label>
+                                                                            <div class="form-field">
+                                                                                <div class="switch"><input value="1" ' . ($v('submit_form_update') ? ' checked="checked"' : '') . ' id="submit_form_update" name="submit_form_update" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#submit_form_update_row" /></div>
+                                                                                <label class="" for="submit_form_update">' . lang('Update Submitted Form') . '</label>
                                                                             </div>
-                                                                            <div class="collapse popover  fade bs-popover-bottom p-0 mb-2" id="submit_form_update_row">
+                                                                            <div class="collapse popover  fade bs-popover-bottom p-0 mb-3" id="submit_form_update_row">
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                                                 <div class="popover-body">
                                                                                     <div class="row">
                                                                                         <div class="col-12 my-1">
-                                                                                            <div class="alert alert-primary">' . lang(array('string'=>'Please configure the fields below that should be set when a Submitted Form is {var:1}.','vars'=>array( lang('updated') ) )) . '</div>
+                                                                                            <div class="alert theme-primary">' . lang(array('string'=>'Please configure the fields below that should be set when a Submitted Form is {var:1}.','vars'=>array( lang('updated') ) )) . '</div>
                                                                                             <div id="submit_form_update_field"></div>
-                                                                                            <button type="button" onclick="product_submit_form_add_field({action: \'update\'})" class="btn btn-sm btn-primary my-3"><span class="bi bi-plus-circle me-2"></span>' . lang('Add Field') . '</button>
+                                                                                            <button type="button" onclick="product_submit_form_add_field({action: \'update\'})" class="btn btn-sm btn-solid theme-primary my-5"><span class="bi bi-plus-circle me-3"></span>' . lang('Add Field') . '</button>
                                                                                             <input type="hidden" id="last_submit_form_update_field_number" name="last_submit_form_update_field_number" value="0" />
                                                                                             <script>
                                                                                                 last_submit_form_field_number["update"] = 0;
@@ -3831,11 +3827,11 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                                             </div>
                                                                         </div>
                                                                         <div class="col-12 my-1">
-                                                                            <div class="alert alert-primary">' . lang('Please specify which Submitted Form should be updated.') . '</div>
+                                                                            <div class="alert theme-primary">' . lang('Please specify which Submitted Form should be updated.') . '</div>
                                                                             <div class="input-group w-100">
                                                                                 <span class="input-group-text">
                                                                                     <label class="form-label" for="submit_form_update_where_field">' . lang('Where:') . '</label>
-                                                                                    <select class="form-select" id="submit_form_update_where_field" name="submit_form_update_where_field"></select>
+                                                                                    <select class="form-control" id="submit_form_update_where_field" name="submit_form_update_where_field"></select>
                                                                                 </span>
                                                                                 <span class="input-group-text">
                                                                                     <label class="form-label" for="submit_form_update_where_value">' . lang('is equal to:') . '</label>
@@ -3862,10 +3858,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
     if (($pg_mode === 'edit') && defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
         require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
-        $workspace_button = ws_record_button($user, 'product', $pg_product_id, (string) ($values['name'] ?? ''), 'btn btn-sm btn-outline-secondary w-100');
+        $workspace_button = ws_record_button($user, 'product', $pg_product_id, (string) ($values['name'] ?? ''), 'btn btn-sm btn-outline theme-secondary w-100');
 
         if ($workspace_button !== '') {
-            $output_workspace_card = '<div class="mb-3">' . $workspace_button . '</div>';
+            $output_workspace_card = '<div class="mb-5">' . $workspace_button . '</div>';
         }
     }
 
@@ -3889,20 +3885,20 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         $bc_attributes = implode(', ', $attr_labels);
 
         $output_barcode_card =
-            '<div class="mb-3" id="pg-barcode-card">' .
+            '<div class="mb-5" id="pg-barcode-card">' .
                 '<div class="card">' .
                     // Header: Edit Template (left) + Type select (right)
-                    '<div class="card-header bg-transparent border-bottom py-1 px-2 d-flex align-items-center justify-content-between gap-1">' .
-                        '<button type="button" class="btn btn-link btn-sm p-0 text-secondary text-nowrap" title="' . lang('Edit Template') . '" onclick="editBarcodeTemplate(window._pgBarcodeOpts)">' .
+                    '<div class="card-header bg-transparent border-bottom py-1 px-3 d-flex align-items-center justify-content-between gap-1">' .
+                        '<button type="button" class="btn btn-link btn-sm p-0 fg-secondary text-nowrap" title="' . lang('Edit Template') . '" onclick="editBarcodeTemplate(window._pgBarcodeOpts)">' .
                             '<i class="bi bi-pencil-square me-1"></i><small>' . lang('Edit Template') . '</small></button>' .
-                        '<select id="pg-barcode-type" class="form-select form-select-sm" style="max-width:105px;">' .
+                        '<select id="pg-barcode-type" class="form-control form-control-sm" style="max-width:105px;">' .
                             '<option value="CODE128"' . ($bc_type === 'CODE128' ? ' selected' : '') . '>Code 128</option>' .
                             '<option value="EAN13"'   . ($bc_type === 'EAN13'   ? ' selected' : '') . '>EAN-13</option>' .
                             '<option value="CODE39"'  . ($bc_type === 'CODE39'  ? ' selected' : '') . '>Code 39</option>' .
                             '<option value="UPC"'     . ($bc_type === 'UPC'     ? ' selected' : '') . '>UPC-A</option>' .
                         '</select>' .
                     '</div>' .
-                    '<div class="card-body p-2 pt-1">' .
+                    '<div class="card-body p-3 pt-1">' .
                         // Barcode SVG preview
                         '<div class="text-center mb-1" style="min-height:42px;">' .
                             '<svg id="pg-barcode-svg" style="max-width:100%;height:42px;"></svg>' .
@@ -3912,19 +3908,19 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                             '<span class="input-group-text"><i class="bi bi-pencil"></i></span>' .
                             '<input type="text" id="pg-barcode-input" class="form-control font-monospace" ' .
                                 'value="' . h($bc_value) . '" placeholder="' . lang('Barcode value') . '" maxlength="100" />' .
-                            '<button type="button" id="pg-btn-save-barcode" class="btn btn-outline-primary" title="' . lang('Save') . '">' .
+                            '<button type="button" id="pg-btn-save-barcode" class="btn btn-outline theme-primary" title="' . lang('Save') . '">' .
                                 '<i class="bi bi-floppy"></i></button>' .
                         '</div>' .
                         '<div id="pg-barcode-status" class="form-text" style="min-height:1.2em;"></div>' .
                         // Bottom row: Generate | List | Print
                         '<div class="d-flex gap-1 mt-1">' .
-                            '<button type="button" id="pg-btn-generate" class="btn btn-outline-secondary btn-sm flex-fill" title="' . lang('Generate') . '">' .
+                            '<button type="button" id="pg-btn-generate" class="btn btn-outline theme-secondary btn-sm flex-fill" title="' . lang('Generate') . '">' .
                                 '<i class="bi bi-magic me-1"></i>' . lang('Generate') . '</button>' .
-                            '<button type="button" id="pg-btn-barcode-list" class="btn btn-outline-secondary btn-sm position-relative" title="' . lang('Barcodes') . '">' .
+                            '<button type="button" id="pg-btn-barcode-list" class="btn btn-outline theme-secondary btn-sm position-relative" title="' . lang('Barcodes') . '">' .
                                 '<i class="bi bi-list-ul"></i>' .
-                                '<span id="pg-barcode-count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary" style="font-size:9px;display:none;"></span>' .
+                                '<span id="pg-barcode-count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill theme-primary" style="font-size:9px;display:none;"></span>' .
                             '</button>' .
-                            '<button type="button" id="pg-btn-print-barcode" class="btn btn-outline-success btn-sm" title="' . lang('Print') . '">' .
+                            '<button type="button" id="pg-btn-print-barcode" class="btn btn-outline theme-success btn-sm" title="' . lang('Print') . '">' .
                                 '<i class="bi bi-printer"></i></button>' .
                         '</div>' .
                     '</div>' .
@@ -4022,15 +4018,15 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                 : '');
 
         $output_barcode_fields =
-            '<div class="col-12 col-lg-3 my-2" id="pg_pb_barcode_field">
+            '<div class="col-12 lg:col-3 my-3" id="pg_pb_barcode_field">
                 <label for="pg_pb_barcode" class="form-label">' . $barcode_label . '</label>
                 <input type="text" name="pg_pb_barcode" id="pg_pb_barcode" class="form-control font-monospace"' . $barcode_attributes . ' placeholder="' . lang('Leave blank to generate') . '" value="' . h($v('pg_pb_barcode')) . '" />
             </div>
 
-            <div class="col-12 my-2">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" role="switch" name="pg_pb_barcode_auto" id="pg_pb_barcode_auto" value="1" checked="checked" />
-                    <label class="form-check-label" for="pg_pb_barcode_auto">' . lang('Assign a barcode automatically') . '</label>
+            <div class="col-12 my-3">
+                <div class="form-field">
+                    <div class="switch"><input class="" type="checkbox" role="switch" name="pg_pb_barcode_auto" id="pg_pb_barcode_auto" value="1" checked="checked" /></div>
+                    <label class="" for="pg_pb_barcode_auto">' . lang('Assign a barcode automatically') . '</label>
                     <div class="form-text" id="pg_pb_barcode_auto_help">' . lang('A code is generated for any product left blank.') . '</div>
                 </div>
             </div>';
@@ -4052,9 +4048,9 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     if ($has_groups) {
 
         $output_parent_group_field =
-            '<div class="col-12 col-lg-8 my-2 pg-pb-group-only d-none">
+            '<div class="col-12 lg:col-8 my-3 pg-pb-group-only d-none">
                 <label for="parent_group_id" class="form-label">' . lang('Parent Product Group') . '</label>
-                <select style="width:100%" data-pg-combobox class="form-select" id="parent_group_id" name="parent_group_id" data-placeholder="' . lang('Select Parent Group') . '">
+                <select style="width:100%" data-pg-combobox class="form-control" id="parent_group_id" name="parent_group_id" data-placeholder="' . lang('Select Parent Group') . '">
                     <option value="0">-' . lang('None') . '-</option>
                     ' . get_product_group_options(0, 0, 0, 0, array(), FALSE, 'text', false, true, false) . '
                 </select>
@@ -4062,9 +4058,9 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             </div>';
 
         $output_catalog_group_field =
-            '<div class="col-12 col-lg-8 my-2 pg-pb-single-only">
+            '<div class="col-12 lg:col-8 my-3 pg-pb-single-only">
                 <label for="catalog_group_ids" class="form-label">' . lang('Include product in to selected groups') . '</label>
-                <select style="width:100%" data-pg-combobox class="form-select" id="catalog_group_ids" name="catalog_group_ids[]" multiple="multiple" data-placeholder="' . lang('Include product in to selected groups') . '">
+                <select style="width:100%" data-pg-combobox class="form-control" id="catalog_group_ids" name="catalog_group_ids[]" multiple="multiple" data-placeholder="' . lang('Include product in to selected groups') . '">
                     ' . pg_pb_mark_selected(get_product_group_options(0, 0, 0, 0, array(), TRUE, 'text', false, true, false, $v('catalog_group_ids', array())), $v('catalog_group_ids', array())) . '
                 </select>
                 <div class="form-text">' . lang('A single product can sit in several groups.') . '</div>
@@ -4089,9 +4085,9 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
     if ($output_zone_options !== '') {
         $output_zones_field =
-            '<div class="col-12 my-2">
+            '<div class="col-12 my-3">
                 <label for="allowed_zones" class="form-label">' . lang('Allowed Zones') . '</label>
-                <select style="width:100%" data-pg-combobox class="form-select" data-placeholder="' . lang('Click to select shipping zone(s)') . '" id="allowed_zones" name="allowed_zones[]" multiple="multiple">' . $output_zone_options . '</select>
+                <select style="width:100%" data-pg-combobox class="form-control" data-placeholder="' . lang('Click to select shipping zone(s)') . '" id="allowed_zones" name="allowed_zones[]" multiple="multiple">' . $output_zone_options . '</select>
             </div>';
     }
 
@@ -4113,7 +4109,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                 'name'  => 'commissionable',
                 'label' => lang('Commissionable'),
                 'panel' =>
-                    '<div class="col-12 col-sm-6 col-lg-4">
+                    '<div class="col-12 sm:col-6 lg:col-4">
                         <label for="commission_rate_limit" class="form-label">' . lang('Commission Rate Limit') . '</label>
                         <div class="input-group">
                             <input type="text" name="commission_rate_limit" id="commission_rate_limit" class="form-control" size="3" maxlength="3" inputmode="numeric" style="text-align:right;" value="' . h($v('commission_rate_limit')) . '" />
@@ -4160,7 +4156,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                     'label' => lang('Compare-at Price'),
                     'help'  => lang('An earlier or list price of this article, higher than the price it sells at.'),
                     'panel' =>
-                        '<div class="col-12 col-sm-6 col-lg-4">
+                        '<div class="col-12 sm:col-6 lg:col-4">
                             <label for="compare_at_price" class="form-label">' . lang('Amount') . '</label>
                             <div class="input-group">
                                 <input value="' . h($v('compare_at_price', '')) . '" type="text" name="compare_at_price" id="compare_at_price" class="form-control" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
@@ -4199,28 +4195,28 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                             'target' => '#weight,#length,#width,#height',
                                                         )), 'mt-0') .
 
-                                                    '<div class="col-6 col-lg-3 my-1">
+                                                    '<div class="col-6 lg:col-3 my-1">
                                                         <label for="weight" class="form-label">' . lang('Weight') . '</label>
                                                         <div class="input-group">
                                                             <input value="' . h($v('weight', '0')) . '" type="text" name="weight" id="weight" class="form-control" inputmode="decimal" style="text-align:right;" />
                                                             <label class="input-group-text unit" for="weight">lbs</label>
                                                         </div>
                                                     </div>
-                                                    <div class="col-6 col-lg-3 my-1">
+                                                    <div class="col-6 lg:col-3 my-1">
                                                         <label for="length" class="form-label">' . lang('Length') . '</label>
                                                         <div class="input-group">
                                                             <input value="' . h($v('length', '0')) . '" type="text" name="length" id="length" class="form-control" inputmode="decimal" style="text-align:right;" />
                                                             <label class="input-group-text unit" for="length">inc</label>
                                                         </div>
                                                     </div>
-                                                    <div class="col-6 col-lg-3 my-1">
+                                                    <div class="col-6 lg:col-3 my-1">
                                                         <label for="width" class="form-label">' . lang('Width') . '</label>
                                                         <div class="input-group">
                                                             <input value="' . h($v('width', '0')) . '" type="text" name="width" id="width" class="form-control" inputmode="decimal" style="text-align:right;" />
                                                             <label class="input-group-text unit" for="width">inc</label>
                                                         </div>
                                                     </div>
-                                                    <div class="col-6 col-lg-3 my-1">
+                                                    <div class="col-6 lg:col-3 my-1">
                                                         <label for="height" class="form-label">' . lang('Height') . '</label>
                                                         <div class="input-group">
                                                             <input value="' . h($v('height', '0')) . '" type="text" name="height" id="height" class="form-control" inputmode="decimal" style="text-align:right;" />
@@ -4228,19 +4224,19 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                         </div>
                                                     </div>
 
-                                                    <div class="col-6 col-lg-3 my-1">
+                                                    <div class="col-6 lg:col-3 my-1">
                                                         <label for="primary_weight_points" class="form-label">' . lang('Primary Weight Points') . '</label>
                                                         <input value="' . h($v('primary_weight_points', '0')) . '" type="number" step="0.01" min="0" name="primary_weight_points" id="primary_weight_points" class="form-control" />
                                                     </div>
-                                                    <div class="col-6 col-lg-3 my-1">
+                                                    <div class="col-6 lg:col-3 my-1">
                                                         <label for="secondary_weight_points" class="form-label">' . lang('Secondary Weight Points') . '</label>
                                                         <input value="' . h($v('secondary_weight_points', '0')) . '" type="number" step="0.01" min="0" name="secondary_weight_points" id="secondary_weight_points" class="form-control" />
                                                     </div>
-                                                    <div class="col-6 col-lg-3 my-1">
+                                                    <div class="col-6 lg:col-3 my-1">
                                                         <label for="preparation_time" class="form-label">' . lang('Preparation Time') . '</label>
                                                         <input type="number" min="0" name="preparation_time" id="preparation_time" class="form-control" value="' . h($v('preparation_time', '')) . '" />
                                                     </div>
-                                                    <div class="col-6 col-lg-3 my-1">
+                                                    <div class="col-6 lg:col-3 my-1">
                                                         <label for="extra_shipping_cost" class="form-label">' . lang('Extra Shipping Cost') . '</label>
                                                         <div class="input-group">
                                                             <input value="' . h($v('extra_shipping_cost', '0')) . '" type="text" name="extra_shipping_cost" id="extra_shipping_cost" class="form-control" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
@@ -4269,7 +4265,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     if (defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD == TRUE
         && defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY == 'Sage') {
         $output_sage_group_id =
-            '<div class="col-12 col-sm-6 col-lg-4 my-2">
+            '<div class="col-12 sm:col-6 lg:col-4 my-3">
                 <label class="form-label" for="sage_group_id">' . lang('Sage Group ID') . '</label>
                 <input type="text" name="sage_group_id" id="sage_group_id" class="form-control" maxlength="50" value="' . h($v('sage_group_id')) . '" />
             </div>';
@@ -4281,7 +4277,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
     if (defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY != 'ClearCommerce') {
         $output_recurring_start =
-            '<div class="col-12 col-sm-6 col-lg-4 my-1">
+            '<div class="col-12 sm:col-6 lg:col-4 my-1">
                 <label for="start" class="form-label">' . lang('Start (days)') . '</label>
                 <div class="input-group">
                     <input type="text" name="start" id="start" class="form-control" value="' . h($v('start', '0')) . '" size="7" maxlength="7" inputmode="numeric" style="text-align:right;" />
@@ -4302,7 +4298,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                 'label' => lang('Perform action(s) if profile is disabled'),
                 'panel' =>
                     '<div class="col-12">
-                        <div class="alert alert-warning">' . lang('requires recurring payment job') . '</div>
+                        <div class="alert theme-warning">' . lang('requires recurring payment job') . '</div>
                     </div>' .
                     pg_pb_render_switch_row(
                         pg_pb_render_switch(array(
@@ -4321,13 +4317,13 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                             'name'  => 'recurring_profile_disabled_email',
                             'label' => lang('Send E-mail to Customer'),
                             'panel' =>
-                                '<div class="col-12 col-lg-6">
+                                '<div class="col-12 lg:col-6">
                                     <label class="form-label" for="recurring_profile_disabled_email_subject">' . lang('Subject') . '</label>
                                     <input type="text" id="recurring_profile_disabled_email_subject" name="recurring_profile_disabled_email_subject" class="form-control" maxlength="100" value="' . h($v('recurring_profile_disabled_email_subject')) . '" />
                                 </div>
-                                <div class="col-12 col-lg-6">
+                                <div class="col-12 lg:col-6">
                                     <label class="form-label" for="recurring_profile_disabled_email_page_id">' . lang('Page') . '</label>
-                                    <select name="recurring_profile_disabled_email_page_id" id="recurring_profile_disabled_email_page_id" class="form-select">
+                                    <select name="recurring_profile_disabled_email_page_id" id="recurring_profile_disabled_email_page_id" class="form-control">
                                         <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Page')))) . '-</option>' . select_page($v('recurring_profile_disabled_email_page_id')) . '
                                     </select>
                                 </div>',
@@ -4402,7 +4398,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         }
 
         $output_custom_product_fields .=
-            '<div class="col-12 col-lg-6 my-2">
+            '<div class="col-12 lg:col-6 my-3">
                 <label for="custom_field_' . $custom_field_number . '" class="form-label">' . h(constant($custom_field_constant)) . '</label>
                 <input class="form-control" type="text" id="custom_field_' . $custom_field_number . '" name="custom_field_' . $custom_field_number . '" value="' . h($v('custom_field_' . $custom_field_number)) . '" maxlength="255" />
             </div>';
@@ -4589,10 +4585,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             column, so answering it means reading every catalog page and walking
             the group tree for each.
         */
-        ? '<nav class="navigation mb-3" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-link link-secondary" href="duplicate_product.php?id=' . h($pg_product_id) . get_token_query_string_field() . '"><i class="bi bi-copy me-1"></i>' . lang('Duplicate') . '</a>
+        ? '<nav class="navigation mb-5" aria-label="' . lang('Button Bar') . '">
+                <a class="btn btn-sm btn-link pg-link-secondary" href="duplicate_product.php?id=' . h($pg_product_id) . get_token_query_string_field() . '"><i class="bi bi-copy me-1"></i>' . lang('Duplicate') . '</a>
                 ' . (($v('product_form') or $v('pg_pb_has_form_fields'))
-                    ? '<a class="btn btn-sm btn-link link-secondary" href="view_fields.php?product_id=' . h($pg_product_id) . '"><i class="bi bi-ui-checks me-1"></i>' . lang('Product Form') . '</a>'
+                    ? '<a class="btn btn-sm btn-link pg-link-secondary" href="view_fields.php?product_id=' . h($pg_product_id) . '"><i class="bi bi-ui-checks me-1"></i>' . lang('Product Form') . '</a>'
                     : '') . '
             </nav>'
         : '') . '
@@ -4603,7 +4599,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
             ' . ($pg_recycled
-                ? '<div class="alert alert-warning d-flex flex-wrap align-items-center gap-2" role="alert"><span class="bi bi-trash3"></span><span class="me-auto">' . lang('This product is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.') . '</span><a class="btn btn-sm btn-outline-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin">' . lang('Open the Recycle Bin') . '</a></div>'
+                ? '<div class="alert theme-warning d-flex flex-wrap align-items-center gap-3" role="alert"><span class="bi bi-trash3"></span><span class="me-auto">' . lang('This product is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.') . '</span><a class="btn btn-sm btn-outline theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin">' . lang('Open the Recycle Bin') . '</a></div>'
                 : '') . '
         </div>
     </div>
@@ -4629,7 +4625,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                 Below lg it drops under the form, which is where a summary belongs on
                 a narrow screen — above it, it would push the first field off screen.
             -->
-            <div class="col-12 col-lg-8 col-xxl-9 order-1">
+            <div class="col-12 lg:col-8 2xl:col-9 order-1">
 
                 <div class="row" id="pg_pb_sections">
 
@@ -4638,60 +4634,56 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                          the picker is already a bordered drop area. Wrapping it in a
                          second bordered surface with a header just adds chrome
                          around a field. -->
-                    <div class="col-12 mb-4" id="pg_pb_sec_images">
+                    <div class="col-12 mb-7" id="pg_pb_sec_images">
                         ' . pg_pb_render_image_picker(
                                 // Stored images, cover first. On create this is
                                 // empty and the picker draws its empty state.
                                 $v('selected_images', array()),
-                                '<button type="button" class="btn btn-sm btn-outline-secondary ms-auto" data-bs-toggle="modal" data-bs-target="#image_code" title="' . lang('Code') . '"><i class="bi bi-code-slash"></i></button>') . '
+                                '<button type="button" class="btn btn-sm btn-outline theme-secondary ms-auto" data-bs-toggle="dialog" data-bs-target="#image_code" title="' . lang('Code') . '"><i class="bi bi-code-slash"></i></button>') . '
 
-                        <div class="modal fade" id="image_code" tabindex="-1" aria-hidden="true">
-                            <div class="modal-dialog modal-lg">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title">' . lang('Code') . '</h5>
-                                        <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="modal" aria-label="' . lang('Close') . '"></button>
+                        <dialog class="dialog dialog-lg" id="image_code">
+                                    <div class="dialog-header">
+                                        <h5 class="dialog-title">' . lang('Code') . '</h5>
+                                        <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="' . lang('Close') . '"></button>
                                     </div>
-                                    <div class="modal-body">
+                                    <div class="dialog-body">
                                         <div class="row">
-                                            <div class="col-12 my-2">
-                                                <div class="alert alert-primary">' . lang('Tags') . ': <span>^^image_loop_start^^</span>, <span>^^image_alt^^</span>, <span>^^image_url^^</span>, <span>^^image_loop_end^^</span></div>
+                                            <div class="col-12 my-3">
+                                                <div class="alert theme-primary">' . lang('Tags') . ': <span>^^image_loop_start^^</span>, <span>^^image_alt^^</span>, <span>^^image_url^^</span>, <span>^^image_loop_end^^</span></div>
                                             </div>
-                                            <div class="col-12 my-2">
+                                            <div class="col-12 my-3">
                                                 <textarea id="code" name="code">' . h($image_code) . '</textarea>
                                                 ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'mixed')) . '
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
+                        </dialog>
                     </div>
 
                     <!-- ---------------------------------------------- product -->
                     <div class="col-12" id="pg_pb_sec_basic">
-                        <div class="card mb-4">
-                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-2">
-                                <i class="bi bi-info-circle text-primary"></i>
-                                <span class="h5 mb-0 text-primary fw-bold">' . lang('Main Informations') . '</span>
+                        <div class="card mb-7">
+                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
+                                <i class="bi bi-info-circle fg-primary"></i>
+                                <span class="h5 mb-0 fg-primary fw-bold">' . lang('Main Informations') . '</span>
                             </div>
                             <div class="card-body">
                                 <div class="row">
 
-                                    <div class="col-12 col-lg-4 my-2">
+                                    <div class="col-12 lg:col-4 my-3">
                                         <label for="name" class="form-label">*' . lang('Product ID / SKU') . '</label>
-                                        <input type="text" name="name" id="name" class="form-control" required value="' . h($v('name')) . '" />
+                                        <input type="text" name="name" id="name" class="form-control" required value="' . h($v('name')) . '" data-pg-name-except="' . (($pg_mode === 'edit') ? $pg_product_id : 0) . '" />
                                         <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Used as the prefix of every variant SKU.') . '</div>
                                     </div>
 
-                                    <div class="col-12 col-lg-5 my-2">
+                                    <div class="col-12 lg:col-5 my-3">
                                         ' . pg_ai_write_label_row('<label for="short_description" class="form-label">' . lang('Short Description') . '</label>', $ai_button('product_short', 'short_description'), $ai_marker('short_description', 'short_description')) . '
                                         <input type="text" name="short_description" id="short_description" class="form-control" maxlength="255" value="' . h($v('short_description')) . '" />
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Becomes the product group name shown in the catalog.') . '</div>
                                     </div>
 
-                                    <div class="col-12 col-lg-3 my-2">
+                                    <div class="col-12 lg:col-3 my-3">
                                         <label for="price" class="form-label">' . lang('Unit Price') . '</label>
                                         <div class="input-group">
                                             <input value="' . h($v('price', '0')) . '" type="text" name="price" id="price" class="form-control" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
@@ -4700,29 +4692,29 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Starting price for every variant; each row can differ.') . '</div>
                                     </div>
 
-                                    <div class="col-6 col-lg-3 my-2">
+                                    <div class="col-6 lg:col-3 my-3">
                                         <label for="selection_type" class="form-label">' . lang('Selection Type') . '</label>
-                                        <select name="selection_type" id="selection_type" class="form-select">' . select_selection_type($v('selection_type', 'quantity')) . '</select>
+                                        <select name="selection_type" id="selection_type" class="form-control">' . select_selection_type($v('selection_type', 'quantity')) . '</select>
                                     </div>
-                                    <div class="col-6 col-lg-3 my-2">
+                                    <div class="col-6 lg:col-3 my-3">
                                         <label for="default_quantity" class="form-label">' . lang('Default Quantity') . '</label>
                                         <input class="form-control" value="' . h($v('default_quantity', '1')) . '" type="number" min="0" name="default_quantity" id="default_quantity" />
                                     </div>
-                                    <div class="col-6 col-lg-3 my-2">
+                                    <div class="col-6 lg:col-3 my-3">
                                         <label for="minimum_quantity" class="form-label">' . lang('Min. Quantity') . '</label>
                                         <input class="form-control" value="' . h($v('minimum_quantity', '')) . '" type="number" min="0" name="minimum_quantity" id="minimum_quantity" />
                                     </div>
-                                    <div class="col-6 col-lg-3 my-2">
+                                    <div class="col-6 lg:col-3 my-3">
                                         <label for="maximum_quantity" class="form-label">' . lang('Max. Quantity') . '</label>
                                         <input class="form-control" value="' . h($v('maximum_quantity', '')) . '" type="number" min="0" name="maximum_quantity" id="maximum_quantity" />
                                     </div>
 
-                                    <div class="col-12 mt-3 mb-2">
+                                    <div class="col-12 mt-5 mb-3">
                                         ' . pg_ai_write_label_row('<label for="full_description" class="form-label">' . lang('Full Description') . '</label>', $ai_button('product_description', 'full_description'), $ai_marker('full_description', 'full_description')) . '
                                         <textarea id="full_description" name="full_description">' . h($v('full_description')) . '</textarea>
                                     </div>
 
-                                    <div class="col-12 my-2">
+                                    <div class="col-12 my-3">
                                         <label for="details" class="form-label">' . lang('Details') . '</label>
                                         <textarea id="details" name="details">' . h($v('details')) . '</textarea>
                                     </div>
@@ -4739,7 +4731,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                 'name'    => 'taxable',
                                                 'label'   => lang('Taxable'),
                                                 'panel'   =>
-                                                    '<div class="col-12 col-sm-6 col-lg-4">
+                                                    '<div class="col-12 sm:col-6 lg:col-4">
                                                         <label for="tax_rate" class="form-label">' . lang('Tax Rate (%)') . '</label>
                                                         <input type="number" min="0" max="100" step="0.001" name="tax_rate" id="tax_rate" class="form-control" placeholder="' . h($output_tax_rate_placeholder) . '" value="' . h($output_tax_rate_value) . '" />
                                                         <div class="form-text">' . $output_tax_rate_help . '</div>
@@ -4766,14 +4758,14 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     
                                                         $output_recurring_start .
     
-                                                        '<div class="col-12 col-sm-6 col-lg-4 my-1">
+                                                        '<div class="col-12 sm:col-6 lg:col-4 my-1">
                                                             <label for="number_of_payments" class="form-label">' . lang('Number of Payments') . '</label>
                                                             <input type="text" name="number_of_payments" id="number_of_payments" class="form-control" size="7" maxlength="7" inputmode="numeric" value="' . h($v('number_of_payments')) . '" />
                                                             <div class="form-text">' . get_number_of_payments_message() . '</div>
                                                         </div>
-                                                        <div class="col-12 col-sm-6 col-lg-4 my-1">
+                                                        <div class="col-12 sm:col-6 lg:col-4 my-1">
                                                             <label for="payment_period" class="form-label">' . lang('Payment Period') . '</label>
-                                                            <select name="payment_period" id="payment_period" class="form-select">' . select_payment_period($v('payment_period', 'Monthly')) . '</select>
+                                                            <select name="payment_period" id="payment_period" class="form-control">' . select_payment_period($v('payment_period', 'Monthly')) . '</select>
                                                         </div>' .
     
                                                         $output_recurring_profile_disabled,
@@ -4787,12 +4779,12 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                 'name'  => 'inventory',
                                                 'label' => lang('Inventory Tracking'),
                                                 'panel' =>
-                                                    '<div class="col-12 col-sm-6 col-lg-4">
+                                                    '<div class="col-12 sm:col-6 lg:col-4">
                                                         <label for="inventory_quantity" class="form-label">' . lang('Inventory Quantity') . '</label>
                                                         <input type="number" min="0" name="inventory_quantity" id="inventory_quantity" class="form-control" value="' . h($v('inventory_quantity', '')) . '" />
                                                         <div class="form-text pg-pb-group-only d-none">' . lang('Starting stock for every variant; each row can differ.') . '</div>
                                                     </div>
-                                                    <div class="col-12 mt-3">
+                                                    <div class="col-12 mt-5">
                                                         <label for="out_of_stock_message" class="form-label">' . lang('Out of Stock Message') . '</label>
                                                         <textarea id="out_of_stock_message" name="out_of_stock_message">' . h($v('out_of_stock_message')) . '</textarea>
                                                     </div>
@@ -4818,10 +4810,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
                     <!-- --------------------------------------------- variants -->
                     <div class="col-12" id="pg_pb_sec_variants">
-                        <div class="card mb-4">
-                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-2">
-                                <i class="bi bi-diagram-3 text-primary"></i>
-                                <span class="h5 mb-0 text-primary fw-bold">' . (($pg_mode === 'edit') ? lang('Product Attributes') : lang('Variants')) . '</span>
+                        <div class="card mb-7">
+                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
+                                <i class="bi bi-diagram-3 fg-primary"></i>
+                                <span class="h5 mb-0 fg-primary fw-bold">' . (($pg_mode === 'edit') ? lang('Product Attributes') : lang('Variants')) . '</span>
                             </div>
                             <div class="card-body">
                                 <div class="row">
@@ -4847,22 +4839,22 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     ? lang('Which options this product is sold in. One per attribute — a product is a single variant.')
                                                     : lang('Tick the options this product comes in. Two or more combinations create a variant group; one or none creates a single product.'),
                                                 'panel' =>
-                                                    '<div class="col-12 d-flex justify-content-end mb-2">
-                                                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#pg_pb_attribute_modal">
-                                                            <i class="bi bi-plus-circle me-2"></i>' . lang('New Attribute') . '</button>
+                                                    '<div class="col-12 d-flex justify-content-end mb-3">
+                                                        <button type="button" class="btn btn-sm btn-outline theme-primary" data-bs-toggle="dialog" data-bs-target="#pg_pb_attribute_modal">
+                                                            <i class="bi bi-plus-circle me-3"></i>' . lang('New Attribute') . '</button>
                                                     </div>
                                                     <div class="col-12">
                                                         ' . pg_pb_render_dimensions($v('pg_pb_selected_option_ids', array()), array(), ($pg_mode === 'edit')) . '
                                                     </div>
-                                                    <div class="col-12 mt-3 d-none" id="pg_pb_combo_preview"></div>
+                                                    <div class="col-12 mt-5 d-none" id="pg_pb_combo_preview"></div>
 
-                                                    <div class="col-12 col-lg-6 mt-3 pg-pb-group-only d-none">
+                                                    <div class="col-12 lg:col-6 mt-5 pg-pb-group-only d-none">
                                                         <label for="sku_template" class="form-label">' . lang('SKU Template') . '</label>
                                                         <input type="text" id="sku_template" name="sku_template" class="form-control" placeholder="' . lang('e.g. {Color}-{Size}') . '" value="' . h($v('sku_template')) . '" />
                                                         <div class="pg-pb-tokens d-flex flex-wrap gap-1 mt-1" data-pg-pb-target="sku_template"></div>
                                                         <div class="form-text">' . lang('Added after the SKU above. Use attribute names in curly braces.') . '</div>
                                                     </div>
-                                                    <div class="col-12 col-lg-6 mt-3 pg-pb-group-only d-none">
+                                                    <div class="col-12 lg:col-6 mt-5 pg-pb-group-only d-none">
                                                         <label for="short_description_template" class="form-label">' . lang('Short Description Template') . '</label>
                                                         <input type="text" id="short_description_template" name="short_description_template" class="form-control" placeholder="' . lang('e.g. T-Shirt {Color}-{Size}') . '" value="' . h($v('short_description_template')) . '" />
                                                         <div class="pg-pb-tokens d-flex flex-wrap gap-1 mt-1" data-pg-pb-target="short_description_template"></div>
@@ -4876,29 +4868,29 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                          attribute" modal, and the rules only mean something
                                                          for a set; the rows are drawn by product_builder.js
                                                          from the options that are ticked. -->
-                                                    <div class="col-12 mt-4 pg-pb-group-only d-none" id="pg_pb_price_rules">
+                                                    <div class="col-12 mt-7 pg-pb-group-only d-none" id="pg_pb_price_rules">
                                                         <hr class="mt-0" />
-                                                        <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
-                                                            <i class="bi bi-calculator text-primary" aria-hidden="true"></i>
+                                                        <div class="d-flex align-items-center flex-wrap gap-3 mb-1">
+                                                            <i class="bi bi-calculator fg-primary" aria-hidden="true"></i>
                                                             <span class="h6 mb-0 fw-bold">' . lang('Price Rules') . '</span>
                                                         </div>
-                                                        <div class="form-text mt-0 mb-2">' . lang('Give options an effect on the price and every variant below is priced from the Unit Price. Order: the base, times the multipliers, plus the amounts, then the percentages one after another. Only one attribute can set the price. A price typed into a row is kept.') . '</div>
+                                                        <div class="form-text mt-0 mb-3">' . lang('Give options an effect on the price and every variant below is priced from the Unit Price. Order: the base, times the multipliers, plus the amounts, then the percentages one after another. Only one attribute can set the price. A price typed into a row is kept.') . '</div>
                                                         <div id="pg_pb_price_rules_body"></div>
                                                     </div>') . '
 
                                                     <!-- The matrix belongs to this switch, so it lives
                                                          inside its panel rather than in a card of its
                                                          own further down the page. -->
-                                                    <div class="col-12 mt-4 d-none" id="pg_pb_matrix_wrapper">
+                                                    <div class="col-12 mt-7 d-none" id="pg_pb_matrix_wrapper">
                                                         <hr class="mt-0" />
-                                                        <div class="d-flex align-items-center flex-wrap gap-2 mb-2">
-                                                            <i class="bi bi-grid-3x3-gap text-primary"></i>
+                                                        <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
+                                                            <i class="bi bi-grid-3x3-gap fg-primary"></i>
                                                             <span class="h6 mb-0 fw-bold">' . lang('Variants to Create') . '</span>
-                                                            <span id="pg_pb_variant_count" class="badge text-bg-primary">0</span>
+                                                            <span id="pg_pb_variant_count" class="badge theme-primary">0</span>
                                                             <div class="d-flex flex-wrap gap-1 ms-auto">
-                                                                <button type="button" id="pg_pb_apply_price" class="btn btn-sm btn-outline-secondary"><i class="bi bi-currency-exchange me-1"></i>' . lang('Apply Price to All') . '</button>
-                                                                <button type="button" id="pg_pb_apply_stock" class="btn btn-sm btn-outline-secondary"><i class="bi bi-boxes me-1"></i>' . lang('Apply Stock to All') . '</button>
-                                                                <button type="button" id="pg_pb_apply_images" class="btn btn-sm btn-outline-secondary"><i class="bi bi-images me-1"></i>' . lang('Apply Images to All') . '</button>
+                                                                <button type="button" id="pg_pb_apply_price" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-currency-exchange me-1"></i>' . lang('Apply Price to All') . '</button>
+                                                                <button type="button" id="pg_pb_apply_stock" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-boxes me-1"></i>' . lang('Apply Stock to All') . '</button>
+                                                                <button type="button" id="pg_pb_apply_images" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-images me-1"></i>' . lang('Apply Images to All') . '</button>
                                                             </div>
                                                         </div>
 
@@ -4918,7 +4910,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                                 columns were.
                                                             -->
                                                             <thead>
-                                                                <tr class="d-none d-lg-table-row">
+                                                                <tr class="d-none lg:d-table-row">
                                                                     <th>' . lang('Combinations') . '</th>
                                                                     <th style="width:16%">' . lang('Product ID / SKU') . '</th>
                                                                     <th style="width:22%">' . lang('Short Description') . '</th>
@@ -4942,10 +4934,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                          joins several groups; a set of products gets one group of
                          its own placed under a parent. -->
                     <div class="col-12" id="pg_pb_sec_groups">
-                        <div class="card mb-4">
-                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-2">
-                                <i class="bi bi-folder text-primary"></i>
-                                <span class="h5 mb-0 text-primary fw-bold">' . lang('Parent Product Groups') . '</span>
+                        <div class="card mb-7">
+                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
+                                <i class="bi bi-folder fg-primary"></i>
+                                <span class="h5 mb-0 fg-primary fw-bold">' . lang('Parent Product Groups') . '</span>
                             </div>
                             <div class="card-body">
                                 <div class="row">
@@ -4958,17 +4950,17 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
                     <!-- ------------------------------------- checkout options -->
                     <div class="col-12" id="pg_pb_sec_checkout">
-                        <div class="card mb-4">
-                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-2">
-                                <i class="bi bi-credit-card text-primary"></i>
-                                <span class="h5 mb-0 text-primary fw-bold">' . lang('Checkout Options') . '</span>
+                        <div class="card mb-7">
+                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
+                                <i class="bi bi-credit-card fg-primary"></i>
+                                <span class="h5 mb-0 fg-primary fw-bold">' . lang('Checkout Options') . '</span>
                             </div>
                             <div class="card-body">
                                 <div class="row">
 
-                                    <div class="col-12 col-lg-8 my-2">
+                                    <div class="col-12 lg:col-8 my-3">
                                         <label class="form-label" for="required_product">' . lang('Requires Product') . '</label>
-                                        <select class="form-select" id="required_product" name="required_product">
+                                        <select class="form-control" id="required_product" name="required_product">
                                             <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Product')))) . '-</option>' . select_product($v('required_product')) . '
                                         </select>
                                         <div class="form-text">' . lang('The customer must also have this product in the cart.') . '</div>
@@ -4983,10 +4975,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
                     <!-- -------------------------------------------------- seo -->
                     <div class="col-12" id="pg_pb_sec_seo">
-                        <div class="card mb-4">
-                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-2">
-                                <i class="bi bi-search text-primary"></i>
-                                <span class="h5 mb-0 text-primary fw-bold">' . lang('Site Search & SEO') . '</span>
+                        <div class="card mb-7">
+                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
+                                <i class="bi bi-search fg-primary"></i>
+                                <span class="h5 mb-0 fg-primary fw-bold">' . lang('Site Search & SEO') . '</span>
                                 ' . $output_seo_badge . '
                             </div>
                             <div class="card-body">
@@ -4995,23 +4987,23 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                     <!-- Site search, not a search engine: these words feed the
                                          on-site search and the tag cloud. Full width and a tag
                                          input because it is a list, not a sentence. -->
-                                    <div class="col-12 my-2">
+                                    <div class="col-12 my-3">
                                         <label for="keywords" class="form-label">' . lang('Search Keywords') . '</label>
                                         <input type="text" name="keywords" id="keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '" maxlength="255" value="' . h($v('keywords')) . '" />' . pg_fields_script() . '
                                         <div class="form-text">' . lang('Used by the search on your own site, not by search engines.') . '</div>
                                     </div>
 
-                                    <div class="col-12 col-lg-6 my-2">
+                                    <div class="col-12 lg:col-6 my-3">
                                         <label for="address_name" class="form-label">' . lang('Catalog Name') . '</label>
                                         <input type="text" name="address_name" id="address_name" class="form-control" value="' . h($v('address_name')) . '" />
                                         <div class="form-text">' . lang('This option determines the url address of the product. Automatically assigned if left blank.') . '</div>
                                     </div>
-                                    <div class="col-12 col-lg-6 my-2">
+                                    <div class="col-12 lg:col-6 my-3">
                                         ' . pg_ai_write_label_row('<label for="title" class="form-label">' . lang('Web Browser Title') . '</label>', $ai_button('seo_title', 'title'), $ai_marker('title', 'title')) . '
                                         <input type="text" name="title" id="title" class="form-control" maxlength="255" value="' . h($v('title')) . '" />
                                         <div id="seo_c_title"></div>
                                     </div>
-                                    <div class="col-12 my-2">
+                                    <div class="col-12 my-3">
                                         ' . pg_ai_write_label_row('<label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>', $ai_button('seo_description', 'meta_description'), $ai_marker('meta_description', 'meta_description')) . '
                                         <textarea name="meta_description" id="meta_description" class="form-control" maxlength="255">' . h($v('meta_description')) . '</textarea>
                                         <div id="seo_c_meta_description"></div>
@@ -5025,14 +5017,14 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
                     <!-- ------------------------------------------ identifiers -->
                     <div class="col-12" id="pg_pb_sec_identifiers">
-                        <div class="card mb-4">
-                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-2">
-                                <i class="bi bi-upc-scan text-primary"></i>
-                                <span class="h5 mb-0 text-primary fw-bold">' . lang('RSS Feed') . '</span>
+                        <div class="card mb-7">
+                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
+                                <i class="bi bi-upc-scan fg-primary"></i>
+                                <span class="h5 mb-0 fg-primary fw-bold">' . lang('RSS Feed') . '</span>
                             </div>
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-12 col-lg-3 my-2">
+                                    <div class="col-12 lg:col-3 my-3">
                                         <label for="brand" class="form-label">' . lang('Brand') . '</label>
                                         <input type="text" name="brand" id="brand" class="form-control" maxlength="100" value="' . h($v('brand')) . '" />
                                     </div>
@@ -5042,23 +5034,23 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                         that repeats one code across nine variants is rejected. In
                                         that case the field lives per variant, under the row.
                                     -->
-                                    <div class="col-12 col-lg-3 my-2" id="pg_pb_gtin_field">
+                                    <div class="col-12 lg:col-3 my-3" id="pg_pb_gtin_field">
                                         <label for="gtin" class="form-label">' . lang('GTIN') . '</label>
                                         <input type="text" name="gtin" id="gtin" class="form-control" maxlength="50" placeholder="' . lang('e.g. UPC') . '" value="' . h($v('gtin')) . '" />
                                     </div>
-                                    <div class="col-12 col-lg-3 my-2 d-none" id="pg_pb_gtin_moved">
+                                    <div class="col-12 lg:col-3 my-3 d-none" id="pg_pb_gtin_moved">
                                         <label class="form-label">' . lang('GTIN') . '</label>
-                                        <div class="form-control-plaintext small text-muted">
+                                        <div class="form-control-plaintext small fg-secondary">
                                             <i class="bi bi-arrow-down-circle me-1"></i>' . lang('Set per variant, under each row.') . '
                                         </div>
                                     </div>
-                                    <div class="col-12 col-lg-3 my-2">
+                                    <div class="col-12 lg:col-3 my-3">
                                         <label for="mpn" class="form-label">' . lang('MPN') . '</label>
                                         <input type="text" name="mpn" id="mpn" class="form-control" maxlength="50" placeholder="' . lang('i.e. manufacturer product number') . '" value="' . h($v('mpn')) . '" />
                                     </div>
-                                    <div class="col-12 col-lg-3 my-2">
+                                    <div class="col-12 lg:col-3 my-3">
                                         <label for="google_product_category" class="form-label">' . lang('Google Product Category') . '</label>
-                                        <select name="google_product_category" id="google_product_category" class="form-select" style="width:100%" data-pg-combobox data-pg-source="google_taxonomy_action.php?action=search" data-pg-min-length="2" data-pg-free-text data-allow-clear="true" data-placeholder="' . h(lang('Google Product Category')) . '"><option value=""></option>' . ($v('google_product_category') !== '' ? '<option value="' . h($v('google_product_category')) . '" selected>' . h($v('google_product_category')) . '</option>' : '') . '</select>' . pg_fields_script() . '
+                                        <select name="google_product_category" id="google_product_category" class="form-control" style="width:100%" data-pg-combobox data-pg-source="google_taxonomy_action.php?action=search" data-pg-min-length="2" data-pg-free-text data-allow-clear="true" data-placeholder="' . h(lang('Google Product Category')) . '"><option value=""></option>' . ($v('google_product_category') !== '' ? '<option value="' . h($v('google_product_category')) . '" selected>' . h($v('google_product_category')) . '</option>' : '') . '</select>' . pg_fields_script() . '
                                         <div class="form-text" id="pg_pb_taxonomy_status">' . $output_taxonomy_status . '</div>
                                     </div>
                                     ' . $output_barcode_fields . '
@@ -5083,25 +5075,20 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                          whole block sits inside a PHP single-quoted string, and one
                          stray quote ends it. -->
                     <div class="col-12" id="pg_pb_sec_advanced">
-                        <div class="card mb-4">
-                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-2">
-                                <i class="bi bi-sliders text-primary"></i>
-                                <span class="h5 mb-0 text-primary fw-bold">' . lang('Advanced Settings') . '</span>
+                        <div class="card mb-7">
+                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
+                                <i class="bi bi-sliders fg-primary"></i>
+                                <span class="h5 mb-0 fg-primary fw-bold">' . lang('Advanced Settings') . '</span>
                             </div>
                             <div class="card-body">
                                 <div class="accordion" id="pg_pb_advanced">
 
-                                    <div class="accordion-item">
-                                        <h2 class="accordion-header">
-                                            <button class="accordion-button' . ($v('membership_renewal') ? '' : ' collapsed') . '" type="button" data-bs-toggle="collapse" data-bs-target="#pg_pb_adv_membership">
-                                                <i class="bi bi-person-badge me-2"></i>' . lang('Membership') . '
-                                            </button>
-                                        </h2>
-                                        <div id="pg_pb_adv_membership" class="accordion-collapse collapse' . ($v('membership_renewal') ? ' show' : '') . '">
+                                    <details class="accordion-item"' . ($v('membership_renewal') ? ' open' : '') . '>
+                                        <summary class="accordion-header"><i class="bi bi-person-badge me-3"></i>' . lang('Membership') . ' <svg class="accordion-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m2 5 6 6 6-6"/></svg></summary>
                                             <div class="accordion-body">
                                                 <div class="row">
 
-                                    <div class="col-12 col-lg-4 my-2">
+                                    <div class="col-12 lg:col-4 my-3">
                                         <label for="membership_renewal" class="form-label">' . lang('Add Days to Customer\'s Membership') . '</label>
                                         <div class="input-group">
                                             <input type="text" name="membership_renewal" id="membership_renewal" class="form-control" size="7" maxlength="7" inputmode="numeric" style="text-align:right;" value="' . h($v('membership_renewal')) . '" />
@@ -5115,10 +5102,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                          and cannot see the rest, so it is written out here. Hidden
                                          until the box has a value: with none of this happening, the
                                          list would be describing a thing that does not occur. -->
-                                    <div class="col-12 col-lg-8 my-2 d-none" id="pg_pb_membership_effects">
-                                        <div class="alert alert-secondary mb-0">
+                                    <div class="col-12 lg:col-8 my-3 d-none" id="pg_pb_membership_effects">
+                                        <div class="alert theme-secondary mb-0">
                                             <div class="fw-semibold mb-1" id="pg_pb_membership_summary"></div>
-                                            <ul class="mb-0 ps-3 small">' . $output_membership_effects . '</ul>
+                                            <ul class="mb-0 ps-5 small">' . $output_membership_effects . '</ul>
                                         </div>
                                     </div>
 
@@ -5128,13 +5115,13 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                 'name'  => 'grant_private_access',
                                                 'label' => lang('Grant Private Access to Customer'),
                                                 'panel' =>
-                                                    '<div class="col-12 col-md-6 col-lg-4">
+                                                    '<div class="col-12 md:col-6 lg:col-4">
                                                         <label class="form-label" for="private_folder">' . lang('Set "View" Access to Folder') . '</label>
-                                                        <select class="form-select" id="private_folder" name="private_folder">
+                                                        <select class="form-control" id="private_folder" name="private_folder">
                                                             <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Folder')))) . '-</option>' . select_folder(0, 0, 0, 0, array(), array(), 'private') . '
                                                         </select>
                                                     </div>
-                                                    <div class="col-12 col-md-6 col-lg-4">
+                                                    <div class="col-12 md:col-6 lg:col-4">
                                                         <label for="private_days" class="form-label">' . lang('Length') . '</label>
                                                         <div class="input-group">
                                                             <input type="text" name="private_days" id="private_days" class="form-control" size="7" maxlength="7" inputmode="numeric" style="text-align:right;" value="' . h($v('private_days')) . '" />
@@ -5142,33 +5129,27 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                         </div>
                                                         <div class="form-text text-end">' . lang('leave blank for no expiration') . '</div>
                                                     </div>
-                                                    <div class="col-12 col-md-6 col-lg-4">
+                                                    <div class="col-12 md:col-6 lg:col-4">
                                                         <label class="form-label" for="send_to_page">' . lang('Set Customer\'s Start Page to') . '</label>
-                                                        <select class="form-select" id="send_to_page" name="send_to_page">
+                                                        <select class="form-control" id="send_to_page" name="send_to_page">
                                                             <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Page')))) . '-</option>' . select_page($v('send_to_page')) . '
                                                         </select>
                                                     </div>',
                                             ))) . '
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
+                                    </details>
     ' . ($gift_cards_enabled ? '
-                                    <div class="accordion-item">
-                                        <h2 class="accordion-header">
-                                            <button class="accordion-button' . ($v('gift_card') ? '' : ' collapsed') . '" type="button" data-bs-toggle="collapse" data-bs-target="#pg_pb_adv_giftcard">
-                                                <i class="bi bi-gift me-2"></i>' . lang('Email Gift Card') . '
-                                            </button>
-                                        </h2>
-                                        <div id="pg_pb_adv_giftcard" class="accordion-collapse collapse' . ($v('gift_card') ? ' show' : '') . '">
+                                    <details class="accordion-item"' . ($v('gift_card') ? ' open' : '') . '>
+                                        <summary class="accordion-header"><i class="bi bi-gift me-3"></i>' . lang('Email Gift Card') . ' <svg class="accordion-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m2 5 6 6 6-6"/></svg></summary>
                                             <div class="accordion-body">
                                                 <div class="row">
 
                                     <!-- What ordering this does lives in submit_order.php and the
                                          e-mail queue; none of it is guessable from a switch. -->
                                     <div class="col-12 d-none" id="pg_pb_giftcard_effects">
-                                        <div class="alert alert-secondary mb-0">
-                                            <ul class="mb-0 ps-3 small">' . $output_gift_card_effects . '</ul>
+                                        <div class="alert theme-secondary mb-0">
+                                            <ul class="mb-0 ps-5 small">' . $output_gift_card_effects . '</ul>
                                         </div>
                                     </div>
 
@@ -5178,41 +5159,41 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     'name'  => 'gift_card',
                                                     'label' => lang('Email Gift Card'),
                                                     'panel' =>
-                                                        '<div class="col-12 col-lg-8">
+                                                        '<div class="col-12 lg:col-8">
                                                             <label class="form-label" for="gift_card_email_subject">' . lang('Subject') . '</label>
                                                             <input type="text" id="gift_card_email_subject" name="gift_card_email_subject" class="form-control" maxlength="100" value="' . h($v('gift_card_email_subject')) . '" />
                                                             <div class="d-flex flex-wrap gap-1 mt-1" data-pg-pb-giftvar-target="gift_card_email_subject">' . $output_gift_card_variables . '</div>
                                                         </div>
     
-                                                        <div class="col-12 mt-3">
+                                                        <div class="col-12 mt-5">
                                                             <label class="form-label">' . lang('Format') . '</label>
-                                                            <div class="form-check form-check-inline">
-                                                                <input class="form-check-input collapse-switcher" type="radio" id="gift_card_email_format_plain_text" name="gift_card_email_format" checked="checked" value="plain_text" data-bs-target="#gift_card_email_format_plain_text_row" />
-                                                                <label class="form-check-label" for="gift_card_email_format_plain_text">' . lang('Plain Text') . '</label>
+                                                            <div class="form-field d-inline-grid me-5">
+                                                                <input class="radio collapse-switcher" type="radio" id="gift_card_email_format_plain_text" name="gift_card_email_format" checked="checked" value="plain_text" data-bs-target="#gift_card_email_format_plain_text_row" />
+                                                                <label class="" for="gift_card_email_format_plain_text">' . lang('Plain Text') . '</label>
                                                             </div>
-                                                            <div class="form-check form-check-inline">
-                                                                <input class="form-check-input collapse-switcher" type="radio" id="gift_card_email_format_html" name="gift_card_email_format" value="html"' . (($v('gift_card_email_format') === 'html') ? ' checked="checked"' : '') . ' data-bs-target="#gift_card_email_format_html_row" />
-                                                                <label class="form-check-label" for="gift_card_email_format_html">' . lang('HTML') . '</label>
+                                                            <div class="form-field d-inline-grid me-5">
+                                                                <input class="radio collapse-switcher" type="radio" id="gift_card_email_format_html" name="gift_card_email_format" value="html"' . (($v('gift_card_email_format') === 'html') ? ' checked="checked"' : '') . ' data-bs-target="#gift_card_email_format_html_row" />
+                                                                <label class="" for="gift_card_email_format_html">' . lang('HTML') . '</label>
                                                             </div>
                                                         </div>
     
-                                                        <div class="col-12 collapse popover fade bs-popover-bottom p-0 w-100 mb-2 mt-2" id="gift_card_email_format_plain_text_row">
+                                                        <div class="col-12 collapse popover fade bs-popover-bottom p-0 w-100 mb-3 mt-3" id="gift_card_email_format_plain_text_row">
                                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                                                             <div class="popover-body">
                                                                 <label for="gift_card_email_body" class="form-label">' . lang('Body') . '</label>
                                                                 <textarea class="form-control" id="gift_card_email_body" name="gift_card_email_body" rows="4">' . h($v('gift_card_email_body')) . '</textarea>
-                                                                <div class="form-label small text-muted mt-2 mb-1">' . lang('Insert a variable') . '</div>
+                                                                <div class="form-label small fg-secondary mt-3 mb-1">' . lang('Insert a variable') . '</div>
                                                                 <div class="d-flex flex-wrap gap-1" data-pg-pb-giftvar-target="gift_card_email_body">' . $output_gift_card_variables . '</div>
                                                             </div>
                                                         </div>
     
-                                                        <div class="col-12 collapse popover fade bs-popover-bottom p-0 w-100 mb-2 mt-2" id="gift_card_email_format_html_row">
+                                                        <div class="col-12 collapse popover fade bs-popover-bottom p-0 w-100 mb-3 mt-3" id="gift_card_email_format_html_row">
                                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                                                             <div class="popover-body">
                                                                 <div class="row">
-                                                                    <div class="col-12 col-lg-8">
+                                                                    <div class="col-12 lg:col-8">
                                                                         <label class="form-label" for="gift_card_email_page_id">' . lang('Page') . '</label>
-                                                                        <select class="form-select" id="gift_card_email_page_id" name="gift_card_email_page_id">
+                                                                        <select class="form-control" id="gift_card_email_page_id" name="gift_card_email_page_id">
                                                                             <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Page')))) . '-</option>' . select_page($v('gift_card_email_page_id')) . '
                                                                         </select>
                                                                     </div>
@@ -5222,61 +5203,49 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                 ))) . '
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
+                                    </details>
     ' : '') . '
-                                    <div class="accordion-item">
-                                        <h2 class="accordion-header">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pg_pb_adv_complete">
-                                                <i class="bi bi-bag-check me-2"></i>' . lang('Order Complete Options') . '
-                                            </button>
-                                        </h2>
-                                        <div id="pg_pb_adv_complete" class="accordion-collapse collapse">
+                                    <details class="accordion-item">
+                                        <summary class="accordion-header"><i class="bi bi-bag-check me-3"></i>' . lang('Order Complete Options') . ' <svg class="accordion-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m2 5 6 6 6-6"/></svg></summary>
                                             <div class="accordion-body">
                                                 <div class="row">
 
-                                    <div class="col-12 my-2">
+                                    <div class="col-12 my-3">
                                         <label class="form-label" for="order_receipt_message">' . lang('Order Receipt Page Message') . '</label>
                                         <textarea id="order_receipt_message" name="order_receipt_message">' . h($v('order_receipt_message')) . '</textarea>
                                     </div>
 
-                                    <div class="col-12 col-lg-4 my-2">
+                                    <div class="col-12 lg:col-4 my-3">
                                         <label class="form-label" for="order_receipt_bcc_email_address">' . lang('Order Receipt BCC E-mail Address') . '</label>
                                         <input type="text" class="form-control" id="order_receipt_bcc_email_address" name="order_receipt_bcc_email_address" maxlength="100" inputmode="email" value="' . h($v('order_receipt_bcc_email_address')) . '" />
                                     </div>
-                                    <div class="col-12 col-lg-4 my-2">
+                                    <div class="col-12 lg:col-4 my-3">
                                         <label class="form-label" for="email_page">' . lang('E-mail Additional Page to Customer') . '</label>
-                                        <select class="form-select" id="email_page" name="email_page">
+                                        <select class="form-control" id="email_page" name="email_page">
                                             <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Page')))) . '-</option>' . select_page($v('email_page')) . '
                                         </select>
                                     </div>
-                                    <div class="col-12 col-lg-4 my-2">
+                                    <div class="col-12 lg:col-4 my-3">
                                         <label class="form-label" for="email_bcc">' . lang('BCC E-mail Address') . '</label>
                                         <input type="text" class="form-control" id="email_bcc" name="email_bcc" maxlength="100" inputmode="email" value="' . h($v('email_bcc')) . '" />
                                     </div>
 
-                                    <div class="col-12 col-lg-4 my-2">
+                                    <div class="col-12 lg:col-4 my-3">
                                         <label class="form-label" for="contact_group_id">' . lang('Add to Contact Group') . '</label>
-                                        <select class="form-select" id="contact_group_id" name="contact_group_id">
+                                        <select class="form-control" id="contact_group_id" name="contact_group_id">
                                             <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Contact Group')))) . '-</option>' . select_contact_group($v('contact_group_id'), $user) . '
                                         </select>
                                     </div>
-                                    <div class="col-12 col-lg-4 my-2">
+                                    <div class="col-12 lg:col-4 my-3">
                                         <label for="reward_points" class="form-label">' . lang('Reward Points') . '</label>
                                         <input type="text" name="reward_points" id="reward_points" class="form-control" size="5" maxlength="9" inputmode="numeric" style="text-align:right;" value="' . h($v('reward_points')) . '" />
                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
+                                    </details>
     ' . ($form_feature_ready ? '
-                                    <div class="accordion-item">
-                                        <h2 class="accordion-header">
-                                            <button class="accordion-button' . ($v('product_form') ? '' : ' collapsed') . '" type="button" data-bs-toggle="collapse" data-bs-target="#pg_pb_adv_form">
-                                                <i class="bi bi-ui-checks me-2"></i>' . lang('Product Form') . '
-                                            </button>
-                                        </h2>
-                                        <div id="pg_pb_adv_form" class="accordion-collapse collapse' . ($v('product_form') ? ' show' : '') . '">
+                                    <details class="accordion-item"' . ($v('product_form') ? ' open' : '') . '>
+                                        <summary class="accordion-header"><i class="bi bi-ui-checks me-3"></i>' . lang('Product Form') . ' <svg class="accordion-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m2 5 6 6 6-6"/></svg></summary>
                                             <div class="accordion-body">
                                                 <div class="row">
                                     ' . pg_pb_render_switch_row(
@@ -5286,16 +5255,16 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                 'label' => lang('Enable Product Form'),
                                                 'help'  => lang('Ask the customer for information when they order this. The fields are drawn on the next screen.'),
                                                 'panel' =>
-                                                    '<div class="col-12 mb-3">
-                                                        <div class="alert alert-primary mb-0 pg-pb-group-only d-none">
-                                                            <i class="bi bi-info-circle me-2"></i>' . lang('One form is drawn for the whole set and written to every variant.') . '
+                                                    '<div class="col-12 mb-5">
+                                                        <div class="alert theme-primary mb-0 pg-pb-group-only d-none">
+                                                            <i class="bi bi-info-circle me-3"></i>' . lang('One form is drawn for the whole set and written to every variant.') . '
                                                         </div>
                                                     </div>
-                                                    <div class="col-12 col-lg-5">
+                                                    <div class="col-12 lg:col-5">
                                                         <label class="form-label" for="form_name">' . lang('Form Title for Display') . '</label>
                                                         <input type="text" id="form_name" name="form_name" class="form-control" maxlength="100" value="' . h($v('form_name')) . '" />
                                                     </div>
-                                                    <div class="col-12 col-lg-3">
+                                                    <div class="col-12 lg:col-3">
                                                         <label class="form-label" for="form_label_column_width">' . lang('Label Column Width') . '</label>
                                                         <div class="input-group">
                                                             <input type="text" id="form_label_column_width" name="form_label_column_width" class="form-control" size="3" maxlength="3" inputmode="numeric" value="' . h($v('form_label_column_width')) . '" />
@@ -5303,30 +5272,24 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                         </div>
                                                         <div class="form-text">' . lang('leave blank for auto') . '</div>
                                                     </div>
-                                                    <div class="col-12 col-lg-4">
+                                                    <div class="col-12 lg:col-4">
                                                         <label class="form-label">' . lang('Quantity Type') . '</label>
-                                                        <div class="form-check">
-                                                            <input value="One Form per Quantity" class="form-check-input" type="radio" id="form_quantity_type_one_form_per_quantity" name="form_quantity_type"' . (($v('form_quantity_type', 'One Form per Quantity') !== 'One Form per Product') ? ' checked="checked"' : '') . ' />
-                                                            <label class="form-check-label" for="form_quantity_type_one_form_per_quantity">' . lang('One form per quantity') . '</label>
+                                                        <div class="form-field">
+                                                            <input value="One Form per Quantity" class="radio" type="radio" id="form_quantity_type_one_form_per_quantity" name="form_quantity_type"' . (($v('form_quantity_type', 'One Form per Quantity') !== 'One Form per Product') ? ' checked="checked"' : '') . ' />
+                                                            <label class="" for="form_quantity_type_one_form_per_quantity">' . lang('One form per quantity') . '</label>
                                                         </div>
-                                                        <div class="form-check">
-                                                            <input value="One Form per Product" class="form-check-input" type="radio" id="form_quantity_type_one_form_per_product" name="form_quantity_type"' . (($v('form_quantity_type', 'One Form per Quantity') === 'One Form per Product') ? ' checked="checked"' : '') . ' />
-                                                            <label class="form-check-label" for="form_quantity_type_one_form_per_product">' . lang('One form per product') . '</label>
+                                                        <div class="form-field">
+                                                            <input value="One Form per Product" class="radio" type="radio" id="form_quantity_type_one_form_per_product" name="form_quantity_type"' . (($v('form_quantity_type', 'One Form per Quantity') === 'One Form per Product') ? ' checked="checked"' : '') . ' />
+                                                            <label class="" for="form_quantity_type_one_form_per_product">' . lang('One form per product') . '</label>
                                                         </div>
                                                     </div>',
                                             ))) . '
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
+                                    </details>
     ' : '') . '
-                                    <div class="accordion-item">
-                                        <h2 class="accordion-header">
-                                            <button class="accordion-button' . ($v('submit_form') ? '' : ' collapsed') . '" type="button" data-bs-toggle="collapse" data-bs-target="#pg_pb_adv_submitform" aria-expanded="false">
-                                                <i class="bi bi-file-earmark-text me-2"></i>' . lang('Submit Form') . '
-                                            </button>
-                                        </h2>
-                                        <div id="pg_pb_adv_submitform" class="accordion-collapse collapse' . ($v('submit_form') ? ' show' : '') . '">
+                                    <details class="accordion-item"' . ($v('submit_form') ? ' open' : '') . '>
+                                        <summary class="accordion-header"><i class="bi bi-file-earmark-text me-3"></i>' . lang('Submit Form') . ' <svg class="accordion-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m2 5 6 6 6-6"/></svg></summary>
                                             <div class="accordion-body">
                                                 <div class="row">
                                     ' . pg_pb_render_switch_row(
@@ -5339,16 +5302,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                             ))) . '
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
+                                    </details>
 
-                                    <div class="accordion-item">
-                                        <h2 class="accordion-header">
-                                            <button class="accordion-button' . ($v('add_comment') ? '' : ' collapsed') . '" type="button" data-bs-toggle="collapse" data-bs-target="#pg_pb_adv_comment" aria-expanded="false">
-                                                <i class="bi bi-chat-left-text me-2"></i>' . lang('Add Comment') . '
-                                            </button>
-                                        </h2>
-                                        <div id="pg_pb_adv_comment" class="accordion-collapse collapse' . ($v('add_comment') ? ' show' : '') . '">
+                                    <details class="accordion-item"' . ($v('add_comment') ? ' open' : '') . '>
+                                        <summary class="accordion-header"><i class="bi bi-chat-left-text me-3"></i>' . lang('Add Comment') . ' <svg class="accordion-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m2 5 6 6 6-6"/></svg></summary>
                                             <div class="accordion-body">
                                                 <div class="row">
                                     ' . pg_pb_render_switch_row(
@@ -5358,25 +5315,25 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                 'label' => lang('Add Comment'),
                                                 'help'  => lang('Buying this posts a comment on a page, as the customer.'),
                                                 'panel' =>
-                                                    '<div class="col-12 col-lg-4">
+                                                    '<div class="col-12 lg:col-4">
                                                         <label class="form-label" for="add_comment_page_id">' . lang('Page') . '</label>
-                                                        <select class="form-select" id="add_comment_page_id" name="add_comment_page_id">
+                                                        <select class="form-control" id="add_comment_page_id" name="add_comment_page_id">
                                                             <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Page')))) . '-</option>' . select_page($v('add_comment_page_id')) . '
                                                         </select>
                                                     </div>
-                                                    <div class="col-12 col-lg-4">
+                                                    <div class="col-12 lg:col-4">
                                                         <label class="form-label" for="add_comment_name">' . lang('Name') . '</label>
                                                         <input type="text" class="form-control" id="add_comment_name" name="add_comment_name" maxlength="100" value="' . h($v('add_comment_name')) . '" />
                                                         <div class="form-text">' . lang('Leave blank to use the name on the order.') . '</div>
                                                     </div>
-                                                    <div class="col-12 my-2">
+                                                    <div class="col-12 my-3">
                                                         <label class="form-label" for="add_comment_message">' . lang('Message') . '</label>
                                                         <textarea class="form-control" id="add_comment_message" name="add_comment_message" rows="3">' . h($v('add_comment_message')) . '</textarea>
                                                     </div>
                                                     <div class="col-12">
-                                                        <div class="form-check form-switch">
-                                                            <input class="form-check-input" type="checkbox" role="switch" value="1" id="add_comment_only_for_submit_form_update" name="add_comment_only_for_submit_form_update"' . ($v('add_comment_only_for_submit_form_update') ? ' checked="checked"' : '') . ' />
-                                                            <label class="form-check-label" for="add_comment_only_for_submit_form_update">' . lang('Only when a submitted form is updated') . '</label>
+                                                        <div class="form-field">
+                                                            <div class="switch"><input class="" type="checkbox" role="switch" value="1" id="add_comment_only_for_submit_form_update" name="add_comment_only_for_submit_form_update"' . ($v('add_comment_only_for_submit_form_update') ? ' checked="checked"' : '') . ' /></div>
+                                                            <label class="" for="add_comment_only_for_submit_form_update">' . lang('Only when a submitted form is updated') . '</label>
                                                         </div>
                                                     </div>
 
@@ -5385,42 +5342,35 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                          comment follows whatever the form does. It sits
                                                          here because this is the panel that is open more
                                                          often; the column is submit_form_quantity_type. -->
-                                                    <div class="col-12 mt-2">
+                                                    <div class="col-12 mt-3">
                                                         <label class="form-label">' . lang('Form/Comment Quantity Type') . '</label>
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="radio" name="submit_form_quantity_type" id="submit_form_quantity_type_quantity" value="One Form per Quantity"' . (($v('submit_form_quantity_type') === 'One Form per Quantity') ? ' checked="checked"' : '') . ' />
-                                                            <label class="form-check-label" for="submit_form_quantity_type_quantity">' . lang('One form/comment per quantity') . '</label>
+                                                        <div class="form-field">
+                                                            <input class="radio" type="radio" name="submit_form_quantity_type" id="submit_form_quantity_type_quantity" value="One Form per Quantity"' . (($v('submit_form_quantity_type') === 'One Form per Quantity') ? ' checked="checked"' : '') . ' />
+                                                            <label class="" for="submit_form_quantity_type_quantity">' . lang('One form/comment per quantity') . '</label>
                                                         </div>
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="radio" name="submit_form_quantity_type" id="submit_form_quantity_type_product" value="One Form per Product"' . (($v('submit_form_quantity_type') !== 'One Form per Quantity') ? ' checked="checked"' : '') . ' />
-                                                            <label class="form-check-label" for="submit_form_quantity_type_product">' . lang('One form/comment per product') . '</label>
+                                                        <div class="form-field">
+                                                            <input class="radio" type="radio" name="submit_form_quantity_type" id="submit_form_quantity_type_product" value="One Form per Product"' . (($v('submit_form_quantity_type') !== 'One Form per Quantity') ? ' checked="checked"' : '') . ' />
+                                                            <label class="" for="submit_form_quantity_type_product">' . lang('One form/comment per product') . '</label>
                                                         </div>
                                                     </div>',
                                             ))) . '
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
+                                    </details>
 
-                                    <div class="accordion-item">
-                                        <h2 class="accordion-header">
-                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pg_pb_adv_helpful">
-                                                <i class="bi bi-journal-text me-2"></i>' . lang('Helpful Contents') . '
-                                            </button>
-                                        </h2>
-                                        <div id="pg_pb_adv_helpful" class="accordion-collapse collapse">
+                                    <details class="accordion-item">
+                                        <summary class="accordion-header"><i class="bi bi-journal-text me-3"></i>' . lang('Helpful Contents') . ' <svg class="accordion-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m2 5 6 6 6-6"/></svg></summary>
                                             <div class="accordion-body">
                                                 <div class="row">
                                     ' . $output_custom_product_fields . '
-                                    <div class="col-12 my-2">
+                                    <div class="col-12 my-3">
                                         <label for="notes" class="form-label">' . lang('Notes') . '</label>
                                         <textarea name="notes" id="notes" class="form-control" rows="3">' . h($v('notes')) . '</textarea>
                                         <div class="form-text">' . lang('Internal note. Customers never see it.') . '</div>
                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </div>
+                                    </details>
                                 </div>
                             </div>
                         </div>
@@ -5431,7 +5381,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             </div>
 
             <!-- ------------------------------------------------- side column -->
-            <div class="col-12 col-lg-4 col-xxl-3 order-2">
+            <div class="col-12 lg:col-4 2xl:col-3 order-2">
                 <!-- 3.3rem, not 1: the control panel header is fixed and the
                      column slides under it. -->
                 <div class="position-sticky" style="top:3.3rem;">
@@ -5482,15 +5432,15 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                 the row, which is as tall as the whole form.
             -->
             <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
-                <nav class="buttons navigation text-center mb-4" aria-label="' . lang('data edit buttons') . '">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . lang('data edit buttons') . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             ' . ($pg_recycled ? $pg_bin_link : '
-                            <button type="submit" id="pg_pb_create" name="submit_create" value="Create" class="btn my-1 btn-success">
-                                <span class="bi ' . (($pg_mode === 'edit') ? 'bi-check-circle' : 'bi-plus-circle') . ' me-2"></span><span class="pg-btn-label">' . (($pg_mode === 'edit') ? lang(array('string' => 'Save')) : lang(array('string' => 'Create'))) . '</span>
+                            <button type="submit" id="pg_pb_create" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success">
+                                <span class="bi ' . (($pg_mode === 'edit') ? 'bi-check-circle' : 'bi-plus-circle') . ' me-3"></span><span class="pg-btn-label">' . (($pg_mode === 'edit') ? lang(array('string' => 'Save')) : lang(array('string' => 'Create'))) . '</span>
                             </button>
                             ' . (($pg_mode === 'edit')
-                                ? '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product')))) : lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product'))))) . '"><span class="bi bi-trash me-2"></span><span class="pg-btn-label">' . lang(array('string' => 'Delete')) . '</span></button>'
+                                ? '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product')))) : lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('product'))))) . '"><span class="bi bi-trash me-3"></span><span class="pg-btn-label">' . lang(array('string' => 'Delete')) . '</span></button>'
                                 : '')) . '
                         </div>
                     </div>
@@ -5548,6 +5498,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         ]);
     </script>
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_builder.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_builder.js') . '"></script>
+    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_name_check.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_name_check.js') . '"></script>
     ' . pg_ai_write_assets() . '
     ' . ($ai_marks_ready ? pg_ai_fields_assets() : '') . '
 </main>' . output_footer();
@@ -5969,7 +5920,47 @@ function pg_pb_sync_tag_cloud_keywords($product_id, $keywords, $enabled)
 
 
 /**
- * The checks edit_product.php runs before it writes anything.
+ * The product codes (products.name) a post of the product screen writes,
+ * read the way pg_pb_save_new_product() and edit_product.php read them: on
+ * edit the one product's code; on create the typed code, or a single matrix
+ * row's own code, or for a variant set one code per row (the typed code is
+ * then only their prefix and is not written as a product's code). Empty
+ * codes are left to the required checks.
+ *
+ * @param array $post
+ * @param int   $product_id the product being edited, 0 on create
+ * @return array
+ */
+function pg_pb_posted_product_names($post, $product_id = 0)
+{
+    $name = isset($post['name']) ? trim((string) $post['name']) : '';
+
+    if (!$product_id) {
+
+        $variants = pg_pb_decode_variants(isset($post['variants_json']) ? $post['variants_json'] : '');
+
+        if (pg_pb_mode($variants) === 'group') {
+            $names = array();
+
+            foreach ($variants as $variant) {
+                $names[] = $variant['name'];
+            }
+
+            return $names;
+        }
+
+        if ($variants && ($variants[0]['name'] !== '')) {
+            $name = $variants[0]['name'];
+        }
+    }
+
+    return ($name === '') ? array() : array($name);
+}
+
+
+/**
+ * The checks add_product.php and edit_product.php run before they write
+ * anything.
  *
  * Kept together so that neither screen can save while skipping one. Each stops
  * the request the way the legacy screen does, because there is nothing sensible
@@ -6005,6 +5996,36 @@ function pg_pb_validate_product_post($user, $product_id = 0)
         && !empty($_POST['compare_at_price_enabled'])
         && (pg_pb_compare_at_price_from_input(isset($_POST['compare_at_price']) ? $_POST['compare_at_price'] : '') === false)) {
         output_error(lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('Compare-at Price')))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    }
+
+    // A product code is one product's, as the external API holds it: two
+    // products of one code cannot be told apart by an import, a marketplace
+    // or a barcode scan. Refused rather than renamed to "CODE[1]", which the
+    // operator would only notice later. On edit only a changed code is
+    // looked up, so a catalogue that already holds a duplicate still saves.
+    $names = pg_pb_posted_product_names($_POST, $product_id);
+
+    $repeated = pg_product_names_repeated($names);
+
+    if ($repeated !== '') {
+        output_error(lang(array('string' => 'Two variants have the product code {var:1}.', 'vars' => array(h($repeated)))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    }
+
+    $stored = $product_id
+        ? trim((string) db_value("SELECT name FROM products WHERE id = '" . e((int) $product_id) . "'"))
+        : NULL;
+
+    foreach ($names as $name) {
+
+        if ($name === $stored) {
+            continue;
+        }
+
+        $holder = pg_product_name_holder($name, $product_id);
+
+        if ($holder) {
+            output_error(pg_product_name_taken_text($name, $holder, true) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
     }
 }
 
@@ -6196,19 +6217,19 @@ function pg_pb_list_shows_compare_at_price()
  */
 function pg_pb_list_cells($product)
 {
-    $state = ((string) $product['enabled'] === '1') ? 'text-success' : 'text-danger';
+    $state = ((string) $product['enabled'] === '1') ? 'fg-success' : 'fg-danger';
     $quantity = (int) $product['inventory_quantity'];
 
     if ((string) $product['inventory'] !== '1') {
         $stock = array(
             'html'  => '-',
-            'class' => 'align-middle text-center text-success h5 fw-bolder',
+            'class' => 'align-middle text-center fg-success h5 fw-bolder',
             'title' => lang('Inventory tracking is not active for this product/service'),
         );
     } else {
         $stock = array(
             'html'  => (string) $quantity,
-            'class' => 'align-middle text-center h5 fw-bolder ' . (($quantity <= 0) ? 'text-danger' : (($quantity < 10) ? 'text-warning' : 'text-success')),
+            'class' => 'align-middle text-center h5 fw-bolder ' . (($quantity <= 0) ? 'fg-danger' : (($quantity < 10) ? 'fg-warning' : 'fg-success')),
             'title' => '',
         );
     }
@@ -6222,7 +6243,7 @@ function pg_pb_list_cells($product)
         'short_description'  => array('html' => h((string) $product['short_description']), 'class' => 'align-middle ' . $state),
         'enabled'            => array('html' => ((string) $product['enabled'] === '1') ? '<span class="material-icons">task_alt</span>' : '', 'class' => 'align-middle text-center'),
         'price'              => array('html' => prepare_amount(((int) $product['price']) / 100), 'class' => 'align-middle text-end'),
-        'compare_at_price'   => array('html' => is_int($compare_at) ? prepare_amount($compare_at / 100) : '', 'class' => 'align-middle text-end text-body-secondary'),
+        'compare_at_price'   => array('html' => is_int($compare_at) ? prepare_amount($compare_at / 100) : '', 'class' => 'align-middle text-end fg-secondary'),
         'inventory_quantity' => $stock,
     );
 }

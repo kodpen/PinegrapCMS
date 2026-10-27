@@ -134,6 +134,8 @@ function ws_api_flow_present($flow, $version, $full)
         'draft'      => ($draft !== null) ? ws_api_flow_graph_present($draft, $edit) : null,
         'graph'      => ($full && is_array($version)) ? ws_api_flow_graph_present(ws_flow_graph_of($version), $edit) : null,
         'problems'   => ($edit && ($draft !== null)) ? array_map('ws_api_flow_problem_present', ws_flow_problems($draft)) : null,
+        'start'      => null,
+        'start_text' => null,
         'created_at' => api_time($flow['created_at']),
         'updated_at' => api_time($flow['updated_at']),
     );
@@ -154,6 +156,8 @@ function ws_api_flow_schema()
         'draft'      => 'WorkspaceFlowGraph?',
         'graph'      => 'WorkspaceFlowGraph?',
         'problems'   => 'WorkspaceFlowProblem[]?',
+        'start'      => 'string?',
+        'start_text' => 'string?',
         'created_at' => 'string?',
         'updated_at' => 'string?',
     );
@@ -368,8 +372,19 @@ function ws_api_flow_refused($result)
 function ws_api_flow_answer($viewer, $id, $full = true)
 {
     $flow = ws_api_flow_or_404($viewer, $id);
+    $version = ws_flow_version($flow['version_id']);
+    $out = ws_api_flow_present($flow, $version, $full);
 
-    return ws_api_flow_present($flow, ws_flow_version($flow['version_id']), $full);
+    if ($full) {
+        $graph = ws_flow_start_graph($flow, $version);
+        $kind = ws_flow_start_kind($graph);
+        $out['start'] = ($kind !== '') ? $kind : null;
+        $out['start_text'] = ws_flow_start_text($viewer, $graph, function ($channel_id) use ($viewer) {
+            return ws_api_is_claude() ? ws_api_flow_claude_channel($viewer, $channel_id) : ws_flow_channel_readable($viewer, $channel_id);
+        });
+    }
+
+    return $out;
 }
 
 /**
@@ -430,7 +445,14 @@ function ws_api_flows_list($params)
 
     ws_api_flows_ready();
 
-    $rows = array_values(array_filter(ws_flows_list($viewer, (string) ($params['scope'] ?? 'all')), function ($row) use ($viewer) {
+    $filters = array(
+        'start'         => (string) ($params['start'] ?? ''),
+        'status'        => (string) ($params['status'] ?? ''),
+        'channel_id'    => (int) ($params['channel_id'] ?? 0),
+        'updated_since' => (int) ($params['updated_since'] ?? 0),
+    );
+
+    $rows = array_values(array_filter(ws_flows_list($viewer, (string) ($params['scope'] ?? 'all'), $filters), function ($row) use ($viewer) {
         return ws_api_flow_reachable($viewer, $row);
     }));
     $version_ids = array();
@@ -641,6 +663,88 @@ function ws_api_flows_delete($params)
     $flow['updated_at'] = time();
 
     api_ok(ws_api_flow_present($flow, ws_flow_version($flow['version_id']), false));
+}
+
+/**
+ * What one box of a flow's draft would do, as the API hands it out.
+ *
+ * @param array $try ws_flow_box_try(), ok
+ * @return array
+ */
+function ws_api_flow_box_try_present($try)
+{
+    return array(
+        'node_id' => (string) $try['node_id'],
+        'kind'    => (string) $try['kind'],
+        'label'   => (string) $try['label'],
+        'outcome' => ((string) $try['outcome'] !== '') ? (string) $try['outcome'] : null,
+        'refusal' => ((string) $try['refusal'] !== '') ? (string) $try['refusal'] : null,
+        'said'    => (string) $try['said'],
+        'texts'   => array_map(function ($text) {
+            return array('key' => (string) $text['key'], 'text' => (string) $text['text']);
+        }, $try['texts']),
+        'empty'   => array_values(array_map('strval', $try['empty'])),
+        'next'    => array_values(array_map('strval', $try['next'])),
+        'run_id'  => ((int) $try['run_id'] > 0) ? (int) $try['run_id'] : null,
+    );
+}
+
+// What ws_api_flow_box_try_present() returns.
+function ws_api_flow_box_try_schema()
+{
+    return array(
+        'node_id' => 'string',
+        'kind'    => 'string',
+        'label'   => 'string',
+        'outcome' => 'string?',
+        'refusal' => 'string?',
+        'said'    => 'string',
+        'texts'   => array(array('key' => 'string', 'text' => 'string')),
+        'empty'   => 'string[]',
+        'next'    => 'string[]',
+        'run_id'  => 'integer?',
+    );
+}
+
+// Trying a box looks at counts, records and channels with the owner's
+// rights: no MCP tool, and the application an assistant works through is
+// refused here as well, since Claude's routine calls REST with its key and
+// would read what its channels keep back.
+function ws_api_flows_box_try($params)
+{
+    if (ws_api_is_assistant()) {
+        api_fail(403, 'forbidden', lang('An assistant does not try the boxes of a flow; the person does.'));
+    }
+
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $flow = ws_api_flow_editable($viewer, $params['id']);
+    $run_id = (int) ($params['run_id'] ?? 0);
+
+    // A run the application does not reach gives no values.
+    if ($run_id > 0) {
+        $run = ws_flow_run_for($viewer, $run_id);
+
+        if (!$run || ((int) $run['flow_id'] !== (int) $flow['id']) || !ws_api_flow_run_reachable($viewer, $flow, $run)) {
+            api_fail_not_found(lang('Flow run'));
+        }
+    }
+    $result = ws_flow_box_try($viewer, $flow, array(
+        'node_id' => (string) $params['node'],
+        'run_id'  => $run_id,
+    ));
+
+    if (!$result['ok']) {
+        if ((int) $result['status'] === 404) {
+            api_fail_not_found(((string) $result['field'] === 'run_id') ? lang('Flow run') : lang('Flow box'));
+        }
+
+        ws_api_flow_refused($result);
+    }
+
+    api_ok(ws_api_flow_box_try_present($result));
 }
 
 /* ---------------------------------------------------------------------------
@@ -960,6 +1064,58 @@ function ws_api_flow_runs_cancel($params)
     }
 
     api_ok(ws_api_flow_run_answer($viewer, $run['id']));
+}
+
+// A failed box tried again runs in the owner's name, as a start does; one
+// skipped changes what the run does next. The person decides either, so
+// neither is an MCP tool nor a call an assistant's application may make.
+function ws_api_flow_runs_mend($params, $how)
+{
+    if (ws_api_is_assistant()) {
+        api_fail(403, 'forbidden', lang('An assistant does not try again or skip the boxes of a flow\'s run; the person does.'));
+    }
+
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $run = ws_api_flow_run_or_404($viewer, $params['id']);
+    $node_id = (string) $params['node'];
+    $checked = ws_flow_step_mend_check($viewer, $run, $node_id);
+
+    if (!$checked['ok'] && ((int) $checked['status'] === 404) && ($checked['field'] === 'node_id')) {
+        api_fail_not_found(lang('Flow box'));
+    }
+
+    if (!$checked['ok']) {
+        ws_api_flow_run_refused($checked);
+    }
+
+    api_dry_run_stop(($how === 'retry') ? 'retried' : 'skipped', 'workspace_flow_run', array(
+        'id'           => (int) $run['id'],
+        'node_id'      => $node_id,
+        'boxes_walked' => $checked['behind'],
+    ));
+
+    $result = ws_api_as_owner(function () use ($viewer, $run, $node_id, $how) {
+        return ws_flow_step_mend($viewer, $run, $node_id, $how);
+    });
+
+    if (!$result['ok']) {
+        ws_api_flow_run_refused($result);
+    }
+
+    api_ok(ws_api_flow_run_answer($viewer, $run['id']));
+}
+
+function ws_api_flow_runs_step_retry($params)
+{
+    ws_api_flow_runs_mend($params, 'retry');
+}
+
+function ws_api_flow_runs_step_skip($params)
+{
+    ws_api_flow_runs_mend($params, 'skip');
 }
 
 /* ---------------------------------------------------------------------------

@@ -206,3 +206,63 @@ function test_curl_run_license_request_options()
 	pg_assert_same(5, $options['CURLOPT_MAXREDIRS']);
 	pg_assert_same('CURLPROTO_HTTPS', $options['CURLOPT_REDIR_PROTOCOLS']);
 }
+
+// An address an operator types (migration's source site) may be plain http
+// on the same host or the LAN; 'allow_http' admits http for that request
+// only, never for a redirect.
+function test_curl_run_allow_http_widens_the_request_only()
+{
+	pg_assert_same('CURLPROTO_HTTPS', pg_curl_run_options('POST', 'http://192.168.1.5/api.php', array('body' => '{}'), curl_run_test_env())['CURLOPT_PROTOCOLS']);
+
+	$options = pg_curl_run_options('POST', 'http://192.168.1.5/api.php', array('body' => '{}', 'allow_http' => true, 'follow' => 2), curl_run_test_env());
+
+	pg_assert_same('CURLPROTO_HTTP|CURLPROTO_HTTPS', $options['CURLOPT_PROTOCOLS']);
+	pg_assert_same('CURLPROTO_HTTPS', $options['CURLOPT_REDIR_PROTOCOLS']);
+
+	pg_assert_same('CURLPROTO_HTTPS', pg_curl_run_options('GET', 'https://example.com/', array('allow_http' => false), curl_run_test_env())['CURLOPT_PROTOCOLS']);
+}
+
+// Mailchimp's API answered a PATCH now and then with an empty reply (cURL
+// error 52) until the request was forced down to HTTP/1.0; 'http_version'
+// keeps that, and no other call sets a version.
+function test_curl_run_http_version_only_when_asked()
+{
+	$options = pg_curl_run_options('PATCH', 'https://us1.api.mailchimp.com/3.0/x', array('body' => '{}', 'http_version' => '1.0'), curl_run_test_env());
+
+	pg_assert_same('CURL_HTTP_VERSION_1_0', $options['CURLOPT_HTTP_VERSION']);
+
+	$options = pg_curl_run_options('GET', 'https://example.com/', array('http_version' => '1.1'), curl_run_test_env());
+
+	pg_assert_same('CURL_HTTP_VERSION_1_1', $options['CURLOPT_HTTP_VERSION']);
+
+	$options = pg_curl_run_options('GET', 'https://example.com/', array('http_version' => '3'), curl_run_test_env());
+
+	pg_assert_false(isset($options['CURLOPT_HTTP_VERSION']), 'an unknown version is left to libcurl');
+
+	$options = pg_curl_run_options('GET', 'https://example.com/', array(), curl_run_test_env());
+
+	pg_assert_false(isset($options['CURLOPT_HTTP_VERSION']), 'no version by default');
+}
+
+// 'headers' already names the request's header lines, so the response's own
+// header block is asked for with 'response_headers'.
+function test_curl_run_response_headers_only_when_asked()
+{
+	$options = pg_curl_run_options('POST', 'https://example.com/', array('body' => '{}', 'headers' => array('Accept: application/json'), 'response_headers' => true), curl_run_test_env());
+
+	pg_assert_same(true, $options['CURLOPT_HEADER']);
+	pg_assert_same(array('Accept: application/json'), $options['CURLOPT_HTTPHEADER']);
+
+	$options = pg_curl_run_options('GET', 'https://example.com/', array('headers' => array('Accept: application/json')), curl_run_test_env());
+
+	pg_assert_false(isset($options['CURLOPT_HEADER']), 'request headers do not ask for the response headers');
+}
+
+function test_curl_run_split_cuts_at_the_header_size()
+{
+	$head = "HTTP/1.1 429 Too Many Requests\r\nRetry-After: 120\r\n\r\n";
+
+	pg_assert_same(array($head, '{"a":1}'), pg_curl_run_split($head . '{"a":1}', strlen($head)));
+	pg_assert_same(array($head, ''), pg_curl_run_split($head, strlen($head)));
+	pg_assert_same(array('', 'body'), pg_curl_run_split('body', 0));
+}

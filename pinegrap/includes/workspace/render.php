@@ -51,6 +51,46 @@ function ws_chip_html($ref)
 }
 
 /**
+ * A message that is one record tag and nothing else, drawn as a card: the
+ * record's icon and name (a link where the tag has one), its status and the
+ * line the chip shows on hover. Built only from the tag as ws_refs_resolve()
+ * gave it to this reader, so it shows nothing the chip does not; a tag the
+ * reader may not see, a record that is gone and a form (its own card,
+ * ws_form_cards_html()) stay chips in the text.
+ *
+ * @param string $body the message as stored
+ * @param array  $refs ws_refs_resolve() output covering the body's tokens
+ * @return string HTML, '' when the body is not a lone tag drawn as a card
+ */
+function ws_tag_card_html($body, $refs)
+{
+    if (!preg_match('/^\s*<#(' . ws_token_types_pattern() . '):([0-9]{1,10})>\s*$/', (string) $body, $match) || ($match[1] === 'form')) {
+        return '';
+    }
+
+    $ref = $refs[$match[1] . ':' . (int) $match[2]] ?? null;
+
+    if (!is_array($ref) || empty($ref['known']) || !empty($ref['gone'])) {
+        return '';
+    }
+
+    $type = preg_replace('/[^a-z_]/', '', $ref['type']);
+    $icon = ($ref['icon'] !== '') ? ws_icon_badged_html($ref['icon'], (string) ($ref['badge'] ?? '')) : '';
+    $data = ' data-ws-ref="' . h($ref['type'] . ':' . $ref['id']) . '"';
+    // The head holds only the icon and the name: the tag menu reads its
+    // words as the record's name (chipMenus() in workspace.js).
+    $head = $icon . '<span>' . h($ref['label']) . '</span>';
+    $head = ($ref['url'] !== '')
+        ? '<a class="ws-tag-card-head" href="' . h($ref['url']) . '"' . $data . '>' . $head . '</a>'
+        : '<span class="ws-tag-card-head"' . $data . '>' . $head . '</span>';
+
+    return '<div class="ws-tag-card ws-tag-card-' . str_replace('_', '-', $type) . '"><div class="ws-tag-card-top">' . $head
+        . (($ref['status'] !== '') ? '<span class="ws-tag-card-status">' . h($ref['status']) . '</span>' : '') . '</div>'
+        . (($ref['meta'] !== '') ? '<div class="ws-tag-card-meta">' . h($ref['meta']) . '</div>' : '')
+        . '</div>';
+}
+
+/**
  * The author's own text, escaped and lightly formatted.
  *
  * @param string $text
@@ -547,6 +587,38 @@ function ws_render_text($text, $refs)
 }
 
 /**
+ * What a checklist item of a channel message shows about its task: the
+ * task's tag when one was made of the item, else the button that makes one
+ * for a reader who may (task_work.php, ws_checklist_item_task()).
+ *
+ * @param int        $item       the item's number in the list
+ * @param array      $refs       ws_refs_resolve() output, the task's tag among them
+ * @param array|null $item_tasks tasks (item => task id), make (bool)
+ * @return string
+ */
+function ws_check_task_html($item, $refs, $item_tasks)
+{
+    if (!is_array($item_tasks)) {
+        return '';
+    }
+
+    $task_id = (int) ($item_tasks['tasks'][$item] ?? 0);
+
+    if ($task_id > 0) {
+        return isset($refs['task:' . $task_id]) ? '<span class="ws-check-task">' . ws_chip_html($refs['task:' . $task_id]) . '</span>' : '';
+    }
+
+    if (empty($item_tasks['make'])) {
+        return '';
+    }
+
+    $label = lang('Make a task');
+
+    return '<button type="button" class="ws-check-make" data-ws-item-task="' . (int) $item . '" title="' . h($label) . '" aria-label="' . h($label) . '">'
+        . '<i class="bi bi-check2-square" aria-hidden="true"></i></button>';
+}
+
+/**
  * A stored text as HTML for this reader.
  *
  * @param string     $body
@@ -556,9 +628,13 @@ function ws_render_text($text, $refs)
  * @param array|null $calc      for a piece of a longer text (a note's block):
  *                              seed, the names its hesap blocks inherit, and
  *                              all, the names its tables may use
+ * @param array|null $item_tasks for a channel message's checklist: tasks (item
+ *                              => task id, its tag drawn beside the item; the
+ *                              id's task:N must be in $refs) and make (the
+ *                              reader may make a task of an item without one)
  * @return string
  */
-function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc = null)
+function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc = null, $item_tasks = null)
 {
     $body = (string) $body;
 
@@ -751,8 +827,9 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc 
                 $who = ($state !== null) ? '<span class="ws-check-who">' . h($state['name'] . ' · ' . $state['at']) . '</span>' : '';
 
                 $list .= '<li class="ws-check' . ($checked ? ' ws-checked' : '') . '"><label>'
-                    . '<input type="checkbox" class="form-check-input" data-ws-check="' . $item . '"' . ($checked ? ' checked' : '') . ($can_check ? '' : ' disabled') . '>'
-                    . '<span class="ws-check-text">' . ws_render_inline(trim($match[2]), $refs) . '</span></label>' . $who . '</li>';
+                    . '<input type="checkbox" class="check" data-ws-check="' . $item . '"' . ($checked ? ' checked' : '') . ($can_check ? '' : ' disabled') . '>'
+                    . '<span class="ws-check-text">' . ws_render_inline(trim($match[2]), $refs) . '</span></label>' . $who
+                    . ws_check_task_html($item, $refs, $item_tasks) . '</li>';
 
                 $item++;
                 $i++;
