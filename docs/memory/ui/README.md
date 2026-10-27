@@ -45,6 +45,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - chart-destroy-before-markup-change.md: Destroy Chart.js charts (destroy_widget_charts in welcome.php) before .html()/.remove()/.append() replaces markup with canvases, or instances leak.
 - code-editor-escape-in-dialogs.md: Escape inside a code editor that sits in a dialog: an Escape the editor used (completion list, search panel, full window) stops at the editor; only a free one closes the dialog
 - command-palette.md: Panel search box (Ctrl+K): where the chips come from, how text is matched, why every key must be a string (the "503" crash), chips that open a dialog
+- contact-shared-form.md: The contact create and edit screens share includes/forms/contact_form.php: what it holds, what stays in the screens
 - currency-exchange-rate-box.md: Exchange rate box on add/edit currency: five decimals like currencies.exchange_rate and the rate updater, filled and stored with five; 0,0285 no longer saved as 0,03 (#1335, PR #1341)
 - dashboard-sales-map-data.md: Dashboard sales map widget 1 data side: files, map assets, adding a country, region-name resolution, matching, opening view, number definition, quantile steps.
 - dashboard-sales-map-panel.md: Dashboard sales map widget 1 panel behavior: corner menu with fixed Popper, card colour, permission gates, link gating, brief line signals, reused id 1.
