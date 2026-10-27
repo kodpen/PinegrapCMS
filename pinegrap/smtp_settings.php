@@ -62,7 +62,7 @@ function smtp_settings_connection_field($name, $current, $mail_accounts) {
 
     return '
         <label for="' . h($name) . '" class="form-label">' . h(lang('Send through')) . '</label>
-        <select name="' . h($name) . '" id="' . h($name) . '" class="form-select">' . $options . '</select>';
+        <select name="' . h($name) . '" id="' . h($name) . '" class="form-control">' . $options . '</select>';
 }
 
 function smtp_settings_connect_buttons($mail_providers, $mail_accounts) {
@@ -71,7 +71,7 @@ function smtp_settings_connect_buttons($mail_providers, $mail_accounts) {
 
     foreach ($mail_providers as $provider_key => $provider) {
         $buttons .= '
-            <button type="submit" form="smtp_connect_' . h($provider_key) . '" class="btn btn-sm btn-outline-primary rounded-pill me-1 mt-1">
+            <button type="submit" form="smtp_connect_' . h($provider_key) . '" class="btn btn-sm btn-outline theme-primary rounded-pill me-1 mt-1">
                 <i class="bi ' . h($provider['icon']) . ' me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $provider['label']))) . '</button>';
     }
 
@@ -130,22 +130,22 @@ if (!$_POST) {
     $system_buttons = '';
     if ($smtp_ready) {
         $system_buttons = '
-            <button type="submit" id="send_system_email" name="send_system_email" value="Send System Test Email" class="btn my-1 btn-warning">
-                <span class="material-icons me-2">forward_to_inbox</span>
+            <button type="submit" id="send_system_email" name="send_system_email" value="Send System Test Email" class="btn my-1 btn-solid theme-warning">
+                <span class="material-icons me-3">forward_to_inbox</span>
                 <span class="pg-btn-label">' . lang('Send Test') . '</span>
             </button>';
     }
 
     $dkim_generate_button = '
-        <button type="submit" name="generate_dkim_key" value="true" class="btn my-1 btn-secondary">
-            <span class="material-icons me-2">vpn_key</span>
+        <button type="submit" name="generate_dkim_key" value="true" class="btn my-1 btn-solid theme-secondary">
+            <span class="material-icons me-3">vpn_key</span>
             <span class="pg-btn-label">' . lang('Generate DKIM Key') . '</span>
         </button>';
     $dkim_buttons = $dkim_generate_button;
     if ($smtp_ready) {
         $dkim_buttons .= '
-            <button type="submit" name="test_dkim" value="true" class="btn my-1 btn-info">
-                <span class="material-icons me-2">verified</span>
+            <button type="submit" name="test_dkim" value="true" class="btn my-1 btn-solid theme-info">
+                <span class="material-icons me-3">verified</span>
                 <span class="pg-btn-label">' . lang('Test DKIM') . '</span>
             </button>';
     }
@@ -154,7 +154,7 @@ if (!$_POST) {
 
 
     $dkim_settings = '
-    <div class="col-12 col-md-8 col-lg-6  my-2">
+    <div class="col-12 md:col-8 lg:col-6  my-3">
         <div class="input-group">
             ' . $liveform->output_field([
                 'type'=>'text',
@@ -183,17 +183,17 @@ if (!$_POST) {
     if ($txt_record) {
         $dkim_txt_preview = '
             <div class="col-12">
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('DKIM TXT Record') . '
                     </div>
                     <div class="card-body">
                         <div class="row">
                             ' . $dkim_settings . '
-                            <div class="col-12 my-2">
+                            <div class="col-12 my-3">
                                 <label for="textrecord" class="form-label">' . lang('Add this TXT record to your DNS:') . '</label>
                                 <textarea id="textrecord" class="form-control" rows="4" readonly>' . h($txt_record) . '</textarea>
-                                <div class="mt-2">' . $dkim_buttons . '</div>
+                                <div class="mt-3">' . $dkim_buttons . '</div>
                             </div>
                         </div>
                     </div>
@@ -202,15 +202,15 @@ if (!$_POST) {
     } else {
         $dkim_txt_preview = '
             <div class="col-12">
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('DKIM TXT Record') . '
                     </div>
                     <div class="card-body">
                         <div class="row">
                             ' . $dkim_settings . '
-                            <div class="col-12 my-2">
-                                <p class="text-muted">' . lang('No DKIM key generated yet.') . '</p>
+                            <div class="col-12 my-3">
+                                <p class="fg-secondary">' . lang('No DKIM key generated yet.') . '</p>
                                 <div>' . $dkim_buttons . '</div>
                             </div>
                         </div>
@@ -236,76 +236,76 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <div class="row">
                         <!-- System SMTP -->
-                        <div class="col-12 col-md-6">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('System') . '</div>
+                        <div class="col-12 md:col-6">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('System') . '</div>
                                 <div class="card-body">
-                                    <div class="my-2">
+                                    <div class="my-3">
                                         ' . $system_connection_field . '
                                         ' . $connect_buttons . '
                                     </div>
                                     <div class="row">
-                                        <div class="col-12 col-md-8 my-2">
+                                        <div class="col-12 md:col-8 my-3">
                                             <label for="system_smtp_hostname" class="form-label">' . lang('Hostname') . '</label>
                                             ' . $liveform->output_field(['type'=>'text','name'=>'system_smtp_hostname','id'=>'system_smtp_hostname','class'=>'form-control']) . '
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="system_smtp_port" class="form-label">' . lang('Port') . '</label>
                                             ' . $liveform->output_field(['type'=>'number','name'=>'system_smtp_port','id'=>'system_smtp_port','class'=>'form-control','placeholder'=>'587']) . '
                                         </div>
-                                        <div class="col-12 col-lg-6 my-2">
+                                        <div class="col-12 lg:col-6 my-3">
                                             <label for="system_smtp_username" class="form-label">' . lang('Username') . '</label>
                                             ' . $liveform->output_field(['type'=>'text','name'=>'system_smtp_username','id'=>'system_smtp_username','class'=>'form-control','autocomplete'=>'new-password']) . '
                                         </div>
-                                        <div class="col-12 col-lg-6 my-2">
+                                        <div class="col-12 lg:col-6 my-3">
                                             <label for="system_smtp_password" class="form-label">' . lang('Password') . '</label>
                                             ' . $liveform->output_field(['type'=>'password','name'=>'system_smtp_password','id'=>'system_smtp_password','class'=>'form-control','autocomplete'=>'new-password']) . '
                                         </div>
                                     </div>
-                                    <div class="mt-3">' . $system_buttons . '</div>
+                                    <div class="mt-5">' . $system_buttons . '</div>
                                 </div>
                             </div>
                         </div>
                         <!-- Campaign SMTP -->
-                        <div class="col-12 col-md-6">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Campaign') . '
                                 </div>
                                 <div class="card-body">
-                                    <div class="form-check form-switch my-2">
-                                        ' . $liveform->output_field([
+                                    <div class="form-field my-3">
+                                        <div class="switch">' . $liveform->output_field([
                                             'type'=>'checkbox',
                                             'name'=>'email_campaign_job',
                                             'id'=>'email_campaign_job',
-                                            'class'=>'form-check-input collapse-switcher',
+                                            'class'=>'collapse-switcher',
                                             'value'=>'true',
                                             'data-bs-target'=>'#email_campaign_job_row'
-                                        ]) . '
-                                        <label class="form-check-label" for="email_campaign_job">' . lang('Enable Email Campaign Job') . '</label>
+                                        ]) . '</div>
+                                        <label class="" for="email_campaign_job">' . lang('Enable Email Campaign Job') . '</label>
                                     </div>
                                     <div class="collapse" id="email_campaign_job_row">
-                                        <div class="my-2">
+                                        <div class="my-3">
                                             ' . $campaign_connection_field . '
                                         </div>
                                         <div class="row">
-                                            <div class="col-12 col-lg-6 my-2">
+                                            <div class="col-12 lg:col-6 my-3">
                                                 <label for="campaign_smtp_hostname" class="form-label">' . lang('Hostname') . '</label>
                                                 ' . $liveform->output_field(['type'=>'text','name'=>'campaign_smtp_hostname','id'=>'campaign_smtp_hostname','class'=>'form-control']) . '
                                             </div>
-                                            <div class="col-12 col-md-6 col-lg-3 my-2">
+                                            <div class="col-12 md:col-6 lg:col-3 my-3">
                                                 <label for="email_campaign_job_number_of_emails" class="form-label">' . lang('Max.') . '</label>
                                                 ' . $liveform->output_field(['type'=>'number','name'=>'email_campaign_job_number_of_emails','id'=>'email_campaign_job_number_of_emails','class'=>'form-control','placeholder'=>'25']) . '
                                             </div>
-                                            <div class="col-12 col-md-6 col-lg-3 my-2">
+                                            <div class="col-12 md:col-6 lg:col-3 my-3">
                                                 <label for="campaign_smtp_port" class="form-label">' . lang('Port') . '</label>
                                                 ' . $liveform->output_field(['type'=>'number','name'=>'campaign_smtp_port','id'=>'campaign_smtp_port','class'=>'form-control','placeholder'=>'587']) . '
                                             </div>
-                                            <div class="col-12 col-lg-6 my-2">
+                                            <div class="col-12 lg:col-6 my-3">
                                                 <label for="campaign_smtp_username" class="form-label">' . lang('Username') . '</label>
                                                 ' . $liveform->output_field(['type'=>'text','name'=>'campaign_smtp_username','id'=>'campaign_smtp_username','class'=>'form-control','autocomplete'=>'new-password']) . '
                                             </div>
-                                            <div class="col-12 col-lg-6 my-2">
+                                            <div class="col-12 lg:col-6 my-3">
                                                 <label for="campaign_smtp_password" class="form-label">' . lang('Password') . '</label>
                                                 ' . $liveform->output_field(['type'=>'password','name'=>'campaign_smtp_password','id'=>'campaign_smtp_password','class'=>'form-control','autocomplete'=>'new-password']) . '
                                             </div>
@@ -318,11 +318,11 @@ if (!$_POST) {
                         ' . $dkim_txt_preview . '
                     </div>
 
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;">
                         <div class="container">
                             <div class="btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success">
-                                    <span class="material-icons me-2">save</span>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success">
+                                    <span class="material-icons me-3">save</span>
                                     <span class="pg-btn-label">' . lang(['string'=>'Save']) . '</span>
                                 </button>
                             </div>
@@ -395,7 +395,7 @@ if (!$_POST) {
 
                 $liveform_settings->add_notice(
                     lang('DKIM key pair generated successfully.') .
-                    '<br><label class="form-label mt-2">' . lang('Add this TXT record to your DNS:') . '</label>' .
+                    '<br><label class="form-label mt-3">' . lang('Add this TXT record to your DNS:') . '</label>' .
                     '<textarea class="form-control" rows="4" readonly>' . h($txt_record) . '</textarea>'
                 );
                 log_activity('DKIM key pair generated, files saved, TXT suggestion stored.', $_SESSION['sessionusername']);

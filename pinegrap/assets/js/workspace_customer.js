@@ -47,13 +47,13 @@
     }
 
     function sectionTitle(h, text, iconName, count) {
-        var head = h.el('div', 'small fw-semibold mt-3 mb-1 d-flex align-items-center gap-1');
+        var head = h.el('div', 'small fw-semibold mt-5 mb-1 d-flex align-items-center gap-1');
 
-        head.appendChild(h.icon(iconName, 'text-body-secondary'));
+        head.appendChild(h.icon(iconName, 'fg-secondary'));
         head.appendChild(h.el('span', '', text));
 
         if (count) {
-            head.appendChild(h.el('span', 'badge rounded-pill text-bg-light border', count));
+            head.appendChild(h.el('span', 'badge rounded-pill badge-subtle theme-secondary border', count));
         }
 
         return head;
@@ -61,10 +61,10 @@
 
     // One line of a section: the record, what is said about it, an amount.
     function line(h, label, url, notes, amount) {
-        var row = h.el('div', 'd-flex align-items-baseline gap-2 small py-1 border-bottom');
+        var row = h.el('div', 'd-flex align-items-baseline gap-3 small py-1 border-bottom');
 
         row.appendChild(named(h, 'text-truncate', label, url));
-        row.appendChild(h.el('span', 'text-body-secondary text-truncate flex-grow-1', notes.filter(Boolean).join(' · ')));
+        row.appendChild(h.el('span', 'fg-secondary text-truncate flex-grow-1', notes.filter(Boolean).join(' · ')));
 
         if (amount) {
             row.appendChild(h.el('span', 'fw-semibold text-nowrap', amount));
@@ -79,20 +79,20 @@
 
         h.clear(body);
 
-        var who = h.el('div', 'd-flex align-items-center gap-2');
+        var who = h.el('div', 'd-flex align-items-center gap-3');
         var name = h.el('div', 'ws-grow');
 
-        who.appendChild(h.icon(kindIcon(h, data.customer.type, 'bi-person-vcard'), 'fs-4 text-body-secondary'));
+        who.appendChild(h.icon(kindIcon(h, data.customer.type, 'bi-person-vcard'), 'fs-xl fg-secondary'));
         name.appendChild(named(h, 'fw-semibold', data.customer.label, data.customer.url));
-        name.appendChild(h.el('div', 'small text-body-secondary', [data.customer.kind, data.customer.detail].filter(Boolean).join(' · ')));
+        name.appendChild(h.el('div', 'small fg-secondary', [data.customer.kind, data.customer.detail].filter(Boolean).join(' · ')));
         who.appendChild(name);
         body.appendChild(who);
 
         if (data.links.length) {
-            var ties = h.el('div', 'd-flex flex-wrap gap-3 small mt-2');
+            var ties = h.el('div', 'd-flex flex-wrap gap-5 small mt-3');
 
             data.links.forEach(function (link) {
-                var tie = h.el('span', 'text-body-secondary');
+                var tie = h.el('span', 'fg-secondary');
 
                 tie.title = link.kind;
                 tie.appendChild(h.icon(kindIcon(h, link.type, 'bi-link-45deg'), 'me-1'));
@@ -136,7 +136,7 @@
         }
 
         if (!shown) {
-            body.appendChild(h.el('div', 'small text-body-secondary mt-3', h.t('cust_empty')));
+            body.appendChild(h.el('div', 'small fg-secondary mt-5', h.t('cust_empty')));
         }
 
         body.appendChild(historyPart(h, channelId));
@@ -155,8 +155,8 @@
     // What happened with the customer, newest first, read only when asked
     // for and page by page (ws_customer_history(), customer_history.php).
     function historyPart(h, channelId) {
-        var part = h.el('div', 'mt-3');
-        var open = h.button('btn btn-sm btn-outline-secondary', h.t('cust_history'), 'bi-clock-history');
+        var part = h.el('div', 'mt-5');
+        var open = h.button('btn btn-sm btn-outline theme-secondary', h.t('cust_history'), 'bi-clock-history');
         var list = h.el('div', '');
 
         function page(before) {
@@ -166,21 +166,21 @@
                 var history = data.history;
 
                 if (!history.entries.length && !before) {
-                    list.appendChild(h.el('div', 'small text-body-secondary', h.t('cust_history_empty')));
+                    list.appendChild(h.el('div', 'small fg-secondary', h.t('cust_history_empty')));
                 }
 
                 history.entries.forEach(function (entry) {
-                    var row = h.el('div', 'd-flex align-items-baseline gap-2 small py-1 border-bottom');
+                    var row = h.el('div', 'd-flex align-items-baseline gap-3 small py-1 border-bottom');
 
-                    row.appendChild(h.icon(HISTORY_ICONS[entry.kind] || 'bi-dot', 'text-body-secondary'));
+                    row.appendChild(h.icon(HISTORY_ICONS[entry.kind] || 'bi-dot', 'fg-secondary'));
                     row.appendChild(named(h, 'text-truncate', entry.title, entry.url));
-                    row.appendChild(h.el('span', 'text-body-secondary text-truncate flex-grow-1', [entry.status_label, entry.detail].filter(Boolean).join(' · ')));
+                    row.appendChild(h.el('span', 'fg-secondary text-truncate flex-grow-1', [entry.status_label, entry.detail].filter(Boolean).join(' · ')));
 
                     if (entry.amount_text) {
                         row.appendChild(h.el('span', 'fw-semibold text-nowrap', entry.amount_text));
                     }
 
-                    row.appendChild(h.el('span', 'text-body-secondary text-nowrap', entry.at_text));
+                    row.appendChild(h.el('span', 'fg-secondary text-nowrap', entry.at_text));
                     list.appendChild(row);
                 });
 
@@ -243,7 +243,7 @@
     // pick (ws_customer_followup_open(), includes/workspace/followups.php).
     function remindPart(h, channel) {
         var part = h.el('div', 'card-body border-bottom d-none');
-        var open = h.button('btn btn-sm btn-outline-secondary', h.t('cust_remind'), 'bi-alarm', h.t('cust_remind_help'));
+        var open = h.button('btn btn-sm btn-outline theme-secondary', h.t('cust_remind'), 'bi-alarm', h.t('cust_remind_help'));
 
         function close() {
             h.clear(part);
@@ -251,14 +251,14 @@
         }
 
         function done(task) {
-            var row = h.el('div', 'd-flex flex-wrap align-items-center gap-2 small');
+            var row = h.el('div', 'd-flex flex-wrap align-items-center gap-3 small');
             var go = h.button('btn btn-sm btn-link p-0', h.t('open_task'));
 
             go.addEventListener('click', function () {
                 h.openTask(task.id);
             });
 
-            row.appendChild(h.icon('bi-alarm', 'text-success'));
+            row.appendChild(h.icon('bi-alarm', 'fg-success'));
             row.appendChild(h.el('span', '', h.t('cust_remind_done', task.number, task.due_label)));
             row.appendChild(go);
             h.clear(part);
@@ -266,13 +266,13 @@
         }
 
         function form() {
-            var box = h.el('form', 'd-flex flex-wrap align-items-end gap-2');
+            var box = h.el('form', 'd-flex flex-wrap align-items-end gap-3');
             var what = h.el('input', 'form-control form-control-sm');
             var day = h.el('input', 'form-control form-control-sm');
             var time = h.el('input', 'form-control form-control-sm');
-            var save = h.el('button', 'btn btn-sm btn-primary', h.t('cust_remind_save'));
-            var cancel = h.button('btn btn-sm btn-outline-secondary', h.t('cancel'));
-            var actions = h.el('div', 'd-flex gap-2');
+            var save = h.el('button', 'btn btn-sm btn-solid theme-primary', h.t('cust_remind_save'));
+            var cancel = h.button('btn btn-sm btn-outline theme-secondary', h.t('cancel'));
+            var actions = h.el('div', 'd-flex gap-3');
             var inputs = { title: what, due_date: day, due_time: time };
 
             what.type = 'text';
@@ -330,11 +330,11 @@
     }
 
     function card(channel, h) {
-        var node = h.el('div', 'card ws-customer-card mt-4');
+        var node = h.el('div', 'card ws-customer-card mt-7');
         var header = h.el('div', 'card-header d-flex justify-content-between align-items-center');
         var body = h.el('div', 'card-body');
 
-        header.appendChild(h.el('span', 'text-uppercase h5 text-primary fw-bold mb-0', h.t('customer')));
+        header.appendChild(h.el('span', 'text-uppercase h5 fg-primary fw-bold mb-0', h.t('customer')));
         node.appendChild(header);
 
         // Only where the reader may write: the follow-up is a task of the channel.

@@ -351,7 +351,7 @@ function test_erp_auto_invoice_card_warns_of_a_tax_number_difference()
 	$html = erp_order_flow_card(17, array('steps' => array('invoice' => $step), 'next' => 'invoice'));
 
 	pg_assert_contains('&lt;b&gt;1234567808&lt;/b&gt;', $html);
-	pg_assert_contains('text-warning-emphasis', $html);
+	pg_assert_contains('fg-emphasis-warning', $html);
 	pg_assert_contains('bi-exclamation-triangle-fill', $html);
 	pg_assert_contains('value="invoice"', $html, 'still offered');
 	pg_assert_contains('edit_erp_account.php?id=9', $html);

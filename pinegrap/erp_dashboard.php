@@ -45,14 +45,14 @@ $can_see_cash = ((int) $user['role'] < 3) || !empty($user['manage_erp_cash']);
 // One card: a label, the figure, a line under it, and where it leads.
 $card = function ($label, $figure, $note, $icon, $url, $figure_class = '') {
     return '
-            <div class="col-12 col-md-6 col-xl-3 my-2">
-                <a href="' . h($url) . '" class="card h-100 text-decoration-none link-body-emphasis">
-                    <div class="card-body d-flex align-items-start gap-3">
-                        <i class="bi ' . $icon . ' fs-2 text-body-secondary"></i>
+            <div class="col-12 md:col-6 xl:col-3 my-3">
+                <a href="' . h($url) . '" class="card h-100 text-decoration-none pg-link-body-emphasis">
+                    <div class="card-body d-flex align-items-start gap-5">
+                        <i class="bi ' . $icon . ' fs-3xl fg-secondary"></i>
                         <div class="min-w-0">
-                            <div class="small text-body-secondary text-uppercase">' . h($label) . '</div>
+                            <div class="small fg-secondary text-uppercase">' . h($label) . '</div>
                             <div class="h3 mb-1 ' . $figure_class . '">' . h($figure) . '</div>
-                            <div class="small text-body-secondary">' . h($note) . '</div>
+                            <div class="small fg-secondary">' . h($note) . '</div>
                         </div>
                     </div>
                 </a>
@@ -69,7 +69,7 @@ $output_cards =
     $card(lang('Overdue receivables'), erp_money_out($receivables['overdue_base']),
         lang(array('string' => '{var:1} document(s) past due', 'vars' => $receivables['overdue_count'])),
         'bi-exclamation-circle', 'erp_invoices.php?filter=overdue&direction=sales',
-        ($receivables['overdue_count'] > 0) ? 'text-danger' : '') .
+        ($receivables['overdue_count'] > 0) ? 'fg-danger' : '') .
     $card(lang('Due within 7 days'), erp_money_out($receivables['due_soon_base']),
         lang(array('string' => '{var:1} document(s) fall due', 'vars' => $receivables['due_soon_count'])),
         'bi-calendar-week', 'erp_invoices.php?filter=due_week&direction=sales');
@@ -93,7 +93,7 @@ if (function_exists('erp_profit_report')) {
         $card(lang('Net profit this month'), erp_money_out($month_net),
             lang(array('string' => 'Margin {var:1}', 'vars' => erp_profit_margin_text($month_margin))),
             'bi-graph-up', 'erp_profit.php?range=month&month=' . substr($month_from, 0, 7),
-            ($month_net < 0) ? 'text-danger' : '');
+            ($month_net < 0) ? 'fg-danger' : '');
 
     if (erp_expenses_ready()) {
         $month_expenses = $month_report['expenses']['total'];
@@ -109,7 +109,7 @@ if (function_exists('erp_profit_report')) {
                     ? lang(array('string' => '{var:1} past their due date', 'vars' => $open_overdue))
                     : lang(array('string' => '{var:1} expense(s), any date', 'vars' => $expenses_open['count'])),
                 'bi-hourglass-split', 'erp_expenses.php?status=unpaid&period=dates&from=2000-01-01&to=' . date('Y-12-31'),
-                ($open_overdue > 0) ? 'text-danger' : '');
+                ($open_overdue > 0) ? 'fg-danger' : '');
     }
 }
 
@@ -123,7 +123,7 @@ if ($low_stock_count > 0) {
         !empty($low_first)
             ? lang(array('string' => 'Most short: {var:1}', 'vars' => erp_stock_product_label($low_first[0])))
             : lang('At or below the minimum'),
-        'bi-box-seam', 'erp_stock_minimums.php?show=low', 'text-danger');
+        'bi-box-seam', 'erp_stock_minimums.php?show=low', 'fg-danger');
 }
 
 $over_limit_accounts = function_exists('erp_credit_over_accounts') ? erp_credit_over_accounts(100) : array();
@@ -136,7 +136,7 @@ if (!empty($over_limit_accounts)) {
 
     $output_cards_month .= $card(lang('Over their credit limit'), (string) count($over_limit_accounts),
         lang(array('string' => '{var:1} over in all', 'vars' => erp_money_out($over_total))),
-        'bi-speedometer2', 'erp_accounts.php?filter=over_limit', 'text-danger');
+        'bi-speedometer2', 'erp_accounts.php?filter=over_limit', 'fg-danger');
 }
 
 // Offers waiting for the customer's answer, and how many of them run out
@@ -155,7 +155,7 @@ if (function_exists('erp_purchase_orders_ready') && erp_purchase_orders_ready() 
         ($late_orders > 0)
             ? lang(array('string' => '{var:1} past the expected day', 'vars' => $late_orders))
             : lang('Goods not received in full yet'),
-        'bi-cart-check', 'erp_purchase_orders.php?status=waiting', ($late_orders > 0) ? 'text-danger' : '');
+        'bi-cart-check', 'erp_purchase_orders.php?status=waiting', ($late_orders > 0) ? 'fg-danger' : '');
 }
 
 // ------------------------------------------------------------- cash and bank
@@ -164,19 +164,19 @@ foreach ($cash['tills'] as $till) {
     $output_tills .= '
                         <tr>
                             <td class="text-truncate" style="max-width:200px">' . h($till['name']) . '</td>
-                            <td class="text-end ' . (((int) $till['balance'] < 0) ? 'text-danger' : '') . '">' . h(erp_money_out((int) $till['balance'])) . '</td>
+                            <td class="text-end ' . (((int) $till['balance'] < 0) ? 'fg-danger' : '') . '">' . h(erp_money_out((int) $till['balance'])) . '</td>
                         </tr>';
 }
 foreach ($cash['foreign'] as $till) {
     $output_tills .= '
-                        <tr class="text-body-secondary">
+                        <tr class="fg-secondary">
                             <td class="text-truncate" style="max-width:200px">' . h($till['name']) . ' <span class="small">' . h(lang('not added in')) . '</span></td>
                             <td class="text-end">' . h(erp_money_out_currency((int) $till['balance'], (string) $till['currency'])) . '</td>
                         </tr>';
 }
 if ($output_tills === '') {
     $output_tills = '
-                        <tr><td colspan="2" class="text-body-secondary">' . lang('No active till.') . '</td></tr>';
+                        <tr><td colspan="2" class="fg-secondary">' . lang('No active till.') . '</td></tr>';
 }
 
 // -------------------------------------------------------- receivables by age
@@ -187,7 +187,7 @@ $bucket_classes = array(
     'd1_30' => 'bg-info',
     'd31_60' => 'bg-warning',
     'd61_90' => 'bg-danger',
-    'd90p' => 'bg-dark',
+    'd90p' => 'bg-black',
 );
 
 $output_bar = '';
@@ -207,11 +207,11 @@ foreach ($buckets as $key => $label) {
 
     $output_legend .= '
                         <tr>
-                            <td><span class="d-inline-block rounded-circle ' . $bucket_classes[$key] . ' me-2" style="width:.65rem;height:.65rem;"></span>' . h($label) . '</td>
-                            <td class="text-end text-body-secondary">' . $share . '%</td>
+                            <td><span class="d-inline-block rounded-circle ' . $bucket_classes[$key] . ' me-3" style="width:.65rem;height:.65rem;"></span>' . h($label) . '</td>
+                            <td class="text-end fg-secondary">' . $share . '%</td>
                             <td class="text-end">' . (($amount > 0)
-                                ? '<a href="erp_invoices.php?filter=open&amp;direction=sales&amp;bucket=' . h($key) . '" class="link-body-emphasis">' . h(erp_money_out($amount)) . '</a>'
-                                : '<span class="text-body-secondary">' . h(erp_money_out(0)) . '</span>') . '</td>
+                                ? '<a href="erp_invoices.php?filter=open&amp;direction=sales&amp;bucket=' . h($key) . '" class="pg-link-body-emphasis">' . h(erp_money_out($amount)) . '</a>'
+                                : '<span class="fg-secondary">' . h(erp_money_out(0)) . '</span>') . '</td>
                         </tr>';
 }
 
@@ -220,14 +220,14 @@ $output_top = '';
 foreach ($receivables['top'] as $account) {
     $output_top .= '
                         <tr>
-                            <td class="text-truncate" style="max-width:220px"><a href="edit_erp_account.php?id=' . (int) $account['id'] . '" class="link-body-emphasis">' . h($account['title']) . '</a></td>
-                            <td class="text-end text-nowrap text-body-secondary" data-sort="' . (int) $account['oldest_days'] . '">' . h(lang(array('string' => '{var:1} days', 'vars' => (int) $account['oldest_days']))) . '</td>
-                            <td class="text-end text-nowrap" data-sort="' . (int) $account['total'] . '"><a href="erp_invoices.php?filter=overdue&amp;direction=sales&amp;account_id=' . (int) $account['id'] . '" class="link-body-emphasis">' . h(erp_money_out((int) $account['total'])) . '</a></td>
+                            <td class="text-truncate" style="max-width:220px"><a href="edit_erp_account.php?id=' . (int) $account['id'] . '" class="pg-link-body-emphasis">' . h($account['title']) . '</a></td>
+                            <td class="text-end text-nowrap fg-secondary" data-sort="' . (int) $account['oldest_days'] . '">' . h(lang(array('string' => '{var:1} days', 'vars' => (int) $account['oldest_days']))) . '</td>
+                            <td class="text-end text-nowrap" data-sort="' . (int) $account['total'] . '"><a href="erp_invoices.php?filter=overdue&amp;direction=sales&amp;account_id=' . (int) $account['id'] . '" class="pg-link-body-emphasis">' . h(erp_money_out((int) $account['total'])) . '</a></td>
                         </tr>';
 }
 if ($output_top === '') {
     $output_top = '
-                        <tr data-pg-sort-fixed><td colspan="3" class="text-body-secondary">' . lang('Nothing is overdue.') . '</td></tr>';
+                        <tr data-pg-sort-fixed><td colspan="3" class="fg-secondary">' . lang('Nothing is overdue.') . '</td></tr>';
 }
 
 $card_header = 'card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold';
@@ -251,8 +251,8 @@ if (erp_edoc_installed()) {
 
         $output_edoc_provider = ($edoc_info !== null)
             ? '<span class="fw-semibold">' . h($edoc_info['label']) . '</span>'
-                . (!empty($edoc_environment['is_test']) ? ' <span class="badge text-bg-warning">' . h($edoc_environment['label']) . '</span>' : '')
-            : '<span class="text-body-secondary">' . lang('No e-document provider is selected.') . '</span>';
+                . (!empty($edoc_environment['is_test']) ? ' <span class="badge theme-warning">' . h($edoc_environment['label']) . '</span>' : '')
+            : '<span class="fg-secondary">' . lang('No e-document provider is selected.') . '</span>';
 
         $output_edoc_rows = '';
         foreach (erp_edoc_filters() as $edoc_key => $edoc_filter) {
@@ -272,10 +272,10 @@ if (erp_edoc_installed()) {
 
             $output_edoc_rows .= '
                         <tr>
-                            <td><i class="bi ' . $edoc_filter['icon'] . ' me-2 text-' . $edoc_tone . '" aria-hidden="true"></i>' . h($edoc_filter['label']) . '</td>
+                            <td><i class="bi ' . $edoc_filter['icon'] . ' me-3 text-' . $edoc_tone . '" aria-hidden="true"></i>' . h($edoc_filter['label']) . '</td>
                             <td class="text-end">' . (($edoc_count > 0)
-                                ? '<a href="erp_invoices.php?edoc=' . $edoc_key . '" class="badge rounded-pill text-bg-' . $edoc_tone . ' text-decoration-none">' . number_format($edoc_count) . '</a>'
-                                : '<span class="text-body-secondary">0</span>') . '</td>
+                                ? '<a href="erp_invoices.php?edoc=' . $edoc_key . '" class="badge rounded-pill theme-' . $edoc_tone . ' text-decoration-none">' . number_format($edoc_count) . '</a>'
+                                : '<span class="fg-secondary">0</span>') . '</td>
                         </tr>';
         }
 
@@ -287,22 +287,22 @@ if (erp_edoc_installed()) {
 
             $output_edoc_rows .= '
                         <tr>
-                            <td><i class="bi bi-inbox me-2 text-' . $inbox_tone . '" aria-hidden="true"></i>' . lang('Incoming e-invoices to take in') . '</td>
+                            <td><i class="bi bi-inbox me-3 fg-' . $inbox_tone . '" aria-hidden="true"></i>' . lang('Incoming e-invoices to take in') . '</td>
                             <td class="text-end">' . (($inbox_count > 0)
-                                ? '<a href="erp_inbox.php" class="badge rounded-pill text-bg-' . $inbox_tone . ' text-decoration-none">' . number_format($inbox_count) . '</a>'
-                                : '<a href="erp_inbox.php" class="text-body-secondary text-decoration-none">0</a>') . '</td>
+                                ? '<a href="erp_inbox.php" class="badge rounded-pill theme-' . $inbox_tone . ' text-decoration-none">' . number_format($inbox_count) . '</a>'
+                                : '<a href="erp_inbox.php" class="fg-secondary text-decoration-none">0</a>') . '</td>
                         </tr>';
         }
 
         $output_edoc_card = '
-        <div class="col-12 ' . ($can_see_cash ? 'col-lg-4' : 'col-lg-6') . ' my-2">
+        <div class="col-12 ' . ($can_see_cash ? 'lg:col-4' : 'lg:col-6') . ' my-3">
             <div class="card h-100">
                 <div class="' . $card_header . ' d-flex align-items-center">
                     <span>' . lang('e-Document') . '</span>
                     <a href="erp_invoices.php?edoc=failed" class="ms-auto small text-decoration-none fw-normal text-lowercase"><i class="bi bi-arrow-right-short"></i>' . lang('Invoices') . '</a>
                 </div>
                 <div class="card-body">
-                    <div class="mb-3">' . $output_edoc_provider . '</div>
+                    <div class="mb-5">' . $output_edoc_provider . '</div>
                     <table class="table table-sm mb-0">
                         <tbody>' . $output_edoc_rows . '
                         </tbody>
@@ -364,49 +364,49 @@ if ($can_see_cash) {
 
         $output_recent .= '
                         <tr>
-                            <td class="text-nowrap text-body-secondary" data-sort="' . h(str_replace('-', '', (string) $movement['doc_date'])) . '">' . h(prepare_form_data_for_output((string) $movement['doc_date'], 'date')) . '</td>
-                            <td class="text-nowrap"><a href="' . h($movement_url) . '" class="link-body-emphasis">' . h($movement_label) . '</a>'
-                                . (((int) $movement['reversal_id'] > 0) ? ' <span class="badge text-bg-secondary">' . lang('Cancelled') . '</span>' : '') . '</td>
+                            <td class="text-nowrap fg-secondary" data-sort="' . h(str_replace('-', '', (string) $movement['doc_date'])) . '">' . h(prepare_form_data_for_output((string) $movement['doc_date'], 'date')) . '</td>
+                            <td class="text-nowrap"><a href="' . h($movement_url) . '" class="pg-link-body-emphasis">' . h($movement_label) . '</a>'
+                                . (((int) $movement['reversal_id'] > 0) ? ' <span class="badge theme-secondary">' . lang('Cancelled') . '</span>' : '') . '</td>
                             <td class="text-truncate" style="max-width:220px">' . (((int) $movement['account_id'] > 0)
-                                ? '<a href="edit_erp_account.php?id=' . (int) $movement['account_id'] . '" class="link-body-emphasis">' . h((string) $movement['account_title']) . '</a>'
-                                : '<span class="text-body-secondary">' . h($movement_description) . '</span>') . '</td>
-                            <td class="text-truncate text-body-secondary" style="max-width:160px">' . h((string) $movement['till_name']) . '</td>
-                            <td class="text-end text-nowrap ' . (($movement_amount < 0) ? 'text-danger' : 'text-success') . '" data-sort="' . (int) $movement_amount . '">' . h(erp_money_out_currency($movement_amount, strtoupper(trim((string) $movement['currency'])))) . '</td>
+                                ? '<a href="edit_erp_account.php?id=' . (int) $movement['account_id'] . '" class="pg-link-body-emphasis">' . h((string) $movement['account_title']) . '</a>'
+                                : '<span class="fg-secondary">' . h($movement_description) . '</span>') . '</td>
+                            <td class="text-truncate fg-secondary" style="max-width:160px">' . h((string) $movement['till_name']) . '</td>
+                            <td class="text-end text-nowrap ' . (($movement_amount < 0) ? 'fg-danger' : 'fg-success') . '" data-sort="' . (int) $movement_amount . '">' . h(erp_money_out_currency($movement_amount, strtoupper(trim((string) $movement['currency'])))) . '</td>
                         </tr>';
     }
     if ($output_recent === '') {
         $output_recent = '
-                        <tr data-pg-sort-fixed><td colspan="5" class="text-body-secondary">' . lang('There are no movements yet.') . '</td></tr>';
+                        <tr data-pg-sort-fixed><td colspan="5" class="fg-secondary">' . lang('There are no movements yet.') . '</td></tr>';
     }
 
     $today_url = 'erp_cashflow.php?from=' . $today . '&amp;to=' . $today;
 
     $output_movements_card = '
-        <div class="col-12 ' . (($output_edoc_card !== '') ? 'col-lg-8' : '') . ' my-2">
+        <div class="col-12 ' . (($output_edoc_card !== '') ? 'lg:col-8' : '') . ' my-3">
             <div class="card h-100">
                 <div class="' . $card_header . ' d-flex align-items-center">
                     <span>' . lang('Latest movements') . '</span>
                     <a href="erp_cash.php" class="ms-auto small text-decoration-none fw-normal text-lowercase"><i class="bi bi-arrow-right-short"></i>' . lang('Cash and Bank') . '</a>
                 </div>
                 <div class="card-body">
-                    <a href="' . $today_url . '" class="d-flex flex-wrap gap-4 mb-3 text-decoration-none link-body-emphasis" title="' . h(lang('Transfers between your own tills are not counted.')) . '">
+                    <a href="' . $today_url . '" class="d-flex flex-wrap gap-7 mb-5 text-decoration-none pg-link-body-emphasis" title="' . h(lang('Transfers between your own tills are not counted.')) . '">
                         <div>
-                            <div class="small text-body-secondary text-uppercase">' . lang('Money in today') . '</div>
-                            <div class="h4 mb-0 text-success">' . h(erp_money_out((int) $today_flow['in'])) . '</div>
+                            <div class="small fg-secondary text-uppercase">' . lang('Money in today') . '</div>
+                            <div class="h4 mb-0 fg-success">' . h(erp_money_out((int) $today_flow['in'])) . '</div>
                         </div>
                         <div>
-                            <div class="small text-body-secondary text-uppercase">' . lang('Money out today') . '</div>
-                            <div class="h4 mb-0 text-danger">' . h(erp_money_out((int) $today_flow['out'])) . '</div>
+                            <div class="small fg-secondary text-uppercase">' . lang('Money out today') . '</div>
+                            <div class="h4 mb-0 fg-danger">' . h(erp_money_out((int) $today_flow['out'])) . '</div>
                         </div>
                         <div>
-                            <div class="small text-body-secondary text-uppercase">' . lang('Net change') . '</div>
+                            <div class="small fg-secondary text-uppercase">' . lang('Net change') . '</div>
                             <div class="h4 mb-0">' . h(erp_money_out((int) $today_flow['net'])) . '</div>
                         </div>
                     </a>
                     <div class="table-responsive">
                         <table class="table table-sm mb-0" data-pg-sort>
                             <thead>
-                                <tr class="small text-body-secondary">
+                                <tr class="small fg-secondary">
                                     <th class="fw-normal">' . lang('Date') . '</th>
                                     <th class="fw-normal">' . lang('Document') . '</th>
                                     <th class="fw-normal">' . lang('Account') . '</th>
@@ -446,21 +446,21 @@ echo pg_page_shell(array(
     // may use it (validate_ecommerce_access).
     . ((((int) $user['role'] < 3) || !empty($user['manage_ecommerce'])) ? '
     <div class="pg-toolbar" id="button_bar">
-        <a class="btn btn-sm btn-primary rounded-pill px-3" href="add_order.php"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang(array('string' => 'Add {var:1}', 'vars' => array(lang('Order')))) . '</a>
+        <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_order.php"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang(array('string' => 'Add {var:1}', 'vars' => array(lang('Order')))) . '</a>
     </div>' : '') . '
     <div class="row">' . $output_cards . '
     </div>
     ' . (($output_cards_month !== '') ? '<div class="row">' . $output_cards_month . '
     </div>' : '') . '
     <div class="row">
-        ' . ($can_see_cash ? '<div class="col-12 col-lg-4 my-2">
+        ' . ($can_see_cash ? '<div class="col-12 lg:col-4 my-3">
             <div class="card h-100">
                 <div class="' . $card_header . ' d-flex align-items-center">
                     <span>' . lang('Cash and Bank') . '</span>
                     <a href="erp_cash.php" class="ms-auto small text-decoration-none fw-normal text-lowercase"><i class="bi bi-arrow-right-short"></i>' . lang('Cash and Bank') . '</a>
                 </div>
                 <div class="card-body">
-                    <div class="h3 mb-3 ' . (($cash['total'] < 0) ? 'text-danger' : '') . '">' . h(erp_money_out((int) $cash['total'])) . '</div>
+                    <div class="h3 mb-5 ' . (($cash['total'] < 0) ? 'fg-danger' : '') . '">' . h(erp_money_out((int) $cash['total'])) . '</div>
                     <table class="table table-sm mb-0">
                         <tbody>' . $output_tills . '
                         </tbody>
@@ -468,14 +468,14 @@ echo pg_page_shell(array(
                 </div>
             </div>
         </div>' : '') . '
-        <div class="col-12 ' . ($can_see_cash ? 'col-lg-4' : 'col-lg-6') . ' my-2">
+        <div class="col-12 ' . ($can_see_cash ? 'lg:col-4' : 'lg:col-6') . ' my-3">
             <div class="card h-100">
                 <div class="' . $card_header . ' d-flex align-items-center">
                     <span>' . lang('Receivables by age') . '</span>
                     <a href="erp_aging.php?direction=sales" class="ms-auto small text-decoration-none fw-normal text-lowercase"><i class="bi bi-arrow-right-short"></i>' . lang('Aging report') . '</a>
                 </div>
                 <div class="card-body">
-                    <div class="progress-stacked mb-3" style="height:1rem;">' . $output_bar . '
+                    <div class="progress-stacked mb-5" style="height:1rem;">' . $output_bar . '
                     </div>
                     <table class="table table-sm mb-0">
                         <tbody>' . $output_legend . '
@@ -485,7 +485,7 @@ echo pg_page_shell(array(
                 </div>
             </div>
         </div>
-        <div class="col-12 ' . ($can_see_cash ? 'col-lg-4' : 'col-lg-6') . ' my-2">
+        <div class="col-12 ' . ($can_see_cash ? 'lg:col-4' : 'lg:col-6') . ' my-3">
             <div class="card h-100">
                 <div class="' . $card_header . ' d-flex align-items-center">
                     <span>' . lang('Top overdue accounts') . '</span>
@@ -494,7 +494,7 @@ echo pg_page_shell(array(
                 <div class="card-body">
                     <table class="table table-sm mb-0" data-pg-sort>
                         <thead>
-                            <tr class="small text-body-secondary">
+                            <tr class="small fg-secondary">
                                 <th class="fw-normal">' . lang('Account') . '</th>
                                 <th class="fw-normal text-end">' . lang('Oldest') . '</th>
                                 <th class="fw-normal text-end">' . lang('Overdue') . '</th>

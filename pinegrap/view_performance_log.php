@@ -137,8 +137,8 @@ if (defined('PERF_MONITOR_ENABLED') && !PERF_MONITOR_ENABLED) {
     ));
 
     echo '<main id="content" class="container-fluid">
-        <div class="alert alert-secondary d-flex align-items-center my-4">
-            <i class="bi bi-speedometer2 me-2"></i>
+        <div class="alert theme-secondary d-flex align-items-center my-7">
+            <i class="bi bi-speedometer2 me-3"></i>
             <div>' . lang('Performance monitoring is turned off, and the records were cleared when it was switched off.')
             . ' <a href="' . pg_settings_link('features', 'pgset-features') . '">' . lang('Site Settings') . '</a></div>
         </div>
@@ -156,8 +156,8 @@ if (!$table_exists) {
         'heading' => lang('Performance Log'),
     ));
     echo '<main id="content" class="container-fluid">
-        <div class="alert alert-warning my-4">
-            <i class="bi bi-exclamation-triangle me-2"></i>'
+        <div class="alert theme-warning my-7">
+            <i class="bi bi-exclamation-triangle me-3"></i>'
             . lang('The performance tables do not exist yet. Please run the software upgrade to create them.')
         . '</div>
     </main>';
@@ -308,16 +308,16 @@ function pmon_format_kb($kb) {
 }
 
 function pmon_duration_class($ms) {
-    if ($ms >= 2000) { return 'text-danger fw-bold'; }
-    if ($ms >= 500)  { return 'text-warning fw-bold'; }
-    return 'text-success';
+    if ($ms >= 2000) { return 'fg-danger fw-bold'; }
+    if ($ms >= 500)  { return 'fg-warning fw-bold'; }
+    return 'fg-success';
 }
 
 function pmon_area_badge($area) {
     if ($area === 'backend') {
-        return '<span class="badge bg-primary">' . lang('Backend') . '</span>';
+        return '<span class="badge theme-primary">' . lang('Backend') . '</span>';
     }
-    return '<span class="badge bg-success">' . lang('Frontend') . '</span>';
+    return '<span class="badge theme-success">' . lang('Frontend') . '</span>';
 }
 
 // Build a sortable column header. $base_params are the GET params that should be preserved
@@ -341,7 +341,7 @@ function pmon_sort_header($key, $label, $sort_param, $dir_param, $current_sort, 
     $params[$dir_param]  = $next_dir;
     $href = 'view_performance_log.php?' . h(http_build_query($params));
     $th_class = trim($extra_th_classes . ($is_active ? ' table-active' : ''));
-    return '<th class="' . $th_class . '"><a href="' . $href . '" class="text-decoration-none text-body d-inline-flex align-items-center">' . $label . $arrow . '</a></th>';
+    return '<th class="' . $th_class . '"><a href="' . $href . '" class="text-decoration-none fg-body d-inline-flex align-items-center">' . $label . $arrow . '</a></th>';
 }
 
 // ---- Build filter form -----------------------------------------------------
@@ -380,7 +380,7 @@ if ($slowest_result && mysqli_num_rows($slowest_result) > 0) {
             </tr>';
     }
 } else {
-    $slowest_rows = '<tr><td colspan="' . ($has_query_stats ? 10 : 8) . '" class="text-center text-muted py-4">' . lang('No data yet for the selected period.') . '</td></tr>';
+    $slowest_rows = '<tr><td colspan="' . ($has_query_stats ? 10 : 8) . '" class="text-center fg-secondary py-7">' . lang('No data yet for the selected period.') . '</td></tr>';
 }
 
 // ---- Build memory-hungry pages table --------------------------------------
@@ -399,7 +399,7 @@ if ($memory_result && mysqli_num_rows($memory_result) > 0) {
             </tr>';
     }
 } else {
-    $memory_rows = '<tr><td colspan="6" class="text-center text-muted py-4">' . lang('No data yet for the selected period.') . '</td></tr>';
+    $memory_rows = '<tr><td colspan="6" class="text-center fg-secondary py-7">' . lang('No data yet for the selected period.') . '</td></tr>';
 }
 
 // ---- Build recent slow requests table -------------------------------------
@@ -413,20 +413,20 @@ if ($recent_slow_result && mysqli_num_rows($recent_slow_result) > 0) {
             : $r['script_name'];
         $recent_rows .= '
             <tr>
-                <td><small class="text-muted">' . h($when) . '</small></td>
+                <td><small class="fg-secondary">' . h($when) . '</small></td>
                 <td>' . pmon_area_badge($r['area']) . '</td>
                 <td><code>' . h($label) . '</code>'
                     . ($r['query_string'] !== ''
-                        ? '<div class="text-muted text-break" style="font-size:.72rem;">?' . h(mb_substr($r['query_string'], 0, 160)) . '</div>'
+                        ? '<div class="fg-secondary text-break" style="font-size:.72rem;">?' . h(mb_substr($r['query_string'], 0, 160)) . '</div>'
                         : '')
                     . ($r['ip_address'] !== '' || $r['user_agent'] !== ''
-                        ? '<div class="text-muted text-break" style="font-size:.72rem;">'
+                        ? '<div class="fg-secondary text-break" style="font-size:.72rem;">'
                             . ($r['ip_address'] !== '' ? '<span class="font-monospace">' . h($r['ip_address']) . '</span> ' : '')
                             . h(mb_substr($r['user_agent'], 0, 80))
                           . '</div>'
                         : '') . '</td>
-                <td><span class="badge bg-secondary">' . h($r['method']) . '</span></td>
-                <td class="text-end"><span class="badge ' . ((int) $r['http_status'] >= 400 ? 'bg-danger' : 'bg-success-subtle text-dark') . '">' . (int) $r['http_status'] . '</span></td>
+                <td><span class="badge theme-secondary">' . h($r['method']) . '</span></td>
+                <td class="text-end"><span class="badge ' . ((int) $r['http_status'] >= 400 ? 'theme-danger' : 'bg-subtle-success fg-black') . '">' . (int) $r['http_status'] . '</span></td>
                 <td class="text-end ' . pmon_duration_class((int) $r['duration_ms']) . '">' . pg_format_number((int) $r['duration_ms'], 0) . ' ms</td>
                 <td class="text-end">' . pmon_format_kb($r['peak_memory_kb']) . '</td>
                 <td class="text-end">' . pg_format_number((int) $r['cpu_user_ms'] + (int) $r['cpu_system_ms'], 0) . ' ms</td>'
@@ -434,7 +434,7 @@ if ($recent_slow_result && mysqli_num_rows($recent_slow_result) > 0) {
             </tr>';
     }
 } else {
-    $recent_rows = '<tr><td colspan="' . ($has_query_log ? 9 : 8) . '" class="text-center text-muted py-4">' . lang('No slow requests were recorded in this period.') . '</td></tr>';
+    $recent_rows = '<tr><td colspan="' . ($has_query_log ? 9 : 8) . '" class="text-center fg-secondary py-7">' . lang('No slow requests were recorded in this period.') . '</td></tr>';
 }
 
 // ---- Sortable column headers ----------------------------------------------
@@ -499,30 +499,30 @@ echo '
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
 
-            <div class="row mb-3 flex-wrap align-items-center">
-                <div class="col-12 col-md-6 text-center text-md-start">
+            <div class="row mb-5 flex-wrap align-items-center">
+                <div class="col-12 md:col-6 text-center md:text-start">
                     
-                    <p class="m-0 small text-muted">' . lang('Per-request runtime metrics recorded after each response is flushed to the client.') . '</p>
+                    <p class="m-0 small fg-secondary">' . lang('Per-request runtime metrics recorded after each response is flushed to the client.') . '</p>
                 </div>
-                <div class="col-12 col-md-6">
-                    <form action="view_performance_log.php" method="get" class="row g-2 justify-content-md-end align-items-end">
-                        <div class="col-12 col-sm">
+                <div class="col-12 md:col-6">
+                    <form action="view_performance_log.php" method="get" class="row g-3 md:justify-content-end align-items-end">
+                        <div class="col-12 sm:col">
                             <label class="form-label small mb-0">' . lang('Search') . '</label>
                             <input type="search" name="search" value="' . h($search) . '" class="form-control form-control-sm" placeholder="' . h(lang('Search by page...')) . '">
                         </div>
                         <div class="col-auto">
                             <label class="form-label small mb-0">' . lang('Time Range') . '</label>
-                            <select name="range" class="form-select form-select-sm" onchange="this.form.submit()">' . $range_select . '</select>
+                            <select name="range" class="form-control form-control-sm" onchange="this.form.submit()">' . $range_select . '</select>
                         </div>
                         <div class="col-auto">
                             <label class="form-label small mb-0">' . lang('Area') . '</label>
-                            <select name="area" class="form-select form-select-sm" onchange="this.form.submit()">' . $area_select . '</select>
+                            <select name="area" class="form-control form-control-sm" onchange="this.form.submit()">' . $area_select . '</select>
                         </div>
                         <div class="col-auto">
-                            <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-search"></i></button>
+                            <button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-search"></i></button>
                         </div>
                         <div class="col-auto">
-                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#perf-log-clear-modal" title="' . h(lang('Clear all performance log data')) . '"><i class="bi bi-trash"></i></button>
+                            <button type="button" class="btn btn-sm btn-outline theme-danger" data-bs-toggle="dialog" data-bs-target="#perf-log-clear-modal" title="' . h(lang('Clear all performance log data')) . '"><i class="bi bi-trash"></i></button>
                         </div>
                     </form>
                 </div>
@@ -533,9 +533,7 @@ echo '
                  CSRF token (same pattern other destructive admin actions
                  follow). Active filters are forwarded so the user lands
                  on the same view, just empty. -->
-            <div class="modal fade" id="perf-log-clear-modal" tabindex="-1" aria-labelledby="perf-log-clear-title" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
+            <dialog class="dialog pg-dialog-centered" id="perf-log-clear-modal" aria-labelledby="perf-log-clear-title">
                         <form action="view_performance_log.php" method="post">
                             ' . get_token_field() . '
                             <input type="hidden" name="submit_clear" value="1">
@@ -546,38 +544,36 @@ echo '
                             <input type="hidden" name="slow_dir"  value="' . h($slow_dir)  . '">
                             <input type="hidden" name="mem_sort"  value="' . h($mem_sort)  . '">
                             <input type="hidden" name="mem_dir"   value="' . h($mem_dir)   . '">
-                            <div class="modal-header">
-                                <h5 class="modal-title" id="perf-log-clear-title"><i class="bi bi-exclamation-triangle text-danger me-2"></i>' . lang('Clear Performance Log') . '</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            <div class="dialog-header">
+                                <h5 class="dialog-title" id="perf-log-clear-title"><i class="bi bi-exclamation-triangle fg-danger me-3"></i>' . lang('Clear Performance Log') . '</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
                             </div>
-                            <div class="modal-body">
+                            <div class="dialog-body">
                                 <p>' . lang('Are you sure you want to delete ALL performance log records? This action cannot be undone.') . '</p>
-                                <p class="small text-muted mb-0">' . lang('New requests will start populating the log again immediately.') . '</p>
+                                <p class="small fg-secondary mb-0">' . lang('New requests will start populating the log again immediately.') . '</p>
                             </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
-                                <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1"></i>' . lang('Clear All Data') . '</button>
+                            <div class="dialog-footer">
+                                <button type="button" class="btn btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                                <button type="submit" class="btn btn-solid theme-danger"><i class="bi bi-trash me-1"></i>' . lang('Clear All Data') . '</button>
                             </div>
                         </form>
-                    </div>
-                </div>
-            </div>
+            </dialog>
 
-            <div class="row mb-4 g-3">
-                <div class="col-6 col-md-3">
+            <div class="row mb-7 g-5">
+                <div class="col-6 md:col-3">
                     <div class="card h-100">
-                        <div class="card-body py-3">
-                            <div class="small text-body-secondary">' . lang('Total Requests') . '</div>
+                        <div class="card-body py-5">
+                            <div class="small fg-secondary">' . lang('Total Requests') . '</div>
                             <div class="h4 mb-0 text-body-emphasis">' . pg_format_number($total, 0) . '</div>
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-3">
+                <div class="col-6 md:col-3">
                     <div class="card h-100">
-                        <div class="card-body py-3">
-                            <div class="small text-body-secondary">' . lang('Average Duration') . '</div>
+                        <div class="card-body py-5">
+                            <div class="small fg-secondary">' . lang('Average Duration') . '</div>
                             <div class="h4 mb-0 text-body-emphasis">' . pg_format_number((int) $summary['avg_duration'], 0) . ' <small>ms</small></div>
-                            <div class="small text-body-secondary">' . lang(array(
+                            <div class="small fg-secondary">' . lang(array(
                                 'string' => '{var:1} slow request{suffix:1}',
                                 'vars'   => pg_format_number($slow_total, 0),
                                 'suffix' => ($slow_total == 1 ? '' : 's'),
@@ -585,29 +581,29 @@ echo '
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-3">
+                <div class="col-6 md:col-3">
                     <div class="card h-100">
-                        <div class="card-body py-3">
-                            <div class="small text-body-secondary">' . lang('Average Peak Memory') . '</div>
+                        <div class="card-body py-5">
+                            <div class="small fg-secondary">' . lang('Average Peak Memory') . '</div>
                             <div class="h4 mb-0 text-body-emphasis">' . pmon_format_kb($summary['avg_memory']) . '</div>
-                            <div class="small text-body-secondary">' . lang('Peak') . ': ' . pmon_format_kb($summary['max_memory']) . '</div>
+                            <div class="small fg-secondary">' . lang('Peak') . ': ' . pmon_format_kb($summary['max_memory']) . '</div>
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-3">
+                <div class="col-6 md:col-3">
                     <div class="card h-100">
-                        <div class="card-body py-3">
-                            <div class="small text-body-secondary">' . lang('Average CPU Time') . '</div>
+                        <div class="card-body py-5">
+                            <div class="small fg-secondary">' . lang('Average CPU Time') . '</div>
                             <div class="h4 mb-0 text-body-emphasis">' . pg_format_number((int) $summary['avg_cpu'], 0) . ' <small>ms</small></div>
-                            <div class="small text-body-secondary">' . lang('User + system') . '</div>
+                            <div class="small fg-secondary">' . lang('User + system') . '</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="card mb-5">
+            <div class="card mb-12">
                 <div class="card-header bg-transparent">
-                    <h5 class="mb-0"><i class="bi bi-stopwatch me-2"></i>' . lang('Slowest Pages (by average)') . '</h5>
+                    <h5 class="mb-0"><i class="bi bi-stopwatch me-3"></i>' . lang('Slowest Pages (by average)') . '</h5>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -619,9 +615,9 @@ echo '
                 </div>
             </div>
 
-            <div class="card mb-5">
+            <div class="card mb-12">
                 <div class="card-header bg-transparent">
-                    <h5 class="mb-0"><i class="bi bi-memory me-2"></i>' . lang('Most Memory-Intensive Pages') . '</h5>
+                    <h5 class="mb-0"><i class="bi bi-memory me-3"></i>' . lang('Most Memory-Intensive Pages') . '</h5>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -633,9 +629,9 @@ echo '
                 </div>
             </div>
 
-            <div class="card mb-5">
+            <div class="card mb-12">
                 <div class="card-header bg-transparent">
-                    <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>' . lang('Slowest Individual Requests') . '</h5>
+                    <h5 class="mb-0"><i class="bi bi-clock-history me-3"></i>' . lang('Slowest Individual Requests') . '</h5>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">

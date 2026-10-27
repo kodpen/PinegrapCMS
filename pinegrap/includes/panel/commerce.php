@@ -962,7 +962,7 @@ function pg_panel_get_unselected_products($request, $action)
     $rows_html = '';
     foreach ($products as $product) {
         $product['price'] = $product['price'] / 100;
-        $status_class = $product['enabled'] == 1 ? 'text-success' : 'text-danger';
+        $status_class = $product['enabled'] == 1 ? 'fg-success' : 'fg-danger';
 
         $output_image_column = '';
         if ($show_image) {
@@ -972,8 +972,8 @@ function pg_panel_get_unselected_products($request, $action)
 
         $rows_html .=
             '<tr id="' . $product['id'] . '">' .
-            '<td class="select-all align-middle text-start"><input class="form-check-input" type="checkbox" name="products[]" value="' . $product['id'] . '"/></td>' .
-            '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $product['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
+            '<td class="select-all align-middle text-start"><input class="check" type="checkbox" name="products[]" value="' . $product['id'] . '"/></td>' .
+            '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $product['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
             $output_image_column .
             '<td class="chart_label align-middle ' . $status_class . '">' . h($product['name']) . '</td>' .
             '<td class="align-middle ' . $status_class . '">' . h($product['short_description']) . '</td>' .

@@ -109,13 +109,13 @@ $output_sort_items = '';
 foreach ($sort_options as $sort_key => $sort_option) {
 
     $output_sort_items .=
-        '<li><a class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center' . (($sort_key == $current_sort) ? ' active' : '') . '" href="editor_select_image.php?sort=' . h($sort_key) . '&' . $url_parameters . '"><i class="bi ' . $sort_option['icon'] . ' m-2"></i>' . $sort_option['label'] . '</a></li>';
+        '<li><a class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center' . (($sort_key == $current_sort) ? ' active' : '') . '" href="editor_select_image.php?sort=' . h($sort_key) . '&' . $url_parameters . '"><i class="bi ' . $sort_option['icon'] . ' m-3"></i>' . $sort_option['label'] . '</a></li>';
 }
 
 $output_sort_link =
-    '<div class="dropdown">
-                        <button class="esi-seg-btn no-popover" data-bs-toggle="dropdown" type="button" id="esi_sort" title="' . lang('Sort') . '" aria-label="' . lang('Sort') . '"><span class="bi ' . $sort_options[$current_sort]['icon'] . '"></span></button>
-                        <ul aria-labelledby="esi_sort" class="dropdown-menu shadow p-1 bg-body backdrop border-dropdown-menu" style="--bs-dropdown-min-width: 11rem;">' . $output_sort_items . '</ul>
+    '<div class="pg-menu-wrap">
+                        <button class="esi-seg-btn no-popover" data-bs-toggle="menu" type="button" id="esi_sort" title="' . lang('Sort') . '" aria-label="' . lang('Sort') . '"><span class="bi ' . $sort_options[$current_sort]['icon'] . '"></span></button>
+                        <ul aria-labelledby="esi_sort" class="menu shadow p-1 bg-body backdrop border-dropdown-menu" style="--bs-menu-min-width: 11rem;">' . $output_sort_items . '</ul>
                     </div>';
 
 
@@ -305,10 +305,10 @@ if ($has_any_filter == true) {
     }
 
     $output_filter_chips =
-        '<div class="d-flex flex-wrap align-items-center gap-2 mt-3">
-            <span class="text-body-secondary small">' . lang('Filters') . ':</span>
+        '<div class="d-flex flex-wrap align-items-center gap-3 mt-5">
+            <span class="fg-secondary small">' . lang('Filters') . ':</span>
             ' . $output_filter_chips . '
-            <a class="small link-secondary text-decoration-none ms-1" href="editor_select_image.php?reset=true&' . $url_parameters . '">' . lang('Clear Filters') . '</a>
+            <a class="small pg-link-secondary text-decoration-none ms-1" href="editor_select_image.php?reset=true&' . $url_parameters . '">' . lang('Clear Filters') . '</a>
         </div>';
 }
 
@@ -471,7 +471,7 @@ if ($number_of_results > 0) {
                 '<div class="col">
                     <div class="esi-tile esi-tile-missing" title="' . lang('File not found') . '" data-bs-content="' . $output_details . '">
                         <span class="esi-thumb d-flex align-items-center justify-content-center">
-                            <span class="bi bi-exclamation-triangle text-warning fs-3"></span>
+                            <span class="bi bi-exclamation-triangle fg-warning fs-2xl"></span>
                         </span>
                         <span class="esi-caption text-truncate">' . h($images[$key]['name']) . '</span>
                         <span class="esi-meta text-truncate">' . lang('File not found') . '</span>
@@ -513,10 +513,10 @@ if ($number_of_results > 0) {
     $output_warning =
         '<div class="esi-empty text-center">
             <span class="bi bi-images d-block"></span>
-            <p class="h5 mb-2">' . lang('Sorry, we could not find any images.') . '</p>
-            <p class="text-body-secondary mb-4">' . (($has_any_filter == true) ? lang('Try a different folder or search term.') : lang('There are no images to show yet.')) . '</p>
-            <div class="d-flex flex-wrap gap-2 justify-content-center">
-                ' . (($has_any_filter == true) ? '<a class="btn btn-outline-secondary no-popover" href="editor_select_image.php?reset=true&' . $url_parameters . '"><span class="bi bi-x-circle me-2"></span>' . lang('Clear Filters') . '</a>' : '') . '
+            <p class="h5 mb-3">' . lang('Sorry, we could not find any images.') . '</p>
+            <p class="fg-secondary mb-7">' . (($has_any_filter == true) ? lang('Try a different folder or search term.') : lang('There are no images to show yet.')) . '</p>
+            <div class="d-flex flex-wrap gap-3 justify-content-center">
+                ' . (($has_any_filter == true) ? '<a class="btn btn-outline theme-secondary no-popover" href="editor_select_image.php?reset=true&' . $url_parameters . '"><span class="bi bi-x-circle me-3"></span>' . lang('Clear Filters') . '</a>' : '') . '
             </div>
         </div>';
 }
@@ -524,7 +524,7 @@ $show_unsplash = defined('UNSPLASH_ACCESS_KEY') && UNSPLASH_ACCESS_KEY !== '';
 
 echo
 output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
-<style>
+<style>@layer custom {
 /* ------------------------------------------------------------------ *
  *  Image picker
  *  Uploading now lives in the File Manager, so this screen is only a
@@ -609,7 +609,7 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
 .esi-field  { width: 7.5rem; }
 .esi-search { width: 10rem; }
 
-@media (max-width: 1199.98px) {
+@media (max-width: 1279.98px) {
     .esi-field  { width: 5.75rem; }
     .esi-search { width: 7.5rem; }
 }
@@ -714,16 +714,16 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
    leave most of the glass empty. */
 @media (min-width: 1600px) { .images > .col { flex: 0 0 auto; width: 12.5%; } }
 @media (min-width: 2200px) { .images > .col { flex: 0 0 auto; width: 10%; } }
-</style>
+}</style>
 <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
     <div class="container-fluid" id="esi_toolbar">
         <span
-            class="navbar-text d-flex align-items-center gap-2 py-0"
+            class="navbar-text d-flex align-items-center gap-3 py-0"
             data-bs-content="' . lang('Select the image that you want to embed in your content. Hover over an image to see more info.') . '"
             title="' . lang('Browse Images') . '">
             <span class="bi bi-images"></span>
-            <span class="d-none d-md-inline">' . lang('Browse Images') . '</span>
-            <span class="badge rounded-pill text-bg-secondary fw-normal">' . $number_of_results . '</span>
+            <span class="d-none md:d-inline">' . lang('Browse Images') . '</span>
+            <span class="badge rounded-pill theme-secondary fw-normal">' . $number_of_results . '</span>
         </span>
         <ul class="navbar-nav ms-auto" id="files_nav_controls">
             <li class="nav-item d-flex align-items-center">
@@ -739,11 +739,11 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
 
                         <span class="esi-divider"></span>
                         <span class="esi-seg-icon bi bi-folder2"></span>
-                        <select title="' . lang('Folder') . '" id="folder_id" name="folder_id" class="form-select esi-field" onchange="submit_form(\'search\')"><option value="all">' . lang('All') . '</option>' . select_folder(($_SESSION['software']['editor_select_image']['folder_id'] ?? '')) . '</select>
+                        <select title="' . lang('Folder') . '" id="folder_id" name="folder_id" class="form-control esi-field" onchange="submit_form(\'search\')"><option value="all">' . lang('All') . '</option>' . select_folder(($_SESSION['software']['editor_select_image']['folder_id'] ?? '')) . '</select>
 
                         <span class="esi-divider"></span>
                         <span class="esi-seg-icon bi bi-shield-lock"></span>
-                        <select title="' . lang('Access') . '" id="access_control_type" name="access_control_type" class="form-select esi-field ' . h(($_SESSION['software']['editor_select_image']['access_control_type'] ?? '')) . '" onchange="submit_form(\'search\')"><option value="all" class="all">' . lang('All') . '</option>' . select_access_control_type(($_SESSION['software']['editor_select_image']['access_control_type'] ?? ''), false) . '</select>
+                        <select title="' . lang('Access') . '" id="access_control_type" name="access_control_type" class="form-control esi-field ' . h(($_SESSION['software']['editor_select_image']['access_control_type'] ?? '')) . '" onchange="submit_form(\'search\')"><option value="all" class="all">' . lang('All') . '</option>' . select_access_control_type(($_SESSION['software']['editor_select_image']['access_control_type'] ?? ''), false) . '</select>
 
                         <span class="esi-divider"></span>
                         <span class="esi-seg-icon bi bi-search"></span>
@@ -763,12 +763,12 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
                     <span class="bi bi-arrow-clockwise"></span>
                 </button>
             </li>
-            <li class="nav-item dropdown no-popover"  title="' . lang('Software Theme') . '">
-                <button class="nav-link nav-link-sm position-relative dropdown-toggle dropdown-menu-right d-none" data-bs-toggle="dropdown" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
-                <ul aria-labelledby="bd-theme" class="dropdown-menu shadow dropdown-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-dropdown-min-width: 8rem;">
-                    <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-2"></i>' . lang('Light') . '</button></li>
-                    <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-2"></i>' . lang('Dark') . '</button></li>
-                    <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-2"></i>' . lang('Auto') . '</button></li>
+            <li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
+                <button class="nav-link nav-link-sm position-relative pg-menu-caret dropdown-menu-right d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
+                <ul aria-labelledby="bd-theme" class="menu shadow pg-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-menu-min-width: 8rem;">
+                    <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i>' . lang('Light') . '</button></li>
+                    <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i>' . lang('Dark') . '</button></li>
+                    <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-3"></i>' . lang('Auto') . '</button></li>
                 </ul>
             </li>
             <li class="nav-item">
@@ -781,11 +781,11 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
 </nav>
 
 
-<main class="container-fluid pb-4">
+<main class="container-fluid pb-7">
 
     ' . ($show_unsplash ? '
     <!-- Tab nav -->
-    <ul class="nav nav-tabs mt-3 mb-0" id="esi_tabs" role="tablist">
+    <ul class="nav nav-tabs mt-5 mb-0" id="esi_tabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="esi_tab_files_btn" type="button" role="tab"
                 onclick="esiSwitchTab(\'files\', this)">
@@ -807,11 +807,11 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
         ' . $output_filter_chips . '
         ' . $output_warning . '
 
-        <div class="images row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6 g-3 mt-1">
+        <div class="images row row-cols-2 sm:row-cols-3 md:row-cols-4 lg:row-cols-5 xl:row-cols-6 g-5 mt-1">
             ' . $output_images . '
         </div>
 
-        <div class="mt-4">
+        <div class="mt-7">
             ' . $output_screen_links . '
         </div>
 
@@ -820,20 +820,20 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
     ' . ($show_unsplash ? '
     <!-- Unsplash tab panel -->
     <div id="esi_tab_unsplash" style="display:none">
-        <div class="my-3">
+        <div class="my-5">
             <div class="input-group">
                 <input type="text" id="unsplash_query" class="form-control"
                     placeholder="' . lang('Search') . ' Unsplash..."
                     onkeydown="if(event.key===\'Enter\'){esiUnsplashSearch();}" />
-                <button class="btn btn-primary" type="button" onclick="esiUnsplashSearch()">
+                <button class="btn btn-solid theme-primary" type="button" onclick="esiUnsplashSearch()">
                     <i class="bi bi-search"></i>
                 </button>
             </div>
         </div>
-        <div id="unsplash_status" class="text-muted small mb-2"></div>
-        <div id="unsplash_results" class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6 g-3"></div>
-        <div id="unsplash_load_more" class="text-center mt-3" style="display:none">
-            <button class="btn btn-outline-secondary btn-sm" type="button" onclick="esiUnsplashSearch(true)">
+        <div id="unsplash_status" class="fg-secondary small mb-3"></div>
+        <div id="unsplash_results" class="row row-cols-2 sm:row-cols-3 md:row-cols-4 lg:row-cols-5 xl:row-cols-6 g-5"></div>
+        <div id="unsplash_load_more" class="text-center mt-5" style="display:none">
+            <button class="btn btn-outline theme-secondary btn-sm" type="button" onclick="esiUnsplashSearch(true)">
                 ' . lang('Load More') . '
             </button>
         </div>
@@ -972,7 +972,7 @@ function esiRenderUnsplash(photos) {
         col.className = \'col\';
         col.innerHTML =
             \'<div class="card border-0 shadow-none hoverable">\' +
-                \'<div class="overflow-hidden position-relative rounded ratio cursor-pointer" style="--bs-aspect-ratio:80%"\' +
+                \'<div class="overflow-hidden position-relative rounded-4 ratio cursor-pointer" style="--bs-aspect-ratio:80%"\' +
                     \' onclick="esiSelectUnsplash(\\\'\' + photo.urls.regular + \'\\\', \\\'\' + photo.links.download_location + \'\\\')">\' +
                     \'<img src="\' + photo.urls.small + \'" class="object-fit-cover w-100 h-100" alt="\' + (photo.alt_description || \'\') + \'" loading="lazy">\' +
                 \'</div>\' +
@@ -981,8 +981,8 @@ function esiRenderUnsplash(photos) {
                     \'<a href="\' + photographerUrl + \'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="text-reset text-decoration-none fw-semibold">\' +
                         photo.user.name +
                     \'</a>\' +
-                    \' <span class="text-muted">on</span> \' +
-                    \'<a href="\' + photoPageUrl + \'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="text-muted text-decoration-none">Unsplash</a>\' +
+                    \' <span class="fg-secondary">on</span> \' +
+                    \'<a href="\' + photoPageUrl + \'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="fg-secondary text-decoration-none">Unsplash</a>\' +
                 \'</div>\' +
             \'</div>\';
         grid.appendChild(col);

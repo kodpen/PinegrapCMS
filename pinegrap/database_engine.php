@@ -388,14 +388,14 @@ $engine_confirm_repair = lang('Repair {var:1} now? Writes to the table wait unti
 
 $engine_optimize_button = function ($table, $enabled) use ($engine_button, $engine_candidates, $engine_confirm_optimize) {
     $candidate = isset($engine_candidates[$table]);
-    return $engine_button('optimize', $table, lang('Optimize table'), 'bi-arrow-repeat', $candidate ? 'btn-outline-warning' : 'btn-outline-secondary', $engine_confirm_optimize, $enabled, $candidate ? lang('Free space worth giving back') : '');
+    return $engine_button('optimize', $table, lang('Optimize table'), 'bi-arrow-repeat', $candidate ? 'btn-outline theme-warning' : 'btn-outline theme-secondary', $engine_confirm_optimize, $enabled, $candidate ? lang('Free space worth giving back') : '');
 };
 
 $engine_alerts = '';
 
 if (!$engine_capability['ok']) {
     $engine_alerts .= '
-            <div class="alert alert-warning d-flex gap-2 align-items-start">
+            <div class="alert theme-warning d-flex gap-3 align-items-start">
                 <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
                 <div>' . h(lang(array('string' => 'The tables cannot be moved to InnoDB on this database server: {var:1}', 'vars' => array($engine_capability['reason'])))) . '</div>
             </div>';
@@ -412,17 +412,17 @@ if ($engine_running !== null) {
     }
 
     $engine_alerts .= '
-            <div class="alert alert-warning d-flex gap-2 align-items-start">
+            <div class="alert theme-warning d-flex gap-3 align-items-start">
                 <i class="bi bi-hourglass-split" aria-hidden="true"></i>
                 <div>' . h(lang(array('string' => '{var:1} on {var:2} has been running for {var:3} s', 'vars' => array($engine_running_statement, $engine_running_table, (int) $engine_running['TIME'])))) . '
-                    <div class="small text-body-secondary">' . h(lang('The buttons come back when it has finished. Refresh this screen in a while.')) . '</div>
+                    <div class="small fg-secondary">' . h(lang('The buttons come back when it has finished. Refresh this screen in a while.')) . '</div>
                 </div>
             </div>';
 }
 
 if ($engine_marker_table !== '') {
     $engine_alerts .= '
-            <div class="alert alert-info d-flex gap-2 align-items-start">
+            <div class="alert theme-info d-flex gap-3 align-items-start">
                 <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
                 <div>' . h(pg_innodb_state_text(array('state' => 'aborted', 'table' => $engine_marker_table))) . '</div>
             </div>';
@@ -430,7 +430,7 @@ if ($engine_marker_table !== '') {
 
 if ($engine_optimize_table !== '') {
     $engine_alerts .= '
-            <div class="alert alert-info d-flex gap-2 align-items-start">
+            <div class="alert theme-info d-flex gap-3 align-items-start">
                 <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
                 <div>' . h(lang(array('string' => 'An earlier OPTIMIZE of {var:1} did not finish.', 'vars' => array($engine_optimize_table)))) . '</div>
             </div>';
@@ -441,7 +441,7 @@ if ($engine_optimize_table !== '') {
 if (count($engine_findings) == 0) {
 
     $findings_list = '
-                    <div class="alert alert-success d-flex gap-2 align-items-start mb-0">
+                    <div class="alert theme-success d-flex gap-3 align-items-start mb-0">
                         <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
                         <div>' . h(lang('Nothing to report.')) . '</div>
                     </div>';
@@ -449,9 +449,9 @@ if (count($engine_findings) == 0) {
 } else {
 
     $findings_icons = array(
-        'danger' => 'bi-x-circle-fill text-danger',
-        'warning' => 'bi-exclamation-triangle-fill text-warning',
-        'info' => 'bi-info-circle-fill text-info',
+        'danger' => 'bi-x-circle-fill fg-danger',
+        'warning' => 'bi-exclamation-triangle-fill fg-warning',
+        'info' => 'bi-info-circle-fill fg-info',
     );
 
     $findings_rows = '';
@@ -466,15 +466,15 @@ if (count($engine_findings) == 0) {
 
         } elseif (($finding['kind'] === 'health') && isset($engine_catalog[$finding['table']])) {
 
-            $finding_actions = $engine_button('check', $finding['table'], lang('Check'), 'bi-clipboard-check', 'btn-outline-secondary', $engine_confirm_check, $engine_tools);
+            $finding_actions = $engine_button('check', $finding['table'], lang('Check'), 'bi-clipboard-check', 'btn-outline theme-secondary', $engine_confirm_check, $engine_tools);
 
             if (in_array($engine_catalog[$finding['table']]['engine'], $engine_repairable, true)) {
-                $finding_actions .= ' ' . $engine_button('repair', $finding['table'], lang('Repair'), 'bi-wrench-adjustable', 'btn-outline-warning', $engine_confirm_repair, $engine_tools);
+                $finding_actions .= ' ' . $engine_button('repair', $finding['table'], lang('Repair'), 'bi-wrench-adjustable', 'btn-outline theme-warning', $engine_confirm_repair, $engine_tools);
             }
         }
 
         $findings_rows .= '
-                        <li class="list-group-item d-flex gap-2 align-items-start">
+                        <li class="list-group-item d-flex gap-3 align-items-start">
                             <i class="bi ' . $findings_icons[$finding['level']] . ' mt-1" aria-hidden="true"></i>
                             <div class="flex-grow-1">' . h($finding['text']) . '</div>' . (($finding_actions !== '') ? '
                             <div class="d-flex gap-1 flex-shrink-0">' . $finding_actions . '</div>' : '') . '
@@ -498,7 +498,7 @@ $visitor_settings = pg_visitor_retention_settings();
 if (($visitor_settings === false) || ($visitor_catalog === null)) {
 
     $visitor_card = '
-                    <div class="alert alert-secondary d-flex gap-2 align-items-start mb-0">
+                    <div class="alert theme-secondary d-flex gap-3 align-items-start mb-0">
                         <i class="bi bi-hourglass" aria-hidden="true"></i>
                         <div>' . h(lang('The period for keeping visitor records arrives with the upgrade steps of this version. Run them again to see the cleanup here.')) . '</div>
                     </div>';
@@ -543,7 +543,7 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
         }
 
         $visitor_alert = '
-                    <div class="alert alert-warning d-flex gap-2 align-items-start">
+                    <div class="alert theme-warning d-flex gap-3 align-items-start">
                         <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
                         <div>' . h($visitor_size . ' ' . $visitor_advice) . '</div>
                     </div>';
@@ -631,7 +631,7 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
 
     if ($visitor_move_text !== '') {
         $visitor_alert .= '
-                    <div class="alert alert-' . $visitor_move_level . ' d-flex gap-2 align-items-start">
+                    <div class="alert theme-' . $visitor_move_level . ' d-flex gap-3 align-items-start">
                         <i class="bi ' . (($visitor_move_level === 'success') ? 'bi-check-circle-fill' : (($visitor_move_level === 'warning') ? 'bi-exclamation-triangle-fill' : 'bi-info-circle-fill')) . '" aria-hidden="true"></i>
                         <div>' . h($visitor_move_text) . '</div>
                     </div>';
@@ -655,7 +655,7 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
         if ($visitor_shrink['state'] === 'failed') {
 
             $visitor_alert .= '
-                    <div class="alert alert-warning d-flex gap-2 align-items-start">
+                    <div class="alert theme-warning d-flex gap-3 align-items-start">
                         <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
                         <div>' . h(pg_visitor_shrink_reason_text('failed', $visitor_shrink)) . '</div>
                     </div>';
@@ -663,7 +663,7 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
         } elseif (($visitor_shrink['state'] === 'done') && ($visitor_shrink['finished_at'] > (time() - 30 * 86400))) {
 
             $visitor_alert .= '
-                    <div class="alert alert-success d-flex gap-2 align-items-start">
+                    <div class="alert theme-success d-flex gap-3 align-items-start">
                         <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
                         <div>' . h(lang(array(
                             'string' => 'The visitors table was rebuilt on {var:1} and its file made smaller: {var:2} before, {var:3} now.',
@@ -681,7 +681,7 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
             $visitor_shrink_text = pg_visitor_shrink_reason_text($visitor_shrink_reason, $visitor_shrink);
 
             $visitor_alert .= '
-                    <div class="alert alert-info d-flex gap-2 align-items-start">
+                    <div class="alert theme-info d-flex gap-3 align-items-start">
                         <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
                         <div>' . h(lang(array(
                             'string' => '{var:1} inside the table file is free space, left by removed records. New visits reuse it.',
@@ -753,9 +753,9 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
 
     foreach ($visitor_facts as $visitor_label => $visitor_value) {
         $visitor_fact_list .= '
-                            <dt class="col-5 col-md-4 fw-normal text-body-secondary">' . h($visitor_label) . '</dt>
-                            <dd class="col-7 col-md-8 mb-1">' . h($visitor_value)
-                                . (isset($visitor_sources[$visitor_label]) ? ' <span class="text-body-secondary">· ' . h($visitor_sources[$visitor_label]) . '</span>' : '')
+                            <dt class="col-5 md:col-4 fw-normal fg-secondary">' . h($visitor_label) . '</dt>
+                            <dd class="col-7 md:col-8 mb-1">' . h($visitor_value)
+                                . (isset($visitor_sources[$visitor_label]) ? ' <span class="fg-secondary">· ' . h($visitor_sources[$visitor_label]) . '</span>' : '')
                                 . (in_array($visitor_label, array(lang('Kept for'), lang('IP addresses')), true) ? ' · ' . $visitor_settings_link : '') . '</dd>';
     }
 
@@ -789,28 +789,28 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
     $visitor_enabled = ($engine_tools && ($visitor_settings['days'] > 0) && ($visitor_preview['rows'] > 0));
 
     $visitor_card = $visitor_alert . '
-                    <dl class="row small mb-3">' . $visitor_fact_list . '
+                    <dl class="row small mb-5">' . $visitor_fact_list . '
                     </dl>
-                    <p class="mb-2">' . h($visitor_will) . '</p>
-                    <div class="d-flex flex-wrap gap-2 align-items-center">
-                        <button type="button" id="pg_visitor_cleanup" class="btn btn-sm btn-outline-danger text-nowrap" data-confirm="' . h($visitor_confirm) . '"' . ($visitor_enabled ? '' : ' disabled') . '><i class="bi bi-trash3 me-1" aria-hidden="true"></i>' . h(lang('Clean up visitor records now')) . '</button>
+                    <p class="mb-3">' . h($visitor_will) . '</p>
+                    <div class="d-flex flex-wrap gap-3 align-items-center">
+                        <button type="button" id="pg_visitor_cleanup" class="btn btn-sm btn-outline theme-danger text-nowrap" data-confirm="' . h($visitor_confirm) . '"' . ($visitor_enabled ? '' : ' disabled') . '><i class="bi bi-trash3 me-1" aria-hidden="true"></i>' . h(lang('Clean up visitor records now')) . '</button>
                         ' . ($visitor_innodb
-                            ? $engine_button('visitor_shrink', 'visitors', lang('Shrink now'), 'bi-arrows-collapse', $visitor_shrink_facts['worth'] ? 'btn-outline-warning' : 'btn-outline-secondary', lang(array(
+                            ? $engine_button('visitor_shrink', 'visitors', lang('Shrink now'), 'bi-arrows-collapse', $visitor_shrink_facts['worth'] ? 'btn-outline theme-warning' : 'btn-outline theme-secondary', lang(array(
                                 'string' => 'Rebuild the visitors table now to make its file smaller? The site keeps running meanwhile; the database server needs about {var:1} of free disk until the rebuild ends, which takes minutes on a large table.',
                                 'vars' => array(pg_innodb_size_label($visitor_shrink_facts['needed'])),
                             )), ($engine_tools && ($visitor_shrink_reason !== 'shared_tablespace') && !$visitor_moving))
-                            : $engine_button('optimize', 'visitors', lang('Optimize table'), 'bi-arrow-repeat', isset($engine_candidates['visitors']) ? 'btn-outline-warning' : 'btn-outline-secondary', lang('Optimize {var:1} now? The whole table is rewritten: it needs free disk space about the size of the table and takes minutes on a large one. Do it at a quiet hour, after a backup.'), ($engine_tools && ($visitor_catalog['engine'] !== '') && !$visitor_moving))) . (($visitor_catalog['engine'] === 'myisam') && !$visitor_moving ? '
-                        ' . $engine_button('visitor_move', 'visitors', lang('Move to InnoDB now'), 'bi-database-gear', 'btn-outline-warning', lang(array(
+                            : $engine_button('optimize', 'visitors', lang('Optimize table'), 'bi-arrow-repeat', isset($engine_candidates['visitors']) ? 'btn-outline theme-warning' : 'btn-outline theme-secondary', lang('Optimize {var:1} now? The whole table is rewritten: it needs free disk space about the size of the table and takes minutes on a large one. Do it at a quiet hour, after a backup.'), ($engine_tools && ($visitor_catalog['engine'] !== '') && !$visitor_moving))) . (($visitor_catalog['engine'] === 'myisam') && !$visitor_moving ? '
+                        ' . $engine_button('visitor_move', 'visitors', lang('Move to InnoDB now'), 'bi-database-gear', 'btn-outline theme-warning', lang(array(
                             'string' => 'Move the visitors table to InnoDB now? A copy is built next to it a few thousand records at a time while the site keeps running, so the database server needs about {var:1} of free disk until the old table is removed. The general job carries the move on.',
                             'vars' => array(pg_innodb_size_label(pg_visitor_move_disk_needed($visitor_catalog))),
                         )), ($engine_tools && $engine_capability['ok'])) : '') . ((($visitor_move_kind === 'split') && !$visitor_moving) ? '
-                        ' . $engine_button('visitor_move', 'visitors', lang('Split into months now'), 'bi-calendar3', 'btn-outline-secondary', lang(array(
+                        ' . $engine_button('visitor_move', 'visitors', lang('Split into months now'), 'bi-calendar3', 'btn-outline theme-secondary', lang(array(
                             'string' => 'Split the visitors table into one partition per month now? A copy is built next to it a few thousand records at a time while the site keeps running, so the database server needs about {var:1} of free disk until the old table is removed. The general job carries the split on.',
                             'vars' => array(pg_innodb_size_label(pg_visitor_move_disk_needed($visitor_catalog))),
                         )), $engine_tools) : '') . '
                     </div>
-                    <div id="pg_visitor_cleanup_progress" class="small mt-2" role="status" aria-live="polite"></div>
-                    <div class="small text-body-secondary mt-2">' . h(($visitor_layout['state'] === 'monthly')
+                    <div id="pg_visitor_cleanup_progress" class="small mt-3" role="status" aria-live="polite"></div>
+                    <div class="small fg-secondary mt-3">' . h(($visitor_layout['state'] === 'monthly')
                         ? lang('Records are kept in one partition per month. Once all of a month is older than the period, the general job drops it in a moment and its file goes back to the disk; the records of the month the period ends in are removed a chunk at a time. Shrink now rebuilds the table at once.')
                         : ($visitor_innodb
                         ? lang('Removing records does not make the file on disk smaller by itself: the room is reused by new visits. Once much of the file is free, the general job rebuilds the table at the quietest hour of the day while the site keeps running, which gives the room back to the disk; Shrink now does it at once.')
@@ -822,7 +822,7 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
 if (count($engine_pending) == 0) {
 
     $engine_list = '
-                    <div class="alert alert-success d-flex gap-2 align-items-start mb-0">
+                    <div class="alert theme-success d-flex gap-3 align-items-start mb-0">
                         <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
                         <div>' . h(lang('All tables are on InnoDB.')) . '</div>
                     </div>';
@@ -838,7 +838,7 @@ if (count($engine_pending) == 0) {
 
         if (!is_array($engine_estimate)) {
 
-            $engine_note = '<span class="small text-body-secondary">—</span>';
+            $engine_note = '<span class="small fg-secondary">—</span>';
 
         } elseif ($engine_too_wide) {
 
@@ -848,8 +848,8 @@ if (count($engine_pending) == 0) {
                 $engine_charsets[] = lang(array('string' => '{var:1} = {var:2} columns', 'vars' => array($engine_charset, pg_format_number($engine_charset_columns, 0))));
             }
 
-            $engine_note = '<span class="badge text-bg-warning">' . h(lang('Too wide for InnoDB')) . '</span>
-                                    <div class="small text-body-secondary">' . h(lang(array(
+            $engine_note = '<span class="badge theme-warning">' . h(lang('Too wide for InnoDB')) . '</span>
+                                    <div class="small fg-secondary">' . h(lang(array(
                                         'string' => '{var:1} / {var:2} bytes, {var:3} of {var:4} columns inline; {var:5}',
                                         'vars' => array(
                                             pg_format_number($engine_estimate['bytes'], 0),
@@ -862,7 +862,7 @@ if (count($engine_pending) == 0) {
 
         } else {
 
-            $engine_note = '<span class="small text-body-secondary">' . h(lang(array(
+            $engine_note = '<span class="small fg-secondary">' . h(lang(array(
                 'string' => '{var:1} / {var:2} bytes',
                 'vars' => array(pg_format_number($engine_estimate['bytes'], 0), pg_format_number($engine_estimate['limit'], 0)),
             ))) . '</span>';
@@ -877,7 +877,7 @@ if (count($engine_pending) == 0) {
                                 <td>' . h(($engine_row['engine'] !== '') ? $engine_row['engine'] : '-') . '</td>
                                 <td>' . $engine_note . '</td>
                                 <td class="text-end">
-                                    ' . $engine_button('convert', $engine_table, lang('Convert'), 'bi-database-gear', 'btn-outline-warning', $engine_confirm_convert, ($engine_buttons && !$engine_too_wide)) . '
+                                    ' . $engine_button('convert', $engine_table, lang('Convert'), 'bi-database-gear', 'btn-outline theme-warning', $engine_confirm_convert, ($engine_buttons && !$engine_too_wide)) . '
                                 </td>
                             </tr>';
     }
@@ -915,25 +915,25 @@ if (count($engine_health['issues']) == 0) {
 
     $health_list = ($health_when !== '')
         ? '
-                    <div class="alert alert-success d-flex gap-2 align-items-start mb-2">
+                    <div class="alert theme-success d-flex gap-3 align-items-start mb-3">
                         <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
                         <div>' . h(lang(array('string' => 'All tables are healthy ({var:1} tables, checked {var:2})', 'vars' => array(pg_format_number($engine_health['tables'], 0), $health_when)))) . '</div>
                     </div>'
         : '
-                    <div class="alert alert-secondary d-flex gap-2 align-items-start mb-2">
+                    <div class="alert theme-secondary d-flex gap-3 align-items-start mb-3">
                         <i class="bi bi-hourglass" aria-hidden="true"></i>
                         <div>' . h(lang('The tables have not been checked yet.')) . '</div>
                     </div>';
 
     $health_list .= '
-                    <div class="small text-body-secondary">' . h(lang('The hourly check reads the MyISAM tables; "Check all tables" reads every table, InnoDB included.')) . '</div>';
+                    <div class="small fg-secondary">' . h(lang('The hourly check reads the MyISAM tables; "Check all tables" reads every table, InnoDB included.')) . '</div>';
 
 } else {
 
     $health_badges = array(
-        'error' => '<span class="badge text-bg-danger">' . h(lang('Error')) . '</span>',
-        'check_failed' => '<span class="badge text-bg-secondary">' . h(lang('Check failed')) . '</span>',
-        'repaired' => '<span class="badge text-bg-warning">' . h(lang('Repaired')) . '</span>',
+        'error' => '<span class="badge theme-danger">' . h(lang('Error')) . '</span>',
+        'check_failed' => '<span class="badge theme-secondary">' . h(lang('Check failed')) . '</span>',
+        'repaired' => '<span class="badge theme-warning">' . h(lang('Repaired')) . '</span>',
     );
 
     $health_rows = '';
@@ -952,10 +952,10 @@ if (count($engine_health['issues']) == 0) {
 
         if (isset($engine_catalog[$health_table])) {
 
-            $health_actions = $engine_button('check', $health_table, lang('Check'), 'bi-clipboard-check', 'btn-outline-secondary', $engine_confirm_check, $engine_tools);
+            $health_actions = $engine_button('check', $health_table, lang('Check'), 'bi-clipboard-check', 'btn-outline theme-secondary', $engine_confirm_check, $engine_tools);
 
             if (in_array($health_engine, $engine_repairable, true)) {
-                $health_actions .= ' ' . $engine_button('repair', $health_table, lang('Repair'), 'bi-wrench-adjustable', 'btn-outline-warning', $engine_confirm_repair, $engine_tools);
+                $health_actions .= ' ' . $engine_button('repair', $health_table, lang('Repair'), 'bi-wrench-adjustable', 'btn-outline theme-warning', $engine_confirm_repair, $engine_tools);
             }
         }
 
@@ -1000,9 +1000,9 @@ foreach ($engine_catalog as $catalog_table => $catalog_row) {
     $catalog_free += $catalog_row['free'];
 
     if ($catalog_row['engine'] === '') {
-        $catalog_engine = '<span class="badge text-bg-danger">' . h(lang('unreadable')) . '</span>';
+        $catalog_engine = '<span class="badge theme-danger">' . h(lang('unreadable')) . '</span>';
     } elseif ($catalog_row['engine'] === 'myisam') {
-        $catalog_engine = '<span class="badge text-bg-secondary">MyISAM</span>';
+        $catalog_engine = '<span class="badge theme-secondary">MyISAM</span>';
     } elseif ($catalog_row['engine'] === 'innodb') {
         $catalog_engine = 'InnoDB';
     } else {
@@ -1018,8 +1018,8 @@ foreach ($engine_catalog as $catalog_table => $catalog_row) {
                                 <td>' . $catalog_engine . '</td>
                                 <td class="text-end" data-order="' . (int) $catalog_row['rows'] . '">' . h(pg_format_number($catalog_row['rows'], 0)) . '</td>
                                 <td class="text-end" data-order="' . h(sprintf('%.0f', $catalog_row['bytes'])) . '">' . h(pg_innodb_size_label($catalog_row['bytes'])) . '</td>
-                                <td class="text-end' . ($catalog_candidate ? ' text-warning fw-semibold' : '') . '" data-order="' . h(sprintf('%.0f', $catalog_row['free'])) . '">' . h(pg_innodb_size_label($catalog_row['free'])) . '</td>
-                                <td class="small text-body-secondary">' . h($catalog_row['collation']) . '</td>
+                                <td class="text-end' . ($catalog_candidate ? ' fg-warning fw-semibold' : '') . '" data-order="' . h(sprintf('%.0f', $catalog_row['free'])) . '">' . h(pg_innodb_size_label($catalog_row['free'])) . '</td>
+                                <td class="small fg-secondary">' . h($catalog_row['collation']) . '</td>
                             </tr>';
 }
 
@@ -1076,7 +1076,7 @@ $fact_list = '';
 
 foreach ($fact_rows as $fact_label => $fact_value) {
     $fact_list .= '
-                                    <dt class="col-6 fw-normal text-body-secondary text-break">' . h($fact_label) . '</dt>
+                                    <dt class="col-6 fw-normal fg-secondary text-break">' . h($fact_label) . '</dt>
                                     <dd class="col-6 mb-1 text-break">' . h($fact_value) . '</dd>';
 }
 
@@ -1103,42 +1103,42 @@ echo '
 
             ' . $engine_alerts . '
 
-            <div class="row g-3 mb-5">
-                <div class="col-12 col-lg-8 col-xxl-9 order-1">
-                    <div class="card mb-5">
+            <div class="row g-5 mb-12">
+                <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                    <div class="card mb-12">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Findings')) . '</span>
+                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Findings')) . '</span>
                         </div>
                         <div class="card-body">' . $findings_list . '
                         </div>
                     </div>
-                    <div class="card mb-5" id="visitor-records">
+                    <div class="card mb-12" id="visitor-records">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Visitor records')) . '</span>
+                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Visitor records')) . '</span>
                             <code class="small">visitors</code>
                         </div>
                         <div class="card-body">' . $visitor_card . '
                         </div>
                     </div>
-                    <div class="card mb-5">
+                    <div class="card mb-12">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Tables on MyISAM')) . '</span>
-                            <a class="btn btn-sm btn-outline-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
+                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Tables on MyISAM')) . '</span>
+                            <a class="btn btn-sm btn-outline theme-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
                         </div>
                         <div class="card-body">' . $engine_list . '
                         </div>
                     </div>
-                    <div class="card mb-5">
+                    <div class="card mb-12">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Table health')) . '</span>
-                            <span class="small text-body-secondary">' . h($health_header_note) . '</span>
+                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Table health')) . '</span>
+                            <span class="small fg-secondary">' . h($health_header_note) . '</span>
                         </div>
                         <div class="card-body">' . $health_list . '
                         </div>
                     </div>
                     <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('All tables')) . '</span>
+                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('All tables')) . '</span>
                         </div>
                         <div class="card-body p-0 position-relative">
                             <table class="chart table-hover table" style="width:100%;display:none;" data-order=\'[[4,"desc"]]\' data-page-length="100">
@@ -1159,25 +1159,25 @@ echo '
                         </div>
                     </div>
                 </div>
-                <div class="col-12 col-lg-4 col-xxl-3 order-2">
+                <div class="col-12 lg:col-4 2xl:col-3 order-2">
                     <div class="position-sticky" style="top:3.3rem;">
-                        <div class="card mb-3">
+                        <div class="card mb-5">
                             <div class="card-body">
-                                <div class="small text-body-secondary">' . h(lang('Tables')) . '</div>
-                                <div class="h4 mb-2 text-body-emphasis">' . h(pg_format_number(count($engine_catalog), 0)) . '</div>
-                                <div class="small text-body-secondary">' . h(lang('Total size')) . '</div>
-                                <div class="h4 mb-2 text-body-emphasis">' . h(pg_innodb_size_label($catalog_bytes)) . '</div>
-                                <div class="small text-body-secondary">' . h(lang('Free space')) . '</div>
-                                <div class="h4 mb-2 text-body-emphasis">' . h(pg_innodb_size_label($catalog_free)) . '</div>
-                                <div class="small text-body-secondary">' . h(lang('InnoDB')) . '</div>
-                                <div class="h4 mb-2 text-body-emphasis">' . h(pg_format_number($engine_on_innodb, 0)) . ' / ' . h(pg_format_number(count($engine_status), 0)) . '</div>
-                                <div class="small text-body-secondary">' . h(lang('MyISAM')) . '</div>
+                                <div class="small fg-secondary">' . h(lang('Tables')) . '</div>
+                                <div class="h4 mb-3 text-body-emphasis">' . h(pg_format_number(count($engine_catalog), 0)) . '</div>
+                                <div class="small fg-secondary">' . h(lang('Total size')) . '</div>
+                                <div class="h4 mb-3 text-body-emphasis">' . h(pg_innodb_size_label($catalog_bytes)) . '</div>
+                                <div class="small fg-secondary">' . h(lang('Free space')) . '</div>
+                                <div class="h4 mb-3 text-body-emphasis">' . h(pg_innodb_size_label($catalog_free)) . '</div>
+                                <div class="small fg-secondary">' . h(lang('InnoDB')) . '</div>
+                                <div class="h4 mb-3 text-body-emphasis">' . h(pg_format_number($engine_on_innodb, 0)) . ' / ' . h(pg_format_number(count($engine_status), 0)) . '</div>
+                                <div class="small fg-secondary">' . h(lang('MyISAM')) . '</div>
                                 <div class="h4 mb-0 text-body-emphasis">' . h(pg_format_number(count($engine_pending), 0)) . '</div>
                             </div>
                         </div>
-                        <div class="card mb-3">
+                        <div class="card mb-5">
                             <div class="card-header d-flex justify-content-between align-items-center">
-                                <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Server')) . '</span>
+                                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Server')) . '</span>
                             </div>
                             <div class="card-body">
                                 <dl class="row small mb-0">' . $fact_list . '
@@ -1278,7 +1278,7 @@ echo '
                     })
                     .catch(function (error) {
                         progress.textContent = failed + " " + error.message;
-                        progress.className = "small mt-2 text-danger";
+                        progress.className = "small mt-3 fg-danger";
                         button.disabled = false;
                     });
             };

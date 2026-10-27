@@ -151,7 +151,7 @@ foreach ($verified_shipping_addresses as $address) {
         '<tr>
             <td></td>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_verified_shipping_address.php?id=' . $address['id'] . '\'"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_verified_shipping_address.php?id=' . $address['id'] . '\'"><i class="bi bi-pencil"></i></button>
             </td>
             <td class="chart_label align-middle">' . h($address['company']) . '</td>
             <td class="align-middle">' . h($address['address_1']) . '</td>
@@ -180,22 +180,22 @@ echo
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
 
-                <div class="row mb-2 flex-wrap">
-                    <div class="col-12 text-center text-md-start">
+                <div class="row mb-3 flex-wrap">
+                    <div class="col-12 text-center md:text-start">
                         
                         <nav id="button_bar" class="navigation" aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1" href="add_verified_shipping_address.php?state_id=' . h(urlencode($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '')) . '"><span class="bi bi-plus-circle me-2"></span>' . lang('Create') . '</a>
+                            <a class="btn btn-sm btn-solid theme-primary m-1" href="add_verified_shipping_address.php?state_id=' . h(urlencode($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '')) . '"><span class="bi bi-plus-circle me-3"></span>' . lang('Create') . '</a>
                             <div class="pg-toolbar-grow"></div>
                             ' . pg_list_sort_menu('view_verified_shipping_addresses.php', $sort_columns, $sort_levels, $sort_default) . '
                         </nav>
                     </div>
                 </div>
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="card-body p-0 position-relative">
-                        <div class="p-3 border-bottom">
-                            <form id="state_filter" action="view_verified_shipping_addresses.php" method="get" class="d-flex align-items-center gap-2 flex-wrap">
+                        <div class="p-5 border-bottom">
+                            <form id="state_filter" action="view_verified_shipping_addresses.php" method="get" class="d-flex align-items-center gap-3 flex-wrap">
                                 <label class="fw-semibold">' . lang('State') . ':</label>
-                                <select name="state_id" class="form-select form-select-sm w-auto" onchange="document.getElementById(\'state_filter\').submit()">
+                                <select name="state_id" class="form-control form-control-sm w-auto" onchange="document.getElementById(\'state_filter\').submit()">
                                     <option value="[All]"' . (($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '') == '[All]' ? ' selected="selected"' : '') . '>[' . lang('All') . '] (' . pg_format_number($all_verified_shipping_addresses, 0) . ')</option>
                                     ' . $output_state_options . '
                                 </select>

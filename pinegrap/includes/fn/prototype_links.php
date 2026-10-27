@@ -900,14 +900,14 @@ function pg_proto_link_password_html($view)
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <title>' . h(lang('Prototype')) . '</title>
-<link rel="stylesheet" href="' . h($software) . '/assets/lib/bootstrap-5.3.8/css/bootstrap.min.css?v=' . $version('/assets/lib/bootstrap-5.3.8/css/bootstrap.min.css') . '">
+<link rel="stylesheet" href="' . h($software) . '/assets/lib/bootstrap-6/css/bootstrap.min.css?v=' . $version('/assets/lib/bootstrap-6/css/bootstrap.min.css') . '">
 <link rel="stylesheet" href="' . h($software) . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css?v=' . $version('/assets/fonts/bootstrap-icons/bootstrap-icons.min.css') . '">
 <style>
 /* Token layer of this page, which does not load backend.src.css: the
    --pg-* names its rules read, mapped to the Bootstrap variables. */
 :root, [data-bs-theme] {
-  --pg-bg-1: var(--bs-tertiary-bg);
-  --pg-bg-body: var(--bs-body-bg);
+  --pg-bg-1: var(--bs-bg-1);
+  --pg-bg-body: var(--bs-bg-body);
   --pg-border-color: var(--bs-border-color);
 }
 html, body { height: 100%; }
@@ -918,17 +918,17 @@ body.pg-proto { display: flex; flex-direction: column; margin: 0; background: va
 </style>
 </head>
 <body class="pg-proto">
-<nav class="pg-proto-bar" aria-label="' . h(lang('Prototype')) . '"><span class="badge text-bg-primary">' . h(lang('Prototype')) . '</span></nav>
+<nav class="pg-proto-bar" aria-label="' . h(lang('Prototype')) . '"><span class="badge theme-primary">' . h(lang('Prototype')) . '</span></nav>
 <main class="pg-proto-main">
 <form method="post" action="' . h(isset($view['action']) ? (string) $view['action'] : '') . '" class="pg-proto-pass card shadow-sm">
 <div class="card-body">
-<h1 class="h5 mb-2"><span class="bi bi-lock me-2" aria-hidden="true"></span>' . h(lang('This prototype is protected with a password')) . '</h1>
-<p class="text-body-secondary small mb-3">' . h(lang('Enter the password you were given with the link.')) . '</p>
-' . (($error !== '') ? '<div class="alert alert-' . ($locked ? 'warning' : 'danger') . ' small py-2" role="alert">' . h($error) . '</div>' : '') . '
+<h1 class="h5 mb-3"><span class="bi bi-lock me-3" aria-hidden="true"></span>' . h(lang('This prototype is protected with a password')) . '</h1>
+<p class="fg-secondary small mb-5">' . h(lang('Enter the password you were given with the link.')) . '</p>
+' . (($error !== '') ? '<div class="alert theme-' . ($locked ? 'warning' : 'danger') . ' small py-3" role="alert">' . h($error) . '</div>' : '') . '
 ' . (isset($view['token_field']) ? (string) $view['token_field'] : '') . '
 <label class="form-label" for="pg-proto-password">' . h(lang('Password')) . '</label>
-<input type="password" class="form-control mb-3" id="pg-proto-password" name="password" autocomplete="current-password" maxlength="128" required' . ($locked ? '' : ' autofocus') . $off . '>
-<button type="submit" class="btn btn-primary w-100"' . $off . '>' . h(lang('Open the prototype')) . '</button>
+<input type="password" class="form-control mb-5" id="pg-proto-password" name="password" autocomplete="current-password" maxlength="128" required' . ($locked ? '' : ' autofocus') . $off . '>
+<button type="submit" class="btn btn-solid theme-primary w-100"' . $off . '>' . h(lang('Open the prototype')) . '</button>
 </div>
 </form>
 </main>

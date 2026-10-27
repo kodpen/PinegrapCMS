@@ -63,33 +63,33 @@ print
 <main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
-            ' . (($output_error !== '') ? '<div class="alert alert-danger my-3">' . h($output_error) . '</div>' : '') . '
-            ' . (($output_result !== '') ? '<div class="card my-4"><div class="card-body">' . $output_result . '</div></div>' : '') . '
+            ' . (($output_error !== '') ? '<div class="alert theme-danger my-5">' . h($output_error) . '</div>' : '') . '
+            ' . (($output_result !== '') ? '<div class="card my-7"><div class="card-body">' . $output_result . '</div></div>' : '') . '
             <form name="form" action="import_shipments.php" method="post" enctype="multipart/form-data">
                 ' . get_token_field() . '
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . h(lang('Import CSV')) . '
                     </div>
                     <div class="card-body">
-                        <p class="text-body-secondary">' . h(lang('One row per parcel with the columns order_number, number and carrier. The carrier may be left empty; the header row is optional. Numbers are added to the ones the order already has. Orders that ship to more than one address are skipped.')) . '</p>
-                        <pre class="bg-body-tertiary p-2 rounded small">order_number,number,carrier
+                        <p class="fg-secondary">' . h(lang('One row per parcel with the columns order_number, number and carrier. The carrier may be left empty; the header row is optional. Numbers are added to the ones the order already has. Orders that ship to more than one address are skipped.')) . '</p>
+                        <pre class="bg-body-tertiary p-3 rounded-4 small">order_number,number,carrier
 10045,1234567890,Yurtiçi Kargo
 10046,1Z999AA10123456784,</pre>
-                        <div class="my-3">
+                        <div class="my-5">
                             <label for="file" class="form-label">' . h(lang('CSV File')) . '</label>
                             <input name="file" id="file" type="file" accept=".csv,text/csv,text/plain" class="form-control w-auto">
                         </div>
-                        <div class="form-check form-switch my-3">
-                            <input type="checkbox" name="notify" id="notify" value="1" class="form-check-input" checked>
-                            <label class="form-check-label" for="notify">' . h(lang('Send customers the shipping e-mail')) . '</label>
+                        <div class="form-field my-5">
+                            <div class="switch"><input type="checkbox" name="notify" id="notify" value="1" class="" checked></div>
+                            <label class="" for="notify">' . h(lang('Send customers the shipping e-mail')) . '</label>
                         </div>
                     </div>
                 </div>
-                <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_import" value="Import" class="btn my-1 btn-success"><i class="bi bi-upload me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Import Tracking Numbers')) . '</span></button>
+                            <button type="submit" name="submit_import" value="Import" class="btn my-1 btn-solid theme-success"><i class="bi bi-upload me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Import Tracking Numbers')) . '</span></button>
                         </div>
                     </div>
                 </nav>

@@ -111,7 +111,7 @@
             // Somebody outside the team: asked by e-mail; staff see the
             // address and the link it went through on hover.
             if (person.guest) {
-                row.appendChild(el('span', 'badge rounded-pill text-bg-light ws-approval-guest', t('apv_guest_badge')));
+                row.appendChild(el('span', 'badge rounded-pill badge-subtle theme-secondary ws-approval-guest', t('apv_guest_badge')));
 
                 var detail = [person.email, person.audit].filter(function (part) { return part; }).join(' · ');
 
@@ -154,8 +154,8 @@
         foot.appendChild(el('span', 'ws-grow', t('apv_count', approval.counts.approved, (approval.people || []).length)));
 
         if (approval.can_decide) {
-            var approve = h.button('btn btn-sm btn-primary rounded-pill px-3', t('apv_approve'), 'bi-check2');
-            var reject = h.button('btn btn-sm btn-outline-warning', t('apv_reject'), 'bi-x-lg');
+            var approve = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('apv_approve'), 'bi-check2');
+            var reject = h.button('btn btn-sm btn-outline theme-warning', t('apv_reject'), 'bi-x-lg');
 
             approve.addEventListener('click', function () {
                 approve.disabled = true;
@@ -226,8 +226,8 @@
         var el = h.el;
         var channel = view.channel;
         var node = h.offcanvas('ws-approval-form', t('apv_form_title'));
-        var body = h.clear(node.querySelector('.offcanvas-body'));
-        var footer = h.clear(node.querySelector('.offcanvas-footer'));
+        var body = h.clear(node.querySelector('.drawer-body'));
+        var footer = h.clear(node.querySelector('.drawer-footer'));
 
         footer.classList.remove('d-none');
 
@@ -253,7 +253,7 @@
             wrap.appendChild(area);
         }
 
-        var textRow = el('div', 'mb-3');
+        var textRow = el('div', 'mb-5');
         textRow.appendChild(el('div', 'form-label', t('apv_text')));
         textRow.appendChild(wrap);
         textRow.appendChild(el('div', 'form-text', t('apv_text_help')));
@@ -261,7 +261,7 @@
 
         var members = (channel.members || []).map(function (member) { return member.id; });
         var people = h.peoplePicker([], members);
-        var peopleRow = el('div', 'mb-3');
+        var peopleRow = el('div', 'mb-5');
 
         peopleRow.appendChild(el('div', 'form-label', t('apv_people')));
         peopleRow.appendChild(people);
@@ -275,16 +275,16 @@
             body.appendChild(guests.node);
         }
 
-        var ruleRow = el('div', 'mb-3');
+        var ruleRow = el('div', 'mb-5');
         var group = h.nextId('ws-apv-rule-');
         var rule = 'any';
 
         ruleRow.appendChild(el('div', 'form-label', t('apv_rule')));
 
         [['any', t('apv_rule_any')], ['all', t('apv_rule_all')]].forEach(function (item) {
-            var line = el('div', 'form-check');
-            var radio = el('input', 'form-check-input');
-            var caption = el('label', 'form-check-label', item[1]);
+            var line = el('div', 'form-field');
+            var radio = el('input', 'radio');
+            var caption = el('label', '', item[1]);
 
             radio.type = 'radio';
             radio.name = group;
@@ -299,7 +299,7 @@
 
         body.appendChild(ruleRow);
 
-        var grid = el('div', 'row g-2');
+        var grid = el('div', 'row g-3');
         var dateCell = el('div', 'col-7');
         var timeCell = el('div', 'col-5');
         var date = el('input', 'form-control form-control-sm');
@@ -323,10 +323,10 @@
         body.appendChild(outcome);
 
         var cancel = h.button('btn btn-sm btn-ghost', t('cancel'));
-        cancel.setAttribute('data-bs-dismiss', 'offcanvas');
+        cancel.setAttribute('data-bs-dismiss', 'drawer');
         footer.appendChild(cancel);
 
-        var send = h.button('btn btn-sm btn-primary rounded-pill px-3', t('apv_send'), 'bi-send');
+        var send = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('apv_send'), 'bi-send');
         send.addEventListener('click', function () {
             send.disabled = true;
 
@@ -366,7 +366,7 @@
 
         var t = h.t;
         var el = h.el;
-        var box = el('div', 'mb-3 ws-approval-guests');
+        var box = el('div', 'mb-5 ws-approval-guests');
         var list = el('div', 'ws-approval-guest-rows');
         var rows = [];
         var add = h.button('btn btn-sm btn-ghost px-1', t('apv_guest_add'), 'bi-plus-lg');
@@ -452,7 +452,7 @@
             var text = el('span', 'ws-home-row-text');
             var meta = el('small', 'ws-home-row-meta');
 
-            row.appendChild(h.icon('bi-patch-question', 'text-body-secondary'));
+            row.appendChild(h.icon('bi-patch-question', 'fg-secondary'));
             meta.appendChild(el('b', '', item.asker));
             meta.appendChild(document.createTextNode(' · '));
             meta.appendChild(h.icon(item.channel['private'] ? 'bi-lock' : 'bi-hash'));

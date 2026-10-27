@@ -233,7 +233,7 @@ if (is_array($new_link) && !empty($new_link['url'])) {
     $link_qr = pg_qr_svg($link_url, 0, $link_qr_options);
 
     $output_link_qr = ($link_qr !== '')
-        ? '<div class="text-center mb-3"><div class="d-inline-block border rounded p-2 bg-white" style="width:200px">' . $link_qr . '</div></div>'
+        ? '<div class="text-center mb-5"><div class="d-inline-block border rounded-4 p-3 bg-white" style="width:200px">' . $link_qr . '</div></div>'
         : '';
 
     $output_link_download = ($link_qr !== '')
@@ -241,32 +241,28 @@ if (is_array($new_link) && !empty($new_link['url'])) {
         : '';
 
     $output_link = '
-            <div class="modal fade" id="erp_accountant_link_modal" tabindex="-1" aria-labelledby="erp_accountant_link_modal_label" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="erp_accountant_link_modal_label"><i class="bi bi-link-45deg me-2" aria-hidden="true"></i>' . h(lang('Link')) . '</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . h(lang('Close')) . '"></button>
+            <dialog class="dialog pg-dialog-centered" id="erp_accountant_link_modal" aria-labelledby="erp_accountant_link_modal_label">
+                        <div class="dialog-header">
+                            <h5 class="dialog-title" id="erp_accountant_link_modal_label"><i class="bi bi-link-45deg me-3" aria-hidden="true"></i>' . h(lang('Link')) . '</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                         </div>
-                        <div class="modal-body">
-                            <p class="mb-3">' . h(lang(array(
+                        <div class="dialog-body">
+                            <p class="mb-5">' . h(lang(array(
                                 'string' => 'A new link to the pack. It works until {var:1}, without a login; the link made before it no longer works.',
                                 'vars' => prepare_form_data_for_output(date('Y-m-d', (int) $new_link['expires']), 'date', false),
                             ))) . '</p>
                             ' . $output_link_qr . '
                             <div class="input-group">
                                 <input type="text" class="form-control font-monospace" id="erp_accountant_link" value="' . h($link_url) . '" readonly aria-label="' . h(lang('Link')) . '" />
-                                <button type="button" class="btn btn-outline-primary" id="erp_accountant_link_copy"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
+                                <button type="button" class="btn btn-outline theme-primary" id="erp_accountant_link_copy"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
                             </div>
                             <div class="form-text">' . h(lang('It is shown only now. Anyone who has it can download the pack, so send it to the accountant only.')) . '</div>
-                            ' . (($output_link_download !== '') ? '<div class="mt-2">' . $output_link_download . '</div>' : '') . '
+                            ' . (($output_link_download !== '') ? '<div class="mt-3">' . $output_link_download . '</div>' : '') . '
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">' . h(lang('Done')) . '</button>
+                        <div class="dialog-footer">
+                            <button type="button" class="btn btn-solid theme-primary" data-bs-dismiss="dialog">' . h(lang('Done')) . '</button>
                         </div>
-                    </div>
-                </div>
-            </div>
+            </dialog>
             <script>
             (function () {
                 var modal = document.getElementById("erp_accountant_link_modal");
@@ -313,8 +309,8 @@ foreach ($packages as $package) {
     $period_label = erp_accountant_period_label((string) $package['period_from'], (string) $package['period_to']);
     $file_exists = is_file(erp_accountant_directory() . '/' . basename((string) $package['file_name']));
     $sent = ((int) $package['sent_at'] > 0)
-        ? h((string) $package['sent_to']) . '<div class="small text-body-secondary">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $package['sent_at']), 'date and time')) . '</div>'
-        : '<span class="text-body-secondary">—</span>';
+        ? h((string) $package['sent_to']) . '<div class="small fg-secondary">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $package['sent_at']), 'date and time')) . '</div>'
+        : '<span class="fg-secondary">—</span>';
 
     $output_send = '';
 
@@ -324,8 +320,8 @@ foreach ($packages as $package) {
                     ' . get_token_field() . '
                     <input type="hidden" name="package_id" value="' . (int) $package['id'] . '" />
                     <input type="email" name="to" class="form-control form-control-sm" value="' . h($settings['email']) . '" placeholder="' . h(lang('Accountant\'s e-mail')) . '" aria-label="' . h(lang('Accountant\'s e-mail')) . '" required />
-                    <button type="submit" name="erp_action" value="send" class="btn btn-sm btn-outline-secondary text-nowrap"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Send link') . '</button>
-                    <button type="submit" name="erp_action" value="link" formnovalidate class="btn btn-sm btn-outline-secondary" title="' . h(lang('Make a link to copy')) . '" aria-label="' . h(lang('Make a link to copy')) . '"><i class="bi bi-link-45deg" aria-hidden="true"></i></button>
+                    <button type="submit" name="erp_action" value="send" class="btn btn-sm btn-outline theme-secondary text-nowrap"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Send link') . '</button>
+                    <button type="submit" name="erp_action" value="link" formnovalidate class="btn btn-sm btn-outline theme-secondary" title="' . h(lang('Make a link to copy')) . '" aria-label="' . h(lang('Make a link to copy')) . '"><i class="bi bi-link-45deg" aria-hidden="true"></i></button>
                 </form>';
     }
 
@@ -333,24 +329,24 @@ foreach ($packages as $package) {
         <tr>
             <td class="align-middle text-nowrap" data-sort="' . h(str_replace('-', '', (string) $package['period_from'])) . '">'
                 . h(prepare_form_data_for_output((string) $package['period_from'], 'date', false)) . ' – ' . h(prepare_form_data_for_output((string) $package['period_to'], 'date', false))
-                . '<div class="small text-body-secondary font-monospace">' . h($period_label) . '</div></td>
+                . '<div class="small fg-secondary font-monospace">' . h($period_label) . '</div></td>
             <td class="align-middle text-nowrap" data-sort="' . (int) $package['created_at'] . '">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $package['created_at']), 'date and time'))
-                . '<div class="small text-body-secondary">' . ((string) $package['source'] === 'monthly' ? lang('Monthly, by itself') : h((string) ($package['created_by_name'] ?? ''))) . '</div></td>
-            <td class="align-middle text-end" data-sort="' . (int) $package['documents'] . '">' . (int) $package['documents'] . '<div class="small text-body-secondary">' . h(lang(array('string' => '{var:1} file(s)', 'vars' => (int) $package['files_added']))) . '</div></td>
+                . '<div class="small fg-secondary">' . ((string) $package['source'] === 'monthly' ? lang('Monthly, by itself') : h((string) ($package['created_by_name'] ?? ''))) . '</div></td>
+            <td class="align-middle text-end" data-sort="' . (int) $package['documents'] . '">' . (int) $package['documents'] . '<div class="small fg-secondary">' . h(lang(array('string' => '{var:1} file(s)', 'vars' => (int) $package['files_added']))) . '</div></td>
             <td class="align-middle text-end text-nowrap" data-sort="' . (int) ($summary['output_vat'] ?? 0) . '">' . $money($summary['output_vat'] ?? 0) . '</td>
             <td class="align-middle text-end text-nowrap" data-sort="' . (int) ($summary['input_vat'] ?? 0) . '">' . $money($summary['input_vat'] ?? 0) . '</td>
             <td class="align-middle" data-sort="' . (int) $package['sent_at'] . '">' . $sent . '</td>
             <td class="align-middle text-end" data-sort="' . (int) $package['downloads'] . '">' . (int) $package['downloads'] . '</td>
             <td class="align-middle">'
                 . ($file_exists
-                    ? '<a class="btn btn-sm btn-outline-primary text-nowrap" href="' . h($self_url . '?download=' . (int) $package['id']) . '"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Download') . ' <span class="small text-body-secondary">' . h(number_format(((int) $package['file_size']) / 1048576, 1, erp_number_separators()['decimal'], '')) . ' MB</span></a>'
-                    : '<span class="text-body-secondary small">' . lang('The file is no longer there.') . '</span>')
+                    ? '<a class="btn btn-sm btn-outline theme-primary text-nowrap" href="' . h($self_url . '?download=' . (int) $package['id']) . '"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Download') . ' <span class="small fg-secondary">' . h(number_format(((int) $package['file_size']) / 1048576, 1, erp_number_separators()['decimal'], '')) . ' MB</span></a>'
+                    : '<span class="fg-secondary small">' . lang('The file is no longer there.') . '</span>')
                 . $output_send . '</td>
         </tr>';
 }
 
 if ($output_rows === '') {
-    $output_rows = '<tr data-pg-sort-fixed><td colspan="8" class="text-center text-body-secondary py-4">' . lang('No pack has been built yet.') . '</td></tr>';
+    $output_rows = '<tr data-pg-sort-fixed><td colspan="8" class="text-center fg-secondary py-7">' . lang('No pack has been built yet.') . '</td></tr>';
 }
 
 $lock_default = $lock_date;
@@ -359,59 +355,59 @@ if ($lock_default === '') {
 }
 
 $output_lock_state = ($lock_date !== '')
-    ? '<div class="h5 mb-1"><i class="bi bi-lock-fill text-warning me-2" aria-hidden="true"></i>' . h(lang(array('string' => 'Locked up to {var:1}', 'vars' => prepare_form_data_for_output($lock_date, 'date', false)))) . '</div>'
+    ? '<div class="h5 mb-1"><i class="bi bi-lock-fill fg-warning me-3" aria-hidden="true"></i>' . h(lang(array('string' => 'Locked up to {var:1}', 'vars' => prepare_form_data_for_output($lock_date, 'date', false)))) . '</div>'
         . '<div class="form-text mt-0">' . lang('Documents and receipts dated on or before this day can no longer be issued, cancelled, returned or paid. A return made now is dated now, in the open period.') . '</div>'
-    : '<div class="h5 mb-1"><i class="bi bi-unlock text-body-secondary me-2" aria-hidden="true"></i>' . lang('No period is locked') . '</div>'
+    : '<div class="h5 mb-1"><i class="bi bi-unlock fg-secondary me-3" aria-hidden="true"></i>' . lang('No period is locked') . '</div>'
         . '<div class="form-text mt-0">' . lang('Lock a period once its VAT return and books have been filed, so nothing in it changes afterwards.') . '</div>';
 
 $output_settings_card = '
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Accountant') . '</div>
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Accountant') . '</div>
                 <div class="card-body">
                     <form method="post" action="erp_accountant.php">
                         ' . get_token_field() . '
                         <input type="hidden" name="erp_action" value="settings" />
-                        <div class="row g-3">
+                        <div class="row g-5">
                             <div class="col-12">
                                 <label class="form-label" for="accountant_email">' . lang('Accountant\'s e-mail') . '</label>
                                 <input type="email" class="form-control" id="accountant_email" name="accountant_email" value="' . h($settings['email']) . '" maxlength="255" autocomplete="off"' . ($can_settings ? '' : ' disabled') . ' />
                             </div>
                             <div class="col-12">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="accountant_monthly" name="accountant_monthly" value="1"' . ($settings['monthly'] ? ' checked' : '') . ($can_settings ? '' : ' disabled') . ' />
-                                    <label class="form-check-label" for="accountant_monthly">' . lang('Send last month\'s pack by itself') . '</label>
+                                <div class="form-field">
+                                    <div class="switch"><input class="" type="checkbox" id="accountant_monthly" name="accountant_monthly" value="1"' . ($settings['monthly'] ? ' checked' : '') . ($can_settings ? '' : ' disabled') . ' /></div>
+                                    <label class="" for="accountant_monthly">' . lang('Send last month\'s pack by itself') . '</label>
                                 </div>
                                 <div class="form-text">' . h(lang(array('string' => 'On the first days of every month the scheduled job builds the month before and e-mails the accountant a link that works for {var:1} days.', 'vars' => ERP_ACCOUNTANT_LINK_DAYS))) . '</div>
                             </div>
                             <div class="col-12">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="accountant_pdfs" name="accountant_pdfs" value="1"' . ($settings['pdfs'] ? ' checked' : '') . ($can_settings ? '' : ' disabled') . ' />
-                                    <label class="form-check-label" for="accountant_pdfs">' . lang('Put the documents in the monthly pack') . '</label>
+                                <div class="form-field">
+                                    <div class="switch"><input class="" type="checkbox" id="accountant_pdfs" name="accountant_pdfs" value="1"' . ($settings['pdfs'] ? ' checked' : '') . ($can_settings ? '' : ' disabled') . ' /></div>
+                                    <label class="" for="accountant_pdfs">' . lang('Put the documents in the monthly pack') . '</label>
                                 </div>
                             </div>
                         </div>
                         ' . ($can_settings
-                            ? '<button type="submit" class="btn btn-sm btn-success mt-3"><i class="bi bi-check-circle me-1" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>'
-                            : '<div class="form-text mt-3">' . lang('Changing this needs the right to change ERP settings.') . '</div>') . '
+                            ? '<button type="submit" class="btn btn-sm btn-solid theme-success mt-5"><i class="bi bi-check-circle me-1" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>'
+                            : '<div class="form-text mt-5">' . lang('Changing this needs the right to change ERP settings.') . '</div>') . '
                     </form>
                 </div>
             </div>';
 
 $output_lock_card = '
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Period lock') . '</div>
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Period lock') . '</div>
                 <div class="card-body">
                     ' . $output_lock_state . '
                     ' . ($can_settings ? '
-                    <form method="post" action="erp_accountant.php" class="row g-2 align-items-end mt-2">
+                    <form method="post" action="erp_accountant.php" class="row g-3 align-items-end mt-3">
                         ' . get_token_field() . '
-                        <div class="col-12 col-sm-7">
+                        <div class="col-12 sm:col-7">
                             <label class="form-label" for="lock_date">' . lang('Lock up to and including') . '</label>
                             <input type="date" class="form-control" id="lock_date" name="lock_date" value="' . h($lock_default) . '" max="' . h(date('Y-m-d', strtotime('-1 day'))) . '" required />
                         </div>
-                        <div class="col-12 col-sm-5 d-flex gap-2">
-                            <button type="submit" name="erp_action" value="lock" class="btn btn-sm btn-warning text-nowrap"><i class="bi bi-lock me-1" aria-hidden="true"></i>' . lang('Lock') . '</button>
-                            ' . (($lock_date !== '') ? '<button type="submit" name="erp_action" value="unlock" formnovalidate class="btn btn-sm btn-outline-secondary text-nowrap">' . lang('Lift the lock') . '</button>' : '') . '
+                        <div class="col-12 sm:col-5 d-flex gap-3">
+                            <button type="submit" name="erp_action" value="lock" class="btn btn-sm btn-solid theme-warning text-nowrap"><i class="bi bi-lock me-1" aria-hidden="true"></i>' . lang('Lock') . '</button>
+                            ' . (($lock_date !== '') ? '<button type="submit" name="erp_action" value="unlock" formnovalidate class="btn btn-sm btn-outline theme-secondary text-nowrap">' . lang('Lift the lock') . '</button>' : '') . '
                         </div>
                     </form>' : '<div class="form-text">' . lang('Changing this needs the right to change ERP settings.') . '</div>') . '
                 </div>
@@ -434,46 +430,46 @@ pg_page_shell(array(
             ' . $liveform->output_notices() . '
             ' . $output_link . '
         </div>
-        <div class="col-12 col-xl-8">
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Build a pack') . '</div>
+        <div class="col-12 xl:col-8">
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Build a pack') . '</div>
                 <div class="card-body">
                     <form method="post" action="erp_accountant.php">
                         ' . get_token_field() . '
                         <input type="hidden" name="erp_action" value="build" />
-                        <div class="row g-3 align-items-end">
-                            <div class="col-12 col-md-4">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="range" id="range_month" value="month" checked />
-                                    <label class="form-check-label" for="range_month">' . lang('A month') . '</label>
+                        <div class="row g-5 align-items-end">
+                            <div class="col-12 md:col-4">
+                                <div class="form-field">
+                                    <input class="radio" type="radio" name="range" id="range_month" value="month" checked />
+                                    <label class="" for="range_month">' . lang('A month') . '</label>
                                 </div>
-                                <select class="form-select mt-1" id="month" name="month" aria-label="' . h(lang('A month')) . '">' . $output_months . '</select>
+                                <select class="form-control mt-1" id="month" name="month" aria-label="' . h(lang('A month')) . '">' . $output_months . '</select>
                             </div>
-                            <div class="col-12 col-md-5">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="range" id="range_dates" value="dates" />
-                                    <label class="form-check-label" for="range_dates">' . lang('From - to') . '</label>
+                            <div class="col-12 md:col-5">
+                                <div class="form-field">
+                                    <input class="radio" type="radio" name="range" id="range_dates" value="dates" />
+                                    <label class="" for="range_dates">' . lang('From - to') . '</label>
                                 </div>
-                                <div class="d-flex gap-2 mt-1">
+                                <div class="d-flex gap-3 mt-1">
                                     <input type="date" class="form-control" name="from" value="' . h($last_month['from']) . '" aria-label="' . h(lang('From')) . '" />
                                     <input type="date" class="form-control" name="to" value="' . h($last_month['to']) . '" aria-label="' . h(lang('To')) . '" />
                                 </div>
                             </div>
-                            <div class="col-12 col-md-3">
-                                <div class="form-check form-switch mb-2">
-                                    <input class="form-check-input" type="checkbox" id="pdfs" name="pdfs" value="1" checked />
-                                    <label class="form-check-label" for="pdfs">' . lang('With the documents') . '</label>
+                            <div class="col-12 md:col-3">
+                                <div class="form-field mb-3">
+                                    <div class="switch"><input class="" type="checkbox" id="pdfs" name="pdfs" value="1" checked /></div>
+                                    <label class="" for="pdfs">' . lang('With the documents') . '</label>
                                 </div>
-                                <button type="submit" class="btn btn-primary w-100"' . ($ready ? '' : ' disabled') . '><i class="bi bi-file-earmark-zip me-1" aria-hidden="true"></i>' . lang('Build the pack') . '</button>
+                                <button type="submit" class="btn btn-solid theme-primary w-100"' . ($ready ? '' : ' disabled') . '><i class="bi bi-file-earmark-zip me-1" aria-hidden="true"></i>' . lang('Build the pack') . '</button>
                             </div>
                         </div>
-                        <div class="form-text mt-3">' . lang('Amounts are in the base currency unless a column names the document\'s own; cancelled documents are listed and left out of the totals. A document that has no kept PDF yet is rendered and kept now.') . ($can_cash ? '' : ' ' . lang('The till sheets are left out: your account does not see the tills.')) . '</div>
+                        <div class="form-text mt-5">' . lang('Amounts are in the base currency unless a column names the document\'s own; cancelled documents are listed and left out of the totals. A document that has no kept PDF yet is rendered and kept now.') . ($can_cash ? '' : ' ' . lang('The till sheets are left out: your account does not see the tills.')) . '</div>
                     </form>
                 </div>
             </div>
 
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Packs') . '</div>
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Packs') . '</div>
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort id="erp_accountant_packs">
                         <thead>
@@ -491,10 +487,10 @@ pg_page_shell(array(
                         <tbody>' . $output_rows . '</tbody>
                     </table>
                 </div>
-                <div class="form-text px-3 pb-3">' . h(lang(array('string' => 'A link opens its pack without a login for {var:1} days. Send it by e-mail, or make one to copy into a message; each new link makes the one before it stop working.', 'vars' => ERP_ACCOUNTANT_LINK_DAYS))) . '</div>
+                <div class="form-text px-5 pb-5">' . h(lang(array('string' => 'A link opens its pack without a login for {var:1} days. Send it by e-mail, or make one to copy into a message; each new link makes the one before it stop working.', 'vars' => ERP_ACCOUNTANT_LINK_DAYS))) . '</div>
             </div>
         </div>
-        <div class="col-12 col-xl-4">
+        <div class="col-12 xl:col-4">
             ' . $output_lock_card . '
             ' . $output_settings_card . '
         </div>

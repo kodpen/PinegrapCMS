@@ -123,7 +123,7 @@
         var el = h.el;
         var wrap = el('div', 'ws-checkin-form');
         var area = el('textarea', 'form-control form-control-sm');
-        var send = h.button('btn btn-sm btn-primary rounded-pill px-3', t('ci_send'), 'bi-send');
+        var send = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('ci_send'), 'bi-send');
         var row = el('div', 'ws-checkin-form-foot');
 
         area.rows = 2;
@@ -176,8 +176,8 @@
 
         h.api('ws_status_facts', { channel_id: channel.id }).then(function (data) {
             var node = h.offcanvas('ws-status-form', t('st_form_title'));
-            var body = h.clear(node.querySelector('.offcanvas-body'));
-            var footer = h.clear(node.querySelector('.offcanvas-footer'));
+            var body = h.clear(node.querySelector('.drawer-body'));
+            var footer = h.clear(node.querySelector('.drawer-footer'));
             var facts = data.facts;
             var counts = facts.counts;
             var health = facts.suggest;
@@ -214,13 +214,13 @@
             if (facts.stale.length) {
                 var staleBox = el('div', 'ws-status-stale');
 
-                staleBox.appendChild(el('div', 'small fw-semibold mt-2', t('st_stale_list', facts.stale_days)));
+                staleBox.appendChild(el('div', 'small fw-semibold mt-3', t('st_stale_list', facts.stale_days)));
 
                 facts.stale.forEach(function (task) {
                     var line = h.button('ws-status-stale-task', '', 'bi-check2-square');
 
                     line.appendChild(el('span', 'ws-grow', task.title));
-                    line.appendChild(el('span', 'text-body-secondary small', t('st_days', task.days)));
+                    line.appendChild(el('span', 'fg-secondary small', t('st_days', task.days)));
 
                     if (h.openTask) {
                         line.addEventListener('click', function () { h.openTask(task.id); });
@@ -234,7 +234,7 @@
 
             body.appendChild(figures);
 
-            var healthRow = el('div', 'mb-3');
+            var healthRow = el('div', 'mb-5');
             var group = h.nextId('ws-status-health-');
 
             healthRow.appendChild(el('div', 'form-label', t('st_health')));
@@ -276,7 +276,7 @@
                 wrap.appendChild(area);
             }
 
-            var textRow = el('div', 'mb-3');
+            var textRow = el('div', 'mb-5');
             textRow.appendChild(el('div', 'form-label', t('st_text')));
             textRow.appendChild(wrap);
             textRow.appendChild(el('div', 'form-text', t('st_text_help')));
@@ -284,7 +284,7 @@
 
             // Pinegrap AI, only where it may read the channel.
             if (data.ai) {
-                var write = h.button('btn btn-sm btn-outline-secondary', t('st_ai'), 'bi-stars');
+                var write = h.button('btn btn-sm btn-outline theme-secondary', t('st_ai'), 'bi-stars');
 
                 write.addEventListener('click', function () {
                     write.disabled = true;
@@ -304,10 +304,10 @@
             }
 
             var cancel = h.button('btn btn-sm btn-ghost', t('cancel'));
-            cancel.setAttribute('data-bs-dismiss', 'offcanvas');
+            cancel.setAttribute('data-bs-dismiss', 'drawer');
             footer.appendChild(cancel);
 
-            var send = h.button('btn btn-sm btn-primary rounded-pill px-3', t('st_send'), 'bi-send');
+            var send = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('st_send'), 'bi-send');
             send.addEventListener('click', function () {
                 send.disabled = true;
 

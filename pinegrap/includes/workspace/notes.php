@@ -320,25 +320,25 @@ function ws_notes_quick_markup($rights, $parent_target = '')
 
     return '
                 <ul class="navbar-nav">
-                    <li class="nav-item dropdown no-arrow no-popover" title="' . h(lang('Quick note')) . '">
-                        <button type="button" id="pg_quick_note_toggle" class="nav-link nav-link-sm no-popover dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-label="' . h(lang('Quick note')) . '">
+                    <li class="nav-item pg-menu-wrap no-arrow no-popover" title="' . h(lang('Quick note')) . '">
+                        <button type="button" id="pg_quick_note_toggle" class="nav-link nav-link-sm no-popover pg-menu-caret" data-bs-toggle="menu" data-bs-auto-close="outside" aria-expanded="false" aria-label="' . h(lang('Quick note')) . '">
                             <span class="bi bi-journal-plus" aria-hidden="true"></span>
                         </button>
-                        <div id="pg_quick_note" class="dropdown-menu shadow p-3 bg-body backdrop mt-nav-link-sm border-dropdown-menu position-fixed end-0 top-0" aria-labelledby="pg_quick_note_toggle">
+                        <div id="pg_quick_note" class="menu shadow p-5 bg-body backdrop mt-nav-link-sm border-dropdown-menu position-fixed end-0 top-0" aria-labelledby="pg_quick_note_toggle">
                             <form data-pg-quick-note class="disable_shortcut" novalidate
                                 data-api="' . h($base . 'api.php') . '"
                                 data-note-url="' . h($base . 'workspace_notes.php?note=') . '"
                                 data-saved="' . h(lang('Saved to your notes.')) . '"
                                 data-open="' . h(lang('Open the note')) . '"
                                 data-failed="' . h(lang('The note could not be saved.')) . '">
-                                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
                                     <label for="pg_quick_note_text" class="fw-semibold small mb-0"><i class="bi bi-journal-plus me-1" aria-hidden="true"></i>' . h(lang('Quick note')) . '</label>
-                                    <a class="small link-body-emphasis" href="' . h($base . 'workspace_notes.php') . '"' . $parent_target . '><i class="bi bi-journal-text me-1" aria-hidden="true"></i>' . h(lang('My Notes')) . '</a>
+                                    <a class="small pg-link-body-emphasis" href="' . h($base . 'workspace_notes.php') . '"' . $parent_target . '><i class="bi bi-journal-text me-1" aria-hidden="true"></i>' . h(lang('My Notes')) . '</a>
                                 </div>
                                 <textarea id="pg_quick_note_text" name="body" class="form-control form-control-sm" rows="4" maxlength="' . WS_NOTE_MAX . '" placeholder="' . h(lang('Write a note. Its first line becomes its title.')) . '"></textarea>
-                                <div class="d-flex align-items-center flex-wrap gap-2 mt-2">
-                                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3">' . h(lang('Save')) . '</button>
-                                    <span class="small text-body-secondary d-none d-sm-inline">Ctrl+Enter</span>
+                                <div class="d-flex align-items-center flex-wrap gap-3 mt-3">
+                                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . h(lang('Save')) . '</button>
+                                    <span class="small fg-secondary d-none sm:d-inline">Ctrl+Enter</span>
                                     <span class="small ms-auto" data-pg-quick-note-status role="status"></span>
                                 </div>
                             </form>

@@ -24,15 +24,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 $pg_settings_cards[] = '
                         <div id="pgset-theme" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Theme') . '
                                 </div>
                                 <div class="card-body">
-                                   <div class="row gy-3">
+                                   <div class="row gy-5">
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $advanced_visual_effects_checked . ' class="form-check-input" type="checkbox" id="advanced_visual_effects" name="advanced_visual_effects"/>
-                                                <label class="form-check-label" for="advanced_visual_effects">' . lang('Enable Transparent Acrylic Effect') . '<br/><span class="form-text">' . lang('If the device you are using is weak in hardware, you can disable this setting to get a faster interface.') . '</span></label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $advanced_visual_effects_checked . ' class="" type="checkbox" id="advanced_visual_effects" name="advanced_visual_effects"/></div>
+                                                <label class="" for="advanced_visual_effects">' . lang('Enable Transparent Acrylic Effect') . '<br/><span class="form-text">' . lang('If the device you are using is weak in hardware, you can disable this setting to get a faster interface.') . '</span></label>
                                             </div>
                                         </div>
                                         <div class="col-12 ">
@@ -59,7 +59,7 @@ if ($dashboard_card_shown) {
 
     $output_dashboard_appearance = '
                                         <div class="col-12 ">
-                                            <div class="alert alert-secondary mb-0 py-2 small">' . lang('Run the upgrade to use this setting.') . '</div>
+                                            <div class="alert theme-secondary mb-0 py-3 small">' . lang('Run the upgrade to use this setting.') . '</div>
                                         </div>';
 
     if ($dashboard_appearance_ready) {
@@ -67,12 +67,12 @@ if ($dashboard_card_shown) {
         $output_dashboard_appearance = '
                                         <div class="pg-f-md">
                                             <label for="dashboard_widget_theme" class="form-label">' . lang('Card Style') . '</label>
-                                            <select name="dashboard_widget_theme" id="dashboard_widget_theme" class="form-select">' . $output_dashboard_theme_options . '</select>
+                                            <select name="dashboard_widget_theme" id="dashboard_widget_theme" class="form-control">' . $output_dashboard_theme_options . '</select>
                                             <div class="form-text">' . lang('How the cards on the dashboard are drawn, for everyone who uses the panel.') . '</div>
                                         </div>
                                         <div class="pg-f-md">
                                             <label for="dashboard_panel_backdrop" class="form-label">' . lang('Panel Backdrop') . '</label>
-                                            <select name="dashboard_panel_backdrop" id="dashboard_panel_backdrop" class="form-select">' . $output_dashboard_backdrop_options . '</select>
+                                            <select name="dashboard_panel_backdrop" id="dashboard_panel_backdrop" class="form-control">' . $output_dashboard_backdrop_options . '</select>
                                             <div class="form-text">' . lang('What sits behind the dashboard cards. Match Card Style picks the one that suits the chosen style.') . '</div>
                                         </div>';
     }
@@ -86,11 +86,11 @@ if ($dashboard_card_shown) {
                             . ' data-pg-dashboard-refresh="' . (int) $dashboard_refresh . '"'
                             . ' data-pg-dashboard-reset="' . ($dashboard_reset_done ? '1' : '0') . '">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Dashboard') . '
                                 </div>
                                 <div class="card-body">
-                                   <div class="row gy-3">' . $output_dashboard_appearance . '
+                                   <div class="row gy-5">' . $output_dashboard_appearance . '
                                         <div class="pg-f-xs">
                                             <label for="dashboard_refresh" class="form-label">' . lang('Refresh Time') . '</label>
                                             <div class="input-group">
@@ -100,7 +100,7 @@ if ($dashboard_card_shown) {
                                             <div class="form-text">' . lang('How often the dashboard asks for fresh figures, at least 10 seconds. It is kept for this sign-in only and goes back to 60 seconds at the next one.') . '</div>
                                         </div>
                                         <div class="col-12 ">
-                                            <button type="submit" name="dashboard_reset_widgets" value="1" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . lang('Reset Widgets') . '</button>
+                                            <button type="submit" name="dashboard_reset_widgets" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . lang('Reset Widgets') . '</button>
                                             <div class="form-text">' . lang('Puts the dashboard cards back in their default order. This button also saves the other settings on this screen.') . '</div>
                                         </div>
                                     </div>
@@ -161,50 +161,50 @@ if ($dashboard_card_shown) {
 $pg_settings_cards[] = '
                         <div id="pgset-editor" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Rich-text Editor') . '
                                 </div>
                                 <div class="card-body">
-                                   <div class="row gy-3">
+                                   <div class="row gy-5">
                                         <div class="col-12 ">
                                             <label class="form-label">'. lang('Editor Version') . '</label>
-                                            <div class="form-check">
-                                                <input value="latest" class="form-check-input" type="radio" id="page_editor_version_latest" name="page_editor_version" ' . $page_editor_version_latest_checked . '>
-                                                <label class="form-check-label" for="page_editor_version_latest">'. lang('Latest') . '</label>
+                                            <div class="form-field">
+                                                <input value="latest" class="radio" type="radio" id="page_editor_version_latest" name="page_editor_version" ' . $page_editor_version_latest_checked . '>
+                                                <label class="" for="page_editor_version_latest">'. lang('Latest') . '</label>
                                             </div>
-                                            <div class="form-check">
-                                                <input value="previous" class="form-check-input" type="radio" id="page_editor_version_previous" name="page_editor_version" ' . $page_editor_version_previous_checked . '>
-                                                <label class="form-check-label" for="page_editor_version_previous">'. lang('Previous') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $page_editor_font_checked . ' class="form-check-input" type="checkbox" id="page_editor_font" name="page_editor_font"/>
-                                                <label class="form-check-label" for="page_editor_font">' . lang('Font Selection') . '</label>
+                                            <div class="form-field">
+                                                <input value="previous" class="radio" type="radio" id="page_editor_version_previous" name="page_editor_version" ' . $page_editor_version_previous_checked . '>
+                                                <label class="" for="page_editor_version_previous">'. lang('Previous') . '</label>
                                             </div>
                                         </div>
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $page_editor_font_size_checked . ' class="form-check-input" type="checkbox" id="page_editor_font_size" name="page_editor_font_size"/>
-                                                <label class="form-check-label" for="page_editor_font_size">' . lang('Font Size Selection') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $page_editor_font_checked . ' class="" type="checkbox" id="page_editor_font" name="page_editor_font"/></div>
+                                                <label class="" for="page_editor_font">' . lang('Font Selection') . '</label>
                                             </div>
                                         </div>
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $page_editor_font_style_checked . ' class="form-check-input" type="checkbox" id="page_editor_font_style" name="page_editor_font_style"/>
-                                                <label class="form-check-label" for="page_editor_font_style">' . lang('Font Style Selection') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $page_editor_font_size_checked . ' class="" type="checkbox" id="page_editor_font_size" name="page_editor_font_size"/></div>
+                                                <label class="" for="page_editor_font_size">' . lang('Font Size Selection') . '</label>
                                             </div>
                                         </div>
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $page_editor_font_color_checked . ' class="form-check-input" type="checkbox" id="page_editor_font_color" name="page_editor_font_color"/>
-                                                <label class="form-check-label" for="page_editor_font_color">' . lang('Font Color Button') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $page_editor_font_style_checked . ' class="" type="checkbox" id="page_editor_font_style" name="page_editor_font_style"/></div>
+                                                <label class="" for="page_editor_font_style">' . lang('Font Style Selection') . '</label>
                                             </div>
                                         </div>
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $page_editor_background_color_checked . ' class="form-check-input" type="checkbox" id="page_editor_background_color" name="page_editor_background_color"/>
-                                                <label class="form-check-label" for="page_editor_background_color">' . lang('Background Color Button') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $page_editor_font_color_checked . ' class="" type="checkbox" id="page_editor_font_color" name="page_editor_font_color"/></div>
+                                                <label class="" for="page_editor_font_color">' . lang('Font Color Button') . '</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 ">
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $page_editor_background_color_checked . ' class="" type="checkbox" id="page_editor_background_color" name="page_editor_background_color"/></div>
+                                                <label class="" for="page_editor_background_color">' . lang('Background Color Button') . '</label>
                                             </div>
                                         </div>
                                         <div class="col-12 ">

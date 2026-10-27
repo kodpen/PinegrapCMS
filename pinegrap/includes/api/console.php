@@ -94,7 +94,7 @@ function api_console_page($params) {
 	// scheme before the first paint. Its footer closes two wrappers, opened
 	// below around the page.
 	$html = output_header_secure(array('title' => lang('API console'), 'icon' => 'setting')) . '
-<style>
+<style>@layer custom {
 .con-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
 .con-head h1 { font-size: 22px; margin: 0; }
 .con-head .con-sub { font-size: 14px; opacity: .6; }
@@ -107,59 +107,59 @@ function api_console_page($params) {
 #doc_empty { padding: 40px 20px; text-align: center; opacity: .5; font-size: 13px; }
 .doc-nav { max-height: calc(100vh - 32px); }
 ' . api_console_css() . '
-</style>
-<div class="container-fluid py-4" style="max-width: 1500px">
+}</style>
+<div class="container-fluid py-7" style="max-width: 1500px">
 <div class="con-page">
 
 	<div class="con-head">
 		<h1>' . h($site_title) . '</h1>
 		<span class="con-sub"><i class="bi bi-terminal me-1"></i>' . lang('API console') . '</span>
 		<div class="btn-group btn-group-sm con-theme" role="group" aria-label="' . h(lang('Appearance')) . '">
-			<button type="button" id="theme-light" class="btn btn-outline-secondary" data-bs-theme-value="light" title="' . h(lang('Light')) . '" aria-label="' . h(lang('Light')) . '"><i class="bi bi-sun-fill" aria-hidden="true"></i></button>
-			<button type="button" id="theme-dark" class="btn btn-outline-secondary" data-bs-theme-value="dark" title="' . h(lang('Dark')) . '" aria-label="' . h(lang('Dark')) . '"><i class="bi bi-moon-stars-fill" aria-hidden="true"></i></button>
-			<button type="button" id="theme-auto" class="btn btn-outline-secondary" data-bs-theme-value="auto" title="' . h(lang('Auto')) . '" aria-label="' . h(lang('Auto')) . '"><i class="bi bi-circle-half" aria-hidden="true"></i></button>
+			<button type="button" id="theme-light" class="btn btn-outline theme-secondary" data-bs-theme-value="light" title="' . h(lang('Light')) . '" aria-label="' . h(lang('Light')) . '"><i class="bi bi-sun-fill" aria-hidden="true"></i></button>
+			<button type="button" id="theme-dark" class="btn btn-outline theme-secondary" data-bs-theme-value="dark" title="' . h(lang('Dark')) . '" aria-label="' . h(lang('Dark')) . '"><i class="bi bi-moon-stars-fill" aria-hidden="true"></i></button>
+			<button type="button" id="theme-auto" class="btn btn-outline theme-secondary" data-bs-theme-value="auto" title="' . h(lang('Auto')) . '" aria-label="' . h(lang('Auto')) . '"><i class="bi bi-circle-half" aria-hidden="true"></i></button>
 		</div>
 	</div>
 
-	<div class="con-base mb-3"><span class="opacity-50">' . lang('Base address') . ':</span> <code id="con_base">' . h($base_url) . '</code>
-		<span class="opacity-50 ms-3">' . lang('Authentication') . ':</span> <code>HTTP Basic</code>
+	<div class="con-base mb-5"><span class="opacity-50">' . lang('Base address') . ':</span> <code id="con_base">' . h($base_url) . '</code>
+		<span class="opacity-50 ms-5">' . lang('Authentication') . ':</span> <code>HTTP Basic</code>
 		<span class="opacity-50 ms-1">' . lang('user name: application key, password: secret') . '</span>
-		<span class="opacity-50 ms-3">' . lang('OpenAPI description') . ':</span> <code>' . h($base_url . '/openapi.json') . '</code>
-		<span class="opacity-50 ms-2">' . ($openapi_public
+		<span class="opacity-50 ms-5">' . lang('OpenAPI description') . ':</span> <code>' . h($base_url . '/openapi.json') . '</code>
+		<span class="opacity-50 ms-3">' . ($openapi_public
 			? lang('open to anyone')
 			: lang('with the key and secret, like every other call')) . '</span></div>
 
-	<div class="row g-3 mb-3">
-		<div class="col-lg-7">
+	<div class="row g-5 mb-5">
+		<div class="lg:col-7">
 			<div class="card h-100">
-				<div class="card-body py-3">
+				<div class="card-body py-5">
 					<form id="con_form" autocomplete="off">
-						<div class="row g-2 align-items-end">
-							<div class="col-md-5">
+						<div class="row g-3 align-items-end">
+							<div class="md:col-5">
 								<label class="form-label small mb-1" for="con_key">' . lang('Application key') . '</label>
 								<input type="text" class="form-control form-control-sm" id="con_key" autocomplete="off" spellcheck="false">
 							</div>
-							<div class="col-md-5">
+							<div class="md:col-5">
 								<label class="form-label small mb-1" for="con_secret">' . lang('Secret key') . '</label>
 								<input type="password" class="form-control form-control-sm" id="con_secret" autocomplete="off">
 							</div>
-							<div class="col-md-2 d-flex gap-2">
-								<button type="submit" class="btn btn-sm btn-primary flex-grow-1" id="con_connect"><i class="bi bi-plug me-1"></i>' . lang('Connect') . '</button>
-								<button type="button" class="btn btn-sm btn-outline-secondary" id="con_forget" title="' . h(lang('Forget')) . '" aria-label="' . h(lang('Forget')) . '"><i class="bi bi-x-lg"></i></button>
+							<div class="md:col-2 d-flex gap-3">
+								<button type="submit" class="btn btn-sm btn-solid theme-primary flex-grow-1" id="con_connect"><i class="bi bi-plug me-1"></i>' . lang('Connect') . '</button>
+								<button type="button" class="btn btn-sm btn-outline theme-secondary" id="con_forget" title="' . h(lang('Forget')) . '" aria-label="' . h(lang('Forget')) . '"><i class="bi bi-x-lg"></i></button>
 							</div>
 						</div>
 					</form>
-					<div id="con_status" class="small mt-3 mb-0 opacity-75"></div>
-					<div id="con_meta" class="con-meta mt-3 d-none"></div>
-					<p class="small opacity-75 mb-0 mt-3"><i class="bi bi-shield-lock me-1"></i>' . lang('The key and the secret stay in this browser tab only: they are sent with the calls you make from here and nowhere else, and they are gone when the tab closes.') . '</p>
+					<div id="con_status" class="small mt-5 mb-0 opacity-75"></div>
+					<div id="con_meta" class="con-meta mt-5 d-none"></div>
+					<p class="small opacity-75 mb-0 mt-5"><i class="bi bi-shield-lock me-1"></i>' . lang('The key and the secret stay in this browser tab only: they are sent with the calls you make from here and nowhere else, and they are gone when the tab closes.') . '</p>
 				</div>
 			</div>
 		</div>
-		<div class="col-lg-5">
+		<div class="lg:col-5">
 			<div class="card h-100">
-				<div class="card-body py-3 small">
-					<p class="mb-2"><i class="bi bi-info-circle me-1"></i>' . lang('Authentication is HTTP Basic: the user name is the application key, the password is its secret. Money is always a whole number of minor units - 1999 is 19.99. Times are ISO-8601 in UTC. Listings are cursor paged: follow page.next_cursor until it is null. A write can be rehearsed before it is made: send X-Dry-Run: true and the endpoint runs every check it would run and answers instead of writing.') . '</p>
-					<pre class="con-curl bg-body-tertiary rounded p-2 mb-2">' . h($curl_example) . '</pre>
+				<div class="card-body py-5 small">
+					<p class="mb-3"><i class="bi bi-info-circle me-1"></i>' . lang('Authentication is HTTP Basic: the user name is the application key, the password is its secret. Money is always a whole number of minor units - 1999 is 19.99. Times are ISO-8601 in UTC. Listings are cursor paged: follow page.next_cursor until it is null. A write can be rehearsed before it is made: send X-Dry-Run: true and the endpoint runs every check it would run and answers instead of writing.') . '</p>
+					<pre class="con-curl bg-body-tertiary rounded-4 p-3 mb-3">' . h($curl_example) . '</pre>
 					<p class="mb-0 opacity-75">' . lang('Where an endpoint says so, DELETE has a POST alias - either the same address answered to POST, or a /delete address - for servers that refuse the DELETE verb before it reaches the application.') . '</p>
 				</div>
 			</div>
@@ -167,7 +167,7 @@ function api_console_page($params) {
 	</div>
 
 	<div class="doc-wrap">
-		<div class="doc-nav card"><div class="card-body p-2" id="doc_nav"></div></div>
+		<div class="doc-nav card"><div class="card-body p-3" id="doc_nav"></div></div>
 		<div id="doc_main"><div id="doc_empty">' . lang('Enter your application key and secret to load the description.') . '</div></div>
 	</div>
 
@@ -204,7 +204,7 @@ function api_console_page($params) {
 	}
 
 	function setStatus(text, kind) {
-		status.className = "small mt-3 mb-0 " + (kind === "error" ? "text-danger" : (kind === "ok" ? "text-success" : "opacity-75"));
+		status.className = "small mt-5 mb-0 " + (kind === "error" ? "fg-danger" : (kind === "ok" ? "fg-success" : "opacity-75"));
 		status.textContent = text;
 	}
 
@@ -271,7 +271,7 @@ function api_console_page($params) {
 		var fragCount = holder.content.querySelector("#frag_count");
 		if (!fragNav || !fragPanels) { return false; }
 		nav.innerHTML = fragNav.innerHTML;
-		main.innerHTML = "<div class=\'small opacity-50 mb-3\'>" +
+		main.innerHTML = "<div class=\'small opacity-50 mb-5\'>" +
 			esc(fill(T.endpoints, [fragCount ? fragCount.dataset.count : "", fragCount ? fragCount.dataset.groups : ""])) + "</div>" + fragPanels.innerHTML;
 		pgApiConsole.init({
 			base: BASE,
@@ -322,15 +322,15 @@ function api_console_page($params) {
 		request("/meta", c).then(function (result) {
 			var body = result.body;
 			if (!result.response.ok || !body) {
-				metaBox.innerHTML = "<div class=\'small text-warning\'>" + esc(fill(T.meta_unavailable, [errorText(result)])) + "</div>";
+				metaBox.innerHTML = "<div class=\'small fg-warning\'>" + esc(fill(T.meta_unavailable, [errorText(result)])) + "</div>";
 				metaBox.classList.remove("d-none");
 				return;
 			}
 			var scopes = Array.isArray(body.scopes) && body.scopes.length
-				? body.scopes.map(function (s) { return "<span class=\'badge text-bg-secondary fw-normal me-1\'>" + esc(s) + "</span>"; }).join("")
+				? body.scopes.map(function (s) { return "<span class=\'badge theme-secondary fw-normal me-1\'>" + esc(s) + "</span>"; }).join("")
 				: "<span class=\'opacity-50\'>" + esc(T.no_scopes) + "</span>";
 			metaBox.innerHTML =
-				"<div class=\'small fw-semibold mb-2\'><i class=\'bi bi-person-check me-1\'></i>" + esc(T.connected_as) + " <code>" + esc(c.key) + "</code></div>" +
+				"<div class=\'small fw-semibold mb-3\'><i class=\'bi bi-person-check me-1\'></i>" + esc(T.connected_as) + " <code>" + esc(c.key) + "</code></div>" +
 				"<dl>" +
 				"<dt>" + esc(T.scopes) + "</dt><dd>" + scopes + "</dd>" +
 				"<dt>" + esc(T.api_version) + "</dt><dd>" + esc(body.api_version) + "</dd>" +
@@ -339,7 +339,7 @@ function api_console_page($params) {
 				"</dl>";
 			metaBox.classList.remove("d-none");
 		}).catch(function (error) {
-			metaBox.innerHTML = "<div class=\'small text-warning\'>" + esc(fill(T.meta_unavailable, [String(error)])) + "</div>";
+			metaBox.innerHTML = "<div class=\'small fg-warning\'>" + esc(fill(T.meta_unavailable, [String(error)])) + "</div>";
 			metaBox.classList.remove("d-none");
 		});
 	}

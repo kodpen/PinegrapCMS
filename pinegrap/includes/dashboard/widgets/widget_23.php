@@ -43,8 +43,8 @@ function pg_dashboard_widget_23($request, $user)
             $output_data = '
             <div class="card-body d-flex align-items-center justify-content-center text-center">
                 <div>
-                    <i class="bi bi-speedometer2 d-block mb-2" style="font-size:22px;opacity:.35"></i>
-                    <p class="text-muted mb-0" style="font-size:12px">' . lang('Performance monitoring is turned off.') . '</p>
+                    <i class="bi bi-speedometer2 d-block mb-3" style="font-size:22px;opacity:.35"></i>
+                    <p class="fg-secondary mb-0" style="font-size:12px">' . lang('Performance monitoring is turned off.') . '</p>
                 </div>
             </div>';
 
@@ -58,8 +58,8 @@ function pg_dashboard_widget_23($request, $user)
             $output_data = '
             <div class="card-body d-flex align-items-center justify-content-center text-center">
                 <div>
-                    <i class="bi bi-database-exclamation d-block mb-2" style="font-size:22px;opacity:.4"></i>
-                    <p class="text-muted mb-0" style="font-size:12px">' . lang('The performance tables do not exist yet. Please run the software upgrade to create them.') . '</p>
+                    <i class="bi bi-database-exclamation d-block mb-3" style="font-size:22px;opacity:.4"></i>
+                    <p class="fg-secondary mb-0" style="font-size:12px">' . lang('The performance tables do not exist yet. Please run the software upgrade to create them.') . '</p>
                 </div>
             </div>';
 
@@ -253,7 +253,7 @@ function pg_dashboard_widget_23($request, $user)
         }
 
         $pf_gauge = '
-        <div class="d-flex align-items-center border-bottom px-2 py-2" style="gap:8px">
+        <div class="d-flex align-items-center border-bottom px-3 py-3" style="gap:8px">
             <svg viewBox="0 0 140 84" style="width:104px;height:62px;flex-shrink:0" role="img" aria-label="' . h($pf_grade) . '">
                 <path d="M 18 70 A 52 52 0 0 1 122 70" fill="none" stroke="rgba(128,128,128,.15)" stroke-width="9"/>
                 ' . $pf_arc . '
@@ -262,14 +262,14 @@ function pg_dashboard_widget_23($request, $user)
                 <circle cx="70" cy="70" r="4" fill="currentColor"/>
             </svg>
             <div class="flex-fill overflow-hidden">
-                <div class="fw-semibold text-' . h($pf_grade_class) . '" style="font-size:15px;line-height:1.1">' . h($pf_grade) . '</div>'
+                <div class="fw-semibold fg-' . h($pf_grade_class) . '" style="font-size:15px;line-height:1.1">' . h($pf_grade) . '</div>'
                 . ($pf_enough && $pf_worst_label !== ''
-                    ? '<div class="text-truncate text-muted" style="font-size:11px" title="' . h($pf_worst_label) . '">' . h($pf_worst_display) . '</div>
-                       <div class="text-muted" style="font-size:11px">' . lang(array(
+                    ? '<div class="text-truncate fg-secondary" style="font-size:11px" title="' . h($pf_worst_label) . '">' . h($pf_worst_display) . '</div>
+                       <div class="fg-secondary" style="font-size:11px">' . lang(array(
                             'string' => '{var:1} ms at its fastest',
                             'vars'   => pg_format_number($pf_worst_ms, 0),
                         )) . '</div>'
-                    : '<div class="text-muted" style="font-size:11px">' . lang(array(
+                    : '<div class="fg-secondary" style="font-size:11px">' . lang(array(
                             'string' => '{var:1} request{suffix:1} recorded',
                             'vars'   => pg_format_number($pf_hits, 0),
                             'suffix' => ($pf_hits == 1 ? '' : 's'),
@@ -345,10 +345,10 @@ function pg_dashboard_widget_23($request, $user)
             }
 
             $pf_rows .= '
-            <div class="mb-2">
+            <div class="mb-3">
                 <div class="d-flex align-items-center justify-content-between" style="gap:6px">
                     <span class="text-truncate" style="font-size:12px" title="' . h($pf_page['label']) . '">' . h($pf_label) . '</span>
-                    <span class="text-muted flex-shrink-0" style="font-size:11px">' . pg_format_number($pf_page_avg, 0) . ' ms</span>
+                    <span class="fg-secondary flex-shrink-0" style="font-size:11px">' . pg_format_number($pf_page_avg, 0) . ' ms</span>
                 </div>
                 <div class="progress mt-1" style="height:4px;background:rgba(0,0,0,.06)" title="' . lang(array(
                     'string' => '{var:1} request{suffix:1} · peak {var:2} ms',
@@ -362,9 +362,9 @@ function pg_dashboard_widget_23($request, $user)
 
         if ($pf_rows === '') {
             $pf_rows = '
-            <div class="text-center py-4">
-                <i class="bi bi-speedometer2 d-block mb-2" style="font-size:22px;opacity:.35"></i>
-                <p class="text-muted mb-0" style="font-size:12px">' . lang('No data yet for the selected period.') . '</p>
+            <div class="text-center py-7">
+                <i class="bi bi-speedometer2 d-block mb-3" style="font-size:22px;opacity:.35"></i>
+                <p class="fg-secondary mb-0" style="font-size:12px">' . lang('No data yet for the selected period.') . '</p>
             </div>';
         }
 
@@ -382,23 +382,23 @@ function pg_dashboard_widget_23($request, $user)
             <div class="card-body p-0 d-flex flex-column" style="overflow-x:hidden;overflow-y:auto">
                 ' . $pf_gauge . '
                 <div class="d-flex border-bottom">
-                    <div class="flex-fill px-3 py-2">
-                        <div class="fw-semibold text-' . h($pf_avg_color) . '" style="font-size:17px;line-height:1">' . pg_format_number($pf_avg, 0) . ' <span style="font-size:11px">ms</span></div>
-                        <div class="text-muted text-truncate" style="font-size:11px">' . lang('Average') . '</div>
+                    <div class="flex-fill px-5 py-3">
+                        <div class="fw-semibold fg-' . h($pf_avg_color) . '" style="font-size:17px;line-height:1">' . pg_format_number($pf_avg, 0) . ' <span style="font-size:11px">ms</span></div>
+                        <div class="fg-secondary text-truncate" style="font-size:11px">' . lang('Average') . '</div>
                     </div>
-                    <div class="flex-fill px-3 py-2 border-start">
-                        <div class="fw-semibold text-' . h($pf_slow_color) . '" style="font-size:17px;line-height:1">' . pg_format_number($pf_slow, 0) . '</div>
-                        <div class="text-muted text-truncate" style="font-size:11px">' . lang(array(
+                    <div class="flex-fill px-5 py-3 border-start">
+                        <div class="fw-semibold fg-' . h($pf_slow_color) . '" style="font-size:17px;line-height:1">' . pg_format_number($pf_slow, 0) . '</div>
+                        <div class="fg-secondary text-truncate" style="font-size:11px">' . lang(array(
                             'string' => 'Slower than {var:1} ms',
                             'vars'   => pg_format_number($pf_slow_ms, 0),
                         )) . '</div>
                     </div>
                 </div>
-                <div class="d-flex align-items-center justify-content-between px-3 pt-2 pb-1">
-                    <span class="text-muted" style="font-size:11px">' . lang('Slowest pages') . '</span>
-                    <span class="text-muted" style="font-size:10px">' . lang('Front end') . ' · ' . lang('Last 24 hours') . '</span>
+                <div class="d-flex align-items-center justify-content-between px-5 pt-3 pb-1">
+                    <span class="fg-secondary" style="font-size:11px">' . lang('Slowest pages') . '</span>
+                    <span class="fg-secondary" style="font-size:10px">' . lang('Front end') . ' · ' . lang('Last 24 hours') . '</span>
                 </div>
-                <div class="px-3 pb-2">' . $pf_rows . '</div>
+                <div class="px-5 pb-3">' . $pf_rows . '</div>
             </div>' . $pf_footer;
 
         $response = array(

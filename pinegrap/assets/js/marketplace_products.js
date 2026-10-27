@@ -88,7 +88,7 @@
 
         var alert = document.createElement('div');
 
-        alert.className = 'alert alert-' + (kind || 'info') + ' alert-dismissible fade show';
+        alert.className = 'alert theme-' + (kind || 'info') + ' alert-dismissible fade show';
         alert.setAttribute('role', kind === 'danger' ? 'alert' : 'status');
         alert.textContent = message;
 
@@ -439,7 +439,7 @@
         var before = cell.innerHTML;
         var form = element('form', 'mpp-code-edit');
         var input = element('input', 'form-control form-control-sm');
-        var save = element('button', 'btn btn-sm btn-primary', label('save'));
+        var save = element('button', 'btn btn-sm btn-solid theme-primary', label('save'));
         var cancel = element('button', 'btn btn-sm btn-ghost', label('cancel'));
 
         input.type = 'text';
@@ -552,7 +552,7 @@
         search.placeholder = label('search');
         search.setAttribute('aria-label', label('search'));
 
-        var caption = element('div', 'small text-body-secondary mt-3');
+        var caption = element('div', 'small fg-secondary mt-5');
         var grid = element('div', 'mpp-pick-grid');
 
         built.body.appendChild(head);
@@ -636,14 +636,14 @@
         meta.appendChild(element('span', '', product.stock));
 
         if (!product.enabled) {
-            meta.appendChild(element('span', 'text-warning', label('disabled')));
+            meta.appendChild(element('span', 'fg-warning', label('disabled')));
         }
 
         button.appendChild(meta);
 
         if (product.matched) {
             button.disabled = true;
-            button.appendChild(element('div', 'small text-body-secondary', label('matched_to', [product.matched])));
+            button.appendChild(element('div', 'small fg-secondary', label('matched_to', [product.matched])));
         }
 
         button.addEventListener('click', function () {
