@@ -81,11 +81,13 @@ function get_form_item_view($properties) {
         
         // if there is a form id (e.g. the form item view is being used as a confirmation after a custom form has been submitted), then use that to get the submitted form
         if ($form_id != '') {
-            $where = "forms.id = '" . e($form_id) . "'";
+            $where = "forms.id = ?";
+            $where_values = array((string) $form_id);
         
         // else get the submitted form by using the reference code
         } else {
-            $where = "forms.reference_code = '" . e($reference_code) . "'";
+            $where = "forms.reference_code = ?";
+            $where_values = array((string) $reference_code);
         }
         
         // get submitted form
@@ -104,13 +106,13 @@ function get_form_item_view($properties) {
         FROM forms
         LEFT JOIN user as submitter ON forms.user_id = submitter.user_id
         LEFT JOIN user as last_modifier ON forms.last_modified_user_id = last_modifier.user_id
-        LEFT JOIN submitted_form_info ON ((forms.id = submitted_form_info.submitted_form_id) AND (submitted_form_info.page_id = '$page_id'))
+        LEFT JOIN submitted_form_info ON ((forms.id = submitted_form_info.submitted_form_id) AND (submitted_form_info.page_id = ?))
         LEFT JOIN comments AS newest_comment ON submitted_form_info.newest_comment_id = newest_comment.id
         LEFT JOIN user AS newest_comment_submitter ON newest_comment.created_user_id = newest_comment_submitter.user_id
         WHERE
-            (forms.page_id = '" . escape($custom_form_page_id) . "')
+            (forms.page_id = ?)
             AND ($where)";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array_merge(array((string) $page_id, (string) $custom_form_page_id), $where_values)) or output_error('Query failed.');
         
         // if page is not being edited and a form was not found for reference code, then determine what to do.
         if (($editable == false) && (mysqli_num_rows($result) == 0)) {
@@ -153,8 +155,8 @@ function get_form_item_view($properties) {
 
         // Get folder id that custom form is in, in order to check if user has edit access to custom form.
         // We will use this in several places below.
-        $query = "SELECT page_folder FROM page WHERE page_id = '" . escape($custom_form_page_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT page_folder FROM page WHERE page_id = ?";
+        $result = db_q($query, array((string) $custom_form_page_id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $folder_id = $row['page_folder'];
 
@@ -193,9 +195,9 @@ function get_form_item_view($properties) {
                         FROM form_data
                         LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
                         WHERE
-                            (form_data.form_id = '" . escape($submitted_form['id']) . "')
+                            (form_data.form_id = ?)
                             AND (form_fields.contact_field = 'email_address')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $submitted_form['id'])) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
                     $submitter_email_address = $row['data'];
 
@@ -211,13 +213,17 @@ function get_form_item_view($properties) {
                             FROM watchers
                             WHERE
                                 (
-                                    (user_id = '" . USER_ID . "')
-                                    OR (email_address = '" . escape(USER_EMAIL_ADDRESS) . "')
+                                    (user_id = ?)
+                                    OR (email_address = ?)
                                 )
-                                AND (page_id = '" . escape($page_id) . "')
-                                AND (item_id = '" . escape($submitted_form['id']) . "')
+                                AND (page_id = ?)
+                                AND (item_id = ?)
                                 AND (item_type = 'submitted_form')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $result = db_q($query, array(
+                            (string) USER_ID,
+                            (string) USER_EMAIL_ADDRESS,
+                            (string) $page_id,
+                            (string) $submitted_form['id'])) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
                         
                         // If the user is a watcher, then the user has view access.
@@ -289,8 +295,8 @@ function get_form_item_view($properties) {
             }
             
             // get label column width for custom form
-            $query = "SELECT label_column_width FROM custom_form_pages WHERE page_id = '" . escape($custom_form_page_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT label_column_width FROM custom_form_pages WHERE page_id = ?";
+            $result = db_q($query, array((string) $custom_form_page_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $label_column_width = $row['label_column_width'];
             
@@ -318,10 +324,10 @@ function get_form_item_view($properties) {
                     FROM form_data
                     LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
                     WHERE
-                        (form_data.form_id = '" . escape($submitted_form['id']) . "')
+                        (form_data.form_id = ?)
                         $sql_office_use_only
                     GROUP BY form_data.form_field_id";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $submitted_form['id'])) or output_error('Query failed.');
 
                 $fields = array();
 
@@ -336,9 +342,9 @@ function get_form_item_view($properties) {
                         $query =
                             "SELECT data
                             FROM form_data
-                            WHERE (form_id = '" . escape($submitted_form['id']) . "') AND (form_field_id = '" . $field['form_field_id'] . "')
+                            WHERE (form_id = ?) AND (form_field_id = ?)
                             ORDER BY id";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $result = db_q($query, array((string) $submitted_form['id'], (string) $field['form_field_id'])) or output_error('Query failed.');
                         
                         $field['data'] = array();
                         
@@ -434,10 +440,10 @@ function get_form_item_view($properties) {
                     office_use_only
                 FROM form_fields
                 WHERE
-                    (page_id = '" . escape($custom_form_page_id) . "')
+                    (page_id = ?)
                     $sql_office_use_only
                 ORDER BY sort_order";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $custom_form_page_id)) or output_error('Query failed.');
             
             $fields = array();
             
@@ -514,9 +520,9 @@ function get_form_item_view($properties) {
                                 value,
                                 default_selected
                             FROM form_field_options
-                            WHERE form_field_id = '" . $field['id'] . "'
+                            WHERE form_field_id = ?
                             ORDER BY sort_order";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $result = db_q($query, array((string) $field['id'])) or output_error('Query failed.');
                         
                         $options = array();
                         
@@ -834,10 +840,10 @@ function get_form_item_view($properties) {
                         page_id,
                         timestamp)
                     VALUES (
-                        '" . $submitted_form['id'] . "',
-                        '" . $page_id . "',
+                        ?,
+                        ?,
                         UNIX_TIMESTAMP())";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $submitted_form['id'], (string) $page_id)) or output_error('Query failed.');
             }
 
             // Sampled retention sweep, still six months.
@@ -897,9 +903,9 @@ function get_form_item_view($properties) {
                 FROM form_data
                 LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
                 LEFT JOIN files on form_data.file_id = files.id
-                WHERE form_data.form_id = '" . escape($submitted_form['id']) . "'
+                WHERE form_data.form_id = ?
                 GROUP BY form_data.form_field_id";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $submitted_form['id'])) or output_error('Query failed.');
 
             // initialize array to remember which fields have data, for use with conditionals later
             $custom_fields_with_data = array();
@@ -917,9 +923,9 @@ function get_form_item_view($properties) {
                     $query =
                         "SELECT data
                         FROM form_data
-                        WHERE (form_id = '" . escape($submitted_form['id']) . "') AND (form_field_id = '" . $field['form_field_id'] . "')
+                        WHERE (form_id = ?) AND (form_field_id = ?)
                         ORDER BY id";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $submitted_form['id'], (string) $field['form_field_id'])) or output_error('Query failed.');
                     
                     $field['data'] = array();
                     
@@ -968,8 +974,8 @@ function get_form_item_view($properties) {
                     type,
                     wysiwyg
                 FROM form_fields
-                WHERE page_id = '" . escape($custom_form_page_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE page_id = ?";
+            $result = db_q($query, array((string) $custom_form_page_id)) or output_error('Query failed.');
             
             $custom_fields = array();
             

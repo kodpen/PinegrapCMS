@@ -7,9 +7,11 @@
  * email_preferences.php, add_or_remove_watcher.php,
  * affiliate_sign_up_form.php): their raw queries with values run through
  * db_q() placeholders, not escape()/e() concatenated into the SQL text, and
- * every db_q() call passes one value per '?'. The raw queries left are
- * those without values and those completed by a clause built elsewhere
- * with escaped values, which may hold a '?'.
+ * every db_q() call passes one value per '?'. The raw queries left are the
+ * two of email_preferences.php without values. A clause built elsewhere
+ * either holds '?' with its values beside it ($where, $sql_update_username,
+ * the opt-in column) or holds no value at all ($sql_field_selects,
+ * $sql_office_use_only, the integer-only $sql_update_user).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -119,13 +121,20 @@ function db_q_front_test_calls($path)
 // Clause variables a raw query may still be completed by.
 function db_q_front_test_built($text)
 {
-	return (bool) preg_match('/\$(sql_none)\b/', $text);
+	return (bool) preg_match('/\$(where|sql_field_selects|sql_office_use_only|sql_update_username|sql_update_user)\b/', $text);
 }
 
 // Each converted file with the number of its queries that run through db_q().
 function db_q_front_test_files()
 {
-	return array('affiliate_sign_up_form.php' => 13);
+	return array(
+		'get_shopping_cart.php' => 13,
+		'get_form_item_view.php' => 13,
+		'get_view_order_screen_content.php' => 15,
+		'email_preferences.php' => 17,
+		'add_or_remove_watcher.php' => 15,
+		'affiliate_sign_up_form.php' => 13,
+	);
 }
 
 function test_db_q_front_value_queries_use_db_q()
@@ -214,4 +223,17 @@ function test_db_q_front_binds_as_before()
 	pg_assert_same(
 		"SELECT user_id FROM user WHERE (user_email = '') AND (user_username != 'o\\'neil')",
 		pg_db_bind('SELECT user_id FROM user WHERE (user_email = ?) AND (user_username != ?)', array((string) null, (string) "o'neil"), $escape));
+	// The submitted form lookup of the form item view: the form id or the
+	// reference code goes beside its clause, after the two page ids.
+	$where = 'forms.reference_code = ?';
+	pg_assert_same(
+		"SELECT forms.id FROM forms WHERE (submitted_form_info.page_id = '9') AND (forms.page_id = '3') AND (forms.reference_code = 'R\\'1')",
+		pg_db_bind("SELECT forms.id FROM forms WHERE (submitted_form_info.page_id = ?) AND (forms.page_id = ?) AND ($where)", array_merge(array((string) 9, (string) '3'), array((string) "R'1")), $escape));
+	// The contact update of the email preferences writes opt_in only when the
+	// form drew its control; the integer user clause stays inline.
+	foreach (array(true, false) as $opt_in_posted) {
+		pg_assert_same(
+			"UPDATE contacts SET email_address = 'a@b.c', " . ($opt_in_posted ? "opt_in = '1'," : '') . " user = '7', timestamp = UNIX_TIMESTAMP() WHERE id = '5'",
+			pg_db_bind("UPDATE contacts SET email_address = ?, " . ($opt_in_posted ? 'opt_in = ?,' : '') . " user = '7', timestamp = UNIX_TIMESTAMP() WHERE id = ?", array_merge(array('a@b.c'), $opt_in_posted ? array('1') : array(), array('5')), $escape));
+	}
 }

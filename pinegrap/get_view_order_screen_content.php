@@ -106,8 +106,8 @@ function get_view_order_screen_content($properties)
         FROM orders
         LEFT JOIN countries ON orders.billing_country = countries.code
         WHERE
-            (orders.id = '" . escape($order_id) . "')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            (orders.id = ?)";
+    $result = db_q($query, array((string) $order_id)) or output_error('Query failed.');
     
     // If the user came from the control panel, then there is no order to show, so return the
     // placeholder notice right away instead of running the order and ownership checks below.
@@ -166,8 +166,8 @@ function get_view_order_screen_content($properties)
     $figures = pg_order_page_figures($row, $_SESSION['ecommerce'] ?? array());
 
     // get user id for user
-    $query = "SELECT user_id FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT user_id FROM user WHERE user_username = ?";
+    $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $user_id = $row['user_id'];
 
@@ -208,9 +208,9 @@ function get_view_order_screen_content($properties)
             "SELECT COUNT(*)
             FROM order_items
             WHERE
-                (order_id = '" . escape($order_id) . "')
+                (order_id = ?)
                 AND (show_shipped_quantity = '1')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $order_id)) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         
         // if there is at least one order item where shipped quantities will be shown, then set various values for that
@@ -232,8 +232,8 @@ function get_view_order_screen_content($properties)
         $shipping = false;
         
         // get all ship tos
-        $query = "SELECT DISTINCT ship_to_id FROM order_items WHERE order_id = '" . e($order_id) . "' ORDER BY ship_to_id";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT DISTINCT ship_to_id FROM order_items WHERE order_id = ? ORDER BY ship_to_id";
+        $result = db_q($query, array((string) $order_id)) or output_error('Query failed.');
 
         $ship_tos = array();
 
@@ -295,9 +295,9 @@ function get_view_order_screen_content($properties)
                         ship_tos.offer_id
                     FROM ship_tos
                     LEFT JOIN shipping_methods ON shipping_methods.id = ship_tos.shipping_method_id
-                    WHERE ship_tos.id = '" . (int) $ship_to_id . "'";
+                    WHERE ship_tos.id = ?";
                 
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) (int) $ship_to_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $ship_to_name = $row['ship_to_name'] ?? '';
                 $salutation = $row['salutation'] ?? '';
@@ -322,8 +322,8 @@ function get_view_order_screen_content($properties)
                 $ship_to_offer_id = $row['offer_id'] ?? '';
                 
                 // get country name
-                $query = "SELECT name FROM countries WHERE code = '" . escape($country) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT name FROM countries WHERE code = ?";
+                $result = db_q($query, array((string) $country)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $country = $row['name'] ?? '';
                 
@@ -365,10 +365,10 @@ function get_view_order_screen_content($properties)
                     FROM order_items
                     LEFT JOIN products ON order_items.product_id = products.id
                     WHERE
-                        (order_items.order_id = '" . e($order_id) . "')
-                        AND (order_items.ship_to_id = '$ship_to_id')
+                        (order_items.order_id = ?)
+                        AND (order_items.ship_to_id = ?)
                     ORDER BY order_items.id";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $order_id, (string) $ship_to_id)) or output_error('Query failed.');
 
                 $order_items = array();
 
@@ -843,9 +843,9 @@ function get_view_order_screen_content($properties)
                             $query =
                                 "SELECT number
                                 FROM shipping_tracking_numbers
-                                WHERE ship_to_id = '" . $ship_to_id . "'
+                                WHERE ship_to_id = ?
                                 ORDER BY id ASC";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $result = db_q($query, array((string) $ship_to_id)) or output_error('Query failed.');
                             $shipping_tracking_numbers = mysqli_fetch_items($result);
                             
                             // if there is at least one shipping tracking number, then output them
@@ -983,8 +983,8 @@ function get_view_order_screen_content($properties)
                         $shipping_description = 'Shipping Method: ' . $shipping_method_name;
 
                         // get arrival date information
-                        $query = "SELECT name, custom FROM arrival_dates WHERE id = '$arrival_date_id'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "SELECT name, custom FROM arrival_dates WHERE id = ?";
+                        $result = db_q($query, array((string) $arrival_date_id)) or output_error('Query failed.');
                         
                         // if an arrival date was selected, then prepare requested arrival date content
                         if (mysqli_num_rows($result) > 0) {
@@ -1194,11 +1194,11 @@ function get_view_order_screen_content($properties)
             FROM order_items
             LEFT JOIN products ON order_items.product_id = products.id
             WHERE
-                (order_items.order_id = '" . e($order_id) . "')
+                (order_items.order_id = ?)
                 AND (products.order_receipt_message != '')
                 AND (products.order_receipt_message != '<p />')
             ORDER BY ship_to_id";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $order_id)) or output_error('Query failed.');
         
         $output_order_receipt_messages = '';
             
@@ -1286,9 +1286,9 @@ function get_view_order_screen_content($properties)
                     new_balance,
                     givex
                 FROM applied_gift_cards
-                WHERE order_id = '" . e($order_id) . "'
+                WHERE order_id = ?
                 ORDER BY id ASC";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $order_id)) or output_error('Query failed.');
 
             $applied_gift_cards = array();
             
@@ -1453,8 +1453,8 @@ function get_view_order_screen_content($properties)
             // loop through each applied offer
             foreach ($applied_offers as $offer_id) {
                 // get offer data
-                $query = "SELECT code, description FROM offers WHERE id = '$offer_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT code, description FROM offers WHERE id = ?";
+                $result = db_q($query, array((string) $offer_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $offer_description = pg_offer_public_label($row);
                 
@@ -1506,8 +1506,8 @@ function get_view_order_screen_content($properties)
                 custom_field_1_label,
                 custom_field_2_label
             FROM billing_information_pages
-            WHERE page_id = '" . escape($_SESSION['ecommerce']['billing_information_page_id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE page_id = ?";
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['billing_information_page_id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
         // The labels come from the billing information page of this visit's
@@ -1855,9 +1855,9 @@ function get_view_order_screen_content($properties)
                 $query =
                     "SELECT number
                     FROM shipping_tracking_numbers
-                    WHERE ship_to_id = '" . $recipient['id'] . "'
+                    WHERE ship_to_id = ?
                     ORDER BY id ASC";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $recipient['id'])) or output_error('Query failed.');
                 $shipping_tracking_numbers = mysqli_fetch_items($result);
                 
                 // if there is at least one shipping tracking number, then output them
@@ -2492,8 +2492,8 @@ function get_view_order_screen_content($properties)
                 custom_field_1_label,
                 custom_field_2_label
             FROM billing_information_pages
-            WHERE page_id = '" . e($_SESSION['ecommerce']['billing_information_page_id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE page_id = ?";
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['billing_information_page_id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
         // The labels come from the billing information page of this visit's
