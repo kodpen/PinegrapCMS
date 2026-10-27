@@ -37,7 +37,7 @@ Nothing open.
 - W14 done (#1602, #1701, #1719, [[widget-fill-filters]], [[widget-fill-shop]]).
 - W15 done (#1734). W16 default parts: order view #1808 #1824 #1863, stars #1908, crumbs #1945, cross-sell #1973 #2067 ([[widget-default-parts]]); rest left.
 - W17 Widget parts anywhere on the page. W18 Page-level conditions and page record context.
-- W19 done #1904 #1914 #1928 ([[widget-condition-canvas]]).
+- W19 done #1904 #1914 #1928, opening state #2232 ([[widget-condition-canvas]]).
 - W20 Parts palette, starter library. W21 Per-placement settings. W22 Code areas, classic form-layout converter. W23 `eo_visible_if` and pg-hide-if-empty as engine aliases. W24 Express order lists.
 
 ## How are other sessions kept clear?
