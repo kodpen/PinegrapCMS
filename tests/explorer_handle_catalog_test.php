@@ -2,11 +2,12 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for the explorer's catalog list, tree, group, rename, membership and
- * pages sub-action handlers (includes/explorer/handle_catalog.php): the
- * handlers live there, behind the gate, pg_explorer_handle() calls each one
- * for its sub-action, and the pure parts (how long a binned row has left, when
- * a group's short description follows its new name) behave as before.
+ * Tests for the explorer's catalog sub-action handlers
+ * (includes/explorer/handle_catalog.php): the handlers live there, behind the
+ * gate, pg_explorer_handle() calls each one for its sub-action, and the pure
+ * parts (how long a binned row has left, when a group's short description
+ * follows its new name, the recycle_bin type of a grid kind, how refusals
+ * join the bin message) behave as before.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -33,7 +34,12 @@ function test_explorer_catalog_handlers_live_in_their_own_file()
 		'catalog_create_group',
 		'catalog_rename',
 		'catalog_membership_remove',
-		'catalog_pages');
+		'catalog_pages',
+		'catalog_paste',
+		'catalog_recycle',
+		'catalog_restore',
+		'catalog_purge',
+		'catalog_enable');
 
 	foreach ($actions as $action) {
 		$function = 'pg_explorer_handle_' . $action;
@@ -74,4 +80,23 @@ function test_explorer_catalog_short_description_follows_name()
 	pg_assert_true(pg_explorer_catalog_short_description_follows_name(array('name' => 'Shoes ', 'short_description' => ' Shoes')), 'same name');
 	pg_assert_false(pg_explorer_catalog_short_description_follows_name(array('name' => 'Shoes', 'short_description' => 'Our shoes')), 'written by hand');
 	pg_assert_false(pg_explorer_catalog_short_description_follows_name(false), 'no row');
+}
+
+// The grid's kinds name the recycle_bin types the purge deletes; anything else
+// is no type at all.
+function test_explorer_catalog_bin_item_type()
+{
+	pg_assert_same('product_group', pg_explorer_catalog_bin_item_type('group'), 'group');
+	pg_assert_same('product', pg_explorer_catalog_bin_item_type('product'), 'product');
+	pg_assert_same('', pg_explorer_catalog_bin_item_type('folder'), 'other kind');
+	pg_assert_same('', pg_explorer_catalog_bin_item_type(''), 'no kind');
+}
+
+// Refusals follow the count when something was binned and replace it when
+// nothing was, each reason said once.
+function test_explorer_catalog_recycle_message()
+{
+	pg_assert_same('2 binned.', pg_explorer_catalog_recycle_message('2 binned.', 2, array()), 'no refusals');
+	pg_assert_same('2 binned. Root. Other.', pg_explorer_catalog_recycle_message('2 binned.', 2, array('Root.', 'Other.', 'Root.')), 'after the count');
+	pg_assert_same('Root.', pg_explorer_catalog_recycle_message('Sorry.', 0, array('Root.', 'Root.')), 'instead of the count');
 }
