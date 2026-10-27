@@ -39,4 +39,4 @@ description: Plan (2026-10-23; 1, 2, 6, 7, 8, 9, 11 done, 4, 5 partly; answers o
 5. Dictation (Chrome sends audio to Google): (a) offer, privacy line, (b) not now → owner.
 
 ## Where to start?
-- Every step that needs no answer is done. Left: 3 after question 1, the "Aa" box of 5 after question 2, autoformat of 4 (`==x==`, also "- " at a line's start) after question 3, and 10 (schema) after question 4 and the owner's yes to the schema change.
+- Steps needing no answer are done. Left: 3 (question 1), the "Aa" box of 5 (question 2), autoformat of 4 (`==x==`, "- " at a line's start; question 3), 10 (question 4, schema).
