@@ -6,6 +6,7 @@ description: The reference check of a flow (data-passing D4, PR #2305): bad_refe
 ## What is checked?
 - `ws_flow_reference_problems()`, the last part of `ws_flow_graph_check()` (flows.php), reads the `{{node.<id>.<field>}}` of `ws_flow_node_texts()`: a step's `texts`, a task box's title and description (the texts a run fills).
 - `bad_reference`: a box the flow does not have; a box that does not come before the reader (backwards along the arrows; the box itself included); a field outside `ws_flow_node_fields()` (text, outcome, status and the outputs, `ws_step_outputs()` for a step, so a report's counts count).
+- `{{trigger.<field>}}`: `bad_reference` for a field the start box does not declare (`ws_flow_trigger_fields()`, D5, `workspace-flows-trigger-values.md`).
 - Tests `tests/workspace_flow_graph_check_test.php`.
 
 ## When is it only a warning?

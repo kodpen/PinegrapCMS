@@ -458,6 +458,7 @@
     "What the desk looks for": "Masanın aradıkları",
     "What the editors look for": "Editörlerin aradıkları",
     "What the file manager takes: no PHP, .htaccess, web.config, shell scripts or programs.": "Dosya yöneticisinin kuralları geçerli: PHP, .htaccess, web.config, kabuk betikleri ve programlar yüklenemez.",
+    "What the guest wrote": "Misafirin yazdığı",
     "What the main button does: Save on a draft, Publish on a page on the site": "Ana düğmenin işini yapar: taslakta Kaydet, yayındaki sayfada Yayınla",
     "What the nightly accessibility check found on the published pages, against WCAG 2.2 Level A and the contrast and target size of Level AA. Only what the markup shows can be checked automatically; a person must review the rest.": "Gecelik erişilebilirlik denetiminin yayındaki sayfalarda WCAG 2.2 A Düzeyine ve AA Düzeyinin kontrast ve hedef boyutu ölçütlerine göre bulduğu sorunlar. Otomatik olarak yalnızca işaretlemede görünen denetlenebilir; geri kalanını bir kişi gözden geçirmelidir.",
     "What the site keeps": "Sitenin tuttukları",
