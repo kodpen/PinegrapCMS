@@ -2512,6 +2512,7 @@
     "The person this is proposed to may not change a record of this kind ({var:1}), so it cannot be proposed.": "Bu önerinin yapıldığı kişi bu türde bir kaydı ({var:1}) değiştiremez, bu yüzden önerilemez.",
     "The person who asked is no longer a member of the workspace.": "Soran kişi artık çalışma alanının üyesi değil.",
     "The person who asked may not change a record of this kind ({var:1}). Say so in the answer instead of proposing it.": "Soran kişinin bu türde kaydı ({var:1}) değiştirme yetkisi yok. Önermek yerine bunu yanıtta söyleyin.",
+    "The person who started the run may not make this change.": "Akışı başlatan kişi bu değişikliği yapamaz.",
     "The picture could not be read, or it is larger than 2 MB.": "Resim okunamadı ya da 2 MB'tan büyük.",
     "The picture could not be saved.": "Resim kaydedilemedi.",
     "The picture has to be a JPEG, PNG or WebP image.": "Resim JPEG, PNG ya da WebP olmalı.",
