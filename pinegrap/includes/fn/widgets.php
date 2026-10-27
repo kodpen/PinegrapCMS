@@ -6663,11 +6663,10 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // they exist only where they were added by hand. Both are reserved
     // for the ERP module, which will add them through its own migration;
     // once that ships this probe becomes unnecessary. Until then, probe
-    // once via SHOW COLUMNS so the SELECT never hard-fails.
+    // with pg_schema_has() so the SELECT never hard-fails.
     static $_order_view_has_notes_col = null;
     if ($_order_view_has_notes_col === null) {
-        $_probe = db_value("SHOW COLUMNS FROM orders LIKE 'notes'");
-        $_order_view_has_notes_col = ($_probe !== '' && $_probe !== null);
+        $_order_view_has_notes_col = pg_schema_has('orders', 'notes');
     }
     $order_notes = '';
     if ($_order_view_has_notes_col) {
@@ -6799,8 +6798,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // optional columns and read once here; the timeline below reuses it.
     static $_order_view_has_paid_at_col = null;
     if ($_order_view_has_paid_at_col === null) {
-        $_probe_pa = db_value("SHOW COLUMNS FROM orders LIKE 'paid_at'");
-        $_order_view_has_paid_at_col = ($_probe_pa !== '' && $_probe_pa !== null);
+        $_order_view_has_paid_at_col = pg_schema_has('orders', 'paid_at');
     }
     $paid_at_ts = 0;
     if ($_order_view_has_paid_at_col) {
@@ -7029,8 +7027,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // arrives — closest to what customers actually want to see).
     static $_order_view_has_cancelled_at_col = null;
     if ($_order_view_has_cancelled_at_col === null) {
-        $_probe_ca = db_value("SHOW COLUMNS FROM orders LIKE 'cancelled_at'");
-        $_order_view_has_cancelled_at_col = ($_probe_ca !== '' && $_probe_ca !== null);
+        $_order_view_has_cancelled_at_col = pg_schema_has('orders', 'cancelled_at');
     }
     $cancelled_at_ts = 0;
     $cancellation_reason = '';
