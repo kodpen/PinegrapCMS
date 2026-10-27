@@ -65,7 +65,7 @@
             var row = el('div', 'ws-task-approvals-person ws-approval-' + who.decision);
             var face = h.avatar(who);
 
-            face.className = 'ws-approval-face';
+            face.classList.add('ws-approval-face');
             row.appendChild(face);
             row.appendChild(el('span', 'ws-approval-name', who.name));
 

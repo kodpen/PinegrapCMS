@@ -432,3 +432,85 @@ function pg_designer_region_component($name, $user, &$warnings, $stack = array()
         'vars' => array($row['cregion_name'], $unique))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
     return array('id' => $sid, 'name' => $unique, 'created' => true);
 }
+
+/**
+ * The tree of a shared component drawing a common region's content: the
+ * content converted as a designer region's is, inside one block marked
+ * `_editable`, so the managers and the users granted the region keep editing
+ * all of it at content level. Code nodes in it stay as written
+ * (pg_designer_merge_restricted_tree() never takes them from a content save).
+ *
+ * @param string   $content  cregion_content
+ * @param callable $lookup   as pg_di_designer_region_tree()
+ * @param array    $opts     as pg_di_designer_region_tree()
+ * @return array  as pg_di_designer_region_tree()
+ */
+function pg_di_common_region_tree($content, $lookup, $opts = array())
+{
+    $res = pg_di_designer_region_tree($content, $lookup, $opts);
+    $block = pg_di_mk('semantic', array('tag' => 'div', 'cssClass' => '', '_editable' => 1), $res['tree']['children']);
+    $res['tree'] = pg_di_root(array($block));
+    return $res;
+}
+
+/**
+ * The shared component drawing a common region (category
+ * "common_region:<id>"): the one made before, else a new row opened to
+ * content editors, with the users granted the region granted the component.
+ * From then on the region's <cregion> tag draws the component on every page
+ * (get_page_content.php); the row stays, its content no longer read.
+ * Placeholders inside stay region nodes: a classic common region expands
+ * none of them, and a component made here holds no other component.
+ *
+ * Needs the content-editing schema (pg_shared_component_content_ready()):
+ * without it the people who edit the region would lose it.
+ *
+ * @param int   $cregion_id  id of a common region
+ * @param array $user        the designer converting it
+ * @param array &$warnings   what the operator is told
+ * @return array|null  array('id' => int, 'name' => string, 'created' => bool), null when no such region
+ */
+function pg_common_region_component($cregion_id, $user, &$warnings)
+{
+    $rid = (int)$cregion_id;
+    $row = db_item("SELECT cregion_id, cregion_name, cregion_content FROM cregion
+                    WHERE cregion_id = '$rid' AND cregion_designer_type = 'no' LIMIT 1");
+    if (!is_array($row)) return null;
+    $marker = pg_common_region_component_category($rid);
+
+    $have = db_item("SELECT id, name FROM shared_components
+                     WHERE category = '" . e($marker) . "' AND (system_region_config IS NULL OR system_region_config = '')
+                     ORDER BY id ASC LIMIT 1");
+    if (is_array($have)) return array('id' => (int)$have['id'], 'name' => (string)$have['name'], 'created' => false);
+
+    $lookup = function ($inner) {
+        $hit = db_item("SELECT cregion_designer_type FROM cregion WHERE cregion_name = '" . e($inner) . "' LIMIT 1");
+        return array('regionType' => (is_array($hit) && $hit['cregion_designer_type'] === 'yes') ? 'designer' : 'common');
+    };
+
+    $res = pg_di_common_region_tree($row['cregion_content'], $lookup, array('php' => defined('PHP_REGIONS') && PHP_REGIONS));
+    $notes = $res['warnings'];
+    if ($res['php'] === 'whole') {
+        $notes[] = lang('Its PHP could not be cut into separate blocks, so the region is one PHP block that prints it as before.');
+    }
+    if (($res['php'] === 'blocks' || $res['php'] === 'whole') && pg_hosted()) {
+        $notes[] = lang('A hosted site runs no PHP written in the designer: its PHP blocks print nothing.');
+    }
+    foreach ($notes as $note) {
+        $warnings[] = $row['cregion_name'] . ': ' . $note;
+    }
+
+    $tree_json = pg_designer_tree_encode($res['tree']);
+    if ($tree_json === '') return null;
+    $unique = _sc_unique_name((string)$row['cregion_name']);
+    $now = time();
+    db("INSERT INTO shared_components (name, description, tree_json, category, content_editable, created_by, created_at, updated_at)
+        VALUES ('" . e($unique) . "', '', '" . e($tree_json) . "', '" . e($marker) . "', 1, '" . (int)$user['id'] . "', '$now', '$now')");
+    $sid = (int)mysqli_insert_id(db::$con);
+    if ($sid <= 0) return null;
+    db("INSERT IGNORE INTO users_shared_components_xref (user_id, shared_component_id)
+        SELECT user_id, '$sid' FROM users_common_regions_xref WHERE common_region_id = '$rid'");
+    log_activity(lang(array('string' => 'common region ({var:1}) was made the shared component ({var:2})',
+        'vars' => array($row['cregion_name'], $unique))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+    return array('id' => $sid, 'name' => $unique, 'created' => true);
+}

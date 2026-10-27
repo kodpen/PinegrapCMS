@@ -69,6 +69,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-approval-box.md: The approval box of a flow (F5c, PR #2142): asks, waits on approval:<id>, leaves on approved, rejected, expired, withdrawn or failed; deadline in hours, woken by approval.decided or the hourly look
 - workspace-flows-box-try.md: Trying one box of a flow's draft without running it (F4e, PR #2024, ws_flow_box_try()): answers per kind, run values, rights, panel action, read-only API route, canvas button
 - workspace-flows-canvas.md: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, panel actions, editor, autosave, 409, focus, keys, outline, read-only, what is left; the run view has its own file
+- workspace-flows-chain-box.md: The start a flow box (PR #2235, flow_runs.php): another live flow started by hand, started by a box with the owner's rights, depth 8, start key per box, {{source}}, what non-editors read
 - workspace-flows-change-box.md: The change box of a flow (F4b3, PR #1957): the scheduled change step as a box, its settings, rights, what it writes, and why its record and values reach only the flow's editors
 - workspace-flows-condition-box.md: The condition box of a flow (F4c, PR #1980, flow_conditions.php): one scheduled-action condition, yes/no outcomes, a no without an arrow ends the branch, owner rights, what non-editors read
 - workspace-flows-delay-box.md: The delay box of a flow (F5b, PR #2135): amount and unit up to a week, waits as a waiting box with wake_at, settles done with waited_until, problems, try, canvas form
@@ -83,6 +84,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-template-format.md: Flow templates (G1 #2161, G3 flow-only, flow_templates.php): format, the scheduled templates that came over or wait, the flow-only ones, the gallery
 - workspace-flows-template-setup.md: Placing a flow template (G2): motion schedule from ws_flow_template_motion(), drawn threads, reduced motion, the setup panel, ws_flow_template_setup action, answers checked on the server
 - workspace-flows-trigger-values.md: What a flow's step boxes read of what started the run (#2205): event and record values, the newcomer and the channel joined in their texts, a post box in the channel joined (-1)
+- workspace-flows-versions.md: A paused flow resumed on its live version, and a flow's published versions listed, read and brought back into the draft (flow_versions.php, API routes, no schema)
 - workspace-flows-wait-timeout.md: The timeout of a flow task box (F5d): hours to wait, the timeout outcome, counted from the claim, next look capped at the deadline, the task end first, why approvals have none
 - workspace-followups.md: Workspace follow-ups (followups.php, #1790): ws_followup_task_open() opens a tagged, reminded task; "Remind me" on the customer card; quote expiry and overdue receivable jobs
 - workspace-mcp-agent-identity.md: One avatar and icon per MCP server asked by its alias ('mcp:<id>'), drawn the same by every server-side place (ws_mcp_agent_identity()); the catalogue entry found by URL; the name kept '@alias'

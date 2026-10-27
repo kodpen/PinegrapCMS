@@ -109,6 +109,6 @@ function test_dashboard_brief_next_under_way()
 		array('kind' => 'meeting', 'title' => 'Planning', 'starts_at' => $now - 300, 'ends_at' => $now + 1500, 'all_day' => false),
 	), $now);
 
-	pg_assert_true(strpos($html, 'class="pg-next is-now"') !== false, 'marked as now');
+	pg_assert_true(strpos($html, 'class="pg-next hover-lift is-now"') !== false, 'marked as now');
 	pg_assert_true(strpos($html, '<span class="pg-next-until">Now</span>') !== false, 'says now');
 }

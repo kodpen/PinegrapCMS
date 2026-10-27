@@ -25,4 +25,4 @@ description: Shared components opened to content editors (the designer's common 
 
 ## Where are the grants given?
 - User screens (add, edit, import; PR #580): Shared Content panel, list "Shared components the User may edit" (fields `shared_component_<id>`), shown only when a component is open; `get_checkboxes_for_items_user_can_edit('shared_components')` / `get_items_user_can_edit()` in `includes/fn/content.php`. Saved for role 3 by `pg_save_shared_component_grants($user_id, $_POST)`, which rewrites only the rows of open components: a grant on a closed one stays for when it opens again.
-- A role-3 user still reaches a component only through a page the designer lets them open (folder edit right): see the open question in `plans/legacy-retirement-prerequisites.md`. Tests: `tests/shared_component_content_test.php`.
+- A role-3 user still reaches a component only through a page the designer lets them open (folder edit right); owner 2026-10-27: they will open it on its own in the designer (R2b in `plans/legacy-retirement-prerequisites.md`). Common regions made components: `common-region-to-shared-component.md`. Tests: `tests/shared_component_content_test.php`.

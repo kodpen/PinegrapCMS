@@ -557,7 +557,7 @@ foreach ($candidates as $person) {
         <tr' . ($person['excluded'] ? ' class="opacity-50"' : '') . '>
             <td>
                 <div class="d-flex align-items-center gap-3">
-                    <img src="' . h($person['avatar']) . '" alt="" class="rounded-circle" width="28" height="28" loading="lazy">
+                    ' . pg_avatar_markup(array('name' => '') + $person, '', 'pg-avatar-28') . '
                     <div>
                         <div class="fw-semibold">' . h($person['name']) . '</div>
                         <div class="small">' . implode(' ', $own_departments) . '</div>

@@ -227,6 +227,8 @@ function ws_assistants()
                 'handle'    => '@' . $server['alias'],
                 'icon'      => $identity['icon'],
                 'avatar'    => $identity['avatar'],
+                'initials'  => (string) ($identity['initials'] ?? ''),
+                'tone'      => (int) ($identity['tone'] ?? 0),
                 'app_id'    => $agent ? 0 : (int) $ai['app_id'],
                 'server_id' => (int) $server['id'],
             );

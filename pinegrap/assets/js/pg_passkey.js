@@ -14,14 +14,25 @@
  *                                    passwordless a sign-in with the passkey
  *                                    alone: resolves with the credential
  *                                    JSON to post
- *   PgPasskey.register({url, token, name, currentPassword, code})
+ *   PgPasskey.register({url, token, name, currentPassword, code, emailCode})
  *                                    adds a passkey to the signed-in account:
  *                                    the current password (when the account
  *                                    has one) and a code from the
- *                                    authenticator app or a recovery code go
- *                                    with the request for the options, which
- *                                    the server answers only when both are
- *                                    right; resolves with the kept passkey
+ *                                    authenticator app or a recovery code,
+ *                                    or without two-step verification the
+ *                                    e-mailed code, go with the request for
+ *                                    the options, which the server answers
+ *                                    only when they are right; resolves with
+ *                                    the kept passkey, whose recoveryCodes
+ *                                    lists the codes to show once (empty
+ *                                    unless the account just got them)
+ *   PgPasskey.sendEmailCode({url, token})
+ *                                    has the server e-mail that code;
+ *                                    resolves with the sentence to show
+ *   PgPasskey.showRecoveryCodes(form, codes, texts)
+ *                                    puts the recovery codes, a download
+ *                                    link and a Continue button (which
+ *                                    reloads the page) in place of the form
  *
  * On load it also binds the "Sign in with a passkey" buttons of the sign-in
  * screens (pg_passkey_signin_button()) and, where a button carries
@@ -207,7 +218,8 @@
             action: 'register_options',
             token: settings.token,
             current_password: settings.currentPassword || '',
-            code: settings.code || ''
+            code: settings.code || '',
+            email_code: settings.emailCode || ''
         }).then(function (answer) {
             return window.navigator.credentials.create({ publicKey: creationOptions(answer.options) }).catch(browserFailure);
         }).then(function (credential) {
@@ -222,8 +234,55 @@
                 credential: JSON.stringify(credentialJSON(credential))
             });
         }).then(function (answer) {
-            return answer.passkey;
+            var passkey = answer.passkey || {};
+
+            passkey.recoveryCodes = answer.recovery_codes || [];
+
+            return passkey;
         });
+    }
+
+    function sendEmailCode(settings) {
+        return post(settings.url, { action: 'email_code', token: settings.token }).then(function (answer) {
+            return answer.message || '';
+        });
+    }
+
+    // texts: title, intro, download, continue (the server's sentences).
+    function showRecoveryCodes(form, codes, texts) {
+        var document = window.document;
+        var block = document.createElement('div');
+        var list = codes.join('\n');
+        var element = function (tag, text) {
+            var node = document.createElement(tag);
+
+            node.textContent = text;
+            block.appendChild(node);
+
+            return node;
+        };
+
+        element('strong', texts.title);
+        element('p', texts.intro);
+        element('pre', list).style.letterSpacing = '.08em';
+
+        var download = element('a', texts.download);
+
+        download.setAttribute('download', 'recovery-codes.txt');
+        download.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(list + '\n');
+        download.style.marginRight = '1em';
+
+        var button = element('button', texts['continue']);
+
+        button.type = 'button';
+        button.className = 'software_input_submit_primary';
+        button.addEventListener('click', function () {
+            window.location.reload();
+        });
+
+        form.parentNode.insertBefore(block, form);
+        form.hidden = true;
+        form.style.display = 'none';
     }
 
     // Posts a passkey sign-in answer to index.php in a form built here: the
@@ -380,7 +439,9 @@
     window.PgPasskey = {
         supported: supported,
         signIn: signIn,
-        register: register
+        register: register,
+        sendEmailCode: sendEmailCode,
+        showRecoveryCodes: showRecoveryCodes
     };
 
     if (window.document.readyState === 'loading') {
