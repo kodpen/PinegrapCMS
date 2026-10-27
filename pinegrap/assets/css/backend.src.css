@@ -9111,28 +9111,37 @@ body.pg-side-panel-open .pg-chat-launcher {
 /* Chips: a section of a category, on the tile and again in the category
    toolbar. Small enough that a list of six reads as one control. */
 .pg-chips { display: flex; flex-wrap: wrap; gap: .35rem; }
-.pg-chip {
-  padding: .2rem .55rem;
-  border: var(--pg-border-width) solid var(--pg-border-color-translucent);
-  border-radius: 2rem;
-  background: var(--pg-bg-body);
-  color: var(--pg-fg-body);
-  font-size: .75rem;
-  line-height: 1.4;
-  text-decoration: none;
-  white-space: nowrap;
+/* Bootstrap's .chip in the toolbar's size and colours. The chip field's
+   rule (.pg-chips > .chip) lets a chip shrink and cut its text; a strip
+   scrolls instead, so its chips keep their width. */
+.pg-toolbar .pg-chips > .chip {
+  --bs-chip-height: auto;
+  --bs-chip-padding-x: .55rem;
+  --bs-chip-border-radius: 2rem;
+  --bs-chip-font-size: .75rem;
+  --bs-chip-line-height: 1.4;
+  --bs-chip-color: var(--pg-fg-body);
+  --bs-chip-bg: var(--pg-bg-body);
+  --bs-chip-border-color: var(--pg-border-color-translucent);
+  --bs-chip-selected-color: var(--pg-primary);
+  --bs-chip-selected-bg: var(--pg-tint-strong);
+  --bs-chip-selected-border-color: var(--pg-primary);
+  min-width: auto;
+  overflow: visible;
+  padding-block: .2rem;
 }
-.pg-chip:hover,
-.pg-chip:focus-visible {
-  border-color: var(--pg-primary);
-  background: var(--pg-tint);
-  color: var(--pg-primary);
+.pg-toolbar .pg-chips > .chip:not(.active):is(:hover, :focus-visible) {
+  --bs-chip-color: var(--pg-primary);
+  --bs-chip-bg: var(--pg-tint);
+  --bs-chip-border-color: var(--pg-primary);
 }
-.pg-chip.is-active {
-  border-color: var(--pg-primary);
-  background: var(--pg-tint-strong);
-  color: var(--pg-primary);
+.pg-toolbar .pg-chips > .chip.active {
   font-weight: 600;
+  opacity: 1;
+}
+/* Bootstrap takes the outline off; keyboard focus keeps the browser's ring */
+.pg-toolbar .pg-chips > .chip:focus-visible {
+  outline-style: auto;
 }
 
 /* The chip strip scrolls inside the toolbar rather than wrapping it onto a
@@ -18274,18 +18283,15 @@ button.ws-home-row:hover,
     align-items: center;
     gap: .3rem;
 }
+/* Bootstrap's .progress at the size of a meta line */
 .ws-cb-progress-bar {
-    display: inline-block;
+    --bs-progress-height: .3rem;
+    --bs-progress-bg: var(--pg-bg-2);
+    --bs-progress-border-radius: var(--ws-radius-xs);
+    --bs-progress-box-shadow: none;
+    --bs-progress-bar-bg: var(--pg-success);
+    --bs-progress-bar-transition: none;
     width: 2.6rem;
-    height: .3rem;
-    overflow: hidden;
-    border-radius: var(--ws-radius-xs);
-    background: var(--pg-bg-2);
-}
-.ws-cb-progress-bar > span {
-    display: block;
-    height: 100%;
-    background: var(--pg-success);
 }
 .ws-cb-thumb {
     display: block;
