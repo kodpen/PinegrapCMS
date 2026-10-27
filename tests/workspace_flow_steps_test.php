@@ -425,7 +425,7 @@ function test_workspace_flow_steps_change_is_kept_back()
 	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_flows.php');
 
 	pg_assert_contains('ws_step_result_shown(', ws_flow_steps_test_source('ws_api_flow_run_step_present'));
-	pg_assert_contains("ws_api_flow_run_step_present(\$step, \$graph, \$edit)", ws_flow_steps_test_source('ws_api_flow_run_present'));
+	pg_assert_contains("ws_api_flow_run_step_present(\$step, \$graph, \$edit, \$states)", ws_flow_steps_test_source('ws_api_flow_run_present'));
 }
 
 // A box tried on its own: its texts filled with the values of a run chosen,
