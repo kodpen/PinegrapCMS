@@ -268,6 +268,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-conditions.md: Value conditions on system widget nodes (show_if): operators, how a value reads as text or a number, refused tokens, tree checks, fail closed (#1592).
 - widget-copy-for-this-page.md: Designer "Make a copy for this page": when the widget panel offers it, the dialog's choices for unsaved edits, what the copy keeps (field row ids, name), the tab open at the answer, what Save writes.
 - widget-default-parts-breadcrumb.md: The catalog breadcrumb default part (W16, #1945): the catalog.crumbs list, its rows and key, the four placements it replaces, the listing's lead part, what changed for running sites
+- widget-default-parts-cart-gift-card.md: The cart's gift card part with controls (W16): the cart.item_gift_cards list, the control bindings the system owns, the required control that comes back, the old token, what is left
 - widget-default-parts-comments.md: The comment stars default part (W16, #1908): what replaced __comment_stars_html, its conditions and tokens, the flex rule, the e-mail characters, starters, canvas
 - widget-default-parts-cross-sell.md: The catalog detail view's cross-sell default part (W16, #1973): the product.related cards that replaced __cross_sell_html, __has_related, where it is added, the variant script's server redraw
 - widget-default-parts-filter-chips.md: The catalog listing's filter chip parts (W16, #2218): the catalog.active_filters list, the six placements replaced, the clear button, the pushed chip row by pg_sw_placed()

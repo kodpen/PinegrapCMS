@@ -6,6 +6,7 @@ module: widgets_lists_cart
 
 ## What does the cart list give?
 - `cart.items` (`includes/fn/widgets_lists_cart.php`, engine [[widget-lists]]), family `cart`, offered by `cart_link` (a mini cart in a header's dropdown or offcanvas) and `shopping_cart` (a read-only summary beside the cart's own editable rows). Lines saved for later are left out (`pg_order_item_active_sql()`).
+- `cart.item_gift_cards` (shopping_cart only) draws a gift card line's controls ([[widget-default-parts-cart-gift-card]]).
 - Opt-in: a tree without it renders byte-identical; the cart's loop and its recipient and recurring bands stay.
 
 ## Which key and tokens?
