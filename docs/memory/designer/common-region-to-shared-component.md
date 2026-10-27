@@ -22,5 +22,5 @@ description: A common region made a shared component (R2): one _editable block o
 ## Who edits it?
 - In the designer only, as an opened component (`shared-component-content-editing.md`). Owner 2026-10-27: a role-3 user without a folder edit right opens the component on its own in the designer (R2b, not built yet).
 
-## Tests?
+## Tests? (PR #2229)
 - `tests/common_region_component_test.php`; the DB parts (conversion, grants) need a database.
