@@ -36,7 +36,6 @@ if (!$_POST) {
             'breadcrumb' => array(array('label' => lang('All Shipping Methods'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_methods.php'), array('label' => lang('Create Shipping Method'))),
         ]) . '
 <main id="content" class="container-fluid">
-    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
     ' . get_date_picker_format() . get_date_time_picker_format() . get_time_picker_format() . pg_fields_script() . '
             <div class="row">
             <div class="col-12">
