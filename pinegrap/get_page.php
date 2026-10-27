@@ -85,8 +85,8 @@ if (isset($_GET['page']) && $_GET['page'])
 		// extract everything from the page name before the first forward slash
 		$page_name_before_slash = mb_substr($page_name, 0, mb_strpos($page_name, '/'));
 		// check to see if there is a page with the page name
-		$query = "SELECT page_id, page_type, layout_type FROM page WHERE page_name = '" . escape($page_name_before_slash) . "'";
-		$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+		$query = "SELECT page_id, page_type, layout_type FROM page WHERE page_name = ?";
+		$result = db_q($query, array((string) $page_name_before_slash)) or output_error(lang('Query failed.'));
 		$row = mysqli_fetch_assoc($result);
 		// $row is null when no page matches the segment before the slash.
 		$page_id     = isset($row['page_id']) ? $row['page_id'] : '';
@@ -205,8 +205,8 @@ if (isset($page_name) && $page_name)
             folder.folder_archived
         FROM page
         LEFT JOIN folder ON page.page_folder = folder.folder_id
-        WHERE page.page_name = '" . escape($page_name) . "'";
-	$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        WHERE page.page_name = ?";
+	$result = db_q($query, array((string) $page_name)) or output_error(lang('Query failed.'));
 	// if page does not exist then output error
 	if (mysqli_num_rows($result) == 0)
 	{
@@ -448,13 +448,13 @@ case 'membership':
 	if (check_edit_access($folder_id) == false)
 	{
 		// get user information so we can find contact for user
-		$query = "SELECT user_contact FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-		$result = mysqli_query(db::$con, $query) or output_error('Query failed');
+		$query = "SELECT user_contact FROM user WHERE user_username = ?";
+		$result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed');
 		$row = mysqli_fetch_assoc($result);
 		$contact_id = $row['user_contact'];
 		// get contact information
-		$query = "SELECT member_id, expiration_date FROM contacts WHERE id = '" . $contact_id . "'";
-		$result = mysqli_query(db::$con, $query) or output_error('Query failed');
+		$query = "SELECT member_id, expiration_date FROM contacts WHERE id = ?";
+		$result = db_q($query, array((string) $contact_id)) or output_error('Query failed');
 		$row = mysqli_fetch_assoc($result);
 		$member_id = $row['member_id'];
 		$expiration_date = $row['expiration_date'];
@@ -661,8 +661,8 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                         name,
                         short_description
                     FROM product_groups
-                    WHERE id = '$parent_product_group_id'";
-				$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    WHERE id = ?";
+				$result = db_q($query, array((string) $parent_product_group_id)) or output_error(lang('Query failed.'));
 				$row = mysqli_fetch_assoc($result);
 				$name = $row['name'];
 				$short_description = $row['short_description'];
@@ -764,9 +764,9 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                     FROM form_list_view_pages
                     LEFT JOIN page AS form_item_view_page ON form_list_view_pages.form_item_view_page_id = form_item_view_page.page_id
                     WHERE
-                        (form_list_view_pages.page_id = '" . escape($page_id) . "')
+                        (form_list_view_pages.page_id = ?)
                         AND (form_list_view_pages.collection = 'a')";
-			$result = mysqli_query(db::$con, $query) or output_error('Query failed');
+			$result = db_q($query, array((string) $page_id)) or output_error('Query failed');
 			$row = mysqli_fetch_assoc($result);
 			$custom_form_page_id = $row['custom_form_page_id'];
 			$layout = $row['layout'];
@@ -778,8 +778,8 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 			$form_item_view_page_name = $row['form_item_view_page_name'];
 			$form_item_view_page_comments = $row['form_item_view_page_comments'];
 			// determine if there are any RSS fields for the custom form
-			$query = "SELECT COUNT(*) FROM form_fields WHERE (page_id = '" . escape($custom_form_page_id) . "') AND (rss_field != '')";
-			$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+			$query = "SELECT COUNT(*) FROM form_fields WHERE (page_id = ?) AND (rss_field != '')";
+			$result = db_q($query, array((string) $custom_form_page_id)) or output_error(lang('Query failed.'));
 			$row = mysqli_fetch_row($result);
 			// if there is at least one RSS field, then build XML
 			if ($row[0] > 0)
@@ -795,8 +795,8 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                                 page_id,
                                 comments
                             FROM page
-                            WHERE page_name = '" . escape($form_item_view_page_name) . "'";
-					$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                            WHERE page_name = ?";
+					$result = db_q($query, array((string) $form_item_view_page_name)) or output_error(lang('Query failed.'));
 					$row = mysqli_fetch_assoc($result);
 					$form_item_view_page_id = $row['page_id'];
 					$form_item_view_page_comments = $row['comments'];
@@ -817,8 +817,8 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                             type,
                             multiple
                         FROM form_fields
-                        WHERE page_id = '" . escape($custom_form_page_id) . "'";
-				$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                        WHERE page_id = ?";
+				$result = db_q($query, array((string) $custom_form_page_id)) or output_error(lang('Query failed.'));
 				$custom_fields = mysqli_fetch_items($result);
 				// get MySQL version so we can decide how we want to prepare the query
 				// in order to optimize performance
@@ -841,9 +841,9 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                                 multiple
                             FROM form_fields
                             WHERE
-                                (page_id = '" . escape($custom_form_page_id) . "')
+                                (page_id = ?)
                                 AND (rss_field = 'category')";
-					$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+					$result = db_q($query, array((string) $custom_form_page_id)) or output_error(lang('Query failed.'));
 					// if there is a category field, then select it
 					if (mysqli_num_rows($result) > 0)
 					{
@@ -866,9 +866,9 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 					$query = "SELECT id
                             FROM form_fields
                             WHERE
-                                (page_id = '" . escape($custom_form_page_id) . "')
+                                (page_id = ?)
                                 AND (rss_field = 'title')";
-					$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+					$result = db_q($query, array((string) $custom_form_page_id)) or output_error(lang('Query failed.'));
 					// if there is a title field, then select it
 					if (mysqli_num_rows($result) > 0)
 					{
@@ -881,9 +881,9 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 					$query = "SELECT id
                             FROM form_fields
                             WHERE
-                                (page_id = '" . escape($custom_form_page_id) . "')
+                                (page_id = ?)
                                 AND (rss_field = 'media')";
-					$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+					$result = db_q($query, array((string) $custom_form_page_id)) or output_error(lang('Query failed.'));
 					// if there is a title field, then select it
 					if (mysqli_num_rows($result) > 0)
 					{
@@ -903,9 +903,9 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 					$query = "SELECT id
                             FROM form_fields
                             WHERE
-                                (page_id = '" . escape($custom_form_page_id) . "')
+                                (page_id = ?)
                                 AND (rss_field = 'description')";
-					$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+					$result = db_q($query, array((string) $custom_form_page_id)) or output_error(lang('Query failed.'));
 					// if there is a description field, then select it
 					if (mysqli_num_rows($result) > 0)
 					{
@@ -929,9 +929,9 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                                 dynamic_value,
                                 dynamic_value_attribute
                             FROM form_list_view_filters
-                            WHERE page_id = '" . escape($page_id) . "'
+                            WHERE page_id = ?
                             ORDER BY form_field_id ASC";
-					$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+					$result = db_q($query, array((string) $page_id)) or output_error(lang('Query failed.'));
 					$filters = mysqli_fetch_items($result);
 					// loop through all filters in order to prepare SQL
 					foreach ($filters as $filter)
@@ -1301,10 +1301,10 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                             type,
                             size
                             FROM files 
-                            WHERE files.id = '" . $submitted_form['media_file'] . "'
+                            WHERE files.id = ?
                             LIMIT 1";
 
-                            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                            $result = db_q($query, array((string) $submitted_form['media_file'])) or output_error(lang('Query failed.'));
 
                             if (mysqli_num_rows($result) > 0)
                             {
@@ -1381,9 +1381,9 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                                 dynamic_value,
                                 dynamic_value_attribute
                             FROM form_list_view_filters
-                            WHERE page_id = '" . escape($page_id) . "'
+                            WHERE page_id = ?
                             ORDER BY form_field_id ASC";
-					$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+					$result = db_q($query, array((string) $page_id)) or output_error(lang('Query failed.'));
 					$filters = array();
 					while ($row = mysqli_fetch_assoc($result))
 					{
@@ -1510,12 +1510,12 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 
                                      WHERE 
 
-                                        (form_data.form_id = '" . escape($submitted_form['id']) . "')
+                                        (form_data.form_id = ?)
 
                                         AND (form_fields.rss_field != '')
 
                                      ORDER BY form_data.id";
-						$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+						$result = db_q($query, array((string) $submitted_form['id'])) or output_error(lang('Query failed.'));
 						// put submitted form data into an array
 						while ($row = mysqli_fetch_assoc($result))
 						{
@@ -1630,8 +1630,8 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 				$output_channel_description = lang(array('string'=>'[No Web Description Title property found for {var:1}]','vars'=>h($page_name))); 
 			}
 			// get the id for all calendars attached to this page
-			$query = "SELECT calendar_id FROM calendar_views_calendars_xref WHERE page_id = '" . escape($page_id) . "'";
-			$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+			$query = "SELECT calendar_id FROM calendar_views_calendars_xref WHERE page_id = ?";
+			$result = db_q($query, array((string) $page_id)) or output_error(lang('Query failed.'));
 			$calendar_ids = array();
 			// put calendars for this page into an array
 			while ($row = mysqli_fetch_assoc($result))
@@ -1957,8 +1957,8 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 
                     LEFT JOIN page ON calendar_view_pages.calendar_event_view_page_id = page.page_id
 
-                    WHERE calendar_view_pages.page_id = '" . escape($page_id) . "'";
-			$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    WHERE calendar_view_pages.page_id = ?";
+			$result = db_q($query, array((string) $page_id)) or output_error(lang('Query failed.'));
 			$row = mysqli_fetch_assoc($result);
 			$calendar_event_view_page_name = $row['page_name'];
 			// output each event in XML
@@ -1975,8 +1975,8 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 
                         LEFT JOIN calendars ON calendars.id = calendar_events_calendars_xref.calendar_id
 
-                        WHERE calendar_events_calendars_xref.calendar_event_id = '" . escape($event['id']) . "'";
-				$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                        WHERE calendar_events_calendars_xref.calendar_event_id = ?";
+				$result = db_q($query, array((string) $event['id'])) or output_error(lang('Query failed.'));
 				// Output rss categories to XML if there are any results
 				while ($row = mysqli_fetch_assoc($result))
 				{
@@ -2045,8 +2045,8 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 				}
 				else
 				{
-					$query = "SELECT product_group_id FROM catalog_pages WHERE page_id = '" . escape($page_id) . "'";
-					$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+					$query = "SELECT product_group_id FROM catalog_pages WHERE page_id = ?";
+					$result = db_q($query, array((string) $page_id)) or output_error(lang('Query failed.'));
 					$row = mysqli_fetch_assoc($result);
 					$product_group['id'] = $row['product_group_id'];
 					// if the current product group still has not been found, then get the top-level product group
@@ -2061,8 +2061,8 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 			break;
 			case 'order form':
 				// get product group for page
-				$query = "SELECT product_group_id FROM order_form_pages WHERE page_id = '" . escape($page_id) . "'";
-				$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+				$query = "SELECT product_group_id FROM order_form_pages WHERE page_id = ?";
+				$result = db_q($query, array((string) $page_id)) or output_error(lang('Query failed.'));
 				$row = mysqli_fetch_assoc($result);
 				$product_group['id'] = $row['product_group_id'];
 			break;
@@ -2086,8 +2086,8 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 
                         FROM product_groups
 
-                        WHERE id = '" . escape($product_group['id']) . "'";
-				$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                        WHERE id = ?";
+				$result = db_q($query, array((string) $product_group['id'])) or output_error(lang('Query failed.'));
 				$product_group = mysqli_fetch_assoc($result);
 			}
 			// If a product group was not found, then output error.
@@ -2257,8 +2257,8 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 
                             FROM products
 
-                            WHERE id = '" . $product['id'] . "'";
-					$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                            WHERE id = ?";
+					$result = db_q($query, array((string) $product['id'])) or output_error(lang('Query failed.'));
 					$row = mysqli_fetch_assoc($result);
 					$product['selection_type'] = $row['selection_type'];
 					$product['title'] = $row['title'];
@@ -2295,8 +2295,8 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 
                                 FROM product_groups
 
-                                WHERE id = '" . $product['product_group_id'] . "'";
-						$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                                WHERE id = ?";
+						$result = db_q($query, array((string) $product['product_group_id'])) or output_error(lang('Query failed.'));
 						$parent_product_group = mysqli_fetch_assoc($result);
 						$output_title = '';
 						// if the product has a title, then use that for the title
@@ -2321,8 +2321,8 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 
                                         LEFT JOIN page ON catalog_pages.catalog_detail_page_id = page.page_id
 
-                                        WHERE catalog_pages.page_id = '" . escape($page_id) . "'";
-							$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                                        WHERE catalog_pages.page_id = ?";
+							$result = db_q($query, array((string) $page_id)) or output_error(lang('Query failed.'));
 							$row = mysqli_fetch_assoc($result);
 							$catalog_detail_page_name = $row['page_name'];
 							// if the parent product group's display type is browse, then use the product's address name, because we want to link directly to the product
@@ -2556,8 +2556,8 @@ elseif (isset($_GET['icalendar']) && $_GET['icalendar'] == 'true')
 
         FROM calendar_events_calendars_xref
 
-        WHERE calendar_event_id = '" . escape($_GET['id']) . "'";
-	$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        WHERE calendar_event_id = ?";
+	$result = db_q($query, array((string) $_GET['id'])) or output_error(lang('Query failed.'));
 	$event_calendars = array();
 	// Step through each row and add it to the array
 	while ($row = mysqli_fetch_assoc($result))
