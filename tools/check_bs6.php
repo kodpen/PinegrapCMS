@@ -19,8 +19,8 @@
  * Usage:  php tools/check_bs6.php [--verbose] [--strict] [--top=N]
  *
  * --verbose  every finding with its file and line
- * --strict   exit 1 when a panel file still holds a finding (from the switch,
- *            step B8 of docs/memory/plans/bootstrap-6-panel-steps.md, on)
+ * --strict   exit 1 when a panel file holds a finding that is not on the
+ *            reviewed list (CI runs it since the switch)
  * --top=N    files listed per check (default 5)
  *
  * Exit:   0, or 1 with --strict when panel findings remain.
@@ -79,7 +79,29 @@ $stats = array();   // check => kind => count
 $files = array();   // check => path => count
 $lines = array();   // check => list of "path:line  text"
 
-$add = function ($check, $kind, $path, $line, $text) use (&$stats, &$files, &$lines) {
+// Panel findings reviewed and left as they are, as path => finding text =>
+// how many times it may appear. They are listed as 'reviewed' and do not fail
+// --strict; one more of the same text in the file does.
+$reviewed = array(
+	// Selectors no element carries any more; kept for markup a site pastes.
+	'assets/css/backend.src.css' => array('.btn-outline-light' => 3, '.btn-outline-dark' => 1, '.was-validated' => 2),
+	// The page designer's preview draws the site, which stays on Bootstrap 5.
+	'assets/js/page_designer.js' => array('btn-danger -> btn-solid theme-danger' => 1),
+	// The form validation script sets v5's class; panel CSS styles it.
+	// A theme stem whose values are v6 themes (`'bg-' + tone`).
+	'assets/js/backend.src.js' => array('bg-"' => 1, 'was-validated' => 1),
+	'includes/fn/output.php' => array("bg-'" => 2),
+	'includes/workspace/render.php' => array("text-'" => 1),
+	// removeClass() naming both themes the status line switches between.
+	'software_repair.php' => array('theme-success theme-danger' => 1),
+);
+
+$add = function ($check, $kind, $path, $line, $text) use (&$stats, &$files, &$lines, &$reviewed) {
+	if ($kind === 'panel' && !empty($reviewed[$path][$text])) {
+		$reviewed[$path][$text]--;
+		$kind = 'reviewed';
+	}
+
 	$stats[$check][$kind] = isset($stats[$check][$kind]) ? $stats[$check][$kind] + 1 : 1;
 
 	if ($kind === 'panel') {
@@ -172,7 +194,7 @@ foreach ($stats as $check => $kinds) {
 	$panel_total += $panel;
 	$aside = array();
 
-	foreach (array('shared', 'editor') as $kind) {
+	foreach (array('reviewed', 'shared', 'editor') as $kind) {
 		if (!empty($kinds[$kind])) {
 			$aside[] = "$kind {$kinds[$kind]}";
 		}
@@ -194,6 +216,6 @@ foreach ($stats as $check => $kinds) {
 	}
 }
 
-echo "\n$panel_total findings in panel files (" . ($converted ? 'converted tree: classes the Bootstrap 6 dist defines are not counted' : 'Bootstrap 5 tree') . "); shared and editor files are counted apart (docs/memory/ui/bootstrap-6-codemod.md).\n";
+echo "\n$panel_total findings in panel files (" . ($converted ? 'converted tree: classes the Bootstrap 6 dist defines are not counted' : 'Bootstrap 5 tree') . "); reviewed findings, shared and editor files are counted apart (docs/memory/ui/bootstrap-6-codemod.md).\n";
 
 exit(($strict && $panel_total > 0) ? 1 : 0);
