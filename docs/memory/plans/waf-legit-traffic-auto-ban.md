@@ -13,21 +13,18 @@ description: Plan (2026-10-26, issue #1989): legitimate traffic must not end in 
 - Thresholds stay; a `concurrent` refusal is no offence; a rate ban stays off the x4 ladder (owner, 2026-10-27, Q2; `workflow/decisions-made-waf.md`).
 
 ## What are the steps (one PR each)?
-1. Sub-resource fetches answer 403 and stay off the sensitive allowance and the in-flight cap (`waf/waf-subresource-sign-in-fetches.md`). Claimed by #2011.
+1. Sub-resource fetches answer 403 and stay off the sensitive allowance and the in-flight cap. Done (#2011).
+2a. One offence per subject and minute for a rate refusal; a staff address is never auto-banned (`would-ban`); Release and Allow clear the offences. Done (#2071, `waf/waf-offence-fold-and-staff-address.md`).
+2b. The counters' subjects and endpoints: staff off the `api.php` allowance, private addresses uncounted, the credential endpoints, the web root's `index.php`. Done (#2108, `waf/waf-counter-subjects-and-endpoints.md`).
+2c. A `concurrent` refusal registers no offence; a rate ban is always the base length. Done (#2201).
+3. What a ban writes: the shield's HTML page, refreshed `B` lines, the rule in the note and row, `path=` and `status=` on `data/firewall.log` lines. Done (#2157).
+4. The operator learns of a ban: an e-mail per auto-ban, a link from the ban row to its log, a notice for a rule's burst. Done (#2167, `waf/waf-ban-notice.md`).
+5. Self-rescue: CLI `waf_unban.php`, Settings refuses a block entry covering the operator's own address, the sign-in lock spares allow-listed addresses. Done (#2187, `waf/waf-self-rescue.md`).
+6. Scenario tests, `tests/waf_scenarios_test.php`: a page with forty protected images, sustained refusals, a staff address changing mid-session, a refresh after the ban. Done (#2212).
 
-2a. Refusals and the ban (findings-counting): a rate-limit refusal (`rate-sensitive`, `rate-api`, `concurrent`, the password-reset ceiling) registers at most one offence per subject per minute window; an address with a staff session or a staff sign-in in `auth_tokens` within the last day is never auto-banned (a `would-ban` row instead); Release and Allow clear the offence bucket. Done (#2071).
-
-2c. A `concurrent` refusal registers no offence; a ban brought by a rate refusal is always the base length (`waf_auto_ban_climbs()`). Done (#2201).
-
-2b. The counters' subjects and endpoints: the `api.php` allowance exempts staff, not any session; a private or reserved visitor address is infrastructure; `workspace_guest.php` and `shipworks.php` get the credential-endpoint allowance; the web root's `index.php` told from the panel sign-in. Done (#2108).
-
-3. What a ban writes (findings-writes): the shield's HTML page with the ban's end and a reference, `B <ip> <expires>` lines refreshed by the general job, the rule in the ban note and row, `path=` and `status=` on `data/firewall.log` lines. Done (#2157); left over: `status=429` on the DENY line of `includes/fn/custom_form.php` (~4166), held by #1997 then.
-
-4. The operator learns of a ban (findings-lockout): an e-mail on each auto-ban, a link from a ban row to its log, a notice when one rule banned several addresses within an hour. Done (#2167, `waf/waf-ban-notice.md`).
-
-5. Self-rescue and self-lockout guards (findings-lockout): a CLI root script `waf_unban.php` (cron-gated); Settings › Firewall refuses a block entry that covers the operator's own address; the sign-in throttle's address lock honours the allow list (owner); nothing is served to a banned address (Q3). Done (#2187, `waf/waf-self-rescue.md`); the release action beside the account unlock stays open.
-
-6. Scenario tests: `tests/waf_scenarios_test.php` playing the decision functions through "a page with N protected images", "staff whose address changes mid-session" and "a refresh after the ban"; no sandbox run (pure decisions). Claimed by #2212.
+## What is left?
+- `status=429` on the DENY line of `pg_cf_throttle_log()` (`includes/fn/custom_form.php` ~4166), the one `data/firewall.log` writer without it: one line, held by #1997 while that PR edits the file.
+- Two owner questions, asked 2026-10-27, open: (a) a release action for the sign-in throttle's address lock beside Unlock Sign-in on `edit_user.php` (today `pg_login_unlock()` clears the account subjects only; the address lock ends by itself or needs the allow list); (b) the global limit's signed-in exemption never applies to a routed request (`waf_handle_rate_global()` runs at the router stage, before the session, and latches), so a designer previewing a media-heavy page can meet the 300/min wall: leave and say so in the comment, or spare sub-resource fetches (`…-findings-lockout.md`).
 
 ## Where to start?
-- 2b after 2a lands; 3 and 4 independent of 2 and of each other; 5 after 4; 6 last. Claim: `[plan:waf-legit-traffic-auto-ban] <step> — <topic>`.
+- Nothing to claim until #1997 lands or an answer comes; then `[plan:waf-legit-traffic-auto-ban] leftover — <topic>`. With the line in and both answered, the plan's lasting content is in `waf/` and `workflow/` and the plan files are deleted.
