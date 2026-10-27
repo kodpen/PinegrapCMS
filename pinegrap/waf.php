@@ -3902,12 +3902,12 @@ function waf_reference()
 /**
  * A logged-in software user is exempt from content inspection.
  *
- * This is not laziness, it is a correctness requirement. Page regions are
- * edited from the page's own front-end URL, and dynamic regions, custom
- * styles and hook code are literally HTML, JavaScript and SQL. Scanning an
- * authenticated designer saving a <script> block would make the product
- * unusable while catching nothing: whoever is logged in as a designer can
- * already execute code by design.
+ * This is not laziness, it is a correctness requirement. A designer's region
+ * saves (save_region_content.php), dynamic regions, custom styles and hook
+ * code are literally HTML, JavaScript and SQL. Scanning an authenticated
+ * designer saving a <script> block would make the product unusable while
+ * catching nothing: whoever is logged in as a designer can already execute
+ * code by design.
  *
  * The login screen itself has no session yet, so it is always inspected -
  * which is where credential attacks actually arrive.
@@ -4580,17 +4580,19 @@ function waf_run($stage = 'init')
         // exemption in waf_handle_rate_global() reaches only directly
         // requested scripts (api.php, save_region_content.php, the panel). A
         // signed-in designer hard-reloading a media-heavy page can meet the
-        // wall: one clock minute of 429, no offence, no ban. Kept so: sparing
-        // sub-resource fetches would drop the only per-address cap on file
-        // fetches with a forged Sec-Fetch-Dest, and a staff-address exemption
+        // wall: 429 until the clock minute ends, no offence, no ban. Kept so:
+        // sparing sub-resource fetches would drop the only per-address cap on
+        // file fetches (get_file.php is counted nowhere else) for any client
+        // claiming Sec-Fetch-Dest: image, and the backstop that keeps such a
+        // fetch of a sign-in screen counted at all; a staff-address exemption
         // would uncap a whole office address for a day.
         //
-        // The sensitive limit is much tighter and exempts signed-in staff —
-        // and the session does not exist yet at the router stage. Running it
-        // there would silently ignore the exemption: every POST counts as
-        // sensitive, so a designer saving regions repeatedly
-        // (save_region_content.php) would be rate limited out of their own
-        // site.
+        // The sensitive limit is much tighter and exempts signed-in staff,
+        // which only the session can tell, and the session exists only at the
+        // init stage. A directly requested script (save_region_content.php,
+        // custom_form.php) gets the init pass alone anyway; latched at the
+        // router stage, the check would count a routed POST, a form posted to
+        // a page address, as anonymous whoever sent it.
         //
         // The api.php limit is the sensitive one's counterpart for the endpoint
         // the site's own pages talk to, and exempts staff for the same reason,

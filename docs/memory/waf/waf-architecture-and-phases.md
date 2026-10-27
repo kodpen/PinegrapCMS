@@ -9,11 +9,11 @@ description: waf.php structure: standalone module (no functions.php, no HTTP), w
 
 ## Which phases exist?
 Two phases; every check has its own latch, so the phase that reaches it first decides and the second call repeats nothing:
-- `waf_run('router')` in router.php after `REQUEST_URL` is defined: IP lists, bot classification (attack-tool UA first), country restriction, GLOBAL rate limit. The session has not started yet, so the global limit counts a routed page or file whoever asks: its `waf_user_is_authenticated()` exemption is seen only on directly requested scripts, and the init pass repeats nothing (owner, 2026-10-27: stays so; `workflow/decisions-made-waf.md`). Only `get_file.php` never reaches `init.php`; the `robots.txt`, `sitemap.xml` and `llms.txt` scripts include it.
+- `waf_run('router')` in router.php after `REQUEST_URL` is defined: IP lists, bot classification (attack-tool UA first), country restriction, GLOBAL rate limit. The session has not started yet, so the global limit counts a routed page or file whoever asks: its `waf_user_is_authenticated()` exemption is seen only on directly requested scripts, and the init pass repeats nothing (owner, 2026-10-27: stays so; `workflow/decisions-made-waf.md`). Of the scripts the router dispatches, only `get_file.php` never reaches `init.php` (a page served from the page cache and a short-link redirect end in `router.php` itself); the `robots.txt`, `sitemap.xml` and `llms.txt` scripts include it.
 - `waf_run('init')` in init.php after `initialize_user()`: adds signature scanning, the SENSITIVE and `api.php` rate limits and the in-flight cap. Why there: only here can a designer be told apart from an attacker.
 
 ## Which rules must never change?
-- Signature scanning MUST stay in the `init` phase. The designer edits regions on the page's own front-end URL and saves them through `save_region_content.php` (every POST counts as sensitive); there is no session in the router phase, so scanning there would make saving a region containing `<script>` indistinguishable from an attack.
+- Signature scanning MUST stay in the `init` phase: the scan spares a session (`waf_user_is_authenticated()`) and only that phase has one. The designer's saves go to `save_region_content.php`, a directly requested script that gets the init pass alone; a router-phase scan would judge every routed request blind, with no way to tell a signed-in designer from an attacker.
 - Fail-open is mandatory. The `waf_run()` body is in try/catch; if the schema is missing, a regex errors or a table is unreachable, the request PASSES. A firewall that breaks a live store is worse than no firewall.
 
 ## How is the real client IP found?
