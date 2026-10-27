@@ -1,11 +1,13 @@
 ---
 name: server-paged-lists
-description: Big DataTables lists paged on the server (users list since PR #2460): data-pg-list-action, the JSON page action, search, counts, row cells, what select all and the bulk buttons still act on
-module: list_paging, user_list
+description: Big DataTables lists paged on the server (users #2460, submitted forms #2509): data-pg-list-action, the JSON page action, search, counts, row cells, what select all and the bulk buttons still act on
+module: list_paging, user_list, submitted_form_list
 ---
 
 ## Which lists are paged on the server, and why?
-- The users list (`view_users.php`, PR #2460). It printed every account and ran several queries per row (folder rights, sign-in lock, calendars, groups), so a site with thousands of users waited for all of them before DataTables showed 100. Steps for the other big lists: `plans/big-list-paging.md`.
+- The users list (`view_users.php`, PR #2460). It printed every account and ran several queries per row (folder rights, sign-in lock, calendars, groups), so a site with thousands of users waited for all of them before DataTables showed 100.
+- The submitted forms list (`view_submitted_forms.php`, PR #2509, issue #2038). It read every matching form, kept those in a folder the user may edit (`check_edit_access()` per row) and printed 100 of them with its own page links, so the search box searched those 100 only. The folder rule is now part of the query, the filters (date range, custom form, advanced filters, `query`) come from the session through `pg_submitted_form_list_filter()`, which Export and Delete All Forms use too. Turning the advanced filters on now checks the picked custom form at once (it used to end in a failed query until the next visit).
+- Steps for the other big lists: `plans/big-list-paging.md`.
 
 ## How does such a screen work?
 - The screen draws the toolbar and the headings only; its `table.chart` carries `data-pg-list-action` (the `api.php` action) and `data-pg-list-params` (JSON, e.g. the filter). `pgListServerOptions()` in `backend.src.js` turns DataTables to `serverSide`: each draw posts `{action, token, draw, start, length, search, ...params}`.
