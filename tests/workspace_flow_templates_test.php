@@ -8,7 +8,7 @@
  * the language shards and those it takes over from the scheduled actions'
  * ready templates are the same sentences, its settings name boxes and
  * fields that are there, the counts it needs leave it out when the person
- * cannot read them.
+ * cannot read them, and the canvas is handed the list.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -228,4 +228,16 @@ function test_workspace_flow_templates_tell_the_channel_or_the_person()
 	pg_assert_same('2026-11-02', $alone['task_mail']['graph']['nodes'][0]['config']['date']);
 	pg_assert_same('2026-11-01', $alone['monthly']['graph']['nodes'][0]['config']['date']);
 	pg_assert_same('2026-10-28', $alone['morning']['graph']['nodes'][0]['config']['date']);
+}
+
+// The canvas is handed the list, its texts, and draws the gallery.
+function test_workspace_flow_templates_reach_the_canvas()
+{
+	$config = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php');
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+
+	pg_assert_true(strpos($config, "'templates'") !== false && strpos($config, 'ws_flow_templates(') !== false, 'config hands the templates');
+	pg_assert_true(strpos($script, 'FL.templates') !== false, 'the script reads them');
+	pg_assert_true(strpos($script, 'function showGallery(') !== false, 'the gallery');
+	pg_assert_true(strpos($script, "'fl_tpl_from_template'") !== false, 'the box list offers a template');
 }

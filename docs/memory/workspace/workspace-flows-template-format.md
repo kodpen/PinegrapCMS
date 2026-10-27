@@ -1,0 +1,27 @@
+---
+name: workspace-flows-template-format
+description: Flow templates (G1, PR #2161, flow_templates.php): format, which scheduled templates came over and which wait, the gallery, New flow and Start from a template
+---
+
+## Where is it?
+- `includes/workspace/flow_templates.php`: `ws_flow_templates($fill)` (pure), `ws_flow_template_build()`, `ws_flow_template_categories()` (team, site, sales), `ws_flow_template_setting_types()`. Tests `tests/workspace_flow_templates_test.php`.
+- Served in `ws_flow_js_config()` (mode flows, builders only) as `templates` and `template_categories`, filled for the viewer: me, channel 0, site and e-mail of `ws_scheduled_js_config()`, the counts they may read, recap_ai. No API route (open question 1 of the plan).
+
+## What is a template?
+- key (the scheduled template's), category, title, help (one line), icon, start (kind of the first box), graph (`ws_flow_graph_normalize()` shape, boxes in columns of 256, follow-ups stacked 112 apart), boxes, threads (count of `{{node.ID.FIELD}}` in its configs), settings `[{type, targets: [[node, key], …]}]`.
+- Setting types: channel (id), person (id list), time (HH:MM), url, address. G2's setup panel asks these; G1 places the graph as filled.
+
+## Which came over, and how?
+- From `saTemplates()`: task_mail, morning, digest, uptime, ssl, overdue, stock, invoices, monthly. Titles and texts are the same `sa_tpl_*` sentences (a test compares them with `ws_scheduled_js_strings()`); help lines were added for the seven that had none.
+- "when" → a schedule box, each condition → a condition box (yes arrow), the step → its step box (task → `task_open`), a follow-up → a box on the failed arrow. Text sent to the channel open, else a notify to the person (the gallery has no channel: notify).
+- A follow-up's `{{result}}` becomes `{{node.check.text}}`: a flow fills no `{{result}}`, the box's sentence is the same text.
+- A template needing a count the person cannot read is left out (digest needs one of its counts, overdue, stock, invoices theirs).
+
+## Which wait, and why?
+- welcome (join) and the event ones of workspace_events.js: their texts read `{{newcomer}}`, `{{channel}}`, `{{record}}`, which a flow run does not fill yet (`workspace-flows-anchors.md`, Left).
+- forms, orders: their counts are "since the last run", which a flow's condition and text read as the last day.
+- chain: started by another action; a flow has no such start.
+
+## How does the canvas use it?
+- "New flow" with templates opens `showGallery(null)` in place of the canvas: Empty canvas, then the cards by category; Use creates a flow named after the template with its graph. The AI start comes with AI drafts (F8).
+- The box list shows "Start from a template" while the flow has no boxes; Use opens that flow again and places the graph (a flow that got boxes meanwhile gets a new flow instead), saved as any change. No motion, no setup panel: G2.
