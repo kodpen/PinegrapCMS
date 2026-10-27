@@ -32,8 +32,8 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM dregion WHERE dregion_id 
 if (!isset($_POST['name'])) {
     $query = "SELECT dregion_name, dregion_code "
             ."FROM dregion "
-            ."WHERE dregion_id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+            ."WHERE dregion_id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed');
     $row = mysqli_fetch_array($result);
     $dregion_name = $row['dregion_name'];
     $dregion_code = $row['dregion_code'];
@@ -112,20 +112,25 @@ if (!isset($_POST['name'])) {
     // if region was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
         $query = "DELETE FROM dregion "
-                ."WHERE dregion_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                ."WHERE dregion_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('dynamic region'), $_POST['name']) )), $_SESSION['sessionusername']);
         $notice = lang(array('string'=>'{var:1} was deleted successfully','vars'=>lang('Dynamic Region') ));
     } else {
         $_POST['name'] = trim($_POST['name']);
         // update region
         $query = "UPDATE dregion "
-                ."SET dregion_name = '" . escape($_POST['name'] ?? '') . "', "
-                    ."dregion_code = '" . escape($_POST['code'] ?? '') . "', "
-                    ."dregion_user = {$user['id']}, "
+                ."SET dregion_name = ?, "
+                    ."dregion_code = ?, "
+                    ."dregion_user = ?, "
                     ."dregion_timestamp = UNIX_TIMESTAMP() "
-                ."WHERE dregion_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                ."WHERE dregion_id = ?";
+        $result = db_q($query, array(
+            (string) ($_POST['name'] ?? ''),
+            (string) ($_POST['code'] ?? ''),
+            (int) $user['id'],
+            (string) ($_POST['id'] ?? ''),
+        )) or output_error('Query failed');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('dynamic region'), $_POST['name']) )), $_SESSION['sessionusername']);
         $notice = lang(array('string'=>'{var:1} was edited successfully','vars'=>lang('Dynamic Region') ));
     }

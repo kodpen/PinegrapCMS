@@ -128,8 +128,8 @@ if (!$_POST) {
     $query =
         "SELECT id
         FROM login_regions
-        WHERE (name = '" . escape($liveform->get_field_value('name')) . "')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE (name = ?)";
+    $result = db_q($query, array((string) $liveform->get_field_value('name'))) or output_error('Query failed.');
     
     // if name is already in use, prepare error and forward user back to form
     if (mysqli_num_rows($result) > 0) {
@@ -154,17 +154,26 @@ if (!$_POST) {
             last_modified_user_id,
             last_modified_timestamp)
         VALUES
-            ('" . escape($liveform->get_field_value('name')) . "',
-            '" . escape($liveform->get_field_value('not_logged_in_header')) . "',
-            '" . escape($liveform->get_field_value('login_form')) . "',
-            '" . escape($liveform->get_field_value('not_logged_in_footer')) . "',
-            '" . escape($liveform->get_field_value('logged_in_header')) . "',
-            '" . escape($liveform->get_field_value('logged_in_footer')) . "',
-            '" . $user['id'] . "',
+            (?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
             UNIX_TIMESTAMP(),
-            '" . $user['id'] . "',
+            ?,
             UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+    $result = db_q($query, array(
+        (string) $liveform->get_field_value('name'),
+        (string) $liveform->get_field_value('not_logged_in_header'),
+        (string) $liveform->get_field_value('login_form'),
+        (string) $liveform->get_field_value('not_logged_in_footer'),
+        (string) $liveform->get_field_value('logged_in_header'),
+        (string) $liveform->get_field_value('logged_in_footer'),
+        (string) $user['id'],
+        (string) $user['id'],
+    )) or output_error('Query failed');
 
     log_activity(lang(array('string'=>'{var:1} ({var:2}) was created','vars'=>array(lang('login region'),$liveform->get_field_value('name')))), $_SESSION['sessionusername']);
     $liveform->remove_form();
