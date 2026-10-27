@@ -37,7 +37,7 @@ description: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in wid
 - W19 done #1904 #1914 #1928, opening state #2232 ([[widget-condition-canvas]]).
 - W20 Parts palette, starter library. W21 done #2326 #2345. W22 done: #2317, W22b #2368 ([[layout-form-converter]]). W23 done #2225 #2307. W24 done #2259 #2304 ([[widget-lists-checkout]]).
 - W25 done (#2221, [[widget-condition-rows]]).
-- W26 done #2264, order view's withdrawal line #PR ([[sentence-with-values]]).
+- W26 done #2264, order view's withdrawal line #2458 ([[sentence-with-values]]).
 
 ## How are other sessions kept clear?
 - Claim with a draft PR `[plan:widget-designability] Wn`. New kinds read saved-tree checks via `pg_sw_cond_tree_json()`.
