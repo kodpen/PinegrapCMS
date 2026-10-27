@@ -21,7 +21,7 @@ description: Plan (done: W25 #2221, W1 #1592, W2 #1582, W3 #1597, W4 #1665, W5 #
 - Owner (2026-10-26): words translatable wherever possible; design elements over placeholder tokens. So no "default text": a sibling with `show_if empty` holds it ([[widget-fill-shop]]).
 - Owner (2026-10-26), detail and reasons in [[widget-designability-decisions]]: W16 equal look and behaviour, not bytes; W5 three sources, filtered, copied; W8 the allow-list of [[widget-entity-fields]].
 
-- Owner (2026-10-27), every proposal accepted: all proposals, reasons in [[widget-designability-decisions-2]].
+- Owner (2026-10-27), every proposal accepted, reasons in [[widget-designability-decisions-2]].
 
 ## What does the owner still answer?
 Nothing open.
@@ -38,6 +38,7 @@ Nothing open.
 - W19 done #1904 #1914 #1928, opening state #2232 ([[widget-condition-canvas]]).
 - W20 Parts palette, starter library. W21 Per-placement settings. W22 Code areas, classic form-layout converter. W23 `eo_visible_if` alias (pg-hide-if-empty done #2225). W24 Express order lists.
 - W25 done (#2221, [[widget-condition-rows]]): up to three conditions per element, All or Any (owner, 2026-10-27).
+- W26 Words beside a value ([[sentence-with-values]]): order view's ended line left.
 
 ## How are other sessions kept clear?
 - Claim with a draft PR `[plan:widget-designability] Wn`. New kinds read saved-tree checks via `pg_sw_cond_tree_json()`.

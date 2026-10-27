@@ -13085,13 +13085,21 @@ const StyleDesigner = (function () {
                     _k = _kNext;
                 }
             }
+            // A sentence with values (pg_sentence_html()): the words, and
+            // the N-th child where {var:N} stands; a link or button too.
+            var _sentence = node.type === 'semantic' && _sdIsSentence(node);
             var _vtxt = null;
-            if (_isBtnLike && node.props.text) {
+            if (_isBtnLike && node.props.text && !_sentence) {
                 _vtxt = _createVirtualText(doc, node);
             }
             var _textPos = node.props.textPosition || 'end';
             if (_isBtnLike && _vtxt && _textPos === 'start') innerEl.appendChild(_vtxt);
-            if (node.children && node.children.length > 0) {
+            if (_sentence) {
+                _sdSentenceLayout(node.props.text, (node.children || []).length).forEach(function (piece) {
+                    innerEl.appendChild(typeof piece === 'number' ? buildNodeEl(node.children[piece - 1])
+                        : doc.createTextNode(piece));
+                });
+            } else if (node.children && node.children.length > 0) {
                 node.children.forEach(function (child) {
                     innerEl.appendChild(buildNodeEl(child));
                 });
@@ -13106,7 +13114,7 @@ const StyleDesigner = (function () {
             // a <div> bound to __currency_selector carries only the binding, and the
             // server writes the value into it whatever `text` holds.
             var _semBoundText = !!(node.props._bindings && node.props._bindings.text);
-            if (!_isBtnLike && node.type === 'semantic' && ((node.props.text !== undefined && node.props.text !== '') || _semBoundText)) {
+            if (!_isBtnLike && !_sentence && node.type === 'semantic' && ((node.props.text !== undefined && node.props.text !== '') || _semBoundText)) {
                 var _semText = node.props.text || '';
                 var _semIsHtml = false;
                 if (node.props._bindings && node.props._bindings.text) {
@@ -14662,6 +14670,39 @@ const StyleDesigner = (function () {
         return out;
     }
 
+    // Whether a node is a sentence with values: a semantic element whose
+    // words are one translatable text, {var:N} placing its N-th child
+    // (pg_sentence_layout()).
+    function _sdIsSentence(node) {
+        return !!(node && node.type === 'semantic' && node.props && node.props._sentence);
+    }
+
+    // The layout of a sentence with values (pg_sentence_layout()): words
+    // (strings) and the places of the children (numbers from 1). A child is
+    // drawn once, at its first placeholder; a placeholder without a child
+    // draws nothing; a child no placeholder names follows after a space.
+    function _sdSentenceLayout(text, count) {
+        var parts = String(text == null ? '' : text).split(/\{var:([1-9][0-9]?)\}/);
+        var out = [], drawn = {};
+        parts.forEach(function (part, i) {
+            if (!(i % 2)) {
+                if (part !== '') out.push(part);
+                return;
+            }
+            var n = parseInt(part, 10);
+            if (n <= count && !drawn[n]) {
+                drawn[n] = true;
+                out.push(n);
+            }
+        });
+        for (var n = 1; n <= count; n++) {
+            if (drawn[n]) continue;
+            if (out.length) out.push(' ');
+            out.push(n);
+        }
+        return out;
+    }
+
     // Server-render tokens (^^__name^^ and ^^bare_name^^) embedded inside
     // _attrs values — e.g. <input name="quantity[^^__item_id^^]" value="^^__item_qty^^">.
     // PHP substitutes these at request time; canvas needs an in-place preview
@@ -14958,7 +14999,9 @@ const StyleDesigner = (function () {
                 // <a> is innerEl itself — edit directly, no span wrapper
                 editableTargets.push({ el: innerEl, prop: 'text' });
             }
-        } else if (node.type === 'semantic' && (node.props.text !== undefined || !(node.children && node.children.length))) {
+        } else if (node.type === 'semantic' && !_sdIsSentence(node) && (node.props.text !== undefined || !(node.children && node.children.length))) {
+            // A sentence with values is written in the panel: typing across
+            // it would take its values' words for its own.
             // Semantic elements with direct text (e.g. <button>, <a> with text
             // prop) — and any semantic element that has no children yet (an
             // empty <li>, <td>, <span>): typing into it is how it gets text.
@@ -27780,6 +27823,9 @@ const StyleDesigner = (function () {
             // A content role outside its area: the text, nothing else.
             return textOk ? { level: 'half', attrs: false, text: true } : { level: 'full', attrs: false, text: false };
         }
+        // A sentence with values: its attribute values; its words and the
+        // places of its values are the panel's (_sdSentenceLayout()).
+        if (_sdIsSentence(node)) return { level: 'half', attrs: true, text: false };
         // A locked layer, a shared component or a widget (owner's rule:
         // half-locked): values and text, never the structure.
         if ((node.props && node.props._locked) || hasLockedAncestor(node) || _resolveSharedSid(node) > 0) {
@@ -28126,6 +28172,9 @@ const StyleDesigner = (function () {
     // markup itself), 'none' (nothing of its own to read).
     function _sdCodeTextKind(node) {
         if (!node) return 'none';
+        // A sentence's words are written in the panel: its values sit
+        // between them as elements of their own.
+        if (_sdIsSentence(node)) return 'none';
         if (node.type === 'semantic') return 'plain';
         if (node.type === 'content') {
             var ct = node.props.contentType;
@@ -40214,13 +40263,14 @@ const StyleDesigner = (function () {
     // of their tokens, now parts added to the end of the tree once
     // (pg_sw_default_tail_parts()): kind => [tokens that place it, part].
     // A comment's stars (pg_sw_part_comment_stars()): five drawings said
-    // once as "Rated N out of 5", the first N filled by the rating.
+    // once as "Rated N out of 5", one sentence with the rating in it, the
+    // first N filled by the rating.
     /* @pg-site-output */
     function _sdPartCommentStars() {
         var stars = [];
         for (var i = 1; i <= 5; i++) stars.push(_sdPartCommentStar(true, i), _sdPartCommentStar(false, i));
         var p = _sdPartWhen('__comment_rating', 'not_empty');
-        p._attrs = [{ name: 'role', value: 'img' }, { name: 'aria-label', value: '{{__comment_rating_label}}' }];
+        p._attrs = [{ name: 'role', value: 'img' }, { name: 'aria-label', value: _sdT('Rated {var:1} out of 5').replace('{var:1}', '{{__comment_rating}}') }];
         return [_sdPartEl('span', 'pg-comment-stars', _sdT('Stars'), p, stars)];
     }
 
@@ -43567,6 +43617,11 @@ const StyleDesigner = (function () {
             ? row(_sdT('Text'), '<input type="text" class="form-control form-control-sm" data-prop="text" value="' + esc(n.props.text || '') + '">')
             : '';
 
+        // A value placed inside the words (a sentence with values,
+        // pg_sentence_layout()): offered inside a system widget on an
+        // element without children of its own, or one that is a sentence.
+        var sentenceRow = _sdSentenceRow(n);
+
         // Dropdown container → show Dropdown Options section
         var DIRS = ['dropdown','dropup','dropend','dropstart'];
         var clsList = (n.props.cssClass || '').split(/\s+/);
@@ -43713,7 +43768,7 @@ const StyleDesigner = (function () {
 
         var labelSection = (tag === 'label') ? propsLabelOptions(n) : '';
         var semSection = (isInteractiveTag || isFormInputTag) ? '' : sect('bi-code-square', _sdT('Semantic Element'),
-            row(_sdT('Tag'), sel('tag', tags, tag)) + fontRow + inlineTextRow +
+            row(_sdT('Tag'), sel('tag', tags, tag)) + fontRow + inlineTextRow + sentenceRow +
             sectionBindRow +
             (sysAttrsHtml ? '<div class="sd-prop-row" style="padding:0">' + sysAttrsHtml + '</div>' : '')
         );
@@ -48456,6 +48511,17 @@ const StyleDesigner = (function () {
                     }
                 }
                 render();
+            });
+        });
+
+        // A value put inside the words (_sdSentenceRow()).
+        document.querySelectorAll('#sd-properties select[data-sentence-add]').forEach(function (el) {
+            el.addEventListener('change', function () {
+                if (!selectedNode || !this.value) return;
+                saveState();
+                _sdSentenceAdd(selectedNode, this.value);
+                render();
+                renderProperties();
             });
         });
 
@@ -56018,6 +56084,51 @@ const StyleDesigner = (function () {
     // Inside a list inside the record its row's values follow
     // (_sdListRowOptions()); inside a loop the row position tokens, in
     // every kind.
+    // The Properties row that puts a widget value inside an element's
+    // words: a list of the values; picking one adds it as an element of its
+    // own (a span bound to it) and writes its {var:N} at the end of the
+    // words, where the operator moves it. '' when it does not apply.
+    function _sdSentenceRow(n) {
+        if (!n || n.type !== 'semantic' || !_isInsideSystemWidget(n)) return '';
+        var tag = String(n.props.tag || '').toLowerCase();
+        if (['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr',
+             'pre','textarea','code','select','option','script','style'].indexOf(tag) !== -1) return '';
+        if (n.props._bindings && n.props._bindings.text) return '';
+        var isSentence = _sdIsSentence(n);
+        if (!isSentence && n.children && n.children.length) return '';
+        var seen = {};
+        var opts = '<option value="">' + esc(_sdT('Choose a value')) + '</option>';
+        _swBindTokenOptions(n).forEach(function (o) {
+            if (!o.token || seen[o.token]) return;
+            seen[o.token] = true;
+            opts += '<option value="' + esc(o.token) + '">' + esc(String(o.label || o.token).replace(/<[^>]*>/g, '')) + '</option>';
+        });
+        return '<div class="sd-prop-row"><label class="sd-prop-label">' + esc(_sdT('Value in the text')) + '</label>' +
+            '<div class="sd-prop-control"><select class="form-control form-control-sm" data-sentence-add>' + opts + '</select>' +
+            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(isSentence
+                ? _sdT('{var:1} in the text is where the first value stands, {var:2} the second. Move it where the words need it; a translation keeps it.')
+                : _sdT('The value becomes an element inside the words, styled on its own; the words stay one translatable sentence.')) +
+            '</div></div></div>';
+    }
+
+    // Adds `token` to the words of `n` (_sdSentenceRow()).
+    function _sdSentenceAdd(n, token) {
+        if (!n || !token) return;
+        if (!n.children) n.children = [];
+        n.props._sentence = true;
+        var label = token;
+        _swBindTokenOptions(n).some(function (o) {
+            if (o.token !== token) return false;
+            label = String(o.label || token).replace(/<[^>]*>/g, '');
+            return true;
+        });
+        n.children.push(createNode('semantic', { tag: 'span', cssClass: '', text: '', customName: label, _bindings: { text: token } }, []));
+        var text = String(n.props.text || '');
+        var mark = '{var:' + n.children.length + '}';
+        n.props.text = (text.trim() === '') ? mark : text.replace(/\s+$/, '') + ' ' + mark;
+        _sdSharedMarkEdited(n);
+    }
+
     function _swBindTokenOptions(node) {
         var type = _getSystemWidgetRegionType(node);
         if (!type) return [];
@@ -61734,6 +61845,20 @@ const StyleDesigner = (function () {
                     });
                     if (P.text) _wsInner += esc(P.text);
                     h += _wsInner + '</' + stg + '>\n';
+                } else if (_sdIsSentence(n)) {
+                    // A sentence with values on one line, its children in
+                    // their places (pg_sentence_html()).
+                    var _snInner = '';
+                    _sdSentenceLayout(n.props.text, (n.children || []).length).forEach(function (piece) {
+                        if (typeof piece !== 'number') { _snInner += esc(piece); return; }
+                        var c = n.children[piece - 1];
+                        var _snMark = sink ? sink.ranges.length : 0;
+                        var _snPart = _sdEmitNode(c, 0, base + h.length + _snInner.length, sink);
+                        var _snKept = _snPart.replace(/\n+$/, '');
+                        if (sink && sink.ranges[_snMark] && sink.ranges[_snMark].node === c) sink.ranges[_snMark].to -= (_snPart.length - _snKept.length);
+                        _snInner += _snKept;
+                    });
+                    h += _snInner + '</' + stg + '>\n';
                 } else {
                     h += '\n';
                     // Button/a honor textPosition — matches canvas virtual-text placement.

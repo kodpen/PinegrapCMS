@@ -691,6 +691,7 @@
     "{var:1} in 7 days": "7 günde {var:1}",
     "{var:1} in an excluded group": "{var:1} dışarıda bırakılan gruptaki ürün",
     "{var:1} in stock": "{var:1} stokta",
+    "{var:1} in the text is where the first value stands, {var:2} the second. Move it where the words need it; a translation keeps it.": "Metindeki {var:1} ilk değerin, {var:2} ikincinin yeridir. Sözcüklerin gerektirdiği yere taşıyın; çeviri de onu korur.",
     "{var:1} included": "{var:1} dahil",
     "{var:1} inside the table file is free space, left by removed records. New visits reuse it.": "Tablo dosyasının içindeki {var:1} silinen kayıtlardan kalan boş alan. Yeni ziyaretler bu alanı kullanır.",
     "{var:1} installments": "{var:1} Taksit",

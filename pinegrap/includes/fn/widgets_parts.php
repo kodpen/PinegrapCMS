@@ -668,7 +668,9 @@ function pg_sw_part_order_legal_documents($cfg = array(), $tree = array())
 }
 
 // A comment's stars: five drawings in a span said once as "Rated N out of
-// 5" (__comment_rating_label), the first N filled (__comment_rating gte
+// 5", one translatable sentence with the rating where the language puts it
+// (the label's own words, __comment_rating in place of {var:1}), the first
+// N filled (__comment_rating gte
 // the star's place), the rest empty. Drawn only for a rating; the colour
 // comes from the design (text-warning in the starters). The look that
 // keeps the drawings side by side is in pg_carousel_layout.css.
@@ -682,7 +684,7 @@ function pg_sw_part_comment_stars($cfg = array())
     return array(pg_sw_part_el('span', 'pg-comment-stars', 'Stars', array_merge(
         array('_attrs' => array(
             array('name' => 'role', 'value' => 'img'),
-            array('name' => 'aria-label', 'value' => '{{__comment_rating_label}}'),
+            array('name' => 'aria-label', 'value' => lang(array('string' => 'Rated {var:1} out of 5', 'vars' => '{{__comment_rating}}'))),
         )),
         pg_sw_part_when('__comment_rating', 'not_empty')
     ), $stars));
