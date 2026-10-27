@@ -126,8 +126,8 @@ if (!$_POST) {
                 summarize_by_3,
                 order_by_3
             FROM visitor_reports
-            WHERE id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         $output_visitor_report_name = $row['name'];
@@ -270,9 +270,9 @@ if (!$_POST) {
                 dynamic_value,
                 dynamic_value_attribute
             FROM visitor_report_filters
-            WHERE visitor_report_id = '" . escape($_GET['id']) . "'
+            WHERE visitor_report_id = ?
             ORDER BY id";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         
         while ($row = mysqli_fetch_assoc($result)) {
             // get field type
@@ -1830,18 +1830,18 @@ if (!$_POST) {
     // if the user selected to delete this visitor report, then delete it
     if ($liveform->get_field_value('submit_button') == 'Delete') {
         // get visitor report name for log
-        $query = "SELECT name FROM visitor_reports WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT name FROM visitor_reports WHERE id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $visitor_report_name = $row['name'];
         
         // delete visitor report
-        $query = "DELETE FROM visitor_reports WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM visitor_reports WHERE id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         // delete visitor report filters
-        $query = "DELETE FROM visitor_report_filters WHERE visitor_report_id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM visitor_report_filters WHERE visitor_report_id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         log_activity(lang(array('string'=>'visitor report ({var:1}) was deleted','vars'=>$visitor_report_name)), $_SESSION['sessionusername']);
 
         $liveform->remove_form();
@@ -1866,9 +1866,9 @@ if (!$_POST) {
             "SELECT id
             FROM visitor_reports
             WHERE
-                (name = '" . escape($liveform->get_field_value('name')) . "')
-                AND (id != '" . escape($liveform->get_field_value('id')) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (name = ?)
+                AND (id != ?)";
+        $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         // if name is already in use, prepare error and forward user back to previous screen
         if (mysqli_num_rows($result) > 0) {
@@ -1896,19 +1896,19 @@ if (!$_POST) {
                     last_modified_user_id,
                     last_modified_timestamp)
                 VALUES (
-                    '" . escape($liveform->get_field_value('name')) . "',
-                    '" . escape($liveform->get_field_value('detail')) . "',
-                    '" . escape($liveform->get_field_value('summarize_by_1')) . "',
-                    '" . escape($liveform->get_field_value('order_by_1')) . "',
-                    '" . escape($liveform->get_field_value('summarize_by_2')) . "',
-                    '" . escape($liveform->get_field_value('order_by_2')) . "',
-                    '" . escape($liveform->get_field_value('summarize_by_3')) . "',
-                    '" . escape($liveform->get_field_value('order_by_3')) . "',
-                    '" . $user['id'] . "',
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
                     UNIX_TIMESTAMP(),
-                    '" . $user['id'] . "',
+                    ?,
                     UNIX_TIMESTAMP())";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) $liveform->get_field_value('detail'), (string) $liveform->get_field_value('summarize_by_1'), (string) $liveform->get_field_value('order_by_1'), (string) $liveform->get_field_value('summarize_by_2'), (string) $liveform->get_field_value('order_by_2'), (string) $liveform->get_field_value('summarize_by_3'), (string) $liveform->get_field_value('order_by_3'), (string) $user['id'], (string) $user['id'])) or output_error('Query failed.');
             
             $id = mysqli_insert_id(db::$con);
             $query_string_id = '?id=' . $id;
@@ -1918,22 +1918,22 @@ if (!$_POST) {
             $query =
                 "UPDATE visitor_reports
                 SET
-                    name = '" . escape($liveform->get_field_value('name')) . "',
-                    detail = '" . escape($liveform->get_field_value('detail')) . "',
-                    summarize_by_1 = '" . escape($liveform->get_field_value('summarize_by_1')) . "',
-                    order_by_1 = '" . escape($liveform->get_field_value('order_by_1')) . "',
-                    summarize_by_2 = '" . escape($liveform->get_field_value('summarize_by_2')) . "',
-                    order_by_2 = '" . escape($liveform->get_field_value('order_by_2')) . "',
-                    summarize_by_3 = '" . escape($liveform->get_field_value('summarize_by_3')) . "',
-                    order_by_3 = '" . escape($liveform->get_field_value('order_by_3')) . "',
-                    last_modified_user_id = '" . $user['id'] . "',
+                    name = ?,
+                    detail = ?,
+                    summarize_by_1 = ?,
+                    order_by_1 = ?,
+                    summarize_by_2 = ?,
+                    order_by_2 = ?,
+                    summarize_by_3 = ?,
+                    order_by_3 = ?,
+                    last_modified_user_id = ?,
                     last_modified_timestamp = UNIX_TIMESTAMP()
-                WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE id = ?";
+            $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) $liveform->get_field_value('detail'), (string) $liveform->get_field_value('summarize_by_1'), (string) $liveform->get_field_value('order_by_1'), (string) $liveform->get_field_value('summarize_by_2'), (string) $liveform->get_field_value('order_by_2'), (string) $liveform->get_field_value('summarize_by_3'), (string) $liveform->get_field_value('order_by_3'), (string) $user['id'], (string) $liveform->get_field_value('id'))) or output_error('Query failed.');
             
             // delete visitor report filters
-            $query = "DELETE FROM visitor_report_filters WHERE visitor_report_id = '" . escape($liveform->get_field_value('id')) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM visitor_report_filters WHERE visitor_report_id = ?";
+            $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         }
         
         $date_filter_exists = false;
@@ -1976,13 +1976,13 @@ if (!$_POST) {
                         dynamic_value,
                         dynamic_value_attribute)
                     VALUES (
-                        '" . escape($id) . "',
-                        '" . escape($liveform->get_field_value('filter_' . $i . '_field')) . "',
-                        '" . escape($liveform->get_field_value('filter_' . $i . '_operator')) . "',
-                        '" . escape(prepare_form_data_for_input($liveform->get_field_value('filter_' . $i . '_value'), $field_type)) . "',
-                        '" . escape($dynamic_value) . "',
-                        '" . escape($dynamic_value_attribute) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?)";
+                $result = db_q($query, array((string) $id, (string) $liveform->get_field_value('filter_' . $i . '_field'), (string) $liveform->get_field_value('filter_' . $i . '_operator'), (string) prepare_form_data_for_input($liveform->get_field_value('filter_' . $i . '_value'), $field_type), (string) $dynamic_value, (string) $dynamic_value_attribute)) or output_error('Query failed.');
             }
         }
         
