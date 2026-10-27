@@ -83,14 +83,53 @@ function test_waf_offence_order_of_checks()
 	$body = waf_offence_test_function_source($waf, 'waf_register_offence');
 
 	$fold      = strpos($body, "waf_offence_is_repeat(\$burst, waf_rate_record(\$subject, 'of', 60))");
-	$threshold = strpos($body, "waf_rate_exceeded(\$subject, 'o', \$threshold, 600)");
+	$threshold = strpos($body, "waf_rate_record(\$subject, 'o', 600) <= \$threshold");
+	$spared    = strpos($body, "waf_rate_hits(\$subject, 'ob', 600) > 0");
 	$staff     = strpos($body, 'waf_user_is_staff() || waf_address_has_staff_sign_in($ip)');
+	$mark      = strpos($body, "waf_rate_record(\$subject, 'ob', 600);");
 	$would     = strpos($body, "waf_log_event('would-ban', 'auto-ban', 'ban'");
 	$ban       = strpos($body, 'waf_auto_ban($subject, $minutes');
 
-	pg_assert_true($fold !== false && $threshold !== false && $staff !== false && $would !== false && $ban !== false);
-	pg_assert_true($fold < $threshold && $threshold < $staff && $staff < $would && $would < $ban, 'fold, threshold, staff, would-ban, ban');
+	pg_assert_true($fold !== false && $threshold !== false && $spared !== false && $staff !== false && $mark !== false && $would !== false && $ban !== false);
+	pg_assert_true($fold < $threshold && $threshold < $spared && $spared < $staff && $staff < $mark && $mark < $would && $would < $ban, 'fold, threshold, spared this slot, staff, mark, would-ban, ban');
 	pg_assert_contains('$burst = false)', $body, 'callers without the flag are counted one by one');
+}
+
+// The count a bucket write returns is the one it wrote, read from the
+// statement itself: two refusals arriving together must not both read the
+// other's write and both pass as repeats.
+function test_waf_offence_bucket_count_is_the_written_one()
+{
+	$waf = (string) file_get_contents(PG_FUNCTIONS_DIR . '/waf.php');
+	$body = waf_offence_test_function_source($waf, 'waf_rate_record');
+
+	pg_assert_contains('hits = LAST_INSERT_ID(IF(window_start <', $body);
+	$written  = strpos($body, '(int) @mysqli_insert_id(db::$con)');
+	$inserted = strpos($body, '@mysqli_affected_rows(db::$con) === 1');
+	$fallback = strpos($body, 'return waf_rate_hits($subject, $scope, $window_seconds);');
+	pg_assert_true($written !== false && $inserted !== false && $fallback !== false);
+	pg_assert_true($written < $inserted && $inserted < $fallback, 'the written value, then the plain insert, then the read');
+}
+
+// The staff question reads panel roles first and, for IPv6, the whole /64 the
+// ban would name; the address of a token follows its activity.
+function test_waf_offence_staff_lookup_reads_the_block_and_roles_first()
+{
+	$waf = (string) file_get_contents(PG_FUNCTIONS_DIR . '/waf.php');
+	$body = waf_offence_test_function_source($waf, 'waf_address_has_staff_sign_in');
+
+	pg_assert_contains("t.ip_address LIKE '%:%'", $body, 'every IPv6 address of the day');
+	pg_assert_contains("waf_ip_subject((string) \$row['ip_address']) !== \$subject", $body, 'told apart by block in PHP');
+	pg_assert_contains('ORDER BY u.user_role ASC', $body, 'panel roles first');
+	pg_assert_contains('LIMIT 500', $body);
+	pg_assert_contains('waf_user_id_is_staff($user_id)', $body, 'one copy of the staff rule');
+
+	$auth = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/auth.php');
+	pg_assert_same(2, substr_count($auth, '" . $auth_bind_stamp . "'), 'both activity stamps carry the address');
+	pg_assert_contains("ip_address = '\" . escape(pg_auth_request_address()) . \"'", $auth);
+	$shared = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/authentication.php');
+	pg_assert_contains("last_used_at = '\" . time() . \"', ip_address = '\" . escape(pg_auth_request_address()) . \"'", $shared, 'the remember-me redeem too');
+	pg_assert_same('', pg_auth_request_address(), 'no address outside a request');
 }
 
 // Releasing a ban or allowing an address forgets its offences, so the next
@@ -113,13 +152,20 @@ function test_waf_offence_release_and_allow_clear_the_bucket()
 	$body = waf_offence_test_function_source($waf, 'waf_offence_clear');
 	pg_assert_contains("waf_rate_clear(\$key, 'o');", $body);
 	pg_assert_contains("waf_rate_clear(\$key, 'of');", $body);
+	pg_assert_contains("waf_rate_clear(\$key, 'ob');", $body, 'the spared mark goes with the ban');
 	pg_assert_contains('$keys[] = waf_ip_subject($stored);', $body, 'the /64 of an address');
 }
 
-// The log screen names the new action.
+// The log screen and the dashboard widget name the new action and count it
+// among what the firewall held back.
 function test_waf_offence_would_ban_has_a_badge()
 {
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_waf_log.php');
-
 	pg_assert_contains("'would-ban'   => array('bg-warning text-dark', lang('Would ban')),", $screen);
+	pg_assert_contains("action IN ('would-block','would-rate','would-ban')", $screen);
+
+	$widget = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets/widget_21.php');
+	pg_assert_contains("'would-ban'   => array('warning text-dark', lang('Would ban')),", $widget);
+	pg_assert_contains("action IN ('would-block','would-rate','would-ban')", $widget);
+	pg_assert_contains("action IN ('would-block','would-rate','would-ban')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets/widget_22.php'));
 }

@@ -252,7 +252,7 @@ $summary = mysqli_fetch_assoc(mysqli_query(
     "SELECT
         COALESCE(SUM(hit_count), 0) AS total,
         COALESCE(SUM(CASE WHEN action IN ('block','rate','ban') THEN hit_count ELSE 0 END), 0) AS blocked,
-        COALESCE(SUM(CASE WHEN action IN ('would-block','would-rate') THEN hit_count ELSE 0 END), 0) AS would_block,
+        COALESCE(SUM(CASE WHEN action IN ('would-block','would-rate','would-ban') THEN hit_count ELSE 0 END), 0) AS would_block,
         COUNT(DISTINCT ip_address) AS addresses,
         COUNT(*) AS rows_stored
      FROM waf_log $where"

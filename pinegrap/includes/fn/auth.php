@@ -1749,9 +1749,7 @@ function pg_auth_token_create($user_id, $lifetime_seconds)
         ? mb_substr((string) $_SERVER['HTTP_USER_AGENT'], 0, 255)
         : '';
 
-    $ip_address = function_exists('waf_client_ip')
-        ? waf_client_ip()
-        : (isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '');
+    $ip_address = pg_auth_request_address();
 
     db("INSERT INTO auth_tokens
             (selector, validator_hash, user_id, expires_at, created_at, last_used_at, user_agent, ip_address)
@@ -3643,10 +3641,17 @@ function initialize_user()
                     }
 
                     if ($auth_bind_kick === false) {
+                        // The stamp carries the request's address too, so
+                        // the row says where the device is now, not where
+                        // it signed in: the session lists read it, and the
+                        // firewall asks it before an automatic ban
+                        // (waf_address_has_staff_sign_in()).
+                        $auth_bind_stamp = "last_used_at = '" . time() . "', ip_address = '" . escape(pg_auth_request_address()) . "'";
+
                         if ((((int) $auth_bind_row['expires_at']) - time()) < 21600) {
                             // Slide a token close to expiring, stamping the
                             // activity while at it.
-                            db("UPDATE auth_tokens SET expires_at = '" . (time() + pg_device_session_ttl()) . "', last_used_at = '" . time() . "' WHERE selector = '" . escape($auth_bind_selector) . "'");
+                            db("UPDATE auth_tokens SET expires_at = '" . (time() + pg_device_session_ttl()) . "', " . $auth_bind_stamp . " WHERE selector = '" . escape($auth_bind_selector) . "'");
                         } elseif ((time() - ((int) $auth_bind_row['freshness'])) > 50) {
                             // "Last seen": stamp activity at the same cadence
                             // who_is_online() uses for the per-user stamp (50
@@ -3654,7 +3659,7 @@ function initialize_user()
                             // device really was last active - and the device
                             // limit's oldest-excess choice follows real
                             // activity rather than sign-in order.
-                            db("UPDATE auth_tokens SET last_used_at = '" . time() . "' WHERE selector = '" . escape($auth_bind_selector) . "'");
+                            db("UPDATE auth_tokens SET " . $auth_bind_stamp . " WHERE selector = '" . escape($auth_bind_selector) . "'");
                         }
                     }
                 } else {

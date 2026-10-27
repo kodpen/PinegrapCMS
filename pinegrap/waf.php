@@ -2055,15 +2055,34 @@ function waf_rate_record($subject, $scope, $window_seconds)
     $window_start = $now - ($now % $window_seconds);
     $key          = waf_escape(waf_rate_key($subject, $scope));
 
+    // LAST_INSERT_ID(expr) hands the value the update wrote back to this
+    // connection, so the count returned is this statement's own. A second
+    // SELECT read the row as it stood a moment later: with two refusals of
+    // one subject arriving together both read 2, and a caller asking "was
+    // this the first of the minute" (waf_register_offence()) saw neither as
+    // the first.
     $query = "INSERT INTO waf_rate (bucket_key, hits, window_start)
               VALUES ('" . $key . "', 1, " . $window_start . ")
               ON DUPLICATE KEY UPDATE
-                  hits = IF(window_start < " . $window_start . ", 1, hits + 1),
+                  hits = LAST_INSERT_ID(IF(window_start < " . $window_start . ", 1, hits + 1)),
                   window_start = " . $window_start;
 
     if (!@mysqli_query(db::$con, $query)) {
         // Table missing or unavailable - fail open.
         return 0;
+    }
+
+    // The update path carries its value here; the table has no auto-increment
+    // column, so nothing else sets it. The plain insert wrote 1 and touched
+    // one row; two rows is the update, read above.
+    $written = (int) @mysqli_insert_id(db::$con);
+
+    if ($written > 0) {
+        return $written;
+    }
+
+    if (@mysqli_affected_rows(db::$con) === 1) {
+        return 1;
     }
 
     return waf_rate_hits($subject, $scope, $window_seconds);
@@ -3733,7 +3752,9 @@ function waf_user_id_is_staff($user_id)
  * How long a staff sign-in keeps its address out of the automatic ban, in
  * seconds: a day. Long enough to cover a working day on one address, short
  * enough that an address a staff member once used on a journey does not stay
- * unbannable for a month.
+ * unbannable for a month: a token's address follows its activity (the
+ * last-used stamp writes the request's address), so a day after the device
+ * left an address the address is nobody's.
  *
  * @return int
  */
@@ -3743,21 +3764,26 @@ function waf_staff_address_window()
 }
 
 /**
- * Has a member of staff signed in from this address within the last day?
+ * Has a member of staff signed in from this address, or used a session from
+ * it, within the last day?
  *
  * The session answers for the browser that holds it; this answers for the
  * address when the session is not there to ask: the operator's other
  * browser, a tab on the other host name, a page view the session cookie did
  * not reach. The operator's own anonymous page view banned the address they
- * were working from, and no exemption could see them. Every sign-in writes
- * an auth_tokens row with the address the firewall resolved at the time, so
- * the question is one query, asked only when a ban is about to be placed;
- * the table has no index on the address, which is affordable at that rate.
+ * were working from, and no exemption could see them. auth_tokens keeps a
+ * row per sign-in with the address the firewall resolved, refreshed with
+ * every activity stamp, so the question is one query, asked once per
+ * ten-minute slot when a ban is otherwise due; the table has no index on the
+ * address, which is affordable at that rate.
  *
- * The exact address is matched, not the /64: an IPv6 browser that moved to
- * another address of its block is covered by its session, as before.
- * Members are not staff (waf_user_id_is_staff()), so a member's sign-in
- * spares nothing. Fails closed: no table, no row or a query error is "no".
+ * For IPv6 the ban names the /64, so every address of the block is asked
+ * about (the stored text of an address has more than one spelling, so the
+ * block is told in PHP). Staff with a panel role are read first, so no
+ * number of member sign-ins from the same address can push them past the
+ * cap; a role-3 user made staff by a panel area or folder rights is found
+ * among the rest (waf_user_id_is_staff()), and a member spares nothing.
+ * Fails closed: no table, no row or a query error is "no".
  *
  * @param string $ip the visitor's address (waf_client_ip())
  * @return bool
@@ -3768,16 +3794,22 @@ function waf_address_has_staff_sign_in($ip)
         return false;
     }
 
-    $since = time() - waf_staff_address_window();
+    $subject = waf_ip_subject($ip);
+    $since   = time() - waf_staff_address_window();
+
+    $where = ($subject === $ip)
+        ? "t.ip_address = '" . waf_escape($ip) . "'"
+        : "t.ip_address LIKE '%:%'";
 
     $result = @mysqli_query(
         db::$con,
-        "SELECT user_id
-         FROM auth_tokens
-         WHERE ip_address = '" . waf_escape($ip) . "'
-           AND (created_at > " . $since . " OR last_used_at > " . $since . ")
-         ORDER BY GREATEST(created_at, last_used_at) DESC
-         LIMIT 20"
+        "SELECT DISTINCT t.user_id, t.ip_address, u.user_role
+         FROM auth_tokens t
+         INNER JOIN user u ON u.user_id = t.user_id
+         WHERE " . $where . "
+           AND (t.created_at > " . $since . " OR t.last_used_at > " . $since . ")
+         ORDER BY u.user_role ASC
+         LIMIT 500"
     );
 
     if (!$result) {
@@ -3787,6 +3819,10 @@ function waf_address_has_staff_sign_in($ip)
     $seen = array();
 
     while ($row = @mysqli_fetch_assoc($result)) {
+        if ($subject !== $ip && waf_ip_subject((string) $row['ip_address']) !== $subject) {
+            continue;
+        }
+
         $user_id = (int) $row['user_id'];
 
         if ($user_id <= 0 || isset($seen[$user_id])) {
@@ -4992,8 +5028,8 @@ function waf_handle_scan($ip, $blocking)
  * counted as before: each is its own act.
  *
  * An address staff use is never banned here: a staff session, or a staff
- * sign-in from the address within the last day (waf_address_has_staff_sign_in()),
- * turns the ban into a would-ban row. The limits still refuse such an
+ * sign-in or session activity from the address within the last day
+ * (waf_address_has_staff_sign_in()), turns the ban into a would-ban row. The limits still refuse such an
  * address; what they cannot do is lock the operator out of the panel that
  * would lift the ban. Someone sharing the operator's office address is
  * therefore rate-limited but not banned, and the operator bans by hand.
@@ -5036,13 +5072,21 @@ function waf_register_offence($ip, $score, $blocking, $burst = false)
     }
 
     // Reuse the rate bucket machinery: a 10 minute window of offences.
-    if (!waf_rate_exceeded($subject, 'o', $threshold, 600)) {
+    if (waf_rate_record($subject, 'o', 600) <= $threshold) {
         return;
     }
 
-    // Asked only now, when a ban is otherwise due: the sign-in query is not
-    // worth running on every offence.
+    // Past the threshold. Whether the address is staff's is asked once per
+    // slot: a spared address is marked in the 'ob' bucket and its later
+    // offences of the slot return here, because unlike a banned address,
+    // which is stopped at the door, it goes on sending refused requests, and
+    // the sign-in query is a table scan.
+    if (waf_rate_hits($subject, 'ob', 600) > 0) {
+        return;
+    }
+
     if (waf_user_is_staff() || waf_address_has_staff_sign_in($ip)) {
+        waf_rate_record($subject, 'ob', 600);
         waf_log_event('would-ban', 'auto-ban', 'ban', $score, 'REMOTE_ADDR', $subject . ' staff address');
 
         return;
@@ -5105,5 +5149,6 @@ function waf_offence_clear($stored)
     foreach (array_unique($keys) as $key) {
         waf_rate_clear($key, 'o');
         waf_rate_clear($key, 'of');
+        waf_rate_clear($key, 'ob');
     }
 }
