@@ -36,8 +36,8 @@ if (($user['role'] == 3) && (count(get_items_user_can_edit('ad_regions', $user['
 // if the user has a user role, then determine if user has access to the ad region that this ad is in
 if ($user['role'] == 3) {
     // get this ad's name and ad region id
-    $query = "SELECT name, ad_region_id FROM ads WHERE id = '" . escape($_REQUEST['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT name, ad_region_id FROM ads WHERE id = ?";
+    $result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $name = $row['name'];
     $ad_region_id = $row['ad_region_id'];
@@ -66,8 +66,8 @@ if (!$_POST) {
             ad_regions.name as ad_region_name
         FROM ads
         LEFT JOIN ad_regions ON ads.ad_region_id = ad_regions.id
-        WHERE ads.id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE ads.id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $name = $row['name'];
@@ -195,8 +195,8 @@ if (!$_POST) {
     // if the user selected to delete the ad
     if ($liveform->get_field_value('submit_delete') == 'Delete') {
         // delete ad
-        $query = "DELETE FROM ads WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM ads WHERE id = ?";
+        $result = db_q($query, array((string) ($liveform->get_field_value('id')))) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('ad'), $liveform->get_field_value('name') ) )), $_SESSION['sessionusername']);
 
@@ -229,9 +229,9 @@ if (!$_POST) {
                 "SELECT id
                 FROM ads
                 WHERE
-                    (name = '" . escape($liveform->get_field_value('name')) . "')
-                    AND (id != '" . escape($liveform->get_field_value('id')) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    (name = ?)
+                    AND (id != ?)";
+            $result = db_q($query, array((string) ($liveform->get_field_value('name')), (string) ($liveform->get_field_value('id')))) or output_error('Query failed.');
             
             // if the name is already in use by a different ad, then mark error
             if (mysqli_num_rows($result) > 0) {
@@ -254,16 +254,16 @@ if (!$_POST) {
         $query =
             "UPDATE ads
             SET
-                name = '" . escape($liveform->get_field_value('name')) . "',
-                content = '" . escape(prepare_rich_text_editor_content_for_input($liveform->get_field_value('content'))) . "',
-                caption = '" . escape(prepare_rich_text_editor_content_for_input($liveform->get_field_value('caption'))) . "',
-                ad_region_id = '" . escape($liveform->get_field_value('ad_region_id')) . "',
-                label = '" . escape($liveform->get_field_value('label')) . "',
-                sort_order = '" . escape($liveform->get_field_value('sort_order')) . "',
-                last_modified_user_id = '" . $user['id'] . "',
+                name = ?,
+                content = ?,
+                caption = ?,
+                ad_region_id = ?,
+                label = ?,
+                sort_order = ?,
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) ($liveform->get_field_value('name')), (string) (prepare_rich_text_editor_content_for_input($liveform->get_field_value('content'))), (string) (prepare_rich_text_editor_content_for_input($liveform->get_field_value('caption'))), (string) ($liveform->get_field_value('ad_region_id')), (string) ($liveform->get_field_value('label')), (string) ($liveform->get_field_value('sort_order')), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('ad'), $liveform->get_field_value('name') ) )), $_SESSION['sessionusername']);
         // if there is a send to, then forward user to send to

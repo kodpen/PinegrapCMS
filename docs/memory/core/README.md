@@ -55,6 +55,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - dom-node-html.md: pg_dom_html() instead of $document->saveHTML($node): one DOM node's HTML the same on every PHP version (7.1-7.2 pretty-printed it), its callers and its test
 - dompdf-embedding.md: How dompdf and its chain are embedded in includes/dompdf/: versions, custom autoloader, runtime write location, HTML/charset handling for PDFs.
 - error-path-missing-methods.md: liveform has add_error() for form-level messages vs mark_error() per field; never call a method that does not exist on error branches (PHP 8 gives a blank HTTP 500).
+- explorer-handler-files.md: pg_explorer_handle() after the split: the prelude and the dispatch, one handler per sub-action in includes/explorer/handle_*.php, where a new one goes, the tests
 - explorer-subaction-registration.md: Adding an explorer_* sub-action: it must be registered in the file_explorer allowlist as well as pg_explorer_handle(); symptoms and the catalog gate.
 - file-header-and-embedded-libraries.md: The Pinegrap file header every new PHP/JS file must carry, which files it applies to, the PHP 7.1 base rule when embedding a third-party library, and the libraries with a local change.
 - file-integrity-check.md: The hourly file-integrity check: which reference counts (dev machine's own or the GitHub tag), scope and ignored names, line-ending-proof digests, state file, what cleanup keeps, result codes.

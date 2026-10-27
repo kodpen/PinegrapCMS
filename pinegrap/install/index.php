@@ -8817,6 +8817,7 @@ function get_tables() {
 		'comments',
 		'commissions',
 		'config',
+		'config_text',
 		'connect_accounts',
 		'connect_apps',
 		'consent_log',

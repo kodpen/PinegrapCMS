@@ -66,11 +66,21 @@ function pg_parasut_credentials_for_save()
 
 
 
+    // Reference price rule (11.0.49). The card is drawn only once the column
+    // exists; an unknown value is stored as the default rule.
+    $sql_reference_price_rule = '';
+
+    if (pg_price_reference_rule_ready() && (post_value('ecommerce_reference_price_rule') !== NULL)) {
+        $sql_reference_price_rule = "ecommerce_reference_price_rule = '" . e(pg_price_reference_rule_from_input(post_value('ecommerce_reference_price_rule'))) . "',";
+    }
+
     // Checkout legal documents (11.0.1). A template naming a field that does
     // not exist would print nothing where a customer expects a fact, and a
     // template past the column's size would be cut; either refuses the whole
     // save before anything below writes.
     $sql_legal_documents = '';
+    // The KVKK consent sentence: a config_text row, written after the config update.
+    $legal_kvkk_text = null;
 
     if (pg_schema_has('config', 'ecommerce_legal_documents')) {
         $legal_values = array();
@@ -100,7 +110,7 @@ function pg_parasut_credentials_for_save()
         // The KVKK notice page and the explicit consent sentence (11.0.48).
         $legal_kvkk_sql = '';
 
-        if (pg_schema_has('config', 'ecommerce_kvkk_page_id')) {
+        if (pg_schema_has('config', 'ecommerce_kvkk_page_id') && pg_schema_has('config_text')) {
             $legal_kvkk_text = trim(str_replace("\r\n", "\n", (string) post_value('ecommerce_kvkk_consent_text')));
 
             if (strlen($legal_kvkk_text) > 65535) {
@@ -108,8 +118,7 @@ function pg_parasut_credentials_for_save()
             }
 
             $legal_kvkk_sql = "
-            ecommerce_kvkk_page_id = '" . max(0, (int) post_value('ecommerce_kvkk_page_id')) . "',
-            ecommerce_kvkk_consent_text = " . (($legal_kvkk_text === '') ? 'NULL' : "'" . escape($legal_kvkk_text) . "'") . ",";
+            ecommerce_kvkk_page_id = '" . max(0, (int) post_value('ecommerce_kvkk_page_id')) . "',";
         }
 
         if ($liveform->check_form_errors()) {
@@ -530,6 +539,7 @@ function pg_parasut_credentials_for_save()
             " . $sql_erp_due . "
             " . $sql_erp_overdue . "
             " . $sql_legal_documents . "
+            " . $sql_reference_price_rule . "
             ecommerce_credit_debit_card = '" . escape(post_value('ecommerce_credit_debit_card')) . "',
             ecommerce_american_express = '" . escape(post_value('ecommerce_american_express')) . "',
             ecommerce_diners_club = '" . escape(post_value('ecommerce_diners_club')) . "',
@@ -587,6 +597,10 @@ function pg_parasut_credentials_for_save()
             affiliate_group_offer_id = '" . escape(post_value('affiliate_group_offer_id')) . "',
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
+
+    if ($legal_kvkk_text !== null) {
+        pg_config_text_save('ecommerce_kvkk_consent_text', $legal_kvkk_text);
+    }
 
     // The carriers' API applications are kept with the connected accounts'
     // applications, the secrets sealed (includes/fn/carrier_api.php).

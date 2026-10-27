@@ -39,6 +39,14 @@ define('WS_STEP_BEGAN', 'began:');
 // (30 days).
 define('WS_STEP_APPROVAL_CLOSES_MAX', 720);
 
+// The key the values of what started a run ({{trigger.<field>}}) sit under
+// among the boxes' values (ws_step_node_values()): never a box id.
+define('WS_STEP_TRIGGER', '@trigger');
+
+// A value a box's text reads: {{node.<id>.<field>}}, or {{trigger.<field>}}
+// (group 1 the box id, empty for the trigger; group 2 the field).
+define('WS_STEP_VALUE_PATTERN', '/\{\{(?:node\.([a-z][a-z0-9_]{0,31})|trigger)\.([a-z_][a-z0-9_]{0,31})\}\}/');
+
 /**
  * The kinds of step box: their name, the scheduled action's step they are
  * (type), the texts of their settings that {{node.*}} values are filled into
@@ -610,6 +618,87 @@ function ws_step_trigger_context($context)
 }
 
 /**
+ * The values of what started a run, {{trigger.<field>}}: every field its
+ * start box declares (ws_flow_trigger_outputs(), by the context's trigger
+ * kind and event), from the run's context; a field the context lacks, or a
+ * value that is not a single number or text, is empty. An event's record
+ * and payload only where the owner may see the record now ($sees); its
+ * name always. A run started by hand or by another flow's box declares
+ * none, whatever it carries. Pure.
+ *
+ * @param array $context ws_flow_run_context()
+ * @param bool  $sees    the owner may see what the event is about
+ * @param array $names   newcomer, channel: their names (ws_step_trigger_values_for())
+ * @return array field => text
+ */
+function ws_step_trigger_values($context, $sees, $names = array())
+{
+    $kind = (string) ($context['trigger'] ?? '');
+    $event = (string) ($context['event'] ?? '');
+    $outputs = function_exists('ws_flow_trigger_outputs') ? ws_flow_trigger_outputs($kind, array('event' => $event)) : array();
+    $given = array();
+
+    if ($kind === 'event') {
+        $payload = is_array($context['event_payload'] ?? null) ? $context['event_payload'] : array();
+        $record = function_exists('ws_events_record_of') ? ws_events_record_of($event, $payload) : array('', 0);
+        $given = $sees ? array('record_id' => ($record[1] > 0) ? $record[1] : null) + $payload : array();
+        $given['event'] = $event;
+    } elseif ($kind === 'join') {
+        $given = array(
+            'newcomer_id'   => ((int) ($context['newcomer'] ?? 0) > 0) ? (int) $context['newcomer'] : null,
+            'newcomer_name' => $names['newcomer'] ?? null,
+            'channel_id'    => ((int) ($context['join_channel_id'] ?? 0) > 0) ? (int) $context['join_channel_id'] : null,
+            'channel_name'  => $names['channel'] ?? null,
+        );
+    }
+
+    $out = array();
+
+    foreach ($outputs as $output) {
+        $value = $given[$output['key']] ?? null;
+        $out[$output['key']] = (is_scalar($value) && !is_bool($value)) ? (string) $value : '';
+    }
+
+    return $out;
+}
+
+/**
+ * ws_step_trigger_values() of a run for its owner: whether they may see the
+ * event's record now (the right its kind of record needs, and for the
+ * workspace's own events the task or the channel, ws_events_creator_sees()),
+ * and the names of the newcomer and the channel joined.
+ *
+ * @param array $owner   the flow's owner, as the workspace sees their rights
+ * @param array $context ws_flow_run_context()
+ * @return array field => text
+ */
+function ws_step_trigger_values_for($owner, $context)
+{
+    $kind = (string) ($context['trigger'] ?? '');
+    $sees = false;
+    $names = array();
+
+    if (($kind === 'event') && function_exists('ws_events_catalog')) {
+        $event = (string) ($context['event'] ?? '');
+        $right = (string) (ws_events_catalog()[$event]['right'] ?? '');
+        $payload = is_array($context['event_payload'] ?? null) ? $context['event_payload'] : array();
+        $sees = ($right !== '') && !empty($owner[$right])
+            && (!ws_events_is_own($event) || ws_events_creator_sees((int) ($owner['id'] ?? 0), $event, $payload));
+    }
+
+    if ($kind === 'join') {
+        $newcomer = (int) ($context['newcomer'] ?? 0);
+        $channel = (int) ($context['join_channel_id'] ?? 0);
+        $names = array(
+            'newcomer' => ($newcomer > 0) ? ws_person_name($newcomer) : '',
+            'channel'  => ($channel > 0) ? (string) db_value("SELECT name FROM ws_channels WHERE id = '" . $channel . "'") : '',
+        );
+    }
+
+    return ws_step_trigger_values($context, $sees, $names);
+}
+
+/**
  * Whether the person who started a run may make a change box's change too.
  * A change is made only with the rights of both the flow's owner and the
  * starter, so a colleague who starts someone else's flow has no change made
@@ -674,13 +763,13 @@ function ws_step_node_values($rows)
 }
 
 /**
- * Fills the {{node.<id>.<field>}} of a text; one the run has no value for
- * becomes empty. The other double braces are left for ws_scheduled_fill().
- * Each value is made safe for where the text lands (ws_step_fill_value()).
- * Pure.
+ * Fills the {{node.<id>.<field>}} and {{trigger.<field>}} of a text; one the
+ * run has no value for becomes empty. The other double braces are left for
+ * ws_scheduled_fill(). Each value is made safe for where the text lands
+ * (ws_step_fill_value()). Pure.
  *
  * @param string $text
- * @param array  $values ws_step_node_values()
+ * @param array  $values ws_step_node_values(), the trigger's under WS_STEP_TRIGGER
  * @param string $target ws_step_fill_target()
  * @return string
  */
@@ -688,13 +777,25 @@ function ws_step_fill_nodes($text, $values, $target = 'text')
 {
     $text = (string) $text;
 
-    if (strpos($text, '{{node.') === false) {
+    if ((strpos($text, '{{node.') === false) && (strpos($text, '{{trigger.') === false)) {
         return $text;
     }
 
-    return (string) preg_replace_callback('/\{\{node\.([a-z][a-z0-9_]{0,31})\.([a-z_][a-z0-9_]{0,31})\}\}/', function ($match) use ($values, $target) {
-        return ws_step_fill_value((string) ($values[$match[1]][$match[2]] ?? ''), $target);
+    return (string) preg_replace_callback(WS_STEP_VALUE_PATTERN, function ($match) use ($values, $target) {
+        return ws_step_fill_value((string) ($values[ws_step_value_box($match)][$match[2]] ?? ''), $target);
     }, $text);
+}
+
+/**
+ * Where the values of a match of WS_STEP_VALUE_PATTERN sit among a run's
+ * values: the box's id, WS_STEP_TRIGGER for {{trigger.<field>}}. Pure.
+ *
+ * @param string[] $match
+ * @return string
+ */
+function ws_step_value_box($match)
+{
+    return ((string) ($match[1] ?? '') !== '') ? (string) $match[1] : WS_STEP_TRIGGER;
 }
 
 /**
@@ -788,7 +889,8 @@ function ws_step_fill_action($kind, $action, $values)
 }
 
 /**
- * The {{node.<id>.<field>}} of a text the run gives no value for, each
+ * The {{node.<id>.<field>}} and {{trigger.<field>}} of a text the run gives
+ * no value for, each
  * once, in the order they first appear: they would be filled in empty.
  * Pure.
  *
@@ -800,9 +902,9 @@ function ws_step_fill_missing($text, $values)
 {
     $missing = array();
 
-    if (preg_match_all('/\{\{node\.([a-z][a-z0-9_]{0,31})\.([a-z_][a-z0-9_]{0,31})\}\}/', (string) $text, $matches, PREG_SET_ORDER)) {
+    if (preg_match_all(WS_STEP_VALUE_PATTERN, (string) $text, $matches, PREG_SET_ORDER)) {
         foreach ($matches as $match) {
-            if (!isset($values[$match[1]][$match[2]]) && !in_array($match[0], $missing, true)) {
+            if (!isset($values[ws_step_value_box($match)][$match[2]]) && !in_array($match[0], $missing, true)) {
                 $missing[] = $match[0];
             }
         }
@@ -964,6 +1066,7 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     $values = ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
         WHERE run_id = '" . (int) $run['id'] . "' AND status IN ('done', 'failed', 'skipped')"));
     $context = ws_flow_run_context($run);
+    $values[WS_STEP_TRIGGER] = ws_step_trigger_values_for($owner, $context);
 
     // What ws_scheduled_fill() reads of the action: the flow's name as the
     // run started, and the run's number for {{run}}. A change posts its
@@ -1097,6 +1200,7 @@ function ws_flow_box_try($viewer, $flow, $data)
         $values = ws_step_node_values(array_filter(ws_flow_run_steps($run_id), function ($row) {
             return ws_flow_step_settled((string) $row['status']);
         }));
+        $values[WS_STEP_TRIGGER] = ws_step_trigger_values_for($owner, ws_flow_run_context($run));
     }
 
     $kind = (string) $node['kind'];

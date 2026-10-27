@@ -44,8 +44,8 @@ $query =
         layout_type,
         style_tree_json as tree_json
     FROM style
-    WHERE style_id = '" . escape($_GET['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE style_id = ?";
+$result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 $style = mysqli_fetch_assoc($result);
 
 // The id comes straight from the query string, so it can point at a style
@@ -84,21 +84,21 @@ $query =
         style_user,
         style_timestamp)
     VALUES (
-        '" . escape($new_style_name) . "',
-        '" . escape($style['type']) . "',
-        '" . escape($style['layout']) . "',
-        '" . escape($style['empty_cell_width_percentage']) . "',
-        '" . escape($style['code']) . "',
-        '" . escape($style['head']) . "',
-        '" . $style['social_networking_position'] . "',
-        '" . escape($style['theme_id']) . "',
-        '" . escape($style['additional_body_classes']) . "',
-        '" . escape($style['collection']) . "',
-        '" . e($style['layout_type']) . "',
-        " . (($style['tree_json'] === null) ? 'NULL' : "'" . escape($style['tree_json']) . "'") . ",
-        '" . escape($user['id']) . "',
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
         UNIX_TIMESTAMP())";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = db_q($query, array((string) $new_style_name, (string) $style['type'], (string) $style['layout'], (string) $style['empty_cell_width_percentage'], (string) $style['code'], (string) $style['head'], (string) $style['social_networking_position'], (string) $style['theme_id'], (string) $style['additional_body_classes'], (string) $style['collection'], (string) $style['layout_type'], (($style['tree_json'] === null) ? null : (string) $style['tree_json']), (string) $user['id'])) or output_error('Query failed.');
 $new_style_id = mysqli_insert_id(db::$con);
 
 // A copy is built on the same framework, and started from the same template.
@@ -208,8 +208,8 @@ if ($style['type'] == 'system') {
             region_type,
             region_name
         FROM system_style_cells
-        WHERE style_id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE style_id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     
     $cells = array();
     
@@ -229,13 +229,13 @@ if ($style['type'] == 'system') {
                 region_type,
                 region_name)
             VALUES (
-                '$new_style_id',
-                '" . $cell['area'] . "',
-                '" . $cell['row'] . "',
-                '" . $cell['col'] . "',
-                '" . $cell['region_type'] . "',
-                '" . escape($cell['region_name']) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?)";
+        $result = db_q($query, array((string) $new_style_id, (string) $cell['area'], (string) $cell['row'], (string) $cell['col'], (string) $cell['region_type'], (string) $cell['region_name'])) or output_error('Query failed.');
     }
 }
 log_activity(lang(array('string'=>'{var:1} ({var:2}) was duplicated','vars'=>array(lang('page style'), $original_style_name) )), $_SESSION['sessionusername']);

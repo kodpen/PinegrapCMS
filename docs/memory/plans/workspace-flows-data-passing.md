@@ -8,7 +8,7 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 - Filled only into a kind's `texts` (`ws_step_kinds()`): post body, e-mail subject and body, notify text, task title and description, webhook text, check-in question, report title, digest subject and intro. Addresses are never filled.
 - Ids are `<kind>_<n>` (`freeId()` in workspace_flow.js) and are not shown on the canvas; `fl_values_help` is the only hint.
 - A reference to a missing box or field is a problem, one to a box that may not run a warning (D4, workspace/workspace-flows-references.md); at run time it still becomes ''.
-- Not readable: trigger values (event payload, newcomer; workspace-flows-anchors.md). A condition cannot compare a box's value. No loops (`pass` is always 0).
+- `{{trigger.<field>}}` reads what started the run (D5, workspace/workspace-flows-trigger-values.md). A condition cannot compare a box's value. No loops (`pass` is always 0).
 - A filled value is never read again as a placeholder (D2) and is escaped for where it lands (D3), workspace/workspace-flows-outputs.md.
 
 ## Which steps? (one PR each, in this order)
@@ -20,7 +20,7 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 
 - D4 reference check: done (#2305), see workspace/workspace-flows-references.md.
 
-- D5 trigger values: `{{trigger.<field>}}` from the run context, declared per anchor kind like outputs (event payload by event type, newcomer, record id).
+- D5 trigger values: done (#2341), see workspace/workspace-flows-trigger-values.md.
 
 - D6 value picker: "Add value" in the side panel lists the trigger and the upstream boxes with their outputs; inserts a chip "Check a web address › status code" keeping `{{node.web_check_1.status_code}}`. Ids are never typed; replaces `fl_values_help`. Threads, fork, value boxes: workspace-flows-data-threads.md.
 
@@ -45,4 +45,4 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 5. Lists (D9): first source: table rows, a day's orders, or webhook arrays?
 
 ## Where to start?
-- D5. Read workspace/workspace-flows-anchors.md (trigger values), workspace-flows-outputs.md.
+- D6. Read workspace/workspace-flows-outputs.md and workspace-flows-trigger-values.md (`ws_flow_js_config()` `outputs`, `trigger_outputs`).

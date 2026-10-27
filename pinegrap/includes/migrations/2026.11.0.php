@@ -79,6 +79,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_session_passkey();        // 11.0.46
 	upgrade_2026_11_0_audit_retention();        // 11.0.47
 	upgrade_2026_11_0_kvkk_notice();            // 11.0.48
+	upgrade_2026_11_0_reference_price_rule();   // 11.0.49
 
 }
 
@@ -2547,16 +2548,35 @@ function upgrade_2026_11_0_shipment_lookup() {
 }
 
 // The KVKK notice at checkout (2026.11.0, 11.0.48; includes/fn/legal_documents.php).
-// The page holding the store's KVKK notice (0: no notice link) and the explicit
-// consent sentence (NULL: no consent box). The notice is a page of the site,
-// not a template on this row: two more TEXT columns would leave the config row
-// less room on MySQL 8.0 than tests/innodb_test.php keeps free. The answer is
+// The page holding the store's KVKK notice (0: no notice link) on the config
+// row, and the explicit consent sentence (no row: no consent box) in
+// config_text, a name/value table for long settings texts
+// (includes/fn/config_text.php). The config row has no room left for another
+// TEXT column on MySQL 8.0 (tests/innodb_test.php keeps room for ten), and
+// the notice itself is a page of the site for the same reason. The answer is
 // kept in order_documents as type kvkk, which 11.0.1 created.
 function upgrade_2026_11_0_kvkk_notice() {
 
 	install_add_column('config', 'ecommerce_kvkk_page_id', "INT UNSIGNED NOT NULL DEFAULT 0");
-	install_add_column('config', 'ecommerce_kvkk_consent_text', "TEXT NULL");
+
+	install_create_table('config_text', "CREATE TABLE config_text (
+		name                VARCHAR(64) NOT NULL,
+		value               TEXT NULL,
+		PRIMARY KEY (name)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Checkout legal documents: a link to your KVKK notice page and an optional explicit consent box can be shown at checkout under Site Settings, Ecommerce, Legal Documents. Nothing changes until a page or a consent sentence is chosen there.');
+
+}
+
+// The rule behind the "price before the discount" (2026.11.0, 11.0.49;
+// includes/fn/price_history.php, Settings › Ecommerce › Reference Price).
+// TEXT, as every new config column (no VARCHAR on config); NULL reads as the
+// 30-day lowest, so the step writes no rows.
+function upgrade_2026_11_0_reference_price_rule() {
+
+	install_add_column('config', 'ecommerce_reference_price_rule', "TEXT DEFAULT NULL");
+
+	install_note('Ecommerce: Settings › Ecommerce › Reference Price now picks which price counts as the price before a discount: the lowest price of the last 30 days (the default), of the last 10 days, or the compare-at price entered on each product.');
 
 }

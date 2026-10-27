@@ -39,7 +39,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three owner questions, small fixes; where to start
-- explorer-handle-split.md: Cutting pg_explorer_handle() (view_folder_and_files_f.php, ~7k lines) into sub-action handlers under includes/explorer/handle_*.php, ~500 lines a PR: the pattern, what is done, the cutting order
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
 - graph-canvas-core.md: Plan (2026-10-24, not started, answers open): a reusable box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
@@ -56,7 +55,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - payment-driver-layer.md: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b½, 4a, 5 done; rest of 3b, 4b, 4c open): payment drivers beside submit_order.php; iyzico and Stripe on it; one checkout method list, then PayPal v2 and PayTR
 - payment-driver-paypal.md: Step 4b (PayPal Checkout v2) hand-over: branch feature/payment-4b-paypal-v2 (closed PR #1827), what is missing before it lands, the open PENDING-capture question
 - php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, leftover deprecations, dead remnants; done: #972, #1039, #1930, #1450, #1669, #1744, #1757
-- price-history-reference-price.md: Plan (approved 2026-10-19, in progress: history, writers, API read, compare-at price, offer rows, retention, window function done): automatic "price before discount" (TR 10/30-day, EU 30-day rules)
+- price-history-reference-price.md: Plan (approved 2026-10-19; done: history, writers, API read, compare-at, offers, retention, window function, rule setting): automatic "price before discount" (TR 10/30-day, EU 30-day rules)
 - privacy-data-pack-audit-log.md: Plan (approved 2026-10-19; all steps done, open questions remain): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 - prototype-sharing-code.md: What the code holds for plans/prototype-sharing.md: drafts and their revisions, how a draft opens today, what Preview draws, token links, the password throttle, MCP routes, flow and note rights
 - prototype-sharing.md: Plan (2026-10-24; slices 1-4 done: #1867, #1579, #1595, #1578; 5 later): drafts play as a clickable prototype shared by a view-only link; flows with the team

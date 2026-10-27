@@ -43,8 +43,8 @@ if (!$_POST) {
                 symbol,
                 exchange_rate
             FROM currencies
-            WHERE id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         // Assign the values to the fields.
@@ -139,14 +139,14 @@ if (!$_POST) {
     // if currency was selected for delete
     if (isset($_POST['submit_delete']) && ($_POST['submit_delete'] ?? '') === 'Delete') {
         // get currency name for the log
-        $query = "SELECT name FROM currencies WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT name FROM currencies WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $currency_name = $row['name'];
         
         // delete currency
-        $query = "DELETE FROM currencies WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM currencies WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('currency'), $currency_name) )), $_SESSION['sessionusername']);
 
@@ -175,9 +175,9 @@ if (!$_POST) {
             "SELECT id
             FROM currencies
             WHERE
-                (code = '" . escape($liveform->get_field_value('code')) . "')
-                AND (id != '" . escape($_POST['id'] ?? '') . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (code = ?)
+                AND (id != ?)";
+        $result = db_q($query, array((string) $liveform->get_field_value('code'), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // if code is already in use, prepare error and forward user back to screen
         if (mysqli_num_rows($result) > 0) {
@@ -205,15 +205,15 @@ if (!$_POST) {
         $query =
             "UPDATE currencies
             SET
-                name = '" . escape($liveform->get_field_value('name')) . "',
-                base = '" . escape($liveform->get_field_value('base')) . "',
-                code = '" . escape($liveform->get_field_value('code')) . "',
-                symbol = '" . escape($liveform->get_field_value('symbol')) . "',
-                exchange_rate = '" . escape($exchange_rate) . "',
-                last_modified_user_id = '" . $user['id'] . "',
+                name = ?,
+                base = ?,
+                code = ?,
+                symbol = ?,
+                exchange_rate = ?,
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) $liveform->get_field_value('base'), (string) $liveform->get_field_value('code'), (string) $liveform->get_field_value('symbol'), (string) $exchange_rate, (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         // If this currency was set as the base currency then update all other currencies
         // in order to make sure that none are set as the base currency.

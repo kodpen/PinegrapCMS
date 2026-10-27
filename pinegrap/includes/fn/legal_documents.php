@@ -743,7 +743,7 @@ function pg_legal_kvkk_settings()
         $settings['full_url'] = URL_SCHEME . HOSTNAME . $settings['url'];
     }
 
-    $settings['consent'] = defined('ECOMMERCE_KVKK_CONSENT_TEXT') ? trim((string) ECOMMERCE_KVKK_CONSENT_TEXT) : '';
+    $settings['consent'] = trim(pg_config_text('ecommerce_kvkk_consent_text'));
 
     return $settings;
 }

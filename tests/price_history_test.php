@@ -534,3 +534,18 @@ function test_price_history_reference_rules()
 	pg_assert_same(null, pg_price_history_window_start('manual', 1760000000));
 	pg_assert_same(null, pg_price_history_window_start('lowest_7d', 1760000000));
 }
+
+// A stored or posted reference price rule: a known rule stays, anything else
+// (NULL before the first save, empty, a dropped rule) reads as the 30-day
+// lowest.
+function test_price_reference_rule_from_input()
+{
+	pg_assert_same('lowest_30d', PG_PRICE_REFERENCE_RULE_DEFAULT);
+	pg_assert_same('lowest_10d', pg_price_reference_rule_from_input('lowest_10d'));
+	pg_assert_same('manual', pg_price_reference_rule_from_input(' manual '));
+	pg_assert_same('lowest_30d', pg_price_reference_rule_from_input('lowest_30d'));
+	pg_assert_same('lowest_30d', pg_price_reference_rule_from_input(null), 'never saved');
+	pg_assert_same('lowest_30d', pg_price_reference_rule_from_input(''));
+	pg_assert_same('lowest_30d', pg_price_reference_rule_from_input('lowest_7d'), 'unknown rule');
+	pg_assert_same('lowest_30d', pg_price_reference_rule_from_input(array('manual')), 'not a string');
+}

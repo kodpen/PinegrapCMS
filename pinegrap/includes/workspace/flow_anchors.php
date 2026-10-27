@@ -40,6 +40,86 @@ function ws_flow_anchor_kinds()
 }
 
 /**
+ * The values what started a run gives its boxes ({{trigger.<field>}}), as
+ * the start box is set up, in the shape of a box's outputs (key, type,
+ * label): an event its name, the id of its record and what its payload
+ * says of it (ws_flow_event_outputs()); a join the newcomer and the channel
+ * joined. Started by hand or at a time: none. Pure.
+ *
+ * @param string $kind   the start box's kind
+ * @param array  $config ws_flow_anchor_normalize()
+ * @return array[] key, type, label
+ */
+function ws_flow_trigger_outputs($kind, $config = array())
+{
+    $value = function ($key, $type, $label) {
+        return array('key' => $key, 'type' => $type, 'label' => $label);
+    };
+
+    if ($kind === 'join') {
+        return array(
+            $value('newcomer_id', 'number', lang('The person who joined')),
+            $value('newcomer_name', 'text', lang('The name of the person who joined')),
+            $value('channel_id', 'number', lang('The channel joined')),
+            $value('channel_name', 'text', lang('The name of the channel joined')),
+        );
+    }
+
+    if ($kind !== 'event') {
+        return array();
+    }
+
+    $out = array($value('event', 'text', lang('What happened')), $value('record_id', 'number', lang('Record')));
+    $keys = array('event', 'record_id');
+
+    foreach ((ws_flow_event_outputs()[(string) ($config['event'] ?? '')] ?? array()) as $output) {
+        if (!in_array($output['key'], $keys, true)) {
+            $keys[] = $output['key'];
+            $out[] = $output;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * What each event's payload gives {{trigger.<field>}} beside its name and
+ * record: the single values the code that announces it always sends
+ * (pg_announce(), ws_event()); a list (a task's assignees, a delivery's
+ * parcels) is never one. Pure.
+ *
+ * @return array event => list of key, type, label
+ */
+function ws_flow_event_outputs()
+{
+    $value = function ($key, $type, $label) {
+        return array('key' => $key, 'type' => $type, 'label' => $label);
+    };
+    $order = $value('order_number', 'text', lang('Order number'));
+    $task = array($value('title', 'text', lang('Title')), $value('status', 'text', lang('Status')));
+    $channel = $value('channel_id', 'number', lang('Channel'));
+    $actor = $value('actor_id', 'number', lang('The person who did it'));
+
+    return array(
+        'order.created'          => array($order),
+        'order.status_changed'   => array($order, $value('status', 'text', lang('Status')), $value('previous', 'text', lang('Previous status'))),
+        'order.shipped'          => array($order),
+        'order.delivered'        => array($order, $value('delivery_date', 'text', lang('Delivery date'))),
+        'order.cancelled'        => array($order),
+        'order.return.requested' => array($order),
+        'stock.low'              => array($value('name', 'text', lang('Product')), $value('quantity', 'number', lang('Quantity')), $value('threshold', 'number', lang('Threshold'))),
+        'customer.created'       => array($value('email', 'text', lang('E-mail'))),
+        'customer.updated'       => array($value('email', 'text', lang('E-mail'))),
+        'form.submitted'         => array(),
+        'workspace.task.completed'      => array_merge($task, array($value('priority', 'text', lang('Priority')), $channel, $actor)),
+        'workspace.task.status_changed' => array_merge($task, array($value('previous_status', 'text', lang('Previous status')), $value('priority', 'text', lang('Priority')), $channel, $actor)),
+        'workspace.task.overdue'        => array_merge($task, array($channel, $value('due_date', 'text', lang('Due date')))),
+        'workspace.approval.decided'    => array_merge($task, array($channel, $value('message_id', 'number', lang('Message')), $actor)),
+        'workspace.guest.message'       => array($value('guest', 'text', lang('Guest')), $value('text', 'text', lang('What the guest wrote')), $channel, $value('message_id', 'number', lang('Message'))),
+    );
+}
+
+/**
  * The settings of a box that starts a flow, as its rule keeps them; unknown
  * keys are dropped. Pure: ws_flow_anchor_check() asks the rest.
  *

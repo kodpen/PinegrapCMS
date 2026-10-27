@@ -42,8 +42,8 @@ $component_id = pg_common_region_components(array($id))[$id];
 if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
     $query = "SELECT cregion_name, cregion_content, cregion_designer_type "
             ."FROM cregion "
-            ."WHERE cregion_id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+            ."WHERE cregion_id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed');
     $row = mysqli_fetch_array($result);
     $cregion_name = $row['cregion_name'];
     $cregion_content = $row['cregion_content'];
@@ -198,12 +198,12 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
     // if region was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
         $query = "DELETE FROM cregion "
-                ."WHERE cregion_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                ."WHERE cregion_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
         
         // delete users_common_regions_xref records
-        $query = "DELETE FROM users_common_regions_xref WHERE common_region_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM users_common_regions_xref WHERE common_region_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('common region'), $_POST['name']) )), $_SESSION['sessionusername']);
         $notice = lang(array('string'=>'{var:1} was deleted successfully','vars'=>lang('Common Region') ));

@@ -47,8 +47,8 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
             page_name,
             page_style
         FROM page
-        WHERE page_id = '" . escape($_GET['page_id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE page_id = ?";
+    $result = db_q($query, array((string) $_GET['page_id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     // A deleted or mistyped page id must stop here: the page type below is
@@ -246,8 +246,8 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
                  short_description,
                  form_name
              FROM products
-             WHERE id = '" . escape($_GET['product_id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+             WHERE id = ?";
+    $result = db_q($query, array((string) $_GET['product_id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $product_name = $row['name'];
