@@ -7,7 +7,7 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 - `{{node.<id>.<field>}}` (`ws_step_fill_nodes()`, steps.php) reads `text`, `outcome`, `status` and the scalar `result.data` values of the run's settled boxes (`ws_step_node_values()`); arrays read as ''.
 - Filled only into a kind's `texts` (`ws_step_kinds()`): post body, e-mail subject and body, notify text, task title and description, webhook text, check-in question, report title, digest subject and intro. Addresses are never filled.
 - Ids are `<kind>_<n>` (`freeId()` in workspace_flow.js) and are not shown on the canvas; `fl_values_help` is the only hint.
-- A reference to a missing box or field becomes '' without a word: `ws_flow_graph_check()` does not read references.
+- A reference to a missing box or field is a problem, one to a box that may not run a warning (D4, workspace/workspace-flows-references.md); at run time it still becomes ''.
 - Not readable: trigger values (event payload, newcomer; workspace-flows-anchors.md). A condition cannot compare a box's value. No loops (`pass` is always 0).
 - A filled value is never read again as a placeholder (D2) and is escaped for where it lands (D3), workspace/workspace-flows-outputs.md.
 
@@ -18,7 +18,7 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 
 - D3 escaping: done (#2293), see workspace/workspace-flows-outputs.md.
 
-- D4 reference check: `ws_flow_graph_check()` gives `bad_reference` for an unknown box, a box not upstream of the reader, or a field not in its outputs; a box on a branch that may be skipped gives a warning. Shown under Problems.
+- D4 reference check: done (#2305), see workspace/workspace-flows-references.md.
 
 - D5 trigger values: `{{trigger.<field>}}` from the run context, declared per anchor kind like outputs (event payload by event type, newcomer, record id).
 
@@ -45,4 +45,4 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 5. Lists (D9): first source: table rows, a day's orders, or webhook arrays?
 
 ## Where to start?
-- D4. Read workspace/workspace-flows-store.md (`ws_flow_graph_check()`), workspace-flows-outputs.md.
+- D5. Read workspace/workspace-flows-anchors.md (trigger values), workspace-flows-outputs.md.

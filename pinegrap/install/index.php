@@ -3124,10 +3124,6 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		.pg-install .btn i { font-size: 1rem; line-height: 1; }
 		.pg-install .btn .material-icons { font-size: 1.1rem; }
 
-		.pg-strength { display: flex; gap: .25rem; margin-top: .4rem; }
-		.pg-strength i { height: 4px; flex: 1; border-radius: 999px; background: var(--pg-border-color); }
-		.pg-strength i.on { background: var(--pg-success); }
-
 		/* the question about replacing an existing site */
 		.pg-danger-panel {
 			border: 1px solid color-mix(in srgb, var(--pg-danger) 35%, transparent);
@@ -3455,8 +3451,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 												'class' => 'form-control',
 												'autocomplete' => 'off'
 												)) . '
-												<div class="pg-strength" id="pg_strength"><i></i><i></i><i></i><i></i></div>
-												<div class="small fg-secondary" id="pg_strength_text">&nbsp;</div>
+												<div class="mt-2">' . pg_password_strength_meter('admin_password', false) . pg_password_strength_script() . '</div>
 											</div>
 											<div class="col-12 md:col-4 my-3">
 												<label for="admin_confirm_password" class="form-label">' . lang('Confirm Password') . '</label>
@@ -4585,21 +4580,6 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 						}
 					});
 				}
-			});
-
-			// a rough idea of how strong the administrator password is
-			$("#admin_password").on("input", function() {
-				var value = $(this).val();
-				var score = 0;
-				if (value.length >= 8) { score++; }
-				if (value.length >= 12) { score++; }
-				if (/[A-Z]/.test(value) && /[a-z]/.test(value)) { score++; }
-				if (/[0-9]/.test(value) && /[^A-Za-z0-9]/.test(value)) { score++; }
-				$("#pg_strength i").each(function(index) {
-					$(this).toggleClass("on", index < score);
-				});
-				var labels = ["", "' . escape_javascript(lang('Weak')) . '", "' . escape_javascript(lang('Fair')) . '", "' . escape_javascript(lang('Good')) . '", "' . escape_javascript(lang('Strong')) . '"];
-				$("#pg_strength_text").html(value ? labels[score] : "&nbsp;");
 			});
 
 			// hide the question again as soon as it is answered
