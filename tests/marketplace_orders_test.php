@@ -189,3 +189,22 @@ function test_marketplace_orders_cancellation_mails_only_the_shops_own_customers
 	pg_assert_contains("(pg_schema_has('orders', 'type') ? 'type' : \"'' AS type\")", $source,
 		'the cancellation reads the order type');
 }
+
+// The case-blind fallback of the order import takes a mapping only when it is
+// the only one: "ABC-1" and "abc-1" mapped to two products match neither.
+function test_marketplace_orders_case_blind_match_needs_a_single_mapping()
+{
+	pg_assert_same(array('id' => '7'), mp_order_single_match(array(array('id' => '7'))));
+	pg_assert_same(null, mp_order_single_match(array(array('id' => '7'), array('id' => '8'))));
+	pg_assert_same(null, mp_order_single_match(array()));
+	pg_assert_same(null, mp_order_single_match(false), 'a failed query');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/outbound/orders.php');
+
+	$exact = strpos($source, "AND (marketplace_product_map.remote_code = '\" . e(\$code) . \"')");
+	$blind = strpos($source, "AND (marketplace_product_map.remote_code COLLATE utf8mb4_unicode_ci = '\" . e(\$code) . \"')");
+	$barcode = strpos($source, 'FROM product_barcodes', (int) $blind);
+
+	pg_assert_true(($exact !== false) && ($blind !== false) && ($exact < $blind), 'the exact code is tried first');
+	pg_assert_true(($barcode !== false) && ($blind < $barcode), 'the mappings before the catalogue');
+}

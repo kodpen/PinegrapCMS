@@ -134,6 +134,9 @@ function mp_matches_from_sql($account_id) {
 
 }
 
+// The search box: name, shop name, title, code on the account or barcode.
+// The code column compares byte for byte (utf8mb4_bin); the search names the
+// panel's collation for it so that it ignores case as the other columns do.
 function mp_matches_search_sql($search) {
 
 	$search = trim((string) $search);
@@ -147,7 +150,7 @@ function mp_matches_search_sql($search) {
 	$like = "'%" . e(escape_like($search)) . "%'";
 
 	return " AND ((products.name LIKE " . $like . ") OR (products.short_description LIKE " . $like . ")
-		OR (products.title LIKE " . $like . ") OR (marketplace_product_map.remote_code LIKE " . $like . ")
+		OR (products.title LIKE " . $like . ") OR (marketplace_product_map.remote_code COLLATE utf8mb4_unicode_ci LIKE " . $like . ")
 		OR (products.id IN (SELECT product_id FROM product_barcodes WHERE barcode LIKE " . $like . ")))";
 
 }
