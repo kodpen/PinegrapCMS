@@ -405,6 +405,17 @@ function _apply_shopping_cart_bindings(&$node, $context)
         pg_sw_cart_gift_card_control($node, isset($context['cart_form_id']) ? (string)$context['cart_form_id'] : '');
     }
 
+    // ── Recurring schedule controls (the cart.item_schedule list) ───────
+    // The same split: the names, values and the gateway's rules are the
+    // system's (pg_sw_cart_schedule_control()); a schedule without a
+    // control the gateway requires gets it back.
+    if (pg_sw_list_is_sourced($node) && $node['props']['source'] === 'cart.item_schedule') {
+        pg_sw_cart_schedule_restore($node, pg_cart_schedule_rules());
+    }
+    if (isset($bindings['value']) && pg_sw_cart_schedule_control_spec($bindings['value']) !== null) {
+        pg_sw_cart_schedule_control($node, isset($context['cart_form_id']) ? (string)$context['cart_form_id'] : '', pg_cart_schedule_rules());
+    }
+
     if (!empty($node['children']) && is_array($node['children'])) {
         foreach ($node['children'] as &$child) {
             if (is_array($child)) _apply_shopping_cart_bindings($child, $context);
@@ -1305,6 +1316,9 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                 $recurring_schedule_html = $recurring_editable
                     ? _pg_render_cart_item_recurring_schedule($r, $_pg_cart_lf_snapshot, $_pg_cart_form_attr)
                     : '';
+                // The same values for the schedule part's list
+                // (cart.item_schedule, widgets_lists_cart.php).
+                $schedule = $recurring_editable ? _pg_cart_recurring_schedule($r, $_pg_cart_lf_snapshot) : null;
                 // Discount strike-through values — emit EMPTY when no
                 // discount applies so designer-bound strike-through spans
                 // auto-hide (via the `[data-pg-bind*="original_price"]:empty`
@@ -1338,6 +1352,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                     'gift_cards'               => $gift_cards,
                     'recurring_editable'       => $recurring_editable ? 1 : 0,
                     'recurring_schedule_html'  => $recurring_schedule_html,
+                    'schedule'                 => $schedule,
                     // Row kind — drives which control the qty column shows.
                     //   donation      → currency amount box, no unit price
                     //   added_by_offer→ plain number, not editable (the offer
@@ -1525,6 +1540,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         $_cart_row_tree    = array('type' => 'root', 'children' => $split['loop_children']);
         $_cart_form_placed = pg_sw_placed($_cart_row_tree, array('__item_form_data_html'));
         $_cart_gift_placed = pg_sw_placed($_cart_row_tree, array('__item_gift_card_html', 'cart.item_gift_cards'));
+        $_cart_sched_placed = pg_sw_placed($_cart_row_tree, array('__item_recurring_schedule_html', 'cart.item_schedule'));
         foreach ($items as $idx => $item) {
             // Qty input emitted as an input-group with attached -/+ steppers.
             // JS (see _pg_qty_stepper_inline_js below) handles the click → input
@@ -1775,8 +1791,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
             // And for the recurring schedule: without the controls the row
             // would silently keep the product's schedule while the product
             // promises the customer may change it.
-            if (!empty($row_values['__item_recurring_schedule_html'])
-                && strpos($loop_template, '^^__item_recurring_schedule_html^^') === false) {
+            if (!empty($row_values['__item_recurring_schedule_html']) && !$_cart_sched_placed) {
                 $row_html .= $row_values['__item_recurring_schedule_html'];
             }
 
@@ -3190,44 +3205,63 @@ function _pg_cart_recurring_defaults($row)
     );
 }
 
-// ── Recurring schedule controls for one cart row ─────────────────────────
+// ── Recurring schedule: the gateway's rules ─────────────────────────────
+//
+// The gateway decides three things, exactly as in get_shopping_cart.php: the
+// number of payments is required (and range-limited) on ClearCommerce and
+// First Data, and the start date box is absent on ClearCommerce, which
+// always bills from today. cart_action.php applies the same rules.
+//
+// @param bool|null   $cc_on    Credit/debit cards on (null: the site's setting)
+// @param string|null $gateway  Payment gateway (null: the site's setting)
+// @return array  payments_required, show_start (bool), payments_min,
+//                payments_max (int, 0 = none), payments_help (text)
+function pg_cart_schedule_rules($cc_on = null, $gateway = null)
+{
+    if ($cc_on === null)   $cc_on   = defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD == true;
+    if ($gateway === null) $gateway = defined('ECOMMERCE_PAYMENT_GATEWAY') ? (string)ECOMMERCE_PAYMENT_GATEWAY : '';
+    $help = function_exists('get_number_of_payments_message') && defined('ECOMMERCE_CREDIT_DEBIT_CARD') && defined('ECOMMERCE_PAYMENT_GATEWAY')
+        ? trim((string)get_number_of_payments_message(), ' ()') : '';
+    return array(
+        'payments_required' => $cc_on && ($gateway === 'ClearCommerce' || $gateway === 'First Data Global Gateway'),
+        'show_start'        => !$cc_on || $gateway !== 'ClearCommerce',
+        'payments_min'      => ($cc_on && $gateway === 'ClearCommerce') ? 2 : 1,
+        'payments_max'      => ($cc_on && $gateway === 'ClearCommerce') ? 999
+                             : (($cc_on && $gateway === 'First Data Global Gateway') ? 99 : 0),
+        'payments_help'     => $help,
+    );
+}
+
+// ── Recurring schedule values for one cart row ───────────────────────────
 //
 // Frequency, number of payments and start date for a product whose schedule
 // the customer may set (products.recurring_schedule_editable_by_customer).
 // Field names are the legacy cart's (recurring_payment_period_<item id> …),
 // so cart_action.php and the legacy shopping_cart.php read the same POST.
-//
-// The gateway decides two things, exactly as in get_shopping_cart.php: the
-// number of payments is required (and range-limited) on ClearCommerce and
-// First Data, and the start date box is absent on ClearCommerce, which
-// always bills from today. The date box is <input type="date">, so the value
-// travels as Y-m-d — the same shape the gift-card delivery date uses in this
-// widget; cart_action.php also accepts the legacy d/m/Y typing.
+// The date box is <input type="date">, so the value travels as Y-m-d — the
+// same shape the gift-card delivery date uses in this widget;
+// cart_action.php also accepts the legacy d/m/Y typing.
 //
 // Values: the visitor's rejected attempt (liveform) wins, then the row's
 // stored schedule, which the renderer seeds from the product before this
 // runs — so the controls never open blank.
 //
-// @param array                 $row        Cart row (see the SELECT in the renderer)
-// @param pg_liveform_snapshot  $lf         Copy of the cart's liveform, for values and errors
-// @param string                $form_attr  ` form="…"` attribute tying inputs to the cart form
-// @return string                   Fieldset markup
-function _pg_render_cart_item_recurring_schedule($row, $lf, $form_attr)
+// @param array                 $row  Cart row (see the SELECT in the renderer)
+// @param pg_liveform_snapshot  $lf   Copy of the cart's liveform, for values and errors
+// @return array|null  item_id, names (period, payments, start), period,
+//                     payments, start, invalid (per control, bool),
+//                     options_html (the frequency's options, the value
+//                     selected); null without an item id
+function _pg_cart_recurring_schedule($row, $lf)
 {
     $iid = (int)($row['item_id'] ?? 0);
-    if ($iid <= 0) return '';
+    if ($iid <= 0) return null;
 
-    $cc_on   = defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD == true;
-    $gateway = defined('ECOMMERCE_PAYMENT_GATEWAY') ? (string)ECOMMERCE_PAYMENT_GATEWAY : '';
-    $payments_required = $cc_on && ($gateway === 'ClearCommerce' || $gateway === 'First Data Global Gateway');
-    $show_start_date   = !$cc_on || $gateway !== 'ClearCommerce';
-    $payments_min = $cc_on && $gateway === 'ClearCommerce' ? 2 : 1;
-    $payments_max = ($cc_on && $gateway === 'ClearCommerce') ? 999
-                  : (($cc_on && $gateway === 'First Data Global Gateway') ? 99 : 0);
-
-    $name_period   = 'recurring_payment_period_' . $iid;
-    $name_payments = 'recurring_number_of_payments_' . $iid;
-    $name_start    = 'recurring_start_date_' . $iid;
+    $names = array(
+        'period'   => 'recurring_payment_period_' . $iid,
+        'payments' => 'recurring_number_of_payments_' . $iid,
+        'start'    => 'recurring_start_date_' . $iid,
+    );
 
     // Rejected attempt first, stored schedule second.
     $value = function ($name, $stored) use ($lf) {
@@ -3236,21 +3270,52 @@ function _pg_render_cart_item_recurring_schedule($row, $lf, $form_attr)
         }
         return (string)$stored;
     };
-    $invalid = function ($name) use ($lf) {
-        return ($lf && $lf->check_field_error($name)) ? ' is-invalid' : '';
-    };
 
-    $period   = $value($name_period, (string)($row['recurring_payment_period'] ?? ''));
-    $payments = $value($name_payments, (int)($row['recurring_number_of_payments'] ?? 0) > 0
+    $period   = $value($names['period'], (string)($row['recurring_payment_period'] ?? ''));
+    $payments = $value($names['payments'], (int)($row['recurring_number_of_payments'] ?? 0) > 0
                                         ? (string)(int)$row['recurring_number_of_payments'] : '');
     $start    = (string)($row['recurring_start_date'] ?? '');
     if ($start === '0000-00-00') $start = '';
-    $start    = $value($name_start, $start);
+    $start    = $value($names['start'], $start);
     // The legacy screen's typing (d/m/Y) may sit in the session after a
     // rejected update; the date box only understands Y-m-d.
     if ($start !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $start) && function_exists('validate_date') && validate_date($start)) {
         $start = prepare_form_data_for_input($start, 'date');
     }
+
+    $invalid = array();
+    foreach ($names as $k => $name) $invalid[$k] = ($lf && $lf->check_field_error($name));
+
+    $options = '';
+    foreach (get_payment_period_options() as $label => $val) {
+        if ((string)$val === '') continue;
+        $options .= '<option value="' . h($val) . '"' . ((string)$val === $period ? ' selected' : '') . '>' . h($label) . '</option>';
+    }
+
+    return array(
+        'item_id' => $iid, 'names' => $names, 'period' => $period, 'payments' => $payments,
+        'start' => $start, 'invalid' => $invalid, 'options_html' => $options,
+    );
+}
+
+// ── Recurring schedule controls for one cart row ─────────────────────────
+//
+// The block a cart layout without the schedule part gets
+// (_pg_cart_recurring_schedule() for the values, pg_cart_schedule_rules()
+// for the gateway's rules); the part draws the same from the
+// cart.item_schedule list.
+//
+// @param array                 $row        Cart row (see the SELECT in the renderer)
+// @param pg_liveform_snapshot  $lf         Copy of the cart's liveform, for values and errors
+// @param string                $form_attr  ` form="…"` attribute tying inputs to the cart form
+// @return string                   Fieldset markup
+function _pg_render_cart_item_recurring_schedule($row, $lf, $form_attr)
+{
+    $s = _pg_cart_recurring_schedule($row, $lf);
+    if ($s === null) return '';
+    $rules = pg_cart_schedule_rules();
+    $names = $s['names'];
+    $invalid = function ($k) use ($s) { return $s['invalid'][$k] ? ' is-invalid' : ''; };
 
     $field = function ($name, $label, $control, $required, $help = '') {
         return '<div class="mb-3 pg-cart-recurring-field">'
@@ -3261,28 +3326,22 @@ function _pg_render_cart_item_recurring_schedule($row, $lf, $form_attr)
              . '</div>';
     };
 
-    $options = '';
-    foreach (get_payment_period_options() as $label => $val) {
-        if ((string)$val === '') continue;
-        $options .= '<option value="' . h($val) . '"' . ((string)$val === $period ? ' selected' : '') . '>' . h($label) . '</option>';
-    }
-
-    $html = '<fieldset class="pg-cart-recurring-set border rounded p-3 mb-3" data-pg-recurring-item="' . $iid . '">'
+    $html = '<fieldset class="pg-cart-recurring-set border rounded p-3 mb-3" data-pg-recurring-item="' . $s['item_id'] . '">'
           . '<legend class="float-none w-auto px-2 fs-6 fw-semibold">' . h(lang('Payment Schedule')) . '</legend>'
-          . $field($name_period, lang('Frequency'),
-                '<select class="form-select' . $invalid($name_period) . '" required' . $form_attr
-              . ' id="' . h($name_period) . '" name="' . h($name_period) . '">' . $options . '</select>', true)
-          . $field($name_payments, lang('Number of Payments'),
-                '<input type="number" class="form-control' . $invalid($name_payments) . '"' . $form_attr
-              . ' id="' . h($name_payments) . '" name="' . h($name_payments) . '"'
-              . ' value="' . h($payments) . '" min="' . $payments_min . '"' . ($payments_max > 0 ? ' max="' . $payments_max . '"' : '')
-              . ' step="1"' . ($payments_required ? ' required' : '') . '>',
-                $payments_required, trim((string)get_number_of_payments_message(), ' ()'));
-    if ($show_start_date) {
-        $html .= $field($name_start, lang('Start Date'),
-                '<input type="date" class="form-control' . $invalid($name_start) . '" required' . $form_attr
-              . ' id="' . h($name_start) . '" name="' . h($name_start) . '"'
-              . ' value="' . h($start) . '" min="' . date('Y-m-d') . '">', true);
+          . $field($names['period'], lang('Frequency'),
+                '<select class="form-select' . $invalid('period') . '" required' . $form_attr
+              . ' id="' . h($names['period']) . '" name="' . h($names['period']) . '">' . $s['options_html'] . '</select>', true)
+          . $field($names['payments'], lang('Number of Payments'),
+                '<input type="number" class="form-control' . $invalid('payments') . '"' . $form_attr
+              . ' id="' . h($names['payments']) . '" name="' . h($names['payments']) . '"'
+              . ' value="' . h($s['payments']) . '" min="' . $rules['payments_min'] . '"' . ($rules['payments_max'] > 0 ? ' max="' . $rules['payments_max'] . '"' : '')
+              . ' step="1"' . ($rules['payments_required'] ? ' required' : '') . '>',
+                $rules['payments_required'], $rules['payments_help']);
+    if ($rules['show_start']) {
+        $html .= $field($names['start'], lang('Start Date'),
+                '<input type="date" class="form-control' . $invalid('start') . '" required' . $form_attr
+              . ' id="' . h($names['start']) . '" name="' . h($names['start']) . '"'
+              . ' value="' . h($s['start']) . '" min="' . date('Y-m-d') . '">', true);
     }
     $html .= '</fieldset>';
     return $html;

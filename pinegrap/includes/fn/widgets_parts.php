@@ -63,6 +63,7 @@ function pg_sw_default_part_tokens()
         ),
         'shopping_cart' => array(
             array('__item_gift_card_html', 'pg_sw_part_cart_item_gift_card'),
+            array('__item_recurring_schedule_html', 'pg_sw_part_cart_item_schedule'),
         ),
         // A section binding and a content type are read as the tokens
         // 'section:<name>' and 'content:<type>' (pg_sw_part_token_of()).
@@ -147,6 +148,7 @@ function pg_sw_default_loop_tail_parts()
         ),
         'shopping_cart' => array(
             array(array('__item_gift_card_html', 'cart.item_gift_cards'), 'pg_sw_part_cart_item_gift_card'),
+            array(array('__item_recurring_schedule_html', 'cart.item_schedule'), 'pg_sw_part_cart_item_schedule'),
         ),
         'catalog_item_view' => array(
             array(array('__cross_sell_html', 'product.related'), 'pg_sw_part_catalog_cross_sell', 'tree'),
@@ -613,14 +615,15 @@ function pg_sw_cart_gift_card_control(&$node, $form_id)
 }
 
 // Gives each label among $node's children that names no control the id of
-// the gift card control beside it, so a click on the words focuses it.
+// the gift card or schedule control beside it, so a click on the words focuses it.
 function pg_sw_cart_gift_card_label_for(&$node)
 {
     if (empty($node['children']) || !is_array($node['children'])) return;
     $id = '';
     foreach ($node['children'] as $c) {
         $b = (is_array($c) && isset($c['props']['_bindings']) && is_array($c['props']['_bindings'])) ? $c['props']['_bindings'] : array();
-        if (isset($b['value']) && pg_sw_cart_gift_card_control_spec($b['value']) !== null && !empty($c['props']['id'])) {
+        if (isset($b['value']) && (pg_sw_cart_gift_card_control_spec($b['value']) !== null || pg_sw_cart_schedule_control_spec($b['value']) !== null)
+            && !empty($c['props']['id'])) {
             $id = (string)$c['props']['id'];
             break;
         }
@@ -705,6 +708,141 @@ function pg_sw_part_cart_item_gift_card($cfg = array())
                 array('_attrs' => array(array('name' => 'data-pg-gc-set', 'value' => '{{__gift_card_number}}'))),
                 array_merge(array(pg_sw_part_order_item_legend(array(), array('text' => lang('Gift card')), '__gift_card_number', '__gift_card_count')), $fields)),
         )),
+    )));
+}
+
+// The cart's payment schedule controls: binding value => array(the name
+// the cart reads without the item id, the list token of its value, its
+// kind). Whether the number of payments is required, its range and whether
+// the start date is asked are the gateway's (pg_cart_schedule_rules()).
+function pg_sw_cart_schedule_control_specs()
+{
+    return array(
+        'schedule_period'   => array('recurring_payment_period_', '__schedule_period', 'select'),
+        'schedule_payments' => array('recurring_number_of_payments_', '__schedule_payments', 'number'),
+        'schedule_start'    => array('recurring_start_date_', '__schedule_start', 'date'),
+    );
+}
+
+function pg_sw_cart_schedule_control_spec($value)
+{
+    $specs = pg_sw_cart_schedule_control_specs();
+    return (is_string($value) && isset($specs[$value])) ? $specs[$value] : null;
+}
+
+// Whether the schedule control $value is required under $rules
+// (pg_cart_schedule_rules()): the frequency always, the number of payments
+// when the gateway needs one, the start date when it is asked.
+function pg_sw_cart_schedule_required($value, $rules)
+{
+    if ($value === 'schedule_period') return true;
+    if ($value === 'schedule_payments') return !empty($rules['payments_required']);
+    if ($value === 'schedule_start') return !empty($rules['show_start']);
+    return false;
+}
+
+// Makes the control $node bound to a schedule field send it: its id and
+// name the cart's (recurring_payment_period_<item id> …, from the list
+// row's ^^__schedule_item^^), its value (a select: the frequency's choices,
+// the row's selected), and the gateway's rules from $rules: required, the
+// number's range, the start date's earliest day, in the cart form $form_id.
+// A start date the gateway does not ask is disabled, so it never sends. The
+// error class follows the design's classes; its other attributes, classes
+// and the label's words stay the design's. A node of another tag is left.
+function pg_sw_cart_schedule_control(&$node, $form_id, $rules)
+{
+    $b     = isset($node['props']['_bindings']) && is_array($node['props']['_bindings']) ? $node['props']['_bindings'] : array();
+    $value = isset($b['value']) ? $b['value'] : '';
+    $spec  = pg_sw_cart_schedule_control_spec($value);
+    $tag   = isset($node['props']['tag']) ? strtolower((string)$node['props']['tag']) : '';
+    if ($spec === null || !isset($node['type']) || $node['type'] !== 'semantic') return;
+    if ($spec[2] === 'select' ? $tag !== 'select' : $tag !== 'input') return;
+    $name    = $spec[0] . '^^__schedule_item^^';
+    $managed = array('type' => 1, 'name' => 1, 'value' => 1, 'form' => 1, 'required' => 1, 'min' => 1, 'max' => 1,
+                     'step' => 1, 'id' => 1, 'disabled' => 1);
+    $kept    = array();
+    foreach ((isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array() as $a) {
+        if (is_array($a) && isset($a['name']) && !isset($managed[strtolower((string)$a['name'])])) $kept[] = $a;
+    }
+    if ($spec[2] === 'select') {
+        $node['props']['text'] = '^^__schedule_period_options_html^^';
+        $node['children'] = array();
+    } else {
+        $kept[] = array('name' => 'type', 'value' => $spec[2]);
+        $kept[] = array('name' => 'value', 'value' => '^^' . $spec[1] . '^^');
+    }
+    $kept[] = array('name' => 'name', 'value' => $name);
+    if ($form_id !== '') $kept[] = array('name' => 'form', 'value' => $form_id);
+    if ($spec[2] === 'number') {
+        $kept[] = array('name' => 'min', 'value' => (string)(int)$rules['payments_min']);
+        if ((int)$rules['payments_max'] > 0) $kept[] = array('name' => 'max', 'value' => (string)(int)$rules['payments_max']);
+        $kept[] = array('name' => 'step', 'value' => '1');
+    } elseif ($spec[2] === 'date') {
+        $kept[] = array('name' => 'min', 'value' => date('Y-m-d'));
+        if (empty($rules['show_start'])) $kept[] = array('name' => 'disabled', 'value' => '');
+    }
+    if (pg_sw_cart_schedule_required($value, $rules)) $kept[] = array('name' => 'required', 'value' => '');
+    $node['props']['_attrs']   = $kept;
+    $node['props']['id']       = $name;
+    $node['props']['cssClass'] = trim((isset($node['props']['cssClass']) ? (string)$node['props']['cssClass'] : '') . ' ^^' . $spec[1] . '_invalid^^');
+}
+
+// A schedule ($loop, the cart.item_schedule list) whose controls required
+// under $rules were deleted gets each back, as the part draws it, at the
+// end of its first element (the schedule's box), else of the list.
+function pg_sw_cart_schedule_restore(&$loop, $rules)
+{
+    foreach (array_keys(pg_sw_cart_schedule_control_specs()) as $value) {
+        if (!pg_sw_cart_schedule_required($value, $rules) || pg_sw_cart_gift_card_has_control($loop, $value)) continue;
+        if (!isset($loop['children']) || !is_array($loop['children'])) $loop['children'] = array();
+        $field = pg_sw_part_cart_schedule_field($value);
+        if (isset($loop['children'][0]) && is_array($loop['children'][0]) && isset($loop['children'][0]['type']) && $loop['children'][0]['type'] === 'semantic') {
+            if (!isset($loop['children'][0]['children']) || !is_array($loop['children'][0]['children'])) $loop['children'][0]['children'] = array();
+            $loop['children'][0]['children'][] = $field;
+        } else {
+            $loop['children'][] = $field;
+        }
+    }
+}
+
+// One schedule field as the cart drew it: its label (a star when it is
+// required: the frequency and the start date always, the number of payments
+// when the gateway needs one), the control bound to $value, the accepted
+// number of payments below it. The start date's box shows only where the
+// gateway asks for one.
+function pg_sw_part_cart_schedule_field($value)
+{
+    $labels = array('schedule_period' => lang('Frequency'), 'schedule_payments' => lang('Number of Payments'),
+                    'schedule_start' => lang('Start Date'));
+    $label  = isset($labels[$value]) ? $labels[$value] : '';
+    $star   = ($value === 'schedule_payments') ? pg_sw_part_when('__schedule_payments_required', 'not_empty') : array();
+    $words  = array(pg_sw_part_el('span', '', 'Text', array('text' => $label)),
+                    pg_sw_part_el('span', 'text-danger', 'Required mark', array_merge(array('text' => '*'), $star)));
+    $control = ($value === 'schedule_period')
+        ? pg_sw_part_el('select', 'form-select', $label, array('_bindings' => array('value' => $value)))
+        : pg_sw_part_el('input', 'form-control', $label, array('_bindings' => array('value' => $value)));
+    $children = array(pg_sw_part_el('label', 'form-label', 'Label', array(), $words), $control);
+    if ($value === 'schedule_payments') {
+        $help = pg_sw_part_when('__schedule_payments_help', 'not_empty');
+        $help['_bindings']['text'] = '__schedule_payments_help';
+        $children[] = pg_sw_part_el('div', 'form-text', 'Help', $help);
+    }
+    return pg_sw_part_el('div', 'mb-3 pg-cart-recurring-field', $label,
+        ($value === 'schedule_start') ? pg_sw_part_when('__schedule_start_shown', 'not_empty') : array(), $children);
+}
+
+// The payment schedule of a cart line whose product lets the customer set
+// it (the cart.item_schedule list, one row): a box headed "Payment
+// Schedule" holding frequency, number of payments and start date. A line
+// with a fixed schedule has no row, so nothing is drawn.
+function pg_sw_part_cart_item_schedule($cfg = array())
+{
+    $fields = array();
+    foreach (array_keys(pg_sw_cart_schedule_control_specs()) as $value) $fields[] = pg_sw_part_cart_schedule_field($value);
+    return array(array('type' => 'loop_area', 'props' => array('source' => 'cart.item_schedule'), 'children' => array(
+        pg_sw_part_el('fieldset', 'pg-cart-recurring-set border rounded p-3 mb-3', 'Payment Schedule',
+            array('_attrs' => array(array('name' => 'data-pg-recurring-item', 'value' => '{{__schedule_item}}'))),
+            array_merge(array(pg_sw_part_el('legend', 'float-none w-auto px-2 fs-6 fw-semibold', 'Heading', array('text' => lang('Payment Schedule')))), $fields)),
     )));
 }
 

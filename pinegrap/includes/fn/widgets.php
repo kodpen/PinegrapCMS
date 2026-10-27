@@ -826,6 +826,8 @@ function pg_sw_raw_token_keys()
         '__return_customer_note_html',
         '__return_decision_note_html',
         '__return_actions_html',
+        // Cart: a payment schedule's frequency choices, the value selected.
+        '__schedule_period_options_html',
         // Ad Region widget: the ad's own markup.
         '__ad_content_html',
         '__ad_caption_html',
