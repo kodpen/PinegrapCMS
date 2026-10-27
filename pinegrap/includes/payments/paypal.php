@@ -161,35 +161,24 @@ function pg_payment_paypal_value($hundredths, $currency)
  */
 function pg_payment_paypal_request($method, $url, $headers, $body)
 {
-    if (!function_exists('curl_init')) {
-        return array('status' => 0, 'body' => null, 'error' => 'cURL is not available on this server.');
+    // pg_curl_run() adds the proxy, the user agent and the TLS settings;
+    // PayPal's hosts are fixed, so no address check.
+    $call = pg_curl_run($method, $url, array(
+        'headers'         => $headers,
+        'body'            => (($method === 'POST') && ($body !== '')) ? $body : null,
+        'timeout'         => 60,
+        'connect_timeout' => 10,
+    ));
+
+    if (($call['status'] === 0) && ($call['error'] !== '')) {
+        $hint = ($call['errno'] !== 0) ? (string) pg_curl_tls_hint($call['errno']) : '';
+
+        return array('status' => 0, 'body' => null, 'error' => trim($call['error'] . ' ' . $hint));
     }
 
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+    $decoded = json_decode((string) $call['body'], true);
 
-    if ($method === 'POST') {
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
-    }
-
-    pg_curl_tls($ch);
-
-    $raw = curl_exec($ch);
-    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-    if (!is_string($raw)) {
-        $hint = function_exists('pg_curl_tls_hint') ? (string) pg_curl_tls_hint(curl_errno($ch)) : '';
-
-        return array('status' => 0, 'body' => null, 'error' => trim(curl_error($ch) . ' ' . $hint));
-    }
-
-    $decoded = json_decode($raw, true);
-
-    return array('status' => $status, 'body' => is_array($decoded) ? $decoded : null, 'error' => '');
+    return array('status' => (int) $call['status'], 'body' => is_array($decoded) ? $decoded : null, 'error' => '');
 }
 
 /**

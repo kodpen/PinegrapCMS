@@ -6,7 +6,7 @@ description: PayPal Checkout on Orders v2 (method 'PayPal Checkout', 11.0.50): r
 ## What is it?
 - `includes/payments/paypal.php`, key `paypal`, redirect driver for the payment method `PayPal Checkout` (appended to the `orders.payment_method` ENUM by 11.0.50). `PayPal Express Checkout` stays the classic NVP code in submit_order.php.
 - `connect_apps` `payment_paypal`: `client_id`, `client_secret` (sealed), `mode` (`live` default, `sandbox`); switch on the Ecommerce card's redirect rows. Return mode `paypal_return`.
-- No SDK: a client-credentials token per operation, then `api-m(.sandbox).paypal.com`, `Prefer: return=representation`. Each operation has a `*_with($…, $settings, $http)` twin for tests.
+- No SDK: a client-credentials token per operation, then `api-m(.sandbox).paypal.com` over `pg_curl_run()`, `Prefer: return=representation`. Each operation has a `*_with($…, $settings, $http)` twin for tests.
 
 ## How does a payment go?
 - `authorize()`: POST `/v2/checkout/orders`, intent CAPTURE, one purchase unit (`custom_id` = order id, amount only), return_url = cancel_url = the checkout return address, PAY_NOW, NO_SHIPPING. Redirect to the `payer-action` (or `approve`) link; state `paypal_order`, `order_id`, `amount`.
