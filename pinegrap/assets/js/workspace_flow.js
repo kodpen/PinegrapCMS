@@ -2460,6 +2460,8 @@
             approvalFields(box, node);
         }
 
+        retryFields(box, node);
+
         if (node.kind === 'schedule') {
             scheduleFields(box, node);
         }
@@ -3100,6 +3102,43 @@
         });
         box.appendChild(field(t('fl_delay_amount'), amount, t('fl_delay_help')));
         box.appendChild(field(t('fl_delay_unit'), unit));
+    }
+
+    // How many times a step box tries again on its own after a failure,
+    // and the minutes before each try (ws_flow_retry_normalize()).
+    function retryFields(box, node) {
+        var retry = (FL.steps || {}).retry || {};
+
+        if ((retry.kinds || []).indexOf(node.kind) < 0) {
+            return;
+        }
+
+        var config = node.config;
+        var max = retry.max || 7;
+        var afterMax = retry.after_max || 10080;
+        var times = el('input', 'form-control form-control-sm wsf-number');
+        var after = el('input', 'form-control form-control-sm wsf-number');
+
+        times.type = 'number';
+        times.min = '0';
+        times.max = String(max);
+        times.step = '1';
+        times.value = String(config.retry || 0);
+        times.addEventListener('input', function () {
+            config.retry = clamp(parseInt(times.value, 10) || 0, 0, max);
+            refreshNode(node);
+        });
+        after.type = 'number';
+        after.min = '1';
+        after.max = String(afterMax);
+        after.step = '1';
+        after.value = (config.retry_after === '' || config.retry_after === undefined || config.retry_after === null) ? '' : String(config.retry_after);
+        after.addEventListener('input', function () {
+            config.retry_after = (after.value === '') ? '' : clamp(parseInt(after.value, 10) || 1, 1, afterMax);
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_self_retry'), times, t('fl_self_retry_help')));
+        box.appendChild(field(t('fl_self_retry_after'), after, t('fl_self_retry_after_help')));
     }
 
     // An approval box: the channel it asks in, the people asked, the text,

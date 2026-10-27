@@ -499,6 +499,7 @@
     "Minimum stock saved for {var:1} product(s).": "{var:1} ürünün minimum stoku kaydedildi.",
     "Minute": "Dakika",
     "Minutes": "Dakika",
+    "Minutes before each try": "Her denemeden önce beklenecek dakika",
     "Minutes later": "Kaç dakika sonra",
     "Miscellaneous": "Çeşitli",
     "Missing": "Eksik",

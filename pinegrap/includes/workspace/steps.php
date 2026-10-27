@@ -878,16 +878,22 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     $check = ws_step_check($owner, $kind, $node['config'], ws_flow_starts_on_join($graph));
 
     if (!$check['ok']) {
-        $end = ws_step_settlement(false, $routed);
-        ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $check['error']);
+        if (!ws_flow_retry_wait($step, $node, $check['error'])) {
+            $end = ws_step_settlement(false, $routed);
+            ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $check['error']);
+        }
+
         return;
     }
 
     $refusal = ws_step_starter_refusal($run, $kind, $node['config']);
 
     if ($refusal !== '') {
-        $end = ws_step_settlement(false, $routed);
-        ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $refusal);
+        if (!ws_flow_retry_wait($step, $node, $refusal)) {
+            $end = ws_step_settlement(false, $routed);
+            ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $refusal);
+        }
+
         return;
     }
 
@@ -945,9 +951,18 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         return;
     }
 
+    $data = ws_step_result_data($kind, $node['config'], $done);
+
+    // A failure tries again first where the box is set to (its owner's
+    // answer to a passing outage); the arrow on failed is taken once the
+    // tries are used.
+    if (empty($done['ok']) && ws_flow_retry_wait($step, $node, (string) ($done['text'] ?? ''), $data)) {
+        return;
+    }
+
     $end = ws_step_settlement(!empty($done['ok']), $routed);
 
-    ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], (string) ($done['text'] ?? ''), ws_step_result_data($kind, $node['config'], $done));
+    ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], (string) ($done['text'] ?? ''), $data);
 }
 
 /**

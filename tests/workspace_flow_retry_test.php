@@ -154,8 +154,8 @@ function test_workspace_flow_retry_canvas()
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
 
 	pg_assert_true(strpos($js, 'function retryFields(') !== false);
-	pg_assert_true(strpos($js, "t('fl_retry')") !== false);
-	pg_assert_true(strpos($js, "t('fl_retry_after')") !== false);
+	pg_assert_true(strpos($js, "t('fl_self_retry')") !== false);
+	pg_assert_true(strpos($js, "t('fl_self_retry_after')") !== false);
 
 	$config = ws_flow_retry_test_source('ws_flow_js_config');
 
