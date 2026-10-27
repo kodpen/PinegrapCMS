@@ -5,19 +5,18 @@ description: tools/bs6_migrate.php, the switch fixes and tools/check_bs6.php: co
 
 ## What do the tools do?
 - Rules: `tools/bs6_rules.php` (tests `bs6_migrate_test.php`). `php tools/bs6_migrate.php <paths>|--all|--diff=<ref>` reports, `--write` writes (not on a lint failure); `--switch` runs the switch's fixes (`bs6_switch*.php`, `bs6_switch_texts.txt`). `php tools/check_bs6.php` lists what is still v5 (a class the v6 dist defines is not counted on a switched tree); `--strict` exits 1.
-- Contexts: `class="…"`, PHP keys ending in class(es), JS `class:`/`className`, jQuery class methods, `classList`, the panel scripts' helpers (`el('div', 'mb-3')`, `button(…)`, `icon(…)`), strings holding only classes (not in `style_designer.js`, not after `id=`/`name=`). A lone `text-bg-<c>` string becomes `theme-<c>`.
+- Contexts: `class="…"`, PHP keys ending in class(es), JS `class:`/`className`, jQuery class methods, `classList`, the panel scripts' helpers (`el('div', 'mb-3')`, `button(…)`, `icon(…)`), strings holding only classes, own `snake_case` ones and one leading space allowed (not in `style_designer.js`, not after `id=`/`name=`). A lone `text-bg-<c>` string becomes `theme-<c>`.
 
 ## What is rewritten, what reported?
-- Rewritten: breakpoint prefixes, `fg-*`, `btn-solid`/`btn-outline` + `theme-*`, badge and alert themes, `form-select` to `form-control`, subtle colours, light/dark and `body-*` to the nearest neutral (`bg-light` `bg-1`, `border-light` `border-subtle`), sizes (spacers 2/3/4/5 to 3/5/7/12, `fs-*`, radius). No v6 class: `pg-fg-emphasis`, `pg-display-N`, `pg-lead`, `pg-mt-n2` (block negative margins), `pg-table-light` (shell rules draw them).
+- Rewritten: breakpoints, `fg-*`, `btn-solid`/`btn-outline` + `theme-*`, badge and alert themes, `form-select` to `form-control`, subtle colours, light/dark and `body-*` to the nearest neutral (`bg-light` `bg-1`, `border-light` `border-subtle`), sizes (spacers 2/3/4/5 to 3/5/7/12, `fs-*`, radius). No v6 class: `pg-fg-emphasis`, `pg-display-N`, `pg-lead`, `pg-mt-n2` (block negative margins), `pg-table-light` (shell rules draw them).
 - The switch converts structure: modal to `<dialog class="dialog">` (boxes dropped, a form box `d-contents`, one printed open `.pg-open-sheet` + `<dialog open>`), offcanvas to `<dialog class="drawer">`, dropdown to `.menu` (`dropdown-menu-end` to the toggle's `data-bs-placement` + `pg-menu-end`, `pg-menu-wrap`, `pg-menu-caret`), data attributes, component variables, checks (also helper-built), v5 link helpers and print utilities to own `pg-link-*`/`pg-print-*`, own media queries to 1024/1280/1536.
 - `bs6_switch_fields.php`: a panel liveform select/checkbox/radio naming no Bootstrap class gets `form-control`, `check`/`radio`, or `no-bs` in a `.switch` (else liveform adds v5's); `check_bs6.php` reports new ones.
-- Reported: what needs a hand (`check_bs6.php --verbose`).
 
 ## Why is a line converted only once?
-- `p-3` exists in both versions with another size: a second run grows it. `--all` runs once on switch day; an older branch converts its added lines with `--diff=origin/development`.
+- `p-3` exists in both versions with another size: a second run grows it. `--all` runs once; an older branch converts its added lines with `--diff=origin/development`.
 
 ## Which files and functions?
-- `bs6_scope_kind()`: `panel` files are converted (`includes/fn/output.php` too); `site` stays on 5.3.8; in `shared` files only the functions in `bs6_shared_panel_functions()`, the rest is site output (liveform and `get_calendar()` print on both sides). Editor: `style_designer.js` outside `/* @pg-site-output */` and `designer_screen.php`; the switch converts only the editor's own dialogs.
+- `bs6_scope_kind()`: `panel` files are converted (`includes/fn/output.php` too); `site` stays on 5.3.8; in `shared` files only `bs6_shared_panel_functions()` and the blocks of `bs6_shared_panel_blocks()` (`get_calendar()`'s `if ($user) {`), the rest is site output. Editor: `style_designer.js` outside `/* @pg-site-output */` and `designer_screen.php`; the switch converts only the editor's own dialogs.
 - `bs6_site_functions()`: panel-file functions site renderers call stay v5; `bs6_site_output_test.php` finds new ones.
 
 ## How does the switch keep today's look?
