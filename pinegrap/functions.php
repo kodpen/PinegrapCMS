@@ -124,6 +124,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/connect.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/signin.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/carrier_api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipping.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/carrier_labels.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/payments.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/innodb.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/db_maintenance.php');
