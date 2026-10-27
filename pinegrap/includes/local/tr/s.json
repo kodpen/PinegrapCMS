@@ -2662,6 +2662,7 @@
     "software update check received an invalid response from the software update server, so it is not known if there is a software update available": "yazılım güncelleme kontrolü, yazılım güncelleme sunucusundan geçersiz bir yanıt aldı, bu nedenle mevcut bir yazılım güncellemesi olup olmadığı bilinmiyor",
     "software, language, licence, license, subscription, error, debug": "software, language, licence, license, subscription, error, debug, yazilim, dil, lisans, abonelik, hata",
     "solved, answered, accepted answer": "çözüldü, yanıtlandı, kabul edilen yanıt",
+    "sort cannot be used with modified_since, which lists the oldest change first.": "sort, modified_since ile birlikte kullanılamaz; bu liste en eski değişiklikten başlar.",
     "sources, anonymous sources, fact checking": "kaynaklar, isimsiz kaynaklar, doğruluk kontrolü",
     "spam protection": "spam koruması",
     "special order, order a book, out of stock, not on the shelf": "özel sipariş, kitap siparişi, stokta yok, rafta yok",

@@ -3085,7 +3085,7 @@ if (!$_POST) {
 
         // Record the refund.
         $new_refunded_total = (int)($order_row['refunded_amount'] ?? 0) + $refund_cents;
-        db("UPDATE orders SET refunded_amount = '" . e($new_refunded_total) . "' WHERE id = '" . e($order_id) . "'");
+        db("UPDATE orders SET refunded_amount = '" . e($new_refunded_total) . "', " . pg_order_touch_sql() . " WHERE id = '" . e($order_id) . "'");
         db("INSERT INTO order_refunds (order_id, amount_cents, refund_type, transaction_id, created_at)
             VALUES ('" . e($order_id) . "', '" . e($refund_cents) . "', 'refund', '" . e($refund_result['refund_reference']) . "', NOW())");
 
@@ -3190,7 +3190,8 @@ if (!$_POST) {
             "UPDATE orders SET
                 refund_status    = 'refunded',
                 refunded_at      = '" . time() . "',
-                refund_reference = '" . escape($refund_reference) . "'
+                refund_reference = '" . escape($refund_reference) . "',
+                " . pg_order_touch_sql() . "
              WHERE id = '" . e($order_id) . "'");
 
         // Says "marked", not "refunded": the log is an audit trail and must

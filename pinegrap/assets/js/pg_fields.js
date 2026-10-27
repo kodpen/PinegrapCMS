@@ -8,9 +8,9 @@
  * whose Chips, Combobox and Datepicker replace tagin, select2 and the jQuery
  * UI pickers. Screens mark a field with a data-pg-* hook and read or write it
  * through these objects, so the swap changes the engine here, not the
- * screens. Chips and comboboxes run on Bootstrap 6 ('v6'); a combobox that
- * searches the server and the date and time kinds still on the engine the
- * panel always used ('v5').
+ * screens. Every kind runs on Bootstrap 6 ('v6') but a combobox that searches
+ * the server, which stays a select2 ('v5'). A page without Bootstrap 6 keeps
+ * plain fields that still post.
  *
  *   <input data-pg-chips>                 Bootstrap 6 Chips drawn after the hidden
  *                                         input, which keeps the joined list: comma
@@ -21,10 +21,13 @@
  *                                         GET url?q=<text> answers {results: [{id, text}]};
  *                                         data-pg-min-length, data-pg-free-text (a typed
  *                                         value is kept), data-placeholder
- *   <input data-pg-date>                  jQuery UI datepicker, site date format
- *   <input data-pg-date="plain">          the same in the picker's own English wording
- *   <input data-pg-datetime>              date and time in one field
- *   <input data-pg-time>                  time only
+ *   <input data-pg-date>                  Bootstrap 6 Datepicker on the field, site date
+ *                                         format, names in the panel language
+ *   <input data-pg-date="plain">          the same with English names
+ *   <input data-pg-datetime>              date and time: the field hidden, a date box with
+ *                                         a Datepicker and an <input type="time"> after it
+ *   <input data-pg-time>                  time only: an <input type="time"> after the
+ *                                         hidden field
  *
  * The named input or the native <select> is always what the form posts, in
  * the text the server reads today. Values cross this interface as ISO text
@@ -42,6 +45,9 @@
  *
  * set() fires a native change event that bubbles; listen with onChange() or
  * jQuery .on('change'): select2 announces a pick only through jQuery.
+ * Bootstrap 6 Datepicker reads an input's date with Date(), which takes
+ * 5/3/2026 as May; it is given our own parse instead and writes our own
+ * format.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -188,8 +194,7 @@
     // One engine per Bootstrap generation; each kind has init(el), which
     // draws the widget over the posted field, redraw(el), which shows a
     // value written into that field, and destroy(el), which removes the
-    // widget and leaves the field. A kind the v6 engine has runs on it; the
-    // rest (Combobox, Datepicker) move with their component swaps. A v6 kind
+    // widget and leaves the field. A kind the v6 engine has runs on it. A v6 kind
     // has later(): true while Bootstrap's module has not run yet, so the
     // field is drawn once pgUI.ready() fires.
     var ENGINES = {
@@ -216,6 +221,29 @@
                     drawCombobox(el);
                 },
                 destroy: removeCombobox
+            },
+            date: {
+                ready: function () { return !!(window.pgUI && window.pgUI.version() === 6); },
+                later: function () { return !!(window.pgUI && window.pgUI.version() === 0); },
+                init: drawDate,
+                // The field's own change listener already moved the calendar
+                // to the written date.
+                redraw: function () {},
+                destroy: removeDate
+            },
+            datetime: {
+                ready: function () { return !!(window.pgUI && window.pgUI.version() === 6); },
+                later: function () { return !!(window.pgUI && window.pgUI.version() === 0); },
+                init: drawDateTime,
+                redraw: showDateTime,
+                destroy: removeParts
+            },
+            time: {
+                ready: function () { return !!(window.pgUI && window.pgUI.version() === 6); },
+                later: function () { return !!(window.pgUI && window.pgUI.version() === 0); },
+                init: drawTime,
+                redraw: showTime,
+                destroy: removeParts
             }
         },
         v5: {
@@ -237,31 +265,6 @@
                 // Only select2's own listener: the native change already ran.
                 redraw: function (el) { jq()(el).trigger('change.select2'); },
                 destroy: function (el) { jq()(el).select2('destroy'); }
-            },
-            date: {
-                ready: function () { var $ = jq(); return !!($ && $.fn.datepicker); },
-                init: function (el) {
-                    // "plain" keeps the screens that never passed the translated
-                    // names: only the site date format.
-                    var opts = el.getAttribute(HOOKS.date) === 'plain'
-                        ? { dateFormat: (window.datetimepicker_options && window.datetimepicker_options.dateFormat) || window.date_picker_format }
-                        : (window.datetimepicker_options || {});
-                    jq()(el).datepicker(inOverlayHost(opts));
-                },
-                redraw: function () {},
-                destroy: destroyPicker
-            },
-            datetime: {
-                ready: function () { var $ = jq(); return !!($ && $.fn.datetimepicker); },
-                init: function (el) { jq()(el).datetimepicker(inOverlayHost(window.datetimepicker_options || {})); },
-                redraw: function () {},
-                destroy: destroyPicker
-            },
-            time: {
-                ready: function () { var $ = jq(); return !!($ && $.fn.timepicker); },
-                init: function (el) { jq()(el).timepicker(inOverlayHost(window.timepicker_options || window.datetimepicker_options || {})); },
-                redraw: function () {},
-                destroy: destroyPicker
             }
         }
     };
@@ -464,35 +467,14 @@
         el.pgComboboxOff = null;
     }
 
-    // The jQuery UI picker's one box moves into the field's overlay host each
-    // time it opens (the open dialog holding the field, else <body>); a
-    // field's own beforeShow still runs.
-    function inOverlayHost(opts) {
-        var copy = {}, own = opts.beforeShow;
-        for (var key in opts) {
-            if (Object.prototype.hasOwnProperty.call(opts, key)) {
-                copy[key] = opts[key];
-            }
-        }
-        copy.beforeShow = function (input, inst) {
-            if (window.pgUI && window.pgUI.overlayHost && inst && inst.dpDiv) {
-                var host = window.pgUI.overlayHost(input);
-                if (host && inst.dpDiv[0].parentNode !== host) {
-                    host.appendChild(inst.dpDiv[0]);
-                }
-            }
-            return own ? own.apply(this, arguments) : {};
-        };
-        return copy;
-    }
-
     // The posted input's own classes the chip box takes over: its borders,
     // sizes and margins, not the control and hook classes.
     var CHIPS_SKIP = { 'tagin': 1, 'form-control': 1, 'form-control-sm': 1, 'form-control-lg': 1 };
 
     // Translated words the widgets show, printed by pg_fields_script() on its
     // tag as data-pg-<name>-label: 'remove' (a chip's button, which Bootstrap
-    // hard-codes as "Remove"), 'search' and 'no-results' (a combobox).
+    // hard-codes as "Remove"), 'search' and 'no-results' (a combobox),
+    // 'locale' (the panel language a calendar names months and days in).
     function label(name, fallback) {
         var attr = 'data-pg-' + name + '-label', tag = document.querySelector('script[' + attr + ']');
         return (tag && tag.getAttribute(attr)) || fallback;
@@ -567,10 +549,293 @@
         el.pgChipsOff = null;
     }
 
-    // The datetimepicker and timepicker addon build on the datepicker, whose
-    // destroy removes any of the three.
-    function destroyPicker(el) {
-        jq()(el).datepicker('destroy');
+    // ------------------------------------------------------------ dates (v6)
+
+    // The panel language ('tr', 'en'), printed on the pg_fields_script() tag:
+    // month and day names come from it.
+    function locale() {
+        return label('locale', 'en');
+    }
+
+    // Monday first where the screen's picker options say so (Turkish), else
+    // Sunday as the jQuery UI picker had it.
+    function firstWeekday(lang) {
+        var o = window.datetimepicker_options;
+        if (o && o.firstDay !== undefined) {
+            return +o.firstDay || 0;
+        }
+        return lang === 'tr' ? 1 : 0;
+    }
+
+    // Datepicker options for a field; the date it shows is our own parse of
+    // the site text and what it writes is our own format, so the order of
+    // day and month never goes through Date() parsing.
+    function datepickerOptions(el, iso, inline) {
+        // "plain" keeps the screens that never passed the translated names:
+        // English, Sunday first.
+        var plain = el.getAttribute(HOOKS.date) === 'plain', lang = plain ? 'en' : locale();
+        return {
+            locale: lang,
+            firstWeekday: plain ? 0 : firstWeekday(lang),
+            inline: inline,
+            placement: 'left',
+            selectedDates: iso ? [iso] : [],
+            dateFormat: function (date) {
+                return formatDate(date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()));
+            },
+            // A second click on the chosen day keeps it, as before.
+            vcpOptions: { enableDateToggle: false }
+        };
+    }
+
+    // In a drawer the calendar is drawn open under the field: a popup there
+    // would hang off the drawer's scrolling body.
+    function inlineIn(el) {
+        return !!(el.closest && el.closest('.drawer'));
+    }
+
+    // A Datepicker over the typed input `box` (the posted field itself for a
+    // date, the date part of a date and time). Bootstrap reads an input's
+    // value with Date() when it is created, so the box is empty for that
+    // moment and gets its text back after. In a drawer the calendar is a
+    // block after the box instead.
+    function makeDatepicker(el, box, onPick) {
+        var text = box.value, iso = parseDate(text), inline = inlineIn(el), target = box, wrap = null, offs = [];
+        // The calendar takes over the element it is drawn in, classes
+        // included, so it gets a box of its own inside ours.
+        if (inline) {
+            wrap = document.createElement('div');
+            wrap.className = 'pg-date-inline';
+            target = document.createElement('div');
+            wrap.appendChild(target);
+            box.parentNode.insertBefore(wrap, box.nextSibling);
+        }
+        box.value = '';
+        var picker = window.pgUI.datepicker.get(target, datepickerOptions(el, iso, inline));
+        box.value = text;
+        offs.push(window.pgUI.datepicker.on(target, 'change', function (event) {
+            var dates = (event && event.dates) || picker.getSelectedDates();
+            box.value = dates.length ? formatDate(dates[0]) : '';
+            onPick();
+        }));
+        if (!inline) {
+            offs.push(placeInOverlayHost(box, picker));
+        }
+        // A typed date moves the calendar to it when the box is left.
+        var typed = function () {
+            if (!box.pgDatePicking) {
+                showDate(el, box);
+            }
+        };
+        box.addEventListener('change', typed);
+        offs.push(function () { box.removeEventListener('change', typed); });
+        box.pgDatepicker = { picker: picker, target: target, wrap: wrap, offs: offs };
+        return picker;
+    }
+
+    function disposeDatepicker(box) {
+        var d = box && box.pgDatepicker;
+        if (!d) {
+            return;
+        }
+        d.offs.forEach(function (off) { off(); });
+        // Disposing puts a copy of the input as it was at creation in its
+        // place; the field itself, with its value and listeners, goes back.
+        var parent = box.parentNode, index = parent ? Array.prototype.indexOf.call(parent.childNodes, box) : -1;
+        window.pgUI.datepicker.dispose(d.target);
+        if (parent && box.parentNode !== parent && parent.childNodes[index]) {
+            parent.replaceChild(box, parent.childNodes[index]);
+        }
+        if (d.wrap && d.wrap.parentNode) {
+            d.wrap.parentNode.removeChild(d.wrap);
+        }
+        box.pgDatepicker = null;
+    }
+
+    // The calendar shows the date in `box`: Datepicker moves its month only
+    // when it is created, so it is created again. A box whose text is not a
+    // date keeps that text for the server to refuse.
+    function showDate(el, box) {
+        if (!box.pgDatepicker) {
+            return;
+        }
+        var onPick = box.pgDatePick;
+        disposeDatepicker(box);
+        makeDatepicker(el, box, onPick);
+    }
+
+    // Bootstrap hangs the popup calendar off <body>, under an open dialog in
+    // the top layer; it goes into the dialog holding the field and is placed
+    // under the field there (the dialog is its containing block).
+    function placeInOverlayHost(box, picker) {
+        var place = function () {
+            window.setTimeout(function () {
+                // Datepicker gives no way to its calendar box but its own field.
+        var cal = picker._calendar && picker._calendar.context && picker._calendar.context.mainElement;
+                var host = window.pgUI.overlayHost(box);
+                if (!cal || cal === box || host === document.body || cal.hasAttribute('data-vc-calendar-hidden')) {
+                    return;
+                }
+                if (cal.parentNode !== host) {
+                    host.appendChild(cal);
+                }
+                var f = box.getBoundingClientRect(), h = host.getBoundingClientRect();
+                cal.style.top = (f.bottom - h.top - host.clientTop + host.scrollTop) + 'px';
+                cal.style.left = Math.max(0, f.left - h.left - host.clientLeft + host.scrollLeft) + 'px';
+            }, 0);
+        };
+        box.addEventListener('click', place);
+        box.addEventListener('focus', place);
+        window.addEventListener('resize', place);
+        return function () {
+            box.removeEventListener('click', place);
+            box.removeEventListener('focus', place);
+            window.removeEventListener('resize', place);
+        };
+    }
+
+    // A pick writes the box and fires its native change once; the box's own
+    // listener skips it, the calendar already shows that date.
+    function announce(box) {
+        box.pgDatePicking = true;
+        try {
+            fireChange(box);
+        } finally {
+            box.pgDatePicking = false;
+        }
+    }
+
+    function drawDate(el) {
+        el.pgDatePick = function () { announce(el); };
+        makeDatepicker(el, el, el.pgDatePick);
+    }
+
+    function removeDate(el) {
+        disposeDatepicker(el);
+        el.pgDatePick = null;
+    }
+
+    // The posted field's classes a part takes over: sizes, validation,
+    // margins.
+    function partClasses(el, extra) {
+        var own = String(el.className || '').split(/\s+/), out = ['form-control'].concat(extra);
+        for (var i = 0; i < own.length; i++) {
+            if (own[i] && own[i] !== 'form-control' && own[i] !== 'pg-field-native' && out.indexOf(own[i]) < 0) {
+                out.push(own[i]);
+            }
+        }
+        return out.join(' ');
+    }
+
+    function timeInput(el) {
+        var t = document.createElement('input');
+        t.type = 'time';
+        t.className = partClasses(el, ['pg-time']);
+        t.disabled = !!el.disabled;
+        return t;
+    }
+
+    // The posted field stays the store and is hidden; the parts people use
+    // come after it, named by the field's label.
+    function hideNative(el, parts) {
+        el.classList.add('pg-field-native');
+        el.pgTabindex = el.getAttribute('tabindex');
+        el.setAttribute('tabindex', '-1');
+        var named = el.id ? document.querySelector('label[for="' + el.id + '"]') : null;
+        if (named) {
+            named.id = named.id || (el.id + '_label');
+            parts.forEach(function (p) { p.setAttribute('aria-labelledby', named.id); });
+        }
+    }
+
+    // Date and time: a date box with a Datepicker and an <input type="time">
+    // in a group after the hidden field, which gets the two composed in the
+    // site text ('26/10/2026 5:00 PM') on every change.
+    function drawDateTime(el) {
+        var group = document.createElement('div'), date = document.createElement('input'), time = timeInput(el);
+        group.className = 'pg-datetime';
+        date.type = 'text';
+        date.className = partClasses(el, ['pg-datetime-date']);
+        date.setAttribute('autocomplete', 'off');
+        date.disabled = !!el.disabled;
+        group.appendChild(date);
+        group.appendChild(time);
+        el.parentNode.insertBefore(group, el.nextSibling);
+        hideNative(el, [date, time]);
+        el.pgParts = { group: group, date: date, time: time };
+        fillDateTime(el);
+        var compose = function () {
+            var day = String(date.value).trim(), iso = parseDate(day);
+            if (day === '') {
+                el.value = '';
+            } else {
+                // A box that is not a date posts as typed, for the server to
+                // refuse as it always did.
+                el.value = (iso ? formatDate(iso) : day) + ' ' + formatTime(time.value || '00:00');
+            }
+            fireChange(el);
+        };
+        date.pgDatePick = compose;
+        makeDatepicker(el, date, compose);
+        date.addEventListener('change', function () {
+            if (!date.pgDatePicking) {
+                compose();
+            }
+        });
+        time.addEventListener('change', compose);
+    }
+
+    function fillDateTime(el) {
+        var p = el.pgParts, m = /^(\S+)(?:\s+(.+))?$/.exec(String(el.value || '').trim());
+        p.date.value = m ? m[1] : '';
+        p.time.value = m && m[2] ? parseTime(m[2]) : '';
+    }
+
+    function showDateTime(el) {
+        if (el.pgParts) {
+            fillDateTime(el);
+            showDate(el, el.pgParts.date);
+        }
+    }
+
+    // Time only: an <input type="time"> after the hidden field, which keeps
+    // the text the server reads ('5:00 PM').
+    function drawTime(el) {
+        var time = timeInput(el);
+        el.parentNode.insertBefore(time, el.nextSibling);
+        hideNative(el, [time]);
+        el.pgParts = { group: time, time: time };
+        showTime(el);
+        time.addEventListener('change', function () {
+            el.value = time.value ? formatTime(time.value) : '';
+            fireChange(el);
+        });
+    }
+
+    function showTime(el) {
+        if (el.pgParts) {
+            el.pgParts.time.value = parseTime(el.value);
+        }
+    }
+
+    function removeParts(el) {
+        var p = el.pgParts;
+        if (!p) {
+            return;
+        }
+        if (p.date) {
+            disposeDatepicker(p.date);
+        }
+        if (p.group.parentNode) {
+            p.group.parentNode.removeChild(p.group);
+        }
+        el.classList.remove('pg-field-native');
+        if (el.pgTabindex === null || el.pgTabindex === undefined) {
+            el.removeAttribute('tabindex');
+        } else {
+            el.setAttribute('tabindex', el.pgTabindex);
+        }
+        el.pgParts = null;
     }
 
     // The engine of a kind; a combobox that searches the server

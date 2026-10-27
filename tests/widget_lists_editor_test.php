@@ -69,7 +69,7 @@ function _widget_lists_editor_run_js($script, $stubs = '')
 	pg_assert_true(strpos($js, "\n    var SW_LIST_MAX_DEPTH = 4;\n") !== false, 'the depth is four, as the site draws');
 	pg_assert_true(strpos($cut, 'SW_LIST_SOURCES') !== false && strpos($cut, 'SW_LIST_ORDERS') !== false, 'the list tables are found');
 	foreach (array('_sdT', '_sdListIsSourced', '_sdListSpec', '_sdKindLists', '_sdListsAbove', '_sdListRowOptions', '_sdListRowLabel',
-		'_sdListName', '_sdListStarter', '_sdProductListStarter', '_sdListStarterDepth', '_sdCalendarListStarter', '_sdOrderListStarter', '_sdOrderListKeyless', '_sdOrderItemListKey', '_sdListWidgetKind', '_sdListNeedsMainLoop', '_sdInMainLoopAt', '_sdListNesting', '_sdDragIsList', '_sdListPlaceOk',
+		'_sdListName', '_sdListStarter', '_sdProductListStarter', '_sdListStarterDepth', '_sdCalendarListStarter', '_sdOrderListStarter', '_sdCheckoutListStarter', '_sdOrderListKeyless', '_sdOrderItemListKey', '_sdListWidgetKind', '_sdListNeedsMainLoop', '_sdInMainLoopAt', '_sdListNesting', '_sdDragIsList', '_sdListPlaceOk',
 		'_sdListWrite', '_sdListFieldOf', '_sdListFieldFits', '_sdListBand', 'isDescendantOf', '_subtreeContainsLoopArea', '_sdFirstLoopArea') as $name) {
 		$fn = _widget_lists_editor_js_function($js, $name);
 		pg_assert_true($fn !== '', $name . ' is found');
@@ -782,4 +782,66 @@ JS;
 	pg_assert_same(3, substr_count($out, 'list-group-item d-flex'), 'a line per product');
 	pg_assert_true(strpos($out, '>Mug &amp; cup</a>') !== false, 'the display name');
 	pg_assert_same(3, substr_count($out, 'remove_item_from_cart.php'), 'a remove link per line');
+}
+
+// The express order's lists: offered there, the recipients starter holds a
+// list of the cart that lists each recipient's products, an express order
+// list inside a recipients row is marked as drawing nothing.
+function test_widget_lists_editor_checkout()
+{
+	$stubs = _widget_lists_editor_trees_js() . <<<'JS'
+var bar13 = N('semantic', { tag: 'div' });
+var inRecipient13 = N('loop_area', { source: 'checkout.offers' }, []);
+var recipients13 = N('loop_area', { source: 'checkout.recipients' }, [inRecipient13]);
+var root13 = N('root', {}, [bar13, recipients13]);
+_sharedCache[13] = { tree: root13, system_region_config: JSON.stringify({ regionType: 'express_order' }) };
+function createNode(type, props, children) { return N(type, props, children); }
+function _sdUsesBootstrap() { return true; }
+JS;
+	$script = <<<'JS'
+console.log(JSON.stringify({
+    offers: _sdListPlaceOk(palette('checkout.offers'), bar13),
+    cart:   _sdListPlaceOk(palette('cart.items'), bar13),
+    order:  _sdListPlaceOk(palette('order.items'), bar13),
+    band:   _sdListBand(inRecipient13).text,
+    trees:  ['checkout.offers', 'checkout.suggestions', 'checkout.gift_cards', 'checkout.recipients'].map(function (s) { return N('root', {}, [_sdListStarter(s)]); })
+}));
+JS;
+	$a = _widget_lists_editor_run_js($script, _widget_lists_editor_calendar_js() . $stubs);
+	if ($a === null) {
+		return;
+	}
+	pg_assert_true($a['offers'] && $a['cart'], 'offered in the express order');
+	pg_assert_true(!$a['order'], 'no order list there');
+	pg_assert_same('Offers applied to the order: inside a list of the recipients, nothing is drawn', $a['band']);
+
+	$fmt = function ($c) { return '₺' . ($c / 100); };
+	$scope = pg_sw_finish_open(array('sid' => 53, 'kind' => 'express_order', 'email' => false));
+	try {
+		$html = '';
+		foreach ($a['trees'] as $tree) $html .= trim(_render_tree_node($tree, 0, 0));
+		pg_sw_list_publish('cart', pg_sw_list_cart_rows(_widget_cart_items()));
+		pg_sw_list_publish('checkout', pg_sw_list_checkout_rows(array(
+			'offers'      => array(array('code' => 'W10', 'description' => 'Ten <off>')),
+			'suggestions' => array(array('upsell_message' => 'One more', 'upsell_action_page_id' => 0)),
+			'gift_cards'  => pg_sw_list_checkout_redeem(array(array('id' => 4, 'code' => 'ABCD1234', 'old_balance' => 500, 'givex' => 0)), 200),
+			'recipients'  => array(array('id' => 5, 'ship_to_name' => 'Home'), array('id' => 6, 'ship_to_name' => 'Office')),
+			'fmt'         => $fmt,
+			'remove_base' => '/software/remove_gift_card_from_order.php?applied_gift_card_id=',
+		)));
+		$html = _pg_member_apply_tokens($html, array('__ship_to_key' => '0'));
+	} finally {
+		pg_sw_finish_close();
+	}
+	$out = pg_sw_finish_widget_html($html, $scope);
+	pg_assert_same(false, strpos($out, '^^'));
+	pg_assert_contains('>Ten &lt;off&gt;</li>', $out, 'the offer text, escaped once');
+	pg_assert_contains('One more', $out);
+	pg_assert_same(false, strpos($out, 'alert-link'), 'no button for an offer without a page');
+	pg_assert_contains('********1234', $out);
+	pg_assert_contains('applied_gift_card_id=4', $out);
+	pg_assert_same(2, substr_count($out, '>Home<') + substr_count($out, '>Office<'), 'a card per recipient');
+	$home = substr($out, strpos($out, '>Home<'), strpos($out, '>Office<') - strpos($out, '>Home<'));
+	pg_assert_same(2, substr_count($home, 'remove_item_from_cart.php'), 'the first recipient\'s two products');
+	pg_assert_same(0, substr_count(substr($out, strpos($out, '>Office<')), 'remove_item_from_cart.php'), 'none for the second');
 }

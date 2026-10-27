@@ -2269,24 +2269,11 @@ function _eo_render_upsell_offers($upsell_offers)
 function _eo_render_applied_offers()
 {
     $oid = isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
-    if ($oid <= 0) return '';
-    // Pull the union of offer IDs referenced anywhere on this order:
-    //   • orders.discount_offer_id (cart-wide discount)
-    //   • order_items.offer_id (per-item bonus)
-    //   • ship_tos.offer_id (per-recipient bonus, e.g. free shipping)
-    $offer_ids = array();
-    $row = db_item("SELECT discount_offer_id FROM orders WHERE id = '" . (int)$oid . "' LIMIT 1");
-    if (is_array($row) && !empty($row['discount_offer_id'])) $offer_ids[(int)$row['discount_offer_id']] = true;
-    $rows = db_items("SELECT DISTINCT offer_id FROM order_items WHERE order_id = '" . (int)$oid . "' AND offer_id > 0" . pg_order_item_active_sql());
-    if (is_array($rows)) foreach ($rows as $r) $offer_ids[(int)$r['offer_id']] = true;
-    $rows = db_items("SELECT DISTINCT offer_id FROM ship_tos WHERE order_id = '" . (int)$oid . "' AND offer_id > 0");
-    if (is_array($rows)) foreach ($rows as $r) $offer_ids[(int)$r['offer_id']] = true;
-    if (empty($offer_ids)) return '';
-
-    // offers.status is an enum('enabled','disabled') — NOT a boolean column.
-    $ids_csv = implode(',', array_keys($offer_ids));
-    $offers = db_items("SELECT id, code, description FROM offers WHERE id IN ($ids_csv) AND status = 'enabled'");
-    if (!is_array($offers) || empty($offers)) return '';
+    // The order's discount offer, the items' and the recipients' bonus
+    // offers (pg_sw_list_checkout_applied_offers(), what the offers list
+    // shows too).
+    $offers = pg_sw_list_checkout_applied_offers($oid);
+    if (empty($offers)) return '';
 
     // The message is optional in the offer editor. An offer without one used
     // to drop out of this list silently, so a discount was applied to the
@@ -4481,6 +4468,9 @@ function _eo_compute_recipient_tokens($recipient, $index, $count, $lf = null)
         '^^__recipient_index^^'                  => (string)$index,
         '^^__recipient_count^^'                  => (string)$count,
         '^^__recipient_id^^'                     => (string)$rid,
+        // A list of the cart's products in the row lists this recipient's
+        // (widgets_lists_checkout.php).
+        '^^__ship_to_key^^'                      => (string)$rid,
         '^^__recipient_name^^'                   => h($name),
         '^^__recipient_address_first_name^^'     => h($get('first_name')),
         '^^__recipient_address_last_name^^'      => h($get('last_name')),

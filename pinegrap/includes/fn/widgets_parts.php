@@ -61,6 +61,9 @@ function pg_sw_default_part_tokens()
         'comments' => array(
             array('__comment_stars_html', 'pg_sw_part_comment_stars'),
         ),
+        'shopping_cart' => array(
+            array('__item_gift_card_html', 'pg_sw_part_cart_item_gift_card'),
+        ),
         // A section binding and a content type are read as the tokens
         // 'section:<name>' and 'content:<type>' (pg_sw_part_token_of()).
         'catalog_listing' => array(
@@ -141,6 +144,9 @@ function pg_sw_default_loop_tail_parts()
         'order_view' => array(
             array(array('__item_form_data_html', 'order.item_forms'), 'pg_sw_part_order_item_form'),
             array(array('__item_gift_card_html', 'order.item_gift_cards'), 'pg_sw_part_order_item_gift_card'),
+        ),
+        'shopping_cart' => array(
+            array(array('__item_gift_card_html', 'cart.item_gift_cards'), 'pg_sw_part_cart_item_gift_card'),
         ),
         'catalog_item_view' => array(
             array(array('__cross_sell_html', 'product.related'), 'pg_sw_part_catalog_cross_sell', 'tree'),
@@ -553,6 +559,155 @@ function pg_sw_part_order_item_gift_card($cfg = array())
     )));
 }
 
+// The cart's gift card controls: binding value => array(the column the
+// cart saves, the list token of its value, its type, whether it is
+// required, its maxlength). The recipient's address is required: checkout
+// refuses a gift card without it.
+function pg_sw_cart_gift_card_control_specs()
+{
+    return array(
+        'gift_card_email'         => array('recipient_email_address', '__gift_card_email', 'email', true, 0),
+        'gift_card_from_name'     => array('from_name', '__gift_card_from_name', 'text', false, 100),
+        'gift_card_message'       => array('message', '__gift_card_message', 'textarea', false, 500),
+        'gift_card_delivery_date' => array('delivery_date', '__gift_card_delivery_date', 'date', false, 0),
+    );
+}
+
+function pg_sw_cart_gift_card_control_spec($value)
+{
+    $specs = pg_sw_cart_gift_card_control_specs();
+    return (is_string($value) && isset($specs[$value])) ? $specs[$value] : null;
+}
+
+// Makes the control $node bound to a gift card field send it: its id and
+// name the cart's (order_item_<id>_quantity_number_<n>_gift_card_<column>,
+// from the list row's ^^__gift_card_field^^), its value the one the
+// visitor gave, its type, required and maxlength the field's, in the cart
+// form $form_id. Its other attributes, classes and text stay the design's.
+// A node that is no input or text area is left.
+function pg_sw_cart_gift_card_control(&$node, $form_id)
+{
+    $b    = isset($node['props']['_bindings']) && is_array($node['props']['_bindings']) ? $node['props']['_bindings'] : array();
+    $spec = pg_sw_cart_gift_card_control_spec(isset($b['value']) ? $b['value'] : '');
+    $tag  = isset($node['props']['tag']) ? strtolower((string)$node['props']['tag']) : '';
+    if ($spec === null || !isset($node['type']) || $node['type'] !== 'semantic' || ($tag !== 'input' && $tag !== 'textarea')) return;
+    $name    = '^^__gift_card_field^^' . $spec[0];
+    $managed = array('type' => 1, 'name' => 1, 'value' => 1, 'form' => 1, 'required' => 1, 'maxlength' => 1, 'id' => 1);
+    $kept    = array();
+    foreach ((isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array() as $a) {
+        if (is_array($a) && isset($a['name']) && !isset($managed[strtolower((string)$a['name'])])) $kept[] = $a;
+    }
+    if ($tag === 'input') {
+        $kept[] = array('name' => 'type', 'value' => ($spec[2] === 'textarea') ? 'text' : $spec[2]);
+        $kept[] = array('name' => 'value', 'value' => '^^' . $spec[1] . '^^');
+    } else {
+        $node['props']['text'] = '^^' . $spec[1] . '^^';
+        $node['children'] = array();
+    }
+    $kept[] = array('name' => 'name', 'value' => $name);
+    if ($form_id !== '') $kept[] = array('name' => 'form', 'value' => $form_id);
+    if ($spec[3]) $kept[] = array('name' => 'required', 'value' => '');
+    if ($spec[4] > 0) $kept[] = array('name' => 'maxlength', 'value' => (string)$spec[4]);
+    $node['props']['_attrs'] = $kept;
+    $node['props']['id']     = $name;
+}
+
+// Gives each label among $node's children that names no control the id of
+// the gift card control beside it, so a click on the words focuses it.
+function pg_sw_cart_gift_card_label_for(&$node)
+{
+    if (empty($node['children']) || !is_array($node['children'])) return;
+    $id = '';
+    foreach ($node['children'] as $c) {
+        $b = (is_array($c) && isset($c['props']['_bindings']) && is_array($c['props']['_bindings'])) ? $c['props']['_bindings'] : array();
+        if (isset($b['value']) && pg_sw_cart_gift_card_control_spec($b['value']) !== null && !empty($c['props']['id'])) {
+            $id = (string)$c['props']['id'];
+            break;
+        }
+    }
+    if ($id === '') return;
+    foreach ($node['children'] as &$c) {
+        if (!is_array($c) || !isset($c['props']['tag']) || strtolower((string)$c['props']['tag']) !== 'label') continue;
+        $attrs = (isset($c['props']['_attrs']) && is_array($c['props']['_attrs'])) ? $c['props']['_attrs'] : array();
+        foreach ($attrs as $a) {
+            if (is_array($a) && isset($a['name']) && strtolower((string)$a['name']) === 'for') continue 2;
+        }
+        $attrs[] = array('name' => 'for', 'value' => $id);
+        $c['props']['_attrs'] = $attrs;
+    }
+    unset($c);
+}
+
+// Whether a node under $node is bound to the gift card control $value.
+function pg_sw_cart_gift_card_has_control($node, $value)
+{
+    if (!is_array($node)) return false;
+    if (isset($node['props']['_bindings']['value']) && $node['props']['_bindings']['value'] === $value) return true;
+    foreach ((isset($node['children']) && is_array($node['children'])) ? $node['children'] : array() as $c) {
+        if (pg_sw_cart_gift_card_has_control($c, $value)) return true;
+    }
+    return false;
+}
+
+// A card ($loop, the cart.item_gift_cards list) whose required controls
+// were deleted gets each back, as the part draws it, at the end of its
+// first element (the card's box), else of the list.
+function pg_sw_cart_gift_card_restore(&$loop)
+{
+    foreach (pg_sw_cart_gift_card_control_specs() as $value => $spec) {
+        if (!$spec[3] || pg_sw_cart_gift_card_has_control($loop, $value)) continue;
+        if (!isset($loop['children']) || !is_array($loop['children'])) $loop['children'] = array();
+        $field = pg_sw_part_cart_gift_card_field($value);
+        if (isset($loop['children'][0]) && is_array($loop['children'][0]) && isset($loop['children'][0]['type']) && $loop['children'][0]['type'] === 'semantic') {
+            if (!isset($loop['children'][0]['children']) || !is_array($loop['children'][0]['children'])) $loop['children'][0]['children'] = array();
+            $loop['children'][0]['children'][] = $field;
+        } else {
+            $loop['children'][] = $field;
+        }
+    }
+}
+
+// One gift card field as the cart drew it: its label (a star when it is
+// required), the control bound to $value, a help line for the delivery
+// date. The box carries the field's column for page scripts.
+function pg_sw_part_cart_gift_card_field($value)
+{
+    $spec   = pg_sw_cart_gift_card_control_spec($value);
+    $labels = array('gift_card_email' => lang('Recipient Email'), 'gift_card_from_name' => lang('From Name'),
+                    'gift_card_message' => lang('Message'), 'gift_card_delivery_date' => lang('Delivery Date'));
+    $label  = isset($labels[$value]) ? $labels[$value] : '';
+    $words  = array(pg_sw_part_el('span', '', 'Text', array('text' => $label)));
+    if ($spec[3]) $words[] = pg_sw_part_el('span', 'text-danger', 'Required mark', array('text' => '*'));
+    $control = ($spec[2] === 'textarea')
+        ? pg_sw_part_el('textarea', 'form-control', $label, array('_bindings' => array('value' => $value), '_attrs' => array(array('name' => 'rows', 'value' => '3'))))
+        : pg_sw_part_el('input', 'form-control', $label, array('_bindings' => array('value' => $value)));
+    $children = array(pg_sw_part_el('label', 'form-label', 'Label', array(), $words), $control);
+    if ($value === 'gift_card_delivery_date') {
+        $children[] = pg_sw_part_el('div', 'form-text', 'Help', array('text' => lang('Leave blank to send immediately.')));
+    }
+    return pg_sw_part_el('div', 'mb-3 pg-cart-gc-field', $label,
+        array('_attrs' => array(array('name' => 'data-pg-gc-field', 'value' => $spec[0]))), $children);
+}
+
+// The gift cards of a cart line, each a box of controls (the
+// cart.item_gift_cards list): its heading "Gift card" and its number when
+// the line holds more than one, then recipient e-mail, from name, message
+// and delivery date. The box around them carries the line's id and goes
+// on a line that is no gift card (pg-hide-if-empty).
+function pg_sw_part_cart_item_gift_card($cfg = array())
+{
+    $fields = array();
+    foreach (array_keys(pg_sw_cart_gift_card_control_specs()) as $value) $fields[] = pg_sw_part_cart_gift_card_field($value);
+    return array(pg_sw_part_el('div', 'pg-cart-gift-cards pg-hide-if-empty', 'Gift Card Details',
+        array('_attrs' => array(array('name' => 'data-pg-cart-gc-item', 'value' => '{{__item_id}}'))), array(
+        array('type' => 'loop_area', 'props' => array('source' => 'cart.item_gift_cards'), 'children' => array(
+            pg_sw_part_el('fieldset', 'pg-cart-gc-set border rounded p-3 mb-3', 'Gift card',
+                array('_attrs' => array(array('name' => 'data-pg-gc-set', 'value' => '{{__gift_card_number}}'))),
+                array_merge(array(pg_sw_part_order_item_legend(array(), array('text' => lang('Gift card')), '__gift_card_number', '__gift_card_count')), $fields)),
+        )),
+    )));
+}
+
 // A card added after the order view: the shell the returns and legal
 // documents cards had, a card with a small heading, shown by $flag.
 function pg_sw_part_order_card($class, $name, $flag, $heading, $body)
@@ -668,7 +823,9 @@ function pg_sw_part_order_legal_documents($cfg = array(), $tree = array())
 }
 
 // A comment's stars: five drawings in a span said once as "Rated N out of
-// 5" (__comment_rating_label), the first N filled (__comment_rating gte
+// 5", one translatable sentence with the rating where the language puts it
+// (the label's own words, __comment_rating in place of {var:1}), the first
+// N filled (__comment_rating gte
 // the star's place), the rest empty. Drawn only for a rating; the colour
 // comes from the design (text-warning in the starters). The look that
 // keeps the drawings side by side is in pg_carousel_layout.css.
@@ -682,7 +839,7 @@ function pg_sw_part_comment_stars($cfg = array())
     return array(pg_sw_part_el('span', 'pg-comment-stars', 'Stars', array_merge(
         array('_attrs' => array(
             array('name' => 'role', 'value' => 'img'),
-            array('name' => 'aria-label', 'value' => '{{__comment_rating_label}}'),
+            array('name' => 'aria-label', 'value' => lang(array('string' => 'Rated {var:1} out of 5', 'vars' => '{{__comment_rating}}'))),
         )),
         pg_sw_part_when('__comment_rating', 'not_empty')
     ), $stars));

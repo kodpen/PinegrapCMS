@@ -4570,6 +4570,64 @@ function _pg_render_carousel_init_script($crl_id, $hover_zoom)
         . '})();</script>';
 }
 
+/**
+ * The layout of a sentence with values (a semantic element whose
+ * props._sentence is on): its words, and where each value stands. {var:N}
+ * marks the N-th child, the placeholder lang() strings and the translation
+ * check (pg_tr_tokens_of()) already know, so a translator moves it where
+ * the language needs it and a translation that drops it is refused. A child
+ * is drawn once, at its first placeholder; a placeholder without a child
+ * draws nothing; a child no placeholder names follows the words after a
+ * space, so nothing the design holds is lost. The editor's twin is
+ * _sdSentenceLayout().
+ *
+ * @param string $text  the sentence
+ * @param int    $count how many children the element has
+ * @return array of string (words) or int (the child's place, from 1)
+ */
+function pg_sentence_layout($text, $count)
+{
+    $parts = preg_split('/\{var:([1-9][0-9]?)\}/', (string)$text, -1, PREG_SPLIT_DELIM_CAPTURE);
+    $out = array();
+    $drawn = array();
+    foreach ($parts as $i => $part) {
+        if (!($i % 2)) {
+            if ($part !== '') $out[] = $part;
+            continue;
+        }
+        $n = (int)$part;
+        if ($n <= $count && !isset($drawn[$n])) {
+            $drawn[$n] = true;
+            $out[] = $n;
+        }
+    }
+    for ($n = 1; $n <= $count; $n++) {
+        if (isset($drawn[$n])) continue;
+        if ($out) $out[] = ' ';
+        $out[] = $n;
+    }
+    return $out;
+}
+
+/**
+ * The inside of a sentence with values, on one line: the words escaped,
+ * each child drawn where pg_sentence_layout() places it.
+ *
+ * @param string $text     the sentence, in the page's language
+ * @param array  $children the element's child nodes
+ * @param int    $depth
+ * @return string
+ */
+function pg_sentence_html($text, $children, $depth = 0)
+{
+    $children = array_values((array)$children);
+    $out = '';
+    foreach (pg_sentence_layout($text, count($children)) as $piece) {
+        $out .= is_int($piece) ? rtrim(_render_tree_node($children[$piece - 1], 0, $depth), "\n") : h($piece);
+    }
+    return $out;
+}
+
 function _render_tree_node($node, $indent = 0, $depth = 0)
 {
     if (!$node || !isset($node['type'])) return '';
@@ -4794,6 +4852,10 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
                 foreach ($children as $child) { $ws_inner .= rtrim(_render_tree_node($child, 0, $depth), "\n"); }
                 if (isset($props['text']) && $props['text'] !== '') $ws_inner .= h($props['text']);
                 $html .= $pad . '<' . $tag . $attrs . '>' . $ws_inner . '</' . $tag . '>' . "\n";
+            } elseif (!empty($props['_sentence'])) {
+                // A sentence with values: one translatable text whose
+                // {var:N} places the N-th child inline, on one line.
+                $html .= $pad . '<' . $tag . $attrs . '>' . pg_sentence_html(isset($props['text']) ? $props['text'] : '', $children, $depth) . '</' . $tag . '>' . "\n";
             } else {
                 $inner_text = isset($props['text']) && $props['text'] !== '' ? h($props['text']) : '';
                 if (!$children) {

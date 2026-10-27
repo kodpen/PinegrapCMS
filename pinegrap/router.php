@@ -248,14 +248,16 @@ define('PATH', $url_path);
 define('REQUEST_URL', router_get_request_url());
 
 // ── Web Application Firewall (first pass) ────────────────────────────────
-// The router dispatches get_file.php, robots.txt and sitemap.xml without ever
-// reaching init.php, so those requests would otherwise be unprotected.
+// The router dispatches get_file.php without ever reaching init.php, and
+// answers a page-cache hit and a short link's redirect itself, so those
+// requests would otherwise be unprotected.
 //
 // Only the identity-independent checks run here — IP lists, attack tooling,
-// rate limits. Content inspection is deliberately left to the init.php pass,
-// because the session has not started yet and page regions are edited from
-// the page's own front-end URL: without knowing whether a designer is logged
-// in, saving a region containing <script> would look exactly like an attack.
+// the global rate limit. Content inspection is deliberately left to the
+// init.php pass: its exemption is the session (waf_user_is_authenticated()),
+// which has not started yet here, so a routed request would be scanned
+// blind, whoever sent it. The global limit, counted here, spares a signed-in
+// user only on directly requested scripts (see waf_run()).
 require_once(dirname(__FILE__) . '/waf.php');
 waf_prime_config($router_config_row);
 waf_send_security_headers();

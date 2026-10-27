@@ -1,6 +1,6 @@
 ---
 name: workspace-catalog-create
-description: Plan (2026-10-23, 1a #1603, 1b #1604, 2 #1613, answers 1 and 3 given): Workspace product and group creates; one group writer; bulk drafts (list, xlsx, AI); variant sets in one go
+description: Plan (2026-10-23, 1a #1603, 1b #1604, 2 #1613, answers 1-4 given; 3a #2266): Workspace product and group creates; one group writer; bulk drafts (list, xlsx, AI); variant sets in one go
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -20,14 +20,17 @@ None needs schema.
 1a. PR #1603: every `ws_change_types()` text limit fits its column but the channel summary (kept); tests/workspace_change_limits_test.php (setup SQL, #1512 source reader). See workspace/workspace-change-text-limits.md.
 1b. PR #1604: `pg_catalog_group_create()`, `pg_catalog_group_clouds()` (ecommerce.php) behind the API and Workspace twins; SEO scored, announced once (Q3).
 2. PR #1613: "New product / product group" in the drawer (`openRecord()` new mode), the palette, `/product` (`/ürün`, `ws_command_create_names()`, `ws_command_names()` unchanged); `ws_quick_create_save()`, panel action `ws_record_create`; decision tick. API: POST /products, /product-groups suffice (owner default, 2026-10-19).
-3. One 'bulk' `ws_ai_changes` row (action create, `rows`), checked at proposal and write, run in small `ws_bulk_step()` slices (SEO rescored per row: `pg_seo_recalculate()`), done rows kept: no double on resume. From a pasted list, a channel xlsx/csv ("Make products", as the import: `pg_products_import_to_csv()`, `pg_products_import_price_cents()`), Pinegrap AI / @Claude from a description (Premium like Pinegrap AI? plans/workspace-agent-handles.md Q2). API: the answer routes' `bulk`; MCP: one 'bulk' create entry via `workspace.changes.propose` after plans/workspace-mcp-capabilities.md slice 3, no own route.
-4. One-go variant set. 4a (PR #1887): `pg_catalog_variant_set_create()` and `POST /product-groups/variant-sets` (`commerce/catalog-variant-set-writer.md`). 4b (PR #1943): the `variant_set` change kind and matrix card (workspace/workspace-variant-set-change.md). Was: new `pg_catalog_variant_set_create()` (ecommerce.php) out of `pg_pb_save_new_product()` (screen unchanged), kind `variant_set`: a matrix card priced by `pg_variant_price_compute()`; new `POST /product-groups/variant-sets` (products:write, dry_run), offered over MCP per the MCP plan's question on direct AI writes.
+3. Bulk product drafts, cut in three (each ~1,000 lines):
+   3a. PR #2266: one 'bulk' `ws_ai_changes` row with `bulk.action` create and `rows` (products only, `WS_BULK_CREATE_MAX` 200, Q2), checked at proposal (`ws_bulk_create_rows()`, names free and not twice) and again per row at the write; run by `ws_bulk_step()`, each row's place saved before its write (`ws_bulk_create_row()`): no double on resume. Off sale unless the row ticks `enabled`; scored and `product.created` per row by the product writer (Q4). Reaches the answer routes' and `workspace.changes.propose`'s `bulk` with no new route. (`workspace/workspace-bulk-create.md`).
+   3b. From a pasted list and a channel xlsx/csv ("Make products", as the import: `pg_products_import_to_csv()`, `pg_products_import_price_cents()`): rows proposed as a 3a card.
+   3c. Pinegrap AI / @Claude from a description (Premium like Pinegrap AI? plans/workspace-agent-handles.md Q2): the tool texts that teach `bulk.action` create; MCP: the same entry via `workspace.changes.propose` after plans/workspace-mcp-capabilities.md slice 3.
+4. One-go variant set. 4a (PR #1887): `pg_catalog_variant_set_create()` and `POST /product-groups/variant-sets` (`commerce/catalog-variant-set-writer.md`). 4b (PR #1943): the `variant_set` change kind and matrix card (workspace/workspace-variant-set-change.md).
 
 ## Open questions (recommendation)
 1. Answered (a): add_product_group.php keeps its own code.
-2. Rows per bulk card: 100, 200, `WS_BULK_MAX` 1000 → 200; more: import_products.php.
+2. Answered (owner, 2026-10-27, «toplu ürün önerin kabul»): 200 rows per bulk card; more: import_products.php.
 3. Answered yes: Workspace group creates announce `product_group.created` (1b).
-4. Bulk card events: (a) `product.created` per row, as AI bulk updates, (b) none, as imports → a.
+4. Answered (same answer): (a) `product.created` per row, as AI bulk updates.
 
 ## Where to start?
-- Slice 3, after the owner's answers to questions 2 and 4.
+- Slice 3b after #2266 merges, then 3c.

@@ -119,6 +119,13 @@ FakeElement.prototype.insertBefore = function (c, ref) {
     return c;
 };
 FakeElement.prototype.removeChild = function (c) { this.children = this.children.filter(function (x) { return x !== c; }); c.parentNode = null; return c; };
+Object.defineProperty(FakeElement.prototype, 'childNodes', { get: function () { return this.children; } });
+// Only '.class' up the parents, as the drawer test needs.
+FakeElement.prototype.closest = function (sel) {
+    var cls = sel.replace(/^\./, ''), n = this;
+    while (n) { if ((' ' + (n.className || '') + ' ').indexOf(' ' + cls + ' ') >= 0) { return n; } n = n.parentNode; }
+    return null;
+};
 Object.defineProperty(FakeElement.prototype, 'nextSibling', { get: function () {
     var p = this.parentNode; return p ? (p.children[p.children.indexOf(this) + 1] || null) : null;
 } });
@@ -234,6 +241,27 @@ function makePgUI(calls, late) {
             },
             on: function (toggle, name, fn) { toggle.addEventListener(name + '.bs.combobox', fn); return function () { toggle.removeEventListener(name + '.bs.combobox', fn); }; },
             dispose: function (toggle) { calls.push(['combobox-dispose', toggle.className]); }
+        },
+        // Datepicker over an input or an inline box: records its options and
+        // the input's value when it was created; pick(iso) fires
+        // change.bs.datepicker with the dates as Bootstrap does.
+        datepicker: {
+            get: function (target, opts) {
+                calls.push(['datepicker', target.attributes.id || target.className, opts]);
+                var picked = opts.selectedDates.slice();
+                target.valueAtCreate = target.value;
+                target.instance = {
+                    opts: opts,
+                    getSelectedDates: function () { return picked.slice(); },
+                    pick: function (iso) {
+                        picked = [iso];
+                        (target.listeners['change.bs.datepicker'] || []).forEach(function (f) { f({ dates: [iso] }); });
+                    }
+                };
+                return target.instance;
+            },
+            on: function (t, name, fn) { t.addEventListener(name + '.bs.datepicker', fn); return function () { t.removeEventListener(name + '.bs.datepicker', fn); }; },
+            dispose: function (t) { calls.push(['datepicker-dispose', t.attributes.id || t.className]); }
         }
     };
     return ui;
@@ -241,11 +269,10 @@ function makePgUI(calls, late) {
 
 function load(opts) {
     var doc = makeDocument();
-    var win = { document: doc, Event: function (t, o) { this.type = t; this.bubbles = !!(o && o.bubbles); } };
+    var win = { document: doc, Event: function (t, o) { this.type = t; this.bubbles = !!(o && o.bubbles); }, addEventListener: function () {}, removeEventListener: function () {} };
     var calls = [];
     if (opts.jquery) { win.jQuery = makeJQuery(calls); }
     if (opts.format) { win.date_picker_format = opts.format; win.datetimepicker_options = { dateFormat: opts.format }; }
-    if (opts.time) { win.timepicker_options = { timeFormat: 'h:mm TT' }; }
     if (!opts.noBootstrap) { win.pgUI = makePgUI(calls, opts.late); }
     var form = doc.create('form', {});
     (opts.fields || []).forEach(function (f) { form.appendChild(doc.create(f[0], f[1])); });
@@ -255,7 +282,8 @@ function load(opts) {
         (group || host).appendChild(doc.create('option', o[1]));
     });
     (opts.labels || []).forEach(function (l) { form.appendChild(doc.create('label', l)); });
-    if (opts.label) { doc.create('script', { 'data-pg-remove-label': opts.label, 'data-pg-search-label': 'Ara', 'data-pg-no-results-label': 'Sonuç bulunamadı' }); }
+    if (opts.firstDay !== undefined) { win.datetimepicker_options.firstDay = opts.firstDay; }
+    if (opts.label) { doc.create('script', { 'data-pg-remove-label': opts.label, 'data-pg-search-label': 'Ara', 'data-pg-no-results-label': 'Sonuç bulunamadı', 'data-pg-locale-label': 'tr' }); }
     new Function('window', 'document', PG_FIELDS_SOURCE)(win, doc);
     return { win: win, doc: doc, calls: calls };
 }
@@ -285,12 +313,13 @@ function main() {
         ['input', { id: 'cutoff', 'data-pg-time': '', value: '5:00 PM' }],
         ['input', { id: 'plain' }]
     ];
-    var a = load({ jquery: true, format: 'd/m/yy', time: true, fields: fields, options: [['zones', { value: '1', text: 'One' }], ['zones', { value: '2', text: 'Two' }], ['zones', { value: '3', text: 'Three' }]] });
+    var a = load({ jquery: true, format: 'd/m/yy', fields: fields, options: [['zones', { value: '1', text: 'One' }], ['zones', { value: '2', text: 'Two' }], ['zones', { value: '3', text: 'Three' }]] });
     a.win.pgFields.init();
     var sourced = a.doc.create('select', { 'data-pg-source': 'x.php' });
     out.engine = [a.win.pgFields.engine('chips'), a.win.pgFields.engine('combobox'), a.win.pgFields.engine('combobox', sourced), a.win.pgFields.engine('date')];
     out.init_calls = a.calls.map(function (c) { return c[0] + ':' + c[1]; });
-    out.time_options = a.calls.filter(function (c) { return c[0] === 'timepicker'; })[0][2];
+    var dayOpts = a.calls.filter(function (c) { return c[0] === 'datepicker'; })[0][2];
+    out.date_options = [dayOpts.locale, dayOpts.firstWeekday, dayOpts.inline, dayOpts.selectedDates, dayOpts.vcpOptions];
     out.chips_options = a.calls.filter(function (c) { return c[0] === 'chips'; }).map(function (c) { return c[2]; });
 
     var get = function (id) { return a.doc.querySelector('#' + id); };
@@ -364,7 +393,7 @@ function main() {
     a.win.pgFields.switchKind('#plain', 'date');
     a.win.pgFields.destroy('#zones');
     out.switch_kind = {
-        calls: a.calls.map(function (c) { return c[0] + ':' + c[1] + (typeof c[2] === 'string' ? ':' + c[2] : ''); }),
+        calls: a.calls.map(function (c) { return c[0] + ':' + c[1]; }),
         start: [get('start').hasAttribute('data-pg-date'), get('start').hasAttribute('data-pg-datetime'), get('start').pgFieldKind],
         zones: get('zones').pgFieldKind || null
     };
@@ -372,14 +401,15 @@ function main() {
     // A date in the picker's own wording gets only the date format; a
     // combobox with a source searches the server, the answer read as
     // {results: [...]}.
-    var c = load({ jquery: true, format: 'm/d/yy', fields: [
+    var c = load({ jquery: true, label: 'Kaldır', format: 'm/d/yy', firstDay: 1, fields: [
         ['input', { id: 'shipped', 'data-pg-date': 'plain' }],
         ['select', { id: 'cat', 'data-pg-combobox': '', 'data-pg-source': 'tax.php?action=search', 'data-pg-min-length': '2', 'data-pg-free-text': '', 'data-placeholder': 'Category' }]
     ] });
     c.win.pgFields.init();
     var catOpts = c.calls.filter(function (x) { return x[0] === 'select2'; })[0][2];
     out.select2_theme = catOpts.theme;
-    out.plain_date = c.calls.filter(function (x) { return x[0] === 'datepicker'; })[0][2];
+    var plainOpts = c.calls.filter(function (x) { return x[0] === 'datepicker'; })[0][2];
+    out.plain_date = [plainOpts.locale, plainOpts.firstWeekday];
     out.remote = {
         url: catOpts.ajax.url,
         min: catOpts.minimumInputLength,
@@ -444,6 +474,76 @@ function main() {
     l.win.pgFields.destroy(k);
     out.late.destroyed = { children: parent.children.length, calls: l.calls.map(function (c) { return c[0]; }), value: k.value };
 
+    // Dates on Bootstrap 6: our own parse and format around Datepicker, the
+    // posted field the store; date and time, and time only, as boxes after
+    // the hidden field; a drawer's calendar open under the field.
+    var dp = load({ label: 'Kaldır', format: 'd/m/yy', firstDay: 1, labels: [{ 'for': 'dt', text: 'Start' }], fields: [
+        ['input', { id: 'd', 'data-pg-date': '', value: '5/3/2026', 'class': 'form-control' }],
+        ['input', { id: 'dt', 'data-pg-datetime': '', value: '26/10/2026 5:00 PM', 'class': 'form-control form-control-sm' }],
+        ['input', { id: 't', 'data-pg-time': '', value: '5:30 PM', tabindex: '3' }],
+        ['div', { id: 'drw', 'class': 'drawer' }]
+    ] });
+    var drawerField = dp.doc.create('input', { id: 'ad', 'data-pg-date': '', value: '1/2/2027' });
+    dp.doc.querySelector('#drw').appendChild(drawerField);
+    dp.win.pgFields.init();
+    var q = function (id) { return dp.doc.querySelector('#' + id); }, dHeard = [], dtHeard = [], tHeard = [];
+    q('d').addEventListener('change', function () { dHeard.push(q('d').value); });
+    q('dt').addEventListener('change', function () { dtHeard.push(q('dt').value); });
+    q('t').addEventListener('change', function () { tHeard.push(q('t').value); });
+    var dOpts = q('d').instance.opts;
+    out.dp_draw = {
+        calls: dp.calls.map(function (c) { return c[0] + ':' + c[1]; }),
+        options: [dOpts.locale, dOpts.firstWeekday, dOpts.inline, dOpts.selectedDates],
+        // Bootstrap's own Date() reading of the input is kept out.
+        value_at_create: q('d').valueAtCreate,
+        value: q('d').value,
+        format: dOpts.dateFormat(new Date(2026, 2, 5))
+    };
+    dp.calls.length = 0;
+    q('d').instance.pick('2026-03-12');
+    out.dp_pick = { value: q('d').value, heard: dHeard.slice(), redrawn: dp.calls.length };
+    q('d').value = '7/4/2026';
+    q('d').dispatchEvent({ type: 'change', bubbles: true });
+    q('d').value = 'tomorrow';
+    q('d').dispatchEvent({ type: 'change', bubbles: true });
+    out.dp_typed = {
+        calls: dp.calls.map(function (c) { return c[0] + ':' + c[1] + ':' + JSON.stringify(c[2] ? c[2].selectedDates : null); }),
+        value: q('d').value
+    };
+    var dt = q('dt'), group = dt.nextSibling, datePart = group.children[0], timePart = group.children[1];
+    out.dp_datetime = {
+        native: dt.className,
+        group: group.className,
+        parts: [datePart.className, datePart.value, timePart.type, timePart.className, timePart.value],
+        named: [datePart.getAttribute('aria-labelledby'), timePart.getAttribute('aria-labelledby')]
+    };
+    timePart.value = '08:15';
+    timePart.dispatchEvent({ type: 'change' });
+    datePart.instance.pick('2026-10-03');
+    datePart.value = '';
+    datePart.dispatchEvent({ type: 'change' });
+    dp.win.pgDateTimeField.set(dt, '2027-01-02 23:45');
+    out.dp_datetime.heard = dtHeard;
+    out.dp_datetime.set = [dt.value, group.children[0].value, group.children[1].value];
+    var t = q('t'), tPart = t.nextSibling;
+    out.dp_time = { native: [t.className, t.getAttribute('tabindex')], part: [tPart.type, tPart.className, tPart.value] };
+    tPart.value = '17:05';
+    tPart.dispatchEvent({ type: 'change' });
+    tPart.value = '';
+    tPart.dispatchEvent({ type: 'change' });
+    dp.win.pgDateTimeField.set(t, '09:00');
+    out.dp_time.heard = tHeard;
+    out.dp_time.set = [t.value, tPart.value];
+    dp.win.pgFields.destroy(t);
+    dp.win.pgFields.destroy(dt);
+    out.dp_destroy = { t: [t.className, t.getAttribute('tabindex'), t.nextSibling === tPart], dt: [dt.className, dt.nextSibling === group, dt.value] };
+    var wrap = drawerField.nextSibling;
+    out.dp_drawer = { wrap: wrap.className, inline: wrap.children[0].instance.opts.inline };
+    wrap.children[0].instance.pick('2027-02-09');
+    out.dp_drawer.value = drawerField.value;
+    dp.win.pgFields.destroy(drawerField);
+    out.dp_drawer.after = drawerField.nextSibling === null;
+
     console.log(JSON.stringify(out));
 }
 
@@ -504,14 +604,14 @@ function test_pg_fields_hooks_drawn_by_their_engine()
 		return;
 	}
 
-	pg_assert_same(array('v6', 'v6', 'v5', 'v5'), $r['engine'], 'chips and comboboxes on Bootstrap 6; a server-searched combobox and the dates still on v5');
+	pg_assert_same(array('v6', 'v6', 'v5', 'v6'), $r['engine'], 'every kind on Bootstrap 6 but a server-searched combobox');
 	pg_assert_same(
-		array('chips:chip-input pg-chips min-height-tagin border-subtle-danger', 'chips:chip-input pg-chips pg-chips-sm', 'combobox:form-control combobox-toggle pg-combobox', 'datepicker:day', 'datetimepicker:start', 'timepicker:cutoff'),
+		array('chips:chip-input pg-chips min-height-tagin border-subtle-danger', 'chips:chip-input pg-chips pg-chips-sm', 'combobox:form-control combobox-toggle pg-combobox', 'datepicker:day', 'datepicker:form-control pg-datetime-date'),
 		$r['init_calls'],
-		'each hook once, the plain field untouched, a second init() draws nothing'
+		'each hook once (a time field has no calendar), the plain field untouched, a second init() draws nothing'
 	);
 	pg_assert_same('bootstrap-5', $r['select2_theme'], 'a server-searched combobox is a select2 as before');
-	pg_assert_same(array('timeFormat' => 'h:mm TT'), $r['time_options'], 'time fields read timepicker_options');
+	pg_assert_same(array('en', 0, false, array('2026-10-26'), array('enableDateToggle' => false)), $r['date_options'], 'no language on the tag: English, Sunday first; the stored date parsed by us');
 	pg_assert_same(array(array('separator' => ','), array('separator' => ' ')), $r['chips_options'], 'Chips gets the data-pg-separator, a comma without one');
 	pg_assert_same(array('chips' => array('a', 'b', 'c'), 'classes' => array('one', 'two'), 'date' => '2026-10-26', 'datetime' => '2026-10-26 17:00', 'time' => '17:00'), $r['get']);
 	pg_assert_same(array('kind' => array(null, null), 'calls' => 0), $r['no_library'], 'no library: a plain field');
@@ -526,7 +626,7 @@ function test_pg_fields_switch_kind_and_destroy()
 	}
 
 	pg_assert_same(
-		array('datepicker:start:destroy', 'datepicker:start', 'datepicker:start:destroy', 'datetimepicker:start', 'datepicker:plain', 'combobox-dispose:form-control combobox-toggle pg-combobox'),
+		array('datepicker-dispose:form-control pg-datetime-date', 'datepicker:start', 'datepicker-dispose:start', 'datepicker:form-control pg-datetime-date', 'datepicker:plain', 'combobox-dispose:form-control combobox-toggle pg-combobox'),
 		$r['switch_kind']['calls'],
 		'the old widget destroyed, the new one drawn, the same kind again a no-op'
 	);
@@ -594,7 +694,7 @@ function test_pg_fields_plain_date_and_remote_combobox()
 		return;
 	}
 
-	pg_assert_same(array('dateFormat' => 'm/d/yy'), $r['plain_date'], 'a plain date gets the site format and none of the translated names');
+	pg_assert_same(array('en', 0), $r['plain_date'], 'a plain date names months in English, Sunday first, whatever the panel language');
 	pg_assert_same(
 		array(
 			'url' => 'tax.php?action=search',
@@ -683,4 +783,58 @@ function test_pg_fields_combobox_on_bootstrap_6()
 		$r['combobox_destroy'],
 		'destroy() leaves the plain select with its value'
 	);
+}
+
+function test_pg_fields_dates_on_bootstrap_6()
+{
+	$r = pg_fields_test_result();
+	if (!$r) {
+		return;
+	}
+
+	pg_assert_same(
+		array(
+			'calls' => array('datepicker:d', 'datepicker:form-control pg-datetime-date form-control-sm', 'datepicker:'),
+			'options' => array('tr', 1, false, array('2026-03-05')),
+			'value_at_create' => '',
+			'value' => '5/3/2026',
+			'format' => '5/3/2026',
+		),
+		$r['dp_draw'],
+		'5/3/2026 is 5 March in a day-first site, read by our parse; the panel language, Monday first; the input empty while Bootstrap is created'
+	);
+	pg_assert_same(array('value' => '12/3/2026', 'heard' => array('12/3/2026'), 'redrawn' => 0), $r['dp_pick'], 'a pick writes the site text and fires one change');
+	pg_assert_same(
+		array('calls' => array('datepicker-dispose:d:null', 'datepicker:d:["2026-04-07"]', 'datepicker-dispose:d:null', 'datepicker:d:[]'), 'value' => 'tomorrow'),
+		$r['dp_typed'],
+		'a typed date moves the calendar; text that is no date is kept for the server to refuse'
+	);
+	pg_assert_same(
+		array(
+			'native' => 'form-control form-control-sm pg-field-native',
+			'group' => 'pg-datetime',
+			'parts' => array('form-control pg-datetime-date form-control-sm', '26/10/2026', 'time', 'form-control pg-time form-control-sm', '17:00'),
+			'named' => array('dt_label', 'dt_label'),
+			'heard' => array('26/10/2026 8:15 AM', '3/10/2026 8:15 AM', '', '2/1/2027 11:45 PM'),
+			'set' => array('2/1/2027 11:45 PM', '2/1/2027', '23:45'),
+		),
+		$r['dp_datetime'],
+		'date and time composed into the hidden field in the text the server reads; an empty date empties it'
+	);
+	pg_assert_same(
+		array(
+			'native' => array('pg-field-native', '-1'),
+			'part' => array('time', 'form-control pg-time', '17:30'),
+			'heard' => array('5:05 PM', '', '9:00 AM'),
+			'set' => array('9:00 AM', '09:00'),
+		),
+		$r['dp_time'],
+		'time only: an <input type="time"> writing h:mm AM into the hidden field'
+	);
+	pg_assert_same(
+		array('t' => array('', '3', false), 'dt' => array('form-control form-control-sm', false, '2/1/2027 11:45 PM')),
+		$r['dp_destroy'],
+		'destroy() leaves the field visible with its own tab order and value'
+	);
+	pg_assert_same(array('wrap' => 'pg-date-inline', 'inline' => true, 'value' => '9/2/2027', 'after' => true), $r['dp_drawer'], 'in a drawer the calendar is drawn open after the field');
 }

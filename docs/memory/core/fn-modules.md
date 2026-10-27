@@ -40,6 +40,7 @@ description: Generated from the module field of the memory files: each includes/
 - `widgets_lists`: [[widget-lists]]
 - `widgets_lists_calendar`: [[widget-lists-calendar]]
 - `widgets_lists_cart`: [[widget-lists-cart]]
+- `widgets_lists_checkout`: [[widget-lists-checkout]]
 - `widgets_lists_menu`: [[menu-widget]]
 - `widgets_lists_order`: [[widget-lists-order]]
 - `widgets_lists_paging`: [[widget-lists-paging]]

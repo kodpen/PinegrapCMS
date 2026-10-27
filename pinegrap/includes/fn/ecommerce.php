@@ -1248,7 +1248,7 @@ function pg_order_quick_update($order_id, $field, $value)
     // still redrawn from what is stored.
     if ($previous !== (string) $value) {
         db("UPDATE orders
-            SET status = '" . e($value) . "', last_modified_timestamp = UNIX_TIMESTAMP()
+            SET status = '" . e($value) . "', " . pg_order_touch_sql() . "
             WHERE id = '" . $order_id . "' AND status = '" . e($previous) . "'");
 
         $written = (mysqli_affected_rows(db::$con) > 0);
@@ -10379,7 +10379,8 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
             status              = 'cancelled',
             cancelled_at        = '" . $now . "',
             cancelled_by        = '" . (int) $user_id . "',
-            cancellation_reason = '" . escape($reason_clean) . "'
+            cancellation_reason = '" . escape($reason_clean) . "',
+            " . pg_order_touch_sql() . "
          WHERE id = '" . e($order_id) . "'
            AND status <> 'cancelled'"
     );
@@ -10525,7 +10526,8 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
             "UPDATE orders SET
                 refund_status    = '" . escape($refund_status_outcome) . "',
                 refunded_at      = " . $refunded_at_sql . ",
-                refund_reference = '" . escape($refund_reference) . "'
+                refund_reference = '" . escape($refund_reference) . "',
+                " . pg_order_touch_sql() . "
              WHERE id = '" . e($order_id) . "'"
         );
     }
@@ -10654,7 +10656,7 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
         return false;
     }
 
-    db("UPDATE orders SET status = '" . $status . "' WHERE id = '" . $order_id . "' AND status = 'cancelled'");
+    db("UPDATE orders SET status = '" . $status . "', " . pg_order_touch_sql() . " WHERE id = '" . $order_id . "' AND status = 'cancelled'");
     if (mysqli_affected_rows(db::$con) < 1) {
         return false;
     }
@@ -10662,11 +10664,11 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
     // Columns are 2026.1.26 / 2026.1.27 additions, so both groups are probed.
     // A refund that went through stays on the record.
     if ($has_cancel_columns) {
-        db("UPDATE orders SET cancelled_at = NULL, cancelled_by = 0, cancellation_reason = ''
+        db("UPDATE orders SET cancelled_at = NULL, cancelled_by = 0, cancellation_reason = '', " . pg_order_touch_sql() . "
             WHERE id = '" . $order_id . "'");
     }
     if (_orders_has_refund_columns()) {
-        db("UPDATE orders SET refund_status = '', refunded_at = NULL, refund_reference = ''
+        db("UPDATE orders SET refund_status = '', refunded_at = NULL, refund_reference = '', " . pg_order_touch_sql() . "
             WHERE id = '" . $order_id . "' AND refund_status != 'refunded'");
     }
 
