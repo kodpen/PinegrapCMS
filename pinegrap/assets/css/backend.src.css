@@ -1457,8 +1457,11 @@ html[data-bs-theme="dark"] .accordion {
 }
 
 /* Form controls. Bootstrap hard codes #86b7fe for the focus border and
-   rgba(13,110,253,.25) for the ring on every control. */
+   rgba(13,110,253,.25) for the ring on every control. A form-adorn wrapper
+   is a label, never focused itself: it takes the look while its input has
+   focus. */
 .form-control:focus,
+.form-control.form-adorn:focus-within,
 :is(select.form-control):focus,
 :is(.check, .radio):focus,
 .tagin-wrapper.focus {
@@ -7946,10 +7949,17 @@ textarea:focus-visible,
 .btn:focus-visible,
 .nav-link:focus-visible,
 .menu-item:focus-visible,
-.breadcrumb-item a:focus-visible {
+.breadcrumb-item a:focus-visible,
+.form-adorn:has(> .form-ghost:focus-visible) {
   outline: 2px solid var(--pg-primary-ink);
   outline-offset: 2px;
   box-shadow: 0 0 0 0.2rem rgba(var(--pg-primary-rgb), 0.35);
+}
+/* A form-adorn field wears the ring on its wrapper, the label drawn as the
+   input; the borderless input inside it shows none of its own. */
+.form-adorn > .form-ghost:focus-visible {
+  outline: 0;
+  box-shadow: none;
 }
 
 /* Some legacy admin links carry inline `outline:0` style; force visible focus. */

@@ -245,7 +245,7 @@ if (!defined('PG_INIT_LOADED')) {
                                         </div>
                                         <div class="col-12 sm:col-6 xl:col-4">
                                             <label class="form-label" for="pg-if-upsell-subtotal"><?=lang('Show when the subtotal is within')?> <span class="fg-secondary small">· <?=lang('of the required subtotal')?></span></label>
-                                            <div class="input-group input-group-sm"><input type="text" class="form-control text-end" id="pg-if-upsell-subtotal" inputmode="decimal" data-on="upsell-subtotal"><span class="input-group-text"><?=h(_pg_offer_currency())?></span></div>
+                                            <label class="form-control form-control-sm form-adorn form-adorn-end"><span class="form-adorn-text" aria-hidden="true"><?=h(_pg_offer_currency())?></span><input type="text" class="form-ghost text-end" id="pg-if-upsell-subtotal" inputmode="decimal" data-on="upsell-subtotal"></label>
                                         </div>
                                         <div class="col-12 sm:col-6 xl:col-4" id="pg-if-upsell-quantity-wrap">
                                             <label class="form-label" for="pg-if-upsell-quantity"><?=lang('Show when the quantity is within')?> <span class="fg-secondary small">· <?=lang('of the required quantity')?></span></label>

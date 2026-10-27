@@ -258,7 +258,7 @@
             var cols = '';
             if (c.type === 'subtotal') {
                 cols = '<div class="col-7 sm:col-5 md:col-3 xl:col-2">' +
-                    '<div class="input-group input-group-sm"><input type="text" class="form-control text-end" inputmode="decimal" value="' + esc(centsToInput(c.amount)) + '" placeholder="0.00" data-on="cond-amount" data-index="' + i + '"><span class="input-group-text">' + esc(C.currency) + '</span></div>' +
+                    '<label class="form-control form-control-sm form-adorn form-adorn-end"><span class="form-adorn-text" aria-hidden="true">' + esc(C.currency) + '</span><input type="text" class="form-ghost text-end" inputmode="decimal" value="' + esc(centsToInput(c.amount)) + '" placeholder="0.00" data-on="cond-amount" data-index="' + i + '"></label>' +
                     '</div>';
             } else if (c.type === 'products') {
                 var tags = c.product_ids.map(function (id) {
