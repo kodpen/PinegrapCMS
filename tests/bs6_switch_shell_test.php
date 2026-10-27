@@ -132,6 +132,7 @@ function test_bs6_shell_rules_and_selectors()
 	pg_assert_contains(".pg-mt-n2 {\n  margin-top: -0.5rem !important;\n}", $result['source']);
 	pg_assert_contains(".pg-display-6 {\n  font-size: min(calc(1.375rem + 1.5vw), 2.5rem);", $result['source']);
 	pg_assert_contains(".alert[class~=\"alert-success\"] {\n  --bs-theme-base: var(--bs-success-base);", $result['source']);
+	pg_assert_contains("@media (max-width: 575.98px) {\n  .dialog {\n    --bs-dialog-width: 100%;", $result['source']);
 	pg_assert_contains(".input-group-sm > select.form-control:not([multiple], [size]:not([size=\"1\"])) {", $result['source']);
 
 	$css = ".x .dropdown .dropdown-menu.dropdown-menu-end, .y .offcanvas.offcanvas-end .modal-title { color: red; }";
