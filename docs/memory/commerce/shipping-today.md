@@ -4,7 +4,7 @@ description: How shipping works today (checked 2026-10-20): tracking tables and 
 ---
 
 ## Where is shipping data kept?
-- Tracking numbers: `shipping_tracking_numbers`, one row per parcel. Since 2026.11.0 (11.0.20) the row has carrier, status, date, source and warning columns and a unique (`ship_to_id`, `number`) key (shipment-row-schema.md), written (shipment-write-path.md), not read yet: the carrier is still guessed at every read by `pg_shipping_carrier()` (method code, site default, number pattern): order-view-tracking-link.md.
+- Tracking numbers: `shipping_tracking_numbers`, one row per parcel. Since 2026.11.0 (11.0.20) the row has carrier, status, date, source and warning columns and a unique (`ship_to_id`, `number`) key (shipment-row-schema.md), written (shipment-write-path.md) and read through `pg_shipment_view()`; a row without a carrier is still recognised by `pg_shipping_carrier()` (order-view-tracking-link.md).
 - `ship_tos.ship_date` / `delivery_date` are ESTIMATES written at checkout (`submit_order.php`); there is no column for the real dates.
 - `orders.tracking_code` is a campaign code; `orders.tracking_company` / `orders.notes` are reserved for ERP.
 - The plan to change all this: docs/memory/plans/shipping-management.md. Old audit with line numbers: `git show 88e7ac6d:docs/_tespit_2026_10_08/kargo_yonetimi_kesif_raporu.md`
