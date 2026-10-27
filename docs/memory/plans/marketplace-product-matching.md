@@ -17,7 +17,7 @@ description: Plan (approved 2026-10-26): bulk matching of a shop's products to i
 ## What remains?
 1. ~~Remote catalogue, suggestions and the review screen for n11.~~ Done #1880 (`commerce/marketplace-bulk-matching.md`).
 2. ~~Shop view: every shop product with its picture and state, codes in the row, bulk actions; the account screen's card a summary.~~ Done #1931 (`commerce/marketplace-shop-view.md`).
-3. ~~`marketplace_product_map.remote_code` to `utf8mb4_bin` (schema step 11.0.44), the order import's single-mapping case-blind fallback, the shop view's search case-blind.~~ Done #PRNUM (`commerce/marketplace-order-import.md`).
+3. ~~`marketplace_product_map.remote_code` to `utf8mb4_bin` (schema step 11.0.44), the order import's single-mapping case-blind fallback, the shop view's search case-blind.~~ Done #2095 (`commerce/marketplace-order-import.md`).
 4. ~~Listings on the same screen: article cards with pictures, category search by path, one category for several articles, required attributes first and optional ones folded; the old listing card goes.~~ Done #2066 (`commerce/marketplace-listing-view.md`).
 5. Trendyol `remote_products` (its product filter service, barcode as the key), so Trendyol accounts get the same suggestions.
 
