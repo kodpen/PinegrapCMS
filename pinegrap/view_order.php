@@ -2220,11 +2220,11 @@ if (!$_POST) {
         // What the modal asks for: an amount, or - with the ERP - the lines
         // and quantities that came back, the amount worked out from them.
         $output_payment_refund_body = '
-                                    <label class="form-label fw-semibold">' . lang('Refund Amount') . ' (' . lang('max') . ': ' . $refund_remaining_formatted . ')</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text">' . BASE_CURRENCY_SYMBOL . '</span>
-                                        <input type="number" class="form-control" name="refund_amount" step="0.01" min="0.01" max="' . $refund_remaining_value . '" value="' . $refund_remaining_value . '" required>
-                                    </div>
+                                    <label class="form-label fw-semibold" for="payment_refund_amount">' . lang('Refund Amount') . ' (' . lang('max') . ': ' . $refund_remaining_formatted . ')</label>
+                                    <label class="form-control form-adorn">
+                                        <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                        <input type="number" class="form-ghost" id="payment_refund_amount" name="refund_amount" step="0.01" min="0.01" max="' . $refund_remaining_value . '" value="' . $refund_remaining_value . '" required>
+                                    </label>
                                     <p class="form-text fg-secondary mt-3">' . lang(array('string' => 'This will refund the specified amount via {var:1}.', 'vars' => h($refund_service))) . '</p>';
 
         if (is_array($erp_refund)) {

@@ -227,10 +227,10 @@ if (!$_POST) {
                         <div class="row align-items-end">
                             <div class="col-12 sm:col-6 lg:col-3 my-3">
                                 <label for="amount" class="form-label">' . lang('Amount') . '</label>
-                                <div class="input-group">
-                                    ' . $liveform->output_field(array('type' => 'text', 'id' => 'amount', 'name' => 'amount', 'class' => 'form-control text-end', 'maxlength' => '15', 'inputmode' => 'decimal', 'autocomplete' => 'off', 'required' => 'required')) . '
-                                    <span class="input-group-text" id="erp_expense_currency_label">' . $currency_label . '</span>
-                                </div>
+                                <label class="form-control form-adorn form-adorn-end">
+                                    <span class="form-adorn-text" id="erp_expense_currency_label" aria-hidden="true">' . $currency_label . '</span>
+                                    ' . $liveform->output_field(array('type' => 'text', 'id' => 'amount', 'name' => 'amount', 'class' => 'form-ghost text-end', 'maxlength' => '15', 'inputmode' => 'decimal', 'autocomplete' => 'off', 'required' => 'required')) . '
+                                </label>
                             </div>
                             <div class="col-12 sm:col-6 lg:col-3 my-3">
                                 <div class="form-field mb-3">
