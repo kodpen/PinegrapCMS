@@ -1120,11 +1120,11 @@ function pg_account_security_section()
         }
     }
 
-    $result = mysqli_query(db::$con,
+    $result = db_q(
         "SELECT selector, user_agent, ip_address, created_at, last_used_at, expires_at"
          . ($pin_column ? ", pinned" : "") . ($passkey_column ? ", passkey_id" : "") . "
-         FROM auth_tokens WHERE user_id = '" . $user_id . "'
-         ORDER BY (last_used_at = 0) ASC, last_used_at DESC, created_at DESC");
+         FROM auth_tokens WHERE user_id = ?
+         ORDER BY (last_used_at = 0) ASC, last_used_at DESC, created_at DESC", array((string) $user_id));
     if ($result) {
         while ($r = mysqli_fetch_assoc($result)) {
             $count++;
@@ -1256,10 +1256,10 @@ function pg_device_limit_revoke_oldest($user_id, $keep)
     $pin_column = pg_auth_tokens_have_pin();
 
     $selectors = array();
-    $result = mysqli_query(db::$con,
+    $result = db_q(
         "SELECT selector" . ($pin_column ? ", pinned" : "") . " FROM auth_tokens
-         WHERE user_id = '" . $user_id . "' AND expires_at > '" . time() . "'
-         ORDER BY GREATEST(last_used_at, created_at) DESC, created_at DESC");
+         WHERE user_id = ? AND expires_at > ?
+         ORDER BY GREATEST(last_used_at, created_at) DESC, created_at DESC", array((string) $user_id, (string) time()));
     if ($result) {
         $index = 0;
         while ($r = mysqli_fetch_assoc($result)) {
@@ -2019,8 +2019,8 @@ function pg_session_signed_in()
 // The username can either be a username or email address for a user.
 function validate_username($username)
 {
-    $query = "SELECT user_id FROM user WHERE (user_username = '" . escape($username) . "') OR (user_email = '" . escape($username) . "')";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed'));
+    $query = "SELECT user_id FROM user WHERE (user_username = ?) OR (user_email = ?)";
+    $result = db_q($query, array((string) $username, (string) $username)) or output_error(lang('Query failed'));
     if (mysqli_num_rows($result) > 0) {
         return true;
     } else {
@@ -2044,8 +2044,8 @@ function validate_user()
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/index.php?send_to=' . urlencode(get_request_uri()));
         exit();
     }
-    $query = "SELECT * FROM user WHERE user_id = '" . (int) $_SESSION['sessionuserid'] . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed'));
+    $query = "SELECT * FROM user WHERE user_id = ?";
+    $result = db_q($query, array((string) (int) $_SESSION['sessionuserid'])) or output_error(lang('Query failed'));
     $row = mysqli_fetch_array($result);
     $num_rows = mysqli_num_rows($result);
     // The account was deleted out from under a live session: clear it and send
@@ -2282,8 +2282,8 @@ function validate_contact_access($user, $contact_id)
 
             FROM contacts_contact_groups_xref
 
-            WHERE contact_id = '" . escape($contact_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE contact_id = ?";
+        $result = db_q($query, array((string) $contact_id)) or output_error(lang('Query failed.'));
         $contact_groups = array();
         // loop through all contact groups in order to add them to array
         while ($row = mysqli_fetch_assoc($result)) {
@@ -2312,8 +2312,8 @@ function validate_contacts_access($user, $only_return = false)
 
             FROM users_contact_groups_xref
 
-            WHERE user_id = '" . escape($user['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE user_id = ?";
+        $result = db_q($query, array((string) $user['id'])) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_row($result);
         // if user has access to at least one contact group, return true
         if ($row[0] > 0) {
@@ -2349,10 +2349,10 @@ function validate_contact_group_access($user, $contact_group_id)
 
             WHERE
 
-                (user_id = '" . escape($user['id']) . "')
+                (user_id = ?)
 
-                AND (contact_group_id = '" . escape($contact_group_id) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                AND (contact_group_id = ?)";
+        $result = db_q($query, array((string) $user['id'], (string) $contact_group_id)) or output_error(lang('Query failed.'));
         // if user has access to contact group, return true
         if (mysqli_num_rows($result) > 0) {
             return true;
@@ -2478,8 +2478,8 @@ function validate_calendars_access($user, $only_return = false)
 
             FROM users_calendars_xref
 
-            WHERE user_id = '" . escape($user['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE user_id = ?";
+        $result = db_q($query, array((string) $user['id'])) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_row($result);
         // if user has access to at least one calendar, return true
         if ($row[0] > 0) {
@@ -2515,10 +2515,10 @@ function validate_calendar_access($calendar_id)
 
             WHERE
 
-                (user_id = '" . USER_ID . "')
+                (user_id = ?)
 
-                AND (calendar_id = '" . escape($calendar_id) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                AND (calendar_id = ?)";
+        $result = db_q($query, array((string) USER_ID, (string) $calendar_id)) or output_error(lang('Query failed.'));
         // if user has access to calendar, return true
         if (mysqli_num_rows($result) > 0) {
             return true;
@@ -2540,8 +2540,8 @@ function validate_calendar_event_access($calendar_event_id)
 
             FROM calendar_events_calendars_xref
 
-            WHERE calendar_event_id = '" . escape($calendar_event_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE calendar_event_id = ?";
+        $result = db_q($query, array((string) $calendar_event_id)) or output_error(lang('Query failed.'));
         $selected_calendars = array();
         // loop through all selected calendars in order to build array
         while ($row = mysqli_fetch_assoc($result)) {
@@ -2592,10 +2592,10 @@ function get_folders_that_user_has_access_to($user_id)
 
         WHERE
 
-            (aclfolder_user = '" . escape($user_id) . "')
+            (aclfolder_user = ?)
 
             AND (aclfolder_rights = '2')";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
     while ($row = mysqli_fetch_assoc($result)) {
         $folders_with_access_set[] = $row['folder_id'];
     }
@@ -2846,11 +2846,11 @@ function select_style($style = '', $default_label = 'Default (inherit)')
     // the page screen) would send those pages to the visual editor with no
     // layout of their own. The one currently stored is kept in the list so
     // an existing choice is not silently dropped on save.
-    $result = mysqli_query(db::$con,
+    $result = db_q(
         "SELECT style_id, style_name FROM style
          WHERE style_layout != 'one_column_mobile'
-           AND (style_layout != 'visual_designer' OR style_id = '" . escape((string)$style) . "')
-         ORDER BY style_name") or output_error(lang('Query failed'));
+           AND (style_layout != 'visual_designer' OR style_id = ?)
+         ORDER BY style_name", array((string) $style)) or output_error(lang('Query failed'));
     while ($row = mysqli_fetch_assoc($result)) {
         // find if style is selected
         if ($row['style_id'] == $style) {
@@ -3063,7 +3063,7 @@ function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders 
 // find if there is an entry for the user in the access control list to edit any folder
 function no_acl_check($user_id)
 {
-    $result = mysqli_query(db::$con, "SELECT aclfolder_user FROM aclfolder WHERE aclfolder_user = '" . escape($user_id) . "' AND aclfolder_rights = '2'") or output_error(lang('Query failed'));
+    $result = db_q("SELECT aclfolder_user FROM aclfolder WHERE aclfolder_user = ? AND aclfolder_rights = '2'", array((string) $user_id)) or output_error(lang('Query failed'));
     if (mysqli_num_rows($result)) {
         return true;
     } else {
@@ -5319,11 +5319,9 @@ function initialize_developer_security()
     // Ensure database connection and session user are available
     if (defined('DB_CONNECTED') && isset($_SESSION['sessionusername'])) {
 
-        $SUser = mysqli_real_escape_string(db::$con, $_SESSION['sessionusername']);
-
         // Fetch developer PIN hash from database
-        $query = "SELECT user_devpasspin FROM user WHERE user_username = '" . $SUser . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "SELECT user_devpasspin FROM user WHERE user_username = ?";
+        $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_assoc($result);
         $devpasspin = $row['user_devpasspin'];
 

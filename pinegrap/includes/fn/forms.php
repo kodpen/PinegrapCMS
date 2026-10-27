@@ -330,6 +330,7 @@ function select_page($page_id = '', $page_type = '')
     if ($user['role'] == 3) {
         $folders_that_user_has_access_to = get_folders_that_user_has_access_to($user['id']);
     }
+    $where_values = array();
     // if a page type was given, prepare to only return pages with that page type
     if ($page_type) {
         // If multiple page types were passed in an array, then prepare filter for all of them.
@@ -339,12 +340,14 @@ function select_page($page_id = '', $page_type = '')
                 if ($key != 0) {
                     $where .= "OR ";
                 }
-                $where .= "(page.page_type = '" . e($type) . "') ";
+                $where .= "(page.page_type = ?) ";
+                $where_values[] = (string) $type;
             }
             $where .= ")";
             // Otherwise only one page type was passed, so prepare single filter.
         } else {
-            $where = "WHERE page.page_type = '" . e($page_type) . "'";
+            $where = "WHERE page.page_type = ?";
+            $where_values[] = (string) $page_type;
         }
     } else {
         $where = '';
@@ -373,7 +376,7 @@ function select_page($page_id = '', $page_type = '')
         $where
 
         ORDER BY page.page_name";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, $where_values) or output_error(lang('Query failed.'));
     $pages = array();
     // loop through all pages so they can be added to array
     while ($row = mysqli_fetch_assoc($result)) {
@@ -944,10 +947,12 @@ function get_ad_region_options()
     $ad_region_options[''] = '';
     $sql_join = '';
     $where = '';
+    $where_values = array();
     // if user is a user role, then prepare sql join and where
     if ($user['role'] == 3) {
         $sql_join = 'LEFT JOIN users_ad_regions_xref ON ad_regions.id = users_ad_regions_xref.ad_region_id';
-        $where = "WHERE users_ad_regions_xref.user_id = '" . escape($user['id']) . "'";
+        $where = "WHERE users_ad_regions_xref.user_id = ?";
+        $where_values[] = (string) $user['id'];
     }
     // get ad regions
     $query = "SELECT
@@ -957,7 +962,7 @@ function get_ad_region_options()
         $sql_join
         $where
         ORDER BY name";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, $where_values) or output_error(lang('Query failed.'));
     // loop through each ad region and add it to array
     while ($row = mysqli_fetch_assoc($result)) {
         $ad_region_options[h($row['name'])] = $row['id'];
@@ -1619,12 +1624,14 @@ function log_activity($description, $user = '')
 }
 function get_number_of_contacts($contact_group, $require_email = false)
 {
+    $where_values = array();
     // if contact group is [None]
     if ($contact_group == '[' . lang('None') . ']') {
         $where = "WHERE (contacts_contact_groups_xref.contact_group_id IS NULL)";
         // else contact group is not [None]
     } else {
-        $where = "WHERE (contacts_contact_groups_xref.contact_group_id = '" . escape($contact_group) . "')";
+        $where = "WHERE (contacts_contact_groups_xref.contact_group_id = ?)";
+        $where_values[] = (string) $contact_group;
     }
     if ($require_email == true) {
         $where .= " AND (opt_in != 0)
@@ -1639,7 +1646,7 @@ function get_number_of_contacts($contact_group, $require_email = false)
         LEFT JOIN contacts_contact_groups_xref ON contacts.id = contacts_contact_groups_xref.contact_id
 
         $where";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, $where_values) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_row($result);
     return $row[0];
 }
@@ -2066,10 +2073,12 @@ function select_field_position($position, $field_id, $page_or_product_id, $page_
         $form_fields_identifier_column = 'page_id';
     }
     // Prepare sql filter in order to get correct fields
-    $form_type_filter = "form_fields." . $form_fields_identifier_column . " = '" . e($page_or_product_id) . "'";
+    $form_type_filter = "form_fields." . $form_fields_identifier_column . " = ?";
+    $form_type_values = array((string) $page_or_product_id);
     // If the page type is express order then we need to add an extra filter for the form type
     if ($page_type == 'express order') {
-        $form_type_filter .= " AND form_fields.form_type = '" . e($form_type) . "'";
+        $form_type_filter .= " AND form_fields.form_type = ?";
+        $form_type_values[] = (string) $form_type;
     }
     // Pinning form_type is mandatory for a template, not optional as it is
     // elsewhere: the copies generated from a template carry the same
@@ -2091,7 +2100,7 @@ function select_field_position($position, $field_id, $page_or_product_id, $page_
              FROM form_fields
              WHERE $form_type_filter
              ORDER BY sort_order";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, $form_type_values) or output_error(lang('Query failed.'));
     while ($row = mysqli_fetch_assoc($result)) {
         if ($row['id'] != $field_id) {
             if ($row['id'] == $position) {
