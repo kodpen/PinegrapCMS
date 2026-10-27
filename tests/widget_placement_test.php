@@ -85,3 +85,41 @@ function test_widget_placement_tree_render()
 	pg_designer_tree_objects($tree);
 	pg_assert_true($tree['props']['placement'] instanceof stdClass, 'an empty placement is stored as an object');
 }
+
+// The editor's twin (_swPlacementKeys) offers the keys the server reads, and
+// _swPlacementSet drops empty values and an empty placement.
+function test_widget_placement_editor_twin()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+	if ($code !== 0) {
+		return;
+	}
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$fn = function ($name) use ($source) {
+		$from = strpos($source, "\n    function " . $name . '(');
+		pg_assert_true($from !== false, 'the designer has ' . $name . '()');
+		$to = strpos($source, "\n    }\n", $from + 1);
+		return substr($source, $from, $to + 7 - $from);
+	};
+	$kinds = array('form_list_view', 'blog_list', 'catalog_listing', 'calendar_view', 'menu_region', 'ad_region', 'login_form', 'catalog_item_view', '');
+	$script = $fn('_swPlacementKeys') . $fn('_swPlacementSet')
+		. 'var r = {}; ' . json_encode($kinds) . '.forEach(function (k) { r[k] = _swPlacementKeys(k); });'
+		. 'var n = { type: "shared_ref", props: { sharedId: 7 } };'
+		. '_swPlacementSet(n, "max_results", 3); _swPlacementSet(n, "menu_name", "Main"); r.set = JSON.parse(JSON.stringify(n.props));'
+		. '_swPlacementSet(n, "max_results", 0); _swPlacementSet(n, "menu_name", ""); r.cleared = n.props;'
+		. 'console.log(JSON.stringify(r));';
+	$file = tempnam(sys_get_temp_dir(), 'pgplacement');
+	file_put_contents($file, $script);
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+	$r = json_decode(implode("\n", $out), true);
+	pg_assert_same(0, $code, implode("\n", $out));
+	foreach ($kinds as $k) {
+		pg_assert_same(pg_sw_placement_keys($k), $r[$k], 'twin keys of ' . ($k === '' ? '(empty)' : $k));
+	}
+	pg_assert_same(array('sharedId' => 7, 'placement' => array('max_results' => 3, 'menu_name' => 'Main')), $r['set'], 'values set');
+	pg_assert_same(array('sharedId' => 7), $r['cleared'], 'an empty placement is removed');
+}
