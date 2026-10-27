@@ -13,6 +13,7 @@ description: Content files converted to db_q() (get_page_content, content, seo, 
 - Catalog, photo gallery and custom form submit (`get_catalog.php`, `get_photo_gallery.php`, `custom_form.php`): `db-q-converted-catalog-forms.md`.
 - Sign-in, access checks, contact merge and designer asset sync (`includes/fn/auth.php`, `contacts.php`, `designer.php`, the `forms.php` clauses): `db-q-converted-access.md`.
 - User and page screens (`edit_user.php`, `add_user.php`, `import_users.php`, `edit_pages.php`, `edit_page.php`): `db-q-converted-panel.md`.
+- Users list, account profile, comments, search, sitemap: `db-q-converted-comments-search.md`.
 - Front-end files (`get_shopping_cart.php`, `get_form_item_view.php`, `get_view_order_screen_content.php`, `email_preferences.php`, `add_or_remove_watcher.php`, `affiliate_sign_up_form.php`): `db-q-converted-front.md`.
 
 ## What is the rule for a query that stays raw?
