@@ -35,8 +35,8 @@ $query =
         page_folder,
         seo_analysis_current
     FROM page
-    WHERE page_id = '" . escape($page_id) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE page_id = ?";
+$result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 $page_name = $row['page_name'];
 $folder_id = $row['page_folder'];
@@ -71,8 +71,8 @@ switch ($liveform->get_field_value('region_type')) {
                     page.seo_analysis_current
                 FROM pregion
                 LEFT JOIN page ON pregion.pregion_page = page.page_id
-                WHERE pregion.pregion_id = '" . escape($liveform->get_field_value('region_id')) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE pregion.pregion_id = ?";
+            $result = db_q($query, array((string) $liveform->get_field_value('region_id'))) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             
             $page_region_content = $row['pregion_content'];
@@ -91,11 +91,11 @@ switch ($liveform->get_field_value('region_type')) {
             $query =
                 "UPDATE pregion
                 SET 
-                    pregion_content = '" . escape($liveform->get_field_value('region_content')) . "', 
-                    pregion_user = '" . $user['id'] . "', 
+                    pregion_content = ?, 
+                    pregion_user = ?, 
                     pregion_timestamp = UNIX_TIMESTAMP()
-                WHERE pregion_id = '" . escape($liveform->get_field_value('region_id')) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE pregion_id = ?";
+            $result = db_q($query, array((string) $liveform->get_field_value('region_content'), (string) $user['id'], (string) $liveform->get_field_value('region_id'))) or output_error('Query failed.');
             
             // if the seo analysis is current and the page region content has changed, then prepare to remove current status
             if (($seo_analysis_current == 1) && ($page_region_content != $liveform->get_field_value('region_content'))) {
@@ -166,14 +166,14 @@ switch ($liveform->get_field_value('region_type')) {
                     pregion_user,
                     pregion_timestamp)
                 VALUES (
-                    '" . e($region_name) . "',
-                    '" . e($liveform->get_field_value('region_content')) . "',
-                    '" . e($page_id) . "',
-                    '" . e($order) . "',
-                    '" . e($collection) . "',
-                    '" . $user['id'] . "',
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
                     UNIX_TIMESTAMP())";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $region_name, (string) $liveform->get_field_value('region_content'), (string) $page_id, (string) $order, (string) $collection, (string) $user['id'])) or output_error('Query failed.');
             
             // if the seo analysis is current and the new page region has content, then prepare to remove current status
             if (($seo_analysis_current == 1) && ($liveform->get_field_value('region_content') != '')) {
@@ -220,11 +220,11 @@ switch ($liveform->get_field_value('region_type')) {
         $query =
             "UPDATE cregion
             SET 
-                cregion_content = '" . escape($liveform->get_field_value('region_content')) . "', 
-                cregion_user = '" . $user['id'] . "', 
+                cregion_content = ?, 
+                cregion_user = ?, 
                 cregion_timestamp = UNIX_TIMESTAMP()
-            WHERE cregion_id = '" . $cregion_id . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE cregion_id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('region_content'), (string) $user['id'], (string) $cregion_id)) or output_error('Query failed.');
 
         // A common region is shared: this one edit changes the markup of every
         // page whose style or page region pulls it in, and on most sites that
@@ -253,8 +253,8 @@ switch ($liveform->get_field_value('region_type')) {
                 page_folder as folder_id,
                 system_region_header
             FROM page
-            WHERE page_id = '" . escape($liveform->get_field_value('region_id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE page_id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('region_id'))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         $page_id = $row['page_id'];
@@ -271,11 +271,11 @@ switch ($liveform->get_field_value('region_type')) {
         $query =
             "UPDATE page
             SET 
-                system_region_header = '" . escape($liveform->get_field_value('region_content')) . "',
-                page_user = '" . $user['id'] . "',
+                system_region_header = ?,
+                page_user = ?,
                 page_timestamp = UNIX_TIMESTAMP()
-            WHERE page_id = '" . escape($liveform->get_field_value('region_id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE page_id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('region_content'), (string) $user['id'], (string) $liveform->get_field_value('region_id'))) or output_error('Query failed.');
 
         // Stored on the page row, so this is one page's markup like a page
         // region is - not a shared region despite the name.
@@ -295,8 +295,8 @@ switch ($liveform->get_field_value('region_type')) {
                 page_folder as folder_id,
                 system_region_footer
             FROM page
-            WHERE page_id = '" . escape($liveform->get_field_value('region_id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE page_id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('region_id'))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         $page_id = $row['page_id'];
@@ -313,11 +313,11 @@ switch ($liveform->get_field_value('region_type')) {
         $query =
             "UPDATE page
             SET 
-                system_region_footer = '" . escape($liveform->get_field_value('region_content')) . "',
-                page_user = '" . $user['id'] . "',
+                system_region_footer = ?,
+                page_user = ?,
                 page_timestamp = UNIX_TIMESTAMP()
-            WHERE page_id = '" . escape($liveform->get_field_value('region_id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE page_id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('region_content'), (string) $user['id'], (string) $liveform->get_field_value('region_id'))) or output_error('Query failed.');
 
         // Stored on the page row, so this is one page's markup like a page
         // region is - not a shared region despite the name.
@@ -345,10 +345,10 @@ if (
         "UPDATE page
         SET
             $sql_seo_analysis_current
-            page_user = '" . $user['id'] . "',
+            page_user = ?,
             page_timestamp = UNIX_TIMESTAMP()
-        WHERE page_id = '" . escape($page_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE page_id = ?";
+    $result = db_q($query, array((string) $user['id'], (string) $page_id)) or output_error('Query failed.');
 }
 
 // The markup of this page just changed, which is exactly what the HTML half of

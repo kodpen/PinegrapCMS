@@ -45,8 +45,8 @@ if (!$_POST) {
             class,
             active_item_class
         FROM menus
-        WHERE id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     // If the menu does not exist, then output error.
@@ -220,22 +220,22 @@ if (!$_POST) {
     // if menu was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // get menu name for the log
-        $query = "SELECT name FROM menus WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT name FROM menus WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $menu_name = $row['name'];
         
         // delete menu
-        $query = "DELETE FROM menus WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM menus WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete menu items
-        $query = "DELETE FROM menu_items WHERE menu_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM menu_items WHERE menu_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete users_menus_xref records
-        $query = "DELETE FROM users_menus_xref WHERE menu_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM users_menus_xref WHERE menu_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         log_activity(lang(array('string'=>'menu ({var:1}) was deleted','vars'=>$menu_name)), $_SESSION['sessionusername']);
         
@@ -267,8 +267,8 @@ if (!$_POST) {
             // because the theme designer does not support underscores in names.  We are going to allow
             // underscores as long as it was set in the past in order to prevent their styles or themes
             // from being messed up.
-            $query = "SELECT name FROM menus WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT name FROM menus WHERE id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $previous_name = $row['name'];
 
@@ -296,9 +296,9 @@ if (!$_POST) {
                 "SELECT id
                 FROM menus
                 WHERE
-                    (name = '" . escape($liveform->get_field_value('name')) . "')
-                    AND (id != '" . escape($_POST['id'] ?? '') . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    (name = ?)
+                    AND (id != ?)";
+            $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             
             // if name is already in use, prepare error
             if (mysqli_num_rows($result) > 0) {
@@ -316,16 +316,16 @@ if (!$_POST) {
         $query =
             "UPDATE menus
             SET
-                name = '" . e($liveform->get_field_value('name')) . "',
-                effect = '" . e($liveform->get_field_value('effect')) . "',
-                first_level_popup_position = '" . e($liveform->get_field_value('first_level_popup_position')) . "',
-                second_level_popup_position = '" . e($liveform->get_field_value('second_level_popup_position')) . "',
-                class = '" . e($liveform->get('class')) . "',
-                active_item_class = '" . e($liveform->get('active_item_class')) . "',
-                last_modified_user_id = '" . $user['id'] . "',
+                name = ?,
+                effect = ?,
+                first_level_popup_position = ?,
+                second_level_popup_position = ?,
+                class = ?,
+                active_item_class = ?,
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . e($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) $liveform->get_field_value('effect'), (string) $liveform->get_field_value('first_level_popup_position'), (string) $liveform->get_field_value('second_level_popup_position'), (string) $liveform->get('class'), (string) $liveform->get('active_item_class'), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'menu ({var:1}) was modified','vars'=>$liveform->get_field_value('name'))), $_SESSION['sessionusername']);
         $liveform->remove_form();

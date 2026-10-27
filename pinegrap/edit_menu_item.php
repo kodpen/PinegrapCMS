@@ -38,8 +38,8 @@ $query =
         menu_items.parent_id
     FROM menus
     LEFT JOIN menu_items ON menus.id = menu_items.menu_id
-    WHERE menu_items.id = '" . escape($_REQUEST['id'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE menu_items.id = ?";
+$result = db_q($query, array((string) ($_REQUEST['id'] ?? ''))) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 // Without a row every value below is empty and the "menu item above" query
@@ -77,8 +77,8 @@ if (!$_POST) {
                 security,
                 class
             FROM menu_items
-            WHERE id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         // Assign the values to the fields.
@@ -96,12 +96,12 @@ if (!$_POST) {
             "SELECT id
             FROM menu_items
             WHERE 
-                (menu_id = '" . escape($menu_id) . "')
-                AND (sort_order < " . (int) $sort_order . ")
-                AND (parent_id = '" . escape($parent_id) . "')
+                (menu_id = ?)
+                AND (sort_order < ?)
+                AND (parent_id = ?)
             ORDER BY sort_order DESC
             LIMIT 1";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed. ' . $query);
+        $result = db_q($query, array((string) $menu_id, (int) $sort_order, (string) $parent_id)) or output_error('Query failed. ' . $query);
         $row = mysqli_fetch_assoc($result);
         
         // The first item on its level has nothing above it.
@@ -121,11 +121,11 @@ if (!$_POST) {
             name
         FROM menu_items
         WHERE
-            (id != '" . escape($_GET['id']) . "')
-            AND (menu_id = '" . escape($menu_id) . "')
-            AND (parent_id = '" . escape($parent_id) . "')
+            (id != ?)
+            AND (menu_id = ?)
+            AND (parent_id = ?)
         ORDER BY sort_order";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $_GET['id'], (string) $menu_id, (string) $parent_id)) or output_error('Query failed.');
     
     // loop through all menu items in order to add them to sort order options
     while ($row = mysqli_fetch_assoc($result)) {
@@ -275,14 +275,14 @@ if (!$_POST) {
         function delete_menu_items($menu_item_id)
         {
             // delete menu_item
-            $query = "DELETE FROM menu_items WHERE id = '" . escape($menu_item_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM menu_items WHERE id = ?";
+            $result = db_q($query, array((string) $menu_item_id)) or output_error('Query failed.');
             
             $menu_items = array();
             
             // get sub menu items
-            $query = "SELECT id FROM menu_items WHERE parent_id = '" . escape($menu_item_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT id FROM menu_items WHERE parent_id = ?";
+            $result = db_q($query, array((string) $menu_item_id)) or output_error('Query failed.');
             
             $menu_items = array();
             
@@ -304,10 +304,10 @@ if (!$_POST) {
         $query =
             "UPDATE menus
             SET
-                last_modified_user_id = '" . $user['id'] . "',
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($menu_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $user['id'], (string) $menu_id)) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'menu item ({var:1}) on menu ({var:2}) was deleted','vars'=>array($_POST['name'],$menu_name))), $_SESSION['sessionusername']);
         
@@ -350,11 +350,11 @@ if (!$_POST) {
                 "SELECT sort_order
                 FROM menu_items
                 WHERE 
-                    (menu_id = '" . escape($menu_id) . "')
-                    AND (parent_id = '" . escape($_POST['parent_id'] ?? '')  . "')
+                    (menu_id = ?)
+                    AND (parent_id = ?)
                 ORDER BY sort_order DESC
                 LIMIT 1";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $menu_id, (string) ($_POST['parent_id'] ?? ''))) or output_error('Query failed.');
             
             $row = mysqli_fetch_assoc($result);
             $sort_order = $row['sort_order'] + 1;
@@ -366,27 +366,27 @@ if (!$_POST) {
         $query =
             "UPDATE menu_items
             SET
-                name = '" . escape($_POST['name'] ?? '') . "',
-                parent_id = '" . escape($_POST['parent_id'] ?? '') . "',
-                sort_order = '" . escape($sort_order) . "',
-                link_page_id = '" . escape($link_page_id) . "',
-                link_url = '" . escape($link_url) . "',
-                link_target = '" . escape($_POST['link_target'] ?? '') . "',
-                security = '" . escape($_POST['security'] ?? '') . "',
-                class = '" . escape($_POST['class'] ?? '') . "',
-                last_modified_user_id = '" . $user['id'] . "',
+                name = ?,
+                parent_id = ?,
+                sort_order = ?,
+                link_page_id = ?,
+                link_url = ?,
+                link_target = ?,
+                security = ?,
+                class = ?,
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) ($_POST['parent_id'] ?? ''), (string) $sort_order, (string) $link_page_id, (string) $link_url, (string) ($_POST['link_target'] ?? ''), (string) ($_POST['security'] ?? ''), (string) ($_POST['class'] ?? ''), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // update last modified for menu
         $query =
             "UPDATE menus
             SET
-                last_modified_user_id = '" . $user['id'] . "',
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($menu_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $user['id'], (string) $menu_id)) or output_error('Query failed.');
         
         /* begin: update sort orders for menu items */
         $menu_items = array();
@@ -401,11 +401,11 @@ if (!$_POST) {
             "SELECT id
             FROM menu_items
             WHERE 
-                (menu_id = '" . escape($menu_id) . "')
-                AND (parent_id = '" . escape($_POST['parent_id'] ?? '')  . "')
-                AND (id != '" . escape($_POST['id'] ?? '')  . "')
+                (menu_id = ?)
+                AND (parent_id = ?)
+                AND (id != ?)
             ORDER BY sort_order";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $menu_id, (string) ($_POST['parent_id'] ?? ''), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         while ($row = mysqli_fetch_assoc($result)) {
             // add this menu item to array
@@ -424,9 +424,9 @@ if (!$_POST) {
             // update sort order for menu item
             $query =
                 "UPDATE menu_items
-                SET sort_order = '$count'
-                WHERE id = '" . escape($current_menu_id)  . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                SET sort_order = ?
+                WHERE id = ?";
+            $result = db_q($query, array((string) $count, (string) $current_menu_id)) or output_error('Query failed.');
             
             $count++;
         }
