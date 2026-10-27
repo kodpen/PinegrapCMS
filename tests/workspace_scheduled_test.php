@@ -630,7 +630,7 @@ function test_workspace_scheduled_count_of_a_channel_refused_in_conditions_texts
 	pg_assert_same(array('ok' => false, 'reason' => 'You may not see this count.'), $result['hold']['not read'] ?? null, 'one on a channel they do not read stops the run');
 	pg_assert_same('? ? 90 min', $result['fill'], 'the placeholders of a channel not read and of one that is gone');
 
-	pg_assert_same(array('ok' => true, 'text' => 'summary sent to #general', 'message_id' => 31), $result['summary'], 'the summary is sent');
+	pg_assert_same(array('ok' => true, 'text' => 'summary sent to #general', 'message_id' => 31, 'data' => array('counts' => array(null, 90, null, null))), $result['summary'], 'the summary is sent, a refused count given as none');
 	pg_assert_same(1, count($result['sent']), 'as one message');
 
 	$body = (string) ($result['sent'][0]['body'] ?? '');
