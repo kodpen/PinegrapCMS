@@ -5,7 +5,7 @@ module: widgets_photo_gallery
 ---
 
 ## What is it?
-- Kind `photo_gallery` (`includes/fn/widgets_photo_gallery.php`), step 5c of [[system-widget-missing-types]]. The page's folder is the gallery: its sub-folders the visitor may view (`check_view_access()`) are albums, its images (`pg_gal_image_types()`, not design files, by name) are photos. One main loop: the albums, then the photos.
+- Kind `photo_gallery` (`includes/fn/widgets_photo_gallery.php`), step 5c (#2492) of [[system-widget-missing-types]]. The page's folder is the gallery: its sub-folders the visitor may view (`check_view_access()`) are albums, its images (`pg_gal_image_types()`, not design files, by name) are photos. One main loop: the albums, then the photos.
 
 ## Which folder does it show?
 - `?folder_id=` opens an album on the same page, as on the classic page, only when the folder lies below the page's folder (`pg_gal_folder_shown()` walks the parents) and the visitor may view it; anything else shows the page's folder. The classic page sent a visitor without access to a sign-in screen; the widget shows the gallery's top instead. A background render ignores the address.
