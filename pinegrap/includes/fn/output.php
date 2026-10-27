@@ -163,7 +163,6 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Menu Sequence Region' => lang('Menu Sequence Region'),
         'System Region' => lang('System Region'),
         'Use Page' => lang('Use Page'),
-        'Edit Cell Properties' => lang('Edit Cell Properties'),
         'Please select a region name.' => lang('Please select a region name.'),
         'Please add one "Use Page" system region before continuing.' => lang('Please add one "Use Page" system region before continuing.'),
         'Your browser does not support secure key generation. Please use a modern browser.' => lang('Your browser does not support secure key generation. Please use a modern browser.'),
