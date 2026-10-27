@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-api-templates
-description: Flow templates over the external API (A6): GET /workspace/flow-templates, POST /workspace/flows with template and answers, what is checked, what never happens (publish)
+description: Flow templates over the external API (A6, #2298): GET /workspace/flow-templates, POST /workspace/flows with template and answers, what is checked, what never happens (publish)
 ---
 
 ## What does the listing give?

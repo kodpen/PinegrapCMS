@@ -21,7 +21,7 @@ description: Plan (owner request 2026-10-27, draft): flow API beyond the removed
 
 - A5 run values done (PR #2284): each box's `threads_in` and `outputs` (workspace-flows-run-values.md); retry and skip were already routes (F5a, #2098). The run's flag and its result wait for C1 of workspace-flows-channels.md (question in #2284).
 
-- A6 templates done (PR #PR_A6): `GET /workspace/flow-templates`; `POST /workspace/flows` with `template` and `answers` (workspace-flows-api-templates.md). Never publishes.
+- A6 templates done (PR #2298): `GET /workspace/flow-templates`; `POST /workspace/flows` with `template` and `answers` (workspace-flows-api-templates.md). Never publishes.
 
 - A7 events for webhooks and wake-ups: `workspace.flow.run.finished`, `.failed`, `.waiting`, carrying the run's result.
 
