@@ -3536,7 +3536,7 @@ function init_product_groups(properties) {
                 </div>\
             </div>');
 
-        // select2 reads its placeholder from the data attribute.
+        // The combobox reads its placeholder from the data attribute.
         var select = $('.group_' + id + ' .product_group').attr('data-placeholder', '-' + label['Select Group'] + '-')[0];
 
         if (window.pgCombobox) {

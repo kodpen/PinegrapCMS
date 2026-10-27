@@ -293,7 +293,7 @@
 
     // The select's own classes the toggle takes over: sizes, validation,
     // margins; not the control class, which the toggle has anyway.
-    var COMBOBOX_SKIP = { 'form-control': 1, 'form-select': 1, 'select2': 1, 'pg-combobox-native': 1 };
+    var COMBOBOX_SKIP = { 'form-control': 1, 'select2': 1, 'pg-combobox-native': 1 };
 
     function comboboxItem(option, multiple) {
         var item = document.createElement('button');
