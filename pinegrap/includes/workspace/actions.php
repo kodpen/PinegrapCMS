@@ -655,9 +655,10 @@ function ws_handle_action($action, $request)
 
             $rows = ws_flows_list($viewer);
             $numbers = ws_flow_version_numbers($rows);
+            $starts = empty($rows) ? array() : ws_flows_start_kinds($rows);
 
-            return ws_action_ok(array('flows' => array_map(function ($row) use ($viewer, $numbers) {
-                return ws_flow_brief($viewer, $row, $numbers[(int) $row['version_id']] ?? 0);
+            return ws_action_ok(array('flows' => array_map(function ($row) use ($viewer, $numbers, $starts) {
+                return ws_flow_brief($viewer, $row, $numbers[(int) $row['version_id']] ?? 0, $starts[(int) $row['id']] ?? '');
             }, $rows)));
 
         case 'ws_flow_get':

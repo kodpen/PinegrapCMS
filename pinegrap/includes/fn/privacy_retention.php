@@ -173,7 +173,7 @@ function pg_privacy_retention_run($seconds = 5)
     $audit_through = ($audit_cutoff === 0);
 
     while (!$audit_through && (microtime(true) < $deadline)) {
-        if (@mysqli_query(db::$con, "DELETE FROM audit_log WHERE created_at < '" . $audit_cutoff . "' LIMIT " . $limits['batch']) === false) {
+        if (db_q("DELETE FROM audit_log WHERE created_at < ? LIMIT ?", array((string) $audit_cutoff, (int) $limits['batch'])) === false) {
             return $result;
         }
 
@@ -189,7 +189,7 @@ function pg_privacy_retention_run($seconds = 5)
     while ($audit_through && !$consent_through && (microtime(true) < $deadline)) {
         $ids = db_values(pg_consent_log_trim_query($consent_cutoff, $limits['batch']));
 
-        if ($ids && (@mysqli_query(db::$con, "DELETE FROM consent_log WHERE id IN ('" . implode("', '", array_map('intval', $ids)) . "')") === false)) {
+        if ($ids && (db_q("DELETE FROM consent_log WHERE id IN (" . implode(', ', array_fill(0, count($ids), '?')) . ")", array_map('strval', array_map('intval', $ids))) === false)) {
             return $result;
         }
 

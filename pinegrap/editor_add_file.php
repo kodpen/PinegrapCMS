@@ -118,8 +118,8 @@ copy($file_temp_name, FILE_DIRECTORY_PATH . '/' . $file_name);
 // insert file data into file table
 $query =    "INSERT INTO files ".
             "(name, folder, type, size, user, timestamp, design) ".
-            "VALUES ('" . escape($file_name) . "','" . escape($folder_id) . "','" . escape($file_extension) . "','" . escape($file_size) . "','" . USER_ID . "', UNIX_TIMESTAMP(), '0')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            "VALUES (?,?,?,?,?, UNIX_TIMESTAMP(), '0')";
+$result = db_q($query, array((string) $file_name, (string) $folder_id, (string) $file_extension, (string) $file_size, (string) USER_ID)) or output_error('Query failed.');
 $file_id = mysqli_insert_id(db::$con);
 
 log_activity("file ($file_name) was created", $_SESSION['sessionusername']);

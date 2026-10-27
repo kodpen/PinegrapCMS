@@ -4298,7 +4298,6 @@ table.chart thead th {
 .min-width-tagin {
   min-width: 150px !important;
 }
-textarea.select2-search__field:focus-visible,
 .pg-chips > .form-ghost:focus-visible {
     outline: none !important;
     box-shadow: none !important;
@@ -4340,10 +4339,6 @@ body.toolbar {
     padding-right: 20px;
     justify-content: space-evenly;
   }
-}
-
-.select2-selection.select2-selection--multiple {
-  min-height: 75px;
 }
 
 .bg-reset {
@@ -4727,12 +4722,7 @@ a.dt-button {
 :is(select.form-control),
 .form-control,
 .pg-chips,
-.input-group-text,
-.select2-container--bootstrap-5 .select2-selection,
-.select2-container--bootstrap-5
-  .select2-selection--multiple
-  .select2-selection__rendered
-  .select2-selection__choice {
+.input-group-text {
   border-radius: var(--pg-radius-lg);
 }
 .dialog-header,
@@ -4940,30 +4930,6 @@ html[data-bs-theme="dark"] #product_group_tree ul {
 
 html[data-bs-theme="dark"] #product_group_tree span.row:before {
   border-bottom: 1px solid #0000006c;
-}
-
-html[data-bs-theme="dark"] .select2-search,
-html[data-bs-theme="dark"] .select2-search input,
-html[data-bs-theme="dark"] .select2-results {
-  background-color: var(--pg-bg-body);
-}
-
-html[data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-selection {
-  color: var(--pg-fg-2);
-  background-color: var(--pg-bg-body);
-  border: var(--pg-border-width) solid var(--pg-border-color);
-}
-
-html[data-bs-theme="dark"]
-  .select2-container--bootstrap-5
-  .select2-selection--single
-  .select2-selection__rendered,
-html[data-bs-theme="dark"]
-  .select2-container--bootstrap-5
-  .select2-selection--multiple
-  .select2-selection__rendered
-  .select2-selection__choice {
-  color: #ffffff;
 }
 
 html[data-bs-theme="dark"] .cke_bottom {

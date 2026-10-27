@@ -481,10 +481,10 @@ function pg_short_link_keys($names)
                 $columns = array();
 
                 foreach ($chunk as $name) {
-                    $columns[] = "HEX(WEIGHT_STRING(CONVERT(_utf8mb4'" . mysqli_real_escape_string(db::$con, $name) . "' USING " . $charset . ") COLLATE " . $collation . "))";
+                    $columns[] = "HEX(WEIGHT_STRING(CONVERT(_utf8mb4? USING " . $charset . ") COLLATE " . $collation . "))";
                 }
 
-                $result = @mysqli_query(db::$con, "SELECT " . implode(', ', $columns));
+                $result = db_q("SELECT " . implode(', ', $columns), $chunk);
                 $row = $result ? mysqli_fetch_row($result) : null;
 
                 if (!is_array($row)) {
@@ -1305,9 +1305,9 @@ function pg_short_link_not_found()
     }
 
     $live = pg_schema_has('short_links', 'recycled') ? " AND short_links.recycled = '0'" : '';
-    $open = pg_short_link_modes_ready() ? " AND (short_links.expires_at = '0' OR short_links.expires_at > '" . time() . "')" : '';
+    $open = pg_short_link_modes_ready() ? " AND (short_links.expires_at = '0' OR short_links.expires_at > ?)" : '';
 
-    $result = @mysqli_query(db::$con,
+    $result = db_q(
         "SELECT
             short_links.*,
             page.page_name,
@@ -1321,7 +1321,8 @@ function pg_short_link_not_found()
         LEFT JOIN files ON short_links.file_id = files.id
         WHERE short_links.is_pattern = '1' AND short_links.destination_type <> 'workspace_guest'" . $live . $open . "
         ORDER BY short_links.id
-        LIMIT " . PG_SHORT_LINK_PATTERN_LIMIT);
+        LIMIT " . PG_SHORT_LINK_PATTERN_LIMIT,
+        ($open !== '') ? array((string) time()) : array());
 
     if ($result === false) {
         pg_short_link_log_failure('reading the pattern links');
@@ -1378,7 +1379,7 @@ function pg_short_link_not_found()
     }
 
     if (pg_short_link_modes_ready()) {
-        @mysqli_query(db::$con, "UPDATE short_links SET use_count = use_count + 1, last_used_at = '" . time() . "' WHERE id = '" . (int) $link['id'] . "'");
+        db_q("UPDATE short_links SET use_count = use_count + 1, last_used_at = ? WHERE id = ?", array((string) time(), (string) (int) $link['id']));
     }
 
     header('Location: ' . $location, true, $code);

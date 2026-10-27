@@ -78,6 +78,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled_draft.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled_messages.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_runs.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_run_events.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/steps.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_conditions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_anchors.php');
