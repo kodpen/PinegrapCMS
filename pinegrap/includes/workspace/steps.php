@@ -42,24 +42,133 @@ define('WS_STEP_BEGAN', 'began:');
  * into an e-mail's subject brings no line break into its header). A task
  * opened without waiting is task_open: the kind task is the box that waits.
  *
- * @return array kind => label, type, texts, lines
+ * outputs: the values the box writes into its result's data for the boxes
+ * after it (key, type, label; mode: only for a web check of that mode). A
+ * report also gives each count it is set to send (ws_step_outputs()).
+ *
+ * @return array kind => label, type, texts, lines, outputs
  */
 function ws_step_kinds()
 {
+    $number = function ($key, $label, $mode = '') {
+        return array('key' => $key, 'type' => 'number', 'label' => $label) + (($mode !== '') ? array('mode' => $mode) : array());
+    };
+    $message = array($number('message_id', lang('Message')));
+
     return array(
-        'post'      => array('label' => lang('Post a message'), 'type' => 'post', 'texts' => array('body'), 'lines' => array()),
-        'email'     => array('label' => lang('Send an e-mail'), 'type' => 'email', 'texts' => array('subject', 'body'), 'lines' => array('subject')),
-        'notify'    => array('label' => lang('Let people know'), 'type' => 'notify', 'texts' => array('text'), 'lines' => array('text')),
-        'task_open' => array('label' => lang('Open a task without waiting'), 'type' => 'task', 'texts' => array('title', 'description'), 'lines' => array('title')),
-        'webhook'   => array('label' => lang('Call a webhook'), 'type' => 'webhook', 'texts' => array('text'), 'lines' => array()),
-        'web_check' => array('label' => lang('Check a web address'), 'type' => 'web_check', 'texts' => array(), 'lines' => array()),
-        'task_digest' => array('label' => lang('E-mail people their tasks'), 'type' => 'task_digest', 'texts' => array('subject', 'intro'), 'lines' => array('subject')),
-        'report'    => array('label' => lang('Send a summary of counts'), 'type' => 'report', 'texts' => array('title'), 'lines' => array('title')),
-        'checkin'   => array('label' => lang('Ask for a check-in'), 'type' => 'checkin', 'texts' => array('question'), 'lines' => array('question')),
-        'start_action' => array('label' => lang('Start a scheduled action'), 'type' => 'trigger', 'texts' => array(), 'lines' => array()),
-        'change'    => array('label' => lang('Change a record'), 'type' => 'change', 'texts' => array(), 'lines' => array()),
-        'lead'      => array('label' => lang('Bring a customer into a channel'), 'type' => 'lead', 'texts' => array(), 'lines' => array()),
+        'post'      => array('label' => lang('Post a message'), 'type' => 'post', 'texts' => array('body'), 'lines' => array(), 'outputs' => $message),
+        'email'     => array('label' => lang('Send an e-mail'), 'type' => 'email', 'texts' => array('subject', 'body'), 'lines' => array('subject'),
+            'outputs' => array($number('sent', lang('E-mails sent')))),
+        'notify'    => array('label' => lang('Let people know'), 'type' => 'notify', 'texts' => array('text'), 'lines' => array('text'),
+            'outputs' => array($number('told', lang('People told')))),
+        'task_open' => array('label' => lang('Open a task without waiting'), 'type' => 'task', 'texts' => array('title', 'description'), 'lines' => array('title'),
+            'outputs' => array($number('task_id', lang('Task')))),
+        'webhook'   => array('label' => lang('Call a webhook'), 'type' => 'webhook', 'texts' => array('text'), 'lines' => array(),
+            'outputs' => array($number('status_code', lang('Status code')), $number('duration_ms', lang('Time taken (ms)')))),
+        'web_check' => array('label' => lang('Check a web address'), 'type' => 'web_check', 'texts' => array(), 'lines' => array(),
+            'outputs' => array($number('status_code', lang('Status code'), 'status'), $number('duration_ms', lang('Time taken (ms)'), 'status'),
+                $number('days_left', lang('Days the certificate has left'), 'ssl'))),
+        'task_digest' => array('label' => lang('E-mail people their tasks'), 'type' => 'task_digest', 'texts' => array('subject', 'intro'), 'lines' => array('subject'),
+            'outputs' => array($number('sent', lang('People e-mailed')), $number('tasks', lang('Tasks listed')))),
+        'report'    => array('label' => lang('Send a summary of counts'), 'type' => 'report', 'texts' => array('title'), 'lines' => array('title'), 'outputs' => $message),
+        'checkin'   => array('label' => lang('Ask for a check-in'), 'type' => 'checkin', 'texts' => array('question'), 'lines' => array('question'), 'outputs' => $message),
+        'start_action' => array('label' => lang('Start a scheduled action'), 'type' => 'trigger', 'texts' => array(), 'lines' => array(), 'outputs' => array()),
+        'change'    => array('label' => lang('Change a record'), 'type' => 'change', 'texts' => array(), 'lines' => array(),
+            'outputs' => array($number('record_id', lang('Record')))),
+        'lead'      => array('label' => lang('Bring a customer into a channel'), 'type' => 'lead', 'texts' => array(), 'lines' => array(),
+            'outputs' => array($number('channel_id', lang('Channel')))),
     );
+}
+
+/**
+ * The types a box's output may have.
+ *
+ * @return string[]
+ */
+function ws_step_output_types()
+{
+    return array('number', 'text');
+}
+
+/**
+ * The values one step box gives the boxes after it, as it is set up: a web
+ * check those of its mode; a report, beside its message, each count it is
+ * set to send, keyed by the count (and its channel or threshold: open tasks
+ * of channel 4 is tasks_open_4), labelled from the counts given, else by
+ * its key. Pure.
+ *
+ * @param string $kind
+ * @param array  $config ws_step_config_normalize()
+ * @param array  $labels count key => label (ws_scheduled_metrics())
+ * @return array[] key, type, label; count (a report's: the metric's place)
+ */
+function ws_step_outputs($kind, $config, $labels = array())
+{
+    $out = array();
+    $mode = (($config['mode'] ?? '') === 'ssl') ? 'ssl' : 'status';
+
+    foreach ((ws_step_kinds()[$kind]['outputs'] ?? array()) as $output) {
+        if (!isset($output['mode']) || ($output['mode'] === $mode)) {
+            unset($output['mode']);
+            $out[] = $output;
+        }
+    }
+
+    if ($kind !== 'report') {
+        return $out;
+    }
+
+    $keys = array_column($out, 'key');
+
+    foreach (array_values((array) ($config['metrics'] ?? array())) as $place => $item) {
+        $key = (string) ($item['key'] ?? '') . (((int) ($item['param'] ?? 0) > 0) ? '_' . (int) $item['param'] : '');
+
+        // A key {{node.*}} cannot read, or one taken already, is left out.
+        if ((preg_match('/^[a-z_][a-z0-9_]{0,31}$/', $key) !== 1) || in_array($key, $keys, true)) {
+            continue;
+        }
+
+        $keys[] = $key;
+        $out[] = array('key' => $key, 'type' => 'number', 'label' => (string) ($labels[$item['key']] ?? $item['key']), 'count' => $place);
+    }
+
+    return $out;
+}
+
+/**
+ * What a step box writes into its result's data: every value it declares
+ * (ws_step_outputs()), from what its step answered (ws_scheduled_do(): an
+ * id at the top, the rest under data, a report's counts in the order of its
+ * metrics). A value the step did not give, or an id of 0, is null. Pure.
+ *
+ * @param string $kind
+ * @param array  $config ws_step_config_normalize()
+ * @param array  $done   ws_scheduled_do()
+ * @return array key => int|string|null
+ */
+function ws_step_result_data($kind, $config, $done)
+{
+    $given = is_array($done['data'] ?? null) ? $done['data'] : array();
+    $out = array();
+
+    foreach (ws_step_outputs($kind, $config) as $output) {
+        $key = $output['key'];
+        $value = isset($output['count']) ? ($given['counts'][$output['count']] ?? null) : ($given[$key] ?? ($done[$key] ?? null));
+
+        if ($output['type'] === 'number') {
+            $value = (is_numeric($value) && !is_string($value)) ? (int) $value : null;
+
+            if (($value !== null) && ($value <= 0) && (substr($key, -3) === '_id')) {
+                $value = null;
+            }
+        } else {
+            $value = is_scalar($value) ? (string) $value : null;
+        }
+
+        $out[$key] = $value;
+    }
+
+    return $out;
 }
 
 /**
@@ -479,7 +588,10 @@ function ws_step_node_values($rows)
 /**
  * Fills the {{node.<id>.<field>}} of a text; one the run has no value for
  * becomes empty. The other double braces are left for ws_scheduled_fill().
- * Pure.
+ * Every "{" of a value is followed by a word joiner (U+2060), so nothing a
+ * box gave (a visitor's words, a webhook's answer) is read again as a
+ * placeholder by ws_scheduled_fill(), not even with a brace of the text
+ * around it. Values without braces are inserted as they are. Pure.
  *
  * @param string $text
  * @param array  $values ws_step_node_values()
@@ -494,7 +606,7 @@ function ws_step_fill_nodes($text, $values)
     }
 
     return (string) preg_replace_callback('/\{\{node\.([a-z][a-z0-9_]{0,31})\.([a-z_][a-z0-9_]{0,31})\}\}/', function ($match) use ($values) {
-        return (string) ($values[$match[1]][$match[2]] ?? '');
+        return str_replace('{', "{\u{2060}", (string) ($values[$match[1]][$match[2]] ?? ''));
     }, $text);
 }
 
@@ -729,15 +841,8 @@ function ws_step_run($run, $step, $node, $graph, $owner)
 
     $done = ws_scheduled_do($owner, $row, $action, $step_context);
     $end = ws_step_settlement(!empty($done['ok']), $routed);
-    $data = array();
 
-    foreach (array('message_id', 'task_id', 'channel_id') as $key) {
-        if ((int) ($done[$key] ?? 0) > 0) {
-            $data[$key] = (int) $done[$key];
-        }
-    }
-
-    ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], (string) ($done['text'] ?? ''), $data);
+    ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], (string) ($done['text'] ?? ''), ws_step_result_data($kind, $node['config'], $done));
 }
 
 /**

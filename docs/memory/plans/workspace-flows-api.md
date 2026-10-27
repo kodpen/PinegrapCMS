@@ -4,14 +4,14 @@ description: Plan (owner request 2026-10-27, draft): flow API beyond the removed
 ---
 
 ## Why?
-- The `/workspace/scheduled-actions` routes go before 2026.11.0 ships (workspace-flows-channels.md, C5). The owner asked for more in their place, not the same.
+- The `/workspace/scheduled-actions` routes were removed before 2026.11.0 ships (workspace-flows-channels.md, C5a #2107). The owner asked for more in their place, not the same.
 
 ## What is there today?
 - Routes in `ws_api_routes()` (includes/workspace/api.php), handlers in api_flows.php: `/workspace/flows` list, create; `/{id}` get, update, delete; `/{id}/publish`, `/{id}/pause`; `/{id}/runs` list, start; `/{id}/shares`; `/workspace/flow-runs/{id}` get, `/cancel`.
 - Publish is the person's own session only and no MCP tool (workflow/decisions-made-product.md).
 
 ## What comes? (one PR each, in this order)
-- A1 list filters: `start` (time, event, join, manual), `status`, `channel_id`, `updated_since`; `GET /{id}` gives the start in plain words.
+- A1 done (PR #2122): list filters `start`, `status`, `channel_id`, `updated_since`; `GET /{id}` gives `start` and `start_text` (workspace-flows-api-filters.md).
 
 - A2 `GET /workspace/flow-kinds`: every box kind with its settings, outputs and types (D1 of workspace-flows-data-passing.md); what AI and MCP build drafts from.
 

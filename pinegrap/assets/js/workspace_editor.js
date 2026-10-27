@@ -2819,31 +2819,57 @@
         barTimer = window.setTimeout(showBar, 140);
     }
 
+    // The words a link shows, from the tip's Text field (typed), the words
+    // it was filled with (shown: the selection's or the link's own, '' at a
+    // caret) and the address. null when the shown words are kept as they
+    // are, with their marks and chips; else what is typed on one line, or
+    // the address when the field is left empty.
+    function linkText(typed, shown, url) {
+        var text = String(typed).replace(/\s+/g, ' ').trim();
+        var before = String(shown).replace(/\s+/g, ' ').trim();
+
+        if ((before !== '') && (text === before)) {
+            return null;
+        }
+
+        return text || String(url).replace(/^mailto:/, '');
+    }
+
     // The link tip: for a new link over the selection, or for the link that
-    // was double-clicked.
+    // was double-clicked. Its Text field holds the words the link shows.
     function openLink(surface, anchor) {
         var range = selectionRange();
         var saved = range ? range.cloneRange() : null;
         var backward = selectionBackward();
         var rect = anchor ? anchor.getBoundingClientRect() : (range ? range.getBoundingClientRect() : surface.getBoundingClientRect());
+        var shown = anchor ? anchor.textContent : ((saved && surface.contains(saved.commonAncestorContainer)) ? saved.toString() : '');
 
         hideBar();
         hideTip();
 
         tip = el('div', 'ws-link-tip shadow');
 
-        var form = el('form', 'd-flex align-items-center gap-1');
+        var form = el('form', 'd-flex flex-column gap-1');
+        var words = el('input', 'form-control form-control-sm');
+        var line = el('div', 'd-flex align-items-center gap-1');
         var input = el('input', 'form-control form-control-sm');
+
+        words.type = 'text';
+        words.placeholder = t('link_text');
+        words.setAttribute('aria-label', t('link_text'));
+        words.value = shown.replace(/\s+/g, ' ').trim();
+        form.appendChild(words);
 
         input.type = 'text';
         input.placeholder = t('link_placeholder');
         input.setAttribute('aria-label', t('fmt_link'));
         input.value = anchor ? (anchor.getAttribute('href') || '') : '';
-        form.appendChild(input);
+        line.appendChild(input);
+        form.appendChild(line);
 
         var save = button('btn btn-sm btn-primary', '', 'bi-check2', t('link_save'));
         save.type = 'submit';
-        form.appendChild(save);
+        line.appendChild(save);
 
         if (anchor) {
             var open = button('btn btn-sm btn-ghost', '', 'bi-box-arrow-up-right', t('link_open'));
@@ -2854,7 +2880,7 @@
                     window.open(url, '_blank', 'noopener');
                 }
             });
-            form.appendChild(open);
+            line.appendChild(open);
 
             var unlink = button('btn btn-sm btn-ghost', '', 'bi-link', t('link_remove'));
             unlink.addEventListener('click', function () {
@@ -2869,7 +2895,7 @@
                 hideTip();
                 surface.focus();
             });
-            form.appendChild(unlink);
+            line.appendChild(unlink);
         }
 
         form.addEventListener('submit', function (event) {
@@ -2884,6 +2910,8 @@
                 return;
             }
 
+            var text = linkText(words.value, shown, url);
+
             changed(surface, function () {
                 if (anchor) {
                     if (!anchor.parentNode) {
@@ -2891,6 +2919,11 @@
                     }
 
                     anchor.setAttribute('href', url);
+
+                    if (text !== null) {
+                        anchor.textContent = text;
+                    }
+
                     return true;
                 }
 
@@ -2904,12 +2937,14 @@
                 selection.removeAllRanges();
                 selection.addRange(saved);
 
-                if (!saved.collapsed) {
+                if (!saved.collapsed && (text === null)) {
                     return linkRange(surface, saved, url, backward);
                 }
 
-                var link = el('a', '', url.replace(/^mailto:/, ''));
+                // New words replace the selection, if any, as one link.
+                var link = el('a', '', text);
                 link.href = url;
+                saved.deleteContents();
                 saved.insertNode(link);
                 saved.setStartAfter(link);
                 saved.collapse(true);
@@ -2923,7 +2958,7 @@
             surface.focus();
         });
 
-        input.addEventListener('keydown', function (event) {
+        form.addEventListener('keydown', function (event) {
             if (event.key === 'Escape') {
                 event.preventDefault();
                 event.stopPropagation();
@@ -3004,15 +3039,122 @@
         }
     }, true);
 
+    // A shortcut ('Control+Shift+X') as the toolbar titles write it:
+    // Ctrl+Shift+X, or ⌘Shift+X on a Mac.
+    function keyLabel(keys, mac) {
+        var label = String(keys).replace(/Control\+/g, 'Ctrl+');
+
+        return mac ? label.replace(/Ctrl\+/g, '⌘') : label;
+    }
+
+    // What the shortcut sheet lists, as [keys, label key]: the marks, undo
+    // and redo, Enter as the box takes it (enterSends: the composer's Enter
+    // sends) where the box is an Editor, and the sheet itself.
+    function shortcutRows(enterSends, editor) {
+        var rows = [
+            ['Control+B', 'fmt_bold'],
+            ['Control+I', 'fmt_italic'],
+            ['Control+Shift+X', 'fmt_strike'],
+            ['Control+Shift+H', 'fmt_highlight'],
+            ['Control+E', 'fmt_code'],
+            ['Control+K', 'fmt_link'],
+            ['Control+Z', 'keys_undo'],
+            ['Control+Y', 'keys_redo']
+        ];
+
+        if (editor) {
+            rows.push(['Enter', enterSends ? 'keys_send' : 'keys_newline']);
+            rows.push(['Shift+Enter', 'keys_newline']);
+        }
+
+        rows.push(['Control+/', 'keys_title']);
+
+        return rows;
+    }
+
+    // The shortcut sheet (Ctrl+/), by the surface; Escape or its close
+    // button takes the focus back to the surface, at the caret it had.
+    function openKeys(surface) {
+        var range = selectionRange();
+        var saved = (range && surface.contains(range.startContainer)) ? range.cloneRange() : null;
+        var editor = surface.wsEditor || null;
+        var rows = shortcutRows(!!(editor && editor.options.onEnter && !touchScreen()), !!editor);
+
+        hideBar();
+        hideTip();
+
+        tip = el('div', 'ws-link-tip ws-keys-sheet shadow');
+        tip.setAttribute('role', 'dialog');
+        tip.setAttribute('aria-label', t('keys_title'));
+        tip.tabIndex = -1;
+
+        var back = function () {
+            hideTip();
+            surface.focus();
+
+            if (saved) {
+                var selection = window.getSelection();
+
+                selection.removeAllRanges();
+                selection.addRange(saved);
+            }
+        };
+
+        var head = el('div', 'd-flex align-items-center justify-content-between gap-2 mb-1');
+        var close = button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('keys_close'));
+
+        head.appendChild(el('strong', 'small', t('keys_title')));
+        close.addEventListener('click', back);
+        head.appendChild(close);
+        tip.appendChild(head);
+
+        var table = el('table', 'table table-sm small mb-0');
+        var body = el('tbody');
+
+        rows.forEach(function (row) {
+            var tr = el('tr');
+            var keys = el('td', 'text-nowrap');
+
+            keys.appendChild(el('kbd', '', keyLabel(row[0], MAC)));
+            tr.appendChild(keys);
+            tr.appendChild(el('td', '', t(row[1])));
+            body.appendChild(tr);
+        });
+
+        table.appendChild(body);
+        tip.appendChild(table);
+
+        tip.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                back();
+            }
+        });
+
+        floatingHost(surface).appendChild(tip);
+        place(tip, surface.getBoundingClientRect(), false);
+        tip.focus();
+    }
+
     // Keyboard shortcuts in any writing surface: Ctrl+B, Ctrl+I,
-    // Ctrl+Shift+X, Ctrl+Shift+H (highlight), Ctrl+E (code) and Ctrl+K
-    // (link), Cmd on a Mac.
+    // Ctrl+Shift+X, Ctrl+Shift+H (highlight), Ctrl+E (code), Ctrl+K (link)
+    // and Ctrl+/ (the shortcut sheet), Cmd on a Mac.
     function shortcut(surface, event) {
         if (!(event.ctrlKey || event.metaKey) || event.altKey) {
             return false;
         }
 
         var key = String(event.key || '').toLowerCase();
+
+        // "/" is a shifted key on many layouts (Shift+7 on Turkish Q).
+        if ((key === '/') || (event.code === 'NumpadDivide')) {
+            event.preventDefault();
+            event.stopPropagation();
+            openKeys(surface);
+
+            return true;
+        }
         var keys = { b: 'bold', i: 'italic', e: 'code', k: 'link' };
         var name = Object.prototype.hasOwnProperty.call(keys, key) ? keys[key] : (((key === 'x') && event.shiftKey) ? 'strike' : (((key === 'h') && event.shiftKey) ? 'highlight' : ''));
 
@@ -4309,6 +4451,21 @@
             });
         },
 
+        // Whether the caret stands where a typed suggestion may not go: a
+        // selection, outside the box, in code, a link, a table cell or a
+        // card.
+        caretBlocked: function () {
+            var range = selectionRange();
+
+            if (!range || !range.collapsed || !this.node.contains(range.startContainer)) {
+                return true;
+            }
+
+            var element = (range.startContainer.nodeType === 1) ? range.startContainer : range.startContainer.parentNode;
+
+            return !!(element && element.closest && element.closest('code, a, td, th, .ws-rich-block, [data-ws-skip]'));
+        },
+
         // "/" in a note's box (options.slashInserts) lists the inserts that
         // match the word typed after it (slashInserts()). Not while a word is
         // composed, nor in code, a link or a card; "//" leaves one "/" and no
@@ -4321,9 +4478,7 @@
                 return;
             }
 
-            var element = (range.startContainer.nodeType === 1) ? range.startContainer : range.startContainer.parentNode;
-            var blocked = !range.collapsed || !this.node.contains(range.startContainer)
-                || !!(element && element.closest && element.closest('code, a, td, th, .ws-rich-block, [data-ws-skip]'));
+            var blocked = this.caretBlocked();
             var labels = {};
 
             SLASH.forEach(function (name) { labels[name] = t(TOOLS[name].label); });

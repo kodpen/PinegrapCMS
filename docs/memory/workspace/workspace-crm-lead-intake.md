@@ -6,7 +6,7 @@ description: Lead step and box (CRM seams 6, PR #2092): a submitted form's custo
 ## What is it?
 - Step type `lead` of `ws_scheduled_do()` (`ws_scheduled_lead()`, scheduled.php) and box kind `lead` in `ws_step_kinds()` (steps.php); no new rule kind. It runs on a `form.submitted` event: a scheduled action's event rule, or a flow whose start box is that event. Any other start fails it ("Only a submitted form brings a customer in.").
 - Settings: `private` (a channel it opens is private), `user_ids` (up to 50, put in a channel it opens). Nothing is required, so `ws_step_config_problems()` gives none.
-- Canvas form `leadFields()` in workspace_flow.js; no field in the scheduled-actions form of workspace.js (the step can still be sent through the API's create route).
+- Canvas form `leadFields()` in workspace_flow.js; no field in the scheduled-actions form of workspace.js.
 
 ## How is the customer found?
 - `ws_lead_submission_of()` reads the event payload (`id` = the `forms` row, `contact_id`). `ws_lead_contact_find()`: the form's contact when it exists, else the newest contact whose `email_address` is the submission's address (`ws_lead_email_pick()`: the field tied to the contact's address first, else the first `email address` field with a valid address). None found fails the step.

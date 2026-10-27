@@ -75,6 +75,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_passkey_signin();        // 11.0.41
 	upgrade_2026_11_0_delivered_campaigns();    // 11.0.42
 	upgrade_2026_11_0_marketplace_map_code_bin(); // 11.0.44
+	upgrade_2026_11_0_shipment_lookup();        // 11.0.45
 
 }
 
@@ -2501,5 +2502,16 @@ function upgrade_2026_11_0_marketplace_map_code_bin() {
 	}
 
 	install_note('Marketplaces: product codes that differ only in upper and lower case are now told apart, so an order is matched to the right product.');
+
+}
+
+// Guest parcel lookup (2026.11.0, 11.0.45; track_shipment.php,
+// includes/fn/shipment_lookup.php). No schema change: the step only tells the
+// operator the page exists and how to put it in front of customers, since no
+// menu or page links to it on its own. The "Kargo Yola Çıktı" e-mail of the
+// Turkish starter site is left as it is.
+function upgrade_2026_11_0_shipment_lookup() {
+
+	install_note('Shipping: customers without an account can now look up their parcels at track_shipment.php in the software folder (for example /pinegrap/track_shipment.php) with their order number and billing e-mail. It shows carrier, tracking number and status only, allows 10 lookups an hour per address, and appears where you link to it, for example from a menu item, the footer or the shipping e-mail.');
 
 }

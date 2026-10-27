@@ -13,8 +13,7 @@ description: One row of tools for every Workspace writing box (PGWsEditor.toolba
 - All words of the selection marked: the mark comes off (`liftOut()`), else it goes on; chips, cards and `[data-ws-skip]` stay. Same marks side by side are joined after any mark change or typed letters (`joinMarks()`), or `<i>y</i><i>def</i>` writes `_y__def_`. The selection stays in its direction (`selectionBackward()`, `setBaseAndExtent()`), so Shift+Arrow moves the same end after a mark.
 - A caret with nothing selected: bold, italic, strike, highlight wait (`surface.wsMarks`) for the next letters (`beforeinput` insertText, `typeMarked()`), forgotten when the caret moves.
 - A composed word (IME, dead keys, Android keyboards compose every word) never comes as insertText: `surface.wsComposing` keeps the marks waiting through it; on `compositionend` `composedMarked()` types the word again with `typeMarked()`, in the typing's undo step. Nodes are not changed mid-composition (it breaks the IME).
-- Code puts the selection in one `<code>`, or the code around the caret back to text. Link opens the tip; `linkRange()` links a selection.
-- Ctrl/Cmd+B, I, Shift+X, Shift+H, E, K, the selection bar, the browser's `formatBold/Italic/StrikeThrough` and table and checklist cells go through `formatSurface()`.
+- Code puts the selection in one `<code>`, or the code around the caret back to text. Link opens the tip (Text field: workspace-editor-link-keys.md); `linkRange()` links a selection.
 
 ## How do undo and the pressed state follow?
 - `change(apply)`: typing before it is a step, the change another; `announce()` sends `input` without a step (a note saves, the composer grows).

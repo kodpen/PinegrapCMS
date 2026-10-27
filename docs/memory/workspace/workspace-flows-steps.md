@@ -19,7 +19,7 @@ description: Step boxes of a flow (steps.php, F4a #1835, F4b #1857, F4b2 #1923, 
 
 ## How does it end?
 - `ws_step_settlement()`: ok → done/done; failed → done/failed when an arrow leaves on failed, else failed (the run fails).
-- Result data: post keeps `message_id`, task_open `task_id` (`ws_scheduled_task()` now answers it), lead `channel_id`.
+- Result data: every key the kind declares in `outputs`, written by `ws_step_result_data()` (`workspace-flows-outputs.md`).
 
 ## What do notify and webhook add?
 - notify: the text gets `Flow “name”: ` in front; `ws_scheduled_notify()` writes a `separate` inbox line when there is no action row (id 0), and `ws_inbox_describe()` titles a notice with no action `Flow`.

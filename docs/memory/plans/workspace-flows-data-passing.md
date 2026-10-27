@@ -9,12 +9,12 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 - Ids are `<kind>_<n>` (`freeId()` in workspace_flow.js) and are not shown on the canvas; `fl_values_help` is the only hint.
 - A reference to a missing box or field becomes '' without a word: `ws_flow_graph_check()` does not read references.
 - Not readable: trigger values (event payload, newcomer; workspace-flows-anchors.md). A condition cannot compare a box's value. No loops (`pass` is always 0).
-- `ws_scheduled_fill()` runs after the node fill on the same text, so a filled value holding `{{customer}}` or `{{form_fields}}` is expanded again.
+- A filled value is never read again as a placeholder (D2, workspace/workspace-flows-outputs.md).
 
 ## Which steps? (one PR each, in this order)
-- D1 outputs: every kind declares `outputs` (key, type, label) beside `texts`; each step writes those keys into `result.data`. Test: every declared key is written.
+- D1 outputs: done (#2111), see workspace/workspace-flows-outputs.md.
 
-- D2 one-pass fill: node values and scheduled placeholders filled in one pass, or `{{` in an inserted value neutralised as `pg_ai_data_block()` does with `<<<`. Red test first.
+- D2 one-pass fill: done (#2121), see workspace/workspace-flows-outputs.md.
 
 - D3 escaping: a value is escaped for where it lands (message, e-mail HTML, webhook JSON; a line field strips control characters as today). First record what each destination does now. Addresses stay unfillable.
 
@@ -45,4 +45,4 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 5. Lists (D9): first source: table rows, a day's orders, or webhook arrays?
 
 ## Where to start?
-- D1, then D2. Read workspace/workspace-flows-steps.md, workspace-flows-anchors.md, workspace-flows-condition-box.md.
+- D3. Read workspace/workspace-flows-steps.md, workspace-flows-anchors.md, workspace-flows-condition-box.md.

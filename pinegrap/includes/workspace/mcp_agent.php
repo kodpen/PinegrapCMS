@@ -2069,9 +2069,7 @@ function ws_mcp_agent_answer_view($request, $body)
             'about'    => ($split['tool'] !== '')
                 ? lang(array('string' => 'Answered through {var:1}, for {var:2}', 'vars' => array($split['tool'], $asker)))
                 : lang(array('string' => 'Answered for {var:1}', 'vars' => $asker)),
-            'avatar'   => function_exists('pg_initials_avatar_url')
-                ? pg_initials_avatar_url(pg_initials($alias, ''), 'contact', 'mcp' . (int) $request['mcp_server_id'])
-                : PATH . SOFTWARE_DIRECTORY . '/assets/images/person1.png',
+            'avatar'   => ws_mcp_agent_identity($server, (int) $request['mcp_server_id'])['avatar'],
             'presence' => 'offline',
             'app'      => true,
             'mcp'      => $alias,
@@ -2100,7 +2098,7 @@ function ws_mcp_agent_inbox_describe($viewer, $row, $channel_name, $base)
         'title' => lang(array('string' => '@{var:1} answered you in {var:2}', 'vars' => array($server ? $server['alias'] : 'mcp', $channel_name))),
         'body'  => $message ? ws_plain_excerpt($viewer, ws_mcp_agent_answer_split((string) $message['body'])['text'], 140) : '',
         'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'],
-        'icon'  => 'bi-plug',
+        'icon'  => $request ? ws_mcp_agent_identity($server, (int) $request['mcp_server_id'])['icon'] : 'bi-plug',
     );
 }
 

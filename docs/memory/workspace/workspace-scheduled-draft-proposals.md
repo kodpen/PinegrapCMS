@@ -7,11 +7,11 @@ description: A connected app proposes a scheduled action as a draft card (type s
 - An action runs in the name of whoever saves it, so create, change and resume stay `'mcp' => false` and the person's own (owner, #1708, answer 1b, `workflow/decisions-made-product.md`). A connected app proposes; the person opens it in the Scheduled actions form and saves it as their own.
 
 ## What does the application send?
-- One more change in `workspace.changes.propose`: `{type: scheduled, action: draft, data, reason}`; action left out is draft. `data` is the body POST /workspace/scheduled-actions takes: name, rules (list), action (object), follow (list), channel_id (left out: the channel it is proposed in). Only the channel route's `changes` describes it (`ws_api_changes_param(…, true, true)`).
+- One more change in `workspace.changes.propose`: `{type: scheduled, action: draft, data, reason}`; action left out is draft. `data` is the action as an object (the routes that also took it were removed, #2107: `workspace-scheduled-actions-api.md`): name, rules (list), action (object), follow (list), channel_id (left out: the channel it is proposed in). Only the channel route's `changes` describes it (`ws_api_changes_param(…, true, true)`).
 
 ## What is checked, and when?
 - `ws_changes_input()` takes type scheduled only when `$for_proposal`, before the record kinds, and hands it to `ws_scheduled_draft_proposal_row()` (scheduled_draft.php): the shape (`ws_scheduled_draft_proposal_input()`, pure), then `ws_scheduled_save_check()` for the person (`ws_ai_viewer()`). Any refusal answers 422 naming `changes[i]`, a dry run included.
-- The 201 answer and GET /workspace/changes carry the card's words, built with the person's rights for ids the app chose, so they name only what the person may read: a task condition the person cannot see is refused (`workspace-scheduled-actions-api.md`, #1987). Pages need no check: staff open every folder.
+- The 201 answer and GET /workspace/changes carry the card's words, built with the person's rights for ids the app chose, so they name only what the person may read: a task condition the person cannot see is refused (#1987). Pages need no check: staff open every folder.
 - An assistant's answer (requests.answer) does not take it: Pinegrap AI drafts through `propose_scheduled_action`.
 
 ## How is it kept and shown?

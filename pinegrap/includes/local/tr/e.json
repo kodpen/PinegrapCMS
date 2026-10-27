@@ -71,6 +71,7 @@
     "E-mails could not be sent": "E-postalar gönderilemedi",
     "E-mails its invoices on their own": "Faturalarını kendiliğinden e-postayla gönderir",
     "E-mails send the fixed comment markup instead: the comment card needs a link to the comment that every comment shows, such as the Share link.": "E-postalar bunun yerine sabit yorum içeriğini gönderir: yorum kartında her yorumda görünen, yoruma giden bir bağlantı olmalı (örneğin Paylaş bağlantısı).",
+    "E-mails sent": "Gönderilen e-postalar",
     "EAN-13 barcode must be exactly 13 digits.": "EAN-13 barkodu tam olarak 13 haneli olmalıdır.",
     "ECG": "EKG",
     "ECG and blood pressure": "EKG ve tansiyon",

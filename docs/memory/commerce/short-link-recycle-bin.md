@@ -6,8 +6,8 @@ description: How short links treat a product, product group, page or file in the
 ## Where are short links made and changed?
 Three entry points share one rule set:
 - File Manager wizard (`view_folders.php?view=short_links`, JS in
-  `view_folders.php`; server `explorer_short_link_*` in
-  `view_folder_and_files_f.php`, checks in `pg_short_link_read_request()`
+  `view_folders.php`; server `explorer_short_link_*` handlers in
+  `includes/explorer/handle_short_links.php`, checks in `pg_short_link_read_request()`
   (`includes/explorer/short_links.php`)).
 - Classic screens `add_short_link.php` / `edit_short_link.php` (liveform).
 - External API `includes/api/resources/short_links.php`, which calls

@@ -217,13 +217,16 @@ function ws_assistants()
             }
 
             $key = 'mcp:' . (int) $server['id'];
+            $identity = ws_mcp_agent_identity($server);
 
+            // The name stays the alias: the delegate tag draws it beside
+            // the server's name as its title.
             $list[$key] = array(
                 'key'       => $key,
                 'name'      => '@' . $server['alias'],
                 'handle'    => '@' . $server['alias'],
-                'icon'      => 'bi-plug',
-                'avatar'    => PATH . SOFTWARE_DIRECTORY . '/assets/images/ws-ai.svg',
+                'icon'      => $identity['icon'],
+                'avatar'    => $identity['avatar'],
                 'app_id'    => $agent ? 0 : (int) $ai['app_id'],
                 'server_id' => (int) $server['id'],
             );
@@ -297,6 +300,14 @@ function ws_assistant_avatar($key)
 
     if (function_exists('ws_proposal_agent_parse') && ws_proposal_agent_parse($key)) {
         return ws_proposal_avatar($key);
+    }
+
+    // An MCP server's alias, also one switched off or deleted since: the
+    // picture it has everywhere (mcp_catalogue.php).
+    $server_id = ws_assistant_mcp_id($key);
+
+    if (($server_id > 0) && function_exists('ws_mcp_agent_identity_for_id')) {
+        return ws_mcp_agent_identity_for_id($server_id)['avatar'];
     }
 
     return PATH . SOFTWARE_DIRECTORY . '/assets/images/' . ((ws_assistant_agent($key) === 'claude') ? 'ws-assistant.svg' : 'ws-ai.svg');
