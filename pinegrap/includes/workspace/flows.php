@@ -402,6 +402,25 @@ function ws_flow_problem($code, $node, $edge, $text)
 }
 
 /**
+ * Whether a flow starts when somebody joins a channel: a join start box is
+ * in its graph. Its post boxes may then write in the channel joined, as a
+ * scheduled action on a join may. Pure.
+ *
+ * @param array $graph
+ * @return bool
+ */
+function ws_flow_starts_on_join($graph)
+{
+    foreach ((array) ($graph['nodes'] ?? array()) as $node) {
+        if ((string) ($node['kind'] ?? '') === 'join') {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * What stops a graph from being published, in the order a reader fixes it:
  * too_many, bad_id, duplicate_id, unknown_kind, bad_config, no_trigger,
  * two_triggers, bad_edge, arrow_into_trigger, bad_outcome, duplicate_edge,
@@ -429,6 +448,7 @@ function ws_flow_graph_check($graph)
     // arrow can reach.
     $nodes = array();
     $triggers = array();
+    $joined = ws_flow_starts_on_join($graph);
 
     foreach ($graph['nodes'] as $node) {
         $id = $node['id'];
@@ -475,7 +495,7 @@ function ws_flow_graph_check($graph)
         }
 
         if ($kinds[$node['kind']]['step']) {
-            foreach (ws_step_config_problems($node['kind'], $node['config'], $name) as $text) {
+            foreach (ws_step_config_problems($node['kind'], $node['config'], $name, $joined) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
         }
@@ -1212,7 +1232,7 @@ function ws_flow_publish_check($viewer, $flow, $data = array())
     // checked again each time the box runs.
     foreach ($graph['nodes'] as $node) {
         if (!empty(ws_flow_kinds()[$node['kind']]['step'])) {
-            $step = ws_step_check($viewer, $node['kind'], $node['config']);
+            $step = ws_step_check($viewer, $node['kind'], $node['config'], ws_flow_starts_on_join($graph));
 
             if (!$step['ok']) {
                 return ws_flow_refusal(lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(ws_flow_box_name($node), $step['error']))));
@@ -1883,6 +1903,8 @@ function ws_flow_js_strings()
         'fl_check_redirect'   => lang('A redirect counts as an answer'),
         'fl_post_meta'        => ws_js_template('In #{var:1}', 1),
         'fl_post_no_channel'  => lang('No channel chosen'),
+        'fl_post_joined'      => lang('The channel they joined'),
+        'fl_post_meta_joined' => lang('In the channel they joined'),
         'fl_post_pick'        => lang('Choose a channel'),
         'fl_post_channel'     => lang('Channel to write in'),
         'fl_post_body'        => lang('Message'),

@@ -8,10 +8,12 @@
  * whose Chips, Combobox and Datepicker replace tagin, select2 and the jQuery
  * UI pickers. Screens mark a field with a data-pg-* hook and read or write it
  * through these objects, so the swap changes the engine here, not the
- * screens. The engine today ('v5') is the one the panel always used.
+ * screens. Chips run on Bootstrap 6 ('v6'); the other kinds still on the
+ * engine the panel always used ('v5').
  *
- *   <input data-pg-chips>                 tagin; the input keeps the joined list,
- *                                         comma or data-pg-separator (" " for classes)
+ *   <input data-pg-chips>                 Bootstrap 6 Chips drawn after the hidden
+ *                                         input, which keeps the joined list: comma
+ *                                         or data-pg-separator (" " for classes)
  *   <select data-pg-combobox>             select2; the native <select> keeps the value
  *     data-pg-source="url"                options searched on the server as you type:
  *                                         GET url?q=<text> answers {results: [{id, text}]};
@@ -184,21 +186,26 @@
     // One engine per Bootstrap generation; each kind has init(el), which
     // draws the widget over the posted field, redraw(el), which shows a
     // value written into that field, and destroy(el), which removes the
-    // widget and leaves the field. The Bootstrap 6 engine (Chips, Combobox,
-    // Datepicker) comes with the component swaps.
+    // widget and leaves the field. A kind the v6 engine has runs on it; the
+    // rest (Combobox, Datepicker) move with their component swaps. A v6 kind
+    // has later(): true while Bootstrap's module has not run yet, so the
+    // field is drawn once pgUI.ready() fires.
     var ENGINES = {
-        v5: {
+        v6: {
             chips: {
-                ready: function () { return typeof window.tagin === 'function'; },
-                init: function (el) { window.tagin(el, { separator: separator(el) }); },
-                // tagin reads the input only when it is drawn and never hears
-                // a change, so its chips are dropped and drawn again.
+                ready: function () { return !!(window.pgUI && window.pgUI.version() === 6); },
+                later: function () { return !!(window.pgUI && window.pgUI.version() === 0); },
+                init: drawChips,
+                // Chips reads its markup only when it is created, so a value
+                // written into the input is drawn again from scratch.
                 redraw: function (el) {
-                    removeTaginWrapper(el);
-                    window.tagin(el, { separator: separator(el) });
+                    removeChips(el);
+                    drawChips(el);
                 },
-                destroy: function (el) { removeTaginWrapper(el); }
-            },
+                destroy: removeChips
+            }
+        },
+        v5: {
             combobox: {
                 ready: function () { var $ = jq(); return !!($ && $.fn.select2); },
                 init: function (el) {
@@ -288,11 +295,84 @@
         return copy;
     }
 
-    function removeTaginWrapper(el) {
-        var next = el.nextElementSibling;
-        if (next && next.classList && next.classList.contains('tagin-wrapper')) {
-            next.parentNode.removeChild(next);
+    // The posted input's own classes the chip box takes over: its borders,
+    // sizes and margins, not the control and hook classes.
+    var CHIPS_SKIP = { 'tagin': 1, 'form-control': 1, 'form-control-sm': 1, 'form-control-lg': 1 };
+
+    // The translated label of a chip's remove button, which Bootstrap
+    // hard-codes as "Remove"; pg_fields_script() prints it on its tag.
+    function removeLabel() {
+        var tag = document.querySelector('script[data-pg-remove-label]');
+        return (tag && tag.getAttribute('data-pg-remove-label')) || 'Remove';
+    }
+
+    function labelDismissButtons(box) {
+        var buttons = box.querySelectorAll('.chip-dismiss'), label = removeLabel();
+        for (var i = 0; i < buttons.length; i++) {
+            buttons[i].setAttribute('aria-label', label);
         }
+    }
+
+    // A .chip-input box after the hidden input, holding a chip per stored
+    // value and a ghost input to type in. The chips are in the markup before
+    // Chips is created, so drawing a stored value announces nothing and
+    // leaves the form clean. Every add or remove writes the joined list back
+    // into the input and fires its native change.
+    function drawChips(el) {
+        var sep = separator(el), box = document.createElement('div'), ghost = document.createElement('input');
+        var classes = ['chip-input', 'pg-chips'], own = String(el.className || '').split(/\s+/), list = pgChips.get(el);
+        for (var i = 0; i < own.length; i++) {
+            if (own[i] && !CHIPS_SKIP[own[i]]) {
+                classes.push(own[i]);
+            }
+        }
+        if (/(^|\s)form-control-sm(\s|$)/.test(el.className || '')) {
+            classes.push('pg-chips-sm');
+        }
+        box.className = classes.join(' ');
+        for (var j = 0; j < list.length; j++) {
+            var chip = document.createElement('span');
+            chip.className = 'chip';
+            chip.setAttribute('data-bs-chip-value', list[j].trim());
+            chip.appendChild(document.createTextNode(list[j].trim()));
+            box.appendChild(chip);
+        }
+        ghost.type = 'text';
+        ghost.className = 'form-ghost';
+        ghost.setAttribute('autocomplete', 'off');
+        if (el.getAttribute('data-placeholder')) {
+            ghost.setAttribute('placeholder', el.getAttribute('data-placeholder'));
+        }
+        // Not readOnly: the settings dialog shuts every text field read-only
+        // until it is reached, the hidden input too.
+        if (el.disabled) {
+            ghost.disabled = true;
+        }
+        box.appendChild(ghost);
+        el.parentNode.insertBefore(box, el.nextSibling);
+        el.pgChipsBox = box;
+        var chips = window.pgUI.chips.get(box, { separator: sep });
+        labelDismissButtons(box);
+        el.pgChipsOff = window.pgUI.chips.on(box, 'change', function () {
+            labelDismissButtons(box);
+            el.value = chips.getValues().join(sep);
+            fireChange(el);
+        });
+    }
+
+    function removeChips(el) {
+        var box = el.pgChipsBox;
+        if (el.pgChipsOff) {
+            el.pgChipsOff();
+        }
+        if (box) {
+            window.pgUI.chips.dispose(box);
+            if (box.parentNode) {
+                box.parentNode.removeChild(box);
+            }
+        }
+        el.pgChipsBox = null;
+        el.pgChipsOff = null;
     }
 
     // The datetimepicker and timepicker addon build on the datepicker, whose
@@ -301,10 +381,12 @@
         jq()(el).datepicker('destroy');
     }
 
-    var engineName = 'v5';
+    function engineName(kind) {
+        return ENGINES.v6[kind] ? 'v6' : 'v5';
+    }
 
     function engine(kind) {
-        return ENGINES[engineName][kind];
+        return ENGINES[engineName(kind)][kind];
     }
 
     // ------------------------------------------------------------ fields
@@ -328,6 +410,13 @@
         }
         var e = engine(kind);
         if (!e.ready()) {
+            if (e.later && e.later() && !el.pgFieldWaiting) {
+                el.pgFieldWaiting = true;
+                window.pgUI.ready(function () {
+                    el.pgFieldWaiting = false;
+                    initField(el, kind);
+                });
+            }
             return el;
         }
         el.pgFieldKind = kind;
@@ -414,8 +503,8 @@
         return function () { el.removeEventListener('change', fn); };
     }
 
-    // data-pg-separator, as liveform prints it; data-separator is what
-    // tagin itself reads from hand-written markup.
+    // data-pg-separator, as liveform prints it; data-separator as older
+    // hand-written markup has it.
     function separator(el) {
         return el.getAttribute('data-pg-separator') || el.getAttribute('data-separator') || ',';
     }
@@ -524,7 +613,8 @@
         onChange: onChange,
         destroy: destroy,
         switchKind: switchKind,
-        engine: function () { return engineName; },
+        // 'v6' or 'v5': the engine that draws a kind.
+        engine: engineName,
         hooks: HOOKS
     };
     window.pgChips = pgChips;

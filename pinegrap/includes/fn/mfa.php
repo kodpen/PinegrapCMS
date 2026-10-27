@@ -292,6 +292,26 @@ function pg_mfa_recovery_normalize($code)
 }
 
 /**
+ * What a typed second-step code is: six digits (spaces aside) are a TOTP
+ * code, anything that normalizes to eight characters is a recovery code
+ * (XXXX-XXXX), the rest is neither. The verify screen also reads it to come
+ * back in the mode the refused code was typed in.
+ *
+ * @param string $code
+ * @return string 'totp', 'recovery' or ''.
+ */
+function pg_mfa_code_kind($code)
+{
+    $code = (string) $code;
+
+    if (preg_match('/^[0-9]{6}$/D', preg_replace('/\s+/', '', $code))) {
+        return 'totp';
+    }
+
+    return (strlen(pg_mfa_recovery_normalize($code)) === 8) ? 'recovery' : '';
+}
+
+/**
  * How a recovery code is stored: SHA-256 of its normalized form. The codes
  * carry 40 random bits and are compared by exact lookup, so a fast unsalted
  * hash is enough to keep a database dump from yielding usable codes.
@@ -808,9 +828,11 @@ function pg_mfa_verify_code($user_id, $code)
     }
 
     $code = (string) $code;
-    $digits = preg_replace('/\s+/', '', $code);
+    $kind = pg_mfa_code_kind($code);
 
-    if (preg_match('/^[0-9]{6}$/D', $digits)) {
+    if ($kind === 'totp') {
+
+        $digits = preg_replace('/\s+/', '', $code);
 
         if (!$totp_on) {
             return false;
@@ -830,7 +852,7 @@ function pg_mfa_verify_code($user_id, $code)
         return (mysqli_affected_rows(db::$con) === 1) ? 'totp' : false;
     }
 
-    if (strlen(pg_mfa_recovery_normalize($code)) !== 8) {
+    if ($kind !== 'recovery') {
         return false;
     }
 

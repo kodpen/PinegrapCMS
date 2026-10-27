@@ -456,6 +456,10 @@
         }
 
         if (node.kind === 'post') {
+            if (config.channel_id === -1) {
+                return t('fl_post_meta_joined');
+            }
+
             var channel = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];
 
             return channel ? t('fl_post_meta', channel.name) : t('fl_post_no_channel');
@@ -2654,10 +2658,11 @@
 
     // A post box: the channel the owner writes in and the message. The store
     // checks the owner may write there.
-    // The channels a step box may name, the first option for none, and one
-    // the person does not read named as such.
-    function channelPick(config, none) {
-        var channels = [[0, none]];
+    // The channels a step box may name, the first option for none, then the
+    // options given first ([value, label] pairs: the channel joined), and
+    // one the person does not read named as such.
+    function channelPick(config, none, first) {
+        var channels = [[0, none]].concat(first || []);
 
         (BOOT.channels || []).forEach(function (channel) {
             if (((channel.kind === 'public') || (channel.kind === 'private')) && !channel.archived) {
@@ -2672,9 +2677,16 @@
         return K.select(channels, config.channel_id || 0);
     }
 
+    // Whether the flow starts when somebody joins a channel: its post boxes
+    // may then write in the channel joined (-1), as the server allows
+    // (ws_flow_starts_on_join()).
+    function startsOnJoin() {
+        return state.graph.nodes.some(function (item) { return item.kind === 'join'; });
+    }
+
     function postFields(box, node) {
         var config = node.config;
-        var pick = channelPick(config, t('fl_post_pick'));
+        var pick = channelPick(config, t('fl_post_pick'), (startsOnJoin() || (config.channel_id === -1)) ? [[-1, t('fl_post_joined')]] : []);
 
         pick.addEventListener('change', function () {
             config.channel_id = parseInt(pick.value, 10) || 0;

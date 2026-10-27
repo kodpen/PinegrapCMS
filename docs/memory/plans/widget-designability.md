@@ -18,12 +18,13 @@ description: Plan (done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W5 #1879 #1905,
 ## What is decided?
 - Chosen 2026-10-24 of three designs: the finish pass, with the layout gallery, widget parts, condition vectors, filters and code areas.
 - Missing page types stay in [[system-widget-missing-types]], built on this engine.
-- Owner (2026-10-24): a value condition starts as one per element; OR stays open below.
 - Owner (2026-10-26): words translatable wherever possible; design elements over placeholder tokens. So no "default text": a sibling with `show_if empty` holds it ([[widget-fill-shop]]).
 - Owner (2026-10-26), detail and reasons in [[widget-designability-decisions]]: W16 equal look and behaviour, not bytes; W5 three sources, filtered, copied; W8 the allow-list of [[widget-entity-fields]].
 
+- Owner (2026-10-27), every proposal accepted: all proposals, reasons in [[widget-designability-decisions-2]].
+
 ## What does the owner still answer?
-OR in conditions; canvas default state; pg-hide-if-empty everywhere; words beside a value; code areas; page-level facts; per-placement settings; parts with controls; express order lists; classic bridge.
+Nothing open.
 
 ## What are the steps? (one PR each)
 - W1 done (#1592, [[widget-finish-pass]], [[widget-conditions]]).
