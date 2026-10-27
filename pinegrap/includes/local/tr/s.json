@@ -285,6 +285,7 @@
     "Scheduled maintenance": "Planlı bakım",
     "Scheduled message": "Zamanlanmış mesaj",
     "Scheduled messages": "Zamanlanmış mesajlar",
+    "Scheduled once {var:1}, who asked for it, opens it as a flow and publishes it": "İsteyen {var:1} akış olarak açıp yayımlayınca programlanır",
     "Scheduled once {var:1}, who asked for it, opens it in the form and saves it": "İsteyen {var:1} formda açıp kaydedince programlanır",
     "Scheduled task(s) that have stopped running:": "Çalışması durmuş zamanlanmış görev(ler):",
     "Scheduled tasks": "Zamanlanmış görevler",
