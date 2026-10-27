@@ -187,10 +187,28 @@ function pg_auth_token_verify($cookie_value)
         return false;
     }
 
-    db("UPDATE auth_tokens SET last_used_at = '" . time() . "'
+    // The address follows the activity, as in the session's own stamp
+    // (initialize_user(), includes/fn/auth.php).
+    db("UPDATE auth_tokens SET last_used_at = '" . time() . "', ip_address = '" . escape(pg_auth_request_address()) . "'
         WHERE selector = '" . escape($selector) . "'");
 
     return (int) $row['user_id'];
+}
+
+/**
+ * The visitor's address as the firewall resolves it, for an auth_tokens row:
+ * the proxy-aware answer when waf.php is loaded (every request through
+ * router.php or init.php), the peer's address otherwise.
+ *
+ * @return string
+ */
+function pg_auth_request_address()
+{
+    if (function_exists('waf_client_ip')) {
+        return (string) waf_client_ip();
+    }
+
+    return isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
 }
 
 // Revoke one token (by selector) or every token a user holds. The second is

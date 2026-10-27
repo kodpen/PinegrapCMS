@@ -56,7 +56,7 @@ function pg_dashboard_widget_22($request, $user, $waf_panel = '')
             db::$con,
             "SELECT
                 COALESCE(SUM(CASE WHEN action IN ('block','rate','ban') THEN hit_count ELSE 0 END), 0) AS blocked,
-                COALESCE(SUM(CASE WHEN action IN ('would-block','would-rate') THEN hit_count ELSE 0 END), 0) AS would_block,
+                COALESCE(SUM(CASE WHEN action IN ('would-block','would-rate','would-ban') THEN hit_count ELSE 0 END), 0) AS would_block,
                 COUNT(DISTINCT ip_address) AS addresses
              FROM waf_log
              WHERE log_timestamp >= " . (int) $td_day_ago

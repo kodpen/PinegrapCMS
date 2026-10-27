@@ -18,6 +18,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - Write a new IP column as `VARCHAR(45)` and a ban as one atomic `INSERT ... ON DUPLICATE KEY UPDATE` (`waf-ipv6-ban-column-width.md`).
 - Count aggregated log rows with `SUM(hit_count)`, never `COUNT(*)`, and cap the table with `MAX(id)` (`waf-log-aggregation-and-cap.md`).
 - Send a visitor to a sign-in screen only for a page opening: `get_file.php` goes through `get_file_sign_in_redirect()`, which answers a sub-resource fetch (`waf_fetch_is_subresource()`) with 403, and such a fetch of a sign-in screen is not counted on the sensitive allowance (`waf-subresource-sign-in-fetches.md`).
+- Register a rate refusal with the burst flag (`waf_register_offence($ip, $score, $blocking, true)`: one offence per subject and minute) and a signature hit, an attack tool or a wrong key without it; never auto-ban an address staff signed in from (`waf-offence-fold-and-staff-address.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -46,6 +47,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - waf-login-captcha.md: pg_login_captcha_* login question: when it appears, counter-driven decision, field name/id rule for password managers, wrong answer is not an offence.
 - waf-login-throttle.md: Sign-in throttle (pg_login_throttle_* in includes/fn/auth.php): address and account counters in waf_rate, lockout bucket, own switch, which endpoints must count, the 429 answer and its log lines.
 - waf-no-counters-before-db.md: Why a pre-DB request counter ("siege mode") was tried and removed; the design flaws to read before reintroducing one.
+- waf-offence-fold-and-staff-address.md: A rate refusal registers one offence per subject and minute (the burst flag of waf_register_offence()), a staff sign-in's address is never auto-banned (would-ban), Release and Allow forget offences
 - waf-outgoing-user-agent.md: Every outgoing cURL call must set CURLOPT_USERAGENT via pinegrap_user_agent(); an empty UA made one Pinegrap install block another as bot-empty.
 - waf-path-exemption-and-robots.md: waf_is_excluded() matches the resolved script path only (never query, PATH_INFO or encoded tricks); /robots.txt, /.well-known/ and health.php are exempt from bot policy; feed readers are good bots.
 - waf-score-calibration-and-bot-order.md: WAF signature score bands (thresholds 15/10/6, dead zone 7-9), targets key, and the fixed bot classification order with token-boundary residual signal.
