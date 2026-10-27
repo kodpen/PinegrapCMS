@@ -4578,7 +4578,8 @@ function pg_password_reset_deny($retry_after)
     //
     // Score 7 puts it above the noise floor without auto-banning on its own;
     // waf_register_offence() accumulates it so a persistent source still ends
-    // up banned by the normal path.
+    // up banned by the normal path, the refusals of one minute as one offence:
+    // a reset wave from one company's address is not an attack.
     if (function_exists('waf_log_event') && isset(db::$con) && db::$con) {
 
         $blocking = (!function_exists('waf_mode') || waf_mode() === 'block');
@@ -4593,7 +4594,7 @@ function pg_password_reset_deny($retry_after)
         );
 
         if (function_exists('waf_register_offence') && function_exists('waf_client_ip')) {
-            waf_register_offence(waf_client_ip(), 5, $blocking);
+            waf_register_offence(waf_client_ip(), 5, $blocking, true);
         }
     }
 

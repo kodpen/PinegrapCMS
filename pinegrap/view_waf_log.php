@@ -77,6 +77,12 @@ if (isset($_POST['submit_release'])) {
             waf_ban_shield_refresh(true);
         }
 
+        // The offences that earned the ban are forgotten with it, or the next
+        // refusal would place it again before the ten-minute slot is over.
+        if (function_exists('waf_offence_clear')) {
+            waf_offence_clear($release_ip);
+        }
+
         log_activity(
             lang(array('string' => 'released the automatic firewall ban on {var:1}', 'vars' => $release_ip)),
             $_SESSION['sessionusername']
@@ -126,10 +132,13 @@ if (isset($_POST['submit_allow'])) {
                         "DELETE FROM banned_ip_addresses
                          WHERE ip_address = '" . escape($auto_row['ip_address']) . "' AND source = 'auto'"
                     );
+
+                    waf_offence_clear($auto_row['ip_address']);
                 }
             }
         }
 
+        waf_offence_clear($allow_ip);
         waf_ip_lists(true);
         waf_ban_shield_refresh(true);
 
@@ -473,6 +482,7 @@ $action_badges = array(
     'ban'         => array('bg-dark', lang('Banned')),
     'would-block' => array('bg-warning text-dark', lang('Would block')),
     'would-rate'  => array('bg-warning text-dark', lang('Would rate limit')),
+    'would-ban'   => array('bg-warning text-dark', lang('Would ban')),
     'log'         => array('bg-secondary', lang('Recorded')),
 );
 

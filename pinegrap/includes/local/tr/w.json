@@ -847,6 +847,7 @@
     "Workspace: a message can ask its readers to confirm they read it; the writer sees who has and who has not.": "Çalışma Alanı: bir mesaj için okundu onayı istenebilir; yazan kimin okuduğunu ve okumadığını görür.",
     "World": "Dünya",
     "World affairs": "Dünya gündemi",
+    "Would ban": "Banlanacaktı",
     "Would block": "Engellenecekti",
     "Would rate limit": "Hız sınırlanacaktı",
     "Would you like to be notified when a {var:1} is added?": "Bir {var:1} eklendiğinde haberdar olmak ister misiniz?",

@@ -3663,9 +3663,31 @@ function waf_panel_access_from_row($user_row, $has_edit_folder)
  */
 function waf_user_is_staff()
 {
+    $user_id = isset($_SESSION['sessionuserid']) ? (int) $_SESSION['sessionuserid'] : 0;
+
+    if ($user_id <= 0) {
+        return false;
+    }
+
+    return waf_user_id_is_staff($user_id);
+}
+
+/**
+ * Whether an account has work in the control panel (waf_panel_access_from_row()).
+ *
+ * One user query and, for role 3, one folder query per account and request.
+ * Without a connection, or when the query fails, nothing is known yet: the
+ * answer is "no" for now but is not kept, so a later call can still find
+ * staff.
+ *
+ * @param int $user_id
+ * @return bool
+ */
+function waf_user_id_is_staff($user_id)
+{
     static $cache = array();
 
-    $user_id = isset($_SESSION['sessionuserid']) ? (int) $_SESSION['sessionuserid'] : 0;
+    $user_id = (int) $user_id;
 
     if ($user_id <= 0) {
         return false;
@@ -3677,9 +3699,6 @@ function waf_user_is_staff()
         return $cache[$user_id];
     }
 
-    // Without a connection, or when the query fails, nothing is known yet:
-    // the answer is "no" for now but is not kept, so a later call can still
-    // find staff.
     if (!isset(db::$con) || !db::$con) {
         return false;
     }
@@ -3708,6 +3727,80 @@ function waf_user_is_staff()
     $cache[$user_id] = waf_panel_access_from_row($row, $has_edit_folder);
 
     return $cache[$user_id];
+}
+
+/**
+ * How long a staff sign-in keeps its address out of the automatic ban, in
+ * seconds: a day. Long enough to cover a working day on one address, short
+ * enough that an address a staff member once used on a journey does not stay
+ * unbannable for a month.
+ *
+ * @return int
+ */
+function waf_staff_address_window()
+{
+    return 86400;
+}
+
+/**
+ * Has a member of staff signed in from this address within the last day?
+ *
+ * The session answers for the browser that holds it; this answers for the
+ * address when the session is not there to ask: the operator's other
+ * browser, a tab on the other host name, a page view the session cookie did
+ * not reach. The operator's own anonymous page view banned the address they
+ * were working from, and no exemption could see them. Every sign-in writes
+ * an auth_tokens row with the address the firewall resolved at the time, so
+ * the question is one query, asked only when a ban is about to be placed;
+ * the table has no index on the address, which is affordable at that rate.
+ *
+ * The exact address is matched, not the /64: an IPv6 browser that moved to
+ * another address of its block is covered by its session, as before.
+ * Members are not staff (waf_user_id_is_staff()), so a member's sign-in
+ * spares nothing. Fails closed: no table, no row or a query error is "no".
+ *
+ * @param string $ip the visitor's address (waf_client_ip())
+ * @return bool
+ */
+function waf_address_has_staff_sign_in($ip)
+{
+    if (!isset(db::$con) || !db::$con || !waf_is_ip($ip)) {
+        return false;
+    }
+
+    $since = time() - waf_staff_address_window();
+
+    $result = @mysqli_query(
+        db::$con,
+        "SELECT user_id
+         FROM auth_tokens
+         WHERE ip_address = '" . waf_escape($ip) . "'
+           AND (created_at > " . $since . " OR last_used_at > " . $since . ")
+         ORDER BY GREATEST(created_at, last_used_at) DESC
+         LIMIT 20"
+    );
+
+    if (!$result) {
+        return false;
+    }
+
+    $seen = array();
+
+    while ($row = @mysqli_fetch_assoc($result)) {
+        $user_id = (int) $row['user_id'];
+
+        if ($user_id <= 0 || isset($seen[$user_id])) {
+            continue;
+        }
+
+        $seen[$user_id] = true;
+
+        if (waf_user_id_is_staff($user_id)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -4723,7 +4816,7 @@ function waf_handle_rate_sensitive($ip, $blocking)
     }
 
     waf_log_event($blocking ? 'rate' : 'would-rate', 'rate-sensitive', 'rate', 7, waf_script_name(), $limit . '/min');
-    waf_register_offence($ip, 5, $blocking);
+    waf_register_offence($ip, 5, $blocking, true);
 
     if ($blocking) {
         waf_deny(429, waf_reference());
@@ -4784,7 +4877,7 @@ function waf_handle_rate_api($ip, $blocking)
     }
 
     waf_log_event($blocking ? 'rate' : 'would-rate', 'rate-api', 'rate', 7, waf_script_name(), $limit . '/min');
-    waf_register_offence($ip, 5, $blocking);
+    waf_register_offence($ip, 5, $blocking, true);
 
     if ($blocking) {
         waf_deny(429, waf_reference());
@@ -4832,7 +4925,7 @@ function waf_handle_inflight($ip, $blocking)
     }
 
     waf_log_event($blocking ? 'rate' : 'would-rate', 'concurrent', 'rate', 7, waf_script_name(), $limit . ' open');
-    waf_register_offence($ip, 5, $blocking);
+    waf_register_offence($ip, 5, $blocking, true);
 
     if ($blocking) {
         waf_deny(429, waf_reference());
@@ -4886,8 +4979,32 @@ function waf_handle_scan($ip, $blocking)
  * try the next payload. Banning after a handful of hits turns a long probing
  * session into one short one. Bans always expire, and only ever happen in
  * blocking mode - in monitor mode the firewall observes and never acts.
+ *
+ * $burst marks a rate refusal, and the refusals of one clock minute from one
+ * subject are then one offence, not one each. A limit refuses the request
+ * after its allowance and every one that follows in the minute, and a page
+ * that asks for forty things at once, or an office whose members sign in
+ * together at nine, is past it in a second: counted one by one, five
+ * refusals banned the address before the minute was out. Folded, a ban needs
+ * refusals in six separate minutes of a ten-minute slot, which is what a
+ * script does and a person does not; the refusals themselves still answer
+ * 429. A signature hit, an attack tool, a spoofed crawler or a wrong key is
+ * counted as before: each is its own act.
+ *
+ * An address staff use is never banned here: a staff session, or a staff
+ * sign-in from the address within the last day (waf_address_has_staff_sign_in()),
+ * turns the ban into a would-ban row. The limits still refuse such an
+ * address; what they cannot do is lock the operator out of the panel that
+ * would lift the ban. Someone sharing the operator's office address is
+ * therefore rate-limited but not banned, and the operator bans by hand.
+ *
+ * @param string $ip       the visitor's address
+ * @param int    $score    the weight of the event, for the log line
+ * @param bool   $blocking whether the firewall is in block mode
+ * @param bool   $burst    whether this is a rate refusal (one offence per
+ *                         subject per minute)
  */
-function waf_register_offence($ip, $score, $blocking)
+function waf_register_offence($ip, $score, $blocking, $burst = false)
 {
     if (!$blocking || !waf_setting('waf_auto_ban', 1)) {
         return;
@@ -4913,8 +5030,21 @@ function waf_register_offence($ip, $score, $blocking)
     // a ban on the one address it used last would cost it nothing.
     $subject = waf_ip_subject($ip);
 
+    // The second and later refusals of a minute are the same event.
+    if ($burst && waf_offence_is_repeat($burst, waf_rate_record($subject, 'of', 60))) {
+        return;
+    }
+
     // Reuse the rate bucket machinery: a 10 minute window of offences.
     if (!waf_rate_exceeded($subject, 'o', $threshold, 600)) {
+        return;
+    }
+
+    // Asked only now, when a ban is otherwise due: the sign-in query is not
+    // worth running on every offence.
+    if (waf_user_is_staff() || waf_address_has_staff_sign_in($ip)) {
+        waf_log_event('would-ban', 'auto-ban', 'ban', $score, 'REMOTE_ADDR', $subject . ' staff address');
+
         return;
     }
 
@@ -4936,4 +5066,44 @@ function waf_register_offence($ip, $score, $blocking)
     // after a repeat is longer than the configured base period.
     waf_log_event('ban', 'auto-ban', 'ban', $score, 'REMOTE_ADDR', $subject . ' ' . ($applied > 0 ? $applied : $minutes) . ' min');
     waf_text_log('BAN', $ip, array('minutes' => ($applied > 0 ? $applied : $minutes), 'subject' => $subject, 'rule' => 'auto-ban'));
+}
+
+/**
+ * Whether a rate refusal repeats one already counted this minute.
+ *
+ * @param bool $burst       whether the offence is a rate refusal
+ * @param int  $minute_hits the subject's refusals in the current clock
+ *                          minute, this one included (waf_rate_record());
+ *                          0 when the bucket could not be written, which
+ *                          counts the refusal rather than losing it
+ * @return bool
+ */
+function waf_offence_is_repeat($burst, $minute_hits)
+{
+    return ($burst && ((int) $minute_hits > 1));
+}
+
+/**
+ * Forget the offences counted against an address or a range, when its ban
+ * is released or the address is allowed.
+ *
+ * The buckets are keyed on the subject (the address, or the /64 a ban names)
+ * and keep their count until the ten-minute slot rolls over. Released
+ * without this, the next refusal put the ban straight back and the Release
+ * button looked as if it had done nothing.
+ *
+ * @param string $stored the address or range as the ban row holds it
+ */
+function waf_offence_clear($stored)
+{
+    $keys = array((string) $stored);
+
+    if (waf_is_ip($stored)) {
+        $keys[] = waf_ip_subject($stored);
+    }
+
+    foreach (array_unique($keys) as $key) {
+        waf_rate_clear($key, 'o');
+        waf_rate_clear($key, 'of');
+    }
 }
