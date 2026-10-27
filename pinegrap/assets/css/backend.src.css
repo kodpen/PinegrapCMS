@@ -7801,10 +7801,7 @@ html[data-bs-theme="dark"] .pg-next {
    - .pinegrap-logo carries an explicit width AND height derived from one
      variable, so the box is known before the SVG paints (no CLS) and the
      version pill next to it never jumps.
-   - Mobile shows the icon only. Rather than shipping a second copy of the
-     artwork, the box is narrowed to the icon's slice of the viewBox and the
-     wordmark is clipped away. The icon starts at x=0 in the viewBox, so a
-     simple overflow:hidden crop is exact.
+   - Below md the header hides the lockup altogether (#header .pg-brand-item).
    ──────────────────────────────────────────────────────────────────── */
 .pinegrap-logo-lockup {
   display: inline-flex;
@@ -7818,8 +7815,6 @@ html[data-bs-theme="dark"] .pg-next {
   --pg-logo-h: 30px;
   /* viewBox 530.44 x 142.47 -> full lockup aspect ratio */
   --pg-logo-w: calc(var(--pg-logo-h) * 3.7232);
-  /* icon occupies x 0..64.6 of the viewBox; 68 leaves a hair of clearance */
-  --pg-logo-icon-w: calc(var(--pg-logo-h) * 0.4773);
 
   display: block;
   flex: 0 0 auto;
@@ -7837,14 +7832,14 @@ html[data-bs-theme="dark"] .pg-next {
   fill: url(#pgLogoGradient);
 }
 
-/* Below md: crop to the icon and re-scope the gradient to it, otherwise the
-   icon would only ever show the first 12% of the full-lockup ramp. */
+/* Below md the full lockup no longer fits beside the menu button and the
+   right hand cluster, and the bar had room only for a sliver of the logo and
+   three letters of the page name. Both give way there, so the menu button
+   and the controls opposite keep the whole row; from md up nothing changes. */
 @media (max-width: 767.98px) {
-  .pinegrap-logo {
-    width: var(--pg-logo-icon-w);
-  }
-  .pinegrap-logo > svg {
-    fill: url(#pgLogoGradientIcon);
+  #header .pg-brand-item,
+  #header .pg-navhead {
+    display: none;
   }
 }
 
