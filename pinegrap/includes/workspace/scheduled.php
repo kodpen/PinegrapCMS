@@ -4047,13 +4047,15 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
                 'text'      => mb_substr(ws_scheduled_fill((string) $action['text'], $context), 0, WS_MESSAGE_MAX),
                 'approvers' => (array) $action['approvers'],
                 'rule'      => (string) $action['rule'],
+                // A flow's approval box gives its request a deadline.
+                'closes_at' => (int) ($action['closes_at'] ?? 0),
             ), 0, false);
 
             if (!$created['ok']) {
                 return $fail(lang(array('string' => 'Could not ask for approval in #{var:1}: {var:2}', 'vars' => array($channel['name'], $created['error']))));
             }
 
-            return array('ok' => true, 'text' => lang(array('string' => 'asked for approval in #{var:1}', 'vars' => $channel['name'])), 'message_id' => (int) $created['message_id']);
+            return array('ok' => true, 'text' => lang(array('string' => 'asked for approval in #{var:1}', 'vars' => $channel['name'])), 'message_id' => (int) $created['message_id'], 'approval_id' => (int) $created['approval_id']);
 
         // A check-in, asked in the creator's name; somebody no longer able
         // to write in the channel cannot ask there.

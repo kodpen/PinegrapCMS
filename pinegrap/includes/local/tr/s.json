@@ -956,6 +956,7 @@
     "Settings of what is selected": "Seçilenin ayarları",
     "Settings were modified by a custom app: Name: {var:1}, API Key: ({var:2}), Secret Key User: {var:3}": "Ayarlar özel bir uygulama tarafından değiştirildi: Ad: {var:1}, API Anahtarı: ({var:2}), Gizli Anahtar Kullanıcısı: {var:3}",
     "Settings › General": "Ayarlar › Genel",
+    "Settled by": "Karar kuralı",
     "Settled by gift card": "Hediye çekiyle kapatılan",
     "Settlement": "Kapatma",
     "Setup": "Kurulum",

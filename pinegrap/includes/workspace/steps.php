@@ -35,6 +35,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 // The effect a step box writes as it begins its work.
 define('WS_STEP_BEGAN', 'began:');
 
+// The longest an approval box gives its request before it expires, in hours
+// (30 days).
+define('WS_STEP_APPROVAL_CLOSES_MAX', 720);
+
 /**
  * The kinds of step box: their name, the scheduled action's step they are
  * (type), the texts of their settings that {{node.*}} values are filled into
@@ -46,7 +50,11 @@ define('WS_STEP_BEGAN', 'began:');
  * after it (key, type, label; mode: only for a web check of that mode). A
  * report also gives each count it is set to send (ws_step_outputs()).
  *
- * @return array kind => label, type, texts, lines, outputs
+ * outcomes: the arrows the box may leave on, when they are not done and
+ * failed (ws_step_outcomes()): an approval box waits for its request and
+ * leaves on how it ended (flow_runs.php, ws_flow_approval_settlement()).
+ *
+ * @return array kind => label, type, texts, lines, outputs, outcomes (optional)
  */
 function ws_step_kinds()
 {
@@ -77,6 +85,9 @@ function ws_step_kinds()
             'outputs' => array($number('record_id', lang('Record')))),
         'lead'      => array('label' => lang('Bring a customer into a channel'), 'type' => 'lead', 'texts' => array(), 'lines' => array(),
             'outputs' => array($number('channel_id', lang('Channel')))),
+        'approval'  => array('label' => lang('Ask for approval'), 'type' => 'approval', 'texts' => array('title', 'text'), 'lines' => array('title'),
+            'outputs' => array($number('approval_id', lang('Approval request')), $number('message_id', lang('Message'))),
+            'outcomes' => array('approved', 'rejected', 'expired', 'withdrawn', 'failed')),
     );
 }
 
@@ -205,6 +216,9 @@ function ws_step_outcomes()
  *            answers; none for a delete)
  * lead:      private (a channel it opens is private), user_ids (up to 50,
  *            put in a channel it opens)
+ * approval:  channel_id, title, text, approvers (up to 50), rule (any, all),
+ *            closes_in ('' for no deadline, else 1 to
+ *            WS_STEP_APPROVAL_CLOSES_MAX hours from when the box runs)
  *
  * @param string $kind
  * @param mixed  $config
@@ -369,6 +383,18 @@ function ws_step_config_normalize($kind, $config)
                 'private'  => !empty($config['private']),
                 'user_ids' => $people($config['user_ids'] ?? array(), 50),
             );
+
+        case 'approval':
+            $closes_in = $config['closes_in'] ?? '';
+
+            return array(
+                'channel_id' => $number($config['channel_id'] ?? 0),
+                'title'      => ws_flow_line($config['title'] ?? '', 255),
+                'text'       => ws_flow_lines($config['text'] ?? '', 4000),
+                'approvers'  => $people($config['approvers'] ?? array(), 50),
+                'rule'       => (($config['rule'] ?? '') === 'all') ? 'all' : 'any',
+                'closes_in'  => (is_bool($closes_in) || !is_numeric($closes_in)) ? '' : max(1, min(WS_STEP_APPROVAL_CLOSES_MAX, (int) $closes_in)),
+            );
     }
 
     return array();
@@ -483,6 +509,22 @@ function ws_step_config_problems($kind, $config, $name)
 
             if (($config['action'] === 'update') && empty($config['fields'])) {
                 $problems[] = lang(array('string' => 'The box {var:1} needs a field and its new value.', 'vars' => $name));
+            }
+
+            break;
+
+        // An approval is asked in a channel, of its people.
+        case 'approval':
+            if ((int) $config['channel_id'] <= 0) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs a channel to ask in.', 'vars' => $name));
+            }
+
+            if ($config['title'] === '') {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the title of the request.', 'vars' => $name));
+            }
+
+            if (empty($config['approvers'])) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the people asked to approve.', 'vars' => $name));
             }
 
             break;
@@ -839,7 +881,20 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         $step_context['event_payload'] = (array) ($context['event_payload'] ?? array());
     }
 
+    // An approval's deadline counts from when the box runs.
+    if (($kind === 'approval') && ($node['config']['closes_in'] ?? '') !== '') {
+        $action['closes_at'] = time() + (int) $node['config']['closes_in'] * 3600;
+    }
+
     $done = ws_scheduled_do($owner, $row, $action, $step_context);
+
+    // An approval box asked: it waits for the request to end
+    // (flow_runs.php).
+    if (($kind === 'approval') && !empty($done['ok'])) {
+        ws_flow_approval_wait($step, (int) ($done['approval_id'] ?? 0), (string) ($done['text'] ?? ''), ws_step_result_data($kind, $node['config'], $done));
+        return;
+    }
+
     $end = ws_step_settlement(!empty($done['ok']), $routed);
 
     ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], (string) ($done['text'] ?? ''), ws_step_result_data($kind, $node['config'], $done));

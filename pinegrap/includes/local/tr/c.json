@@ -534,6 +534,7 @@
     "Channel settings": "Kanal ayarları",
     "Channel template": "Kanal şablonu",
     "Channel templates": "Kanal şablonları",
+    "Channel to ask in": "Onayın isteneceği kanal",
     "Channel to write in": "Yazılacak kanal",
     "Channel whose tasks are sent": "Görevleri gönderilecek kanal",
     "Channel: #{var:1}": "Kanal: #{var:1}",
