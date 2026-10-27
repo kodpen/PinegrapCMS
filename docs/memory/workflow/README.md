@@ -32,7 +32,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 - decisions-made-waf.md: Decisions list, firewall part: the auto-ban thresholds stay, a concurrent refusal is no offence, a rate ban stays off the x4 ladder, the global limit counts routed requests before the session.
 - decisions-made-widgets.md: Decisions list, system widget part: conditions and required controls, translated compared text, old blocks equal in look (W16), gallery sources (W5), entity values (W8), the 2026-10-27 answers.
-- decisions-made-workspace.md: Decisions list, workspace part: how the channel commands read what is typed (a typed @username in /task), and whose rights a flow's change box writes with.
+- decisions-made-workspace.md: Decisions list, workspace part: how the channel commands read what is typed (a typed @username in /task), whose rights a flow's change box writes with, bulk product card size and events.
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, the PR footer (pointer), editing shared files without conflicts, API vs ERP files
 - install-check-filter.md: When install-check.yml runs its six-database matrix (#1985): the changes job, the paths it reads, always on merge trains and pushes, why plain git, a skipped job blocks nothing

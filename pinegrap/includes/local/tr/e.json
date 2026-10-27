@@ -1151,6 +1151,7 @@
     "each": "adet",
     "each change is an object of {type, action, id, fields, reason}.": "her değişiklik {type, action, id, fields, reason} biçiminde bir nesnedir.",
     "each change is an object of {type, id, fields, reason}.": "her değişiklik {type, id, fields, reason} biçiminde bir nesnedir.",
+    "each row is an object of field => value.": "her satır alan => değer nesnesidir.",
     "earlier": "önce",
     "economy": "ekonomi",
     "edit, delete, remove, change a post": "düzenle, sil, kaldır, gönderiyi değiştir",

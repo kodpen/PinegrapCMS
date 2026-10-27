@@ -225,6 +225,7 @@
     "One bag, every day": "Tek çanta, her gün",
     "One book a month, read at your own pace and talked over together. Anyone can join.": "Ayda bir kitap; kendi hızınızda okuyun, birlikte konuşalım. Herkes katılabilir.",
     "One book a month, three groups to choose from and a discount on the book. Join the book club.": "Ayda bir kitap, seçebileceğiniz üç grup ve kitapta indirim. Kitap kulübüne katılın.",
+    "One bulk card makes at most {var:1} records; bring more in with the product import (import_products.php).": "Bir toplu kart en fazla {var:1} kayıt oluşturur; daha fazlası için ürün içe aktarmayı (import_products.php) kullanın.",
     "One card code is generated per item ordered, up to 100 per order line.": "Sipariş edilen her adet için bir kart kodu üretilir, satır başına en fazla 100.",
     "One clear sentence, at most 120 characters, that says what happens.": "Ne olduğunu anlatan, en fazla 120 karakterlik açık bir cümle.",
     "One doctor who knows the whole family and its history.": "Bütün aileyi ve geçmişini bilen tek bir hekim.",

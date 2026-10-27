@@ -10194,7 +10194,7 @@
                     meter.appendChild(fill);
                     card.appendChild(meter);
                     card.appendChild(el('div', 'ws-draft-meta', (change.status === 'applying' ? t('bulk_running') + ' ' + t('bulk_progress', progress.done + progress.skipped + progress.failed, progress.total) + ' · ' : '')
-                        + t('bulk_result', progress.done, progress.skipped, progress.failed)));
+                        + t(change.bulk.create ? 'bulk_create_result' : 'bulk_result', progress.done, progress.skipped, progress.failed)));
 
                     (progress.errors || []).forEach(function (error) {
                         card.appendChild(el('div', 'small fg-emphasis-danger', error));
@@ -10219,7 +10219,7 @@
                     var apply = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('change_apply'), 'bi-check2');
 
                     apply.addEventListener('click', function () {
-                        var question = change.bulk ? t(change.bulk.delete ? 'bulk_delete_warning' : 'bulk_warning', change.bulk.total) : change.warning;
+                        var question = change.bulk ? t(change.bulk.delete ? 'bulk_delete_warning' : (change.bulk.create ? 'bulk_create_warning' : 'bulk_warning'), change.bulk.total) : change.warning;
                         var go = question ? ask(question, t('change_apply'), true) : Promise.resolve(true);
 
                         go.then(function (yes) {
