@@ -663,7 +663,9 @@ function bs6_find_class_strings($source)
 	$bare = array('btn', 'badge', 'small', 'row', 'col', 'card', 'border', 'rounded', 'shadow', 'active', 'disabled', 'show', 'fade', 'container', 'table', 'alert', 'collapse', 'clearfix', 'invisible', 'visible');
 	$found = array();
 
-	if (!preg_match_all('/([\'"])([A-Za-z][A-Za-z0-9:-]*(?: [A-Za-z][A-Za-z0-9:-]*)*)\1/', $source, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+	// One space may lead or end the string (`' text-success'`, added to a
+	// list in code); the class list is what lies between.
+	if (!preg_match_all('/([\'"]) ?([A-Za-z][A-Za-z0-9_:-]*(?: [A-Za-z][A-Za-z0-9_:-]*)*) ?\1/', $source, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
 		return $found;
 	}
 
@@ -678,7 +680,9 @@ function bs6_find_class_strings($source)
 		$v5 = false;
 
 		foreach ($tokens as $token) {
-			if (strpos($token, '-') === false && !in_array($token, $bare, true)) {
+			// A word with neither a hyphen nor an underscore (an own class
+			// such as `status_enabled`) is not a class: the string is text.
+			if (strpos($token, '-') === false && strpos($token, '_') === false && !in_array($token, $bare, true)) {
 				continue 2;
 			}
 
@@ -811,7 +815,7 @@ function bs6_shared_panel_functions()
 		'chat.php' => array('pg_chat_render_backend_launcher'),
 		'includes/fn/auth.php' => array('get_acl_folder_tree', 'pg_login_captcha_screen'),
 		'includes/fn/content.php' => array('get_checkboxes_for_items_user_can_edit'),
-		'includes/fn/ecommerce.php' => array('pg_order_list_status_html'),
+		'includes/fn/ecommerce.php' => array('pg_key_code_list_cells', 'pg_order_list_status_html'),
 		'includes/fn/editor.php' => array('pg_code_editor_attach'),
 		'includes/fn/forms.php' => array('get_page_type_checkboxes_and_labels'),
 		'includes/fn/legal_documents.php' => array('pg_legal_documents_panel_card'),
