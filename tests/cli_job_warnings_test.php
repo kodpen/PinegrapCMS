@@ -100,7 +100,7 @@ function test_cli_job_warnings_missing_system_region_page()
 {
 	$source = cli_job_warnings_test_source('get_page_content.php');
 
-	$query = strpos($source, "WHERE page_name = '\" . escape(\$system_page_name) . \"'\";");
+	$query = strpos($source, "db_q(\$query, array((string) \$system_page_name))");
 	$skip = strpos($source, "if (!\$row) {\n                \$content = preg_replace('/<system>' . \$system_page_name . '<\\/system>/i', '', \$content);\n                continue;\n            }", (int) $query);
 	$assign = strpos($source, "\$system_region_properties = \$row;", (int) $query);
 	$read = strpos($source, "if (\$system_region_properties['page_id'] == \$page_id) {", (int) $query);

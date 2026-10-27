@@ -17,4 +17,5 @@ description: db_q($sql, $params) and its binder pg_db_bind(): how each ? is fill
 
 ## Where is it used?
 - New code that would call `mysqli_query()` with values uses `db_q()`. Old code switches when a file is touched for another reason; whole-file conversions go hottest first.
+- Converted files: `get_page_content.php` (PR #2159): its 24 queries with values; values are passed `(string)` where the old SQL quoted them, so the SQL text stays the same (`escape(null)` gave `''`, a bound null would be `NULL`). The two watcher queries completed by `pg_comments_thread_sql()` stay raw: that suffix is escaped text and may hold a `?`. `tests/db_q_get_page_content_test.php` fails on an escaped value back in its query text.
 - `get_file.php` keeps its own db copies and does not get `db_q()` (`core/get-file-shared-code.md`, `tools/check_copies.php`).
