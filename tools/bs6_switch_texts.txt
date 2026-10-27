@@ -806,3 +806,48 @@ which count as named. No site form passes those two classes.
             foreach (array('form-control', 'form-select', 'form-check-input',
                            'check', 'radio', 'btn', 'no-bs') as $marker) {
 >>>
+
+The main menu's script switches to the drawer at the width its stylesheet
+does; the panel's own media queries moved to Bootstrap 6's 1024 px.
+
+@@ assets/js/backend.src.js
+<<<
+var MENU_DRAWER_BREAKPOINT = 992;
+===
+var MENU_DRAWER_BREAKPOINT = 1024;
+>>>
+
+The visual editor's settings dialog: the Reset Layout button goes into the
+dialog's footer; paste and the note shortcut leave the editor's own dialogs
+alone (a code editor in one is contenteditable, not an input).
+
+@@ assets/js/style_designer.js
+<<<
+var footer = phpModal.querySelector('.modal-footer');
+===
+var footer = phpModal.querySelector('.dialog-footer');
+>>>
+
+@@ assets/js/style_designer.js
+<<<
+'#sd-properties, #sd-bp-attrs, .modal, input, textarea, select'
+===
+'#sd-properties, #sd-bp-attrs, dialog, input, textarea, select'
+>>>
+
+@@ assets/js/style_designer.js
+<<<
+e.target.closest('.modal, .sd-note-overlay')
+===
+e.target.closest('dialog, .sd-note-overlay')
+>>>
+
+The visual editor's dark top bar menus: Bootstrap 6 has no dark menu
+class; the menu takes the dark colour mode.
+
+@@ includes/designer_screen.php
+<<<
+class="menu dropdown-menu-dark
+===
+data-bs-theme="dark" class="menu
+>>>
