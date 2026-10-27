@@ -20,7 +20,7 @@ description: Workspace flow runs (flow_runs.php, no schema change): start, run c
 - Owner's rights now; `ws_task_create()`, due = ready day + `due_in`, last line `ws_flow_task_marker()` (context's flow name, run, `ws_flow_box_unique_name()`: label, plus id when shared). One UPDATE: effect and wait_key `task:<id>`, waiting, wake_at +1 h.
 
 ## How is a box woken?
-- `ws_events_awaited()` adds waiting `wait_event`s; `ws_events_process()` calls `ws_flow_wake()`: done → done; cancelled or gone → `cancelled` if an arrow takes it, else failed. A passed `wake_at` rechecks (a delay box's only wake); an ended run lets it go.
+- `ws_events_awaited()` adds waiting `wait_event`s; `ws_events_process()` calls `ws_flow_wake()`: done → done; cancelled or gone → `cancelled` if an arrow takes it, else failed; timeout → `timeout`. A passed `wake_at` rechecks; an ended run lets it go.
 
 ## What if a request dies half way?
 - Running over 600 s: effect → waits again; none → one retry, which adopts the task ending with its marker that no other box of the run holds , looks at it at once; then failed (`workspace-flows-retry-skip.md`).

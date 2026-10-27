@@ -40,4 +40,4 @@ description: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: ta
 ## Where to start?
 - Built: F1 #1503, F3a #1551 (workspace-flows-runner.md).
 - F4 done: a #1835, b #1857, b2 #1923, b3 #1957 (step kinds), c #1980 condition, d #2006 anchors, e #2024 box try, f #2070 starter's rights.
-- F5: a) #2098 retry or skip a failed box (workspace-flows-retry-skip.md); b) #2135 delay box (workspace-flows-delay-box.md); c) #2142 approval box (workspace-flows-approval-box.md); d) wait with a timeout outcome (`wake_at`). Next: F5d.
+- F5: a) #2098 retry or skip a failed box (workspace-flows-retry-skip.md); b) #2135 delay box (workspace-flows-delay-box.md); c) #2142 approval box (workspace-flows-approval-box.md); d) #2153 wait with a timeout outcome on the task box (workspace-flows-wait-timeout.md).
