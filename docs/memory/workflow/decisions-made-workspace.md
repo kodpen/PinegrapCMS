@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace
-description: Decisions list, workspace part: how the channel commands read what is typed (a typed @username in /task), and whose rights a flow's change box writes with.
+description: Decisions list, workspace part: how the channel commands read what is typed (a typed @username in /task), whose rights a flow's change box writes with, bulk product card size and events.
 ---
 
 ## Does a typed @name in /task assign?
@@ -10,5 +10,9 @@ description: Decisions list, workspace part: how the channel commands read what 
 ## Whose rights does a flow's change box write with?
 - The owner's, and only when the person who started the run (`ws_flow_runs.started_by`) may make the same change too. A run an anchor starts (time, event, join) has the owner as its starter, so it is unchanged; the other boxes keep the owner's rights alone.
 - Owner decision (2026-10-27, "akışı başlatan kişi yetkisi olmalı", on the change box of #1957): a run share lets a colleague start someone else's flow, and the box then wrote with the owner's rights alone, so the colleague could have a change made, a person's role included, that they may not make themselves.
+
+## How big is a bulk product card, and what does it announce?
+- At most 200 rows (`WS_BULK_CREATE_MAX`); more goes through `import_products.php`. Each product made sends `product.created`, as the assistants' bulk updates send their events (`workspace/workspace-bulk-create.md`).
+- Owner decision (2026-10-27, «toplu ürün önerin kabul», plan questions 2 and 4 of workspace-catalog-create): a card the person reads before applying stays short enough to check; a subscriber hears each new product the same way whichever door made it.
 
 Related: docs/memory/workflow/decisions-made.md
