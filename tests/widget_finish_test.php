@@ -267,8 +267,9 @@ function test_widget_finish_has_content_ignores_carriers()
 	pg_assert_true(pg_sw_has_content('<span>Hall A</span><!--pg-cv:' . $nonce . ':5--><!--/pg-cv:' . $nonce . ':5-->'));
 }
 
-// pg-hide-if-empty is honoured again after a cut in the kinds that run it
-// (the early form list names count as the form list), not in the others.
+// pg-hide-if-empty is honoured again after a cut in the kinds whose
+// renderer judges it (the early form list names count as the form list),
+// and for the first time in every other kind.
 function test_widget_finish_hide_empty_rerun()
 {
 	$html = '<div class="box pg-hide-if-empty">'
@@ -279,13 +280,14 @@ function test_widget_finish_hide_empty_rerun()
 	pg_assert_same('<p>after</p>', pg_sw_finish_widget_html($filled, array('kind' => 'blog_list')), 'blog_list');
 	pg_assert_same('<p>after</p>', pg_sw_finish_widget_html($filled, array('kind' => 'form_item_view')), 'form_item_view');
 	pg_assert_same('<p>after</p>', pg_sw_finish_widget_html($filled, array('kind' => 'comments')), 'comments');
-	pg_assert_same('<div class="box pg-hide-if-empty"></div><p>after</p>', pg_sw_finish_widget_html($filled, array('kind' => 'catalog_listing')), 'catalog_listing');
+	pg_assert_same('<p>after</p>', pg_sw_finish_widget_html($filled, array('kind' => 'comments_recent')), 'comments_recent');
+	pg_assert_same('<p>after</p>', pg_sw_finish_widget_html($filled, array('kind' => 'catalog_listing')), 'catalog_listing');
 }
 
 // The form starters bind the value element itself inside a pg-hide-if-empty
 // "label: value" row. A condition that cuts that element leaves the row
-// with an empty value, so the row goes as it does for a blank field; in a
-// kind that does not honour the class only the value goes.
+// with an empty value, so the row goes as it does for a blank field, in
+// every kind.
 function test_widget_finish_field_value_cut_drops_row()
 {
 	$row  = '<p class="card-text small mb-1 pg-hide-if-empty"><span class="fw-semibold me-1">Section:</span>'
@@ -296,8 +298,7 @@ function test_widget_finish_field_value_cut_drops_row()
 
 	pg_assert_same('<div class="card">' . $kept . '</div>', pg_sw_finish_widget_html($html, array('kind' => 'form_list_view')), 'form_list_view');
 	pg_assert_same('<div class="card">' . $kept . '</div>', pg_sw_finish_widget_html($html, array('kind' => 'form_item_view')), 'form_item_view');
-	pg_assert_same('<div class="card"><p class="card-text small mb-1 pg-hide-if-empty"><span class="fw-semibold me-1">Section:</span></p>' . $kept . '</div>',
-		pg_sw_finish_widget_html($html, array('kind' => 'catalog_listing')), 'catalog_listing: the class is not honoured there');
+	pg_assert_same('<div class="card">' . $kept . '</div>', pg_sw_finish_widget_html($html, array('kind' => 'catalog_listing')), 'catalog_listing');
 
 	// The same row drawn from the starter's tree.
 	$tree = array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'mb-3 pg-hide-if-empty'), 'children' => array(
@@ -313,6 +314,50 @@ function test_widget_finish_field_value_cut_drops_row()
 	pg_assert_contains('Kültür</p>', $out);
 	pg_assert_contains('>Section</p>', $out);
 	_widget_finish_no_markers($out);
+}
+
+// Outside the judged kinds every marked element is judged, with or without
+// a marker in the markup: an empty box goes with its heading when the
+// heading's box names its value (pg-field-value), a filled one stays, and
+// an element no value left empty is kept.
+function test_widget_finish_hide_empty_other_kinds()
+{
+	$box = function ($value) {
+		return '<section class="border p-3 pg-hide-if-empty"><h3>Related</h3><div class="row pg-field-value">' . $value . '</div></section>';
+	};
+	$scope = array('kind' => 'catalog_item_view');
+	pg_assert_same('<p>x</p>', pg_sw_finish_widget_html($box('') . '<p>x</p>', $scope), 'no marker: the empty box goes, heading and frame');
+	pg_assert_same($box('<a href="/p">P</a>'), pg_sw_finish_widget_html($box('<a href="/p">P</a>'), $scope), 'a filled box stays');
+	pg_assert_same('<p class="pg-hide-if-empty">Words</p>', pg_sw_finish_widget_html('<p class="pg-hide-if-empty">Words</p>', $scope), 'designed words alone stay');
+	pg_assert_same('', pg_sw_finish_widget_html('<p class="pg-hide-if-empty"><span>^^__loop_index^^</span></p>', array('kind' => 'shopping_cart')), 'after the positions');
+
+	$html = '<div class="pg-hide-if-empty"><b>Off:</b>' . pg_sw_finish_wrap('<span class="pg-field-value">^^__d^^</span>', _widget_finish_spec('__d', 'gt', '0')) . '</div>';
+	pg_assert_same('', pg_sw_finish_widget_html(str_replace('^^__d^^', '0', $html), array('kind' => 'shopping_cart')), 'a cut value takes its row');
+	pg_assert_same('<div class="pg-hide-if-empty"><b>Off:</b><span class="pg-field-value">5</span></div>',
+		pg_sw_finish_widget_html(str_replace('^^__d^^', '5', $html), array('kind' => 'shopping_cart')), 'a passing value keeps it');
+
+	pg_assert_same($box(''), pg_sw_finish_widget_html($box(''), array('kind' => 'form_item_view')), 'a judged kind without a cut: as its renderer left it');
+}
+
+// On a product page with the variant picker, an empty box holding a value
+// the picker redraws waits hidden; one holding none goes; the rule that
+// keeps it hidden is printed once.
+function test_widget_finish_hide_empty_waits_for_a_variant()
+{
+	$script = '<script>window.pgCivVariants.push({});</script>';
+	$html   = '<div class="d-flex pg-hide-if-empty"><s data-pg-bind="text:original_price_formatted"></s></div>'
+		. '<p class="pg-hide-if-empty"><span></span></p>'
+		. '<img class="pg-hide-if-empty" src="" data-pg-bind="src:image_url">' . $script;
+	$out = pg_sw_finish_widget_html($html, array('kind' => 'catalog_item_view'));
+	pg_assert_same('<style>[data-pg-empty-wait][hidden]{display:none!important}</style>'
+		. '<div class="d-flex pg-hide-if-empty" hidden data-pg-empty-wait><s data-pg-bind="text:original_price_formatted"></s></div>'
+		. '<img class="pg-hide-if-empty" src="" data-pg-bind="src:image_url" hidden data-pg-empty-wait>' . $script, $out);
+	pg_assert_same($out, pg_sw_finish_widget_html($out, array('kind' => 'catalog_listing')), 'a waiting element is left by an outer pass');
+
+	$plain = '<div class="pg-hide-if-empty"><s data-pg-bind="text:original_price_formatted"></s></div><p>x</p>';
+	pg_assert_same('<p>x</p>', pg_sw_finish_widget_html($plain, array('kind' => 'catalog_item_view')), 'no variant picker: it goes');
+	pg_assert_same('<p>x</p>' . $script, pg_sw_finish_widget_html($plain . $script, array('kind' => 'catalog_listing')), 'only the product page waits');
+	pg_assert_same('<br class="pg-hide-if-empty" hidden data-pg-empty-wait/>', pg_sw_empty_wait_tag('<br class="pg-hide-if-empty"/>'));
 }
 
 // After a cut only the pg-hide-if-empty elements around a cut are judged
