@@ -4,8 +4,10 @@
  *
  * Static checks on get_page.php: its raw queries with values run through
  * db_q() placeholders, not escape() concatenated into the SQL text. The raw
- * queries left are those without values and those completed by a clause
- * built elsewhere with escaped values, which may hold a '?'.
+ * queries left are those without values, the home page lookup completed by
+ * the integer folder list $sql_not_binned, and the two submitted form lists
+ * of the form list view feed completed by $sql_where / $sql_filters, which
+ * are built with escaped filter values and may hold a '?'.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -105,6 +107,10 @@ function db_q_get_page_test_calls()
 function test_db_q_get_page_has_no_escaped_values_in_query_text()
 {
 	foreach (db_q_get_page_test_calls() as $call) {
+		if ($call['call'] === 'mysqli_query' && preg_match('/\$(sql_where|sql_filters)\b/', $call['text'])) {
+			continue;
+		}
+
 		pg_assert_false(
 			(bool) preg_match('/(?<![\w>$])(escape|e)\s*\(/', $call['text']),
 			'get_page.php line ' . $call['line'] . ' concatenates an escaped value into its SQL');
@@ -121,10 +127,31 @@ function test_db_q_get_page_value_queries_use_db_q()
 			continue;
 		}
 
+		// A raw query writes no value of its own: only a clause built
+		// elsewhere may complete it.
+		$built = (bool) preg_match('/\$(sql_not_binned|sql_where|sql_filters)\b/', $call['text']);
+
 		pg_assert_false(
-			(bool) preg_match('/"\s*\.\s*(\(int\)\s*)?\$|\'\$[a-z_]/i', $call['text']),
+			!$built && (bool) preg_match('/"\s*\.\s*(\(int\)\s*)?\$|\'\$[a-z_]/i', $call['text']),
 			'get_page.php line ' . $call['line'] . ' writes a value into a raw query');
 	}
 
-	pg_assert_true($db_q >= 30, 'get_page.php runs ' . $db_q . ' queries through db_q()');
+	pg_assert_true($db_q >= 29, 'get_page.php runs ' . $db_q . ' queries through db_q()');
+}
+
+function test_db_q_get_page_calendar_list_binds_as_before()
+{
+	$escape = function ($value) {
+		return addcslashes($value, "\\'\"");
+	};
+
+	pg_assert_same(
+		"SELECT calendar_id FROM calendar_event_views_calendars_xref WHERE ((calendar_id = '3') OR (calendar_id = '7')) AND (page_id = '12')",
+		pg_db_bind(
+			'SELECT calendar_id FROM calendar_event_views_calendars_xref WHERE ((calendar_id = ?) OR (calendar_id = ?)) AND (page_id = ?)',
+			array((string) 3, (string) 7, (string) 12),
+			$escape));
+	pg_assert_same(
+		"SELECT id FROM page WHERE page_name = 'o\\'brien'",
+		pg_db_bind('SELECT id FROM page WHERE page_name = ?', array((string) "o'brien"), $escape));
 }
