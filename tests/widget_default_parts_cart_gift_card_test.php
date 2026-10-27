@@ -223,7 +223,7 @@ function test_widget_parts_cart_gift_card_editor_twin()
 		$b = strpos($js, $to, $a);
 		return substr($js, $a, $b + strlen($to) - $a);
 	};
-	$src = $cut("\n    var SW_DEFAULT_PARTS = {", "\n    };\n")
+	$src = $cut("\n    var SD_COND_NAMES = ", ";\n") . $cut("\n    var SW_DEFAULT_PARTS = {", "\n    };\n")
 		. $cut("\n    var SW_DEFAULT_LOOP_TAILS = {", "\n    };\n")
 		. $cut("\n    var SW_CART_GIFT_CARD_CONTROLS = {", "\n    };\n");
 	foreach (array('_sdDefaultParts', '_sdPartTokenOf', '_sdPartHost', '_sdPartEl', '_sdPartWhen', '_sdPartPlaced', '_sdPartItemLegend',
