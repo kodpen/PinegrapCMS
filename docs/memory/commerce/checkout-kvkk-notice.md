@@ -1,6 +1,6 @@
 ---
 name: checkout-kvkk-notice
-description: KVKK notice link and optional explicit consent box at checkout (11.0.48): settings, why a page and a config_text row, injection, the kvkk copy in order_documents, consent log row
+description: KVKK notice link and optional explicit consent box at checkout and sign-up (11.0.48): settings, why a page and a config_text row, injection, the kvkk copy in order_documents, consent log row
 ---
 
 ## What does the checkout show?
@@ -15,5 +15,9 @@ description: KVKK notice link and optional explicit consent box at checkout (11.
 - `pg_legal_documents_store()` adds a `kvkk` row beside the two documents: `pg_legal_kvkk_copy_html()` = the linked page's full address and the consent sentence as shown (not the page's text). `accepted_at` only when the box was shown and ticked; with no sentence a posted `legal_kvkk` is dropped. A ticked box writes a granted consent log row (channel `contract`, purpose `kvkk`) through `pg_legal_documents_consent_events()`.
 - `pg_legal_document_types()` stays the two required documents; `pg_legal_document_labels()` adds `kvkk` ("Personal Data Notice") for the kept-copy page, e-mail attachments, the panel card ("No consent", not red) and the API `label`. `pg_legal_document_acceptance_note()` speaks of consent for `kvkk`. `legal_document.php?type=kvkk` exists only with an `order_id`.
 
+## What does a sign-up form get?
+- The same lines (PR #2397): `pg_legal_kvkk_signup_inject()` wraps the registration and membership entrance screens (`get_page_content.php`, the fallback screens in `forms.php`) and their designer widgets (`designer.php`), in front of `submit_register` (the legacy page also holds a login form), else a widget's first submit control. Values read before drawing.
+- `registration_entrance.php` / `membership_entrance.php` pass `kvkk_consent` (`pg_legal_kvkk_consent_given()`) to `pg_member_register()` / `pg_member_activate()`, which write a granted `contract:kvkk` answer through `pg_consent_log_answers()` (source `signup`): no order, so no `order_documents` row; no refusal row; a person who granted it before adds nothing. Answered by the coordinator for the owner ("bekleyen işçilere yanıtı sen ver benim yerime", "en makul ve işlevsel seçimle"), 2026-10-27.
+
 ## What is left?
-- plans/checkout-legal-documents.md: the registration form's KVKK lines, a designer node/token, the order view link to the kvkk copy.
+- plans/checkout-legal-documents.md: a designer node/token for the lines, the order view link to the kvkk copy.

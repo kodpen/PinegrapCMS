@@ -3100,9 +3100,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     } else {
                         require_once(dirname(__FILE__) . '/get_membership_entrance.php');
 
-                        $system_output .= get_membership_entrance(array(
+                        $kvkk_values = pg_legal_documents_form_values('membership_entrance');
+                        $system_output .= pg_legal_kvkk_signup_inject(get_membership_entrance(array(
                             'page_id' => $system_region_properties['page_id'],
-                            'device_type' => $device_type));
+                            'device_type' => $device_type)), $kvkk_values);
                     }
 
                     $system_output .= '</div>';
@@ -3681,9 +3682,10 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     } else {
                         require_once(dirname(__FILE__) . '/get_registration_entrance.php');
 
-                        $system_output .= get_registration_entrance(array(
+                        $kvkk_values = pg_legal_documents_form_values('register');
+                        $system_output .= pg_legal_kvkk_signup_inject(get_registration_entrance(array(
                             'page_id' => $system_region_properties['page_id'],
-                            'device_type' => $device_type));
+                            'device_type' => $device_type)), $kvkk_values);
                     }
 
                     $system_output .= '</div>';

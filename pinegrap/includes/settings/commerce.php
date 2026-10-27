@@ -1178,12 +1178,12 @@ if ($legal_documents_ready) {
                                             <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Page')))) . '-</option>
                                             ' . select_page($ecommerce_kvkk_page_id ?: '') . '
                                         </select>
-                                        <div class="form-text">' . lang('The checkout links this page where it explains how personal data is processed.') . '</div>
+                                        <div class="form-text">' . lang('The checkout and the sign-up forms link this page where they explain how personal data is processed.') . '</div>
                                     </div>
                                     <div class="col-12">
                                         <label class="form-label" for="ecommerce_kvkk_consent_text">' . lang('Explicit Consent Sentence') . '</label>
                                         <textarea class="form-control" id="ecommerce_kvkk_consent_text" name="ecommerce_kvkk_consent_text" rows="3">' . h($ecommerce_kvkk_consent_text) . '</textarea>
-                                        <div class="form-text">' . lang('Shown beside a box the customer may leave unticked; the answer is kept with the order. Leave it empty for no box.') . '</div>
+                                        <div class="form-text">' . lang('Shown beside a box the customer may leave unticked; the answer is kept with the order, or in the consent log on sign-up. Leave it empty for no box.') . '</div>
                                     </div>';
     }
 

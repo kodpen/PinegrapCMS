@@ -879,3 +879,28 @@ function test_legal_documents_kvkk_consent_given()
 	pg_assert_false(pg_legal_kvkk_consent_given(null, 'I consent'), 'not posted');
 	pg_assert_false(pg_legal_kvkk_consent_given(array('1'), 'I consent'), 'not a value');
 }
+
+// Every sign-up screen draws the lines and both entrance scripts pass the
+// answer on; the account writers record it as a granted contract:kvkk row.
+function test_legal_documents_kvkk_signup_wiring()
+{
+	$read = function ($file) {
+		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+	};
+
+	pg_assert_same(2, substr_count($read('get_page_content.php'), 'pg_legal_kvkk_signup_inject(get_'), 'both legacy screens in a page');
+	pg_assert_same(2, substr_count($read('includes/fn/forms.php'), 'pg_legal_kvkk_signup_inject(get_'), 'both fallback screens');
+	pg_assert_same(2, substr_count($read('includes/fn/designer.php'), 'pg_legal_kvkk_signup_inject(_render_system_widget_'), 'both widgets');
+
+	foreach (array('registration_entrance.php' => 'register_opts', 'membership_entrance.php' => 'activate_opts') as $file => $opts) {
+		pg_assert_contains("\$" . $opts . "['kvkk_consent'] = pg_legal_kvkk_consent_given(\$_POST['legal_kvkk'] ?? null, \$kvkk['consent']);", $read($file), $file);
+	}
+
+	pg_assert_same(2, substr_count($read('includes/fn/auth.php'), "array('contract:kvkk' => true),"), 'register and activate record it');
+	pg_assert_true(pg_consent_log_purpose_valid('contract', 'kvkk'), 'a purpose the log takes');
+
+	$changes = pg_consent_log_changes(array(), array('contract:kvkk' => true));
+	pg_assert_same(1, count($changes), 'a first consent is a change');
+	pg_assert_true(is_array(pg_consent_log_row($changes[0] + array('source' => 'signup', 'user_id' => 5), 1)), 'a valid sign-up row');
+	pg_assert_same(array(), pg_consent_log_changes(array('contract:kvkk' => array('status' => 'granted')), array('contract:kvkk' => true)), 'given before: nothing new');
+}

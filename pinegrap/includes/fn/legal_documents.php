@@ -736,14 +736,16 @@ function pg_legal_kvkk_signup_html($html, array $values, $notice_url, $consent)
 }
 
 /**
- * pg_legal_kvkk_signup_html() with the store's settings and the liveform's
- * last values.
+ * pg_legal_kvkk_signup_html() with the store's settings.
  *
  * @param string $html
- * @param string $form  liveform name (register, membership_entrance)
+ * @param array  $values  pg_legal_documents_form_values() of the sign-up
+ *                        liveform (register, membership_entrance), taken
+ *                        before the screen is drawn: drawing it may drop the
+ *                        form from the session
  * @return string
  */
-function pg_legal_kvkk_signup_inject($html, $form)
+function pg_legal_kvkk_signup_inject($html, array $values)
 {
     $kvkk = pg_legal_kvkk_settings();
 
@@ -751,7 +753,7 @@ function pg_legal_kvkk_signup_inject($html, $form)
         return (string) $html;
     }
 
-    return pg_legal_kvkk_signup_html($html, pg_legal_documents_form_values($form), $kvkk['url'], $kvkk['consent']);
+    return pg_legal_kvkk_signup_html($html, $values, $kvkk['url'], $kvkk['consent']);
 }
 
 /**
