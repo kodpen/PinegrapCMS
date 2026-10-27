@@ -5,8 +5,8 @@
  * Visual Page Editor - per-placement content of a system widget. A widget's
  * look and texts are shared by every page placing it; a placement (the
  * shared_ref node in a page tree, props.placement) may only narrow what the
- * widget shows: its product group, calendars, menu or ad region, how many
- * records and in which order. Nothing a placement sets can show a record the
+ * widget shows: its records filter, product group, calendars, menu or ad
+ * region, how many records and in which order. Nothing a placement sets can show a record the
  * widget's own settings keep out.
  *
  * The values travel from the stored page body to the widget's render as a
@@ -35,7 +35,7 @@ function pg_sw_placement_keys($kind)
 {
     $kind = (string)$kind;
     if (in_array($kind, array('form_list_view', 'submitted_forms_list', 'form_list', 'blog_list'), true)) {
-        return array('max_results', 'order_by_field', 'order_by_direction');
+        return array('filters', 'max_results', 'order_by_field', 'order_by_direction');
     }
     $keys = array(
         'catalog_listing' => array('product_group_id', 'max_results', 'order_by_field', 'order_by_direction'),
@@ -76,6 +76,25 @@ function pg_sw_placement_clean($values)
         }
         if ($ids) $out['calendar_ids'] = array_values($ids);
     }
+    // Filter rows as the widget's own are written; their fields, operators
+    // and dynamic values are checked where the SQL is built
+    // (pg_sw_form_list_filter_sql()). At most ten.
+    if (isset($values['filters']) && is_array($values['filters'])) {
+        $rows = array();
+        foreach (array_values($values['filters']) as $f) {
+            if (count($rows) >= 10) break;
+            if (!is_array($f) || !isset($f['field']) || !is_string($f['field']) || trim($f['field']) === '') continue;
+            $attr = isset($f['dynamic_value_attribute']) && is_scalar($f['dynamic_value_attribute']) ? $f['dynamic_value_attribute'] : '';
+            $rows[] = array(
+                'field'                   => substr($f['field'], 0, 100),
+                'operator'                => (isset($f['operator']) && is_string($f['operator'])) ? substr($f['operator'], 0, 40) : '',
+                'value'                   => (isset($f['value']) && is_scalar($f['value'])) ? substr((string)$f['value'], 0, 255) : '',
+                'dynamic_value'           => (isset($f['dynamic_value']) && is_string($f['dynamic_value'])) ? substr($f['dynamic_value'], 0, 40) : '',
+                'dynamic_value_attribute' => is_string($attr) ? substr($attr, 0, 32) : (int)$attr,
+            );
+        }
+        if ($rows) $out['filters'] = $rows;
+    }
     foreach (array('menu_name', 'ad_region_name') as $k) {
         if (isset($values[$k]) && is_string($values[$k]) && trim($values[$k]) !== '' && strlen($values[$k]) <= 100) {
             $out[$k] = $values[$k];
@@ -86,7 +105,8 @@ function pg_sw_placement_clean($values)
 
 /**
  * The settings a widget renders with on one placement: its own, narrowed by
- * the placement's values its kind accepts. A count is never raised above
+ * the placement's values its kind accepts. A placement's filters are added
+ * to the widget's, and every filter must match. A count is never raised above
  * the widget's; a product group must be the widget's or one under it; the
  * calendars must be among the widget's. A value that would widen is
  * ignored and the widget's own stands.
@@ -118,6 +138,10 @@ function pg_sw_placement_narrow($kind, array $cfg, $values, $group_within = null
                 if ($own <= 0 || $own === $v || (is_callable($group_within) && call_user_func($group_within, $v, $own))) {
                     $cfg[$k] = $v;
                 }
+                break;
+            case 'filters':
+                $own = (isset($cfg[$k]) && is_array($cfg[$k])) ? array_values($cfg[$k]) : array();
+                $cfg[$k] = array_merge($own, $v);
                 break;
             case 'calendar_ids':
                 $own = array();

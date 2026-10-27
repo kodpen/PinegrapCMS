@@ -19,7 +19,7 @@ if (!defined('PG_TEST_RUNNER')) {
 
 function test_widget_placement_keys()
 {
-	pg_assert_same(array('max_results', 'order_by_field', 'order_by_direction'), pg_sw_placement_keys('form_list_view'), 'form list');
+	pg_assert_same(array('filters', 'max_results', 'order_by_field', 'order_by_direction'), pg_sw_placement_keys('form_list_view'), 'form list');
 	pg_assert_same(pg_sw_placement_keys('form_list_view'), pg_sw_placement_keys('blog_list'), 'a legacy form list name');
 	pg_assert_same(array('menu_name'), pg_sw_placement_keys('menu_region'), 'menu');
 	pg_assert_same(array(), pg_sw_placement_keys('login_form'), 'a form takes none');
@@ -60,6 +60,20 @@ function test_widget_placement_narrow_sources()
 	pg_assert_same('Main', pg_sw_placement_narrow('ad_region', array('menu_name' => 'Main'), array('menu_name' => 'Footer'))['menu_name'], 'a key of another kind is not read');
 	$o = pg_sw_placement_narrow('form_list_view', array('order_by_field' => 'a', 'order_by_direction' => 'DESC'), array('order_by_direction' => 'ASC'));
 	pg_assert_same(array('a', 'ASC'), array($o['order_by_field'], $o['order_by_direction']), 'order');
+}
+
+function test_widget_placement_filters()
+{
+	$row = array('field' => 'tag', 'operator' => 'is equal to', 'value' => 'news', 'dynamic_value' => '', 'dynamic_value_attribute' => '');
+	pg_assert_same(array('filters' => array($row)), pg_sw_placement_clean(array('filters' => array($row, array('field' => ' '), 'x'))), 'blank rows dropped');
+	$many = pg_sw_placement_clean(array('filters' => array_fill(0, 12, $row)));
+	pg_assert_same(10, count($many['filters']), 'at most ten rows');
+	$cut = pg_sw_placement_clean(array('filters' => array(array('field' => 'tag', 'value' => str_repeat('a', 300), 'dynamic_value_attribute' => 7))));
+	pg_assert_same(array(255, '', 7), array(strlen($cut['filters'][0]['value']), $cut['filters'][0]['operator'], $cut['filters'][0]['dynamic_value_attribute']), 'lengths and types kept bounded');
+	$own = array('field' => 'status', 'operator' => 'is equal to', 'value' => 'published', 'dynamic_value' => '', 'dynamic_value_attribute' => '');
+	pg_assert_same(array($own, $row), pg_sw_placement_narrow('form_list_view', array('filters' => array($own)), array('filters' => array($row)))['filters'], 'added after the widget\'s own: every one must match');
+	pg_assert_same(array($row), pg_sw_placement_narrow('blog_list', array(), array('filters' => array($row)))['filters'], 'a widget without filters');
+	pg_assert_false(isset(pg_sw_placement_narrow('catalog_listing', array(), array('filters' => array($row)))['filters']), 'a catalog takes no records filter');
 }
 
 function test_widget_placement_marker()

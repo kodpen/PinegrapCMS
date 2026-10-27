@@ -33055,7 +33055,7 @@ const StyleDesigner = (function () {
     // stay the widget's; a placement only narrows its content.
     function _swPlacementKeys(kind) {
         if (['form_list_view', 'submitted_forms_list', 'form_list', 'blog_list'].indexOf(kind) !== -1) {
-            return ['max_results', 'order_by_field', 'order_by_direction'];
+            return ['filters', 'max_results', 'order_by_field', 'order_by_direction'];
         }
         var keys = {
             catalog_listing: ['product_group_id', 'max_results', 'order_by_field', 'order_by_direction'],
@@ -33099,7 +33099,15 @@ const StyleDesigner = (function () {
         };
         var body = '';
         keys.forEach(function (k) {
-            if (k === 'product_group_id') {
+            if (k === 'filters') {
+                var formId = parseInt(cfg.custom_form_page_id || cfg.form_page_id || 0, 10);
+                if (!(formId > 0)) return;
+                var fields = _formFieldsCache[formId] || null;
+                body += row(esc(_sdT('Filters')), '<div>' +
+                    _swFormListFiltersHtml(sid, Array.isArray(pl.filters) ? pl.filters : [], fields || [], fields === null,
+                        _sdT('Added to the widget\'s filters here: a record is listed only when it matches every filter of both.'), true, 'placement') +
+                    '</div>');
+            } else if (k === 'product_group_id') {
                 var g = _swProductGroupOptions(pl.product_group_id, _sdT('— As the widget —'));
                 body += row(esc(_sdT('Product Group')),
                     '<select class="form-control form-control-sm" data-sw-place="product_group_id" data-sw-place-kind="int">' + g + '</select>' +
@@ -36223,9 +36231,12 @@ const StyleDesigner = (function () {
         // when none.
         var _swFilterKey = function (el) { return (el && el.getAttribute('data-sw-filter-key')) || 'filters'; };
         var _swFilterEls = document.querySelectorAll('.sd-sw-filter');
-        var _swReadFilters = function () {
+        // The rows of one list: a widget's own filters and its placement's
+        // stand in the same panel.
+        var _swReadFilters = function (key) {
             var out = [];
             document.querySelectorAll('.sd-sw-filter').forEach(function (el) {
+                if (_swFilterKey(el) !== key) return;
                 var q = function (c) { return el.querySelector(c); };
                 var dyn = q('.sd-sw-filter-dyn') ? q('.sd-sw-filter-dyn').value : '';
                 var val = q('.sd-sw-filter-value') ? String(q('.sd-sw-filter-value').value || '') : '';
@@ -36250,29 +36261,41 @@ const StyleDesigner = (function () {
             });
             return out;
         };
-        _swFilterEls.forEach(function (el, idx) {
+        // A placement's rows go on the selected shared_ref node; a widget's
+        // into its config.
+        var _swSaveFilters = function (sid, key, list, rerender) {
+            if (key === 'placement') {
+                if (!selectedNode || selectedNode.type !== 'shared_ref') return;
+                if (!_collab.mayEdit) { _sdReadOnlyNudge(); renderProperties(); return; }
+                saveState();
+                _swPlacementSet(selectedNode, 'filters', list);
+                render();
+                return;
+            }
+            _patchSysCfg(sid, function (cfg) { cfg[key] = list; },
+                rerender ? { afterSave: function () { renderProperties(); } } : undefined);
+        };
+        _swFilterEls.forEach(function (el) {
             var sid = 0;
             var any = el.querySelector('[data-sw-id]');
             if (any) sid = parseInt(any.dataset.swId, 10);
             if (!sid) return;
             var key = _swFilterKey(el);
-            var save = function (list, rerender) {
-                _patchSysCfg(sid, function (cfg) { cfg[key] = list; },
-                    rerender ? { afterSave: function () { renderProperties(); } } : undefined);
-            };
+            var idx = parseInt(el.getAttribute('data-idx'), 10) || 0;
+            var save = function (list, rerender) { _swSaveFilters(sid, key, list, rerender); };
             var fieldEl = el.querySelector('.sd-sw-filter-field');
             if (fieldEl) fieldEl.addEventListener('change', function () {
-                var list = _swReadFilters();
+                var list = _swReadFilters(key);
                 // Another field has another type: its value and dynamic
                 // value no longer apply.
                 if (list[idx]) { list[idx].value = ''; list[idx].dynamic_value = ''; list[idx].dynamic_value_attribute = ''; }
                 save(list, true);
             });
             var dynEl = el.querySelector('.sd-sw-filter-dyn');
-            if (dynEl) dynEl.addEventListener('change', function () { save(_swReadFilters(), true); });
+            if (dynEl) dynEl.addEventListener('change', function () { save(_swReadFilters(key), true); });
             ['.sd-sw-filter-op', '.sd-sw-filter-value', '.sd-sw-filter-days'].forEach(function (c) {
                 var inp = el.querySelector(c);
-                if (inp) inp.addEventListener('change', function () { save(_swReadFilters(), false); });
+                if (inp) inp.addEventListener('change', function () { save(_swReadFilters(key), false); });
             });
             // The name being edited is stored normalised (lower case, a-z,
             // 0-9 and _ only, at most 32 characters; the re-rendered input
@@ -36281,26 +36304,25 @@ const StyleDesigner = (function () {
             var paramEl = el.querySelector('.sd-sw-filter-param');
             if (paramEl) paramEl.addEventListener('change', function () {
                 this.value = String(this.value || '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 32);
-                save(_swReadFilters(), true);
+                save(_swReadFilters(key), true);
             });
             var delEl = el.querySelector('.sd-sw-filter-del');
             if (delEl) delEl.addEventListener('click', function () {
-                var list = _swReadFilters();
+                var list = _swReadFilters(key);
                 list.splice(idx, 1);
                 save(list, true);
             });
         });
-        var fAddEl = document.getElementById('sd-sw-filter-add');
-        if (fAddEl) {
+        document.querySelectorAll('.sd-sw-filter-add').forEach(function (fAddEl) {
             fAddEl.addEventListener('click', function () {
                 var sid = parseInt(this.dataset.swId, 10);
                 if (!sid) return;
                 var key = _swFilterKey(this);
-                var list = _swReadFilters();
+                var list = _swReadFilters(key);
                 list.push({ field: '', operator: 'is equal to', value: '', dynamic_value: '', dynamic_value_attribute: '' });
-                _patchSysCfg(sid, function (cfg) { cfg[key] = list; }, { afterSave: function () { renderProperties(); } });
+                _swSaveFilters(sid, key, list, true);
             });
-        }
+        });
 
         // ── Phase 2: Catalog group navigation (none / drill_down / page) ──
         var gnEl = document.getElementById('sd-sw-group-nav');
@@ -55220,7 +55242,8 @@ const StyleDesigner = (function () {
         return !hit || _swPageBinned(hit);
     }
     // `key`: the config key the rows are written to, 'filters' unless
-    // another is named (a recent comments list's recent_filters).
+    // another is named (a recent comments list's recent_filters); 'placement'
+    // writes them to the selected placement (_swPlacementSet()).
     function _swFormListFiltersHtml(sid, filters, fields, loading, note, withUrl, key) {
         var formFields = _swFilterFormFields(fields);
         var keyAttr = (key && key !== 'filters') ? ' data-sw-filter-key="' + esc(key) + '"' : '';
@@ -55320,7 +55343,7 @@ const StyleDesigner = (function () {
                 '</div>';
         });
         html +=
-            '<button type="button" class="btn btn-sm btn-outline theme-primary" id="sd-sw-filter-add" data-sw-id="' + sid + '"' + keyAttr + '><span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add Filter')) + '</button>' +
+            '<button type="button" class="btn btn-sm btn-outline theme-primary sd-sw-filter-add"' + (keyAttr ? '' : ' id="sd-sw-filter-add"') + ' data-sw-id="' + sid + '"' + keyAttr + '><span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add Filter')) + '</button>' +
             '<div style="font-size:.66rem;color:#888;margin-top:6px">' + esc(note || _sdT('A record is listed only when it matches every filter. Leave the value empty and pick a dynamic value (today, a number of days ago, the signed-in visitor) to have it worked out on every visit.')) + '</div>';
         return html;
     }
