@@ -195,10 +195,16 @@ function test_workspace_flows_canvas_list_filters_by_start_kind()
 	$script = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
 	$entry = substr($script, strpos($script, 'function listEntry(flow)'), 400);
 	$draw = substr($script, strpos($script, 'function drawList()'), 3000);
+	$filter = substr($script, strpos($script, 'function startFilter()'), 1500);
 
 	pg_assert_contains('start: flow.start', $entry, 'a saved flow keeps its start kind');
-	pg_assert_contains("el('select', 'form-control form-control-sm", $draw, 'the filter is a Bootstrap select');
-	pg_assert_contains('state.startFilter', $draw, 'the list is narrowed by the chosen start');
+	pg_assert_contains('startFilter()', $draw, 'the list draws the filter');
+	pg_assert_contains('flow.start === state.startFilter', $draw, 'the list is narrowed by the chosen start');
+	pg_assert_contains("el('select', 'form-control form-control-sm')", $filter, 'the filter is a Bootstrap select');
+
+	foreach (array('time', 'manual', 'event', 'join') as $start) {
+		pg_assert_contains("['" . $start . "', 'fl_", $filter, 'a choice for ' . $start);
+	}
 }
 
 // A save always names the draft it was made on: without draft_rev,

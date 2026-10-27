@@ -870,6 +870,7 @@
     "Every sign-in carries a session token and is listed here. Sessions started before this feature are bound automatically on their next request.": "Her giriş bir oturum belirteci taşır ve burada listelenir. Bu özellikten önce açılmış oturumlar ilk isteklerinde otomatik olarak bağlanır.",
     "Every site starts with a short story. Write yours here: when you started, what you believe in and what makes your work different.": "Her site kısa bir hikâyeyle başlar. Sizinkini buraya yazın: ne zaman başladığınızı, neye inandığınızı ve işinizi farklı kılanı.",
     "Every six months": "Altı ayda bir",
+    "Every start": "Tüm başlangıçlar",
     "Every status": "Tüm durumlar",
     "Every step between the version on this server and the version of this package is applied in order.": "Bu sunucuda kurulu sürüm ile paketin sürümü arasındaki tüm adımlar sırayla uygulanır.",
     "Every story": "Tüm yazılar",
