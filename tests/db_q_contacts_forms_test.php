@@ -124,14 +124,15 @@ function db_q_contacts_forms_test_calls($path)
 function db_q_contacts_forms_test_files()
 {
 	return array(
-		'edit_contact.php' => 18,
+		'edit_contact.php' => 7,
 		'view_contacts.php' => 7,
 		'edit_submitted_form.php' => 18,
 		'view_submitted_forms.php' => 11,
 		'edit_field.php' => 14,
 		'edit_contact_group.php' => 10,
 		'edit_contacts.php' => 8,
-		'add_contact.php' => 6,
+		'add_contact.php' => 1,
+		'includes/forms/contact_form.php' => 13,
 		'import_contacts.php' => 4,
 		'add_field.php' => 2,
 		'includes/forms/field_form.php' => 7,
