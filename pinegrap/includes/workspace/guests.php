@@ -202,7 +202,7 @@ function ws_guest_sender($guest_id)
             'avatar_kind' => 'contact',
             'presence' => 'offline',
             'guest'    => true,
-        );
+        ) + (function_exists('pg_avatar_letters') ? pg_avatar_letters(pg_initials($name, ''), 'guest' . $guest_id) : array());
     }
 
     return $cache[$guest_id];

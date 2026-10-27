@@ -318,6 +318,7 @@ function ws_mcp_agent_identity($server, $server_id = 0, $catalogue = null)
             : PATH . SOFTWARE_DIRECTORY . '/assets/images/ws-ai.svg',
         'icon'      => $icon,
         'initials'  => $initials,
+        'tone'      => function_exists('pg_avatar_tone') ? pg_avatar_tone($initials, $seed) : 0,
         'seed'      => $seed,
         'catalogue' => $entry_key,
     );

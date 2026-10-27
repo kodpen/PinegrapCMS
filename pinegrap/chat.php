@@ -695,6 +695,8 @@ function pg_chat_user_brief($row)
         'role' => (int) $row['role'],
         'role_label' => pg_chat_role_label($row['role']),
         'avatar' => pg_chat_avatar_src($image, $image_file_id, $image_file_name, $first_name, $last_name, $row['username'], $row['id']),
+        'initials' => pg_initials($first_name, $last_name, $row['username']),
+        'tone' => pg_avatar_tone(pg_initials($first_name, $last_name, $row['username']), $row['id']),
         'presence' => pg_chat_presence(isset($row['online_timestamp']) ? $row['online_timestamp'] : 0),
         // "Last seen" for away/offline users (empty for online); the exact
         // timestamp feeds the hover tooltip.
@@ -1334,6 +1336,8 @@ function pg_chat_conversation_list()
                     $row['peer_username'],
                     $row['peer_id']
                 ),
+                'initials' => pg_initials($first_name, $last_name, $row['peer_username']),
+                'tone' => pg_avatar_tone(pg_initials($first_name, $last_name, $row['peer_username']), $row['peer_id']),
                 'presence' => pg_chat_presence($row['peer_online_timestamp']),
                 'last_seen' => pg_chat_last_seen_label($row['peer_online_timestamp']),
                 'last_seen_exact' => pg_chat_last_seen_exact($row['peer_online_timestamp']),
