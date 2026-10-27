@@ -19529,6 +19529,68 @@ html[data-bs-theme="dark"] .wsf-node-end { --wsf-kind: #b3ab9b; }
 .wsf-problem.wsf-warning {
   color: var(--pg-warning-fg-emphasis);
 }
+/* A text a box writes in, its values as chips (valueInput()); the list
+   "Add value" opens under it (valueField()). */
+.wsf-values {
+  min-height: calc(1.5em + .5rem + 2px);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.wsf-values-multi {
+  min-height: 5rem;
+}
+.wsf-chip {
+  display: inline-block;
+  margin: 0 .1rem;
+  padding: 0 .4rem;
+  border: 1px solid var(--pg-primary-border-subtle);
+  border-radius: 999px;
+  background: var(--pg-primary-bg-subtle);
+  color: var(--pg-primary-fg-emphasis);
+  font-size: .8rem;
+  line-height: 1.4;
+  white-space: nowrap;
+  user-select: all;
+}
+.wsf-chip-skipped {
+  border-style: dashed;
+  border-color: var(--pg-warning-border-subtle);
+  background: var(--pg-warning-bg-subtle);
+  color: var(--pg-warning-fg-emphasis);
+}
+.wsf-chip-bad {
+  border-color: var(--pg-danger-border-subtle);
+  background: var(--pg-danger-bg-subtle);
+  color: var(--pg-danger-fg-emphasis);
+}
+.wsf-values-list {
+  max-height: 16rem;
+  overflow-y: auto;
+  margin-top: var(--ws-space-1);
+  padding: var(--ws-space-1);
+  border: 1px solid var(--pg-border-color);
+  border-radius: var(--ws-radius-sm);
+}
+.wsf-values-group {
+  padding: .35rem .25rem .1rem;
+  font-size: .75rem;
+  font-weight: 600;
+}
+.wsf-values-pick {
+  display: block;
+  width: 100%;
+  padding: .2rem .5rem;
+  border: 0;
+  border-radius: var(--ws-radius-sm);
+  background: transparent;
+  color: inherit;
+  font-size: .85rem;
+  text-align: left;
+}
+.wsf-values-pick:hover,
+.wsf-values-pick:focus-visible {
+  background: var(--pg-secondary-bg-subtle);
+}
 .wsf-people-list {
   max-height: 12rem;
   overflow-y: auto;

@@ -442,6 +442,7 @@
     "Empty for no deadline; at most 720 hours (30 days). A request with no decision by then expires.": "Süre sınırı yoksa boş bırakın; en çok 720 saat (30 gün). O zamana kadar karar verilmeyen istek süresi dolmuş sayılır.",
     "Empty for no last day.": "Son gün yoksa boş bırakın.",
     "Empty heading": "Boş başlık",
+    "Empty if skipped": "Atlanırsa boş",
     "Empty means no expiry.": "Boş bırakılırsa süre sınırı olmaz.",
     "Empty means no limit.": "Boşsa sınır yoktur.",
     "Empty means the account itself.": "Boşsa carinin kendisidir.",

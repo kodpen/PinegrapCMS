@@ -2306,6 +2306,562 @@
         return input;
     }
 
+    // ── Values a box writes in ({{node.<id>.<field>}}, {{trigger.<field>}}) ──
+
+    // What the server reads as a value (WS_STEP_VALUE_PATTERN, the
+    // reference check): a box's field, or one of what started the run.
+    var VALUE_TOKEN = /\{\{(?:node\.([a-z][a-z0-9_]{0,31})\.([a-z_][a-z0-9_]{0,31})|trigger\.([a-z_][a-z0-9_]{0,31}))\}\}/g;
+
+    // The arrows of the graph once each, as ws_flow_graph_check() reads
+    // them: id => ids an arrow leads into, and id => id => true for an arrow
+    // taken whenever its box is done (on always, or on its only outcome).
+    function arrowMaps() {
+        var next = {};
+        var always = {};
+
+        state.graph.nodes.forEach(function (node) {
+            next[node.id] = [];
+            always[node.id] = {};
+        });
+
+        state.graph.edges.forEach(function (edge) {
+            if (!next[edge.from] || !next[edge.to] || (edge.from === edge.to)) {
+                return;
+            }
+
+            var out = kindOf(nodeById(edge.from)).out;
+
+            if ((edge.on === 'always') || ((out.length === 1) && (edge.on === out[0]))) {
+                always[edge.from][edge.to] = true;
+            }
+
+            if (next[edge.from].indexOf(edge.to) === -1) {
+                next[edge.from].push(edge.to);
+            }
+        });
+
+        return { next: next, always: always };
+    }
+
+    // The boxes some arrows lead from to a box (ws_flow_boxes_before()).
+    function boxesBefore(into, id) {
+        var before = {};
+        var queue = [id];
+
+        while (queue.length) {
+            (into[queue.shift()] || []).forEach(function (from) {
+                if (!before[from]) {
+                    before[from] = true;
+                    queue.push(from);
+                }
+            });
+        }
+
+        return before;
+    }
+
+    // The boxes that have surely run, done, whenever a box runs, as
+    // ws_flow_sure_before() decides it: a value of any other box before it
+    // is empty when that box was skipped. A box on a loop is left out.
+    function sureBefore(maps) {
+        var into = {};
+        var left = {};
+        var queue = [];
+        var order = [];
+        var sure = {};
+
+        Object.keys(maps.next).forEach(function (id) {
+            into[id] = [];
+        });
+        Object.keys(maps.next).forEach(function (from) {
+            maps.next[from].forEach(function (to) {
+                into[to].push(from);
+            });
+        });
+        Object.keys(into).forEach(function (id) {
+            left[id] = into[id].length;
+
+            if (!left[id]) {
+                queue.push(id);
+            }
+        });
+
+        while (queue.length) {
+            var id = queue.shift();
+
+            order.push(id);
+            maps.next[id].forEach(function (to) {
+                if (--left[to] === 0) {
+                    queue.push(to);
+                }
+            });
+        }
+
+        order.forEach(function (id) {
+            var before = boxesBefore(into, id);
+            var set = null;
+            var grew = true;
+
+            into[id].forEach(function (from) {
+                var both = {};
+
+                Object.keys(sure[from]).forEach(function (key) {
+                    if (!set || set[key]) {
+                        both[key] = true;
+                    }
+                });
+                set = both;
+            });
+            set = set || {};
+            set[id] = true;
+
+            while (grew) {
+                grew = false;
+                Object.keys(before).forEach(function (other) {
+                    if (set[other]) {
+                        return;
+                    }
+
+                    if (into[other].some(function (from) { return set[from] && maps.always[from][other]; })) {
+                        Object.keys(sure[other]).forEach(function (key) {
+                            set[key] = true;
+                        });
+                        grew = true;
+                    }
+                });
+            }
+
+            sure[id] = set;
+        });
+
+        return sure;
+    }
+
+    // What a box gives the boxes after it, as the server declares it
+    // (ws_flow_trigger_outputs(), ws_flow_node_fields()): a start box what
+    // started the run, any other its text, outcome, status and outputs, a
+    // web check's by its mode, a report's counts by the counts it sends.
+    function boxValues(node) {
+        var outputs = FL.trigger_outputs || {};
+        var list = [];
+        var keys = {};
+        var add = function (token, item) {
+            if (!keys[item.key]) {
+                keys[item.key] = true;
+                list.push({ token: '{{' + token + item.key + '}}', label: item.label });
+            }
+        };
+
+        if (!kindOf(node).into) {
+            ((outputs.kinds || {})[node.kind] || []).forEach(function (item) { add('trigger.', item); });
+
+            if (node.kind === 'event') {
+                ((outputs.events || {})[node.config.event] || []).forEach(function (item) { add('trigger.', item); });
+            }
+
+            return list;
+        }
+
+        var prefix = 'node.' + node.id + '.';
+        var mode = (node.config.mode === 'ssl') ? 'ssl' : 'status';
+
+        add(prefix, { key: 'text', label: t('fl_values_text') });
+        add(prefix, { key: 'outcome', label: t('fl_values_outcome') });
+        add(prefix, { key: 'status', label: t('fl_values_status') });
+        ((FL.outputs || {})[node.kind] || []).forEach(function (item) {
+            if (!item.mode || (item.mode === mode)) {
+                add(prefix, item);
+            }
+        });
+
+        if (node.kind === 'report') {
+            (node.config.metrics || []).forEach(function (item) {
+                var key = String(item.key || '') + (((parseInt(item.param, 10) || 0) > 0) ? '_' + parseInt(item.param, 10) : '');
+                var metric = stepLists().metrics.filter(function (one) { return one.key === item.key; })[0];
+
+                if (/^[a-z_][a-z0-9_]{0,31}$/.test(key)) {
+                    add(prefix, { key: key, label: metric ? metric.label : item.key });
+                }
+            });
+        }
+
+        return list;
+    }
+
+    // The values a box may write in: what started the run, then each box
+    // before it in arrow order, one that may not have run marked (its
+    // values are then empty).
+    function valueGroups(node) {
+        var maps = arrowMaps();
+        var into = {};
+        var sure = null;
+        var groups = [];
+
+        Object.keys(maps.next).forEach(function (id) {
+            into[id] = [];
+        });
+        Object.keys(maps.next).forEach(function (from) {
+            maps.next[from].forEach(function (to) {
+                into[to].push(from);
+            });
+        });
+
+        var before = boxesBefore(into, node.id);
+
+        orderedNodes().forEach(function (other) {
+            var start = !kindOf(other).into;
+
+            if ((other.id === node.id) || (!start && !before[other.id])) {
+                return;
+            }
+
+            var values = boxValues(other);
+
+            if (!values.length) {
+                return;
+            }
+
+            sure = sure || sureBefore(maps);
+            groups.push({ node: other, values: values, skipped: !start && !!sure[node.id] && !sure[node.id][other.id] });
+        });
+
+        return groups;
+    }
+
+    // token => what its chip reads and whether the box may be skipped.
+    function valueNames(node) {
+        var names = {};
+
+        valueGroups(node).forEach(function (group) {
+            group.values.forEach(function (value) {
+                names[value.token] = { label: nameOf(group.node) + ' › ' + value.label, skipped: group.skipped };
+            });
+        });
+
+        return names;
+    }
+
+    // A value as the builder reads it; one no box before gives keeps its
+    // token, marked (the reference check names it a problem).
+    function valueChip(token, names) {
+        var name = names[token];
+        var chip = el('span', 'wsf-chip' + (name ? (name.skipped ? ' wsf-chip-skipped' : '') : ' wsf-chip-bad'), name ? name.label : token.slice(2, -2));
+
+        chip.contentEditable = 'false';
+        chip.setAttribute('data-token', token);
+        chip.title = name ? (name.skipped ? t('fl_values_skipped') : token) : t('fl_values_missing');
+
+        return chip;
+    }
+
+    function drawValues(input, text, names) {
+        var at = 0;
+        var match;
+        var lines = function (part) {
+            part.split('\n').forEach(function (line, index) {
+                if (index) {
+                    input.appendChild(el('br'));
+                }
+
+                if (line !== '') {
+                    input.appendChild(document.createTextNode(line));
+                }
+            });
+        };
+
+        K.clear(input);
+        VALUE_TOKEN.lastIndex = 0;
+
+        while ((match = VALUE_TOKEN.exec(text)) !== null) {
+            lines(text.slice(at, match.index));
+            input.appendChild(valueChip(match[0], names));
+            at = match.index + match[0].length;
+        }
+
+        lines(text.slice(at));
+
+        // A line break at the end shows only with one more after it, which
+        // valuesText() does not read.
+        if (text.slice(-1) === '\n') {
+            input.appendChild(el('br'));
+        }
+    }
+
+    // The text with its tokens, as saved: a chip gives its token, a line
+    // break "\n" (none on a single line), the break that ends a block or
+    // the box nothing.
+    function valuesText(input, multi) {
+        var out = '';
+        var walk = function (parent) {
+            Array.prototype.forEach.call(parent.childNodes, function (child, index) {
+                if (child.nodeType === 3) {
+                    out += child.nodeValue.replace(/ /g, ' ');
+                } else if (child.nodeType !== 1) {
+                    return;
+                } else if (child.hasAttribute('data-token')) {
+                    out += child.getAttribute('data-token');
+                } else if (child.nodeName === 'BR') {
+                    out += Array.prototype.slice.call(parent.childNodes, index + 1).some(function (after) {
+                        return (after.nodeType === 1) || ((after.nodeType === 3) && (after.nodeValue !== ''));
+                    }) ? '\n' : '';
+                } else {
+                    if (/^(DIV|P|LI)$/.test(child.nodeName) && (out !== '') && (out.slice(-1) !== '\n')) {
+                        out += '\n';
+                    }
+
+                    walk(child);
+                }
+            });
+        };
+
+        walk(input);
+
+        return multi ? out : out.replace(/[\r\n]+/g, ' ');
+    }
+
+    // A text a box writes in, with its values as chips: the builder never
+    // types an id. Pasted or saved tokens become chips too.
+    function valueInput(node, value, max, onInput, multi) {
+        var input = el('div', 'form-control form-control-sm wsf-values' + (multi ? ' wsf-values-multi' : ''));
+        var names = valueNames(node);
+        var last = value || '';
+        var range = null;
+        var keep = function () {
+            var selection = window.getSelection();
+
+            if (selection && selection.rangeCount && input.contains(selection.getRangeAt(0).startContainer)) {
+                range = selection.getRangeAt(0).cloneRange();
+            }
+        };
+        var caret = function (place) {
+            var selection = window.getSelection();
+
+            input.focus();
+            selection.removeAllRanges();
+            selection.addRange(place);
+            range = place.cloneRange();
+        };
+        var atEnd = function () {
+            var place = document.createRange();
+
+            place.selectNodeContents(input);
+            place.collapse(false);
+
+            if (input.lastChild && (input.lastChild.nodeName === 'BR')) {
+                place.setStartBefore(input.lastChild);
+                place.collapse(true);
+            }
+
+            return place;
+        };
+        // The chip right before (or after) a collapsed caret, empty text
+        // between skipped: the browser does not always delete one.
+        var chipBeside = function (back) {
+            var selection = window.getSelection();
+
+            if (!selection || !selection.rangeCount || !selection.isCollapsed || !input.contains(selection.anchorNode)) {
+                return null;
+            }
+
+            var at = selection.anchorNode;
+            var offset = selection.anchorOffset;
+            var near;
+
+            if (at.nodeType === 3) {
+                if (back ? (offset > 0) : (offset < at.nodeValue.length)) {
+                    return null;
+                }
+
+                near = back ? at.previousSibling : at.nextSibling;
+            } else {
+                near = at.childNodes[back ? offset - 1 : offset] || null;
+            }
+
+            while (near && (near.nodeType === 3) && (near.nodeValue === '')) {
+                near = back ? near.previousSibling : near.nextSibling;
+            }
+
+            return (near && (near.nodeType === 1) && near.hasAttribute('data-token')) ? near : null;
+        };
+        var redraw = function (text) {
+            drawValues(input, text, names);
+            caret(atEnd());
+        };
+        var changed = function () {
+            var text = valuesText(input, multi);
+
+            if (text.length > max) {
+                redraw(last);
+                return;
+            }
+
+            last = text;
+            onInput(text);
+        };
+
+        input.setAttribute('role', 'textbox');
+        input.setAttribute('aria-multiline', multi ? 'true' : 'false');
+        input.contentEditable = state.edit ? 'true' : 'false';
+
+        if (!state.edit) {
+            input.setAttribute('aria-readonly', 'true');
+        }
+
+        drawValues(input, last, names);
+
+        input.addEventListener('keydown', function (event) {
+            var chip = ((event.key === 'Backspace') || (event.key === 'Delete')) ? chipBeside(event.key === 'Backspace') : null;
+
+            if (chip) {
+                var place = document.createRange();
+
+                event.preventDefault();
+                place.setStartBefore(chip);
+                place.collapse(true);
+                chip.parentNode.removeChild(chip);
+                caret(place);
+                changed();
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+
+                if (multi) {
+                    document.execCommand('insertLineBreak');
+                }
+            } else if ((event.ctrlKey || event.metaKey) && /^[biu]$/i.test(event.key)) {
+                event.preventDefault();
+            }
+        });
+        input.addEventListener('paste', function (event) {
+            var text = ((event.clipboardData || window.clipboardData).getData('text') || '').replace(/\r\n?/g, '\n');
+
+            event.preventDefault();
+            document.execCommand('insertText', false, multi ? text : text.replace(/\n+/g, ' '));
+            VALUE_TOKEN.lastIndex = 0;
+
+            if (VALUE_TOKEN.test(text)) {
+                redraw(valuesText(input, multi));
+                changed();
+            }
+        });
+        input.addEventListener('drop', function (event) { event.preventDefault(); });
+        input.addEventListener('input', changed);
+        input.addEventListener('keyup', keep);
+        input.addEventListener('mouseup', keep);
+        input.addEventListener('blur', keep);
+
+        // Puts a value where the caret was, else at the end.
+        input.wsfInsert = function (token) {
+            var place = (range && input.contains(range.startContainer)) ? range : atEnd();
+            var chip = valueChip(token, names);
+            var after = document.createTextNode('');
+
+            place.deleteContents();
+            place.insertNode(chip);
+            chip.parentNode.insertBefore(after, chip.nextSibling);
+            place = document.createRange();
+            place.setStart(after, 0);
+            place.collapse(true);
+            caret(place);
+            changed();
+        };
+
+        return input;
+    }
+
+    // A field of a box's text with "Add value": the list of what started the
+    // run and the boxes before it, each value a chip put in the text.
+    function valueField(node, label, value, max, onInput, multi, help) {
+        var input = valueInput(node, value, max, onInput, multi);
+        var wrap = field(label, input, help ? help + ' ' + t('fl_values_hint') : t('fl_values_hint'));
+        var caption = wrap.querySelector('label');
+
+        // A label names a form control only; the text box is a div.
+        caption.id = input.id + '-label';
+        caption.removeAttribute('for');
+        caption.addEventListener('click', function () { input.focus(); });
+        input.setAttribute('aria-labelledby', caption.id);
+
+        if (!state.edit) {
+            return wrap;
+        }
+
+        var add = K.button('btn btn-sm btn-outline theme-secondary mt-2', t('fl_values_add'), 'bi-plus-lg');
+        var list = el('div', 'wsf-values-list d-none');
+        var close = function (focus) {
+            list.classList.add('d-none');
+            add.setAttribute('aria-expanded', 'false');
+
+            if (focus) {
+                add.focus();
+            }
+        };
+
+        list.id = input.id + '-values';
+        list.setAttribute('role', 'group');
+        list.setAttribute('aria-label', t('fl_values_add'));
+        add.setAttribute('aria-controls', list.id);
+        add.setAttribute('aria-expanded', 'false');
+        add.addEventListener('mousedown', function (event) {
+            // The caret stays where the value goes.
+            event.preventDefault();
+        });
+        add.addEventListener('click', function () {
+            if (!list.classList.contains('d-none')) {
+                close(false);
+                return;
+            }
+
+            var groups = valueGroups(node);
+
+            K.clear(list);
+
+            if (!groups.length) {
+                list.appendChild(el('div', 'small fg-secondary', t('fl_values_none')));
+            }
+
+            groups.forEach(function (group) {
+                var head = el('div', 'wsf-values-group', nameOf(group.node));
+
+                if (group.skipped) {
+                    head.appendChild(el('span', 'badge badge-subtle theme-warning ms-2', t('fl_values_skipped')));
+                }
+
+                list.appendChild(head);
+                group.values.forEach(function (value) {
+                    var pick = K.button('wsf-values-pick', value.label);
+
+                    pick.addEventListener('mousedown', function (event) { event.preventDefault(); });
+                    pick.addEventListener('click', function () {
+                        close(false);
+                        input.wsfInsert(value.token);
+                    });
+                    list.appendChild(pick);
+                });
+            });
+
+            list.classList.remove('d-none');
+            add.setAttribute('aria-expanded', 'true');
+
+            var first = list.querySelector('button');
+
+            if (first) {
+                first.focus();
+            }
+        });
+        list.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                close(true);
+            }
+        });
+
+        input.parentNode.insertBefore(list, input.nextSibling);
+        input.parentNode.insertBefore(add, list);
+
+        return wrap;
+    }
+
     function drawSettings() {
         var selected = state.selected;
 
@@ -2739,10 +3295,10 @@
             refreshNode(node);
         });
         box.appendChild(field(t('fl_post_channel'), pick));
-        box.appendChild(field(t('fl_post_body'), textInput(config.body, 4000, function (value) {
+        box.appendChild(valueField(node, t('fl_post_body'), config.body, 4000, function (value) {
             config.body = value;
             refreshNode(node);
-        }, true), t('fl_values_help')));
+        }, true));
     }
 
     // An e-mail box: addresses, subject and text, sent from the site.
@@ -2753,14 +3309,14 @@
             config.to = value;
             refreshNode(node);
         }), t('fl_email_to_help')));
-        box.appendChild(field(t('fl_email_subject'), textInput(config.subject, 250, function (value) {
+        box.appendChild(valueField(node, t('fl_email_subject'), config.subject, 250, function (value) {
             config.subject = value;
             refreshNode(node);
-        })));
-        box.appendChild(field(t('fl_email_body'), textInput(config.body, 20000, function (value) {
+        }, false));
+        box.appendChild(valueField(node, t('fl_email_body'), config.body, 20000, function (value) {
             config.body = value;
             refreshNode(node);
-        }, true), t('fl_values_help')));
+        }, true));
     }
 
     // A notify box: the people told and the line they read.
@@ -2768,10 +3324,10 @@
         var config = node.config;
 
         box.appendChild(field(t('fl_notify_who'), peopleList(node, el('div', 'wsf-people'), 'user_ids', 50)));
-        box.appendChild(field(t('fl_notify_text'), textInput(config.text, 500, function (value) {
+        box.appendChild(valueField(node, t('fl_notify_text'), config.text, 500, function (value) {
             config.text = value;
             refreshNode(node);
-        }), t('fl_values_help')));
+        }, false));
     }
 
     // A task opened without waiting: its people, channel, due day, priority
@@ -2809,10 +3365,10 @@
             refreshNode(node);
         });
         box.appendChild(field(t('fl_priority'), priority));
-        box.appendChild(field(t('fl_description'), textInput(config.description, 8000, function (value) {
+        box.appendChild(valueField(node, t('fl_description'), config.description, 8000, function (value) {
             config.description = value;
             refreshNode(node);
-        }, true), t('fl_values_help')));
+        }, true));
     }
 
     // A webhook or a web check: the https address, then what each needs.
@@ -2832,10 +3388,10 @@
                 refreshNode(node);
             });
             box.appendChild(field(t('fl_hook_format'), format, t('fl_hook_help')));
-            box.appendChild(field(t('fl_post_body'), textInput(config.text, 4000, function (value) {
+            box.appendChild(valueField(node, t('fl_post_body'), config.text, 4000, function (value) {
                 config.text = value;
                 refreshNode(node);
-            }, true), t('fl_values_help')));
+            }, true));
 
             return;
         }
@@ -2942,14 +3498,14 @@
         channelField(box, node, t('fl_digest_channel_pick'), t('fl_task_no_channel'));
         box.appendChild(field(t('fl_digest_who'), peopleList(node, el('div', 'wsf-people'), 'user_ids', 50), t('fl_digest_who_help')));
         box.appendChild(field(t('fl_digest_only'), only));
-        box.appendChild(field(t('fl_email_subject'), textInput(config.subject, 250, function (value) {
+        box.appendChild(valueField(node, t('fl_email_subject'), config.subject, 250, function (value) {
             config.subject = value;
             refreshNode(node);
-        })));
-        box.appendChild(field(t('fl_digest_intro'), textInput(config.intro, 2000, function (value) {
+        }, false));
+        box.appendChild(valueField(node, t('fl_digest_intro'), config.intro, 2000, function (value) {
             config.intro = value;
             refreshNode(node);
-        }, true), t('fl_values_help')));
+        }, true));
 
         var ai = null;
 
@@ -2997,10 +3553,10 @@
             list.appendChild(row);
         });
 
-        box.appendChild(field(t('fl_report_title'), textInput(config.title, 160, function (value) {
+        box.appendChild(valueField(node, t('fl_report_title'), config.title, 160, function (value) {
             config.title = value;
             refreshNode(node);
-        }), t('fl_values_help')));
+        }, false));
         box.appendChild(field(t('fl_report_counts'), list));
         channelField(box, node, t('fl_post_channel'), t('fl_task_no_channel'));
         box.appendChild(field(t('fl_email_to'), textInput(config.to, 2000, function (value) {
@@ -3012,10 +3568,10 @@
     // A check-in: the channel asked and the question.
     function checkinFields(box, node) {
         channelField(box, node, t('fl_post_channel'), t('fl_post_pick'));
-        box.appendChild(field(t('fl_checkin_question'), textInput(node.config.question, 500, function (value) {
+        box.appendChild(valueField(node, t('fl_checkin_question'), node.config.question, 500, function (value) {
             node.config.question = value;
             refreshNode(node);
-        }), t('fl_checkin_help')));
+        }, false, t('fl_checkin_help')));
     }
 
     // A submitted form's customer brought into a channel: whether a channel
@@ -3182,10 +3738,10 @@
 
         channelField(box, node, t('fl_approval_channel'), t('fl_post_pick'));
         box.appendChild(field(t('fl_approval_who'), peopleList(node, el('div', 'wsf-people'), 'approvers', 50), t('fl_approval_who_help')));
-        box.appendChild(field(t('fl_description'), textInput(config.text, 4000, function (value) {
+        box.appendChild(valueField(node, t('fl_description'), config.text, 4000, function (value) {
             config.text = value;
             refreshNode(node);
-        }, true), t('fl_values_help')));
+        }, true));
         rule.addEventListener('change', function () {
             config.rule = rule.value;
             refreshNode(node);
