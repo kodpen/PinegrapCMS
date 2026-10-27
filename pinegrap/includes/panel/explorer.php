@@ -186,8 +186,8 @@ function pg_panel_file_explorer($request, $action)
                 folder.folder_archived
             FROM files 
             LEFT JOIN folder ON files.folder = folder.folder_id
-            WHERE files.id = '" . escape($request['file_id']) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE files.id = ?";
+            $result = db_q($query, array((string) $request['file_id'])) or output_error('Query failed.');
             $row = mysqli_fetch_array($result);
 
             // A document the ERP module keeps is read-only here, whoever
@@ -224,10 +224,10 @@ function pg_panel_file_explorer($request, $action)
                 exit();
             }
 
-            $result = mysqli_query(db::$con, "DELETE FROM files WHERE id = '" . escape($file_id) . "'") or output_error('Query failed');
+            $result = db_q("DELETE FROM files WHERE id = ?", array((string) $file_id)) or output_error('Query failed');
             // delete file's system css properties in case any exist
-            $query = "DELETE FROM system_theme_css_rules WHERE file_id = '" . escape($file_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM system_theme_css_rules WHERE file_id = ?";
+            $result = db_q($query, array((string) $file_id)) or output_error('Query failed.');
 
             db("DELETE FROM preview_styles WHERE theme_id = '" . escape($file_id) . "'");
 
@@ -385,9 +385,9 @@ function pg_panel_file_explorer($request, $action)
                          FROM folder
                          LEFT JOIN style ON folder.folder_style = style.style_id
                          LEFT JOIN user ON folder.folder_user = user.user_id
-                         WHERE folder.folder_parent = '" . escape($parent_folder_id) . "'
+                         WHERE folder.folder_parent = ?
                          ORDER BY folder.folder_order, folder.folder_name";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $parent_folder_id)) or output_error('Query failed.');
                 $output = '';
 
                 while ($folder = mysqli_fetch_assoc($result)) {
@@ -424,8 +424,8 @@ function pg_panel_file_explorer($request, $action)
                         $parent_folder_query = "SELECT
                         folder_id
                         FROM folder
-                        WHERE folder.folder_parent = '" . e($folder["folder_id"]) . "' OR folder.folder_id = '" . e($folder["folder_id"]) . "'";
-                        $parent_folder_result = mysqli_query(db::$con, $parent_folder_query) or output_error('Query failed.');
+                        WHERE folder.folder_parent = ? OR folder.folder_id = ?";
+                        $parent_folder_result = db_q($parent_folder_query, array((string) $folder["folder_id"], (string) $folder["folder_id"])) or output_error('Query failed.');
                         while ($parent_folder = mysqli_fetch_assoc($parent_folder_result)) {
 
 
@@ -434,8 +434,8 @@ function pg_panel_file_explorer($request, $action)
                             page_id
                             FROM page
                             LEFT JOIN folder ON page.page_folder = folder.folder_id
-                            WHERE folder.folder_id = '" . e($parent_folder["folder_id"]) . "'";
-                            $parent_folder_page_result = mysqli_query(db::$con, $parent_folder_page_query) or output_error('Query failed.');
+                            WHERE folder.folder_id = ?";
+                            $parent_folder_page_result = db_q($parent_folder_page_query, array((string) $parent_folder["folder_id"])) or output_error('Query failed.');
 
                             while ($parent_folder_page_rows = mysqli_fetch_assoc($parent_folder_page_result)) {
                                 $parent_folder_pages_size = $parent_folder_pages_size + db("SELECT sum(char_length(pregion_content)) FROM pregion WHERE pregion_page = '" . e($parent_folder_page_rows["page_id"]) . "'");
@@ -446,8 +446,8 @@ function pg_panel_file_explorer($request, $action)
                             size
                             FROM files
                             LEFT JOIN folder ON files.folder = folder.folder_id
-                            WHERE files.folder = '" . e($parent_folder["folder_id"]) . "'";
-                            $parent_folder_file_result = mysqli_query(db::$con, $parent_folder_file_query) or output_error('Query failed.');
+                            WHERE files.folder = ?";
+                            $parent_folder_file_result = db_q($parent_folder_file_query, array((string) $parent_folder["folder_id"])) or output_error('Query failed.');
 
                             while ($parent_folder_file_rows = mysqli_fetch_assoc($parent_folder_file_result)) {
                                 $parent_folder_file_size = $parent_folder_file_size + $parent_folder_file_rows["size"];
@@ -528,9 +528,9 @@ function pg_panel_file_explorer($request, $action)
                              LEFT JOIN style ON page.page_style = style.style_id
                              LEFT JOIN folder ON page.page_folder = folder.folder_id
                              LEFT JOIN user ON page.page_user = user.user_id
-                             WHERE page.page_folder = '" . escape($parent_folder_id) . "'
+                             WHERE page.page_folder = ?
                              ORDER BY page.page_name";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $parent_folder_id)) or output_error('Query failed.');
                     $access_control_type = '';
                     while ($page = mysqli_fetch_assoc($result)) {
 
@@ -628,9 +628,9 @@ function pg_panel_file_explorer($request, $action)
                              FROM files
                              LEFT JOIN folder ON files.folder = folder.folder_id
                              LEFT JOIN user ON files.user = user.user_id
-                             WHERE files.folder = '" . escape($parent_folder_id) . "'
+                             WHERE files.folder = ?
                              ORDER BY files.name";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $parent_folder_id)) or output_error('Query failed.');
                     $access_control_type = '';
 
                     while ($file = mysqli_fetch_assoc($result)) {
