@@ -849,3 +849,33 @@ function test_legal_documents_kvkk_reaches_the_store()
 	pg_assert_contains("pg_legal_kvkk_copy_html(\$kvkk['full_url'], \$kvkk['consent'])", $store, 'the copy kept');
 	pg_assert_contains("strpos(\$html, 'pg-legal-kvkk') === false", $inject, 'one set of KVKK lines');
 }
+
+// A sign-up page gets the KVKK lines in front of its register button: the
+// legacy screen's submit_register (its login form's button comes first),
+// else a widget's first submit control; once only, never without settings.
+function test_legal_documents_kvkk_signup_html()
+{
+	$legacy = '<form><button type="submit" name="submit_login">Log in</button></form><form><input type="submit" name="submit_register" value="Register"></form>';
+	$out = pg_legal_kvkk_signup_html($legacy, array(), '/kvkk', 'I consent');
+	pg_assert_true(strpos($out, 'pg-legal-kvkk') > strpos($out, 'submit_login'), 'not on the login form');
+	pg_assert_true(strpos($out, 'pg-legal-kvkk') < strpos($out, 'submit_register'), 'in front of the register button');
+
+	$widget = '<form><input name="email"><button class="btn" type="submit">Sign up</button></form>';
+	$out = pg_legal_kvkk_signup_html($widget, array('legal_kvkk' => '1'), '', 'I consent');
+	pg_assert_contains('</div><button class="btn" type="submit">', $out, 'a widget: before its submit control');
+	pg_assert_contains('value="1" checked>', $out, 'ticked state kept');
+
+	pg_assert_same($out, pg_legal_kvkk_signup_html($out, array(), '/kvkk', 'I consent'), 'once only');
+	pg_assert_same($widget, pg_legal_kvkk_signup_html($widget, array(), '', ''), 'nothing set');
+	pg_assert_same('<p>Signed in</p>', pg_legal_kvkk_signup_html('<p>Signed in</p>', array(), '/kvkk', ''), 'no form');
+}
+
+// Consent counts only when the store asks for it and the box was ticked.
+function test_legal_documents_kvkk_consent_given()
+{
+	pg_assert_true(pg_legal_kvkk_consent_given('1', 'I consent'));
+	pg_assert_false(pg_legal_kvkk_consent_given('1', '  '), 'no sentence, no consent');
+	pg_assert_false(pg_legal_kvkk_consent_given('0', 'I consent'), 'unticked');
+	pg_assert_false(pg_legal_kvkk_consent_given(null, 'I consent'), 'not posted');
+	pg_assert_false(pg_legal_kvkk_consent_given(array('1'), 'I consent'), 'not a value');
+}
