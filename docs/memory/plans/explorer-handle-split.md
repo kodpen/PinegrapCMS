@@ -22,10 +22,10 @@ Each slice has its tests in `tests/explorer_handle_<file>_test.php`.
 - 10, paste, delete files, design flag, folder options, folder settings (430, #2265): `handle_files.php`, `handle_folders.php` (options take `$folders_that_user_has_access_to`); test `explorer_handle_files_test.php`; `file_withheld_test.php` reads `handle_files.php`.
 - 11, file window get/save, ERP tree/list, shared list (~470, #2269): `handle_file_window.php`, `handle_erp.php` (one handler for the shared case), `handle_shared.php` (takes `$folders_that_user_has_access_to`); test `explorer_handle_file_window_test.php`; `file_withheld_test.php` reads `handle_file_window.php`.
 - 12, bulk page and bulk file options/apply, folder access get/set (~530, #2312): `handle_bulk_edit.php`, `handle_folder_access.php`; test `explorer_handle_bulk_edit_test.php`; `audit_log_test.php` reads `handle_bulk_edit.php`.
+- 13, delete check, recycle delete, restore, hard delete (~650, #2335): `handle_recycle.php` (pure `pg_explorer_subtree_bottom_up()`, `pg_explorer_bin_status()`); test `explorer_handle_recycle_test.php`; `short_link_requests_test.php` reads the restore handler there.
 
 ## In which order are the rest cut? (lines in the switch)
-13. delete_check (135), recycle_delete (203), recycle_restore (211), hard_delete (58).
-14. explorer_list (438) last: the most shared state.
+14. explorer_list (438), the last: the most shared state.
 
 ## Where to start?
 - The next slice in the order above that no open PR holds. Read the slice-1 diff first; check each body for `break` inside the case, `dirname(__FILE__)` paths and locals set before the switch.

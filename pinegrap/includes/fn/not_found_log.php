@@ -209,15 +209,15 @@ function pg_not_found_log_decide($request)
 
 /**
  * True when a page has this name. Asked only for an address the stored form
- * changed (pg_not_found_log_decide(), reshaped); a raw query, since this runs
- * inside output_error().
+ * changed (pg_not_found_log_decide(), reshaped); db_q(), not a db() helper,
+ * since this runs inside output_error().
  *
  * @param string $name
  * @return bool
  */
 function pg_not_found_log_page_named($name)
 {
-    $result = @mysqli_query(db::$con, "SELECT 1 FROM page WHERE page_name = '" . mysqli_real_escape_string(db::$con, (string) $name) . "' LIMIT 1");
+    $result = db_q("SELECT 1 FROM page WHERE page_name = ? LIMIT 1", array((string) $name));
 
     return ($result !== false) && (mysqli_num_rows($result) > 0);
 }
@@ -331,8 +331,8 @@ function pg_not_found_log_mark()
  * The end-of-request write of the address pg_not_found_log_mark() held: only
  * when the answer went out as a 404 (a header already sent, or a redirect
  * after all, is not one). An address seen before is one UPDATE; a new one is
- * an INSERT, whose ON DUPLICATE KEY covers two first requests at once. Raw
- * queries only: a db() helper ends in output_error() on a failure, and an
+ * an INSERT, whose ON DUPLICATE KEY covers two first requests at once.
+ * db_q() only: a db() helper ends in output_error() on a failure, and an
  * exit() here would stop every shutdown function after this one.
  *
  * @return void
@@ -350,26 +350,23 @@ function pg_not_found_log_write()
     $crawler = ($pending['class'] === 'crawler') ? 1 : 0;
     $now = time();
     $referrer = (string) $pending['referrer'];
-    $escape = function ($value) {
-        return mysqli_real_escape_string(db::$con, (string) $value);
-    };
 
     // A row past the retention period (no cron, or the sweep not there yet)
     // starts over, as if the sweep had removed it. last_seen is assigned last:
     // the conditions before it read the stored value.
-    $since = pg_not_found_log_since($now);
-    $stale = "last_seen < '" . $since . "'";
-    $referrer_sql = $escape($referrer);
+    $since = (string) pg_not_found_log_since($now);
+    $stale = "last_seen < ?";
 
-    $updated = @mysqli_query(db::$con,
+    $updated = db_q(
         "UPDATE not_found_log
         SET
             hit_count = IF(" . $stale . ", 1, hit_count + 1),
-            crawler_hits = IF(" . $stale . ", " . $crawler . ", crawler_hits + " . $crawler . "),
-            first_seen = IF(" . $stale . ", '" . $now . "', first_seen),
-            referrer = IF(" . $stale . " OR referrer = '', '" . $referrer_sql . "', referrer),
-            last_seen = '" . $now . "'
-        WHERE path_key = '" . $key . "'");
+            crawler_hits = IF(" . $stale . ", ?, crawler_hits + ?),
+            first_seen = IF(" . $stale . ", ?, first_seen),
+            referrer = IF(" . $stale . " OR referrer = '', ?, referrer),
+            last_seen = ?
+        WHERE path_key = ?",
+        array($since, $since, (int) $crawler, (int) $crawler, $since, (string) $now, $since, $referrer, (string) $now, (string) $key));
 
     if ($updated === false) {
         pg_not_found_log_failure('counting an address');
@@ -381,13 +378,14 @@ function pg_not_found_log_write()
         return;
     }
 
-    $inserted = @mysqli_query(db::$con,
+    $inserted = db_q(
         "INSERT INTO not_found_log (path_key, path, referrer, hit_count, crawler_hits, first_seen, last_seen)
-        VALUES ('" . $key . "', '" . $escape($name) . "', '" . $referrer_sql . "', 1, " . $crawler . ", '" . $now . "', '" . $now . "')
+        VALUES (?, ?, ?, 1, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
             hit_count = hit_count + 1,
-            crawler_hits = crawler_hits + " . $crawler . ",
-            last_seen = '" . $now . "'");
+            crawler_hits = crawler_hits + ?,
+            last_seen = ?",
+        array((string) $key, $name, $referrer, (int) $crawler, (string) $now, (string) $now, (int) $crawler, (string) $now));
 
     if ($inserted === false) {
         pg_not_found_log_failure('adding an address');
@@ -445,7 +443,7 @@ function pg_not_found_log_cap($newest_id = 0)
         return 0;
     }
 
-    if (@mysqli_query(db::$con, "DELETE FROM not_found_log WHERE last_seen < '" . (int) $row[0] . "' ORDER BY last_seen LIMIT 1000") === false) {
+    if (db_q("DELETE FROM not_found_log WHERE last_seen < ? ORDER BY last_seen LIMIT 1000", array((string) (int) $row[0])) === false) {
         pg_not_found_log_failure('keeping the row cap');
         return 0;
     }
@@ -532,7 +530,7 @@ function pg_not_found_log_sweep($seconds = 5)
     $through = false;
 
     while (microtime(true) < $deadline) {
-        if (@mysqli_query(db::$con, "DELETE FROM not_found_log WHERE last_seen < '" . pg_not_found_log_since() . "' LIMIT 5000") === false) {
+        if (db_q("DELETE FROM not_found_log WHERE last_seen < ? LIMIT 5000", array((string) pg_not_found_log_since())) === false) {
             pg_not_found_log_failure('removing old addresses');
             return $removed;
         }
