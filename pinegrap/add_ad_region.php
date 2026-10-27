@@ -172,8 +172,8 @@ if (!$_POST) {
         $query =
             "SELECT id
             FROM ad_regions
-            WHERE (name = '" . escape($liveform->get_field_value('name')) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE (name = ?)";
+        $result = db_q($query, array((string) $liveform->get_field_value('name'))) or output_error('Query failed.');
         
         // if the name is already in use by a different ad region, then mark error
         if (mysqli_num_rows($result) > 0) {
@@ -202,18 +202,28 @@ if (!$_POST) {
             last_modified_user_id,
             last_modified_timestamp)
         VALUES (
-            '" . escape($liveform->get_field_value('name')) . "',
-            '" . escape($liveform->get_field_value('display_type')) . "',
-            '" . escape($liveform->get_field_value('transition_type')) . "',
-            '" . escape($liveform->get_field_value('transition_duration')) . "',
-            '" . escape($liveform->get_field_value('slideshow')) . "',
-            '" . escape($liveform->get_field_value('slideshow_interval')) . "',
-            '" . escape($liveform->get_field_value('slideshow_continuous')) . "',
-            '" . $user['id'] . "',
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
             UNIX_TIMESTAMP(),
-            '" . $user['id'] . "',
+            ?,
             UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array(
+        (string) $liveform->get_field_value('name'),
+        (string) $liveform->get_field_value('display_type'),
+        (string) $liveform->get_field_value('transition_type'),
+        (string) $liveform->get_field_value('transition_duration'),
+        (string) $liveform->get_field_value('slideshow'),
+        (string) $liveform->get_field_value('slideshow_interval'),
+        (string) $liveform->get_field_value('slideshow_continuous'),
+        (string) $user['id'],
+        (string) $user['id'],
+    )) or output_error('Query failed.');
 
     log_activity(lang(array('string'=>'{var:1} ({var:2}) was created','vars'=>array(lang('ad region'),$liveform->get_field_value('name')))), $_SESSION['sessionusername']);
     
