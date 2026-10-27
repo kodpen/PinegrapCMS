@@ -1,6 +1,6 @@
 ---
 name: marketplace-product-matching
-description: Plan (approved 2026-10-26): bulk matching of a shop's products to its marketplace catalogue, with pictures, on the Marketplace products screen; steps 1-4 done, step 5 (Trendyol) next
+description: Plan (approved 2026-10-26): bulk matching of a shop's products to its marketplace catalogue, with pictures, on the Marketplace products screen; steps 1-5 done; only the n11 warehouse question is open
 ---
 
 ## Why?
@@ -19,10 +19,10 @@ description: Plan (approved 2026-10-26): bulk matching of a shop's products to i
 2. ~~Shop view: every shop product with its picture and state, codes in the row, bulk actions; the account screen's card a summary.~~ Done #1931 (`commerce/marketplace-shop-view.md`).
 3. ~~`marketplace_product_map.remote_code` to `utf8mb4_bin` (schema step 11.0.44), the order import's single-mapping case-blind fallback, the shop view's search case-blind.~~ Done #2095 (`commerce/marketplace-order-import.md`).
 4. ~~Listings on the same screen: article cards with pictures, category search by path, one category for several articles, required attributes first and optional ones folded; the old listing card goes.~~ Done #2066 (`commerce/marketplace-listing-view.md`).
-5. Trendyol `remote_products` (its product filter service, barcode as the key), so Trendyol accounts get the same suggestions.
+5. ~~Trendyol `remote_products` (its product filter service, barcode as the key), so Trendyol accounts get the same suggestions.~~ Done #2128 (`commerce/trendyol-remote-products.md`).
 
 ## Open questions?
 - Whether n11 products sent from the n11 warehouse (`sender=N11`) should be read too; step 1 reads the default (the seller's own).
 
 ## Where to start?
-- Step 5, after `docs/memory/commerce/README.md`, `marketplace-bulk-matching.md` and `trendyol-api-facts.md`. One step per PR, in order.
+- Every step is done. Once the owner answers the open question, move it into `commerce/n11-api-facts.md` (or a step for it) and delete this plan.
