@@ -1,0 +1,94 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Source tests for panel fields drawn as Bootstrap 6 form-adorn: the add-on
+ * inside the wrapper label and hidden from the accessible name, the input a
+ * borderless form-ghost that keeps its own <label for>, no input-group left
+ * around it.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+/**
+ * The markup from the form-adorn wrapper that holds the input with $id to
+ * the end of that input's line, or '' when the input is not in one.
+ */
+function pg_test_form_adorn_block($source, $id)
+{
+	$at = strpos($source, $id);
+
+	if ($at === false) {
+		return '';
+	}
+
+	$start = strrpos(substr($source, 0, $at), '<label class="form-control');
+	$group = strrpos(substr($source, 0, $at), 'input-group');
+
+	if ($start === false || ($group !== false && $group > $start)) {
+		return '';
+	}
+
+	$end = strpos($source, "\n", $at);
+
+	return substr($source, $start, (($end === false) ? strlen($source) : $end) - $start);
+}
+
+function pg_test_form_adorn_cases()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+
+	return array(
+		array($root . 'add_gift_card.php', "'id' => 'amount'", '<label for="amount"', 'form-adorn-end', ''),
+		array($root . 'edit_gift_card.php', "'id' => 'balance'", '<label for="balance"', 'form-adorn-end', ''),
+		array($root . 'workspace_template.php', 'id="ws_tpl_icon"', 'for="ws_tpl_icon"', '', 'id="ws_tpl_icon_preview"'),
+		array($root . 'includes/workspace/mcp_catalogue.php', 'id="ws_mcp_probe_alias"', 'for="ws_mcp_probe_alias"', 'form-control-sm', '>@</span>'),
+		array($root . 'includes/workspace/mcp.php', 'id="\' . $prefix . \'alias"', 'for="\' . $prefix . \'alias"', 'form-control-sm', '>@</span>'),
+	);
+}
+
+function test_bs6_form_adorn_wraps_the_single_add_on_fields()
+{
+	foreach (pg_test_form_adorn_cases() as $case) {
+		list($file, $id, $label, $modifier, $add_on) = $case;
+		$source = (string) file_get_contents($file);
+		$block = pg_test_form_adorn_block($source, $id);
+		$name = basename($file);
+
+		pg_assert_true($block !== '', $name . ': the input sits in a form-adorn label, not an input-group');
+		pg_assert_contains('form-adorn', $block, $name);
+		pg_assert_contains('form-ghost', $block, $name);
+		pg_assert_contains('class="form-adorn-text" aria-hidden="true"', $block, $name);
+		pg_assert_false(strpos($block, 'form-control text-end') !== false || strpos($block, 'input class="form-control') !== false, $name . ': the input lost form-control');
+
+		if ($modifier !== '') {
+			pg_assert_contains($modifier, $block, $name);
+		}
+
+		if ($add_on !== '') {
+			pg_assert_contains($add_on, $block, $name);
+		}
+
+		// The field keeps its own name: the add-on is hidden from it.
+		pg_assert_contains($label, substr($source, 0, (int) strpos($source, $block)), $name);
+	}
+}
+
+function test_bs6_form_adorn_keeps_the_input_attributes()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+	$gift = (string) file_get_contents($root . 'add_gift_card.php');
+	$mcp = (string) file_get_contents($root . 'includes/workspace/mcp.php');
+	$catalogue = (string) file_get_contents($root . 'includes/workspace/mcp_catalogue.php');
+
+	pg_assert_contains("'class' => 'form-ghost text-end', 'maxlength'=>'12', 'inputmode'=>'numeric', 'required'=>'required') + pg_money_mask_attributes()", $gift);
+	pg_assert_contains('pattern="[A-Za-z][A-Za-z0-9_\-]{1,31}" required autocomplete="off"\' . $disabled . \'>', $mcp);
+	pg_assert_contains('pattern="[A-Za-z][A-Za-z0-9_\-]{1,31}" required autocomplete="off">', $catalogue);
+}

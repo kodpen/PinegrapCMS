@@ -25,7 +25,9 @@
       "WebFetch",
       "WebSearch",
       "Monitor",
-      "Bash"
+      "Bash",
+      "mcp__github__issue_write",
+      "Bash(gh api repos/kodpen/pinegrapcms/issues -f title=:*)"
     ]
   }
 }

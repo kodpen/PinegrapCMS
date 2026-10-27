@@ -11,7 +11,8 @@ module: classic_style_design
 ## Where does the style's frame go?
 - Owner answer (b), 2026-10-27, given through the coordinator ("bekleyen işçilere yanıtı sen ver benim yerime", "en makul ve işlevsel seçimle"): one shared component, the same source rule as R2. Reason: one place to edit the frame for every page; a copy per page would have nowhere to edit it.
 - `pg_classic_style_frame()` runs the L1 importer with `keep_framework` (the theme's `{path}bootstrap.css`/jQuery stay as design assets). The body's children become the component tree (category `classic_style:<style_id>`, `pg_classic_style_component()`); an unused row made before is brought back to the style's code, a placed one is left alone.
-- Each page naming the style (`page_style`, not binned, `pg_designer_load_pages(..., true)`) gets `pg_classic_style_page_tree()`: body attributes and title on the root, one `shared_ref` child. A page with a tree of its own keeps it. `<cregion>` tags stay region nodes (common or designer); making them components is L3.
+- Each page naming the style (`page_style`, not binned, `pg_designer_load_pages(..., true)`) gets `pg_classic_style_page_tree()`: body attributes and title on the root, one `shared_ref` child. A page with a tree of its own keeps it.
+- `<cregion>` tags (L3): a common region already made a shared component (category `common_region:<id>`) is placed as a `shared_ref` to it, the component its tag draws anyway; any other common or designer region stays a region node. No region is converted by opening a style: each conversion stays opt-in on its own screen or node. A designer region made a component from the designer (R3, `cregion:<id>`) stays a region node: its tag still draws the row, so placing the component could change what the page shows.
 - Region tags inside the component render per page: `_expand_shared_refs()` runs before the region passes of `get_page_content.php`.
 
 ## What happens before and at Save?

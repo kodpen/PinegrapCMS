@@ -2534,6 +2534,25 @@ function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0, $f
             continue;
         }
 
+        // A flow an application proposes (flow_draft.php): a draft the
+        // person opens as a new flow of their own and publishes there. A
+        // task's drawer has no canvas to open it on.
+        if (($type === 'flow') && $for_proposal && function_exists('ws_flow_draft_proposal_row')) {
+            if ((int) $task_id > 0) {
+                return $refuse(lang('A flow is proposed in a channel, not on a task.'));
+            }
+
+            $drafted = ws_flow_draft_proposal_row($asker_id, $change, $channel_id);
+
+            if (!$drafted['ok']) {
+                return $refuse($drafted['error']);
+            }
+
+            $out['rows'][] = $drafted['row'];
+
+            continue;
+        }
+
         if (!isset($types[$type])) {
             return $refuse(lang(array('string' => 'type is one of {var:1}.', 'vars' => implode(', ', array_keys($types)))));
         }
@@ -3104,7 +3123,11 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
         // it is opened in its form and saved there.
         $scheduled = ($type === 'scheduled') && function_exists('ws_scheduled_draft_change_entry');
 
-        if (!isset($types[$type]) && !$mcp && !$scheduled) {
+        // Nor is a flow an application proposed (flow_draft.php): it is
+        // opened as a new flow and published there.
+        $flow = ($type === 'flow') && function_exists('ws_flow_draft_change_entry');
+
+        if (!isset($types[$type]) && !$mcp && !$scheduled && !$flow) {
             continue;
         }
 
@@ -3125,6 +3148,11 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
 
         if ($scheduled) {
             $out[(int) $row[$by]][] = ws_scheduled_draft_change_entry($viewer, $row, $people, !empty($can_post[$place]), $proposer);
+            continue;
+        }
+
+        if ($flow) {
+            $out[(int) $row[$by]][] = ws_flow_draft_change_entry($viewer, $row, $people, !empty($can_post[$place]), $proposer);
             continue;
         }
 
@@ -3427,6 +3455,12 @@ function ws_change_apply_check($viewer, $change_id)
     // from its form, where everything it does is checked again.
     if ($type === 'scheduled') {
         return $fail(lang('A drafted scheduled action is saved from its form: open it there and save it.'));
+    }
+
+    // A flow an application proposed (flow_draft.php) is opened as a new
+    // flow and published there, where it is checked again.
+    if ($type === 'flow') {
+        return $fail(lang('A proposed flow is opened as a new flow and published there.'));
     }
 
     // A call of an MCP server's tool that writes (mcp_ask.php): it runs with

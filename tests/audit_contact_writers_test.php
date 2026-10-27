@@ -44,14 +44,18 @@ function audit_contact_writers_test_source($relative)
 // The same-address opt-in sync reads the other contacts first and records them after.
 function test_audit_same_address_opt_in_sync_is_recorded()
 {
-	foreach (array('edit_contact.php', 'add_contact.php') as $file) {
-		$source = audit_contact_writers_test_source($file);
-		$read = strpos($source, "pg_audit_fetch_by('contacts', 'email_address'");
-		$sync = strpos($source, 'UPDATE contacts SET opt_in = ');
-		$record = strpos($source, "pg_audit_record_many('update', 'contacts', \$audit_address)");
+	// The contact screens sync through their shared form.
+	$file = 'includes/forms/contact_form.php';
+	$source = audit_contact_writers_test_source($file);
+	$read = strpos($source, "pg_audit_fetch_by('contacts', 'email_address'");
+	$sync = strpos($source, 'UPDATE contacts SET opt_in = ');
+	$record = strpos($source, "pg_audit_record_many('update', 'contacts', \$audit_address)");
 
-		pg_assert_true(($read !== false) && ($sync !== false) && ($record !== false), $file . ': read, sync and record');
-		pg_assert_true(($read < $sync) && ($sync < $record), $file . ': read before the sync, record after it');
+	pg_assert_true(($read !== false) && ($sync !== false) && ($record !== false), $file . ': read, sync and record');
+	pg_assert_true(($read < $sync) && ($sync < $record), $file . ': read before the sync, record after it');
+
+	foreach (array('edit_contact.php', 'add_contact.php') as $file) {
+		pg_assert_contains('pg_contact_form_sync_opt_in(', audit_contact_writers_test_source($file), $file . ': syncs through the shared form');
 	}
 }
 
