@@ -147,8 +147,8 @@ if (!$_POST) {
              FROM orders
              LEFT JOIN user ON orders.user_id = user.user_id
              LEFT JOIN contacts ON orders.contact_id = contacts.id
-             WHERE orders.id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+             WHERE orders.id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     // The id comes straight from the query string, so it can point at an order
@@ -289,8 +289,8 @@ if (!$_POST) {
         "SELECT 
             files.name
         FROM files 
-        WHERE files.id = '" . escape($contact_file_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE files.id = ?";
+        $result = db_q($query, array((string) $contact_file_id)) or output_error('Query failed.');
         $file = mysqli_fetch_array($result);
         $file_name = $file['name'];
         $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $file_name);
@@ -482,9 +482,9 @@ if (!$_POST) {
                 givex,
                 authorization_number
             FROM applied_gift_cards
-            WHERE order_id = '" . escape($_GET['id']) . "'
+            WHERE order_id = ?
             ORDER BY id ASC";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         
         $applied_gift_cards = array();
         
@@ -712,8 +712,8 @@ if (!$_POST) {
     if (AFFILIATE_PROGRAM and $affiliate_code) {
 
         // get affiliate information from contact
-        $query = "SELECT id, affiliate_name FROM contacts WHERE affiliate_code = '" . escape($affiliate_code) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT id, affiliate_name FROM contacts WHERE affiliate_code = ?";
+        $result = db_q($query, array((string) $affiliate_code)) or output_error('Query failed.');
         
         // if a contact was found for affiliate code, prepare affilate name with link to contact
         if (mysqli_num_rows($result) > 0) {
@@ -793,9 +793,9 @@ if (!$_POST) {
              FROM order_items
              LEFT JOIN ship_tos ON order_items.ship_to_id = ship_tos.id
              LEFT JOIN shipping_methods ON ship_tos.shipping_method_id = shipping_methods.id
-             WHERE order_items.order_id = '" . escape($_GET['id']) . "'
+             WHERE order_items.order_id = ?
              ORDER BY ship_to_id";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 
     $ship_tos = array();
 
@@ -832,10 +832,10 @@ if (!$_POST) {
                 type
             FROM form_data
             WHERE
-                (order_id = '" . escape($_GET['id']) . "')
+                (order_id = ?)
                 AND (ship_to_id != '0')
             ORDER BY id ASC";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         
         // initialize array that will be used for storing custom shipping form data for ship tos
         $ship_tos_for_custom_fields = array();
@@ -1240,8 +1240,8 @@ if (!$_POST) {
                         products.custom_field_4
                      FROM order_items
                      LEFT JOIN products ON order_items.product_id = products.id
-                     WHERE order_id = '" . escape($_GET['id']) . "' AND ship_to_id = '" . $ship_tos[$key]['ship_to_id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                     WHERE order_id = ? AND ship_to_id = ?";
+            $result = db_q($query, array((string) $_GET['id'], (string) $ship_tos[$key]['ship_to_id'])) or output_error('Query failed.');
             
             $order_items = array();
             
@@ -1418,8 +1418,8 @@ if (!$_POST) {
                 $output_gift_cards = '';
                 
                 // get maximum quantity number, so we can determine how many gift cards there are for this order item
-                $query = "SELECT MAX(quantity_number) as number_of_gift_cards FROM order_item_gift_cards WHERE order_item_id = '$order_item_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT MAX(quantity_number) as number_of_gift_cards FROM order_item_gift_cards WHERE order_item_id = ?";
+                $result = db_q($query, array((string) $order_item_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $number_of_gift_cards = $row['number_of_gift_cards'];
                 
@@ -1523,8 +1523,8 @@ if (!$_POST) {
                 $output_forms = '';
                 
                 // get maximum quantity number, so we can determine how many product forms there are for this order item
-                $query = "SELECT MAX(quantity_number) as number_of_forms FROM form_data WHERE order_item_id = '$order_item_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT MAX(quantity_number) as number_of_forms FROM form_data WHERE order_item_id = ?";
+                $result = db_q($query, array((string) $order_item_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $number_of_forms = $row['number_of_forms'];
                 
@@ -1716,8 +1716,8 @@ if (!$_POST) {
                     products.custom_field_4
                  FROM order_items
                  LEFT JOIN products ON order_items.product_id = products.id
-                 WHERE order_id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                 WHERE order_id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         
         $order_items = array();
         
@@ -1867,8 +1867,8 @@ if (!$_POST) {
             $output_gift_cards = '';
             
             // get maximum quantity number, so we can determine how many gift cards there are for this order item
-            $query = "SELECT MAX(quantity_number) as number_of_gift_cards FROM order_item_gift_cards WHERE order_item_id = '$order_item_id'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT MAX(quantity_number) as number_of_gift_cards FROM order_item_gift_cards WHERE order_item_id = ?";
+            $result = db_q($query, array((string) $order_item_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $number_of_gift_cards = $row['number_of_gift_cards'];
             
@@ -1973,8 +1973,8 @@ if (!$_POST) {
             $output_forms = '';
             
             // get maximum quantity number, so we can determine how many product forms there are for this order item
-            $query = "SELECT MAX(quantity_number) as number_of_forms FROM form_data WHERE order_item_id = '$order_item_id'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT MAX(quantity_number) as number_of_forms FROM form_data WHERE order_item_id = ?";
+            $result = db_q($query, array((string) $order_item_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $number_of_forms = $row['number_of_forms'];
             
@@ -2449,8 +2449,8 @@ if (!$_POST) {
         $_oi_q = "SELECT COALESCE(products.inventory, 0) AS inv
                   FROM order_items
                   LEFT JOIN products ON order_items.product_id = products.id
-                  WHERE order_items.order_id = '" . e((int)$_GET['id']) . "'";
-        $_oi_r = mysqli_query(db::$con, $_oi_q);
+                  WHERE order_items.order_id = ?";
+        $_oi_r = db_q($_oi_q, array((string) (int) $_GET['id']));
         while ($_oi_r && ($_oi_row = mysqli_fetch_assoc($_oi_r))) {
             if (!empty($_oi_row['inv'])) { $shippable_count++; } else { $non_shippable_count++; }
         }
