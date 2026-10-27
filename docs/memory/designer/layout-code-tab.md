@@ -14,7 +14,7 @@ module: layouts
 - Every page whose custom layout is drawn qualifies: a `layout_modified` page with layout type `system` draws the system template; a standard page never calls `render_layout()`.
 
 ## Where does the form screen's "Edit Layout" land?
-- `view_fields.php` (custom layout, role 0-1): a page whose own style is a visual design (`pg_page_is_visual_design()`) opens `edit_system_style.php?id=<style>&page=<id>` plus `pg_layout_tab_param()`, the Ctrl+G target; hosted or a manager gets the canvas. A page on a classic style keeps `page_designer.php?type=layout` (`pg_layout_edit_url()`, PR #NNNN).
+- `view_fields.php` (custom layout, role 0-1): a page whose own style is a visual design (`pg_page_is_visual_design()`) opens `edit_system_style.php?id=<style>&page=<id>` plus `pg_layout_tab_param()`, the Ctrl+G target; hosted or a manager gets the canvas. A page on a classic style keeps `page_designer.php?type=layout` (`pg_layout_edit_url()`, PR #2137).
 
 ## Who may edit it?
 - Role 1 or better (designers and administrators), the right of the classic layout editor (`page_designer.php?type=layout`: `validate_area_access($user, 'designer')`; `get_layout`/`update_layout` sit behind the general gate). Wider than the dynamic region tab (administrators only, `dynamic-region-in-designer.md`), on purpose: the classic rule is kept, never widened.
