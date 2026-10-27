@@ -8,12 +8,15 @@
  * functions.php: it is included from two different bootstraps that do not
  * share the same set of loaded libraries.
  *
- *   router.php  -> covers get_file.php / robots.txt / sitemap.xml, which never
- *                  reach init.php.
- *   init.php    -> covers every directly requested software script
- *                  (integration.php, api.php, custom_form.php, cart_action.php ...).
+ *   router.php  -> every routed address (pages, files, robots.txt, sitemap.xml)
+ *                  before it is dispatched; get_file.php never reaches init.php.
+ *   init.php    -> every script that includes it: the directly requested ones
+ *                  (api.php, custom_form.php, cart_action.php ...) and the routed
+ *                  page scripts after the router pass.
  *
- * Both call waf_run(). The WAF_RAN guard makes the second call a no-op.
+ * Both call waf_run(). Each check latches in waf_run()'s static $done array,
+ * so the pass that reaches a check first decides and the second pass repeats
+ * nothing.
  *
  * DESIGN RULE - FAIL OPEN.
  * Every entry point is wrapped so that an error inside the firewall can never
@@ -4568,17 +4571,26 @@ function waf_run($stage = 'init')
         }
 
         // ── Rate limiting ────────────────────────────────────────────────
-        // The two limits are latched separately on purpose.
+        // The limits are latched separately on purpose.
         //
-        // The global limit is generous and identity-independent, so it can run
-        // at the router stage and cover get_file.php, which never reaches
-        // init.php.
+        // The global limit is generous, so it runs at the router stage and
+        // covers get_file.php, which never reaches init.php. The price: a
+        // routed page or file is counted before the session starts, and the
+        // latch keeps the init stage from asking again, so the signed-in
+        // exemption in waf_handle_rate_global() reaches only directly
+        // requested scripts (api.php, save_region_content.php, the panel). A
+        // signed-in designer hard-reloading a media-heavy page can meet the
+        // wall: one clock minute of 429, no offence, no ban. Kept so: sparing
+        // sub-resource fetches would drop the only per-address cap on file
+        // fetches with a forged Sec-Fetch-Dest, and a staff-address exemption
+        // would uncap a whole office address for a day.
         //
         // The sensitive limit is much tighter and exempts signed-in staff —
         // and the session does not exist yet at the router stage. Running it
-        // there would silently ignore the exemption, and since page regions
-        // are edited by POSTing to the page's own front-end URL, a designer
-        // saving repeatedly would be rate limited out of their own site.
+        // there would silently ignore the exemption: every POST counts as
+        // sensitive, so a designer saving regions repeatedly
+        // (save_region_content.php) would be rate limited out of their own
+        // site.
         //
         // The api.php limit is the sensitive one's counterpart for the endpoint
         // the site's own pages talk to, and exempts staff for the same reason,
@@ -5100,6 +5112,9 @@ function waf_handle_rate_global($ip, $blocking)
         return;
     }
 
+    // Any session is exempt. The test is only ever true on a directly
+    // requested script: a routed page or file is counted at the router
+    // stage, before the session starts, and latched (see waf_run()).
     if (waf_user_is_authenticated()) {
         return;
     }

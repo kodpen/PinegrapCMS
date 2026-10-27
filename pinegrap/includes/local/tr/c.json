@@ -241,6 +241,7 @@
     "Capitals": "Büyük harf",
     "Cappuccino": "Cappuccino",
     "Caps how many requests one address may make per minute. Signed-in staff and verified crawlers are exempt.": "Bir adresin dakikada yapabileceği istek sayısını sınırlar. Giriş yapmış personel ve doğrulanmış botlar muaftır.",
+    "Caps how many requests one address may make per minute. Verified crawlers are exempt. Pages and files are counted before the session starts, so a signed-in user is exempt only on the software's own screens and endpoints.": "Bir adresin dakikada yapabileceği istek sayısını sınırlar. Doğrulanmış tarayıcılar muaftır. Sayfalar ve dosyalar oturum başlamadan sayıldığından oturum açmış bir kullanıcı yalnız yazılımın kendi ekran ve uç noktalarında muaftır.",
     "Caption": "Açıklama Yazısı",
     "Caption: expanding": "Yazı: genişletirken",
     "Caption: to the detail": "Yazı: detaya giderken",
