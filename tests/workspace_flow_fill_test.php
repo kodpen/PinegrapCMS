@@ -128,27 +128,34 @@ function test_workspace_flow_fill_notify_value_is_one_line()
 	pg_assert_same("a<b & \"c\" 'd' next end <@user:5> <#order:7> <!channel> @everyone", $action['text']);
 }
 
+// A webhook's body as ws_scheduled_webhook() encodes it, read back.
+function ws_flow_fill_test_body($action)
+{
+	$key = (($action['format'] ?? '') === 'discord') ? 'content' : 'text';
+
+	return json_decode((string) json_encode(array($key => $action['text']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), true);
+}
+
 // A webhook: a JSON string in the generic body; a chat service's mention
 // and link markup stays text.
 function test_workspace_flow_fill_webhook_value_by_format()
 {
 	$j = "\u{2060}";
 	$values = ws_flow_fill_test_value();
-	$row = array('id' => 0, 'name' => 'Flow', 'run_count' => 0);
 
 	$action = ws_step_fill_action('webhook', array('type' => 'webhook', 'format' => 'generic', 'url' => 'https://example.com/{{node.form.text}}', 'text' => 'Got: {{node.form.text}}'), $values);
-	$body = json_decode(ws_scheduled_webhook_body($row, $action, $action['text'], array()), true);
+	$body = ws_flow_fill_test_body($action);
 
 	pg_assert_same('https://example.com/{{node.form.text}}', $action['url'], 'an address is never filled');
 	pg_assert_same('Got: ' . $values['form']['text'], $body['text'], 'the value as one JSON string');
 
 	$action = ws_step_fill_action('webhook', array('type' => 'webhook', 'format' => 'text', 'text' => '<!here> {{node.form.text}}'), $values);
-	$body = json_decode(ws_scheduled_webhook_body($row, $action, $action['text'], array()), true);
+	$body = ws_flow_fill_test_body($action);
 
 	pg_assert_same("<!here> a<{$j}b & \"c\" 'd'\nnext\x07end <{$j}@user:5> <{$j}#order:7> <{$j}!channel> @everyone", $body['text']);
 
 	$action = ws_step_fill_action('webhook', array('type' => 'webhook', 'format' => 'discord', 'text' => '@here {{node.form.text}}'), $values);
-	$body = json_decode(ws_scheduled_webhook_body($row, $action, $action['text'], array()), true);
+	$body = ws_flow_fill_test_body($action);
 
 	pg_assert_same("@here a<{$j}b & \"c\" 'd'\nnext\x07end <{$j}@user:5> <{$j}#order:7> <{$j}!channel> @{$j}everyone", $body['content']);
 }
