@@ -1260,6 +1260,7 @@
     "The customer signs below, on this screen or a tablet showing it. The quote is then accepted, and the signature is printed on it.": "Müşteri aşağıya, bu ekranda ya da bu ekranı gösteren bir tablette imza atar. Teklif kabul edilir ve imza teklife basılır.",
     "The customer types a code and a percentage comes off the order.": "Müşteri bir kod yazar, siparişten yüzde iner.",
     "The customer was e-mailed on {var:1}.": "Müşteriye {var:1} tarihinde e-posta gönderildi.",
+    "The customer's moves: sent, withdraw (HTML)": "Müşterinin işlemleri: gönderdim, geri çek (HTML)",
     "The customer's note": "Müşterinin notu",
     "The customer's reason in their words. Needed with \"Another reason\". The customer can see it on their order page and in the e-mail.": "Müşterinin nedeni, kendi sözleriyle. \"Başka bir neden\" seçildiğinde gerekli. Müşteri bunu sipariş sayfasında ve e-postada görebilir.",
     "The customer, from their account": "Müşteri, kendi hesabından",
