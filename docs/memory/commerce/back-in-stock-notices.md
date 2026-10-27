@@ -1,6 +1,7 @@
 ---
 name: back-in-stock-notices
 description: Back-in-stock notices (includes/fn/stock_notify.php, stock_notify.php): who may ask, the request rules, the inventory.changed listener, claim then mail, queue vs inline, trim, export, delete hooks
+module: stock_notify
 ---
 
 ## Where is it kept?

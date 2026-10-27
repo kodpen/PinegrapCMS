@@ -1,6 +1,7 @@
 ---
 name: widget-lists-paging
 description: Page links as a designable list (W12b #1947, W12d #1984 catalog and search): source paging.pages, key __page_number, rows, tokens, built-in pagination left out, starter, placement
+module: widgets_lists_paging
 ---
 
 ## What does a designer build the page links from?

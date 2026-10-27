@@ -1,6 +1,7 @@
 ---
 name: comment-replies
 description: Which comment a reply may answer (pg_comment_parent_ok()): same thread, visible to the writer, else refused with the text kept; ?reply_to=, staff mails, API parent_id, deleted parents, page copies
+module: comments
 ---
 
 ## Which comment may a reply name?

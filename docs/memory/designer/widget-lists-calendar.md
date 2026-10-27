@@ -1,6 +1,7 @@
 ---
 name: widget-lists-calendar
 description: The calendar view's month and week grid as lists (W13): the four sources, their keys, nesting, day and event tokens, what the classic month_grid section keeps, the editor's grid starter.
+module: widgets_lists_calendar
 ---
 
 ## What does a designer build the grid from?

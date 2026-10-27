@@ -1,6 +1,7 @@
 ---
 name: comment-thread-rules
 description: Comment rules the classic comments block shares with the widget (pg_comments_settings, _allow_new, _viewer, _rows, _thread_order); its HTML stays byte for byte, its quirks kept
+module: comments
 ---
 
 ## What moved out of the classic comments block?

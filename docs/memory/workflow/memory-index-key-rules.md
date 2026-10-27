@@ -11,10 +11,13 @@ description: The hand-written key-rules block of each memory folder README, what
 - It keeps the block verbatim (blank lines at its edges trimmed). It regenerates everything else: the heading, the folder description (from `FOLDERS` in the tool), the `## Files` list from each file's frontmatter, and the whole top index `docs/memory/README.md`.
 - A folder whose README does not exist yet gets an empty marker pair; the `## Key rules` heading appears only once the block has text.
 
+## What does the optional `module:` field do?
+- `module: comments, widgets_comments` in a memory file's frontmatter names the `includes/fn/` modules it describes; the tool writes `core/fn-modules.md` (module, then the files naming it) from those fields and lists it in the core README. The line does not count toward the 4 KB limit, so a full file can still carry it. It replaced two hand-written append-only lists (PR #2029).
+
 ## When does it stop with exit 1?
 - "no single key rules block": a README without exactly one start line followed by one end line, usually an older copy taken during a merge. Take the file from `development` (`git checkout origin/development -- <file>`) and run again, or delete it if the folder has no key rules yet.
 - "a merge conflict inside the key rules": conflict markers inside the block. Settle the block by hand (keep both sides' rules), then run again.
-- Also, as before: a memory file over 4 KB, missing or invalid frontmatter, `name` not equal to the file name, a file outside a known folder. With `--check` (CI) a README that differs from what the files produce fails too.
+- Also, as before: a memory file over 4 KB, missing or invalid frontmatter, `name` not equal to the file name, a file outside a known folder; a `module:` field with a name that is not a file under `pinegrap/includes/fn/`. With `--check` (CI) a README that differs from what the files produce fails too.
 
 ## How is a README conflict settled after a merge?
 - Conflict only in the file list: run `php tools/memory_index.php`; it rewrites the README and the conflict is gone.

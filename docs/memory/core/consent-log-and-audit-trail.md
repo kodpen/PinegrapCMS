@@ -1,6 +1,7 @@
 ---
 name: consent-log-and-audit-trail
 description: consent_log and audit_log (11.0.16): the person token, consent row rules, what pg_audit() keeps (changed fields, masked secrets, size limits), who writes them
+module: privacy, audit
 ---
 
 ## What are the two tables?

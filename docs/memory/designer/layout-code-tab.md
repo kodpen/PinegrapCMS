@@ -1,6 +1,7 @@
 ---
 name: layout-code-tab
 description: A classic page's custom layout (data/layouts/<id>.php) as a code tab of the visual designer: who may edit it, the layout_code endpoint, regenerate, unmodified on save, Ctrl+G, hosted sites
+module: layouts
 ---
 
 ## What opens it?

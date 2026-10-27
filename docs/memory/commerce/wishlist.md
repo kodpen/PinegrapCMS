@@ -1,6 +1,7 @@
 ---
 name: wishlist
 description: Favourites core (includes/fn/wishlist.php, wishlist.php): owner model, the pg_wishlist cookie, lazy merge at sign-in, the toggle and state endpoint, rate limit, trim, privacy export
+module: wishlist
 ---
 
 ## Where is it kept?
