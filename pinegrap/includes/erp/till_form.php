@@ -76,13 +76,13 @@ function erp_till_form_cards($liveform, $currency_locked = false)
                 </div>
                 <div class="col-12 sm:col-4 lg:col-3 my-3">
                     <label for="opening_balance" class="form-label">' . lang('Opening Balance') . '</label>
-                    <div class="input-group">
+                    <label class="form-control form-adorn form-adorn-end">
+                        <span class="form-adorn-text" aria-hidden="true">' . (erp_fx_enabled() ? lang('in the till currency') : BASE_CURRENCY_SYMBOL) . '</span>
                         ' . $liveform->output_field(array(
                             'type' => 'text', 'id' => 'opening_balance', 'name' => 'opening_balance',
-                            'class' => 'form-control text-end', 'maxlength' => '15',
+                            'class' => 'form-ghost text-end', 'maxlength' => '15',
                             'inputmode' => 'decimal', 'autocomplete' => 'off')) . '
-                        <label class="input-group-text" for="opening_balance">' . (erp_fx_enabled() ? lang('in the till currency') : BASE_CURRENCY_SYMBOL) . '</label>
-                    </div>
+                    </label>
                     <div class="form-text">' . lang('What was in it before the first movement was recorded here.') . '</div>
                 </div>
             </div>
