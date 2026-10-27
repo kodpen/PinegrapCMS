@@ -21,7 +21,7 @@ description: Standing rules from the owner (Erdal) on docs, how changes are reco
 - PR descriptions in English (owner rule 2026-10-21); the PR title stays the one-line Turkish summary that becomes its merge commit title in the train. Review comments and take-over notes on PRs are English too, so every session reads them the same way.
 
 ## Is there a mobile app?
-- No (owner decision 2026-10-14). The API endpoints built for it stay; docs never say "mobile app"; do not re-ask the mobile questions. Restart point: docs/memory/plans/mobile-api-shelved.md
+- Yes, outside this repository (owner, 2026-10-24; shelved from 2026-10-14): Kodpen develops a closed-source team-device app, Pinegrap Mobile, in its own private repository. This repository keeps general team-device capabilities with no app-specific endpoints; its needs arrive as issues. docs/memory/plans/mobile-api-shelved.md
 
 ## How are changes recorded?
 - As memory, not in a change log (owner rule 2026-10-14; `docs/degisiklikler.md` and its archive were removed and are never recreated). A PR that changes behaviour adds or updates the matching `docs/memory/` topic file: what it does now, why, the symptom it fixed (searchable words), the PR number. No per-version or dated list; stale lines are corrected in place.
