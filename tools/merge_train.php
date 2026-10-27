@@ -330,6 +330,20 @@ function merge_train_changelog_apply($contents, array $entry)
 	return implode($eol, $lines);
 }
 
+// One argument quoted for a Windows command line that starts a program
+// without cmd.exe, as the program's C runtime splits the line back into
+// arguments: in double quotes, with a double quote escaped by a backslash and
+// the backslashes before it, or before the closing quote, doubled. % and !
+// stay as they are: escapeshellarg() turns them and " into spaces for cmd.exe.
+// The same rule as check_pr_windows_arg() in tools/check_pr.php, which the
+// tests hold this to.
+function merge_train_windows_arg($arg)
+{
+	return '"' . preg_replace_callback('/(\\\\*)("|\z)/', function ($match) {
+		return $match[1] . $match[1] . (($match[2] === '"') ? '\\"' : '');
+	}, (string) $arg) . '"';
+}
+
 // The test runner loads this file for the functions above.
 if (defined('PG_TEST_RUNNER')) {
 	return;
@@ -340,10 +354,14 @@ chdir($repository);
 
 // Runs a command (a list of arguments, without a shell) and returns its exit
 // code; stdout goes to $out, stderr to ours. On Windows the command starts
-// without cmd.exe, which would expand the % signs of an argument.
+// without cmd.exe (bypass_shell), so its arguments are quoted for the
+// program itself: escapeshellarg() would turn the % of git's --format=%s and
+// the double quotes of a commit message into spaces. The argument list form
+// of proc_open() that would do this needs PHP 7.4.
 function merge_train_run(array $args, &$out = null)
 {
-	$command = implode(' ', array_map('escapeshellarg', $args));
+	$quote = (DIRECTORY_SEPARATOR === '\\') ? 'merge_train_windows_arg' : 'escapeshellarg';
+	$command = implode(' ', array_map($quote, $args));
 	$process = proc_open($command, array(1 => array('pipe', 'w'), 2 => STDERR), $pipes, null, null, array('bypass_shell' => true));
 
 	if (!is_resource($process)) {
