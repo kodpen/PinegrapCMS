@@ -386,7 +386,7 @@ function pg_stock_notify_throttled()
     }
 
     if (function_exists('waf_text_log')) {
-        waf_text_log('DENY', $ip, array('rule' => 'rate-stock-notify'));
+        waf_text_log('DENY', $ip, array('status' => 429, 'rule' => 'rate-stock-notify'));
     }
 
     return true;
