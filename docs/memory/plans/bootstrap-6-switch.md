@@ -7,17 +7,18 @@ description: Step B8 of plans/bootstrap-6-panel.md (claim #1866): building a reh
 - Rebuild `feature/bootstrap-6` (#1866, a draft until the owner says go) on the latest `development`, comment the result there. Tool commits first, the generated commit last, pushed only when every check passes: drop it (`git rebase --onto <gen>~1 <gen>`), `git rebase origin/development`, `php tools/bs6_migrate.php --all --write`, `--switch --write`, `php tools/build_js.php`, every CI check, commit; then `git merge -s ours origin/feature/bootstrap-6` (keeps the old history, the tree stays the rebuild) and a plain `git push`. Never commit the sandbox's `data/config.php`.
 - Scriptable hand fixes are code in `tools/bs6_switch.php`, `bs6_switch_shell.php`, `bs6_switch_tokens.php`, `bs6_switch_stems.php` (tests `tests/bs6_switch*_test.php`); a fix found by its exact text goes into `tools/bs6_switch_texts.txt`. Never a patch file. What each fix does: the file headers and `ui/bootstrap-6-codemod.md`.
 
-## What is still on the hand-fix list (rehearsal 5, 2026-10-27)?
-- `check_bs6.php` on the converted tree: 13 panel findings, each reviewed and left: `bg-`/`text-` stems whose values are theme colours or `start`/`end` (v6 has the same classes), a `removeClass` naming two themes, `page_designer.js`'s `addClass('btn-danger open')` (site preview), `.was-validated`/`was-validated` (no panel form uses `.needs-validation`), `.btn-outline-light/-dark` selectors (no panel element carries them).
-- Look: v6 has no 1400 px breakpoint (`xxl` classes become `2xl`, 1536), so 1400–1535 px screens take the `xl` layout (product screen); a few px of height elsewhere.
-- The visual editor's canvas-facing code in `style_designer.js` stays v5 on purpose; `forms.php` and the other shared files (`bs6_scope_kind()`, 77 check findings) are not converted.
+## What is still on the hand-fix list (rehearsal 6, 2026-10-27)?
+- `check_bs6.php`: 13 panel findings, each reviewed and left (theme or `start`/`end` stems, a `removeClass` naming two themes, `page_designer.js`'s site preview, `.was-validated`, `.btn-outline-light/-dark` selectors no element carries).
+- Look: no 1400 px breakpoint (`xxl` to `2xl`, 1536: owner question); the official `fs-1` to `fs-4xl` makes the search and new-design dialogs' empty-state icon 8 px larger (dialog 12 px taller).
+- Shared renderers that print on both sides need a run-time choice: `get_calendar()` (calendar screen, dashboard widget: v5 buttons and selects), liveform's notices (their colours come from shell rules). The visual editor's canvas code stays v5 on purpose.
 
 ## Where does the next rehearsal start?
-- Rebuild as above, then `open_toggles.js` on both servers (`ui/panel-screenshots.md`). Rehearsal 5 opened 184 toggles with no script error; left: the files sort menu sits 40 px right of v5's, the search and new-design dialogs are 12 px taller, the offer editor's add menus 12-16 px lower. Then dialogs opened from code (settings categories, pickers) and the shared files.
+- Rebuild as above. Open states on both servers with `open_toggles.js` (1440, `--width=834`, `--width=390`), `open_dialogs.js` and `settings_panes.js` (`ui/panel-screenshots.md`); rehearsal 6: every toggle, pane and dialog opens with no script error and no v5 class left inside.
+- Left: `get_calendar()` run-time classes; screens outside the screenshot list; dev.pinegrap.com.
 - Open owner questions in #1866's body: own media queries on 1024/1280 (keep until answered) and the lost 1400 px breakpoint.
 
 ## What does the owner check?
-- The before/after page of each round (rehearsals 3 and 4: https://claude.ai/artifact/Xdh6cnCar778Z77jphtzS4): liked, secure and visual editor screens at 1440, 834 and 390 px, light and dark (`ui/panel-screenshots.md`). Then the branch runs on dev.pinegrap.com and the owner says go.
+- The before/after page of each round (https://claude.ai/artifact/Xdh6cnCar778Z77jphtzS4): liked, secure and visual editor screens at 1440, 834 and 390 px, light and dark (`ui/panel-screenshots.md`). Then the branch runs on dev.pinegrap.com and the owner says go.
 
 ## What happens at and after the merge?
 - In the same PR: CLAUDE.md's "Bootstrap 5 + jQuery", the ui and designer key rules, `php tools/check_bs6.php --strict` in php-checks.yml, CLAUDE.md's check list and pre_push.sh; the body names the `[NEW]` line; new `lang()` keys go in with `php tools/tr_add.php`. The merging session merges it; tag the merge `bs6-switch`.

@@ -223,7 +223,7 @@ function bs6_switch_token_bridge_block()
 		. "/* v6 keeps a scrollbar's gutter on the page even when nothing scrolls. */\n:root {\n  scrollbar-gutter: auto;\n}\n"
 		. "/* v6 declares the drawer's variables unlayered too: a drawer reads the\n   panel's --pg-drawer-* (bs6_switch_drawer_variables()), else v5's look,\n   flush with the screen edge and square. */\n"
 		. ".drawer,\n.sm\\:drawer,\n.md\\:drawer,\n.lg\\:drawer,\n.xl\\:drawer,\n.\\32 xl\\:drawer {\n"
-		. "  --bs-drawer-inset: var(--pg-drawer-inset, 0);\n  --bs-drawer-border-radius: var(--pg-drawer-border-radius, 0);\n"
+		. "  --bs-drawer-inset: var(--pg-drawer-inset, 0px);\n  --bs-drawer-border-radius: var(--pg-drawer-border-radius, 0);\n"
 		. "  --bs-drawer-width: var(--pg-drawer-width, 400px);\n  --bs-drawer-height: var(--pg-drawer-height, 30vh);\n}\n";
 }
 
