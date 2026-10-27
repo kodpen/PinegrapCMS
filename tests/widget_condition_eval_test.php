@@ -207,6 +207,7 @@ function test_widget_condition_eval_canvas_states()
 		. "  forShipped: _sdCondStateFor(order, order.children[2]), forEmpty: _sdCondStateFor(order, order.children[7]),\n"
 		. "  forDenied: _sdCondStateFor(order, order.children[10]), forOutside: _sdCondStateFor(order, plain.children[0]) };\n"
 		. "_sdCondCanvasState = 'empty'; out.kept = _sdCondStateFor(order, order.children[7]);\n"
+		. "_sdCondCanvasState = 'sample'; out.sampleOnOrder = _sdCondStateOf(order);\n"
 		. "console.log(JSON.stringify(out));\n";
 	$file = @tempnam(sys_get_temp_dir(), 'pgcond');
 	if ($file === false) return;
@@ -234,6 +235,15 @@ function test_widget_condition_eval_canvas_states()
 	pg_assert_same('all', $a['forDenied']);
 	pg_assert_same('code:__order_status_stage:complete', $a['forOutside']);
 	pg_assert_same('empty', $a['kept'], 'a state that draws the node is kept');
+	pg_assert_same('code:__order_status_stage:complete', $a['sampleOnOrder'], 'a state the tree does not offer draws its first');
+	// The canvas opens on each widget's first state, and a page opened in a
+	// tab starts there again.
+	$js = (string) file_get_contents(__DIR__ . '/../pinegrap/assets/js/style_designer.js');
+	pg_assert_true(strpos($js, "\n    var _sdCondCanvasState = '';\n") !== false, 'the canvas opens on the first state');
+	$a = strpos($js, "\n    function _pgTabsSwitch(");
+	$b = strpos($js, "\n    }\n", $a);
+	pg_assert_true($a !== false && strpos(substr($js, $a, $b - $a), "_sdCondCanvasState = '';") !== false,
+		'a tab switch draws the first state again');
 }
 
 // The sample rows a list draws after its card name sources the server
