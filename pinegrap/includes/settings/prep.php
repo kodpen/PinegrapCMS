@@ -2234,7 +2234,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     // PHP_OS_FAMILY only exists as of PHP 7.2, so derive the same value when it is missing.
     if (defined('PHP_OS_FAMILY')) {
-        $php_os_family = PHP_OS_FAMILY;
+        $php_os_family = PHP_OS_FAMILY; // phpcs:ignore PHPCompatibility.Constants.NewConstants.php_os_familyFound -- guarded by defined() above
     } else {
         $php_os_name = strtoupper(PHP_OS);
 

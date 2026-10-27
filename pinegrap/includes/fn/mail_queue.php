@@ -235,7 +235,7 @@ function pg_mail_properties_encode(array $properties)
     $flags = JSON_UNESCAPED_UNICODE;
 
     if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
-        $flags |= JSON_INVALID_UTF8_SUBSTITUTE;
+        $flags |= JSON_INVALID_UTF8_SUBSTITUTE; // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined() above
     }
 
     $json = json_encode($properties, $flags);

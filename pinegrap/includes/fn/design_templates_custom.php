@@ -126,7 +126,7 @@ function pg_design_template_custom_save($data, $user)
     if (!$tpl || empty($tpl['pages'])) return array('ok' => false, 'error' => lang('The template could not be saved.'));
 
     $flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
-    if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) $flags |= JSON_INVALID_UTF8_SUBSTITUTE;
+    if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) $flags |= JSON_INVALID_UTF8_SUBSTITUTE; // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined()
     $json = json_encode($tpl, $flags);
     if ($json === false) return array('ok' => false, 'error' => lang('The template could not be saved.'));
 

@@ -195,7 +195,7 @@ function pg_webauthn_rp_id($host)
         // a different domain: straße.de would become strasse.de.
         $ascii = defined('INTL_IDNA_VARIANT_UTS46')
             ? @idn_to_ascii($host, IDNA_NONTRANSITIONAL_TO_ASCII | IDNA_CHECK_BIDI | IDNA_CHECK_CONTEXTJ, INTL_IDNA_VARIANT_UTS46)
-            : @idn_to_ascii($host);
+            : @idn_to_ascii($host); // phpcs:ignore PHPCompatibility.ParameterValues.NewIDNVariantDefault.NotSet -- guarded by defined() above: reached only without UTS #46
 
         if (!is_string($ascii) || ($ascii === '')) {
             return '';
