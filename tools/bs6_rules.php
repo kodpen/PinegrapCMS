@@ -720,11 +720,21 @@ function bs6_site_output_ranges($source, $path = null)
 	$functions = bs6_site_functions();
 
 	$panel = bs6_shared_panel_functions();
-	if ($path !== null && isset($panel[$path])) {
-		// Everything outside the panel functions is site output.
+	$blocks = bs6_shared_panel_blocks();
+	if ($path !== null && (isset($panel[$path]) || isset($blocks[$path]))) {
+		// Everything outside the panel functions and blocks is site output.
+		$inside = isset($panel[$path]) ? bs6_function_ranges($source, $panel[$path]) : array();
+		if (isset($blocks[$path])) {
+			foreach ($blocks[$path] as $function => $anchor) {
+				$inside = array_merge($inside, bs6_block_ranges($source, $function, $anchor));
+			}
+		}
+		usort($inside, function ($a, $b) {
+			return $a[0] - $b[0];
+		});
 		$ranges = array();
 		$from = 0;
-		foreach (bs6_function_ranges($source, $panel[$path]) as $range) {
+		foreach ($inside as $range) {
 			if ($range[0] > $from) {
 				$ranges[] = array($from, $range[0]);
 			}
@@ -783,7 +793,7 @@ function bs6_site_functions()
 		'includes/fn/custom_form.php' => array('pg_cf_validation_script'),
 		'includes/fn/design_themes.php' => array('pg_design_looks'),
 		'includes/fn/passkeys.php' => array('pg_passkey_account_section', 'pg_passkey_add_form_script'),
-		'includes/fn/returns.php' => array('pg_return_badge_class', 'pg_return_form_html', 'pg_returns_list_html'),
+		'includes/fn/returns.php' => array('pg_return_actions_html', 'pg_return_badge_class', 'pg_return_form_html', 'pg_returns_list_html'),
 	);
 }
 
@@ -792,7 +802,8 @@ function bs6_site_functions()
  * print only panel markup: they are converted with the panel, and every
  * other function of the file is read as site output. A shared function that
  * prints on both sides (liveform's fields and notices, get_calendar(),
- * pg_seo_page_toolbar()) is not listed: it chooses its classes at run time.
+ * pg_seo_page_toolbar()) is not listed: it chooses its classes at run time,
+ * and its panel-only blocks are listed in bs6_shared_panel_blocks().
  */
 function bs6_shared_panel_functions()
 {
@@ -809,6 +820,66 @@ function bs6_shared_panel_functions()
 			'pg_seo_render_group_row', 'pg_seo_render_detail_offcanvas', 'pg_seo_render_badge',
 		),
 	);
+}
+
+/**
+ * Blocks of shared functions that print on both sides and choose their
+ * markup at run time: the brace block opened by each `<anchor>` inside the
+ * named function prints only in the panel and is converted with it; the
+ * rest of the function and the file stays site output.
+ */
+function bs6_shared_panel_blocks()
+{
+	return array(
+		// The calendar screen and the dashboard calendar widget pass the
+		// signed-in user; site pages pass none.
+		'includes/fn/calendar.php' => array('get_calendar' => 'if ($user) {'),
+	);
+}
+
+/**
+ * Byte ranges, as array(start, end), of the brace blocks opened by $anchor
+ * (text ending in `{`) inside the top-level function $function: from the
+ * anchor to the matching closing brace.
+ */
+function bs6_block_ranges($source, $function, $anchor)
+{
+	$ranges = array();
+	$outer = bs6_function_ranges($source, array($function));
+	if (!$outer) {
+		return $ranges;
+	}
+
+	// Offsets of the brace tokens, so braces inside strings are skipped.
+	$braces = array();
+	$offset = 0;
+	foreach (token_get_all($source) as $token) {
+		$text = is_array($token) ? $token[1] : $token;
+		if ($text === '{' || $text === '}' || (is_array($token) && ($token[0] === T_CURLY_OPEN || $token[0] === T_DOLLAR_OPEN_CURLY_BRACES))) {
+			$braces[] = array($offset + strlen($text) - 1, $text === '}' ? -1 : 1);
+		}
+		$offset += strlen($text);
+	}
+
+	list($from, $to) = $outer[0];
+	$at = $from;
+	while (($at = strpos($source, $anchor, $at)) !== false && $at < $to) {
+		$open = $at + strlen($anchor) - 1;
+		$depth = 0;
+		foreach ($braces as $brace) {
+			if ($brace[0] < $open) {
+				continue;
+			}
+			$depth += $brace[1];
+			if ($depth === 0) {
+				$ranges[] = array($at, $brace[0] + 1);
+				break;
+			}
+		}
+		$at = $open + 1;
+	}
+
+	return $ranges;
 }
 
 /**
@@ -1314,7 +1385,7 @@ function bs6_codemod_converts($path)
 	$path = str_replace('\\', '/', $path);
 
 	return $kind === 'panel' || ($kind === 'editor' && in_array($path, bs6_marked_editor_files(), true))
-		|| ($kind === 'shared' && isset(bs6_shared_panel_functions()[$path]));
+		|| ($kind === 'shared' && (isset(bs6_shared_panel_functions()[$path]) || isset(bs6_shared_panel_blocks()[$path])));
 }
 
 // Every file under $root (the pinegrap/ folder) with its scope kind, as
