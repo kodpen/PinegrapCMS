@@ -665,3 +665,21 @@ the switch renamed.
 ===
         var wrap = event.target.closest('.pg-menu-wrap');
 >>>
+
+The quick note menu sits under the header's right edge: v5's position
+utilities carried !important and beat Popper's inline position, v6's do
+not beat Floating UI's.
+
+@@ assets/css/backend.src.css
+<<<
+#pg_quick_note {
+  width: 350px;
+  right: 2px !important;
+  left: auto;
+===
+#pg_quick_note {
+  position: fixed !important;
+  width: 350px;
+  right: 2px !important;
+  left: auto !important;
+>>>
