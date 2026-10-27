@@ -1952,6 +1952,15 @@ function ws_flow_js_strings()
         'fl_on_no'            => lang('No'),
         'fl_on_box'           => lang('Followed when the box ends'),
         'fl_one_start'        => lang('A flow has one box that starts it.'),
+        'fl_tpl_title'        => lang('Templates'),
+        'fl_tpl_start'        => lang('Start a new flow'),
+        'fl_tpl_empty'        => lang('Empty canvas'),
+        'fl_tpl_empty_help'   => lang('Start with nothing and add the boxes yourself.'),
+        'fl_tpl_from_template' => lang('Start from a template'),
+        'fl_tpl_back'         => lang('Back to the flow'),
+        'fl_tpl_use'          => lang('Use'),
+        'fl_tpl_boxes'        => ws_js_template('{var:1} boxes', 1),
+        'fl_tpl_threads'      => ws_js_template('{var:1} data threads', 1),
         'fl_too_many_boxes'   => ws_js_template('A flow can hold at most {var:1} boxes.', 1),
         'fl_flow_settings'    => lang('The flow'),
         'fl_flow_help'        => lang('Select a box to change it. Nothing runs until the flow is published.'),
@@ -2118,9 +2127,27 @@ function ws_flow_js_config($viewer, $mode)
         $outputs[$kind] = $info['outputs'];
     }
 
+    // The ready-made flows the gallery offers to whoever builds flows
+    // (flow_templates.php), filled for the person: their texts go to them.
+    $templates = array();
+
+    if ($build && is_array($scheduled ?? null) && function_exists('ws_flow_templates')) {
+        $templates = ws_flow_templates(array(
+            'me'       => (int) $viewer['id'],
+            'channel'  => 0,
+            'site'     => (string) $scheduled['site'],
+            'email'    => (string) $scheduled['email'],
+            'today'    => date('Y-m-d'),
+            'metrics'  => array_keys((array) $scheduled['metrics']),
+            'recap_ai' => !empty($scheduled['recap_ai']),
+        ));
+    }
+
     return $config + array(
         'ready'    => ws_flows_ready(),
         'build'    => $build,
+        'templates' => $templates,
+        'template_categories' => function_exists('ws_flow_template_categories') ? ws_flow_template_categories() : array(),
         'steps'    => $steps,
         'outputs'  => $outputs,
         'subjects' => $subjects,

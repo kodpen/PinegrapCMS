@@ -675,6 +675,12 @@
         ui.main.appendChild(ui.stage);
         ui.main.appendChild(ui.outlineBox);
         ui.main.appendChild(ui.scheduled);
+        // The ways to start a flow and the template gallery, in place of
+        // the canvas.
+        ui.gallery = el('div', 'wsf-gallery d-none');
+        ui.gallery.setAttribute('role', 'region');
+        ui.gallery.setAttribute('aria-label', t('fl_tpl_title'));
+        ui.main.appendChild(ui.gallery);
 
         ui.app.appendChild(ui.listCol);
         ui.app.appendChild(ui.main);
@@ -827,6 +833,7 @@
 
         state.section = '';
         ui.scheduled.classList.add('d-none');
+        ui.gallery.classList.add('d-none');
         ui.problemBox.classList.add('d-none');
         ui.app.classList.add('wsf-nothing');
         K.clear(ui.side);
@@ -885,6 +892,153 @@
             drawList();
             refocus();
         }).catch(K.fail);
+    }
+
+    // ── Starting a flow, the template gallery ──────────────────────────
+
+    // In place of the canvas: the ways to start a new flow (an empty canvas
+    // or a template), or, with into (a flow with no boxes yet), the
+    // templates to place on that flow. The templates come grouped by their
+    // category (ws_flow_templates()); a card shows the signs of its boxes,
+    // its title and line, how it starts, how many boxes and data threads it
+    // has, and Use.
+    function showGallery(into) {
+        leaveFlow().then(function (go) {
+            if (!go) {
+                refocus();
+                return;
+            }
+
+            window.clearTimeout(state.saveTimer);
+            showNone();
+            state.section = 'templates';
+            K.clear(ui.gallery);
+            ui.empty.classList.add('d-none');
+            ui.stage.classList.add('d-none');
+            ui.gallery.classList.remove('d-none');
+
+            if (into) {
+                var back = K.button('btn btn-sm btn-ghost', t('fl_tpl_back'), 'bi-arrow-left');
+
+                back.setAttribute('data-refocus', 'tpl-back');
+                back.addEventListener('click', function () {
+                    open(into);
+                });
+                ui.bar.insertBefore(back, ui.bar.firstChild);
+            } else {
+                ui.gallery.appendChild(el('h2', 'h5 mb-3', t('fl_tpl_start')));
+
+                var starts = el('div', 'wsf-starts mb-4');
+                var empty = el('button', 'wsf-start-card');
+
+                empty.type = 'button';
+                empty.setAttribute('data-refocus', 'tpl-empty');
+                empty.appendChild(K.icon('bi-square'));
+                empty.appendChild(el('span', 'wsf-start-title', t('fl_tpl_empty')));
+                empty.appendChild(el('span', 'wsf-start-help', t('fl_tpl_empty_help')));
+                empty.addEventListener('click', createFlow);
+                starts.appendChild(empty);
+                ui.gallery.appendChild(starts);
+            }
+
+            ui.gallery.appendChild(el('h2', 'h5 mb-3', t('fl_tpl_title')));
+
+            Object.keys(FL.template_categories || {}).forEach(function (category) {
+                var items = (FL.templates || []).filter(function (template) { return template.category === category; });
+
+                if (!items.length) {
+                    return;
+                }
+
+                var grid = el('div', 'wsf-tpl-grid mb-4');
+
+                ui.gallery.appendChild(el('h3', 'wsf-tpl-category', FL.template_categories[category]));
+                items.forEach(function (template) {
+                    grid.appendChild(templateCard(template, into));
+                });
+                ui.gallery.appendChild(grid);
+            });
+
+            refocus();
+        }).catch(K.fail);
+    }
+
+    function templateCard(template, into) {
+        var card = el('div', 'wsf-tpl-card');
+        var icons = el('div', 'wsf-tpl-icons');
+        var start = KINDS[template.start];
+        var meta = el('div', 'wsf-tpl-meta');
+        var use = K.button('btn btn-sm btn-primary rounded-pill px-3', t('fl_tpl_use'), 'bi-plus-lg');
+
+        icons.setAttribute('aria-hidden', 'true');
+        template.graph.nodes.forEach(function (node) {
+            icons.appendChild(K.icon((KINDS[node.kind] || {}).icon || 'bi-square'));
+        });
+
+        card.appendChild(icons);
+        card.appendChild(el('h4', 'wsf-tpl-name', template.title));
+        card.appendChild(el('p', 'wsf-tpl-help', template.help));
+        meta.appendChild(el('span', 'wsf-tpl-start', start ? t(start.name) : ''));
+        meta.appendChild(el('span', '', t('fl_tpl_boxes', template.boxes)));
+
+        if (template.threads) {
+            meta.appendChild(el('span', '', t('fl_tpl_threads', template.threads)));
+        }
+
+        card.appendChild(meta);
+        use.setAttribute('data-refocus', 'tpl-' + template.key);
+        use.setAttribute('aria-label', t('fl_tpl_use') + ': ' + template.title);
+        use.addEventListener('click', function () {
+            use.disabled = true;
+            useTemplate(template, into).then(function () {
+                use.disabled = false;
+            });
+        });
+        card.appendChild(use);
+
+        return card;
+    }
+
+    // The template's boxes and arrows on the canvas: on the flow it was
+    // asked for, else on a new flow named after it. Saved as any change.
+    function useTemplate(template, into) {
+        var place = function () {
+            state.graph = graphOf(template.graph);
+            state.selected = null;
+            state.refocus = 'box-' + template.graph.nodes[0].id;
+            drawPalette();
+            drawAll();
+            fit();
+            changed(true);
+            refocus();
+        };
+
+        var create = function () {
+            return K.api('ws_flow_create', { name: template.title, graph: graphOf(template.graph) }).then(function (data) {
+                state.refocus = 'box-' + template.graph.nodes[0].id;
+                show(data.flow);
+                refocus();
+            }).catch(K.fail);
+        };
+
+        // A flow that got boxes meanwhile (another screen) is not written
+        // over: the template becomes a flow of its own.
+        if (into) {
+            return open(into).then(function (opened) {
+                if (!opened) {
+                    return null;
+                }
+
+                if (state.edit && !state.graph.nodes.length) {
+                    place();
+                    return null;
+                }
+
+                return create();
+            });
+        }
+
+        return create();
     }
 
     // ── A scheduled action on the canvas ───────────────────────────────
@@ -1109,6 +1263,7 @@
         state.conflict = '';
         state.section = '';
         ui.scheduled.classList.add('d-none');
+        ui.gallery.classList.add('d-none');
         ui.app.classList.remove('wsf-nothing');
         ui.app.classList.toggle('wsf-readonly', !state.edit);
         ui.conflictBox.classList.add('d-none');
@@ -1154,7 +1309,14 @@
         var create = K.button('btn btn-sm btn-primary rounded-pill px-3', t('fl_new'), 'bi-plus-lg');
 
         create.setAttribute('data-refocus', 'new');
-        create.addEventListener('click', createFlow);
+        create.addEventListener('click', function () {
+            // With templates to offer, the ways to start come first.
+            if ((FL.templates || []).length) {
+                showGallery(null);
+            } else {
+                createFlow();
+            }
+        });
         ui.bar.appendChild(create);
     }
 
@@ -1656,10 +1818,32 @@
         ui.palette.classList.toggle('d-none', !state.edit || !state.flow);
 
         if (state.edit) {
+            templateButton(ui.palette);
             paletteButtons('btn btn-sm btn-ghost wsf-palette-item', true).forEach(function (add) {
                 ui.palette.appendChild(add);
             });
         }
+    }
+
+    // "Start from a template" above the boxes, while the flow has none: the
+    // template is placed on this flow's canvas.
+    function templateOffered() {
+        return !!((FL.templates || []).length && !state.graph.nodes.length && !state.run);
+    }
+
+    function templateButton(parent) {
+        if (!templateOffered()) {
+            return;
+        }
+
+        var pick = K.button('btn btn-sm btn-ghost wsf-palette-item wsf-palette-template', t('fl_tpl_from_template'), 'bi-grid-1x2');
+        var into = state.flow.id;
+
+        pick.setAttribute('data-refocus', 'palette-template');
+        pick.addEventListener('click', function () {
+            showGallery(into);
+        });
+        parent.appendChild(pick);
     }
 
     function markSelected() {
@@ -3521,6 +3705,12 @@
         state.changes++;
 
         if (structure) {
+            // The first box placed, or the last one removed, takes the
+            // template entry away or brings it back.
+            if (!!ui.palette.querySelector('.wsf-palette-template') !== templateOffered()) {
+                drawPalette();
+            }
+
             if (!state.outline) {
                 drawCanvas();
             }

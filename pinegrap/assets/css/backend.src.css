@@ -18665,6 +18665,84 @@ html[data-bs-theme="dark"] .wsf-node-end { --wsf-kind: #b3ab9b; }
   color: var(--pg-fg-2);
   text-align: center;
 }
+/* The ways to start a flow and the template gallery (workspace_flow.js,
+   showGallery()). */
+.wsf-gallery {
+  height: 100%;
+  padding: var(--ws-space-3);
+  overflow-y: auto;
+}
+.wsf-starts,
+.wsf-tpl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--ws-space-3);
+}
+.wsf-start-card,
+.wsf-tpl-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-space-2);
+  padding: var(--ws-space-3);
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius-sm);
+  background: var(--pg-bg-body);
+  color: inherit;
+  text-align: left;
+}
+.wsf-start-card:hover,
+.wsf-start-card:focus-visible,
+.wsf-tpl-card:hover {
+  border-color: var(--pg-primary, #a78bfa);
+}
+.wsf-start-card > .bi {
+  font-size: 1.25rem;
+}
+.wsf-start-title,
+.wsf-tpl-name {
+  margin: 0;
+  font-size: .95rem;
+  font-weight: 600;
+}
+.wsf-start-help,
+.wsf-tpl-help {
+  margin: 0;
+  font-size: .8125rem;
+  color: var(--pg-fg-2);
+}
+.wsf-tpl-category {
+  margin-bottom: var(--ws-space-2);
+  font-size: .75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--pg-fg-2);
+}
+.wsf-tpl-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ws-space-1);
+  font-size: 1rem;
+  color: var(--pg-fg-2);
+}
+.wsf-tpl-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ws-space-1) var(--ws-space-3);
+  margin-top: auto;
+  font-size: .75rem;
+  color: var(--pg-fg-2);
+}
+.wsf-tpl-start {
+  font-weight: 600;
+}
+.wsf-tpl-card > .btn {
+  align-self: flex-start;
+}
+.wsf-palette-template {
+  margin-bottom: var(--ws-space-1);
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+  cursor: pointer;
+}
 .wsf-problems {
   margin-bottom: var(--ws-space-2);
   padding: var(--ws-space-2) var(--ws-space-3);
