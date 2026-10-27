@@ -5,7 +5,7 @@ description: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped fo
 
 ## Which swaps did the owner ask for?
 - B9a tagin to Chips: done (#2208), how it works in `ui/pg-field-wrappers.md`.
-- B9b select2 to Combobox: done (#2243), server search for `data-pg-source` (google_product_category) done (#2362); how it works in `ui/pg-combobox.md`. Follow-up: no panel field uses select2 any more, so its script and sheets in `output_control_panel_header_includes()` and the select2 rules in `backend.src.css` can go (site pages keep their own select2).
+- B9b select2 to Combobox: done (#2243), server search for `data-pg-source` (google_product_category) done (#2362); how it works in `ui/pg-combobox.md`. Follow-up done (#2428): the panel header loads no select2 asset and `backend.src.css` has no select2 rule; `assets/lib/select2` stays for site pages.
 - B9c Datepicker and time fields: done (#2262), how it works in `ui/pg-datepicker.md`.
 - B9d OTP: done (#2210, `ui/otp-fields.md`).
 - B9e Range with value bubble: done (#2207): editor inspector (3), label editor, image quality % and disk alert % (`ui/range-value-bubble.md`). Never the palette's site Range.
