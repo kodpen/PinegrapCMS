@@ -5782,6 +5782,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         var counts = fmt(L.counts_label, [state.items.folders.length, state.items.pages.length, state.items.files.length]);
+        var listed = state.items.folders.length + state.items.pages.length + state.items.files.length;
+
+        // A search or a filter shows part of the folder: say how much.
+        if (state.ordered.length < listed) {
+            counts = fmt(L.filters_showing, [state.ordered.length, listed]);
+        }
+
         var selected = selectedItems();
         var selectedInfo = selected.length > 0 ? (selected.length + ' ' + L.items + ' ' + L.selected) : '';
         var clipboardInfo = '';
@@ -14502,6 +14509,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         renderContent();
         applySelectionClasses();
         renderStatusbar();
+
+        // An item the search hides leaves the selection strip; it leaves the
+        // preview too, instead of standing there beside results it is not in.
+        var searchSelected = selectedItems();
+        renderPreview(searchSelected.length === 1 ? searchSelected[0] : null);
     });
 
     // The selection strip is redrawn on every selection change, so its buttons
