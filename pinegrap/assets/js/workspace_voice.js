@@ -221,7 +221,7 @@
 
         var row = el('div', 'ws-voice-rec');
         var time = el('span', 'ws-voice-rec-time', '0:00');
-        var discard = h.button('btn btn-sm btn-ghost', '', 'bi-trash', t('voice_discard'));
+        var discard = h.button('btn btn-sm btn-text theme-secondary', '', 'bi-trash', t('voice_discard'));
         var stop = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5 ws-voice-rec-stop', '', 'bi-stop-fill', t('voice_stop'));
         var dot = el('span', 'ws-voice-rec-dot');
         var cap = el('span', 'ws-voice-rec-cap', '/ ' + clock(LIMIT));
@@ -445,8 +445,8 @@
         var bar = el('div', 'ws-voice-bar');
         var fill = el('span');
         var time = el('div', 'ws-voice-time', '0:00');
-        var speed = el('button', 'btn btn-sm btn-ghost ws-voice-speed');
-        var save = el('a', 'btn btn-sm btn-ghost');
+        var speed = el('button', 'btn btn-sm btn-text theme-secondary ws-voice-speed');
+        var save = el('a', 'btn btn-sm btn-text theme-secondary');
         var rate = storedSpeed();
         // Chrome's WebM recordings say nothing of their length: it is
         // measured by seeking to the end once (measure()).
@@ -477,7 +477,7 @@
         box.appendChild(speed);
 
         if (options && options.reply) {
-            var answer = h.button('btn btn-sm btn-ghost ws-voice-reply', '', 'bi-mic', t('voice_reply'));
+            var answer = h.button('btn btn-sm btn-text theme-secondary ws-voice-reply', '', 'bi-mic', t('voice_reply'));
 
             answer.addEventListener('click', function () {
                 options.reply();

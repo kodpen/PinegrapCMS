@@ -841,7 +841,7 @@ function ws_mcp_settings_custom($self_url, $kept, $full_form)
                 <label class="visually-hidden" for="ws_mcp_probe_url">' . h(lang('Server address')) . '</label>
                 <input class="form-control form-control-sm w-auto flex-grow-1" type="url" name="mcp_url" id="ws_mcp_probe_url" value="' . h($probed ? ($values['mcp_url'] ?? '') : '') . '" maxlength="500" placeholder="https://" required autocomplete="off">
                 <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 text-nowrap"><i class="bi bi-search me-1" aria-hidden="true"></i>' . h(lang('Check the address')) . '</button>
-                <button type="button" class="btn btn-sm btn-ghost text-nowrap" data-bs-toggle="collapse" data-bs-target="#ws-mcp-new" aria-controls="ws-mcp-new" aria-expanded="' . ($open ? 'true' : 'false') . '"><i class="bi bi-sliders me-1" aria-hidden="true"></i>' . h(lang('More settings')) . '</button>
+                <button type="button" class="btn btn-sm btn-text theme-secondary text-nowrap" data-bs-toggle="collapse" data-bs-target="#ws-mcp-new" aria-controls="ws-mcp-new" aria-expanded="' . ($open ? 'true' : 'false') . '"><i class="bi bi-sliders me-1" aria-hidden="true"></i>' . h(lang('More settings')) . '</button>
             </form>
             <div class="form-text">' . h(lang('Only the address is needed: it is checked first, and how the site signs in is chosen from the answer. Servers that run on a computer (npx, stdio) cannot be reached from a website.')) . '</div>
             ' . $result . '
