@@ -133,6 +133,20 @@ function ws_flow_kinds()
 }
 
 /**
+ * The outcomes an arrow may leave a box of this kind on: its own, and
+ * always (any of them) for a box that is not a start and has any. Pure.
+ *
+ * @param array $kind ws_flow_kinds() entry
+ * @return string[]
+ */
+function ws_flow_arrow_outcomes($kind)
+{
+    $outcomes = (array) ($kind['outcomes'] ?? array());
+
+    return (empty($kind['trigger']) && !empty($outcomes)) ? array_merge($outcomes, array('always')) : $outcomes;
+}
+
+/**
  * Is this a box id a flow may use? It names the box in a run's steps
  * (ws_flow_run_steps.node_id) and in the values later boxes read.
  *
@@ -498,7 +512,7 @@ function ws_flow_graph_check($graph)
             }
 
             if (function_exists('ws_flow_timeout_problems')) {
-                foreach (ws_flow_timeout_problems($config, $name, ws_flow_outcome_routed($graph, $id, 'timeout')) as $text) {
+                foreach (ws_flow_timeout_problems($config, $name, ws_flow_outcome_routed($graph, $id, 'timeout', false)) as $text) {
                     $problems[] = ws_flow_problem('bad_config', $id, null, $text);
                 }
             }
@@ -568,7 +582,7 @@ function ws_flow_graph_check($graph)
 
         $kind = $nodes[$from]['kind'];
 
-        if (isset($kinds[$kind]) && !in_array($edge['on'], $kinds[$kind]['outcomes'], true)) {
+        if (isset($kinds[$kind]) && !in_array($edge['on'], ws_flow_arrow_outcomes($kinds[$kind]), true)) {
             $problems[] = ws_flow_problem('bad_outcome', $from, $index, lang(array('string' => 'An arrow leaves the box {var:1} on {var:2}, which is not one of its outcomes.', 'vars' => array(ws_flow_box_name($nodes[$from]), ($edge['on'] !== '') ? $edge['on'] : '-'))));
         }
 
@@ -1998,6 +2012,7 @@ function ws_flow_js_strings()
         'fl_on_done'          => lang('Done'),
         'fl_on_cancelled'     => lang('Cancelled'),
         'fl_on_failed'        => lang('Failed'),
+        'fl_on_always'        => lang('However it ended'),
         'fl_on_yes'           => lang('Yes'),
         'fl_on_no'            => lang('No'),
         'fl_on_box'           => lang('Followed when the box ends'),

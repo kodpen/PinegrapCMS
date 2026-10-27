@@ -144,7 +144,8 @@
         rejected: 'fl_on_rejected',
         expired: 'fl_on_expired',
         withdrawn: 'fl_on_withdrawn',
-        timeout: 'fl_on_timeout'
+        timeout: 'fl_on_timeout',
+        always: 'fl_on_always'
     };
 
     // What a share lets its holder do (ws_flow_share_levels()), lowest first.
@@ -2059,7 +2060,7 @@
             // In a run, an arrow its box ended on was taken.
             var step = state.run ? stepOf(edge.from) : null;
 
-            if (step && (step.status === 'done') && (step.outcome === edge.on)) {
+            if (step && (step.status === 'done') && step.outcome && ((step.outcome === edge.on) || (edge.on === 'always'))) {
                 group.classList.add('wsf-edge-taken');
             }
 
@@ -2070,7 +2071,7 @@
 
             // An arrow taken when a task is cancelled, or a step failed, says
             // so on itself.
-            if ((edge.on === 'cancelled') || (edge.on === 'failed')) {
+            if ((edge.on === 'cancelled') || (edge.on === 'failed') || (edge.on === 'always')) {
                 var label = svgEl('text', 'wsf-edge-label');
 
                 label.setAttribute('x', String(path.mx));
@@ -3897,9 +3898,17 @@
         return box;
     }
 
+    // The outcomes an arrow may leave a box on: its own, and always for a
+    // box that is not a start (ws_flow_arrow_outcomes()).
+    function arrowOutcomes(node) {
+        var kind = kindOf(node);
+
+        return (kind.into && kind.out.length) ? kind.out.concat(['always']) : kind.out;
+    }
+
     function outcomeSelect(edge) {
         var from = nodeById(edge.from);
-        var pick = K.select((from ? kindOf(from).out : [edge.on]).map(function (on) { return [on, t(OUTCOMES[on] || 'fl_on_done')]; }), edge.on);
+        var pick = K.select((from ? arrowOutcomes(from) : [edge.on]).map(function (on) { return [on, t(OUTCOMES[on] || 'fl_on_done')]; }), edge.on);
 
         pick.className = 'form-control form-control-sm w-auto';
         pick.setAttribute('aria-label', onLabel(from));
