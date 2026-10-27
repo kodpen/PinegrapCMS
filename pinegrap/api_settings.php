@@ -460,6 +460,13 @@ if ($_POST) {
 			// learned to check it kept being delivered to.
 			api_webhooks_delete_for_app($app_id);
 
+			// Its Workspace / commands go with it, so the names are free again.
+			if (pg_schema_has('ws_app_commands')) {
+
+				db("DELETE FROM ws_app_commands WHERE app_id = '" . $app_id . "'");
+
+			}
+
 			$liveform->add_notice(lang(array('string' => 'The application {var:1} was deleted.', 'vars' => h($existing['name']))));
 
 			log_activity(lang(array(

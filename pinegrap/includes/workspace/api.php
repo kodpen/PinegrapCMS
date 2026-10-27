@@ -62,6 +62,13 @@ function ws_scope_groups()
             'read'        => 'workspace:read',
             'write'       => 'workspace:write',
         ),
+        'workspace_commands' => array(
+            'label'       => lang('Channel commands'),
+            'description' => lang('Adds the application\'s own / commands to the channels'),
+            'icon'        => 'bi-slash-square',
+            'read'        => '',
+            'write'       => 'workspace:commands',
+        ),
         'tasks' => array(
             'label'       => lang('Tasks'),
             'description' => lang('Tasks and the planning board'),
@@ -73,8 +80,8 @@ function ws_scope_groups()
 }
 
 /**
- * Which of the module's scopes an application owner may delegate: all four
- * to a member of the team, none to anyone else. What an owner may do inside
+ * Which of the module's scopes an application owner may delegate: all of
+ * them to a member of the team, none to anyone else. What an owner may do inside
  * the workspace - whom they may give work to, which private channels they are
  * in - is checked again on every call, from the owner's own rights.
  *
@@ -89,7 +96,7 @@ function ws_owner_scopes($owner)
         return array();
     }
 
-    return array('workspace:read', 'workspace:write', 'tasks:read', 'tasks:write');
+    return array('workspace:read', 'workspace:write', 'workspace:commands', 'tasks:read', 'tasks:write');
 }
 
 /**
@@ -120,6 +127,7 @@ function ws_webhook_events()
         'workspace.flow.run.finished'   => 'A run of a workspace flow ended done: the run (as GET /workspace/flow-runs/{id} gives it, without its boxes, access or can_cancel) and result, the box that finished last (an end box passed over). Names, sentences and values only for a run of a public channel; a cancelled run is not announced',
         'workspace.flow.run.failed'     => 'A run of a workspace flow failed: the run and result, the box that failed first with its sentence (names, sentences and values only for a run of a public channel). A run reopened by trying a box again is announced again when it ends',
         'workspace.flow.run.waiting'    => 'A box of a workspace flow\'s run started to wait: waiting says which box and for what (for: task, approval, delay or retry, with task_id, approval_id or until); run.status says whether the rest of the run waits too. Once per wait: a box that goes on waiting, or waits again after it stopped half way, is not announced again',
+        'workspace.app.command'         => 'Somebody typed a / command the application registered (POST /workspace/commands) in a workspace channel or discussion. The line is not posted: only that application\'s own subscriptions hear it, and only where it may read the channel: its key active, not expired and holding workspace:commands, in a public channel or in a private channel, guest room or discussion its owner is in; elsewhere the writer is told the command is unknown and nothing is sent. command is the name with its slash, text the words after it as the owner reads them, body as stored, user_id the writer. In a discussion, channel_id is the discussion\'s own and thread holds the channel and the message it is about. Answer with POST /workspace/channels/{channel_id}/messages',
         'workspace.app.mentioned'       => 'An application was mentioned (<@app:N>) in a workspace channel or discussion. Only that application\'s own subscriptions hear it, once per message (an edit tells only the applications it adds, with edited true), and only where it may read the words: its key active, not expired and holding workspace:read, in a public channel or in a private channel, guest room or discussion its owner is in. Elsewhere nothing is sent, nor to the applications Claude and Pinegrap AI work through. Its own messages never reach it; app_id names another application that wrote. In a discussion, channel_id is the discussion\'s own and thread holds the channel and the message it is about. Answer with POST /workspace/channels/{channel_id}/messages',
     );
 }
@@ -169,6 +177,7 @@ function ws_openapi_objects()
         'WorkspaceTemplateApplied' => 'ws_api_template_applied_schema',
         'WorkspaceCommand'         => 'ws_api_command_schema',
         'WorkspaceCommandArgument' => 'ws_api_command_argument_schema',
+        'WorkspaceAppCommand'      => 'ws_api_app_command_schema',
         'WorkspaceTaskTime'       => 'ws_api_task_time_schema',
         'WorkspaceTimeEntry'      => 'ws_api_task_time_range_schema',
         'WorkspaceTimeTask'       => 'ws_api_task_time_task_schema',
@@ -1887,8 +1896,59 @@ function ws_api_routes()
             'returns'     => array('list' => 'WorkspaceCommand'),
             'mcp'         => false,
             'summary'     => 'List the channel commands',
-            'description' => 'The / commands the owner of the application may type into a channel, in the order the panel\'s picker lists them, for an app that offers the same picker: names holds every name a command answers to (Turkish and English, each with its slash), name the one shown first in the language of the site, usage the name and its arguments (<required> [optional]), and args each argument in the order it is typed, with its kind and where the panel suggests values for it (suggest: people, people_departments, tasks, records, products, dates, estimates, priorities, statuses, or null). anywhere true means the argument is read wherever it is written on the line; live true means the panel shows a line under the command while it is typed. A command the owner may not use is left out: /price, /stock and /product without the product rights, /claude and /ai until they are set up. Nothing is run here: what a command does has its own endpoint.',
+            'description' => 'The / commands the owner of the application may type into a channel, in the order the panel\'s picker lists them, for an app that offers the same picker: names holds every name a command answers to (Turkish and English, each with its slash), name the one shown first in the language of the site, usage the name and its arguments (<required> [optional]), and args each argument in the order it is typed, with its kind and where the panel suggests values for it (suggest: people, people_departments, tasks, records, products, dates, estimates, priorities, statuses, or null). anywhere true means the argument is read wherever it is written on the line; live true means the panel shows a line under the command while it is typed. A command the owner may not use is left out: /price, /stock and /product without the product rights, /claude and /ai until they are set up. After the built-in ones come the commands applications registered (POST /workspace/commands) whose key works and holds workspace:commands: their app_id and app name the application, their key is app:<name>, they take free text and have no live line; app_id is 0 and app null for a built-in command. Nothing is run here: what a command does has its own endpoint.',
             'params'      => array(),
+        ),
+
+        array(
+            'id'          => 'workspace.commands.register',
+            'method'      => 'POST',
+            'path'        => '/workspace/commands',
+            'scope'       => 'workspace:commands',
+            'handler'     => 'ws_api_commands_register',
+            'dry_run'     => true,
+            'status'      => 201,
+            'returns'     => 'WorkspaceAppCommand',
+            'mcp'         => false,
+            'summary'     => 'Register a channel command',
+            'description' => 'Adds a / command of the application\'s own to the channels, beside the built-in ones, or changes the description and usage of one it registered before (200; 201 when new). name is one word of 2 to 20 letters, kept in lower case without its slash; a built-in name (/task, /görev, /help...) or /claude and /ai is refused with 422. A name is the site\'s: one another application holds is refused with 409 name_taken, and an application may hold twenty (409 limit_reached). When somebody types the command in a channel the line is not posted: the application hears workspace.app.command through its own webhook subscriptions, where it may read the channel, and answers with POST /workspace/channels/{channel_id}/messages; the writer sees that it was sent. Only an application key or an OAuth connection registers; a team devices session is refused with 403. Deleting the application deletes its commands.',
+            'params'      => array(
+                array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 21, 'required' => true, 'description' => 'The command, with or without its slash: summarize or /summarize.'),
+                array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 200, 'required' => true, 'description' => 'What it does, shown in the picker and /help.'),
+                array('name' => 'usage', 'in' => 'body', 'type' => 'string', 'max_length' => 200, 'description' => 'The arguments after the name, as /help shows them: [days] <topic>.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.commands.delete',
+            'method'      => 'DELETE',
+            'path'        => '/workspace/commands/{name}',
+            'scope'       => 'workspace:commands',
+            'handler'     => 'ws_api_commands_delete',
+            'dry_run'     => true,
+            'returns'     => array('name' => 'string', 'deleted' => 'boolean'),
+            'mcp'         => false,
+            'summary'     => 'Remove a channel command',
+            'description' => 'Removes a command the application registered; the name is free again. A name the application does not hold is 404. POST /workspace/commands/{name}/delete does the same for servers that refuse DELETE.',
+            'params'      => array(
+                array('name' => 'name', 'in' => 'path', 'type' => 'string', 'max_length' => 21, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.commands.delete_post',
+            'method'      => 'POST',
+            'path'        => '/workspace/commands/{name}/delete',
+            'scope'       => 'workspace:commands',
+            'handler'     => 'ws_api_commands_delete',
+            'dry_run'     => true,
+            'returns'     => array('name' => 'string', 'deleted' => 'boolean'),
+            'mcp'         => false,
+            'summary'     => 'Remove a channel command, addressed as a POST',
+            'description' => 'The same removal as DELETE /workspace/commands/{name}, for clients and servers that cannot send DELETE.',
+            'params'      => array(
+                array('name' => 'name', 'in' => 'path', 'type' => 'string', 'max_length' => 21, 'required' => true),
+            ),
         ),
 
         array(

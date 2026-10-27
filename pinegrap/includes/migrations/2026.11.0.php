@@ -67,6 +67,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_note_revision(); // 11.0.84
 	upgrade_2026_11_0_workspace_note_deletions(); // 11.0.85
 	upgrade_2026_11_0_workspace_note_sources(); // 11.0.86
+	upgrade_2026_11_0_workspace_app_commands(); // 11.0.87
 	upgrade_2026_11_0_marketplace_columns();    // 11.0.37
 	upgrade_2026_11_0_audit_feed_tokens();      // 11.0.38
 	upgrade_2026_11_0_erp_efatura_threshold();  // 11.0.61
@@ -1790,6 +1791,35 @@ function upgrade_2026_11_0_workspace_note_sources() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: notes brought in from other apps remember where they came from, so importing the same notes again updates them instead of adding them twice.');
+
+}
+
+// The / commands an application registers for itself (2026.11.0, 11.0.87;
+// includes/workspace/app_commands.php).
+//
+// One row a command: the application that registered it, its name (one word
+// of letters, Turkish lower case, without the slash), what it does and the
+// arguments after the name as /help shows them. A name is the site's: UNIQUE
+// lets the database refuse a second application the name the first one
+// holds, even when both register at once. Deleting the application deletes
+// its commands; renaming it keeps them. usage_text, since USAGE is a
+// reserved word.
+function upgrade_2026_11_0_workspace_app_commands() {
+
+	install_create_table('ws_app_commands', "CREATE TABLE ws_app_commands (
+		id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		app_id INT UNSIGNED NOT NULL DEFAULT 0,
+		name VARCHAR(20) NOT NULL DEFAULT '',
+		description VARCHAR(200) NOT NULL DEFAULT '',
+		usage_text VARCHAR(200) NOT NULL DEFAULT '',
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_name (name),
+		KEY idx_app (app_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: connected applications can add their own / commands to the channels.');
 
 }
 
