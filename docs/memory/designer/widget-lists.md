@@ -1,6 +1,7 @@
 ---
 name: widget-lists
 description: Lists inside a widget record (#1680): loop_area + props.source, sources and tokens, span and published rows, pass stage 2, empty lists, escaping, nesting, edit pencil, get_file
+module: widgets_lists
 ---
 
 ## What is a list?

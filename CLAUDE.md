@@ -13,8 +13,9 @@ needs. The detail is in memory files, opened when a task needs them.
   the symptom it fixed, the PR number), goes into `docs/memory/<folder>/`:
   English, one topic per file, at most 4 KB, `## …?` questions with short
   answers, frontmatter `---` / `name: <file name without .md>` /
-  `description: <one line>` / `---`. Stale text is corrected or deleted,
-  never kept beside a "now" note.
+  `description: <one line>` / optional `module: <includes/fn modules>` /
+  `---`. Stale text is corrected or deleted, never kept beside a "now"
+  note.
 - Plans are files in `docs/memory/plans/`: remaining work, decisions, open
   questions, where to start. A finished plan moves its lasting decisions to
   the topic folder and is deleted.
@@ -114,8 +115,9 @@ the merging session, `coordinator.md` for coordinators.
    file and end: a long session pays for its whole context on every wake.
 7. **Shared hot files.** A PR never edits `changelog.txt`: its body names the
    `[NEW]` line or the `[SCHEME]` item. Translation keys go in only with
-   `php tools/tr_add.php` (`core/lang-files.md`). Generated indexes,
-   `.min.js` bundles and `core/fn-module-map-additions.md`: append only.
+   `php tools/tr_add.php` (`core/lang-files.md`). Generated indexes and
+   `.min.js` bundles: append only. A new `includes/fn/` module is named in
+   the `module:` field of its memory file (`core/fn-modules.md` is generated).
 8. **Queue limit.** While more than 15 PRs are open, drafts and
    `merge-train/*` not counted, nobody starts a new task (checked before the
    claim); finished work is still marked ready. A PR waiting on the owner's

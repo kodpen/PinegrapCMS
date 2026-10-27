@@ -1,6 +1,7 @@
 ---
 name: comments-widget-pages
 description: Pages and permalinks of the comments widget: per_page units, ?comments_page and ?comment=, the pagination section and fallback, the URL builders, comment=<id> in the redirect, mails and panel
+module: comments, widgets_comments
 ---
 
 ## How is a thread paged?

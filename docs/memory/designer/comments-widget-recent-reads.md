@@ -1,6 +1,7 @@
 ---
 name: comments-widget-recent-reads
 description: The statements a list of recent comments sends, the merge, when it is exact, index hints, measured cost, the idx_author index (11.0.36), page cache
+module: widgets_comments_recent
 ---
 
 ## Which statements does a list send?

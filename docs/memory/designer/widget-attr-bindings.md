@@ -1,6 +1,7 @@
 ---
 name: widget-attr-bindings
 description: A widget record's values in an element's attributes ({{token}} in the Attributes panel or a title): placeholder and carrier, the pass stage, refused attributes and tokens, editor completion (W15)
+module: widgets_attrs
 ---
 
 ## What does an operator write?

@@ -1,6 +1,7 @@
 ---
 name: comment-thread-verify
 description: Which thread a posted comment joins (pg_comment_thread_verify()): a record view page only its record, a classic catalog or event page only an item it shows; refusals after the page gates
+module: comments
 ---
 
 ## Which thread may a posted comment join?

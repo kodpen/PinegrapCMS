@@ -1,6 +1,7 @@
 ---
 name: widget-lists-product
 description: Product lists in the catalog detail and listing widgets (W9): images, attributes, products bought together; where rows are read, group cards, the cross-sell block they replace, what is left
+module: widgets_lists_product
 ---
 
 ## Which product lists exist?

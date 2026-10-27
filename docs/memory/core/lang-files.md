@@ -1,6 +1,7 @@
 ---
 name: lang-files
 description: Turkish wording as sorted shards in includes/local/tr/: why, layout, pg_lang_map() the one reader, old tr.json on updated sites, tr_add.php, tr_resolve.php, check_lang.php, speed
+module: lang_files
 ---
 
 ## Why shards?

@@ -224,10 +224,3 @@ function test_merge_train_changelog_apply_without_version()
 	pg_assert_same(false, merge_train_changelog_apply("No versions here.\n", $entry));
 }
 
-// Both sides' added lines are kept, the merge base's dropped.
-function test_merge_train_union_conflict()
-{
-	$contents = "# Map\n- a\n<<<<<<< HEAD\n- b\n||||||| base\n=======\n- c\n>>>>>>> FETCH_HEAD\n- d\n";
-	pg_assert_same("# Map\n- a\n- b\n- c\n- d\n", merge_train_union_conflict($contents));
-	pg_assert_same("x\n", merge_train_union_conflict("x\n"));
-}

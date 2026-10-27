@@ -1,6 +1,7 @@
 ---
 name: wishlist-widget
 description: Favourites system widget (kind wishlist, widgets_wishlist.php): whose list it shows, tokens, flags, the two row actions and their hidden forms, page cache, My Account link, shop templates
+module: widgets_wishlist
 ---
 
 ## What does it show, and to whom?

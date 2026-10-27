@@ -1,6 +1,7 @@
 ---
 name: comments-widget-form
 description: The comments widget's add-comment form: bindings, slots, server sections and their fallbacks, binding-off twins, Messages, frontend init
+module: widgets_comments
 ---
 
 ## How is the form wired?
