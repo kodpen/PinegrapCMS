@@ -156,8 +156,49 @@ function test_workspace_flows_canvas_brief_is_typed()
 	$flow = array('id' => '12', 'name' => 'Onboarding', 'status' => 'live', 'access' => 'run', 'owner_id' => '4', 'channel_id' => '9', 'draft_rev' => '3', 'version_id' => '30');
 	$brief = ws_flow_brief(array('id' => 7), $flow, 2);
 
-	pg_assert_same(array('id' => 12, 'name' => 'Onboarding', 'status' => 'live', 'access' => 'run', 'mine' => false, 'channel_id' => 9, 'draft_rev' => 3, 'version' => 2), $brief);
+	pg_assert_same(array('id' => 12, 'name' => 'Onboarding', 'status' => 'live', 'access' => 'run', 'mine' => false, 'channel_id' => 9, 'draft_rev' => 3, 'version' => 2, 'start' => ''), $brief);
 	pg_assert_true(ws_flow_brief(array('id' => 4), $flow, 0)['mine'], 'the owner\'s own');
+
+	foreach (array('time', 'manual', 'event', 'join') as $start) {
+		pg_assert_same($start, ws_flow_brief(array('id' => 7), $flow, 2, $start)['start'], 'start ' . $start);
+	}
+}
+
+// A flow opened on the screen says how it starts, so the list keeps the kind
+// after a save: the draft of a flow never published, by its start box.
+function test_workspace_flows_canvas_detail_carries_the_start_kind()
+{
+	foreach (array('schedule' => 'time', 'manual' => 'manual', 'event' => 'event', 'join' => 'join') as $kind => $start) {
+		$draft = array('v' => 1, 'nodes' => array(
+			array('id' => 'start_1', 'kind' => $kind, 'x' => 0, 'y' => 0),
+			array('id' => 'end_1', 'kind' => 'end', 'x' => 288, 'y' => 0),
+		), 'edges' => array(array('from' => 'start_1', 'to' => 'end_1')));
+		$flow = array('id' => '12', 'name' => 'Onboarding', 'status' => 'draft', 'access' => 'view', 'owner_id' => '4', 'channel_id' => '9',
+			'draft_rev' => '3', 'version_id' => '0', 'draft' => json_encode($draft));
+
+		pg_assert_same($start, ws_flow_detail(array('id' => 7), $flow)['start'], 'detail start of a ' . $kind . ' box');
+	}
+
+	$flow['draft'] = json_encode(array('v' => 1, 'nodes' => array(), 'edges' => array()));
+	pg_assert_same('', ws_flow_detail(array('id' => 7), $flow)['start'], 'no start box: empty');
+}
+
+// The list action hands each flow its start kind, and the screen keeps it
+// in a saved flow's entry and narrows the list by it with a select.
+function test_workspace_flows_canvas_list_filters_by_start_kind()
+{
+	$actions = file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	$list = substr($actions, strpos($actions, "case 'ws_flow_list':"), 800);
+
+	pg_assert_contains('ws_flows_start_kinds($rows)', $list, 'the list reads each flow\'s start');
+
+	$script = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$entry = substr($script, strpos($script, 'function listEntry(flow)'), 400);
+	$draw = substr($script, strpos($script, 'function drawList()'), 3000);
+
+	pg_assert_contains('start: flow.start', $entry, 'a saved flow keeps its start kind');
+	pg_assert_contains("el('select', 'form-control form-control-sm", $draw, 'the filter is a Bootstrap select');
+	pg_assert_contains('state.startFilter', $draw, 'the list is narrowed by the chosen start');
 }
 
 // A save always names the draft it was made on: without draft_rev,
