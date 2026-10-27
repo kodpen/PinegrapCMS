@@ -15,4 +15,4 @@ description: L4 parity list (2026-10-26): what page_designer.php does that the v
 - P9 Device presets (six sizes, scaled frame, size badge, `localStorage` `deviceType`/`previewWidth`): parity, the designer's responsive preview with breakpoints.
 - P10 System style shown read-only and the "System Tags" help modal (`#editor_region_modal`): the designer's code view and palette region nodes cover them. Drop.
 
-Related: docs/memory/plans/legacy-page-designer-l5-list.md, docs/memory/plans/legacy-page-designer-retirement.md, docs/memory/designer/layout-code-tab.md, docs/memory/plans/legacy-retirement-prerequisites.md
+Related: docs/memory/plans/legacy-page-designer-l5-list.md, docs/memory/plans/legacy-page-designer-retirement.md, docs/memory/designer/layout-code-tab.md, docs/memory/designer/classic-regions-in-designer.md

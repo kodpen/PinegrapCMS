@@ -1070,16 +1070,16 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     // loop through all contacts that need to be deleted, so they can be deleted
     foreach ($contacts as $contact) {
         // delete contact
-        $query = "DELETE FROM contacts WHERE id = '" . $contact['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM contacts WHERE id = ?";
+        $result = db_q($query, array((string) $contact['id'])) or output_error('Query failed.');
 
         // delete contact references in contacts_contact_groups_xref
-        $query = "DELETE FROM contacts_contact_groups_xref WHERE contact_id = '" . $contact['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM contacts_contact_groups_xref WHERE contact_id = ?";
+        $result = db_q($query, array((string) $contact['id'])) or output_error('Query failed.');
 
         // delete contact references in opt_in
-        $query = "DELETE FROM opt_in WHERE contact_id = '" . $contact['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM opt_in WHERE contact_id = ?";
+        $result = db_q($query, array((string) $contact['id'])) or output_error('Query failed.');
     }
 
     // prepare list of contact groups for log
@@ -1100,8 +1100,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
 
                 // else this contact group is not the [None] contact group, so get contact group name
                 } else {
-                    $query = "SELECT name FROM contact_groups WHERE id = '" . escape($contact_group) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $query = "SELECT name FROM contact_groups WHERE id = ?";
+                    $result = db_q($query, array((string) $contact_group)) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
 
                     $contact_group_list .= $row['name'];
@@ -1122,8 +1122,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         // else get group name
         } else {
             // get contact group name
-            $query = "SELECT name FROM contact_groups WHERE id = '" . escape($contact_groups_filter) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT name FROM contact_groups WHERE id = ?";
+            $result = db_q($query, array((string) $contact_groups_filter)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
 
             $contact_group_list = $row['name'];
@@ -1539,8 +1539,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                     // output image
                     $output_image_column ='<td class="align-middle text-start"><img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h($contact['image']) . '" /></td>';
                 }else{
-                    // output no image
-                    $output_image_column ='<td class="align-middle text-start"><img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(function_exists('pg_avatar_for') ? pg_avatar_for($contact['first_name'] ?? '', $contact['last_name'] ?? '', $contact['company'] ?? '', $contact['id'] ?? '') : 'assets/images/person1.png') . '" /></td>';
+                    // No picture: the letters of the name (includes/fn/contacts.php).
+                    $output_image_column ='<td class="align-middle text-start">' . pg_avatar_markup_for($contact['first_name'] ?? '', $contact['last_name'] ?? '', $contact['company'] ?? '', $contact['id'] ?? '', 'pg-avatar-50') . '</td>';
                 }
             }else{
                 //check file
@@ -1548,8 +1548,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 "SELECT 
                     files.name
                 FROM files 
-                WHERE files.id = '" . escape($contact['file_id']) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE files.id = ?";
+                $result = db_q($query, array((string) $contact['file_id'])) or output_error('Query failed.');
                 $file = mysqli_fetch_array($result);
                 $file_name = $file['name'];
                 $output_image_column ='<td class="align-middle text-start"><img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' .  PATH . h($file_name) . '" /></td>';
@@ -1619,8 +1619,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         // If show groups is on, or the filter is set to all duplicate contacts then get contact groups.
         if ((($_SESSION['software']['view_contacts']['show_contact_groups'] ?? '') == true) || ($filter == 'all_duplicate_contacts')) {
             // get contact groups that this contact is in
-            $query = "SELECT contact_group_id FROM contacts_contact_groups_xref WHERE contact_id = '" . $contact['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT contact_group_id FROM contacts_contact_groups_xref WHERE contact_id = ?";
+            $result = db_q($query, array((string) $contact['id'])) or output_error('Query failed.');
 
             $contact_groups_for_contact = array();
 
@@ -2331,7 +2331,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                                 </div>
                                 ' . $output_contact_group_selection . '
                             </form>
-                            <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_contacts.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
+                            <a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_contacts.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                             ' . (($show_hide_date_range === '') ? pg_period_nav('view_contacts.php', ($_SESSION['software']['view_contacts'] ?? array()), array(
                                 'day'   => array($decrease_day, $current_day, $increase_day),
                                 'week'  => array($decrease_week, $current_week, $increase_week),

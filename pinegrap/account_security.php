@@ -295,9 +295,8 @@ if (strpos($action, 'passkey_') === 0) {
 
     if ($action === 'passkey_remove') {
         // The password (none for a Google-only account) and, while two-step
-        // verification is on, a code. An account with neither has its session
-        // alone to show; without two-step verification its passkeys answer no
-        // sign-in step.
+        // verification is on, a code; no e-mailed code, which only adding
+        // asks for. An account with neither has its session alone to show.
         $passkey_proofs = pg_passkey_reauth_fields(
             db_value("SELECT user_password_algo FROM user WHERE user_id = '" . $user_id . "'"),
             pg_mfa_table_exists() && pg_mfa_enabled($user_id));

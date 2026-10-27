@@ -52,14 +52,14 @@ function pg_dashboard_widget_22($request, $user, $waf_panel = '')
             $td_threshold = 10;
         }
 
-        $td_totals = mysqli_fetch_assoc(mysqli_query(
-            db::$con,
+        $td_totals = mysqli_fetch_assoc(db_q(
             "SELECT
                 COALESCE(SUM(CASE WHEN action IN ('block','rate','ban') THEN hit_count ELSE 0 END), 0) AS blocked,
                 COALESCE(SUM(CASE WHEN action IN ('would-block','would-rate','would-ban') THEN hit_count ELSE 0 END), 0) AS would_block,
                 COUNT(DISTINCT ip_address) AS addresses
              FROM waf_log
-             WHERE log_timestamp >= " . (int) $td_day_ago
+             WHERE log_timestamp >= ?",
+            array((int) $td_day_ago)
         ));
 
         if ($td_mode === 'monitor') {
@@ -93,8 +93,7 @@ function pg_dashboard_widget_22($request, $user, $waf_panel = '')
         // showing. Everything else groups by category, because
         // there the matched value is a payload fragment that
         // differs on every request.
-        $td_result = mysqli_query(
-            db::$con,
+        $td_result = db_q(
             "SELECT
                 CASE WHEN category IN ('bot','tool') AND matched <> ''
                      THEN matched ELSE category END AS source,
@@ -103,10 +102,11 @@ function pg_dashboard_widget_22($request, $user, $waf_panel = '')
                 COUNT(DISTINCT ip_address) AS ips,
                 MAX(score) AS top_score
              FROM waf_log
-             WHERE log_timestamp >= " . (int) $td_day_ago . "
+             WHERE log_timestamp >= ?
              GROUP BY source, category
              ORDER BY hits DESC, source ASC, category ASC
-             LIMIT 6"
+             LIMIT 6",
+            array((int) $td_day_ago)
         );
 
         $td_sources = $td_result ? mysqli_fetch_items($td_result) : array();

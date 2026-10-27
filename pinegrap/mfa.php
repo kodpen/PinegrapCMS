@@ -8,10 +8,10 @@
  * second factor - or of an account whose role must have one - stashes a
  * short-lived pending record (pg_mfa_gate()) and sends the visitor here
  * before anything is signed in. 'verify' asks for a code from the
- * authenticator app, a recovery code or a passkey (a passkey only, for an
- * account with passkeys and no authenticator key); 'setup' has the account
- * add a key to its app, confirm it with the first code and save its recovery
- * codes. Only then is the sign-in completed, in the same order the sign-in
+ * authenticator app, a recovery code or a passkey (a passkey or a recovery
+ * code, for an account with passkeys and no authenticator key); 'setup' has
+ * the account add a key to its app, confirm it with the first code and save
+ * its recovery codes. Only then is the sign-in completed, in the same order the sign-in
  * flows use.
  *
  * @author      Erdal Güral (Kodpen)
@@ -219,11 +219,33 @@ $messages = ($error !== '')
 
 $cancel_button = '<button type="submit" name="pg_mfa_action" value="cancel" class="btn btn-outline theme-secondary w-100 mt-3" formnovalidate="formnovalidate">' . h(lang('Cancel')) . '</button>';
 
-$code_input =
-    '<div class="mb-5">
-        <label for="mfa_code" class="form-label">' . h(lang('Code')) . '</label>
-        <input type="text" id="mfa_code" name="code" class="form-control form-control-lg" required="required" inputmode="numeric" autocomplete="one-time-code" autofocus="autofocus" spellcheck="false" maxlength="20"/>
+// The code field: Bootstrap's OTP component, one real input drawn as slots
+// (data-bs-otp starts it). It never submits by itself: a refused code costs
+// one of the attempts pg_mfa_attempt_blocked() allows, so the person sends
+// it. The recovery field takes XXXX-XXXX (case, dash and spaces do not
+// matter, pg_mfa_recovery_normalize()); the field not in use is disabled, so
+// only one "code" is posted.
+function pg_mfa_screen_code_field($kind, $active)
+{
+    $recovery = ($kind === 'recovery');
+
+    return '<div class="mb-3" id="mfa_' . $kind . '_box"' . ($active ? '' : ' hidden="hidden"') . '>
+        <label for="mfa_' . $kind . '" class="form-label">' . h($recovery ? lang('Recovery code') : lang('Code')) . '</label>
+        <div class="otp pg-otp-fluid' . ($recovery ? ' text-uppercase' : ' otp-lg') . '" data-bs-otp=""'
+            . ($recovery ? ' data-bs-type="alphanumeric" data-bs-groups="[4,4]" data-bs-separator="-"' : ' data-bs-groups="[3,3]"') . '>
+            <input type="text" id="mfa_' . $kind . '" name="code" class="otp-input" maxlength="' . ($recovery ? 8 : 6) . '" required="required"'
+            . ($recovery ? ' autocomplete="off" autocapitalize="characters"' : ' inputmode="numeric" autocomplete="one-time-code"')
+            . ' spellcheck="false"' . ($active ? ' autofocus="autofocus"' : ' disabled="disabled"') . '/>
+        </div>
     </div>';
+}
+
+// Narrow screens: the slots shrink with the card instead of running past it.
+$otp_style = '<style>
+    @layer custom {
+        .pg-otp-fluid .otp-slots, .pg-otp-fluid .otp-slot { min-width: 0; }
+    }
+    </style>';
 
 if (($mode === 'setup') && !empty($pending['codes'])) {
 
@@ -267,7 +289,7 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
         ' . $messages . '
         <form name="mfa_setup" action="' . $form_action . '" method="post" autocomplete="off">
             ' . $hidden . '
-            ' . $code_input . '
+            ' . pg_mfa_screen_code_field('totp', true) . '
             <button type="submit" name="pg_mfa_action" value="setup_confirm" class="btn btn-solid theme-primary w-100">' . h(lang('Continue')) . '</button>
             ' . $cancel_button . '
         </form>
@@ -287,9 +309,10 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
     $title = lang('Two-Step Verification');
 
     // An account with passkeys and no authenticator key is asked for a
-    // passkey only: without a key there are no codes to type (turning the
-    // key off removed its recovery codes too).
+    // passkey, or one of the recovery codes it got with its first passkey;
+    // there is no authenticator code to type.
     $totp_on = pg_mfa_enabled($user_id);
+    $recovery_left = $totp_on ? 0 : pg_mfa_recovery_remaining($user_id);
 
     // A passkey of the account, offered above the code when the browser can
     // use one (the script shows the block). The browser's answer is posted
@@ -307,7 +330,7 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
                     <button type="button" id="mfa_passkey_button" class="btn btn-solid theme-primary w-100"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Use a passkey')) . '</button>
                 </form>
                 <div id="mfa_passkey_error" class="alert theme-danger mt-5 mb-0 d-none" role="alert"></div>
-                ' . ($totp_on ? '<p class="text-center fg-secondary small my-5">' . h(lang('or enter a code')) . '</p>' : '') . '
+                ' . (($totp_on || ($recovery_left > 0)) ? '<p class="text-center fg-secondary small my-5">' . h(lang('or enter a code')) . '</p>' : '') . '
             </div>
             <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_passkey.js?v=' . (int) @filemtime(dirname(__FILE__) . '/assets/js/pg_passkey.js') . '"></script>
             <script>
@@ -347,7 +370,22 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
             </script>';
     }
 
-    if (!$totp_on) {
+    // Recovery mode first when the authenticator keys cannot be read, or
+    // when the refused code was a recovery code.
+    $recovery_mode = !pg_mfa_available() || (($error !== '') && (pg_mfa_code_kind($code ?? '') === 'recovery'));
+
+    if (!$totp_on && ($recovery_left > 0)) {
+        $body =
+            '<p class="fg-secondary mb-5">' . h(lang('Use one of your passkeys, or one of your recovery codes, to finish signing in.')) . '</p>
+            ' . $messages . '
+            ' . $passkey_block . '
+            <form name="mfa_verify" action="' . $form_action . '" method="post" autocomplete="off">
+                ' . $hidden . '
+                ' . pg_mfa_screen_code_field('recovery', true) . '
+                <button type="submit" name="pg_mfa_action" value="verify" class="btn btn-outline theme-secondary w-100 mt-3">' . h(lang('Verify')) . '</button>
+                ' . $cancel_button . '
+            </form>';
+    } elseif (!$totp_on) {
         $body =
             '<p class="fg-secondary mb-5">' . h(lang('Use one of your passkeys to finish signing in.')) . '</p>
             ' . $messages . '
@@ -364,10 +402,34 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
             ' . $passkey_block . '
             <form name="mfa_verify" action="' . $form_action . '" method="post" autocomplete="off">
                 ' . $hidden . '
-                ' . $code_input . '
+                ' . pg_mfa_screen_code_field('totp', !$recovery_mode) . '
+                ' . pg_mfa_screen_code_field('recovery', $recovery_mode) . '
+                <p class="mb-5">
+                    <button type="button" class="btn btn-sm btn-text theme-primary px-0" id="mfa_use_recovery"' . ($recovery_mode ? ' hidden="hidden"' : '') . '>' . h(lang('Use a recovery code')) . '</button>
+                    <button type="button" class="btn btn-sm btn-text theme-primary px-0" id="mfa_use_totp"' . ($recovery_mode ? '' : ' hidden="hidden"') . '>' . h(lang('Use a code from the app')) . '</button>
+                </p>
                 <button type="submit" name="pg_mfa_action" value="verify" class="btn btn-solid theme-primary w-100">' . h(lang('Verify')) . '</button>
                 ' . $cancel_button . '
-            </form>';
+            </form>
+            <script>
+            (function () {
+                // Swaps the app code and the recovery code field: the hidden
+                // one is disabled, so it is neither posted nor required.
+                function use(kind) {
+                    var other = (kind === "recovery") ? "totp" : "recovery";
+                    var input = document.getElementById("mfa_" + kind);
+                    document.getElementById("mfa_" + kind + "_box").hidden = false;
+                    document.getElementById("mfa_" + other + "_box").hidden = true;
+                    document.getElementById("mfa_" + other).disabled = true;
+                    input.disabled = false;
+                    document.getElementById("mfa_use_" + other).hidden = false;
+                    document.getElementById("mfa_use_" + kind).hidden = true;
+                    input.focus();
+                }
+                document.getElementById("mfa_use_recovery").addEventListener("click", function () { use("recovery"); });
+                document.getElementById("mfa_use_totp").addEventListener("click", function () { use("totp"); });
+            })();
+            </script>';
     }
 }
 
@@ -376,6 +438,7 @@ echo output_header_secure(array('title' => $title))
         <div class="card mx-auto shadow-sm" style="max-width: 28rem;">
             <div class="card-body p-7">
                 <h1 class="h4 mb-5"><i class="bi bi-shield-lock me-3" aria-hidden="true"></i>' . h($title) . '</h1>
+                ' . $otp_style . '
                 ' . $body . '
             </div>
         </div>

@@ -35,8 +35,8 @@ function get_style($folder_id, $device_type = 'desktop')
 
                 FROM folder
 
-                WHERE folder_id = '" . escape($folder_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed'));
+                WHERE folder_id = ?";
+            $result = db_q($query, array((string) $folder_id)) or output_error(lang('Query failed'));
             $row = mysqli_fetch_assoc($result);
             $folder_parent = $row['folder_parent'] ?? '';
             $folder_style = $row['folder_style'] ?? '';
@@ -63,8 +63,8 @@ function get_style($folder_id, $device_type = 'desktop')
 
                 FROM folder
 
-                WHERE folder_id = '" . escape($folder_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed'));
+                WHERE folder_id = ?";
+            $result = db_q($query, array((string) $folder_id)) or output_error(lang('Query failed'));
             $row = mysqli_fetch_assoc($result);
             $folder_parent = $row['folder_parent'];
             $mobile_style_id = $row['mobile_style_id'];
@@ -330,6 +330,7 @@ function select_page($page_id = '', $page_type = '')
     if ($user['role'] == 3) {
         $folders_that_user_has_access_to = get_folders_that_user_has_access_to($user['id']);
     }
+    $where_values = array();
     // if a page type was given, prepare to only return pages with that page type
     if ($page_type) {
         // If multiple page types were passed in an array, then prepare filter for all of them.
@@ -339,12 +340,14 @@ function select_page($page_id = '', $page_type = '')
                 if ($key != 0) {
                     $where .= "OR ";
                 }
-                $where .= "(page.page_type = '" . e($type) . "') ";
+                $where .= "(page.page_type = ?) ";
+                $where_values[] = (string) $type;
             }
             $where .= ")";
             // Otherwise only one page type was passed, so prepare single filter.
         } else {
-            $where = "WHERE page.page_type = '" . e($page_type) . "'";
+            $where = "WHERE page.page_type = ?";
+            $where_values[] = (string) $page_type;
         }
     } else {
         $where = '';
@@ -373,7 +376,7 @@ function select_page($page_id = '', $page_type = '')
         $where
 
         ORDER BY page.page_name";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, $where_values) or output_error(lang('Query failed.'));
     $pages = array();
     // loop through all pages so they can be added to array
     while ($row = mysqli_fetch_assoc($result)) {
@@ -944,10 +947,12 @@ function get_ad_region_options()
     $ad_region_options[''] = '';
     $sql_join = '';
     $where = '';
+    $where_values = array();
     // if user is a user role, then prepare sql join and where
     if ($user['role'] == 3) {
         $sql_join = 'LEFT JOIN users_ad_regions_xref ON ad_regions.id = users_ad_regions_xref.ad_region_id';
-        $where = "WHERE users_ad_regions_xref.user_id = '" . escape($user['id']) . "'";
+        $where = "WHERE users_ad_regions_xref.user_id = ?";
+        $where_values[] = (string) $user['id'];
     }
     // get ad regions
     $query = "SELECT
@@ -957,7 +962,7 @@ function get_ad_region_options()
         $sql_join
         $where
         ORDER BY name";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, $where_values) or output_error(lang('Query failed.'));
     // loop through each ad region and add it to array
     while ($row = mysqli_fetch_assoc($result)) {
         $ad_region_options[h($row['name'])] = $row['id'];
@@ -1600,8 +1605,8 @@ function log_activity($description, $user = '')
     // how the scheduled jobs reach this function.
     $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
 
-    $query = "INSERT INTO log (log_description, log_ip, log_user, log_timestamp) " . "VALUES ('" . escape($description) . "', '" . escape($ip) . "', '" . escape($user) . "', UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "INSERT INTO log (log_description, log_ip, log_user, log_timestamp) VALUES (?, ?, ?, UNIX_TIMESTAMP())";
+    $result = db_q($query, array((string) $description, (string) $ip, (string) $user)) or output_error(lang('Query failed.'));
     // The ERP keeps its own lines past the six months this log is kept for
     // (includes/erp/audit.php).
     if (function_exists('erp_audit_log_line')) {
@@ -1619,12 +1624,14 @@ function log_activity($description, $user = '')
 }
 function get_number_of_contacts($contact_group, $require_email = false)
 {
+    $where_values = array();
     // if contact group is [None]
     if ($contact_group == '[' . lang('None') . ']') {
         $where = "WHERE (contacts_contact_groups_xref.contact_group_id IS NULL)";
         // else contact group is not [None]
     } else {
-        $where = "WHERE (contacts_contact_groups_xref.contact_group_id = '" . escape($contact_group) . "')";
+        $where = "WHERE (contacts_contact_groups_xref.contact_group_id = ?)";
+        $where_values[] = (string) $contact_group;
     }
     if ($require_email == true) {
         $where .= " AND (opt_in != 0)
@@ -1639,7 +1646,7 @@ function get_number_of_contacts($contact_group, $require_email = false)
         LEFT JOIN contacts_contact_groups_xref ON contacts.id = contacts_contact_groups_xref.contact_id
 
         $where";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, $where_values) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_row($result);
     return $row[0];
 }
@@ -2066,10 +2073,12 @@ function select_field_position($position, $field_id, $page_or_product_id, $page_
         $form_fields_identifier_column = 'page_id';
     }
     // Prepare sql filter in order to get correct fields
-    $form_type_filter = "form_fields." . $form_fields_identifier_column . " = '" . e($page_or_product_id) . "'";
+    $form_type_filter = "form_fields." . $form_fields_identifier_column . " = ?";
+    $form_type_values = array((string) $page_or_product_id);
     // If the page type is express order then we need to add an extra filter for the form type
     if ($page_type == 'express order') {
-        $form_type_filter .= " AND form_fields.form_type = '" . e($form_type) . "'";
+        $form_type_filter .= " AND form_fields.form_type = ?";
+        $form_type_values[] = (string) $form_type;
     }
     // Pinning form_type is mandatory for a template, not optional as it is
     // elsewhere: the copies generated from a template carry the same
@@ -2091,7 +2100,7 @@ function select_field_position($position, $field_id, $page_or_product_id, $page_
              FROM form_fields
              WHERE $form_type_filter
              ORDER BY sort_order";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, $form_type_values) or output_error(lang('Query failed.'));
     while ($row = mysqli_fetch_assoc($result)) {
         if ($row['id'] != $field_id) {
             if ($row['id'] == $position) {
@@ -2903,8 +2912,8 @@ function get_currency_name_from_code($currency_code)
 {
     // if the currency code is not blank, then get name from code
     if ($currency_code != '') {
-        $query = "SELECT name FROM currencies WHERE code = '" . escape($currency_code) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error("Query failed.");
+        $query = "SELECT name FROM currencies WHERE code = ?";
+        $result = db_q($query, array((string) $currency_code)) or output_error("Query failed.");
         $row = mysqli_fetch_assoc($result);
         return $row['name'];
         // else the currency code is blank, so return blank
@@ -2927,8 +2936,8 @@ function get_login_region_content($login_region_id)
 
             FROM login_regions
 
-            WHERE id = '$login_region_id'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE id = ?";
+        $result = db_q($query, array((string) $login_region_id)) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_assoc($result);
         $login_region_header = $row['not_logged_in_header'];
         $login_form = $row['login_form'];
@@ -3034,15 +3043,15 @@ function get_login_region_content($login_region_id)
 
             FROM login_regions
 
-            WHERE id = '$login_region_id'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE id = ?";
+        $result = db_q($query, array((string) $login_region_id)) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_assoc($result);
         $login_region_header = $row['logged_in_header'];
         $login_region_footer = $row['logged_in_footer'];
         $output_badge = '';
         // Get badge info for user.
-        $query = "SELECT user_badge AS badge, user_badge_label AS badge_label FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "SELECT user_badge AS badge, user_badge_label AS badge_label FROM user WHERE user_username = ?";
+        $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_assoc($result);
         $badge = $row['badge'];
         $badge_label = $row['badge_label'];
@@ -3105,16 +3114,16 @@ function get_tax_rate_for_address($country_code, $state_code)
 
              LEFT JOIN countries ON countries.id = tax_zones_countries_xref.country_id
 
-             WHERE countries.code = '" . escape($country_code) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+             WHERE countries.code = ?";
+    $result = db_q($query, array((string) $country_code)) or output_error(lang('Query failed.'));
     while ($row = mysqli_fetch_assoc($result)) {
         $tax_zones_for_country[] = $row['tax_zone_id'];
     }
     // declare tax zones for state array that we will use to store all valid tax zones for state
     $tax_zones_for_state = array();
     // get country id
-    $query = "SELECT id FROM countries WHERE code = '" . escape($country_code) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT id FROM countries WHERE code = ?";
+    $result = db_q($query, array((string) $country_code)) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
 
     // $row is null when the country code is not in the database.
@@ -3126,10 +3135,10 @@ function get_tax_rate_for_address($country_code, $state_code)
 
         WHERE
 
-            (code = '" . escape($state_code) . "')
+            (code = ?)
 
-            AND (country_id = '$country_id')";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            AND (country_id = ?)";
+    $result = db_q($query, array((string) $state_code, (string) $country_id)) or output_error(lang('Query failed.'));
     // if state was found in database and it belongs to country, find what tax zones contain state
     if (mysqli_num_rows($result) > 0) {
         $query = "SELECT tax_zone_id
@@ -3138,8 +3147,8 @@ function get_tax_rate_for_address($country_code, $state_code)
 
                  LEFT JOIN states ON states.id = tax_zones_states_xref.state_id
 
-                 WHERE states.code = '" . escape($state_code) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                 WHERE states.code = ?";
+        $result = db_q($query, array((string) $state_code)) or output_error(lang('Query failed.'));
         while ($row = mysqli_fetch_assoc($result)) {
             $tax_zones_for_state[] = $row['tax_zone_id'];
         }
@@ -3160,8 +3169,8 @@ function get_tax_rate_for_address($country_code, $state_code)
 
     // if a valid tax zone was found, get tax rate
     if ($valid_tax_zone_id) {
-        $query = "SELECT tax_rate FROM tax_zones WHERE id = '$valid_tax_zone_id'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "SELECT tax_rate FROM tax_zones WHERE id = ?";
+        $result = db_q($query, array((string) $valid_tax_zone_id)) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_assoc($result);
         $tax_rate = $row['tax_rate'];
     }
@@ -3189,8 +3198,8 @@ function generate_order_reference_code()
         $reference_code .= $characters[$index];
     }
     // check to see if reference code is already in use
-    $query = "SELECT id FROM orders WHERE reference_code = '$reference_code'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT id FROM orders WHERE reference_code = ?";
+    $result = db_q($query, array((string) $reference_code)) or output_error(lang('Query failed.'));
     // if reference code is already in use, use recursion to generate a new reference code
     if (mysqli_num_rows($result) > 0) {
         return generate_order_reference_code();
@@ -3208,8 +3217,8 @@ function generate_affiliate_code()
         $affiliate_code .= $characters[$index];
     }
     // check to see if affiliate code is already in use
-    $query = "SELECT id FROM contacts WHERE affiliate_code = '$affiliate_code'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT id FROM contacts WHERE affiliate_code = ?";
+    $result = db_q($query, array((string) $affiliate_code)) or output_error(lang('Query failed.'));
     // if affiliate code is already in use, use recursion to generate a new affiliate code
     if (mysqli_num_rows($result) > 0) {
         return generate_affiliate_code();
@@ -3824,8 +3833,8 @@ function get_dynamic_value($dynamic_value, $dynamic_value_attribute = '')
             $viewers_email_address = '';
             // if there is a user logged in then get the user's e-mail address
             if (isset($_SESSION['sessionusername']) == true) {
-                $query = "SELECT user_email FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                $query = "SELECT user_email FROM user WHERE user_username = ?";
+                $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error(lang('Query failed.'));
                 $row = mysqli_fetch_assoc($result);
                 $viewers_email_address = $row['user_email'];
             }
@@ -3881,8 +3890,8 @@ function generate_email_recipient_reference_code()
         $reference_code .= $characters[$index];
     }
     // check to see if reference code is already in use
-    $query = "SELECT id FROM email_recipients WHERE reference_code = '$reference_code'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT id FROM email_recipients WHERE reference_code = ?";
+    $result = db_q($query, array((string) $reference_code)) or output_error(lang('Query failed.'));
     // if reference code is already in use, use recursion to generate a new reference code
     if (mysqli_num_rows($result) > 0) {
         return generate_email_recipient_reference_code();
@@ -3939,8 +3948,8 @@ function generate_form_reference_code()
         $reference_code .= $characters[$index];
     }
     // check to see if reference code is already in use
-    $query = "SELECT id FROM forms WHERE reference_code = '$reference_code'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT id FROM forms WHERE reference_code = ?";
+    $result = db_q($query, array((string) $reference_code)) or output_error(lang('Query failed.'));
     // if reference code is already in use, use recursion to generate a new reference code
     if (mysqli_num_rows($result) > 0) {
         return generate_form_reference_code();
@@ -3997,8 +4006,8 @@ function generate_commission_reference_code()
         $reference_code .= $characters[$index];
     }
     // check to see if reference code is already in use
-    $query = "SELECT id FROM commissions WHERE reference_code = '$reference_code'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT id FROM commissions WHERE reference_code = ?";
+    $result = db_q($query, array((string) $reference_code)) or output_error(lang('Query failed.'));
     // if reference code is already in use, use recursion to generate a new reference code
     if (mysqli_num_rows($result) > 0) {
         return generate_commission_reference_code();
@@ -4099,8 +4108,8 @@ function validate_order_item_for_arrival_date($order_item_id)
 
         LEFT JOIN ship_tos ON order_items.ship_to_id = ship_tos.id
 
-        WHERE order_items.id = '" . e($order_item_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        WHERE order_items.id = ?";
+    $result = db_q($query, array((string) $order_item_id)) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
     $ship_to_id = $row['ship_to_id'];
     $arrival_date = $row['arrival_date'];
@@ -4120,10 +4129,10 @@ function validate_order_item_for_arrival_date($order_item_id)
 
             WHERE
 
-                (arrival_dates.arrival_date = '" . escape($arrival_date) . "')
+                (arrival_dates.arrival_date = ?)
 
-                AND (shipping_cutoffs.shipping_method_id = '$shipping_method_id')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                AND (shipping_cutoffs.shipping_method_id = ?)";
+        $result = db_q($query, array((string) $arrival_date, (string) $shipping_method_id)) or output_error(lang('Query failed.'));
         // if there is a shipping cut-off, then the order item is valid for the arrival date, because we ignore the product preparation time when there is a shipping cut-off
         if (mysqli_num_rows($result) > 0) {
             return true;

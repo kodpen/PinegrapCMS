@@ -33,6 +33,20 @@ if (pg_designer_access($user) === PG_DESIGNER_ACCESS_NONE) {
 // "not found" screen instead of PHP notices from the unchecked row below or
 // an error page.
 $id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+
+// ?component=<id>: one shared component opened on its own, drawn in a design
+// that places it (pg_designer_component_entry()). A content editor granted
+// the component needs no folder right for it; Save writes the component only.
+$component = null;
+if (!$_POST && isset($_GET['component']) && is_scalar($_GET['component'])) {
+    $component = pg_designer_component_entry((int) $_GET['component'], $user, $id);
+    if (!is_array($component)) {
+        output_error(h($component) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 403);
+    }
+    $id = $component['style_id'];
+    $_REQUEST['id'] = $id;
+}
+
 if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM style WHERE style_id = '" . $id . "'") < 1)) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
@@ -84,15 +98,39 @@ $style = array(
     'meta_tags'                         => isset($row['style_meta_tags']) ? (string)$row['style_meta_tags'] : '',
 );
 
-// Every page on this design, in creation order. Also performs the legacy
-// name-match link for designs saved by the single-page editor.
-$pages = pg_designer_load_pages($style_id, $style['name']);
+// ?classic=1: a classic style opened from the style list. Its code becomes
+// one shared component framing every page that names the style, each with a
+// tree placing it; nothing is written to the pages or the style until Save,
+// which makes the style a visual design (includes/fn/classic_style_design.php).
+$classic = null;
+if (!$_POST && !$component && !empty($_GET['classic'])) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/classic_style_design.php');
+    $classic = pg_classic_style_design_open($style_id, $user);
+    if ($classic['error'] !== '') {
+        output_error(h($classic['error']) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 403);
+    }
+    // The theme is not written for the designer's Bootstrap 5, and the
+    // style's head files are the design's files now.
+    $style['framework']          = 'custom';
+    $style['style_custom_css']   = $classic['css'];
+    $style['style_custom_js']    = $classic['js'];
+    $style['style_custom_fonts'] = $classic['fonts'];
+    $pages = $classic['pages'];
+    $liveform->add_notice(h(lang('The style opened in the visual designer. Its code is now the shared component that frames its pages. Nothing changes on the site until you save; saving makes the style a visual design.')));
+    foreach ($classic['warnings'] as $classic_warning) {
+        $liveform->add_warning(h($classic_warning));
+    }
+} else {
+    // Every page on this design, in creation order. Also performs the legacy
+    // name-match link for designs saved by the single-page editor.
+    $pages = pg_designer_load_pages($style_id, $style['name']);
+}
 
 // Bridge for designs that pre-date the migration AND have not been opened
 // since: the assets are still on the (first) page. Read them from there so
 // the assets panel is not empty on first open; the save writes them to the
 // style and clears the page copies.
-if ($style['style_custom_css'] === '' && $style['style_custom_js'] === '' && $style['style_custom_fonts'] === '' && !empty($pages)) {
+if (!$classic && $style['style_custom_css'] === '' && $style['style_custom_js'] === '' && $style['style_custom_fonts'] === '' && !empty($pages)) {
     $legacy = db_item(
         "SELECT page_custom_css, page_custom_js, page_custom_fonts FROM page
          WHERE page_id = '" . (int)$pages[0]['page_id'] . "' LIMIT 1");
@@ -150,13 +188,14 @@ if (!$_POST) {
         'mode'           => 'edit',
         'style_id'       => $style_id,
         'style'          => $style,
-        'pages'          => $pages,
-        'active_page_id' => $active,
+        'pages'          => $component ? array() : $pages,
+        'component'      => $component,
+        'active_page_id' => $component ? 0 : $active,
         'liveform'       => $liveform,
         'user'           => $user,
         'send_to'        => $liveform->get_field_value('send_to'),
         'from_pages'     => $from_pages,
-        'delete_button'  => $delete_button,
+        'delete_button'  => $component ? '' : $delete_button,
         // ?new_page / ?pick_page / ?copy_page from the design chooser.
         'start_action'   => pg_designer_start_action($user, $style_id),
     ));

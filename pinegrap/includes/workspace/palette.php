@@ -568,6 +568,8 @@ function ws_palette_people($viewer, $query, $channel_id, $limit)
             'icon'    => 'bi-person',
             'avatar'  => (string) $person['avatar'],
             'avatar_kind' => (string) $person['avatar_kind'],
+            'initials' => (string) ($person['initials'] ?? ''),
+            'tone'    => (int) ($person['tone'] ?? 0),
             'me'      => ((int) $person['id'] === (int) $viewer['id']),
             'url'     => ws_person_edit_url($viewer, $person),
         );

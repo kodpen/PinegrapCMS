@@ -481,6 +481,9 @@ function pg_designer_import_html($html, $html_path, $ctx)
     // Strip Pinegrap's own dynamic-code markers left by a previous export.
     $html = preg_replace('/<!--\s*BEGIN\s+DYNAMIC\s+CODE.*?END\s+DYNAMIC\s+CODE\s*-->/is', '', $html);
 
+    // A classic style's own tags, taken out before libxml sees them.
+    $html = pg_di_classic_placeholders($html, $ctx);
+
     // Inline SVG is lifted out BEFORE parsing. libxml's HTML parser does not
     // know SVG's self-closing elements, so "<path/><path/>" comes back as
     // nested paths and the drawing is gone. Each <svg> is kept verbatim and
@@ -614,8 +617,85 @@ function pg_designer_import_html($html, $html_path, $ctx)
             if ($n !== null) $children[] = $n;
         }
     }
-    $out['tree'] = pg_di_root($children, $root_props);
+    // A classic style's title is the one a page without a title of its own
+    // shows (get_page_content.php): the root keeps it, the emitter prints it.
+    if (!empty($ctx->classic) && $out['page_title'] !== '') $root_props['title'] = $out['page_title'];
+    $out['tree'] = pg_di_restore_region_tags(pg_di_root($children, $root_props), $ctx);
     return $out;
+}
+
+/**
+ * The tags of a classic style (style_code) before the document is parsed.
+ * <meta_tags> and <stylesheet> go: the page frame prints both. The region
+ * placeholders (<pregion>, <system>, <cregion>, <dregion>, <menu>, ...,
+ * <!--pg-comments-block-->) become region nodes, the inverse of
+ * _render_region_tag(), lifted out as pg_di_lift_region_tags() does for a
+ * designer region: libxml would move an unknown tag out of <head> and read
+ * <menu> as a list. $ctx->region_lookup, when set, decides what a <cregion>
+ * becomes (as the $lookup of pg_di_designer_region_tree()); without it every
+ * one is a common region node. Sets $ctx->classic when the document had any.
+ */
+function pg_di_classic_placeholders($html, $ctx)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_region_import.php');
+    if (!isset($ctx->lifted))   $ctx->lifted = array();
+    if (!isset($ctx->consumed)) $ctx->consumed = array();
+    $html = preg_replace('~<(meta_tags|stylesheet)\s*>\s*</\1\s*>~i', '', (string)$html, -1, $dropped);
+    // The designer's own code view writes the clearing div after a menu
+    // without the space; both forms go with the menu.
+    $html = preg_replace('~(</menu\s*>)\s*<div style="clear:\s*both;?"></div>~i', '$1<div style="clear: both"></div>', $html);
+    // The emitter writes a name escaped (h()); the lookup and the node take
+    // it as typed.
+    $decode = function ($name) {
+        return html_entity_decode((string)$name, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    };
+    $lookup = null;
+    if (isset($ctx->region_lookup) && is_callable($ctx->region_lookup)) {
+        $inner = $ctx->region_lookup;
+        $lookup = function ($name) use ($inner, $decode) {
+            return call_user_func($inner, $decode($name));
+        };
+    }
+    // A tag inside a comment, a script, a style, a text area or the title
+    // is text there: it stays as written (libxml would end a script at the
+    // placeholder's closing tag).
+    $before = count($ctx->lifted);
+    $parts = preg_split('~(<!--(?!pg-comments-block-->).*?-->|<(?:script|style|textarea|title)\b[^>]*>.*?</(?:script|style|textarea|title)\s*>)~is',
+        $html, -1, PREG_SPLIT_DELIM_CAPTURE);
+    foreach ($parts as $i => $part) {
+        if ($i % 2 === 0) $parts[$i] = pg_di_lift_region_tags($part, $lookup, $ctx);
+    }
+    $html = implode('', $parts);
+    foreach ($ctx->lifted as $key => $node) {
+        if (strpos($key, 'region:') === 0 && isset($node['props']['regionName'])) {
+            $ctx->lifted[$key]['props']['regionName'] = $decode($node['props']['regionName']);
+        }
+    }
+    if ($dropped || count($ctx->lifted) > $before) $ctx->classic = true;
+    return $html;
+}
+
+/**
+ * A lifted placeholder that came back as text (inside a block kept as
+ * markup, such as an iframe) written back as the tag it was, in every string
+ * of a node tree.
+ */
+function pg_di_restore_region_tags($value, $ctx)
+{
+    if (is_array($value)) {
+        foreach ($value as $k => $v) $value[$k] = pg_di_restore_region_tags($v, $ctx);
+        return $value;
+    }
+    if (!is_string($value) || empty($ctx->lifted) || strpos($value, '<pg-region') === false) return $value;
+    return preg_replace_callback('~<pg-region data-i="(\d+)"></pg-region>~', function ($m) use ($ctx) {
+        $key = 'region:' . $m[1];
+        if (!isset($ctx->lifted[$key])) return '';
+        $node = $ctx->lifted[$key];
+        if ($node['type'] === 'shared_ref') {
+            return _render_region_tag(array('regionType' => 'designer', 'regionName' => $node['props']['sharedName']));
+        }
+        return _render_region_tag($node['props']);
+    }, $value);
 }
 
 // ── DOM → tree ──────────────────────────────────────────────────────────────
@@ -1178,9 +1258,11 @@ function pg_di_tag_attr($tag, $name)
 
 // ── References ──────────────────────────────────────────────────────────────
 
+// A full address, or one a classic style starts with a site placeholder
+// ({path}, {software_directory}) the page fills in: kept as written.
 function pg_di_is_absolute($url)
 {
-    return (bool)preg_match('#^(?:[a-z][a-z0-9+.\-]*:|//)#i', $url);
+    return (bool)preg_match('#^(?:[a-z][a-z0-9+.\-]*:|//|\{(?:path|software_directory)\})#i', $url);
 }
 
 function pg_di_is_google_fonts($url)

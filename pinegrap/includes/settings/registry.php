@@ -223,6 +223,7 @@ function pg_settings_categories()
                 'pgset-captcha'    => lang('Spam Protection'),
                 'pgset-device'     => lang('Device'),
                 'pgset-mfa'        => lang('Two-Step Verification'),
+                'pgset-audit'      => lang('Audit Trail'),
                 'pgset-signin'     => lang('Sign in with Google, Microsoft and Apple'),
                 'pgset-membership' => lang('Registration & Membership'),
             ),
@@ -231,6 +232,7 @@ function pg_settings_categories()
                 'pgset-captcha'    => pg_settings_keywords(lang('captcha, spam, robot, bot, turnstile, cloudflare, hcaptcha, site key, secret key, stopforumspam, form limits')),
                 'pgset-device'     => pg_settings_keywords(lang('device, remember me, remember, limit')),
                 'pgset-mfa'        => pg_settings_keywords(lang('two-step, two factor, 2fa, totp, authenticator, mfa, verification code')),
+                'pgset-audit'      => pg_settings_keywords(lang('audit, audit trail, changes, history, retention, kvkk, gdpr, who changed')),
                 'pgset-signin'     => pg_settings_keywords(lang('google, oauth, sign in with google, sso, client id, client secret')
                     . ', ' . lang('microsoft, entra, azure, outlook, office 365, sign in with microsoft, sso')
                     . ', ' . lang('apple, icloud, sign in with apple, services id, team id, key id, p8')),
@@ -269,6 +271,7 @@ function pg_settings_categories()
                 'pgset-invoice'   => lang('E-Invoice'),
                 'pgset-erp'       => lang('ERP'),
                 'pgset-payments'  => lang('Payment Methods'),
+                'pgset-reference-price' => lang('Reference Price'),
                 'pgset-legal'     => lang('Legal Documents'),
                 'pgset-affiliate' => lang('Affiliate Program'),
             ),
@@ -279,6 +282,7 @@ function pg_settings_categories()
                 'pgset-invoice'   => pg_settings_keywords(lang('invoice, e-invoice, e-archive, e-document, provider, parasut, isbasi, logo, accounting')),
                 'pgset-erp'       => pg_settings_keywords(lang('erp, account, cash, bank, bookkeeping, waybill, collection, overdue, reminder, automatic invoice')),
                 'pgset-payments'  => pg_settings_keywords(lang('payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure')),
+                'pgset-reference-price' => pg_settings_keywords(lang('reference price, price before discount, lowest price, 30 days, 10 days, compare-at price, omnibus, price label')),
                 'pgset-legal'     => pg_settings_keywords(lang('legal, contract, distance sales contract, pre-information form, terms, withdrawal, consumer')),
                 'pgset-affiliate' => pg_settings_keywords(lang('affiliate, commission, referral')),
             ),

@@ -182,11 +182,14 @@ if (!$_POST) {
             FROM user
             WHERE
                 (
-                    (user_username = '" . escape($liveform->get_field_value('email_address')) . "')
-                    OR (user_email = '" . escape($liveform->get_field_value('email_address')) . "')
+                    (user_username = ?)
+                    OR (user_email = ?)
                 )
-                AND (user_username != '" . escape($_SESSION['sessionusername']) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                AND (user_username != ?)";
+        $result = db_q($query, array(
+            (string) $liveform->get_field_value('email_address'),
+            (string) $liveform->get_field_value('email_address'),
+            (string) $_SESSION['sessionusername'])) or output_error('Query failed.');
         
         // if e-mail address is already in use by another user
         if (mysqli_num_rows($result) > 0) {
@@ -205,8 +208,8 @@ if (!$_POST) {
                 user_contact,
                 user_email
             FROM user
-            WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE user_username = ?";
+        $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         $user_id = $row['user_id'];
@@ -214,8 +217,8 @@ if (!$_POST) {
         $current_email_address = $row['user_email'];
 
         // look for contact
-        $query = "SELECT id FROM contacts WHERE id = '" . $contact_id . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT id FROM contacts WHERE id = ?";
+        $result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
 
         // if a contact was not found, create contact (we will update later)
         if (mysqli_num_rows($result) == 0) {
@@ -224,10 +227,10 @@ if (!$_POST) {
                         user,
                         timestamp)
                      VALUES (
-                        '" . escape($current_email_address) . "',
-                        '$user_id',
+                        ?,
+                        ?,
                         UNIX_TIMESTAMP())";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $current_email_address, (string) $user_id)) or output_error('Query failed.');
 
             // get contact id so we can connect user to contact
             $contact_id = mysqli_insert_id(db::$con);
@@ -238,8 +241,8 @@ if (!$_POST) {
             pg_announce_contact_created($contact_id);
             
             // check if registration contact group exists
-            $query = "SELECT id FROM contact_groups WHERE id = '" . REGISTRATION_CONTACT_GROUP_ID  . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT id FROM contact_groups WHERE id = ?";
+            $result = db_q($query, array((string) REGISTRATION_CONTACT_GROUP_ID)) or output_error('Query failed.');
             
             // if registration contact group exists, assign contact to contact group
             if (mysqli_num_rows($result) > 0) {
@@ -248,23 +251,28 @@ if (!$_POST) {
                         contact_id,
                         contact_group_id)
                     VALUES (
-                        '" . $contact_id . "',
-                        '" . REGISTRATION_CONTACT_GROUP_ID . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        ?,
+                        ?)";
+                $result = db_q($query, array((string) $contact_id, (string) REGISTRATION_CONTACT_GROUP_ID)) or output_error('Query failed.');
             }
         }
         
         // if e-mail address has changed and user's current e-mail address is the same as the user's current username,
         if (($liveform->get_field_value('email_address') != $current_email_address) && ($current_email_address == $_SESSION['sessionusername'])) {
             // prepare sql to update user's username
-            $sql_update_username = "user_username = '" . escape($liveform->get_field_value('email_address')) . "', ";
+            $sql_update_username = "user_username = ?, ";
+            $sql_update_username_values = array((string) $liveform->get_field_value('email_address'));
         } else {
             $sql_update_username = '';
+            $sql_update_username_values = array();
         }
 
         // update user
-        $query = "UPDATE user SET user_email = '" . escape($liveform->get_field_value('email_address')) . "',$sql_update_username user_contact = '$contact_id' WHERE user_id = '" . $user_id . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "UPDATE user SET user_email = ?,$sql_update_username user_contact = ? WHERE user_id = ?";
+        $result = db_q($query, array_merge(
+            array((string) $liveform->get_field_value('email_address')),
+            $sql_update_username_values,
+            array((string) $contact_id, (string) $user_id))) or output_error('Query failed.');
         
         // if username was changed
         if ($sql_update_username) {
@@ -291,8 +299,8 @@ if (!$_POST) {
         $query =
             "SELECT id
             FROM contacts
-            WHERE email_address = '" . escape($current_email_address) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE email_address = ?";
+        $result = db_q($query, array((string) $current_email_address)) or output_error('Query failed.');
         
         // if a contact was not found for the e-mail address, then output error
         if (mysqli_num_rows($result) == 0) {
@@ -310,8 +318,8 @@ if (!$_POST) {
             $query =
                 "SELECT id
                 FROM contacts
-                WHERE email_address = '" . escape($liveform->get_field_value('email_address')) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE email_address = ?";
+            $result = db_q($query, array((string) $liveform->get_field_value('email_address'))) or output_error('Query failed.');
             
             // if e-mail address is already in use by a contact
             if (mysqli_num_rows($result) > 0) {
@@ -364,9 +372,9 @@ if (!$_POST) {
                 "SELECT contact_id
                 FROM contacts_contact_groups_xref
                 WHERE
-                    (contact_id = '" . $contact_id . "')
-                    AND (contact_group_id = '" . $contact_group['id'] . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    (contact_id = ?)
+                    AND (contact_group_id = ?)";
+            $result = db_q($query, array((string) $contact_id, (string) $contact_group['id'])) or output_error('Query failed.');
             
             // if contact is in this contact group, then we should include contact group
             if (mysqli_num_rows($result) > 0) {
@@ -381,8 +389,8 @@ if (!$_POST) {
     }
     
     // get all contacts with e-mail address, so they can be updated
-    $query = "SELECT id FROM contacts WHERE email_address = '" . escape($current_email_address) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT id FROM contacts WHERE email_address = ?";
+    $result = db_q($query, array((string) $current_email_address)) or output_error('Query failed.');
     
     $contacts = array();
     
@@ -412,18 +420,25 @@ if (!$_POST) {
         $sql_update_user = '';
     }
     
+    // The opt-in column is written only when the form drew its control; its
+    // value goes beside the clause. $sql_update_user holds an integer only.
+    $opt_in_posted = pg_sw_posted_control($pg_controls, 'opt_in');
+
     // loop through all contacts in order to update them
     foreach ($contacts as $contact) {
         // update contact
         $query =
             "UPDATE contacts
             SET
-                email_address = '" . escape($liveform->get_field_value('email_address')) . "',
-                " . (pg_sw_posted_control($pg_controls, 'opt_in') ? "opt_in = '" . escape($liveform->get_field_value('opt_in')) . "'," : '') . "
+                email_address = ?,
+                " . ($opt_in_posted ? "opt_in = ?," : '') . "
                 $sql_update_user
                 timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . $contact['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array_merge(
+            array((string) $liveform->get_field_value('email_address')),
+            $opt_in_posted ? array((string) $liveform->get_field_value('opt_in')) : array(),
+            array((string) $contact['id']))) or output_error('Query failed.');
         
         // loop through contact groups in order to opt-in or opt-out contact
         foreach ($contact_groups as $contact_group) {
@@ -437,9 +452,9 @@ if (!$_POST) {
                     "SELECT contact_id
                     FROM contacts_contact_groups_xref
                     WHERE
-                        (contact_id = '" . $contact['id'] . "')
-                        AND (contact_group_id = '" . $contact_group['id'] . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        (contact_id = ?)
+                        AND (contact_group_id = ?)";
+                $result = db_q($query, array((string) $contact['id'], (string) $contact_group['id'])) or output_error('Query failed.');
                 
                 // if contact is not already in contact group, then add contact to contact group
                 if (mysqli_num_rows($result) == 0) {
@@ -448,9 +463,9 @@ if (!$_POST) {
                             contact_id,
                             contact_group_id)
                         VALUES (
-                            '" . $contact['id'] . "',
-                            '" . $contact_group['id'] . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            ?,
+                            ?)";
+                    $result = db_q($query, array((string) $contact['id'], (string) $contact_group['id'])) or output_error('Query failed.');
                 }
             }
             
@@ -459,9 +474,9 @@ if (!$_POST) {
                 "SELECT contact_id
                 FROM opt_in
                 WHERE
-                    (contact_id = '" . $contact['id'] . "')
-                    AND (contact_group_id = '" . $contact_group['id'] . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    (contact_id = ?)
+                    AND (contact_group_id = ?)";
+            $result = db_q($query, array((string) $contact['id'], (string) $contact_group['id'])) or output_error('Query failed.');
             
             // if there is not already an opt-in record, then create record
             if (mysqli_num_rows($result) == 0) {
@@ -471,20 +486,26 @@ if (!$_POST) {
                         contact_group_id,
                         opt_in)
                     VALUES (
-                        '" . $contact['id'] . "',
-                        '" . $contact_group['id'] . "',
-                        '" . escape($liveform->get_field_value('contact_group_' . $contact_group['id'])) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        ?,
+                        ?,
+                        ?)";
+                $result = db_q($query, array(
+                    (string) $contact['id'],
+                    (string) $contact_group['id'],
+                    (string) $liveform->get_field_value('contact_group_' . $contact_group['id']))) or output_error('Query failed.');
                 
             // else an opt-in record already exists, so update record
             } else {
                 $query =
                     "UPDATE opt_in
-                    SET opt_in = '" . escape($liveform->get_field_value('contact_group_' . $contact_group['id'])) . "'
+                    SET opt_in = ?
                     WHERE
-                        (contact_id = '" . $contact['id'] . "')
-                        AND (contact_group_id = '" . $contact_group['id'] . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        (contact_id = ?)
+                        AND (contact_group_id = ?)";
+                $result = db_q($query, array(
+                    (string) $liveform->get_field_value('contact_group_' . $contact_group['id']),
+                    (string) $contact['id'],
+                    (string) $contact_group['id'])) or output_error('Query failed.');
             }
         }
     }

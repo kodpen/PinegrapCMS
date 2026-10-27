@@ -8,12 +8,15 @@
  * functions.php: it is included from two different bootstraps that do not
  * share the same set of loaded libraries.
  *
- *   router.php  -> covers get_file.php / robots.txt / sitemap.xml, which never
- *                  reach init.php.
- *   init.php    -> covers every directly requested software script
- *                  (integration.php, api.php, custom_form.php, cart_action.php ...).
+ *   router.php  -> every routed address (pages, files, robots.txt, sitemap.xml)
+ *                  before it is dispatched; get_file.php never reaches init.php.
+ *   init.php    -> every script that includes it: the directly requested ones
+ *                  (api.php, custom_form.php, cart_action.php ...) and the routed
+ *                  page scripts after the router pass.
  *
- * Both call waf_run(). The WAF_RAN guard makes the second call a no-op.
+ * Both call waf_run(). Each check latches in waf_run()'s static $done array,
+ * so the pass that reaches a check first decides and the second pass repeats
+ * nothing.
  *
  * DESIGN RULE - FAIL OPEN.
  * Every entry point is wrapped so that an error inside the firewall can never
@@ -984,6 +987,11 @@ function waf_subject_contains_allowed($subject)
  * later calls find the ban still running and only make sure it lasts at least
  * the base period from now.
  *
+ * A ban brought by rate refusals ($climb false, see waf_auto_ban_climbs())
+ * is always the base period and leaves the rung where it is: a legitimate
+ * address busy on two campaign days would otherwise sit out four hours on
+ * the second.
+ *
  * The ladder has memory only because waf_sweep() keeps expired automatic rows
  * for as long as the firewall log is kept instead of deleting them on expiry.
  * waf_ip_lists() already ignores an expired row, so keeping it changes
@@ -993,7 +1001,7 @@ function waf_subject_contains_allowed($subject)
  * waf_ip_subject()). Returns the length of the ban now in force, in minutes,
  * or 0 when nothing could be written.
  */
-function waf_auto_ban($subject, $minutes, $note)
+function waf_auto_ban($subject, $minutes, $note, $climb = true)
 {
     if (!waf_table_has_column('banned_ip_addresses', 'list_type')) {
         return 0;
@@ -1012,38 +1020,7 @@ function waf_auto_ban($subject, $minutes, $note)
         $ceiling = $base;
     }
 
-    // Single atomic statement against the (ip_address, list_type, source)
-    // unique key added in 2026.2.7.
-    //
-    // The previous SELECT-then-INSERT was wrong twice over. It raced - two
-    // simultaneous requests from the same attacker could both see "no
-    // existing row" and both insert - and it silently failed outright while
-    // ip_address was too narrow to hold an IPv6 address, because the lookup
-    // used the full address and the stored value was a truncated stub. That
-    // produced a fresh ban row on every single offence.
-    //
-    // Insert-or-update through the key cannot do either. The note is not
-    // rewritten on repeats: the first reason is the useful one.
-    //
-    // Assignment order matters, and MySQL evaluates the list left to right:
-    // the hit_count assignment sees the OLD expires_at, and the expires_at
-    // assignment sees the NEW hit_count. An engine that handed it the old
-    // hit_count instead would land the ban one rung lower - shorter, never
-    // longer - so the reliance fails in the safe direction.
-    $written = @mysqli_query(
-        db::$con,
-        "INSERT INTO banned_ip_addresses
-            (ip_address, list_type, source, note, expires_at, created_at, hit_count)
-         VALUES
-            ('" . waf_escape($subject) . "', 'block', 'auto',
-             '" . waf_escape(mb_substr($note, 0, 250)) . "',
-             " . ($now + $base) . ", " . $now . ", 1)
-         ON DUPLICATE KEY UPDATE
-            hit_count = IF(expires_at < " . $now . ", hit_count + 1, hit_count),
-            expires_at = IF(expires_at < " . $now . ",
-                " . $now . " + CAST(LEAST(FLOOR(" . $base . " * POW(4, LEAST(GREATEST(hit_count, 1) - 1, 8))), " . $ceiling . ") AS UNSIGNED),
-                GREATEST(expires_at, " . ($now + $base) . "))"
-    );
+    $written = @mysqli_query(db::$con, waf_auto_ban_sql(waf_escape($subject), waf_escape(mb_substr($note, 0, 250)), $now, $base, $ceiling, $climb));
 
     // Push the new ban into the pre-database mirror now rather than waiting
     // for the sampled sweep. An address is auto-banned during an attack, which
@@ -1075,6 +1052,75 @@ function waf_auto_ban($subject, $minutes, $note)
     }
 
     return (int) ($base / 60);
+}
+
+/**
+ * The statement waf_auto_ban() writes a ban with.
+ *
+ * @param string $subject the address or range banned, escaped
+ * @param string $note    the reason, kept from the first ban, escaped
+ * @param int    $now     the time of the ban
+ * @param int    $base    the base length, in seconds
+ * @param int    $ceiling the longest ban, in seconds
+ * @param bool   $climb   whether a repeat after expiry climbs the x4 ladder
+ * @return string
+ */
+function waf_auto_ban_sql($subject, $note, $now, $base, $ceiling, $climb)
+{
+    // Single atomic statement against the (ip_address, list_type, source)
+    // unique key added in 2026.2.7.
+    //
+    // The previous SELECT-then-INSERT was wrong twice over. It raced - two
+    // simultaneous requests from the same attacker could both see "no
+    // existing row" and both insert - and it silently failed outright while
+    // ip_address was too narrow to hold an IPv6 address, because the lookup
+    // used the full address and the stored value was a truncated stub. That
+    // produced a fresh ban row on every single offence.
+    //
+    // Insert-or-update through the key cannot do either. The note is not
+    // rewritten on repeats: the first reason is the useful one.
+    //
+    // Assignment order matters, and MySQL evaluates the list left to right:
+    // the hit_count assignment sees the OLD expires_at, and the expires_at
+    // assignment sees the NEW hit_count. An engine that handed it the old
+    // hit_count instead would land the ban one rung lower - shorter, never
+    // longer - so the reliance fails in the safe direction.
+    //
+    // Without the climb the rung stays and an expired ban comes back at the
+    // base length: GREATEST() of an expired end and now + base is the latter.
+    $now = (int) $now;
+    $base = (int) $base;
+
+    if ($climb) {
+        $update = "hit_count = IF(expires_at < " . $now . ", hit_count + 1, hit_count),
+            expires_at = IF(expires_at < " . $now . ",
+                " . $now . " + CAST(LEAST(FLOOR(" . $base . " * POW(4, LEAST(GREATEST(hit_count, 1) - 1, 8))), " . (int) $ceiling . ") AS UNSIGNED),
+                GREATEST(expires_at, " . ($now + $base) . "))";
+    } else {
+        $update = "hit_count = hit_count,
+            expires_at = GREATEST(expires_at, " . ($now + $base) . ")";
+    }
+
+    return "INSERT INTO banned_ip_addresses
+            (ip_address, list_type, source, note, expires_at, created_at, hit_count)
+         VALUES
+            ('" . $subject . "', 'block', 'auto', '" . $note . "',
+             " . ($now + $base) . ", " . $now . ", 1)
+         ON DUPLICATE KEY UPDATE
+            " . $update;
+}
+
+/**
+ * Whether a ban climbs the x4 ladder, by the category of the offence that
+ * brought it: a rate refusal is a busy visitor as often as a script, so a
+ * rate ban is always the base length; everything else climbs.
+ *
+ * @param string $category waf_last_category() when the ban is placed
+ * @return bool
+ */
+function waf_auto_ban_climbs($category)
+{
+    return (string) $category !== 'rate';
 }
 
 
@@ -2604,6 +2650,25 @@ function waf_last_rule($rule_id = null)
     return $last;
 }
 
+/**
+ * The category of the last logged event, kept beside waf_last_rule(): it
+ * tells waf_register_offence() whether the offence that brought a ban was a
+ * rate refusal.
+ *
+ * @param string|null $category the category to remember, or null to read
+ * @return string
+ */
+function waf_last_category($category = null)
+{
+    static $last = '';
+
+    if ($category !== null) {
+        $last = (string) $category;
+    }
+
+    return $last;
+}
+
 
 /* ─────────────────────────────────────────────────────────────────────────
    RESPONSE HEADERS
@@ -3504,6 +3569,7 @@ function waf_escape($value)
 function waf_log_event($action, $rule_id, $category, $score, $target, $matched)
 {
     waf_last_rule($rule_id);
+    waf_last_category($category);
 
     // Pre-upgrade installs still run the legacy bot filter, but have no
     // waf_log table to write to. Skip rather than fire a failing query on
@@ -3836,12 +3902,12 @@ function waf_reference()
 /**
  * A logged-in software user is exempt from content inspection.
  *
- * This is not laziness, it is a correctness requirement. Page regions are
- * edited from the page's own front-end URL, and dynamic regions, custom
- * styles and hook code are literally HTML, JavaScript and SQL. Scanning an
- * authenticated designer saving a <script> block would make the product
- * unusable while catching nothing: whoever is logged in as a designer can
- * already execute code by design.
+ * This is not laziness, it is a correctness requirement. A designer's region
+ * saves (save_region_content.php), dynamic regions, custom styles and hook
+ * code are literally HTML, JavaScript and SQL. Scanning an authenticated
+ * designer saving a <script> block would make the product unusable while
+ * catching nothing: whoever is logged in as a designer can already execute
+ * code by design.
  *
  * The login screen itself has no session yet, so it is always inspected -
  * which is where credential attacks actually arrive.
@@ -4505,17 +4571,28 @@ function waf_run($stage = 'init')
         }
 
         // ── Rate limiting ────────────────────────────────────────────────
-        // The two limits are latched separately on purpose.
+        // The limits are latched separately on purpose.
         //
-        // The global limit is generous and identity-independent, so it can run
-        // at the router stage and cover get_file.php, which never reaches
-        // init.php.
+        // The global limit is generous, so it runs at the router stage and
+        // covers get_file.php, which never reaches init.php. The price: a
+        // routed page or file is counted before the session starts, and the
+        // latch keeps the init stage from asking again, so the signed-in
+        // exemption in waf_handle_rate_global() reaches only directly
+        // requested scripts (api.php, save_region_content.php, the panel). A
+        // signed-in designer hard-reloading a media-heavy page can meet the
+        // wall: 429 until the clock minute ends, no offence, no ban. Kept so:
+        // sparing sub-resource fetches would drop the only per-address cap on
+        // file fetches (get_file.php is counted nowhere else) for any client
+        // claiming Sec-Fetch-Dest: image, and the backstop that keeps such a
+        // fetch of a sign-in screen counted at all; a staff-address exemption
+        // would uncap a whole office address for a day.
         //
-        // The sensitive limit is much tighter and exempts signed-in staff —
-        // and the session does not exist yet at the router stage. Running it
-        // there would silently ignore the exemption, and since page regions
-        // are edited by POSTing to the page's own front-end URL, a designer
-        // saving repeatedly would be rate limited out of their own site.
+        // The sensitive limit is much tighter and exempts signed-in staff,
+        // which only the session can tell, and the session exists only at the
+        // init stage. A directly requested script (save_region_content.php,
+        // custom_form.php) gets the init pass alone anyway; latched at the
+        // router stage, the check would count a routed POST, a form posted to
+        // a page address, as anonymous whoever sent it.
         //
         // The api.php limit is the sensitive one's counterpart for the endpoint
         // the site's own pages talk to, and exempts staff for the same reason,
@@ -5037,6 +5114,9 @@ function waf_handle_rate_global($ip, $blocking)
         return;
     }
 
+    // Any session is exempt. The test is only ever true on a directly
+    // requested script: a routed page or file is counted at the router
+    // stage, before the session starts, and latched (see waf_run()).
     if (waf_user_is_authenticated()) {
         return;
     }
@@ -5217,8 +5297,9 @@ function waf_handle_inflight($ip, $blocking)
         return;
     }
 
+    // Refused, but no offence: the open requests are not a rate, and an
+    // office behind one address sends four forms at once without trying.
     waf_log_event($blocking ? 'rate' : 'would-rate', 'concurrent', 'rate', 7, waf_script_name(), $limit . ' open');
-    waf_register_offence($ip, 5, $blocking, true);
 
     if ($blocking) {
         waf_deny(429, waf_reference());
@@ -5346,6 +5427,7 @@ function waf_register_offence($ip, $score, $blocking, $burst = false)
     // The rule of the refusal that brought the subject past the threshold,
     // read before the log rows below overwrite it.
     $rule = waf_last_rule();
+    $climb = waf_auto_ban_climbs(waf_last_category());
 
     if ($rule === '') {
         $rule = 'auto-ban';
@@ -5370,7 +5452,7 @@ function waf_register_offence($ip, $score, $blocking, $burst = false)
         $minutes = 60;
     }
 
-    $applied = waf_auto_ban($subject, $minutes, waf_ban_note($rule, $threshold));
+    $applied = waf_auto_ban($subject, $minutes, waf_ban_note($rule, $threshold), $climb);
 
     // The line names what was banned, for how long it actually is (after a
     // repeat longer than the configured base period) and the rule that

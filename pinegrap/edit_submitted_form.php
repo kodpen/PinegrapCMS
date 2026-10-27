@@ -43,8 +43,8 @@ $query =
     FROM forms
     LEFT JOIN page on forms.page_id = page.page_id
     LEFT JOIN custom_form_pages ON forms.page_id = custom_form_pages.page_id
-    WHERE forms.id = '" . escape($_REQUEST['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE forms.id = ?";
+$result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 // The id comes straight from the query string, so it can point at a form that
@@ -76,9 +76,9 @@ if (!empty($_POST['form_item_view_page_id'])) {
             hook_code
         FROM form_item_view_pages
         WHERE
-            (page_id = '" . escape($_POST['form_item_view_page_id'] ?? '') . "')
+            (page_id = ?)
             AND (collection = 'a')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) ($_POST['form_item_view_page_id'] ?? ''))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $form_item_view_custom_form_page_id = $row['custom_form_page_id'];
@@ -167,8 +167,8 @@ if (!$_POST) {
         LEFT JOIN user as form_editor_user ON forms.form_editor_user_id = form_editor_user.user_id
         LEFT JOIN user as submitted_user ON forms.user_id = submitted_user.user_id
         LEFT JOIN user as last_modified_user ON forms.last_modified_user_id = last_modified_user.user_id
-        WHERE forms.id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE forms.id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     // Same as above: a stale id gives null here, and the 17 reads that follow
@@ -270,11 +270,11 @@ if (!$_POST) {
                  FROM form_data
                  LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
                  WHERE
-                    (form_data.form_id = '" . escape($_GET['id']) . "')
+                    (form_data.form_id = ?)
                     AND (form_fields.type != 'file upload')
                     AND (form_fields.type != 'signature')
                  GROUP BY form_data.form_field_id";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 
         $fields = array();
 
@@ -288,9 +288,9 @@ if (!$_POST) {
             if ($field['number_of_values'] > 1) {
                 $query = "SELECT data
                          FROM form_data
-                         WHERE (form_id = '" . escape($_GET['id']) . "') AND (form_field_id = '" . $field['form_field_id'] . "')
+                         WHERE (form_id = ?) AND (form_field_id = ?)
                          ORDER BY id";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $_GET['id'], (string) $field['form_field_id'])) or output_error('Query failed.');
                 
                 $field['data'] = array();
                 
@@ -330,9 +330,9 @@ if (!$_POST) {
                 contact_field,
                 office_use_only
              FROM form_fields
-             WHERE page_id = '$page_id'
+             WHERE page_id = ?
              ORDER BY sort_order";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
     
     $fields = array();
     
@@ -396,9 +396,9 @@ if (!$_POST) {
                             value,
                             default_selected
                          FROM form_field_options
-                         WHERE form_field_id = '" . $field['id'] . "'
+                         WHERE form_field_id = ?
                          ORDER BY sort_order";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $field['id'])) or output_error('Query failed.');
                 
                 $options = array();
                 
@@ -908,8 +908,8 @@ if (!$_POST) {
                     files.name
                  FROM form_data
                  LEFT JOIN files ON form_data.file_id = files.id
-                 WHERE (form_data.form_id = '" . escape($_POST['id'] ?? '') . "') AND (form_data.file_id > 0)";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                 WHERE (form_data.form_id = ?) AND (form_data.file_id > 0)";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         $files = array();
         
@@ -922,8 +922,8 @@ if (!$_POST) {
             // if file still exists, delete file
             if ($file['id']) {
                 // delete file record
-                $query = "DELETE FROM files WHERE id = '" . $file['id'] . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "DELETE FROM files WHERE id = ?";
+                $result = db_q($query, array((string) $file['id'])) or output_error('Query failed.');
                 
                 // delete file
                 @unlink(FILE_DIRECTORY_PATH . '/' . $file['name']);
@@ -932,12 +932,12 @@ if (!$_POST) {
         }
         
         // delete form
-        $query = "DELETE FROM forms WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM forms WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete form data
-        $query = "DELETE FROM form_data WHERE (form_id = '" . escape($_POST['id'] ?? '') . "') AND (form_id != '0')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM form_data WHERE (form_id = ?) AND (form_id != '0')";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         // delete signature records for this submitted form
         pg_signature_delete($_POST['id'] ?? 0);
@@ -950,8 +950,8 @@ if (!$_POST) {
         // if the there is a form list view send to, then forward user there
         if ((isset($_POST['form_list_view_send_to']) == TRUE) && ($_POST['form_list_view_send_to'] != '')) {
             // Get the form list view page id for this form item view in order to setup liveform correctly.
-            $query = "SELECT page_id FROM form_list_view_pages WHERE form_item_view_page_id = '" . escape($_POST['form_item_view_page_id'] ?? '')  . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT page_id FROM form_list_view_pages WHERE form_item_view_page_id = ?";
+            $result = db_q($query, array((string) ($_POST['form_item_view_page_id'] ?? ''))) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $form_list_view_page_id = $row['page_id'];
 
@@ -996,8 +996,8 @@ if (!$_POST) {
             // if a username was entered, then validate username
             if ($liveform->get_field_value('form_editor_username') != '') {
                 // try to find a user with the username that was entered for the form editor
-                $query = "SELECT user_id FROM user WHERE user_username = '" . escape($liveform->get_field_value('form_editor_username')) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT user_id FROM user WHERE user_username = ?";
+                $result = db_q($query, array((string) $liveform->get_field_value('form_editor_username'))) or output_error('Query failed.');
                 
                 // if a user was found, then prepare SQL for updating form editor
                 if (mysqli_num_rows($result) > 0) {
@@ -1018,8 +1018,8 @@ if (!$_POST) {
         // get page id
         $query = "SELECT page_id
                  FROM forms
-                 WHERE forms.id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                 WHERE forms.id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
         $page_id = $row['page_id'];
@@ -1270,15 +1270,15 @@ if (!$_POST) {
                                             attachment,
                                             timestamp)
                                          VALUES (
-                                            '" . escape($file_name) . "',
-                                            '" . escape($field['upload_folder_id']) . "',
-                                            '" . escape($file_extension) . "',
-                                            '" . escape($file_size) . "',
-                                            '$user_id',
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
                                             '0',
                                             '1',
                                             UNIX_TIMESTAMP())";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                $result = db_q($query, array((string) $file_name, (string) $field['upload_folder_id'], (string) $file_extension, (string) $file_size, (string) $user_id)) or output_error('Query failed.');
 
                                 $file_id = mysqli_insert_id(db::$con);
                                 
@@ -1349,8 +1349,8 @@ if (!$_POST) {
                         if (isset($_POST[$field['id']]) == true) {
                             // delete existing values for this field
                             $query = "DELETE FROM form_data
-                                     WHERE (form_id = '" . escape($_POST['id'] ?? '') . "') AND (form_id != '0') AND (form_field_id = '" . $field['id'] . "')";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                     WHERE (form_id = ?) AND (form_id != '0') AND (form_field_id = ?)";
+                            $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $field['id'])) or output_error('Query failed.');
                             
                             // assume that the form data type is standard until we find out otherwise
                             $form_data_type = 'standard';
@@ -1381,12 +1381,12 @@ if (!$_POST) {
                                                 name,
                                                 type)
                                              VALUES (
-                                                '" . escape($_POST['id'] ?? '') . "',
-                                                '" . $field['id'] . "',
-                                                '" . escape(prepare_form_data_for_input($value, $field['type'])) . "',
-                                                '" . escape($field['name']) . "',
-                                                '$form_data_type')";
-                                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                                ?,
+                                                ?,
+                                                ?,
+                                                ?,
+                                                ?)";
+                                    $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $field['id'], (string) prepare_form_data_for_input($value, $field['type']), (string) $field['name'], (string) $form_data_type)) or output_error('Query failed.');
                                 }
 
                             // else this field does not have multiple values
@@ -1399,12 +1399,12 @@ if (!$_POST) {
                                             name,
                                             type)
                                          VALUES (
-                                            '" . escape($_POST['id'] ?? '') . "',
-                                            '" . $field['id'] . "',
-                                            '" . escape(prepare_form_data_for_input($liveform->get_field_value($field['id']), $field['type'])) . "',
-                                            '" . escape($field['name']) . "',
-                                            '$form_data_type')";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?,
+                                            ?)";
+                                $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $field['id'], (string) prepare_form_data_for_input($liveform->get_field_value($field['id']), $field['type']), (string) $field['name'], (string) $form_data_type)) or output_error('Query failed.');
                             }
                         }
                     }

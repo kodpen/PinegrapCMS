@@ -66,11 +66,21 @@ function pg_parasut_credentials_for_save()
 
 
 
+    // Reference price rule (11.0.49). The card is drawn only once the column
+    // exists; an unknown value is stored as the default rule.
+    $sql_reference_price_rule = '';
+
+    if (pg_price_reference_rule_ready() && (post_value('ecommerce_reference_price_rule') !== NULL)) {
+        $sql_reference_price_rule = "ecommerce_reference_price_rule = '" . e(pg_price_reference_rule_from_input(post_value('ecommerce_reference_price_rule'))) . "',";
+    }
+
     // Checkout legal documents (11.0.1). A template naming a field that does
     // not exist would print nothing where a customer expects a fact, and a
     // template past the column's size would be cut; either refuses the whole
     // save before anything below writes.
     $sql_legal_documents = '';
+    // The KVKK consent sentence: a config_text row, written after the config update.
+    $legal_kvkk_text = null;
 
     if (pg_schema_has('config', 'ecommerce_legal_documents')) {
         $legal_values = array();
@@ -97,11 +107,25 @@ function pg_parasut_credentials_for_save()
             $legal_values[$legal_field] = $legal_value;
         }
 
+        // The KVKK notice page and the explicit consent sentence (11.0.48).
+        $legal_kvkk_sql = '';
+
+        if (pg_schema_has('config', 'ecommerce_kvkk_page_id') && pg_schema_has('config_text')) {
+            $legal_kvkk_text = trim(str_replace("\r\n", "\n", (string) post_value('ecommerce_kvkk_consent_text')));
+
+            if (strlen($legal_kvkk_text) > 65535) {
+                $liveform->mark_error('ecommerce_kvkk_consent_text', lang(array('string' => '{var:1} is too long.', 'vars' => array(lang('Explicit Consent Sentence')))));
+            }
+
+            $legal_kvkk_sql = "
+            ecommerce_kvkk_page_id = '" . max(0, (int) post_value('ecommerce_kvkk_page_id')) . "',";
+        }
+
         if ($liveform->check_form_errors()) {
             return;
         }
 
-        $sql_legal_documents = "ecommerce_legal_documents = '" . ((post_value('ecommerce_legal_documents') == 1) ? 1 : 0) . "',";
+        $sql_legal_documents = $legal_kvkk_sql . "ecommerce_legal_documents = '" . ((post_value('ecommerce_legal_documents') == 1) ? 1 : 0) . "',";
 
         foreach ($legal_values as $legal_field => $legal_value) {
             $sql_legal_documents .= "
@@ -113,6 +137,9 @@ function pg_parasut_credentials_for_save()
     // here, so a refused one stops the whole card before anything is written,
     // and stored after the card's own columns.
     $payment_driver_decisions = pg_payment_settings_check($_POST, $liveform);
+
+    // The same for the carrier label drivers (includes/fn/carrier_labels.php).
+    $label_driver_decisions = pg_label_settings_check($_POST, $liveform);
 
     if ($liveform->check_form_errors()) {
         return;
@@ -180,14 +207,14 @@ function pg_parasut_credentials_for_save()
                 
                 // if the decryption was successful, then encrypt it with new key and store it
                 if (is_numeric($order['card_number']) == TRUE) {
-                    $query = "UPDATE orders SET card_number = '" . e(encrypt_credit_card_number($order['card_number'], $new_encryption_key)) . "' WHERE id = '" . (int) $order['id'] . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $query = "UPDATE orders SET card_number = ? WHERE id = ?";
+                    $result = db_q($query, array((string) encrypt_credit_card_number($order['card_number'], $new_encryption_key), (string) (int) $order['id'])) or output_error('Query failed.');
                 }
                 
             // else the credit card number is not already encrypted, so encrypt it for the first time
             } else {
-                $query = "UPDATE orders SET card_number = '" . e(encrypt_credit_card_number($order['card_number'], $new_encryption_key)) . "' WHERE id = '" . (int) $order['id'] . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "UPDATE orders SET card_number = ? WHERE id = ?";
+                $result = db_q($query, array((string) encrypt_credit_card_number($order['card_number'], $new_encryption_key), (string) (int) $order['id'])) or output_error('Query failed.');
             }
         }
     }
@@ -515,6 +542,7 @@ function pg_parasut_credentials_for_save()
             " . $sql_erp_due . "
             " . $sql_erp_overdue . "
             " . $sql_legal_documents . "
+            " . $sql_reference_price_rule . "
             ecommerce_credit_debit_card = '" . escape(post_value('ecommerce_credit_debit_card')) . "',
             ecommerce_american_express = '" . escape(post_value('ecommerce_american_express')) . "',
             ecommerce_diners_club = '" . escape(post_value('ecommerce_diners_club')) . "',
@@ -573,11 +601,18 @@ function pg_parasut_credentials_for_save()
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
 
+    if ($legal_kvkk_text !== null) {
+        pg_config_text_save('ecommerce_kvkk_consent_text', $legal_kvkk_text);
+    }
+
     // The carriers' API applications are kept with the connected accounts'
     // applications, the secrets sealed (includes/fn/carrier_api.php).
     pg_carrier_api_settings_save($_POST, USER_ID, $liveform);
 
     pg_payment_settings_save($payment_driver_decisions, USER_ID);
+
+    // Stored after the card, then the connection test that was asked for.
+    pg_label_settings_save($label_driver_decisions, USER_ID, $liveform);
 
     // A Paraşüt authorization code is exchanged by the card's Connect button;
     // one pasted and saved with the page is exchanged here as well, after the
@@ -630,8 +665,8 @@ function pg_parasut_credentials_for_save()
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
         
         // create new record for next order number
-        $query = "INSERT INTO next_order_number VALUES ('" . escape($ecommerce_next_order_number) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "INSERT INTO next_order_number VALUES (?)";
+        $result = db_q($query, array((string) $ecommerce_next_order_number)) or output_error('Query failed.');
         
         // release lock on table
         $query = "UNLOCK TABLES";

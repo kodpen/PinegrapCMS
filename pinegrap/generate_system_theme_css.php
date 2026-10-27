@@ -910,8 +910,8 @@ function generate_system_theme_css($css_properties)
             }
             
             // get the effect type from the database
-            $query = "SELECT effect FROM menus WHERE name = '" . escape($object) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT effect FROM menus WHERE name = ?";
+            $result = db_q($query, array((string) $object)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $menu_effect_type = $row['effect'];
             

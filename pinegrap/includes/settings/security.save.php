@@ -56,6 +56,21 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // The Audit Trail card: checked before anything is written, and written
+    // on its own, only once the 2026.11.0 step has added the column and the
+    // card's field was posted.
+    $audit_retention_post = (post_value('audit_log_retention_years') !== NULL)
+        && pg_schema_has('config', 'audit_log_retention_years');
+    $audit_retention_input = $audit_retention_post ? pg_audit_retention_years_from_input(post_value('audit_log_retention_years')) : null;
+
+    if ($audit_retention_post && ($audit_retention_input === null)) {
+        $audit_retention_limits = pg_privacy_retention_limits();
+
+        $liveform->mark_error('audit_log_retention_years', lang(array('string' => 'Keep audit trail lines for 0 years (no limit), or for {var:1} to {var:2} years.', 'vars' => array($audit_retention_limits['audit_min'], $audit_retention_limits['audit_max']))));
+
+        return;
+    }
+
     // The Spam Protection card's CAPTCHA provider: checked, and its keys
     // asked about, before anything is written, like Apple's application.
     $captcha_settings_post = function_exists('pg_captcha_settings_check') ? pg_captcha_settings_check($_POST, $liveform) : null;
@@ -137,6 +152,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     if (function_exists('pg_captcha_settings_save')) {
         pg_captcha_settings_save($captcha_settings_post, USER_ID, $liveform);
+    }
+
+    if ($audit_retention_post) {
+        db("UPDATE config SET audit_log_retention_years = '" . (int) $audit_retention_input . "'");
     }
 
 
@@ -271,8 +290,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         // Unchanged: both columns stay as they are.
     } elseif ($oauth_google_secret_input !== '') {
         list($oauth_google_secret_enc, $oauth_google_secret_iv) = encrypt_string_with_iv($oauth_google_secret_input);
-        $query = "UPDATE config SET oauth_google_client_secret = '" . escape($oauth_google_secret_enc) . "', oauth_google_secret_iv = '" . escape($oauth_google_secret_iv) . "'";
-        mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "UPDATE config SET oauth_google_client_secret = ?, oauth_google_secret_iv = ?";
+        db_q($query, array((string) $oauth_google_secret_enc, (string) $oauth_google_secret_iv)) or output_error('Query failed.');
     } else {
         db("UPDATE config SET oauth_google_client_secret = '', oauth_google_secret_iv = ''");
     }

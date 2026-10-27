@@ -27,6 +27,10 @@
 //   order.returns    the order's return requests, what the returns part
 //                    draws;
 //   order.return_lines     a return's products, keyed by ^^__return_id^^;
+//   order.return_deliveries the deliveries a return may still be asked
+//                    for, one request form each (the return form part);
+//   order.return_delivery_lines a delivery's products with what may go
+//                    back, keyed by ^^__return_delivery_id^^;
 //   account.orders   the signed-in member's orders, what the my account
 //                    widget's order history section draws.
 //
@@ -192,6 +196,8 @@ function pg_sw_list_order_sources()
                 array('__return_tracking_number', lang('Tracking number')),
                 array('__return_refund_deadline', lang('Refund due by')),
                 array('__return_actions_html', lang('The customer\'s moves: sent, withdraw (HTML)')),
+                array('__return_can_mark_sent', lang('The customer may say the parcel is sent (1 or empty)')),
+                array('__return_can_withdraw', lang('The customer may withdraw the request (1 or empty)')),
             ),
         ),
         'order.return_lines' => array(
@@ -203,6 +209,37 @@ function pg_sw_list_order_sources()
             'tokens'       => array(
                 array('__return_line_name', lang('Product name')),
                 array('__return_line_qty', lang('Quantity')),
+            ),
+        ),
+        // The return request form part (pg_sw_part_order_return_form()):
+        // one form per delivery a return may still be asked for, whose
+        // controls are the system's (pg_sw_order_return_form_wire()).
+        'order.return_deliveries' => array(
+            'family'       => 'order',
+            'key'          => '__ship_to_key',
+            'label'        => lang('Deliveries a return may be asked for'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__return_delivery_id', lang('Recipient ID')),
+                array('__return_delivery_label', lang('Recipient')),
+                array('__return_delivery_several', lang('The order has several deliveries (1 or empty)')),
+                array('__return_delivery_deadline', lang('Return requests accepted until')),
+                array('__return_reason_options_html', lang('Choices of the reason (HTML)')),
+            ),
+        ),
+        'order.return_delivery_lines' => array(
+            'family'       => 'order',
+            'key'          => '__return_delivery_id',
+            'label'        => lang('Products of the delivery'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__return_item_id', lang('Order item ID')),
+                array('__return_item_name', lang('Product name')),
+                array('__return_item_ordered', lang('Ordered')),
+                array('__return_item_left', lang('How many may go back')),
+                array('__return_item_qty_label', lang('Label of the quantity box')),
             ),
         ),
         'account.orders' => array(
@@ -631,6 +668,51 @@ function pg_sw_list_order_item_parts_rows(&$items, $fields, $data, $gift_cards, 
     return $out;
 }
 
+// The rows of the return form lists: array('order.return_deliveries' =>
+// array(0 => rows), 'order.return_delivery_lines' => array(delivery id =>
+// rows)). $deliveries: pg_return_customer_view()'s deliveries (ship_to_id,
+// label, deadline, lines: id, name, quantity, returnable); a delivery with
+// nothing left to give back gets no form, as pg_return_form_html() skips
+// it. Raw words: the pass escapes them once, the reasons are markup.
+function pg_sw_list_order_return_form_rows($deliveries)
+{
+    $out = array('order.return_deliveries' => array(), 'order.return_delivery_lines' => array());
+    $deliveries = is_array($deliveries) ? $deliveries : array();
+    $options = '<option value="">' . h(lang('Choose a reason')) . '</option>';
+    foreach (pg_return_reasons() as $code => $label) {
+        $options .= '<option value="' . h($code) . '">' . h($label) . '</option>';
+    }
+    $several = (count($deliveries) > 1);
+    foreach ($deliveries as $delivery) {
+        if (!is_array($delivery)) continue;
+        $id = (int)$delivery['ship_to_id'];
+        $lines = array();
+        $any = false;
+        foreach ((array)$delivery['lines'] as $line) {
+            $left = max(0, (int)$line['returnable']);
+            if ($left > 0) $any = true;
+            $lines[] = array(
+                '__return_item_id'        => (string)(int)$line['id'],
+                '__return_item_name'      => (string)$line['name'],
+                '__return_item_ordered'   => (string)(int)$line['quantity'],
+                '__return_item_left'      => (string)$left,
+                '__return_item_qty_label' => lang(array('string' => 'How many to return: {var:1}', 'vars' => array((string)$line['name']))),
+            );
+        }
+        if (!$any) continue;
+        $label = isset($delivery['label']) ? (string)$delivery['label'] : '';
+        $out['order.return_deliveries'][0][] = array(
+            '__return_delivery_id'         => (string)$id,
+            '__return_delivery_label'      => $label,
+            '__return_delivery_several'    => ($several && $label !== '') ? '1' : '',
+            '__return_delivery_deadline'   => isset($delivery['deadline']) ? (string)$delivery['deadline'] : '',
+            '__return_reason_options_html' => $options,
+        );
+        $out['order.return_delivery_lines'][$id] = $lines;
+    }
+    return $out;
+}
+
 // The rows of the returns lists: array('order.returns' => array(0 =>
 // rows), 'order.return_lines' => array(return id => rows)). $returns:
 // pg_return_present() rows; $form: what pg_return_actions_html() posts
@@ -667,6 +749,8 @@ function pg_sw_list_order_return_rows($returns, $form)
             '__return_tracking_number'    => (string)$return['tracking_number'],
             '__return_refund_deadline'    => (string)$return['refund_deadline'],
             '__return_actions_html'       => pg_return_actions_html($return, $form),
+            '__return_can_mark_sent'      => !empty($return['can_mark_sent']) ? '1' : '',
+            '__return_can_withdraw'       => !empty($return['can_withdraw']) ? '1' : '',
         );
     }
     return $out;

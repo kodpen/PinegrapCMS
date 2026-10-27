@@ -32,14 +32,14 @@ function get_update_address_book($properties = array()) {
     // if an id was passed and form has not been filled out yet, get recipient data in order to populate fields
     if (($_GET['id'] ?? '') && ($form->field_in_session('ship_to_name') == false)) {
         // get user id because we want to make sure that this user has access to the recipient that they are requesting to update
-        $query = "SELECT user_id FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT user_id FROM user WHERE user_username = ?";
+        $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $user_id = $row['user_id'];
 
         // get recipient data
-        $query = "SELECT * FROM address_book WHERE id = '" . escape($_GET['id']) . "' AND user = '$user_id'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT * FROM address_book WHERE id = ? AND user = ?";
+        $result = db_q($query, array((string) $_GET['id'], (string) $user_id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
         // set field values

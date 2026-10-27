@@ -57,6 +57,10 @@ function api_order_present($row, $items = null, $shipments = null) {
 		'status'       => $row['status'],
 		'placed_at'      => api_time($row['order_date']),
 		'placed_at_unix' => (int)$row['order_date'],
+		// The order's last change (orders.last_modified_timestamp), which
+		// GET /orders?modified_since= walks.
+		'modified_at'      => api_time(isset($row['last_modified_timestamp']) ? $row['last_modified_timestamp'] : 0),
+		'modified_at_unix' => isset($row['last_modified_timestamp']) ? (int)$row['last_modified_timestamp'] : 0,
 		'customer' => array(
 			'contact_id' => ($row['contact_id'] > 0) ? (int)$row['contact_id'] : null,
 			'member_id'  => isset($row['member_id']) ? $row['member_id'] : null,
@@ -79,7 +83,12 @@ function api_order_present($row, $items = null, $shipments = null) {
 			'method'         => $row['payment_method'],
 			'transaction_id' => $row['transaction_id']
 		),
-		'offer_code' => $row['special_offer_code']
+		'offer_code' => $row['special_offer_code'],
+		// Null on a site that lacks the column (api_order_state_columns()).
+		'type'                => array_key_exists('type', $row) ? (string)$row['type'] : null,
+		'cancelled_at'        => array_key_exists('cancelled_at', $row) ? api_time($row['cancelled_at']) : null,
+		'cancellation_reason' => array_key_exists('cancellation_reason', $row) ? (string)$row['cancellation_reason'] : null,
+		'refund_status'       => array_key_exists('refund_status', $row) ? (string)$row['refund_status'] : null
 	);
 
 	foreach (api_order_money_fields() as $field) {
@@ -214,10 +223,36 @@ function api_order_shipments($order_id) {
 
 }
 
-function api_order_select() {
+// The order's kind and cancellation state, each added by a later migration
+// (type 2026.1.4, the cancellation 2026.1.26, refund_status 2026.1.27): a site
+// that missed one still answers, with that field null.
+function api_order_state_columns() {
 
-	return "SELECT orders.id, orders.order_number, orders.order_date, orders.status,
-			orders.contact_id,
+	return array('type', 'cancelled_at', 'cancellation_reason', 'refund_status');
+
+}
+
+// $present lists the state columns the site has; null asks the schema.
+function api_order_select($present = null) {
+
+	$state = '';
+
+	foreach (api_order_state_columns() as $column) {
+
+		$has = ($present === null)
+			? pg_schema_has('orders', $column)
+			: in_array($column, $present, true);
+
+		if ($has) {
+
+			$state .= 'orders.' . $column . ', ';
+
+		}
+
+	}
+
+	return "SELECT orders.id, orders.order_number, orders.order_date, orders.last_modified_timestamp, orders.status,
+			" . $state . "orders.contact_id,
 			orders.billing_first_name, orders.billing_last_name,
 			orders.billing_email_address, orders.billing_company,
 			orders.billing_address_1, orders.billing_address_2,
@@ -232,7 +267,89 @@ function api_order_select() {
 
 }
 
-function api_orders_list($params) {
+// The statuses a status filter names ("complete,exported"), each once, or
+// null when one of them is not a status: an unknown value is refused, not
+// dropped, so a typo never widens the listing to every status.
+function api_orders_status_filter($raw) {
+
+	$statuses = array();
+
+	foreach (explode(',', (string)$raw) as $value) {
+
+		$value = trim($value);
+
+		if (!in_array($value, api_order_statuses(), true)) {
+
+			return null;
+
+		}
+
+		if (!in_array($value, $statuses, true)) {
+
+			$statuses[] = $value;
+
+		}
+
+	}
+
+	return $statuses;
+
+}
+
+// Which listing a call asks for: 'placed' (oldest placed first, the
+// default), 'placed_desc' (newest placed first) or 'modified' (oldest change
+// first, under modified_since).
+function api_orders_list_order($params) {
+
+	if (isset($params['modified_since'])) {
+
+		return 'modified';
+
+	}
+
+	return (isset($params['sort']) && $params['sort'] === 'placed_desc') ? 'placed_desc' : 'placed';
+
+}
+
+// The column a listing pages on, beside the id.
+function api_orders_cursor_column($order) {
+
+	return ($order === 'modified') ? 'last_modified_timestamp' : 'order_date';
+
+}
+
+// The mark a cursor starts with, so one made for another listing is refused
+// instead of read as a value of this one (api_seo_not_found_cursor_mark()).
+function api_orders_cursor_mark($order) {
+
+	$marks = array('placed' => 'p.', 'placed_desc' => 'd.', 'modified' => 'm.');
+
+	return isset($marks[$order]) ? $marks[$order] : 'p.';
+
+}
+
+// The cursor without its mark, or null when it was made for another listing.
+// A cursor without any mark was handed out before marks existed, when the
+// list ran oldest placed first only, so it is read under that listing. '.' is
+// not in the cursor's alphabet, so a marked cursor is never taken for one.
+function api_orders_cursor_parts($cursor, $order) {
+
+	$cursor = (string)$cursor;
+
+	if (strpos($cursor, '.') === false) {
+
+		return ($order === 'placed') ? $cursor : null;
+
+	}
+
+	$mark = api_orders_cursor_mark($order);
+
+	return (strpos($cursor, $mark) === 0) ? (string)substr($cursor, strlen($mark)) : null;
+
+}
+
+// The filters of a call, without the cursor: include_count counts the same.
+function api_orders_list_where($params, $statuses) {
 
 	$where = array();
 
@@ -248,9 +365,24 @@ function api_orders_list($params) {
 
 	}
 
-	if (isset($params['status'])) {
+	if (isset($params['modified_since'])) {
 
-		$where[] = "orders.status = '" . escape($params['status']) . "'";
+		$where[] = "orders.last_modified_timestamp >= '" . (int)$params['modified_since'] . "'";
+
+	}
+
+	if (!empty($statuses)) {
+
+		$in = array();
+
+		// Only the store's own words reach the SQL, written as they are.
+		foreach (array_intersect($statuses, api_order_statuses()) as $status) {
+
+			$in[] = "'" . $status . "'";
+
+		}
+
+		$where[] = "orders.status IN (" . implode(', ', $in) . ")";
 
 	}
 
@@ -266,11 +398,79 @@ function api_orders_list($params) {
 
 	}
 
-	$cursor_clause = '';
+	return $where;
+
+}
+
+// One page of a listing, keyset paged on its column then the id: forward for
+// 'placed' and 'modified', backward for 'placed_desc'. A newest-first walk
+// resumes too: a new order takes the current time and lands before the first
+// page, never inside a later one. $cursor is array('v' => int, 'i' => int)
+// or null; $present goes to api_order_select().
+function api_orders_list_sql($where, $order, $cursor, $limit, $present = null) {
+
+	$column = 'orders.' . api_orders_cursor_column($order);
+
+	$descending = ($order === 'placed_desc');
+
+	if ($cursor !== null) {
+
+		$after = $descending ? '<' : '>';
+
+		$value = "'" . (int)$cursor['v'] . "'";
+
+		$where[] = "(" . $column . " " . $after . " " . $value
+			. " OR (" . $column . " = " . $value . " AND orders.id " . $after . " '" . (int)$cursor['i'] . "'))";
+
+	}
+
+	$direction = $descending ? 'DESC' : 'ASC';
+
+	return api_order_select($present)
+		. (empty($where) ? '' : ' WHERE ' . implode(' AND ', $where)) . "
+		ORDER BY " . $column . " " . $direction . ", orders.id " . $direction . "
+		LIMIT " . ((int)$limit + 1);
+
+}
+
+function api_orders_list($params) {
+
+	$statuses = null;
+
+	if (isset($params['status']) && $params['status'] !== '') {
+
+		$statuses = api_orders_status_filter($params['status']);
+
+		if ($statuses === null) {
+
+			api_fail_validation(lang(array(
+				'string' => '{var:1} must be one of: {var:2}',
+				'vars'   => array('status', implode(', ', api_order_statuses()))
+			)), 'status');
+
+		}
+
+	}
+
+	// modified_since has its own order, the last change oldest first: a
+	// client walks forward from its last read.
+	if (isset($params['modified_since']) && isset($params['sort'])) {
+
+		api_fail_validation(lang('sort cannot be used with modified_since, which lists the oldest change first.'), 'sort');
+
+	}
+
+	$order = api_orders_list_order($params);
+
+	$where = api_orders_list_where($params, $statuses);
+
+	$cursor = null;
 
 	if (isset($params['cursor']) && $params['cursor'] !== '') {
 
-		$cursor = api_cursor_decode($params['cursor']);
+		$parts = api_orders_cursor_parts($params['cursor'], $order);
+
+		$cursor = ($parts === null) ? null : api_cursor_decode($parts);
 
 		if ($cursor === null) {
 
@@ -278,28 +478,11 @@ function api_orders_list($params) {
 
 		}
 
-		$cursor_clause = "(orders.order_date > '" . $cursor['v'] . "'
-			OR (orders.order_date = '" . $cursor['v'] . "' AND orders.id > '" . $cursor['i'] . "'))";
-
 	}
-
-	$paged_where = $where;
-
-	if ($cursor_clause !== '') {
-
-		$paged_where[] = $cursor_clause;
-
-	}
-
-	$where_sql = empty($paged_where) ? '' : ' WHERE ' . implode(' AND ', $paged_where);
 
 	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
 
-	// Oldest first, which is the only order a cursor can walk. A newest-first
-	// listing cannot be resumed: every new order shifts the page boundaries.
-	$rows = api_rows(api_order_select() . $where_sql . "
-		ORDER BY orders.order_date ASC, orders.id ASC
-		LIMIT " . ($limit + 1));
+	$rows = api_rows(api_orders_list_sql($where, $order, $cursor, $limit));
 
 	$has_more = (count($rows) > $limit);
 
@@ -315,7 +498,7 @@ function api_orders_list($params) {
 
 		$last = $rows[count($rows) - 1];
 
-		$next_cursor = api_cursor_encode($last['order_date'], $last['id']);
+		$next_cursor = api_orders_cursor_mark($order) . api_cursor_encode($last[api_orders_cursor_column($order)], $last['id']);
 
 	}
 
@@ -323,8 +506,7 @@ function api_orders_list($params) {
 
 	if (!empty($params['include_count'])) {
 
-		$total = (int)api_value("SELECT COUNT(*) FROM orders"
-			. (empty($where) ? '' : ' WHERE ' . implode(' AND ', $where)));
+		$total = (int)api_value("SELECT COUNT(*) FROM orders" . (empty($where) ? '' : ' WHERE ' . implode(' AND ', $where)));
 
 	}
 
@@ -548,7 +730,7 @@ function api_orders_update($params) {
 
 	if (!empty($set)) {
 
-		api_exec("UPDATE orders SET " . implode(', ', $set) . " WHERE id = '" . $id . "' LIMIT 1");
+		api_exec("UPDATE orders SET " . implode(', ', $set) . ", " . pg_order_touch_sql() . " WHERE id = '" . $id . "' LIMIT 1");
 
 	}
 
@@ -839,8 +1021,8 @@ function api_orders_ship_recipient($recipient, $params, $numbers) {
 }
 
 // The legal documents kept with an order: the pre-information form and the
-// distance sales contract the customer accepted at checkout (and, once written,
-// the KVKK consent), each as the HTML the customer saw. The copy is the row's
+// distance sales contract the customer accepted at checkout and the KVKK
+// notice with its explicit consent, each as the HTML the customer saw. The copy is the row's
 // own: a template edited afterwards changes nothing here, which is the point
 // of keeping it - what an integration archives is what was agreed to.
 //
@@ -851,7 +1033,7 @@ function api_order_document_present($row, $types = null) {
 
 	if ($types === null) {
 
-		$types = pg_legal_document_types();
+		$types = pg_legal_document_labels();
 
 	}
 
@@ -896,7 +1078,7 @@ function api_orders_documents($params) {
 
 	if (pg_schema_has('order_documents')) {
 
-		$types = pg_legal_document_types();
+		$types = pg_legal_document_labels();
 
 		foreach (api_rows("SELECT id, type, html, accepted_at, ip, user_agent, created_at
 			FROM order_documents
@@ -1472,6 +1654,8 @@ function api_order_schema() {
 		'status'         => 'string',
 		'placed_at'      => 'string?',
 		'placed_at_unix' => 'integer',
+		'modified_at'      => 'string?',
+		'modified_at_unix' => 'integer',
 		'customer' => array(
 			'contact_id' => 'integer?',
 			'member_id'  => 'string?',
@@ -1502,6 +1686,10 @@ function api_order_schema() {
 			'transaction_id' => 'string?'
 		),
 		'offer_code' => 'string',
+		'type'                => 'string?',
+		'cancelled_at'        => 'string?',
+		'cancellation_reason' => 'string?',
+		'refund_status'       => 'string?',
 		'items' => array(array(
 			'id'             => 'integer',
 			'product_id'     => 'integer?',

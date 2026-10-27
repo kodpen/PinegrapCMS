@@ -86,7 +86,7 @@ if (!$_POST) {
         foreach ($pg_settings_category['sections'] as $pg_settings_section_id => $pg_settings_section_label) {
 
             $pg_settings_chips .=
-                '<a class="pg-chip" href="#' . h($pg_settings_section_id) . '" data-pgset="' . h($pg_settings_section_id) . '">'
+                '<a class="chip" href="#' . h($pg_settings_section_id) . '" data-pgset="' . h($pg_settings_section_id) . '">'
                 . h($pg_settings_section_label) . '</a>';
         }
     }
@@ -120,14 +120,14 @@ if (!$_POST) {
     foreach (array(array($pg_settings_prev, 'bi-chevron-left', lang('Previous')), array($pg_settings_next, 'bi-chevron-right', lang('Next'))) as $pg_settings_step) {
 
         if ($pg_settings_step[0] === '') {
-            $pg_settings_step_links .= '<button type="button" class="btn btn-sm btn-ghost" disabled="disabled"><i class="bi ' . $pg_settings_step[1] . '" aria-hidden="true"></i></button>';
+            $pg_settings_step_links .= '<button type="button" class="btn btn-sm btn-text theme-secondary" disabled="disabled"><i class="bi ' . $pg_settings_step[1] . '" aria-hidden="true"></i></button>';
             continue;
         }
 
         $pg_settings_step_category = pg_settings_category($pg_settings_step[0]);
 
         $pg_settings_step_links .=
-            '<a class="btn btn-sm btn-ghost no-popover" data-bs-toggle="tooltip"'
+            '<a class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="tooltip"'
             . ' title="' . h($pg_settings_step_category['label']) . '"'
             . ' href="' . h(pg_settings_url($pg_settings_step[0])) . '">'
             . '<i class="bi ' . $pg_settings_step[1] . '" aria-hidden="true"></i></a>';

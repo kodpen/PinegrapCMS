@@ -219,6 +219,10 @@ function ws_channel_detail($viewer, $channel)
         ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_erp_quote.php?account_id=' . $quote_account_id
         : '';
 
+    // "Make products" (bulk_sources.php): a pasted list or a file of the
+    // channel as one bulk create card, for whoever may make products here.
+    $brief['bulk_products'] = function_exists('ws_bulk_ready') && ws_bulk_ready() && ws_can_post_channel($viewer, $channel) && ws_change_allowed($viewer, 'product', 0);
+
     $brief['department'] = null;
 
     if ((int) $channel['department_id'] > 0) {

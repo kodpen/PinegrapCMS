@@ -341,11 +341,13 @@ function test_reviews_request_paths()
 
 	pg_assert_contains("'order_review_request'", (string) file_get_contents($root . '/delete_order.php'), 'deleting the order cancels it');
 
-	foreach (array('add_email_campaign_profile.php', 'edit_email_campaign_profile.php') as $screen) {
-		$count = substr_count((string) file_get_contents($root . '/' . $screen), "'order_review_request'");
+	// Both profile screens share one form: it offers the action and treats
+	// it as a commerce action (gated, tied to no record, sent after it).
+	require_once($root . '/includes/forms/email_campaign_profile_form.php');
 
-		pg_assert_true($count >= 4, $screen . ' offers it in all four places (' . $count . ')');
-	}
+	pg_assert_contains('$action_options[lang(\'Order Review Request\')] = \'order_review_request\'', (string) file_get_contents($root . '/includes/forms/email_campaign_profile_form.php'), 'the profile form offers it');
+	pg_assert_true(in_array('order_review_request', pg_email_campaign_profile_commerce_actions(), true), 'a commerce action');
+	pg_assert_same(array('action_item_id' => '0', 'schedule_period' => 'after', 'schedule_base' => 'action'), pg_email_campaign_profile_action_values('order_review_request', array()), 'saved like the other order actions');
 
 	pg_assert_contains("case 'order_review_request':", (string) file_get_contents($root . '/view_email_campaign_profiles.php'), 'the profile list names it');
 

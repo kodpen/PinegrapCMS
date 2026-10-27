@@ -64,8 +64,8 @@ $shell = array(
 // The short link list and this one, as one view switcher.
 $view_switcher =
     '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">
-        <a class="btn btn-ghost" href="view_short_links.php">' . h(lang('Short Links')) . '</a>
-        <a class="btn btn-ghost active" href="view_not_found_log.php" aria-current="page">' . h(lang('404 Log')) . '</a>
+        <a class="btn btn-text theme-secondary" href="view_short_links.php">' . h(lang('Short Links')) . '</a>
+        <a class="btn btn-text theme-secondary active" href="view_not_found_log.php" aria-current="page">' . h(lang('404 Log')) . '</a>
     </div>';
 
 if (!$ready) {
@@ -239,7 +239,7 @@ echo pg_page_shell($shell) . '
                 ' . pg_list_sort_menu('view_not_found_log.php', $sort_columns, $sort_levels, $sort_default, $kept) . '
                 ' . $view_switcher . '
                 <div class="pg-menu-wrap">
-                    <button type="button" class="btn btn-sm btn-ghost" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                    <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
                     <ul class="menu pg-menu-end">
                         <li><button type="button" class="menu-item pg-link-body-emphasis no-submit pg-404-clear"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . h(lang('Clear Log')) . '</button></li>
                     </ul>

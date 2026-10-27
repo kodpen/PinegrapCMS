@@ -36,8 +36,8 @@ if (!isset($_POST['name'])) {
     // Get designer region information.
     $query = "SELECT cregion_name, cregion_content, cregion_designer_type "
             ."FROM cregion "
-            ."WHERE cregion_id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+            ."WHERE cregion_id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed');
     $row = mysqli_fetch_array($result);
     $cregion_name = $row['cregion_name'];
     $cregion_content = $row['cregion_content'];
@@ -131,8 +131,8 @@ $liveform->remove_form();
     // if region was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
         $query = "DELETE FROM cregion "
-                ."WHERE cregion_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                ."WHERE cregion_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('designer region'), $_POST['name']) )), $_SESSION['sessionusername']);
 
 
@@ -151,14 +151,20 @@ $liveform->remove_form();
         }
         
         $query = "UPDATE cregion "
-                ."SET cregion_name = '" . escape($_POST['name'] ?? '') . "', "
-                    ."cregion_content = '" . escape($_POST['content'] ?? '') . "', "
-                    ."cregion_designer_type = '$cregion_designer_type', "
-                    ."cregion_user = '" . $user['id'] . "', "
+                ."SET cregion_name = ?, "
+                    ."cregion_content = ?, "
+                    ."cregion_designer_type = ?, "
+                    ."cregion_user = ?, "
                     ."cregion_timestamp = UNIX_TIMESTAMP() "
-                ."WHERE cregion_id = '" . escape($_POST['id'] ?? '') . "'";
+                ."WHERE cregion_id = ?";
         // update region
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+        $result = db_q($query, array(
+            (string) ($_POST['name'] ?? ''),
+            (string) ($_POST['content'] ?? ''),
+            (string) $cregion_designer_type,
+            (string) $user['id'],
+            (string) ($_POST['id'] ?? ''),
+        )) or output_error('Query failed');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('designer region'), $_POST['name']) )), $_SESSION['sessionusername']);
         
         // if there is not a send to, then prepare notice

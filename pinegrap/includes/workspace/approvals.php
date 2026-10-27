@@ -539,6 +539,8 @@ function ws_approvals_map($message_ids, $viewer)
                 'name'        => (string) $answer['name'],
                 'avatar'      => function_exists('pg_initials_avatar_url') ? pg_initials_avatar_url(pg_initials((string) $answer['name'], ''), 'contact', 'approval-guest' . (int) $answer['id']) : '',
                 'avatar_kind' => 'contact',
+                'initials'    => function_exists('pg_initials') ? pg_initials((string) $answer['name'], '') : '?',
+                'tone'        => function_exists('pg_avatar_tone') ? pg_avatar_tone('', 'approval-guest' . (int) $answer['id']) : 0,
                 'email'       => $staff ? (string) $answer['email'] : '',
                 'audit'       => $audit,
                 'decision'    => $decision,

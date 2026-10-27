@@ -157,9 +157,10 @@ function test_widget_condition_eval_text()
 // time, an empty sibling only with the values empty, every element in the
 // last state; a node picked from the layer tree is drawn in a state that
 // draws it.
-function test_widget_condition_eval_canvas_states()
+// The canvas state functions, cut out of style_designer.js: the value
+// conditions and "Hide when empty".
+function _cond_eval_canvas_source()
 {
-	if (!_cond_eval_node_ok()) return;
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
 	$cut = function ($from, $to) use ($js) {
 		$a = strpos($js, $from);
@@ -170,13 +171,25 @@ function test_widget_condition_eval_canvas_states()
 	$src = _cond_eval_js_source()
 		. $cut("\n    var SW_COND_OPS = [", "\n    ];\n")
 		. $cut("\n    var SW_COND_DENY = [", "\n    ];\n")
+		. $cut("\n    var SD_COND_NAMES = ", ";\n")
 		. $cut("\n    var SD_OV_STATUS_STAGES = ", ";\n")
 		. $cut("\n    var _SD_FLAG_TOKENS = {", "\n    };\n")
-		. $cut("\n    var _sdCondCanvasState = ", ";\n");
+		. $cut("\n    var _sdCondCanvasState = ", ";\n")
+		. $cut("\n    var SD_HIDE_EMPTY = ", ";\n")
+		. $cut("\n    var SD_FIELD_VALUE = ", ";\n");
 	foreach (array('_sdCondTokenAllowed', '_sdCondOp', '_sdCondHoldsRequired', '_sdCondCodeStates', '_sdCondTreeTokens',
-		'_sdCondCanvasStates', '_sdCondStateOf', '_sdCondCanvasValue', '_sdCondCanvasShows', '_sdCondStateFor') as $fn) {
+		'_sdCondCanvasStates', '_sdCondStateOf', '_sdCondCanvasValue', '_sdCondCanvasShows', '_sdCondPresent', '_sdCondSpecs', '_sdCondEvalAll', '_sdCondStateFor',
+		'_sdNodeClassHas', '_sdTreeHasHideEmpty', '_sdHideEmptyValueNode', '_sdHideEmptyContentShows', '_sdHideEmptyShows',
+		'_sdHideEmptyCanvasOff') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
 	}
+	return $src;
+}
+
+function test_widget_condition_eval_canvas_states()
+{
+	if (!_cond_eval_node_ok()) return;
+	$src = _cond_eval_canvas_source();
 	$when = function ($token, $op, $value = null) {
 		$param = array('op' => $op);
 		if ($value !== null) $param['value'] = $value;
@@ -207,6 +220,7 @@ function test_widget_condition_eval_canvas_states()
 		. "  forShipped: _sdCondStateFor(order, order.children[2]), forEmpty: _sdCondStateFor(order, order.children[7]),\n"
 		. "  forDenied: _sdCondStateFor(order, order.children[10]), forOutside: _sdCondStateFor(order, plain.children[0]) };\n"
 		. "_sdCondCanvasState = 'empty'; out.kept = _sdCondStateFor(order, order.children[7]);\n"
+		. "_sdCondCanvasState = 'sample'; out.sampleOnOrder = _sdCondStateOf(order);\n"
 		. "console.log(JSON.stringify(out));\n";
 	$file = @tempnam(sys_get_temp_dir(), 'pgcond');
 	if ($file === false) return;
@@ -234,6 +248,15 @@ function test_widget_condition_eval_canvas_states()
 	pg_assert_same('all', $a['forDenied']);
 	pg_assert_same('code:__order_status_stage:complete', $a['forOutside']);
 	pg_assert_same('empty', $a['kept'], 'a state that draws the node is kept');
+	pg_assert_same('code:__order_status_stage:complete', $a['sampleOnOrder'], 'a state the tree does not offer draws its first');
+	// The canvas opens on each widget's first state, and a page opened in a
+	// tab starts there again.
+	$js = (string) file_get_contents(__DIR__ . '/../pinegrap/assets/js/style_designer.js');
+	pg_assert_true(strpos($js, "\n    var _sdCondCanvasState = '';\n") !== false, 'the canvas opens on the first state');
+	$a = strpos($js, "\n    function _pgTabsSwitch(");
+	$b = strpos($js, "\n    }\n", $a);
+	pg_assert_true($a !== false && strpos(substr($js, $a, $b - $a), "_sdCondCanvasState = '';") !== false,
+		'a tab switch draws the first state again');
 }
 
 // The sample rows a list draws after its card name sources the server
@@ -275,10 +298,11 @@ function test_widget_condition_eval_timeline_sample_rows()
 	$src = _cond_eval_js_source()
 		. $cut("\n    var SW_COND_OPS = [", "\n    ];\n")
 		. $cut("\n    var SW_COND_DENY = [", "\n    ];\n")
+		. $cut("\n    var SD_COND_NAMES = ", ";\n")
 		. $cut("\n    var SD_OV_STATUS_STAGES = ", ";\n")
 		. $cut("\n    var _SD_FLAG_TOKENS = {", "\n    };\n")
 		. $cut("\n    var SD_LIST_SAMPLE_ROWS = {", "\n    };\n");
-	foreach (array('_sdCondTokenAllowed', '_sdCondOp', '_sdCondHoldsRequired', '_sdCondCodeStates', '_sdCondCanvasValue', '_sdCondCanvasShows') as $fn) {
+	foreach (array('_sdCondTokenAllowed', '_sdCondOp', '_sdCondHoldsRequired', '_sdCondCodeStates', '_sdCondCanvasValue', '_sdCondCanvasShows', '_sdCondPresent', '_sdCondSpecs', '_sdCondEvalAll') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
 	}
 	$timeline = json_decode(json_encode(pg_sw_part_order_timeline()), true);
@@ -348,4 +372,59 @@ function test_widget_condition_eval_main_loop_sample_rows()
 	pg_assert_same(0, $code, $printed);
 	pg_assert_same(array('cart' => 2, 'order' => 2, 'second' => 0, 'item' => 0, 'listing' => 0, 'forms' => 0, 'comments' => 0, 'recent' => 0,
 		'profile' => 0, 'account' => 0, 'accountList' => 2, 'inSample' => 0, 'off' => 0), json_decode($printed, true), $printed);
+}
+
+// "Hide when empty" on the canvas: a tree with a marked element offers the
+// states; in the empty state a box judged by its value element goes with
+// its heading, a box of designed words alone stays, a list empties; with
+// samples a bound value with a sample shows and one without goes; every
+// element in "All elements"; a picked hidden node finds a state that
+// draws it.
+function test_widget_condition_eval_hide_empty_canvas()
+{
+	if (!_cond_eval_node_ok()) return;
+	$src = _cond_eval_canvas_source();
+	$node = function ($props, $children = array(), $type = 'semantic') {
+		return array('type' => $type, 'props' => $props, 'children' => $children);
+	};
+	$heading = $node(array('tag' => 'h3', 'text' => 'Related'));
+	$tree = $node(array(), array(
+		$node(array('cssClass' => 'border pg-hide-if-empty'), array($heading,
+			$node(array('cssClass' => 'row pg-field-value'), array($node(array('source' => 'product.related'), array(), 'loop_area'))))),
+		$node(array('cssClass' => 'pg-hide-if-empty'), array($node(array('text' => 'Designed words')))),
+		$node(array('cssClass' => 'pg-hide-if-empty'), array($node(array('_bindings' => array('text' => '__note'))))),
+		$node(array('cssClass' => 'pg-hide-if-empty'), array($node(array('_bindings' => array('text' => '__none'))))),
+		$node(array('cssClass' => 'pg-hide-if-empty'), array($node(array('cssClass' => 'pg-hide-if-empty'), array($node(array('_bindings' => array('text' => '__none'))))))),
+		$node(array('cssClass' => 'pg-hide-if-empty'), array($node(array('contentType' => 'image', 'src' => ''), array(), 'content'))),
+	), 'root');
+	$plain = $node(array(), array($node(array('cssClass' => 'not-pg-hide-if-empty'))), 'root');
+	$stubs = "function _sdT(s) { return s; }\n"
+		. "function _displayValueForBinding(prop, token) { return { __note: 'Ring twice' }[token] || ''; }\n";
+	$script = 'var tree = ' . json_encode($tree) . ', plain = ' . json_encode($plain) . ";\n"
+		. "var off = function (state) { return tree.children.map(function (n) { return _sdHideEmptyCanvasOff(n, state) ? 1 : 0; }).join(''); };\n"
+		. "var out = { states: _sdCondCanvasStates(tree).map(function (s) { return s[0]; }), none: _sdCondCanvasStates(plain),\n"
+		. "  empty: off('empty'), sample: off('sample'), all: off('all'), value: tree.children[0].children[1].props.cssClass,\n"
+		. "  judged: _sdHideEmptyValueNode(tree.children[0]) === tree.children[0].children[1],\n"
+		. "  forEmptied: _sdCondStateFor(tree, tree.children[3]) };\n"
+		. "console.log(JSON.stringify(out));\n";
+	$file = @tempnam(sys_get_temp_dir(), 'pgcond');
+	if ($file === false) return;
+	file_put_contents($file, $stubs . $src . $script);
+	$out = array();
+	$code = 1;
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+	$printed = implode("\n", $out);
+	pg_assert_same(0, $code, $printed);
+	$a = json_decode($printed, true);
+	pg_assert_true(is_array($a), 'Node printed JSON: ' . $printed);
+	pg_assert_same(array('sample', 'empty', 'all'), $a['states']);
+	pg_assert_same(array(), $a['none'], 'a class that only looks like it offers none');
+	// Heading over a list, designed words, a value with a sample, one
+	// without, a box whose only marked row went, a picture without an address.
+	pg_assert_same('101111', $a['empty']);
+	pg_assert_same('000111', $a['sample']);
+	pg_assert_same('000000', $a['all']);
+	pg_assert_true($a['judged'], 'the value element judges the box');
+	pg_assert_same('all', $a['forEmptied'], 'a node no value fills is drawn in All elements');
 }

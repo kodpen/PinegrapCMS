@@ -94,6 +94,19 @@ function test_form_list_result_count_tokens_and_flags()
 	pg_assert_false(in_array('__result_count', pg_sw_raw_token_keys(), true), '__result_count is not a raw key');
 }
 
+// Search results group their number like the form list and like their own
+// heading (1.284 / 1,284 in the page's language), escaped once with the other
+// static values.
+function test_search_results_count_grouped()
+{
+	$widgets = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php');
+	$body = _form_list_result_count_function_body($widgets, 'function _render_system_widget_search_results(');
+
+	_form_list_result_count_order($body, '$static_values = pg_sw_escape_token_values(array(', "'__result_count'    => pg_format_number(\$total, 0),", 'the grouped number is escaped with the static values');
+	pg_assert_contains("'Found {var:1} result(s) for: {var:2}', 'vars' => array(pg_format_number(\$total, 0)", $body, 'the heading groups the same way');
+	pg_assert_false(strpos($body, "'__result_count'    => (string)\$total,") !== false, 'plain digits are gone');
+}
+
 // The editor offers the token under the label search results use for the
 // same name, and lists the two flags after the address flags.
 function test_form_list_result_count_editor()

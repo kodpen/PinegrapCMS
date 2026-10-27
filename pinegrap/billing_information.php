@@ -58,8 +58,8 @@ $query =
         custom_field_2_required,
         form
     FROM billing_information_pages
-    WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE page_id = ?";
+$result = db_q($query, array((string) ($_POST['page_id'] ?? ''))) or output_error('Query failed.');
 // No row when the id names no billing page: no custom fields and no custom form then.
 $row = mysqli_fetch_assoc($result) ?: array();
 
@@ -130,8 +130,8 @@ if ($form == 1) {
 }
 
 // get old address verified value from the database
-$query = "SELECT billing_address_verified FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$query = "SELECT billing_address_verified FROM orders WHERE id = ?";
+$result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 // The query above selects billing_address_verified, so that is the key to read.
@@ -168,29 +168,29 @@ if ($liveform->get_field_value('tax_exempt')) {
 $query =
     "UPDATE orders
      SET
-        billing_salutation = '" . escape($liveform->get_field_value('billing_salutation')) . "',
-        billing_first_name = '" . escape($liveform->get_field_value('billing_first_name')) . "',
-        billing_last_name = '" . escape($liveform->get_field_value('billing_last_name')) . "',
-        billing_company = '" . escape($liveform->get_field_value('billing_company')) . "',
-        billing_address_1 = '" . escape($liveform->get_field_value('billing_address_1')) . "',
-        billing_address_2 = '" . escape($liveform->get_field_value('billing_address_2')) . "',
-        billing_city = '" . escape($liveform->get_field_value('billing_city')) . "',
-        billing_state = '" . escape($liveform->get_field_value('billing_state')) . "',
-        billing_zip_code = '" . escape($liveform->get_field_value('billing_zip_code')) . "',
-        billing_country = '" . escape($liveform->get_field_value('billing_country')) . "',
-        billing_address_verified = '" . escape($address_verified) . "',
-        billing_phone_number = '" . escape($liveform->get_field_value('billing_phone_number')) . "',
-        billing_fax_number = '" . escape($liveform->get_field_value('billing_fax_number') ?? '') . "',
-        billing_email_address = '" . escape($liveform->get_field_value('billing_email_address')) . "',
-        custom_field_1 = '" . escape($liveform->get_field_value('custom_field_1') ?? '') . "',
-        custom_field_2 = '" . escape($liveform->get_field_value('custom_field_2') ?? '') . "',
-        opt_in = '$opt_in',
-        tax_exempt = '$tax_exempt',
-        po_number = '" . escape($liveform->get_field_value('po_number')) . "',
-        referral_source_code = '" . escape($liveform->get_field_value('referral_source')) . "',
+        billing_salutation = ?,
+        billing_first_name = ?,
+        billing_last_name = ?,
+        billing_company = ?,
+        billing_address_1 = ?,
+        billing_address_2 = ?,
+        billing_city = ?,
+        billing_state = ?,
+        billing_zip_code = ?,
+        billing_country = ?,
+        billing_address_verified = ?,
+        billing_phone_number = ?,
+        billing_fax_number = ?,
+        billing_email_address = ?,
+        custom_field_1 = ?,
+        custom_field_2 = ?,
+        opt_in = ?,
+        tax_exempt = ?,
+        po_number = ?,
+        referral_source_code = ?,
         billing_complete = '0'
-    WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE id = ?";
+$result = db_q($query, array((string) ($liveform->get_field_value('billing_salutation')), (string) ($liveform->get_field_value('billing_first_name')), (string) ($liveform->get_field_value('billing_last_name')), (string) ($liveform->get_field_value('billing_company')), (string) ($liveform->get_field_value('billing_address_1')), (string) ($liveform->get_field_value('billing_address_2')), (string) ($liveform->get_field_value('billing_city')), (string) ($liveform->get_field_value('billing_state')), (string) ($liveform->get_field_value('billing_zip_code')), (string) ($liveform->get_field_value('billing_country')), (string) $address_verified, (string) ($liveform->get_field_value('billing_phone_number')), (string) ($liveform->get_field_value('billing_fax_number') ?? ''), (string) ($liveform->get_field_value('billing_email_address')), (string) ($liveform->get_field_value('custom_field_1') ?? ''), (string) ($liveform->get_field_value('custom_field_2') ?? ''), (string) $opt_in, (string) $tax_exempt, (string) ($liveform->get_field_value('po_number')), (string) ($liveform->get_field_value('referral_source')), (string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
 
 // if an error does not exist
 if ($liveform->check_form_errors() == false) {
@@ -208,14 +208,14 @@ if ($liveform->check_form_errors() == false) {
     if (!$contact_id) {
         
         // get contact id for this order
-        $query = "SELECT contact_id FROM orders WHERE id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT contact_id FROM orders WHERE id = ?";
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $contact_id = $row['contact_id'];
         
         // check to see if this contact is connected to a user
-        $query = "SELECT user_id FROM user WHERE user_contact = '$contact_id'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT user_id FROM user WHERE user_contact = ?";
+        $result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
         
         // if the contact is connected to a user, then the contact should not be used
         if (mysqli_num_rows($result) > 0) {
@@ -236,16 +236,16 @@ if ($liveform->check_form_errors() == false) {
                 user,
                 timestamp)
             VALUES (
-                '$user_id',
+                ?,
                 UNIX_TIMESTAMP())";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $user_id)) or output_error('Query failed.');
         $contact_id = mysqli_insert_id(db::$con);
         $new_contact_id = $contact_id;
 
         // if user is logged in, connect new contact record to user record
         if ($user_id) {
-            $query = "UPDATE user SET user_contact = '$contact_id' WHERE user_id = '$user_id'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "UPDATE user SET user_contact = ? WHERE user_id = ?";
+            $result = db_q($query, array((string) $contact_id, (string) $user_id)) or output_error('Query failed.');
         }
     }
     
@@ -279,9 +279,9 @@ if ($liveform->check_form_errors() == false) {
         "SELECT contact_id
         FROM contacts_contact_groups_xref
         WHERE
-            (contact_id = '$contact_id')
-            AND (contact_group_id = '$contact_group_id')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            (contact_id = ?)
+            AND (contact_group_id = ?)";
+    $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
     
     // if contact is not already in contact group, then add contact to Orders contact group
     if (mysqli_num_rows($result) == 0) {
@@ -290,19 +290,19 @@ if ($liveform->check_form_errors() == false) {
                 contact_id,
                 contact_group_id)
             VALUES (
-                '$contact_id',
-                '$contact_group_id')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                ?,
+                ?)";
+        $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
     }
 
     // update order record
     $query = "UPDATE orders
              SET
-                user_id = '$user_id',
-                contact_id = '$contact_id',
+                user_id = ?,
+                contact_id = ?,
                 billing_complete = '1'
-             WHERE id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+             WHERE id = ?";
+    $result = db_q($query, array((string) $user_id, (string) $contact_id, (string) (int) ($_SESSION['ecommerce']['order_id'] ?? 0))) or output_error('Query failed.');
 
     // If the user is logged in and not ghosting and the user selected that he/she
     // does not want his/her contact info updated with billing info,
@@ -379,13 +379,13 @@ if ($liveform->check_form_errors() == false) {
     if ((VISITOR_TRACKING == true) && !empty($_SESSION['software']['visitor_id'])) {
         $query = "UPDATE visitors
                  SET
-                    city = '" . escape($liveform->get_field_value('billing_city')) . "',
-                    state = '" . escape($liveform->get_field_value('billing_state')) . "',
-                    zip_code = '" . escape($liveform->get_field_value('billing_zip_code')) . "',
-                    country = '" . escape($liveform->get_field_value('billing_country')) . "',
+                    city = ?,
+                    state = ?,
+                    zip_code = ?,
+                    country = ?,
                     stop_timestamp = UNIX_TIMESTAMP()
-                 WHERE id = '" . $_SESSION['software']['visitor_id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                 WHERE id = ?";
+        $result = db_q($query, array((string) ($liveform->get_field_value('billing_city')), (string) ($liveform->get_field_value('billing_state')), (string) ($liveform->get_field_value('billing_zip_code')), (string) ($liveform->get_field_value('billing_country')), (string) $_SESSION['software']['visitor_id'])) or output_error('Query failed.');
     }
 
     // remove liveform because software does not need it anymore

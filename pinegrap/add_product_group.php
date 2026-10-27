@@ -477,8 +477,8 @@ $liveform->remove_form();
     if ($_POST['products']) {
         // foreach product that was selected
         foreach($_POST['products'] as $product_id) {
-            $query = "INSERT INTO products_groups_xref (product, product_group, sort_order) VALUES ('" . escape($product_id) . "', '" . $product_group_id . "', '" . escape($_POST['sort_order_product_' . $product_id]) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+            $query = "INSERT INTO products_groups_xref (product, product_group, sort_order) VALUES (?, ?, ?)";
+            $result = db_q($query, array((string) $product_id, (string) $product_group_id, (string) $_POST['sort_order_product_' . $product_id])) or output_error('Query failed');
         }
     }
     
@@ -528,8 +528,8 @@ $liveform->remove_form();
         //check if config_code is not equal to POSTED code
         if($config_code != $_POST['code']){
             //update config_code with new code
-            $query = "UPDATE config SET product_image_code_template = '" . escape($_POST['code'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "UPDATE config SET product_image_code_template = ?";
+            $result = db_q($query, array((string) ($_POST['code'] ?? ''))) or output_error('Query failed.');
         }
     }       
     

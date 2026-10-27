@@ -4,7 +4,9 @@
  *
  * Workspace - flows in the external API: the owner's flows, the live ones
  * of the channels they read and the ones shared with them, drafting a flow
- * (create and change its draft), publishing, pausing and deleting it; its
+ * (create and change its draft), publishing, pausing, resuming and deleting
+ * it, its published versions read and one brought back into the draft, the
+ * kinds of box it is built from and its draft looked at before publishing; its
  * runs: starting one, reading them and cancelling one; and its shares:
  * reading them, sharing it and taking a share back. The checks are the
  * store's, the runner's and the shares' own (includes/workspace/flows.php,
@@ -497,6 +499,18 @@ function ws_api_flows_create($params)
 
     $data = ws_api_flow_input($params);
 
+    // A template's boxes, with the answers to its settings written in;
+    // somebody who may not build flows meets ws_flow_save_check()'s 403.
+    if (array_key_exists('template', $params) && ws_can_schedule($viewer)) {
+        $made = ws_api_flow_from_template(ws_flow_templates_for($viewer), $params, $data);
+
+        if (!$made['ok']) {
+            ws_api_flow_refused($made);
+        }
+
+        $data = $made['data'];
+    }
+
     // The checks ws_flow_save() makes, made first so that a dry run meets
     // the same refusals.
     $checked = ws_flow_save_check($viewer, $data);
@@ -634,6 +648,344 @@ function ws_api_flows_pause($params)
     api_ok(ws_api_flow_answer($viewer, $flow['id']));
 }
 
+// A paused flow made live again opens tasks in the person's own name, as a
+// publish does, so it is their team devices session's call alone and no MCP
+// tool (flow_versions.php).
+function ws_api_flows_resume($params)
+{
+    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can resume a flow; an application key or an OAuth connection cannot do it for them.'));
+
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $flow = ws_api_flow_editable($viewer, $params['id']);
+    $checked = ws_flow_resume_check($viewer, $flow);
+
+    if (!$checked['ok']) {
+        ws_api_flow_refused($checked);
+    }
+
+    api_dry_run_stop('resumed', 'workspace_flow', array('id' => (int) $flow['id'], 'version' => (int) $checked['version']['n']));
+
+    $result = ws_api_as_owner(function () use ($viewer, $flow) {
+        return ws_flow_resume($viewer, $flow);
+    });
+
+    if (!$result['ok']) {
+        ws_api_flow_refused($result);
+    }
+
+    api_ok(ws_api_flow_answer($viewer, $flow['id']));
+}
+
+// One version with its graph, as GET /workspace/flows/{id}/versions/{n}
+// answers it.
+function ws_api_flow_version_detail_present($version, $live_id, $edit)
+{
+    return ws_api_flow_version_present($version) + array(
+        'live'  => ((int) $version['id'] === (int) $live_id),
+        'graph' => ws_api_flow_graph_present(ws_flow_graph_of($version), $edit),
+    );
+}
+
+// What ws_api_flow_version_detail_present() returns.
+function ws_api_flow_version_detail_schema()
+{
+    return ws_api_flow_version_schema() + array(
+        'live'  => 'boolean',
+        'graph' => 'WorkspaceFlowGraph',
+    );
+}
+
+// The versions are the history of what the flow ran: read by whoever may
+// change it, the draft's editors, who bring one back into the draft.
+function ws_api_flow_versions_list($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $flow = ws_api_flow_editable($viewer, $params['id']);
+    $before = 0;
+
+    if (isset($params['cursor']) && ($params['cursor'] !== '')) {
+        $cursor = api_cursor_decode($params['cursor']);
+
+        if ($cursor === null) {
+            api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+        }
+
+        $before = (int) $cursor['i'];
+    }
+
+    $limit = max(1, min(100, (int) ($params['limit'] ?? 50)));
+    $page = ws_flow_versions($flow['id'], $before, $limit);
+    $out = array();
+
+    foreach ($page['rows'] as $version) {
+        $out[] = ws_api_flow_version_present($version);
+    }
+
+    api_ok_list($out, $limit, ($page['next'] !== null) ? api_cursor_encode($page['next'], $page['next']) : null);
+}
+
+function ws_api_flow_versions_get($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $flow = ws_api_flow_editable($viewer, $params['id']);
+    $version = ws_flow_version_numbered($flow['id'], $params['n']);
+
+    if (!$version) {
+        api_fail_not_found(lang('Flow version'));
+    }
+
+    api_ok(ws_api_flow_version_detail_present($version, $flow['version_id'], true));
+}
+
+// A version brought back into the draft is a draft save: an application key
+// or an OAuth connection may do it, as it may change the draft. The flow runs
+// it only once the person publishes it.
+function ws_api_flow_versions_restore($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $flow = ws_api_flow_editable($viewer, $params['id']);
+    $data = array_key_exists('draft_rev', $params) ? array('draft_rev' => (int) $params['draft_rev']) : array();
+    $checked = ws_flow_version_restore_check($viewer, $flow, $params['n'], $data);
+
+    if (!$checked['ok']) {
+        if ((int) $checked['status'] === 404) {
+            api_fail_not_found(lang('Flow version'));
+        }
+
+        ws_api_flow_refused($checked);
+    }
+
+    api_dry_run_stop('restored', 'workspace_flow', array(
+        'id'       => (int) $flow['id'],
+        'version'  => (int) $checked['n'],
+        'boxes'    => count($checked['graph']['nodes']),
+        'problems' => count($checked['problems']),
+    ));
+
+    $result = ws_api_as_owner(function () use ($viewer, $flow, $params, $data) {
+        return ws_flow_version_restore($viewer, $flow, $params['n'], $data);
+    });
+
+    if (!$result['ok']) {
+        ws_api_flow_refused($result);
+    }
+
+    api_ok(ws_api_flow_answer($viewer, $flow['id']));
+}
+
+/* ---------------------------------------------------------------------------
+   Ready-made flows (flow_templates.php)
+   --------------------------------------------------------------------------- */
+
+/**
+ * A new draft's input from a template: the template's boxes and arrows, the
+ * answers to its settings written into the boxes that ask for them, and its
+ * title for a name when none is sent. Without answers the boxes keep the
+ * template's own values (as Close on the canvas's setup panel leaves them);
+ * with them every setting must be answered, as the panel requires. Boxes
+ * sent beside a template are refused: one or the other draws the flow.
+ * Pure.
+ *
+ * @param array[] $templates ws_flow_templates_for() of the owner of the
+ *                           application
+ * @param array   $params    the call's input: template, answers
+ * @param array   $data      ws_api_flow_input() of the same call
+ * @return array ok, error, status, field, data
+ */
+function ws_api_flow_from_template($templates, $params, $data)
+{
+    $refused = function ($error, $status, $field) {
+        return array('ok' => false, 'error' => $error, 'status' => $status, 'field' => $field, 'data' => array());
+    };
+
+    if (array_intersect(array('nodes', 'edges', 'notes'), array_keys($params))) {
+        return $refused(lang('Send a template or boxes, not both.'), 422, 'template');
+    }
+
+    $template = null;
+
+    foreach ((array) $templates as $item) {
+        if ($item['key'] === (string) $params['template']) {
+            $template = $item;
+        }
+    }
+
+    if ($template === null) {
+        return $refused(lang('That template is not offered to you.'), 422, 'template');
+    }
+
+    $values = array();
+
+    if (array_key_exists('answers', $params)) {
+        $check = ws_flow_template_answers_check($template, $params['answers']);
+
+        if (!$check['ok']) {
+            return $refused($check['error'], 422, 'answers.' . $check['field']);
+        }
+
+        $values = $check['values'];
+    }
+
+    $data['graph'] = ws_flow_template_apply($template, $template['graph'], $values);
+
+    if (!array_key_exists('name', $data)) {
+        $data['name'] = (string) $template['title'];
+    }
+
+    return array('ok' => true, 'error' => '', 'status' => 200, 'field' => '', 'data' => $data);
+}
+
+// One template as GET /workspace/flow-templates answers it.
+function ws_api_flow_template_present($template)
+{
+    return array(
+        'key'      => (string) $template['key'],
+        'category' => (string) $template['category'],
+        'title'    => (string) $template['title'],
+        'help'     => (string) $template['help'],
+        'start'    => (string) $template['start'],
+        'boxes'    => (int) $template['boxes'],
+        'threads'  => (int) $template['threads'],
+        'settings' => array_values(array_map(function ($setting) {
+            return (string) $setting['type'];
+        }, (array) $template['settings'])),
+        'graph'    => ws_api_flow_graph_present($template['graph'], true),
+    );
+}
+
+// What ws_api_flow_template_present() returns.
+function ws_api_flow_template_schema()
+{
+    return array(
+        'key'      => 'string',
+        'category' => 'string',
+        'title'    => 'string',
+        'help'     => 'string',
+        'start'    => 'string',
+        'boxes'    => 'integer',
+        'threads'  => 'integer',
+        'settings' => 'string[]',
+        'graph'    => 'WorkspaceFlowGraph',
+    );
+}
+
+// The templates the canvas's gallery offers the owner of the application,
+// filled for them (their own e-mail and site name); nobody who may not
+// build flows is offered any.
+function ws_api_flow_templates_list($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $templates = array_map('ws_api_flow_template_present', ws_flow_templates_for($viewer));
+
+    api_ok_list($templates, count($templates));
+}
+
+/* ---------------------------------------------------------------------------
+   What a flow is built from, and a draft looked at (flow_catalogue.php)
+   --------------------------------------------------------------------------- */
+
+// One kind of box, as ws_flow_kind_catalogue() gives it.
+function ws_api_flow_kind_present($kind)
+{
+    return array(
+        'kind'     => (string) $kind['kind'],
+        'label'    => (string) $kind['label'],
+        'starts'   => (bool) $kind['starts'],
+        'step'     => (bool) $kind['step'],
+        'outcomes' => $kind['outcomes'],
+        'outputs'  => $kind['outputs'],
+        'texts'    => $kind['texts'],
+        'settings' => $kind['settings'],
+    );
+}
+
+// What ws_api_flow_kind_present() returns.
+function ws_api_flow_kind_schema()
+{
+    return array(
+        'kind'     => 'string',
+        'label'    => 'string',
+        'starts'   => 'boolean',
+        'step'     => 'boolean',
+        'outcomes' => 'string[]',
+        'outputs'  => array(array('key' => 'string', 'type' => 'string', 'label' => 'string', 'mode' => 'string?')),
+        'texts'    => 'string[]',
+        'settings' => array(array('key' => 'string', 'type' => 'string', 'blank' => 'boolean', 'of' => 'string?', 'values' => 'string[]?')),
+    );
+}
+
+// The catalogue says nothing of the site's records or people, so every
+// application with workspace:read reads it, and an assistant drafts from it.
+function ws_api_flow_kinds_list($params)
+{
+    ws_api_viewer();
+    ws_api_flows_ready();
+
+    $kinds = array_map('ws_api_flow_kind_present', ws_flow_kind_catalogue());
+
+    api_ok_list($kinds, count($kinds));
+}
+
+// A draft looked at as publishing would look at it, as GET
+// /workspace/flows/{id}/validate answers it.
+function ws_api_flow_validation_present($flow, $result)
+{
+    return array(
+        'id'             => (int) $flow['id'],
+        'draft_rev'      => (int) $flow['draft_rev'],
+        'publishable'    => (bool) $result['publishable'],
+        'checked_rights' => (bool) $result['checked_rights'],
+        'refusal'        => ((string) $result['refusal'] !== '') ? (string) $result['refusal'] : null,
+        'problems'       => array_map('ws_api_flow_problem_present', $result['problems']),
+    );
+}
+
+// What ws_api_flow_validation_present() returns.
+function ws_api_flow_validation_schema()
+{
+    return array(
+        'id'             => 'integer',
+        'draft_rev'      => 'integer',
+        'publishable'    => 'boolean',
+        'checked_rights' => 'boolean',
+        'refusal'        => 'string?',
+        'problems'       => 'WorkspaceFlowProblem[]',
+    );
+}
+
+// Nothing is written, and the owner's rights are what an assistant drafting
+// for them needs to know before the person publishes: a tool, read scope.
+function ws_api_flows_validate($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $flow = ws_api_flow_editable($viewer, $params['id']);
+    $result = ws_flow_validate($viewer, $flow);
+
+    if (!$result['ok']) {
+        ws_api_flow_refused($result);
+    }
+
+    api_ok(ws_api_flow_validation_present($flow, $result));
+}
+
 function ws_api_flows_delete($params)
 {
     $viewer = ws_api_viewer();
@@ -757,24 +1109,90 @@ function ws_api_flows_box_try($params)
 define('WS_API_FLOW_RESULT_CHARS', 1000);
 
 /**
- * One box of a run as the API hands it out: which box, how it stands, the
- * task it opened, its times and how it went, in short (a change box's
- * record and values only to whoever may change the flow,
- * ws_step_result_shown()).
+/**
+ * The arrows into a box as a run took them: each arrow's box and outcome,
+ * and whether it was taken (its box ended done on that outcome, or on any
+ * for an arrow on always; ws_flow_edge_takes(), as the walk reads it).
+ * Pure.
  *
- * @param array $step  ws_flow_run_steps row
- * @param array $graph the version the run follows
- * @param bool  $edit  the reader may change the flow
+ * @param array  $graph   the version the run follows
+ * @param array  $states  ws_flow_step_states() of the run's boxes
+ * @param string $node_id
+ * @return array[] from, on, taken
+ */
+function ws_api_flow_step_threads_in($graph, $states, $node_id)
+{
+    $out = array();
+
+    foreach ((array) ($graph['edges'] ?? array()) as $edge) {
+        if ((string) $edge['to'] !== (string) $node_id) {
+            continue;
+        }
+
+        $from = $states[(string) $edge['from']] ?? null;
+
+        $out[] = array(
+            'from'  => (string) $edge['from'],
+            'on'    => (string) $edge['on'],
+            'taken' => is_array($from) && ((string) $from['status'] === 'done') && ws_flow_edge_takes($edge['on'], $from['outcome']),
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * The values a box of a run kept for the boxes after it ({{node.ID.FIELD}}),
+ * as the result's data holds them: a number, a text or null for one it did
+ * not give. A change box's record and the run a start-a-flow box started
+ * are kept back from whoever may not change the flow, as its sentence is
+ * (ws_step_result_shown()). Pure.
+ *
+ * @param string $kind   the box's kind
+ * @param mixed  $stored the step's result column
+ * @param bool   $edit   the reader may change the flow
+ * @return array key => int|string|null
+ */
+function ws_api_flow_step_outputs($kind, $stored, $edit)
+{
+    if (!$edit && in_array((string) $kind, array('change', 'start_flow'), true)) {
+        return array();
+    }
+
+    $result = is_string($stored) ? json_decode($stored, true) : null;
+    $out = array();
+
+    foreach ((is_array($result['data'] ?? null) ? $result['data'] : array()) as $key => $value) {
+        if (is_string($key) && (($value === null) || is_int($value) || is_string($value))) {
+            $out[$key] = is_string($value) ? mb_substr($value, 0, WS_API_FLOW_RESULT_CHARS) : $value;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * One box of a run as the API hands it out: which box, how it stands, the
+ * task it opened, its times, the arrows into it as the run took them, the
+ * values it kept and how it went, in short (a change box's record and
+ * values only to whoever may change the flow, ws_step_result_shown()).
+ *
+ * @param array      $step   ws_flow_run_steps row
+ * @param array      $graph  the version the run follows
+ * @param bool       $edit   the reader may change the flow
+ * @param array|null $states ws_flow_step_states() of the run's boxes, for
+ *                           threads_in (none: every arrow untaken)
  * @return array
  */
-function ws_api_flow_run_step_present($step, $graph, $edit = false)
+function ws_api_flow_run_step_present($step, $graph, $edit = false, $states = null)
 {
     $node = ws_flow_graph_node($graph, $step['node_id']);
+    $kind = $node ? (string) $node['kind'] : '';
     $task_id = ws_flow_effect_task_id((string) $step['effect']);
 
     return array(
         'node_id'     => (string) $step['node_id'],
-        'kind'        => $node ? (string) $node['kind'] : '',
+        'kind'        => $kind,
         'name'        => $node ? ws_flow_box_name($node) : (string) $step['node_id'],
         'status'      => (string) $step['status'],
         'outcome'     => ((string) $step['outcome'] !== '') ? (string) $step['outcome'] : null,
@@ -783,7 +1201,9 @@ function ws_api_flow_run_step_present($step, $graph, $edit = false)
         'ready_at'    => ws_flow_time($step['ready_at']),
         'started_at'  => ws_flow_time($step['claimed_at']),
         'finished_at' => ws_flow_time($step['finished_at']),
-        'result'      => mb_substr(ws_step_result_shown($node ? (string) $node['kind'] : '', (string) $step['outcome'], ws_flow_result_text($step['result']), $edit), 0, WS_API_FLOW_RESULT_CHARS),
+        'threads_in'  => ws_api_flow_step_threads_in($graph, (array) $states, $step['node_id']),
+        'outputs'     => (object) ws_api_flow_step_outputs($kind, $step['result'], $edit),
+        'result'      => mb_substr(ws_step_result_shown($kind, (string) $step['outcome'], ws_flow_result_text($step['result']), $edit), 0, WS_API_FLOW_RESULT_CHARS),
     );
 }
 
@@ -801,6 +1221,8 @@ function ws_api_flow_run_step_schema()
         'ready_at'    => 'string?',
         'started_at'  => 'string?',
         'finished_at' => 'string?',
+        'threads_in'  => array(array('from' => 'string', 'on' => 'string', 'taken' => 'boolean')),
+        'outputs'     => 'object',
         'result'      => 'string',
     );
 }
@@ -826,6 +1248,7 @@ function ws_api_flow_run_present($viewer, $run, $n, $steps = null, $graph = null
     $starter = ((int) $run['started_by'] === (int) $viewer['id']);
     $full = ($steps !== null) && ($graph !== null);
     $edit = ((string) $run['access'] === 'edit');
+    $states = $full ? ws_flow_step_states($steps) : array();
 
     return array(
         'id'          => (int) $run['id'],
@@ -842,8 +1265,8 @@ function ws_api_flow_run_present($viewer, $run, $n, $steps = null, $graph = null
         'started_at'  => ws_flow_time($run['started_at']),
         'updated_at'  => ws_flow_time($run['updated_at']),
         'finished_at' => ws_flow_time($run['finished_at']),
-        'steps'       => $full ? array_map(function ($step) use ($graph, $edit) {
-            return ws_api_flow_run_step_present($step, $graph, $edit);
+        'steps'       => $full ? array_map(function ($step) use ($graph, $edit, $states) {
+            return ws_api_flow_run_step_present($step, $graph, $edit, $states);
         }, $steps) : null,
         'graph'       => $full ? ws_api_flow_graph_present($graph, $edit) : null,
     );

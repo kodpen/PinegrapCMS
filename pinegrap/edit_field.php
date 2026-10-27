@@ -40,8 +40,8 @@ $query =
         name as field_name,
         rss_field
     FROM form_fields
-    WHERE form_fields.id = '" . escape($_REQUEST['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE form_fields.id = ?";
+$result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
 
 // if a form field could not be found, then output error
 if (mysqli_num_rows($result) == 0) {
@@ -74,8 +74,8 @@ if ($page_id != 0) {
             page_folder,
             page_name
         FROM page
-        WHERE page_id = '" . escape($page_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE page_id = ?";
+    $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $page_type = $row['page_type'];
@@ -172,8 +172,8 @@ if ($page_id != 0) {
         }
         
         // get form name and possibly quiz for page
-        $query = "SELECT form_name" . $sql_quiz . " FROM " . $form_settings_table . " WHERE page_id = '" . escape($page_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT form_name" . $sql_quiz . " FROM " . $form_settings_table . " WHERE page_id = ?";
+        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
         $form_name = $row['form_name'] ?? '';
@@ -263,8 +263,8 @@ if ($page_id != 0) {
                  short_description,
                  form_name
              FROM products
-             WHERE id = '" . escape($product_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+             WHERE id = ?";
+    $result = db_q($query, array((string) $product_id)) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $product_name = $row['name'];
@@ -400,8 +400,8 @@ if (!$_POST) {
     // get field data
     $query = "SELECT *
              FROM form_fields
-             WHERE form_fields.id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+             WHERE form_fields.id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $id = $row['id'];
@@ -938,12 +938,12 @@ if (!$_POST) {
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
         
         // delete field
-        $query = "DELETE FROM form_fields WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM form_fields WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         // delete field options
-        $query = "DELETE FROM form_field_options WHERE form_field_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM form_field_options WHERE form_field_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         // Delete target options for this field.
         db("DELETE FROM target_options WHERE trigger_form_field_id = '" . escape($_POST['id'] ?? '') . "'");
@@ -983,19 +983,19 @@ if (!$_POST) {
         if ($form_type == 'product') {
             $query = "UPDATE products
                      SET
-                        user = '" . $user['id'] . "',
+                        user = ?,
                         timestamp = UNIX_TIMESTAMP()
-                     WHERE id = '" . escape($product_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                     WHERE id = ?";
+            $result = db_q($query, array((string) $user['id'], (string) $product_id)) or output_error('Query failed.');
             
         // else this is a form for a page, so update last modified info for page
         } else {
             $query = "UPDATE page
                      SET
                         page_timestamp = UNIX_TIMESTAMP(),
-                        page_user = '" . $user['id'] . "'
-                     WHERE page_id = '" . escape($page_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        page_user = ?
+                     WHERE page_id = ?";
+            $result = db_q($query, array((string) $user['id'], (string) $page_id)) or output_error('Query failed.');
         }
 
         $liveform_view_fields = new liveform('view_fields');
@@ -1152,8 +1152,8 @@ if (!$_POST) {
         // if field has options, deal with options
         if (($_POST['type'] == 'pick list') || ($_POST['type'] == 'radio button') || ($_POST['type'] == 'check box')) {
             // delete existing options
-            $query = "DELETE FROM form_field_options WHERE form_field_id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM form_field_options WHERE form_field_id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
             // Delete target options for this field.
             db("DELETE FROM target_options WHERE trigger_form_field_id = '" . escape($_POST['id'] ?? '') . "'");
@@ -1290,17 +1290,17 @@ if (!$_POST) {
                             target_form_field_id,
                             upload_folder_id)
                         VALUES (
-                            '" . escape($page_id) . "',
-                            '" . escape($product_id) . "',
-                            '" . escape($_POST['id'] ?? '') . "',
-                            '" . escape($label) . "',
-                            '" . escape($value) . "',
-                            '" . escape($email_address_list) . "',
-                            '$default_selected',
-                            '$count',
-                            '$target_field_id',
-                            '" . escape($upload_folder_id) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            ?,
+                            ?,
+                            ?,
+                            ?,
+                            ?,
+                            ?,
+                            ?,
+                            ?,
+                            ?,
+                            ?)";
+                $result = db_q($query, array((string) $page_id, (string) $product_id, (string) ($_POST['id'] ?? ''), (string) $label, (string) $value, (string) $email_address_list, (string) $default_selected, (string) $count, (string) $target_field_id, (string) $upload_folder_id)) or output_error('Query failed.');
 
                 $option_id = mysqli_insert_id(db::$con);
 
@@ -1354,9 +1354,9 @@ if (!$_POST) {
         foreach ($fields as $key => $field_id) {
             // update sort order for field
             $query = "UPDATE form_fields
-                     SET sort_order = '$count'
-                     WHERE id = '" . escape($field_id)  . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                     SET sort_order = ?
+                     WHERE id = ?";
+            $result = db_q($query, array((string) $count, (string) $field_id)) or output_error('Query failed.');
             
             $count++;
         }
@@ -1379,19 +1379,19 @@ if (!$_POST) {
         if ($form_type == 'product') {
             $query = "UPDATE products
                      SET
-                        user = '" . $user['id'] . "',
+                        user = ?,
                         timestamp = UNIX_TIMESTAMP()
-                     WHERE id = '" . escape($product_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                     WHERE id = ?";
+            $result = db_q($query, array((string) $user['id'], (string) $product_id)) or output_error('Query failed.');
             
         // else this is a form for a page, so update last modified info for page
         } else {
             $query = "UPDATE page
                      SET
                         page_timestamp = UNIX_TIMESTAMP(),
-                        page_user = '" . $user['id'] . "'
-                     WHERE page_id = '" . escape($page_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        page_user = ?
+                     WHERE page_id = ?";
+            $result = db_q($query, array((string) $user['id'], (string) $page_id)) or output_error('Query failed.');
         }
 
         $liveform_view_fields = new liveform('view_fields');

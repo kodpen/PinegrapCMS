@@ -74,7 +74,7 @@ if (!$is_gateway_return) {
     // The billing, payment and quick add fields post one value each, and so do each
     // recipient's address, arrival date and shipping method; the custom forms' fields are
     // checked by submit_custom_form(), the totals by submit_order().
-    pg_liveform_single_values($liveform, array('billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'billing_same_as_shipping', 'custom_field_1', 'custom_field_2', 'opt_in', 'opt_in_displayed', 'tax_exempt', 'tax_number', 'tax_office', 'po_number', 'referral_source', 'update_contact', 'offline_payment_allowed', 'special_offer_code', 'gift_card_code', 'payment_method', 'card_number', 'cardholder', 'expiration', 'expiration_month', 'expiration_year', 'card_verification_number', 'installment', 'notes', 'terms', 'legal_preinfo', 'legal_contract', 'quick_add_product_id', 'quick_add_quantity', 'quick_add_amount', 'quick_add_ship_to', 'quick_add_add_name'));
+    pg_liveform_single_values($liveform, array('billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'billing_same_as_shipping', 'custom_field_1', 'custom_field_2', 'opt_in', 'opt_in_displayed', 'tax_exempt', 'tax_number', 'tax_office', 'po_number', 'referral_source', 'update_contact', 'offline_payment_allowed', 'special_offer_code', 'gift_card_code', 'payment_method', 'card_number', 'cardholder', 'expiration', 'expiration_month', 'expiration_year', 'card_verification_number', 'installment', 'notes', 'terms', 'legal_preinfo', 'legal_contract', 'legal_kvkk', 'quick_add_product_id', 'quick_add_quantity', 'quick_add_amount', 'quick_add_ship_to', 'quick_add_add_name'));
 
     foreach (db_values("SELECT id FROM ship_tos WHERE order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'") as $pg_ship_to_id) {
         $pg_prefix = 'shipping_' . $pg_ship_to_id . '_';
@@ -155,8 +155,8 @@ $query =
         special_offer_code_label,
         form
     FROM express_order_pages
-    WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE page_id = ?";
+$result = db_q($query, array((string) ($_POST['page_id'] ?? ''))) or output_error('Query failed.');
 // No row when the id names no express order page: no custom forms then.
 $row = mysqli_fetch_assoc($result) ?: array();
 
@@ -191,8 +191,8 @@ if (!empty($_POST['quick_add'])) {
                 inventory_quantity,
                 backorder
             FROM products
-            WHERE id = '" . escape($_POST['quick_add_product_id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['quick_add_product_id'] ?? ''))) or output_error('Query failed.');
         
         // if quick add product was found, continue
         if (mysqli_num_rows($result) > 0) {
@@ -344,8 +344,8 @@ $query =
         products.submit_form_quantity_type
     FROM order_items
     LEFT JOIN products ON order_items.product_id = products.id
-    WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'" . pg_order_item_active_sql();
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE order_items.order_id = ?" . pg_order_item_active_sql();
+$result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
 
 $order_items = array();
 
@@ -409,8 +409,8 @@ if ($order_submitted == false) {
                 
             // else donation is greater than zero, so update order item price with donation amount
             } else {
-                $query = "UPDATE order_items SET price = '" . escape($donation_amount) . "' WHERE id = '" . $order_item['id'] . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "UPDATE order_items SET price = ? WHERE id = ?";
+                $result = db_q($query, array((string) $donation_amount, (string) $order_item['id'])) or output_error('Query failed.');
             }
         
         // else this order item is not a donation; a form without its quantity box
@@ -426,8 +426,8 @@ if ($order_submitted == false) {
 
             // else if quantity is a positive integer and new quantity is different from old quantity, then update quantity
             } elseif ((preg_match("/^\d+$/", $_POST['quantity'][$order_item['id']]) == true) && ($_POST['quantity'][$order_item['id']] != $order_item['quantity'])) {
-                $query = "UPDATE order_items SET quantity = '" . escape($_POST['quantity'][$order_item['id']]) . "' WHERE id = '" . $order_item['id'] . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "UPDATE order_items SET quantity = ? WHERE id = ?";
+                $result = db_q($query, array((string) ($_POST['quantity'][$order_item['id']]), (string) $order_item['id'])) or output_error('Query failed.');
                 
                 $order_items[$key]['quantity'] = $_POST['quantity'][$order_item['id']];
             }
@@ -438,6 +438,7 @@ if ($order_submitted == false) {
     if (isset($_POST['special_offer_code'])) {
 
         $sql_affiliate_code = "";
+        $affiliate_code_values = array();
 
         $special_offer_code = $liveform->get('special_offer_code');
         
@@ -456,8 +457,8 @@ if ($order_submitted == false) {
                     offers.end_date,
                     offers.scope
                 FROM offers
-                WHERE offers.code = '" . escape($offer_code) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE offers.code = ?";
+            $result = db_q($query, array((string) $offer_code)) or output_error('Query failed.');
             
             // if an offer was found for special offer code, then continue to check if there is an active offer
             if (mysqli_num_rows($result) > 0) {
@@ -516,8 +517,8 @@ if ($order_submitted == false) {
                             } else {
                                 // if the ship tos have not been retrieved yet, then get them
                                 if ($ship_tos_retrieved == FALSE) {
-                                    $query = "SELECT id FROM ship_tos WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-                                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    $query = "SELECT id FROM ship_tos WHERE order_id = ?";
+                                    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
                                     $ship_tos = mysqli_fetch_items($result);
                                     $ship_tos_retrieved = TRUE;
                                 }
@@ -586,8 +587,8 @@ if ($order_submitted == false) {
             // if the affiliate program is enabled
             // then check if the special offer code is also an affiliate code, so we can set affiliate code for visitor and order
             if (AFFILIATE_PROGRAM == TRUE) {
-                $query = "SELECT id FROM contacts WHERE (affiliate_code = '" . escape($special_offer_code) . "') AND (affiliate_approved = '1')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT id FROM contacts WHERE (affiliate_code = ?) AND (affiliate_approved = '1')";
+                $result = db_q($query, array((string) $special_offer_code)) or output_error('Query failed.');
                 
                 // if an affiliate was found then the special offer code is a valid affiliate code, so set affiliate code for visitor and order
                 if (mysqli_num_rows($result) > 0) {
@@ -598,13 +599,14 @@ if ($order_submitted == false) {
                         
                         // (a bot, or a post without a page view first, has no visitor record)
                         if (!empty($_SESSION['software']['visitor_id'])) {
-                            $query = "UPDATE visitors SET affiliate_code = '" . escape($special_offer_code) . "' WHERE id = '" . $_SESSION['software']['visitor_id'] . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $query = "UPDATE visitors SET affiliate_code = ? WHERE id = ?";
+                            $result = db_q($query, array((string) $special_offer_code, (string) $_SESSION['software']['visitor_id'])) or output_error('Query failed.');
                         }
                     }
                     
                     // prepare to update affiliate code for order
-                    $sql_affiliate_code = ", affiliate_code = '" . escape($special_offer_code) . "'";
+                    $sql_affiliate_code = ", affiliate_code = ?";
+                    $affiliate_code_values = array((string) $special_offer_code);
                 }
             }
         }
@@ -612,10 +614,10 @@ if ($order_submitted == false) {
         $query =
             "UPDATE orders
             SET
-                special_offer_code = '" . escape($special_offer_code) . "'
+                special_offer_code = ?
                 $sql_affiliate_code
-            WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array_merge(array((string) $special_offer_code), $affiliate_code_values, array((string) ($_SESSION['ecommerce']['order_id'] ?? '')))) or output_error('Query failed.');
     }
     
     // if gift cards are enabled, then check to see if a gift card code was entered
@@ -643,8 +645,8 @@ if ($order_submitted == false) {
             $gift_card_code = preg_replace('/[^A-Za-z0-9]/', '', $liveform->get_field_value('gift_card_code'));
 
             // check if the gift card has already been added to the order
-            $query = "SELECT COUNT(*) FROM applied_gift_cards WHERE (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "') AND (code = '" . escape($gift_card_code) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT COUNT(*) FROM applied_gift_cards WHERE (order_id = ?) AND (code = ?)";
+            $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $gift_card_code)) or output_error('Query failed.');
             $row = mysqli_fetch_row($result);
             
             // if the gift card has already been added to the order, then add error
@@ -747,12 +749,12 @@ if ($order_submitted == false) {
                         old_balance,
                         givex)
                     VALUES (
-                        '" . $gift_card_id . "',
-                        '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
-                        '" . escape($gift_card_code) . "',
-                        '" . escape($old_balance) . "',
-                        '" . $givex . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?)";
+                $result = db_q($query, array((string) $gift_card_id, (string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $gift_card_code, (string) $old_balance, (string) $givex)) or output_error('Query failed.');
                 
                 // clear the gift card code form field
                 $liveform->assign_field_value('gift_card_code', '');
@@ -895,14 +897,14 @@ if ($order_submitted == false) {
         if (!$contact_id) {
 
             // get contact id for this order
-            $query = "SELECT contact_id FROM orders WHERE id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT contact_id FROM orders WHERE id = ?";
+            $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $contact_id = $row['contact_id'];
             
             // check to see if this contact is connected to a user
-            $query = "SELECT user_id FROM user WHERE user_contact = '$contact_id'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT user_id FROM user WHERE user_contact = ?";
+            $result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
             
             // if the contact is connected to a user, then the contact should not be used
             if (mysqli_num_rows($result) > 0) {
@@ -923,16 +925,16 @@ if ($order_submitted == false) {
                     user,
                     timestamp)
                 VALUES (
-                    '$user_id',
+                    ?,
                     UNIX_TIMESTAMP())";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $user_id)) or output_error('Query failed.');
             $contact_id = mysqli_insert_id(db::$con);
             $new_contact_id = $contact_id;
 
             // if user is logged in, connect new contact record to user record
             if ($user_id) {
-                $query = "UPDATE user SET user_contact = '$contact_id' WHERE user_id = '$user_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "UPDATE user SET user_contact = ? WHERE user_id = ?";
+                $result = db_q($query, array((string) $contact_id, (string) $user_id)) or output_error('Query failed.');
             }
         }
         
@@ -966,9 +968,9 @@ if ($order_submitted == false) {
             "SELECT contact_id
             FROM contacts_contact_groups_xref
             WHERE
-                (contact_id = '$contact_id')
-                AND (contact_group_id = '$contact_group_id')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (contact_id = ?)
+                AND (contact_group_id = ?)";
+        $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
         
         // if contact is not already in contact group, then add contact to Orders contact group
         if (mysqli_num_rows($result) == 0) {
@@ -977,19 +979,19 @@ if ($order_submitted == false) {
                     contact_id,
                     contact_group_id)
                 VALUES (
-                    '$contact_id',
-                    '$contact_group_id')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    ?,
+                    ?)";
+            $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
         }
 
         // update order record
         $query = "UPDATE orders
                  SET
-                    user_id = '$user_id',
-                    contact_id = '$contact_id',
+                    user_id = ?,
+                    contact_id = ?,
                     billing_complete = '1'
-                 WHERE id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                 WHERE id = ?";
+        $result = db_q($query, array((string) $user_id, (string) $contact_id, (string) (int) ($_SESSION['ecommerce']['order_id'] ?? 0))) or output_error('Query failed.');
 
         // If the user is logged in and not ghosting and the user selected that he/she
         // does not want his/her contact info updated with billing info,
@@ -1066,13 +1068,13 @@ if ($order_submitted == false) {
         if ((VISITOR_TRACKING == true) && !empty($_SESSION['software']['visitor_id'])) {
             $query = "UPDATE visitors
                      SET
-                        city = '" . escape($liveform->get_field_value('billing_city')) . "',
-                        state = '" . escape($liveform->get_field_value('billing_state')) . "',
-                        zip_code = '" . escape($liveform->get_field_value('billing_zip_code')) . "',
-                        country = '" . escape($liveform->get_field_value('billing_country')) . "',
+                        city = ?,
+                        state = ?,
+                        zip_code = ?,
+                        country = ?,
                         stop_timestamp = UNIX_TIMESTAMP()
-                     WHERE id = '" . $_SESSION['software']['visitor_id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                     WHERE id = ?";
+            $result = db_q($query, array((string) ($liveform->get_field_value('billing_city')), (string) ($liveform->get_field_value('billing_state')), (string) ($liveform->get_field_value('billing_zip_code')), (string) ($liveform->get_field_value('billing_country')), (string) $_SESSION['software']['visitor_id'])) or output_error('Query failed.');
         }
     }
     
@@ -1195,11 +1197,11 @@ foreach ($order_items as $order_item) {
         $query =
             "UPDATE order_items
             SET
-                recurring_payment_period = '" . escape($recurring_payment_period) . "',
-                recurring_number_of_payments = '" . escape($recurring_number_of_payments) . "',
-                recurring_start_date = '" . escape($recurring_start_date) . "'
-            WHERE id = '" . $order_item['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                recurring_payment_period = ?,
+                recurring_number_of_payments = ?,
+                recurring_start_date = ?
+            WHERE id = ?";
+        $result = db_q($query, array((string) $recurring_payment_period, (string) $recurring_number_of_payments, (string) $recurring_start_date, (string) $order_item['id'])) or output_error('Query failed.');
     }
 
     // If this order item is a gift card, then save gift card data.
@@ -1283,8 +1285,8 @@ foreach ($order_items as $order_item) {
     // if the order item has a form, then save form data
     if ($order_item['form'] == 1) {
         // delete existing form data for this order item, so that we can easily insert new data
-        $query = "DELETE FROM form_data WHERE (order_item_id = '" . $order_item['id'] . "') AND (order_item_id != '0')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM form_data WHERE (order_item_id = ?) AND (order_item_id != '0')";
+        $result = db_q($query, array((string) $order_item['id'])) or output_error('Query failed.');
         
         // get fields for this product form
         $query =
@@ -1297,9 +1299,9 @@ foreach ($order_items as $order_item) {
                 wysiwyg,
                 multiple
             FROM form_fields
-            WHERE (product_id = '" . $order_item['product_id'] . "') AND (form_type = 'product') AND (type != 'information')
+            WHERE (product_id = ?) AND (form_type = 'product') AND (type != 'information')
             ORDER BY sort_order";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $order_item['product_id'])) or output_error('Query failed.');
         
         $form_fields = array();
         
@@ -1444,14 +1446,14 @@ foreach ($order_items as $order_item) {
                                     name,
                                     type)
                                 VALUES (
-                                    '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
-                                    '" . $order_item['id'] . "',
-                                    '$quantity_number',
-                                    '" . $form_field['id'] . "',
-                                    '" . escape(prepare_form_data_for_input($value, $form_field['type'])) . "',
-                                    '" . escape($form_field['name']) . "',
-                                    '$form_data_type')";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?)";
+                            $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $order_item['id'], (string) $quantity_number, (string) $form_field['id'], (string) prepare_form_data_for_input($value, $form_field['type']), (string) $form_field['name'], (string) $form_data_type)) or output_error('Query failed.');
                         }
 
                     // else this field does not have multiple values
@@ -1467,14 +1469,14 @@ foreach ($order_items as $order_item) {
                                 name,
                                 type)
                             VALUES (
-                                '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
-                                '" . $order_item['id'] . "',
-                                '$quantity_number',
-                                '" . $form_field['id'] . "',
-                                '" . escape(prepare_form_data_for_input($liveform->get_field_value($html_field_name), $form_field['type'])) . "',
-                                '" . escape($form_field['name']) . "',
-                                '$form_data_type')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                ?,
+                                ?,
+                                ?,
+                                ?,
+                                ?,
+                                ?,
+                                ?)";
+                        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $order_item['id'], (string) $quantity_number, (string) $form_field['id'], (string) prepare_form_data_for_input($liveform->get_field_value($html_field_name), $form_field['type']), (string) $form_field['name'], (string) $form_data_type)) or output_error('Query failed.');
                     }
                 }
             }

@@ -83,9 +83,9 @@ function get_calendar_view_screen_content($properties) {
             "SELECT calendar_id
             FROM calendar_views_calendars_xref
             WHERE
-                (calendar_id = '" . escape($calendar['id']) . "')
-                AND (page_id = '" . escape($current_page_id) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (calendar_id = ?)
+                AND (page_id = ?)";
+        $result = db_q($query, array((string) $calendar['id'], (string) $current_page_id)) or output_error('Query failed.');
         
         // if calendar is not included in this view, then remove calendar from array
         if (mysqli_num_rows($result) == 0) {

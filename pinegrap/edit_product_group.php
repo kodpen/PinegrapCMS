@@ -74,8 +74,8 @@ if (!$_POST) {
             seo_analysis_current,
             attributes
         FROM product_groups
-        WHERE id = '" . e($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed');
     $row = mysqli_fetch_assoc($result);
     
     $name = h($row['name']);
@@ -168,9 +168,9 @@ if (!$_POST) {
             sort_order
         FROM product_groups
         WHERE
-            parent_id = '" . e($_GET['id']) . "'" . pg_catalog_bin_live_sql('product_groups');
+            parent_id = ?" . pg_catalog_bin_live_sql('product_groups');
     
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed');
     while ($row = mysqli_fetch_assoc($result)) {
         $row['type'] = 'product_group';
         $items[] = $row;
@@ -199,9 +199,9 @@ if (!$_POST) {
         FROM products_groups_xref
         LEFT JOIN products on products.id = product
         WHERE
-            product_group = '" . e($_GET['id']) . "'" . pg_catalog_bin_live_sql('products');
+            product_group = ?" . pg_catalog_bin_live_sql('products');
 
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed');
     while ($row = mysqli_fetch_assoc($result)) {
         $row['price'] = $row['price'] / 100;
         $row['type'] = 'product';
@@ -311,8 +311,8 @@ if (!$_POST) {
 
     // The rest of this record's images, appended after the cover so the picker
     // draws them in the order they are stored.
-    $query = "SELECT product_group,file_name FROM product_groups_images_xref WHERE product_group = '" . escape($_REQUEST['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+    $query = "SELECT product_group,file_name FROM product_groups_images_xref WHERE product_group = ?";
+    $result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed');
 
     while ($row = mysqli_fetch_assoc($result)) {
         $picker_images[] = $row['file_name'];
@@ -895,8 +895,8 @@ if (!$_POST) {
         "SELECT 
             parent_id
         FROM product_groups
-        WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+        WHERE id = ?";
+    $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
     $row = mysqli_fetch_assoc($result);
     $parent_id = $row['parent_id'];
 
@@ -960,13 +960,13 @@ if (!$_POST) {
             
             // delete product group
             $query = "DELETE FROM product_groups ".
-                     "WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                     "WHERE id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
             
             // delete all entries in products_groups_xref table
             $query = "DELETE FROM products_groups_xref ".
-                     "WHERE product_group = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                     "WHERE product_group = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
             
             // loop through the search result pages for this product group and re-build it's tag cloud
             foreach ($search_results_pages_using_current_product_group as $search_results_page) {
@@ -979,8 +979,8 @@ if (!$_POST) {
                 FROM short_links
                 WHERE
                     (destination_type = 'product_group')
-                    AND (product_group_id = '" . escape($_POST['id'] ?? '') . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    AND (product_group_id = ?)";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             $row = mysqli_fetch_row($result);
 
             // If a short link exists, then delete them and update short links in rewrite file.
@@ -989,8 +989,8 @@ if (!$_POST) {
                     "DELETE FROM short_links
                     WHERE
                         (destination_type = 'product_group')
-                        AND (product_group_id = '" . escape($_POST['id'] ?? '') . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        AND (product_group_id = ?)";
+                $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             }
 
             db("DELETE FROM product_groups_attributes_xref WHERE product_group_id = '" . e($_POST['id'] ?? '') . "'");
@@ -1067,8 +1067,8 @@ if (!$_POST) {
                 keywords,
                 short_description
             FROM product_groups
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
 
         $title = $row['title'];
@@ -1202,9 +1202,9 @@ if (!$_POST) {
         // list them, so they are never posted back, and dropping their rows
         // here would take the product out of this group for good while it
         // waits in the bin. What is left after this is exactly those rows.
-        $query = "DELETE FROM products_groups_xref WHERE product_group = '" . escape($_POST['id'] ?? '') . "'"
+        $query = "DELETE FROM products_groups_xref WHERE product_group = ?"
             . (pg_catalog_bin_ready() ? " AND product NOT IN (SELECT id FROM products WHERE recycled = '1')" : "");
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
 
         $kept_product_ids = array_map('intval', (array) db_values("SELECT product FROM products_groups_xref WHERE product_group = '" . e($_POST['id'] ?? '') . "'"));
 
@@ -1224,8 +1224,8 @@ if (!$_POST) {
                     continue;
                 }
 
-                $query = "INSERT INTO products_groups_xref (product, product_group, sort_order) VALUES ('" . escape($product_id) . "', '" . escape($_POST['id'] ?? '') . "', '" . escape($_POST['sort_order_product_' . $product_id]) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                $query = "INSERT INTO products_groups_xref (product, product_group, sort_order) VALUES (?, ?, ?)";
+                $result = db_q($query, array((string) $product_id, (string) ($_POST['id'] ?? ''), (string) $_POST['sort_order_product_' . $product_id])) or output_error('Query failed');
             }
         }
         
@@ -1235,15 +1235,15 @@ if (!$_POST) {
                 id
             FROM product_groups
             WHERE
-                parent_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                parent_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
         while ($row = mysqli_fetch_assoc($result)) {
             if (isset($_POST['sort_order_product_group_' . $row['id']])) {
                 $query = 
                     "UPDATE product_groups SET 
-                        sort_order = '" . escape($_POST['sort_order_product_group_' . $row['id']]) . "' 
-                    WHERE id = '" . $row['id'] . "'";
-                $result2 = mysqli_query(db::$con, $query) or output_error('Query failed');
+                        sort_order = ? 
+                    WHERE id = ?";
+                $result2 = db_q($query, array((string) $_POST['sort_order_product_group_' . $row['id']], (string) $row['id'])) or output_error('Query failed');
             }
         }
         

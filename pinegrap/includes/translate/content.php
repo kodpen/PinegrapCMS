@@ -37,10 +37,12 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 function pg_tr_owner_groups()
 {
     return array(
+        // The offers' texts (pg_tr_offer_segments()) go with the catalog:
+        // the cart and the express order print them beside its products.
         'catalog' => array(
-            'label' => lang('Products and product groups'),
+            'label' => lang('Products, product groups and offers'),
             'icon'  => 'bi-bag',
-            'types' => array('product', 'product_group', 'attribute'),
+            'types' => array('product', 'product_group', 'attribute', 'offer'),
         ),
         // The forms, and the records of those a list or detail widget
         // includes in the translation (pg_tr_extract_form_records()).
@@ -1179,7 +1181,63 @@ function pg_tr_extract_catalog()
         $summary['segments'] += pg_tr_store_owner_type('attribute', $by_owner, 'option');
     }
 
+    // Offers: every enabled offer's texts (pg_tr_offer_segments()). The
+    // pass over the finished page swaps them where a page prints them.
+    $fields = array_values(array_filter(pg_tr_offer_fields(), function ($field) {
+        return pg_tr_has_column('offers', $field);
+    }));
+
+    if ($fields) {
+        $by_owner = array();
+
+        foreach ((array) db_items("SELECT id, " . implode(', ', $fields) . " FROM offers WHERE status = 'enabled' ORDER BY id") as $row) {
+            $segments = pg_tr_offer_segments($row, $fields);
+
+            if ($segments) {
+                $by_owner[(int) $row['id']] = $segments;
+            }
+        }
+
+        $summary['owners'] += count($by_owner);
+        $summary['segments'] += pg_tr_store_owner_type('offer', $by_owner, 'content');
+    }
+
     return $summary;
+}
+
+/**
+ * The texts of an offer a visitor reads: the message an applied offer shows
+ * (description; without one the code is shown, which is not translated),
+ * the message and the button label of an offer the cart suggests.
+ *
+ * @return array
+ */
+function pg_tr_offer_fields()
+{
+    return array('description', 'upsell_message', 'upsell_action_button_label');
+}
+
+/**
+ * The segments of one offers row: its $fields in order, each one text.
+ *
+ * @param array $row    an offers row
+ * @param array $fields the fields of pg_tr_offer_fields() the table has
+ * @return array
+ */
+function pg_tr_offer_segments($row, $fields)
+{
+    $position = 0;
+    $segments = array();
+
+    foreach ($fields as $field) {
+        $text = isset($row[$field]) ? trim((string) $row[$field]) : '';
+
+        if ($text !== '') {
+            $segments = array_merge($segments, pg_tr_field_segments($field, $text, $position));
+        }
+    }
+
+    return $segments;
 }
 
 /**

@@ -30,8 +30,8 @@ $query =
         user_id,
         status
     FROM orders
-    WHERE id = '" . escape($order_id) . "'";
-$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    WHERE id = ?";
+$result = db_q($query, array((string) $order_id)) or output_error(lang('Query failed.'));
 
 // if the order was not found, output error
 if (mysqli_num_rows($result) == 0) {
@@ -43,8 +43,8 @@ $order_user_id = $row['user_id'];
 $status = $row['status'];
 
 // get user id for user
-$query = "SELECT user_id FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+$query = "SELECT user_id FROM user WHERE user_username = ?";
+$result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error(lang('Query failed.'));
 $row = mysqli_fetch_assoc($result);
 $user_id = $row['user_id'];
 
@@ -71,12 +71,12 @@ $_SESSION['ecommerce']['order_id'] = $order_id;
 // set the ship tos so that they are incomplete, so that the customer will be required to complete the shipping screens again
 // this is the only retrieve order area where we do this.  we do not do this for the retrieve order feature for shopping cart and express order pages.
 // this is so someone can complete the ship tos for an order and then send the retrieve order link to someone else and the recipient won't have to complete the shipping
-$query = "UPDATE ship_tos SET complete = 0 WHERE order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+$query = "UPDATE ship_tos SET complete = 0 WHERE order_id = ?";
+$result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
 
 // remove applied gift cards, because they might not be valid anymore
-$query = "DELETE FROM applied_gift_cards WHERE order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+$query = "DELETE FROM applied_gift_cards WHERE order_id = ?";
+$result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
 
 // If this visitor has a tracking code, then update tracking
 // code in order.  If this visitor does not have a tracking code,
@@ -86,20 +86,29 @@ $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
 $tracking_code = get_tracking_code();
 
 $sql_tracking_code = "";
+$sql_tracking_code_values = array();
 
 if ($tracking_code != '') {
-    $sql_tracking_code = "tracking_code = '" . e($tracking_code) . "',";
+    $sql_tracking_code = "tracking_code = ?,";
+    $sql_tracking_code_values = array((string) $tracking_code);
 }
 
 $sql_utm = "";
+$sql_utm_values = array();
 
 if (!empty($_SESSION['software']['utm_source'])) {
     $sql_utm =
-        "utm_source = '" . e($_SESSION['software']['utm_source']) . "',
-        utm_medium = '" . e($_SESSION['software']['utm_medium']) . "',
-        utm_campaign = '" . e($_SESSION['software']['utm_campaign']) . "',
-        utm_term = '" . e($_SESSION['software']['utm_term']) . "',
-        utm_content = '" . e($_SESSION['software']['utm_content']) . "',";
+        "utm_source = ?,
+        utm_medium = ?,
+        utm_campaign = ?,
+        utm_term = ?,
+        utm_content = ?,";
+    $sql_utm_values = array(
+        (string) $_SESSION['software']['utm_source'],
+        (string) $_SESSION['software']['utm_medium'],
+        (string) $_SESSION['software']['utm_campaign'],
+        (string) $_SESSION['software']['utm_term'],
+        (string) $_SESSION['software']['utm_content']);
 }
 
 // clear billing information for order, in case the billing information contains information for a different person
@@ -128,9 +137,12 @@ $query =
         referral_source_code = '',
         $sql_tracking_code
         $sql_utm
-        ip_address = IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0)
-    WHERE id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        ip_address = IFNULL(INET_ATON(?), 0)
+    WHERE id = ?";
+$result = db_q($query, array_merge(
+    $sql_tracking_code_values,
+    $sql_utm_values,
+    array((string) $_SERVER['REMOTE_ADDR'], (string) ($_SESSION['ecommerce']['order_id'] ?? '')))) or output_error(lang('Query failed.'));
 
 // if visitor tracking is on, update visitor record with order information, if visitor has not already created order or retrieved an order
 // (a visitor who signed in without a page view first has no visitor record)
@@ -138,14 +150,16 @@ if ((VISITOR_TRACKING == true) && !empty($_SESSION['software']['visitor_id'])) {
     $query =
         "UPDATE visitors
         SET
-            order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "',
+            order_id = ?,
             order_retrieved = '1',
             stop_timestamp = UNIX_TIMESTAMP()
         WHERE
-            (id = '" . $_SESSION['software']['visitor_id'] . "')
+            (id = ?)
             AND (order_created = '0')
             AND (order_retrieved = '0')";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array(
+        (string) ($_SESSION['ecommerce']['order_id'] ?? ''),
+        (string) $_SESSION['software']['visitor_id'])) or output_error(lang('Query failed.'));
 }
 
 include_once('liveform.class.php');
@@ -153,8 +167,8 @@ include_once('liveform.class.php');
 // if there is a retrieve order next page set, then prepare notice for page
 if (ECOMMERCE_RETRIEVE_ORDER_NEXT_PAGE_ID) {
     // get page type for page, in order to determine which liveform to set
-    $query = "SELECT page_type FROM page WHERE page_id = '" . escape(ECOMMERCE_RETRIEVE_ORDER_NEXT_PAGE_ID) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $query = "SELECT page_type FROM page WHERE page_id = ?";
+    $result = db_q($query, array((string) ECOMMERCE_RETRIEVE_ORDER_NEXT_PAGE_ID)) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_assoc($result);
     $page_type = $row['page_type'];
     

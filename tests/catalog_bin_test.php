@@ -252,17 +252,21 @@ function test_catalog_bin_edit_screens_keep_the_product_they_point_at()
 {
 	// Left off its own select, the stored product falls back to the first
 	// option and the next save points the record elsewhere.
-	foreach (array('edit_short_link.php', 'edit_calendar_event.php', 'edit_email_campaign_profile.php') as $file) {
+	foreach (array('edit_short_link.php', 'edit_calendar_event.php') as $file) {
 		pg_assert_contains("get_product_options(true, \$liveform->get_field_value('product_id'))", catalog_bin_test_source($file), $file);
 	}
+
+	// The campaign profile screen hands its product to the shared form.
+	pg_assert_contains("pg_email_campaign_profile_form_cards(\$liveform, \$user, \$liveform->get_field_value('product_id'))", catalog_bin_test_source('edit_email_campaign_profile.php'), 'edit_email_campaign_profile.php');
+	pg_assert_contains('get_product_options(true, $product_id)', catalog_bin_test_source('includes/forms/email_campaign_profile_form.php'), 'email_campaign_profile_form.php');
 }
 
 function test_catalog_bin_group_screen_neither_lists_nor_drops_binned_rows()
 {
 	$source = catalog_bin_test_source('edit_product_group.php');
 
-	pg_assert_contains("parent_id = '\" . e(\$_GET['id']) . \"'\" . pg_catalog_bin_live_sql('product_groups')", $source, 'sub-groups in the bin are not listed or counted');
-	pg_assert_contains("product_group = '\" . e(\$_GET['id']) . \"'\" . pg_catalog_bin_live_sql('products')", $source, 'products in the bin are not listed');
+	pg_assert_contains("parent_id = ?\" . pg_catalog_bin_live_sql('product_groups')", $source, 'sub-groups in the bin are not listed or counted');
+	pg_assert_contains("product_group = ?\" . pg_catalog_bin_live_sql('products')", $source, 'products in the bin are not listed');
 
 	// Their group links survive the save that cannot post them back.
 	pg_assert_contains("AND product NOT IN (SELECT id FROM products WHERE recycled = '1')", $source, 'the save keeps the links of binned products');

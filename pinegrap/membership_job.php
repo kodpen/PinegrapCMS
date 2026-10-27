@@ -24,8 +24,8 @@ $current_date = date('Y-m-d');
 // if membership expiration warning e-mail is enabled and a page is selected, then send e-mail to members
 if ((MEMBERSHIP_EXPIRATION_WARNING_EMAIL == true) && (MEMBERSHIP_EXPIRATION_WARNING_EMAIL_PAGE_ID != 0)) {
     // check if page exists
-    $query = "SELECT page_id FROM page WHERE page_id = '" . MEMBERSHIP_EXPIRATION_WARNING_EMAIL_PAGE_ID . "'";
-    $result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+    $query = "SELECT page_id FROM page WHERE page_id = ?";
+    $result = db_q($query, array((string) MEMBERSHIP_EXPIRATION_WARNING_EMAIL_PAGE_ID)) or exit(mysqli_error(db::$con));
     
     // if page was found, then continue to send e-mail to members
     if (mysqli_num_rows($result) > 0) {
@@ -48,12 +48,12 @@ if ((MEMBERSHIP_EXPIRATION_WARNING_EMAIL == true) && (MEMBERSHIP_EXPIRATION_WARN
             WHERE
                 (member_id != '')
                 AND (member_id IS NOT NULL)
-                AND (expiration_date >= '$current_date')
-                AND (expiration_date <= '$maximum_expiration_date')
+                AND (expiration_date >= ?)
+                AND (expiration_date <= ?)
                 AND (expiration_date != warning_expiration_date)
                 AND (email_address != '')
                 AND (email_address IS NOT NULL)";
-        $result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+        $result = db_q($query, array((string) $current_date, (string) $maximum_expiration_date)) or exit(mysqli_error(db::$con));
         
         $contacts = array();
         
@@ -79,8 +79,8 @@ if ((MEMBERSHIP_EXPIRATION_WARNING_EMAIL == true) && (MEMBERSHIP_EXPIRATION_WARN
                 'body' => $body));
             
             // set expiration date for warning e-mail, so that warning e-mail is not sent again for this same expiration date
-            $query = "UPDATE contacts SET warning_expiration_date = '" . $contact['expiration_date'] . "' WHERE id = '" . $contact['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+            $query = "UPDATE contacts SET warning_expiration_date = ? WHERE id = ?";
+            $result = db_q($query, array((string) $contact['expiration_date'], (string) $contact['id'])) or exit(mysqli_error(db::$con));
         }
         
         // if membership job e-mailed at least 1 member, then log action
@@ -91,8 +91,8 @@ if ((MEMBERSHIP_EXPIRATION_WARNING_EMAIL == true) && (MEMBERSHIP_EXPIRATION_WARN
 }
 
 // check if membership contact group exists
-$query = "SELECT id FROM contact_groups WHERE id = '" . MEMBERSHIP_CONTACT_GROUP_ID  . "'";
-$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+$query = "SELECT id FROM contact_groups WHERE id = ?";
+$result = db_q($query, array((string) MEMBERSHIP_CONTACT_GROUP_ID)) or exit(mysqli_error(db::$con));
 
 // if membership contact group exists
 if (mysqli_num_rows($result) > 0) {
@@ -109,12 +109,12 @@ if (mysqli_num_rows($result) > 0) {
                 OR (contacts.member_id IS NULL)
                 OR
                 (
-                    (contacts.expiration_date < '$current_date')
+                    (contacts.expiration_date < ?)
                     AND (contacts.expiration_date != '0000-00-00')
                     AND (contacts.expiration_date IS NOT NULL)
                 )
             )";
-    $result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+    $result = db_q($query, array((string) $current_date)) or exit(mysqli_error(db::$con));
 
     $contacts = array();
 
@@ -128,9 +128,9 @@ if (mysqli_num_rows($result) > 0) {
         $query =
             "DELETE FROM contacts_contact_groups_xref
             WHERE
-                (contact_id = '" . $contact['id'] . "')
+                (contact_id = ?)
                 AND (contact_group_id = '" . MEMBERSHIP_CONTACT_GROUP_ID . "')";
-        $result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+        $result = db_q($query, array((string) $contact['id'])) or exit(mysqli_error(db::$con));
     }
 
     // if membership job removed at least one contact, then log action

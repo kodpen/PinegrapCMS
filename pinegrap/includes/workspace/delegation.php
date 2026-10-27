@@ -227,6 +227,8 @@ function ws_assistants()
                 'handle'    => '@' . $server['alias'],
                 'icon'      => $identity['icon'],
                 'avatar'    => $identity['avatar'],
+                'initials'  => (string) ($identity['initials'] ?? ''),
+                'tone'      => (int) ($identity['tone'] ?? 0),
                 'app_id'    => $agent ? 0 : (int) $ai['app_id'],
                 'server_id' => (int) $server['id'],
             );
@@ -311,6 +313,31 @@ function ws_assistant_avatar($key)
     }
 
     return PATH . SOFTWARE_DIRECTORY . '/assets/images/' . ((ws_assistant_agent($key) === 'claude') ? 'ws-assistant.svg' : 'ws-ai.svg');
+}
+
+/**
+ * The picture of an assistant with the letters and tone its Avatar draws
+ * (an MCP server's alias carries both, mcp_catalogue.php), also for one
+ * whose connection has been switched off since.
+ *
+ * @param string $key
+ * @return array avatar, and initials and tone where it has letters
+ */
+function ws_assistant_face($key)
+{
+    $assistant = ws_assistant($key);
+
+    if ($assistant) {
+        return array_intersect_key($assistant, array('avatar' => 1, 'initials' => 1, 'tone' => 1));
+    }
+
+    $server_id = ws_assistant_mcp_id($key);
+
+    if (($server_id > 0) && function_exists('ws_mcp_agent_identity_for_id') && function_exists('ws_mcp_agent_face')) {
+        return ws_mcp_agent_face(ws_mcp_agent_identity_for_id($server_id));
+    }
+
+    return array('avatar' => ws_assistant_avatar($key));
 }
 
 /**
@@ -1005,11 +1032,10 @@ function ws_task_delegation_detail($viewer, $task)
         $with = array(
             'key'    => $delegate,
             'name'   => ws_assistant_name($delegate),
-            'avatar' => ws_assistant_avatar($delegate),
             'icon'   => ws_assistant_mcp_icon($delegate),
             'by'     => $people[(int) $task['delegated_by']]['name'] ?? ws_person_name($task['delegated_by']),
             'at'     => ((int) $task['delegated_at'] > 0) ? ws_time_label($task['delegated_at']) : '',
-        );
+        ) + ws_assistant_face($delegate);
     }
 
     // The run under way, which an application's proposal written after it

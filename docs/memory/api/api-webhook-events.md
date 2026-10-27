@@ -23,4 +23,5 @@ description: Announcing webhook events: pg_announce() from any screen, contact h
 
 ## What about Workspace events?
 - A new `workspace.*` event carries `channel_id` in its payload (or `task.channel_id`, or a discussion's `thread.channel_id`): a subscription narrowed to a channel group filters by the channel's group, and an event with no channel never reaches it (`workspace-webhook-channel-groups.md`). Exception: `workspace.channel_group.*`, announced with `ws_group_announce()` and matched by the group itself (`workspace-channel-group-events.md`). Test: `tests/webhook_channel_group_test.php`.
+- Flow runs (`workspace.flow.run.*`): announced once per move, words only for a public channel's run, never recorded for the workspace (`workspace-flows-run-events.md`).
 - An event meant for one application (`workspace.app.mentioned`) is queued only for that application's subscriptions (`api_webhook_event_app_id()`; `workspace-app-mentioned-webhook.md`).

@@ -4,7 +4,7 @@ description: A product or group made by a person in the Workspace (ws_quick_crea
 ---
 
 ## What is it?
-- Catalogue create slice 2 (plans/workspace-catalog-create.md). Whoever has the e-commerce right (`ws_change_allowed()`, as add_product.php) makes a product or a product group (`ws_quick_create_types()`) with no assistant: the record drawer's new mode, a "Create" line in the search box, `/product` (`/ürün`, `/urun`) in a channel.
+- Catalogue create slice 2 (PR #1613; bulk drafts: `workspace-bulk-create.md`). Whoever has the e-commerce right (`ws_change_allowed()`, as add_product.php) makes a product or a product group (`ws_quick_create_types()`) with no assistant: the record drawer's new mode, a "Create" line in the search box, `/product` (`/ürün`, `/urun`) in a channel.
 
 ## How is it checked and written?
 - `ws_quick_create_save()` → `ws_quick_create_input()`: `ws_quick_create_change()` (empty values dropped, `enabled` false unless given), a missing required field named by its label, then `ws_changes_input()` (typing, `ws_change_types()` limits, name taken, ids there and not binned).

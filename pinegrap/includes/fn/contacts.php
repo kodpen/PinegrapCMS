@@ -60,12 +60,14 @@ function merge_contacts($contacts)
     }
     /*** End array organization ***/
     $contacts_contact_groups_xref_include_where_statement = '';
+    $contacts_contact_groups_xref_include_values = array();
     // loop through the contacts and build sql where statement to include the contacts, this will be used to get all of the contact groups to merge
     foreach ($contacts as $contact) {
         if ($contacts_contact_groups_xref_include_where_statement != '') {
             $contacts_contact_groups_xref_include_where_statement .= ' OR ';
         }
-        $contacts_contact_groups_xref_include_where_statement .= "(contacts_contact_groups_xref.contact_id = '" . escape($contact['id']) . "')";
+        $contacts_contact_groups_xref_include_where_statement .= "(contacts_contact_groups_xref.contact_id = ?)";
+        $contacts_contact_groups_xref_include_values[] = (string) $contact['id'];
     }
     $where = '';
     // if there are contact groups to get then set the where statement to get them
@@ -100,7 +102,7 @@ function merge_contacts($contacts)
         LEFT JOIN opt_in ON (contacts_contact_groups_xref.contact_id = opt_in.contact_id) AND (contacts_contact_groups_xref.contact_group_id = opt_in.contact_group_id)
 
         $where";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, $contacts_contact_groups_xref_include_values) or output_error(lang('Query failed.'));
     while ($row = mysqli_fetch_assoc($result)) {
         $contact_groups[] = $row;
     }
@@ -135,7 +137,9 @@ function merge_contacts($contacts)
                 array_multisort($orphans_to_merge_sort_order, SORT_DESC, $orphans_to_merge);
                 $contact_groups_to_be_merged = array();
                 $delete_from_contacts_where_statement = '';
+                $delete_from_contacts_values = array();
                 $delete_from_contacts_contact_groups_xref_where_statement = '';
+                $delete_from_contacts_contact_groups_xref_values = array();
                 // loop through orphans to merge to get the child's new opt in status,
                 // an array of all contact groups to be merged into the child,
                 // build sql where statements to be used to clean up the contacts and contacts contact groups xref table,
@@ -157,12 +161,14 @@ function merge_contacts($contacts)
                     if ($delete_from_contacts_where_statement != '') {
                         $delete_from_contacts_where_statement .= ' OR ';
                     }
-                    $delete_from_contacts_where_statement .= "(id = '" . escape($orphan_to_merge['id']) . "')";
+                    $delete_from_contacts_where_statement .= "(id = ?)";
+                    $delete_from_contacts_values[] = (string) $orphan_to_merge['id'];
                     // build sql where statements to be used to clean up the contacts contact groups xref table
                     if ($delete_from_contacts_contact_groups_xref_where_statement != '') {
                         $delete_from_contacts_contact_groups_xref_where_statement .= ' OR ';
                     }
-                    $delete_from_contacts_contact_groups_xref_where_statement .= "(contact_id = '" . escape($orphan_to_merge['id']) . "')";
+                    $delete_from_contacts_contact_groups_xref_where_statement .= "(contact_id = ?)";
+                    $delete_from_contacts_contact_groups_xref_values[] = (string) $orphan_to_merge['id'];
                     // increment the merged contacts counter, this number will be used when outputting a notice to the user
                     $merged_contacts_counter++;
                 }
@@ -176,14 +182,14 @@ function merge_contacts($contacts)
 
                     SET
 
-                       opt_in = '" . escape($child['opt_in']) . "',
+                       opt_in = ?,
 
-                       timestamp = '" . escape($child['timestamp']) . "',
+                       timestamp = ?,
 
-                       user = '" . escape($child['user']) . "'
+                       user = ?
 
-                    WHERE id = '" . escape($child['id']) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    WHERE id = ?";
+                $result = db_q($query, array((string) $child['opt_in'], (string) $child['timestamp'], (string) $child['user'], (string) $child['id'])) or output_error(lang('Query failed.'));
                 $where = '';
                 // if there are orphans to delete then set the where statement to delete them, and then delete them
                 if ($delete_from_contacts_where_statement != '') {
@@ -196,7 +202,7 @@ function merge_contacts($contacts)
                     }
                     $where .= "(" . $delete_from_contacts_where_statement . ")";
                     $query = "DELETE FROM contacts $where";
-                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    $result = db_q($query, $delete_from_contacts_values) or output_error(lang('Query failed.'));
                 }
                 $where = '';
                 // if there are contact groups to delete, then set the where statement to delete them and then delete the contact group and their opt-in status
@@ -210,9 +216,9 @@ function merge_contacts($contacts)
                     }
                     $where .= "(" . $delete_from_contacts_contact_groups_xref_where_statement . ")";
                     $query = "DELETE FROM contacts_contact_groups_xref $where";
-                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    $result = db_q($query, $delete_from_contacts_contact_groups_xref_values) or output_error(lang('Query failed.'));
                     $query = "DELETE FROM opt_in $where";
-                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    $result = db_q($query, $delete_from_contacts_contact_groups_xref_values) or output_error(lang('Query failed.'));
                 }
                 $merged_contact_group_ids = array();
                 // loop through the contact groups to be merged in order to update contact groups xref and opt in table to add references for the child
@@ -222,8 +228,8 @@ function merge_contacts($contacts)
                         // add this contact group to the merged contact groups array so that it is not processed again
                         $merged_contact_group_ids[] = $contact_group_to_be_merged['contact_group_id'];
                         // delete any records from the contacts contact groups xref table for this contact group and child
-                        $query = "DELETE FROM contacts_contact_groups_xref WHERE (contact_id = '" . escape($child['id']) . "') AND (contact_group_id = '" . escape($contact_group_to_be_merged['contact_group_id']) . "')";
-                        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                        $query = "DELETE FROM contacts_contact_groups_xref WHERE (contact_id = ?) AND (contact_group_id = ?)";
+                        $result = db_q($query, array((string) $child['id'], (string) $contact_group_to_be_merged['contact_group_id'])) or output_error(lang('Query failed.'));
                         // insert a new xref record
                         $query = "INSERT INTO contacts_contact_groups_xref (
 
@@ -233,12 +239,12 @@ function merge_contacts($contacts)
 
                             VALUES (
 
-                                '" . escape($child['id']) . "',
+                                ?,
 
-                                '" . escape($contact_group_to_be_merged['contact_group_id']) . "'
+                                ?
 
                                 )";
-                        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                        $result = db_q($query, array((string) $child['id'], (string) $contact_group_to_be_merged['contact_group_id'])) or output_error(lang('Query failed.'));
                         $contact_groups_to_be_merged_opt_in = '1';
                         // loop through the contact groups to be merged to get the new opt in value for this contact group,
                         // and add the contact group's id to the merged contact groups ids array so that they are not processed after this one is complete
@@ -263,8 +269,8 @@ function merge_contacts($contacts)
                                 $contact_group_to_be_merged['opt_in'] = '1';
                             }
                             // delete any records from the opt in table for this contact group and child
-                            $query = "DELETE FROM opt_in WHERE (contact_id = '" . escape($child['id']) . "') AND (contact_group_id = '" . escape($contact_group_to_be_merged['contact_group_id']) . "')";
-                            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                            $query = "DELETE FROM opt_in WHERE (contact_id = ?) AND (contact_group_id = ?)";
+                            $result = db_q($query, array((string) $child['id'], (string) $contact_group_to_be_merged['contact_group_id'])) or output_error(lang('Query failed.'));
                             // insert a new opt in record
                             $query = "INSERT INTO opt_in (
 
@@ -276,12 +282,12 @@ function merge_contacts($contacts)
 
                                 VALUES (
 
-                                    '" . escape($child['id']) . "',
+                                    ?,
 
-                                    '" . escape($contact_group_to_be_merged['contact_group_id']) . "',
+                                    ?,
 
-                                    '" . escape($contact_group_to_be_merged['opt_in']) . "')";
-                            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                                    ?)";
+                            $result = db_q($query, array((string) $child['id'], (string) $contact_group_to_be_merged['contact_group_id'], (string) $contact_group_to_be_merged['opt_in'])) or output_error(lang('Query failed.'));
                         }
                     }
                 }
@@ -323,7 +329,9 @@ function merge_contacts($contacts)
                 }
                 $contact_groups_to_be_merged = array();
                 $delete_from_contacts_where_statement = '';
+                $delete_from_contacts_values = array();
                 $delete_from_contacts_contact_groups_xref_where_statement = '';
+                $delete_from_contacts_contact_groups_xref_values = array();
                 // loop through orphans to merge to get the remaining orphan's new opt in status,
                 // get data to be merged into the remaining orphan's blank field from the current orphan,
                 // get an array of all contact groups to be merged into the remaining orphan,
@@ -358,20 +366,24 @@ function merge_contacts($contacts)
                     if ($delete_from_contacts_where_statement != '') {
                         $delete_from_contacts_where_statement .= ' OR ';
                     }
-                    $delete_from_contacts_where_statement .= "(id = '" . escape($orphan_to_merge['id']) . "')";
+                    $delete_from_contacts_where_statement .= "(id = ?)";
+                    $delete_from_contacts_values[] = (string) $orphan_to_merge['id'];
                     // build sql where statements to be used to clean up the contact groups xref table
                     if ($delete_from_contacts_contact_groups_xref_where_statement != '') {
                         $delete_from_contacts_contact_groups_xref_where_statement .= ' OR ';
                     }
-                    $delete_from_contacts_contact_groups_xref_where_statement .= "(contact_id = '" . escape($orphan_to_merge['id']) . "')";
+                    $delete_from_contacts_contact_groups_xref_where_statement .= "(contact_id = ?)";
+                    $delete_from_contacts_contact_groups_xref_values[] = (string) $orphan_to_merge['id'];
                     // increment the merged contacts counter, this number will be used when outputting a notice to the user
                     $merged_contacts_counter++;
                 }
                 $sql_columns_to_update = '';
+                $sql_columns_values = array();
                 // build an sql update statement that updates the remaining contact's blank fields with data
                 foreach ($remaining_orphans_fields_to_update as $key => $remaining_orphans_field_to_update) {
                     if ($remaining_orphans_field_to_update != '') {
-                        $sql_columns_to_update .= $key . " = '" . escape($remaining_orphans_field_to_update) . "', ";
+                        $sql_columns_to_update .= $key . " = ?, ";
+                        $sql_columns_values[] = (string) $remaining_orphans_field_to_update;
                     }
                 }
                 // update remaining orphan's contact record with data from orphans, new last mod date and opt status
@@ -381,12 +393,12 @@ function merge_contacts($contacts)
 
                        $sql_columns_to_update
 
-                       opt_in = '" . escape($remaining_orphan['opt_in']) . "',
+                       opt_in = ?,
 
-                       timestamp = '" . escape($remaining_orphan['timestamp']) . "'
+                       timestamp = ?
 
-                    WHERE id = '" . escape($remaining_orphan['id']) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    WHERE id = ?";
+                $result = db_q($query, array_merge($sql_columns_values, array((string) $remaining_orphan['opt_in'], (string) $remaining_orphan['timestamp'], (string) $remaining_orphan['id']))) or output_error(lang('Query failed.'));
                 $where = '';
                 // if there are orphans to delete, then prepare the where statement and then delete them
                 if ($delete_from_contacts_where_statement != '') {
@@ -399,7 +411,7 @@ function merge_contacts($contacts)
                     }
                     $where .= "(" . $delete_from_contacts_where_statement . ")";
                     $query = "DELETE FROM contacts $where";
-                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    $result = db_q($query, $delete_from_contacts_values) or output_error(lang('Query failed.'));
                 }
                 $where = '';
                 // if there are contact groups to delete, then prepare the where statement and then delete the contact group and their opt-in status
@@ -413,9 +425,9 @@ function merge_contacts($contacts)
                     }
                     $where .= "(" . $delete_from_contacts_contact_groups_xref_where_statement . ")";
                     $query = "DELETE FROM contacts_contact_groups_xref $where";
-                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    $result = db_q($query, $delete_from_contacts_contact_groups_xref_values) or output_error(lang('Query failed.'));
                     $query = "DELETE FROM opt_in $where";
-                    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                    $result = db_q($query, $delete_from_contacts_contact_groups_xref_values) or output_error(lang('Query failed.'));
                 }
                 $merged_contact_group_ids = array();
                 // update contact groups xref and opt in table to add references for the remaining orphan
@@ -425,8 +437,8 @@ function merge_contacts($contacts)
                         // add this contact group to the meged contact groups array so that it is not processed again
                         $merged_contact_group_ids[] = $contact_group_to_be_merged['contact_group_id'];
                         // delete the any records from the contacts contact groups xref table for this contact group and orphan
-                        $query = "DELETE FROM contacts_contact_groups_xref WHERE (contact_id = '" . escape($remaining_orphan['id']) . "') AND (contact_group_id = '" . escape($contact_group_to_be_merged['contact_group_id']) . "')";
-                        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                        $query = "DELETE FROM contacts_contact_groups_xref WHERE (contact_id = ?) AND (contact_group_id = ?)";
+                        $result = db_q($query, array((string) $remaining_orphan['id'], (string) $contact_group_to_be_merged['contact_group_id'])) or output_error(lang('Query failed.'));
                         // insert a new xref record
                         $query = "INSERT INTO contacts_contact_groups_xref (
 
@@ -436,12 +448,12 @@ function merge_contacts($contacts)
 
                             VALUES (
 
-                                '" . escape($remaining_orphan['id']) . "',
+                                ?,
 
-                                '" . escape($contact_group_to_be_merged['contact_group_id']) . "'
+                                ?
 
                                 )";
-                        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                        $result = db_q($query, array((string) $remaining_orphan['id'], (string) $contact_group_to_be_merged['contact_group_id'])) or output_error(lang('Query failed.'));
                         $contact_groups_to_be_merged_opt_in = 1;
                         // loop through the contact groups to be merged to get the new opt in value,
                         // and add the contact groups to the merged contact groups ids array so that they are not processed again
@@ -466,8 +478,8 @@ function merge_contacts($contacts)
                                 $contact_group_to_be_merged['opt_in'] = 1;
                             }
                             // delete the any records from the opt in table for this contact group and child
-                            $query = "DELETE FROM opt_in WHERE (contact_id = '" . escape($remaining_orphan['id']) . "') AND (contact_group_id = '" . escape($contact_group_to_be_merged['contact_group_id']) . "')";
-                            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                            $query = "DELETE FROM opt_in WHERE (contact_id = ?) AND (contact_group_id = ?)";
+                            $result = db_q($query, array((string) $remaining_orphan['id'], (string) $contact_group_to_be_merged['contact_group_id'])) or output_error(lang('Query failed.'));
                             // insert a new opt in record
                             $query = "INSERT INTO opt_in (
 
@@ -479,12 +491,12 @@ function merge_contacts($contacts)
 
                                 VALUES (
 
-                                    '" . escape($remaining_orphan['id']) . "',
+                                    ?,
 
-                                    '" . escape($contact_group_to_be_merged['contact_group_id']) . "',
+                                    ?,
 
-                                    '" . escape($contact_group_to_be_merged['opt_in']) . "')";
-                            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                                    ?)";
+                            $result = db_q($query, array((string) $remaining_orphan['id'], (string) $contact_group_to_be_merged['contact_group_id'], (string) $contact_group_to_be_merged['opt_in'])) or output_error(lang('Query failed.'));
                         }
                     }
                 }
@@ -580,7 +592,7 @@ function pg_initials_avatar_url($initials, $kind = 'contact', $seed = '')
         $shape = "<rect x='1' y='1' width='62' height='62' rx='16' fill='#e9ecef' stroke='#adb5bd' stroke-width='2'/>";
         $ink = '#495057';
     } else {
-        $tone = $tones[abs(crc32((string) (($seed !== '') ? $seed : $initials))) % count($tones)];
+        $tone = $tones[pg_avatar_tone($initials, $seed)];
         $shape = "<circle cx='32' cy='32' r='32' fill='" . $tone . "'/>";
         $ink = '#ffffff';
     }
@@ -590,6 +602,112 @@ function pg_initials_avatar_url($initials, $kind = 'contact', $seed = '')
         . "<text x='32' y='32' dy='.35em' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif' font-size='" . $size . "' font-weight='600' fill='" . $ink . "'>" . $letters . "</text></svg>";
 
     return $cache[$key] = 'data:image/svg+xml,' . rawurlencode($svg);
+}
+
+/**
+ * The colour a person's letters are drawn in, as a place 0-7 in the list of
+ * eight tones; the seed keeps a person's colour whatever their name becomes.
+ * The picture of letters (pg_initials_avatar_url()) and the panel's Avatar
+ * (pg_avatar_markup()) take the same place, so a person has one colour in
+ * the panel, in an e-mail and on a print.
+ *
+ * @param string     $initials
+ * @param string|int $seed
+ * @return int 0-7
+ */
+function pg_avatar_tone($initials, $seed = '')
+{
+    $seed = (string) $seed;
+
+    return abs(crc32(($seed !== '') ? $seed : (string) $initials)) % 8;
+}
+
+/**
+ * A person's letters and tone, the two fields every person brief carries
+ * beside its picture address, so the panel can draw them as an Avatar.
+ *
+ * @param string     $initials
+ * @param string|int $seed
+ * @return array initials, tone
+ */
+function pg_avatar_letters($initials, $seed = '')
+{
+    $initials = (string) $initials;
+
+    return array('initials' => ($initials !== '') ? $initials : '?', 'tone' => pg_avatar_tone($initials, $seed));
+}
+
+/**
+ * The Bootstrap 6 theme class of a tone place (pg_avatar_tone()).
+ *
+ * @param int $tone
+ * @return string
+ */
+function pg_avatar_theme_class($tone)
+{
+    $themes = array('theme-primary', 'theme-info', 'theme-warning', 'theme-accent', 'theme-danger', 'theme-secondary', 'theme-success', 'theme-inverse');
+
+    return $themes[((int) $tone % 8 + 8) % 8];
+}
+
+/**
+ * A person in the panel as a Bootstrap 6 Avatar: their picture when there is
+ * one, else their letters on their tone; a login without a name is a grey
+ * rounded square, so the missing name shows. No <img> is printed without an
+ * address. Panel markup only: sites, e-mails and prints keep the picture of
+ * letters (pg_initials_avatar_url()).
+ *
+ * @param array $person initials, tone, avatar (a picture address), avatar_kind
+ *                      (photo | contact | user), presence (online | away |
+ *                      offline, empty for no dot), name (the label)
+ * @param string $size  xs | sm | lg | xl, empty for the default 2.5rem
+ * @param string $class more classes
+ * @return string
+ */
+function pg_avatar_markup($person, $size = '', $class = '')
+{
+    $kind = (string) ($person['avatar_kind'] ?? '');
+    $picture = (string) ($person['avatar'] ?? '');
+    $initials = (string) ($person['initials'] ?? '');
+
+    if ($initials === '') {
+        $initials = '?';
+    }
+
+    // A picture of letters is drawn as letters; only a photo stays a picture.
+    $photo = ($picture !== '') && (strncmp($picture, 'data:image/svg+xml', 18) !== 0) && ($kind !== 'contact') && ($kind !== 'user');
+
+    $classes = array('avatar');
+
+    if (in_array($size, array('xs', 'sm', 'lg', 'xl'), true)) {
+        $classes[] = 'avatar-' . $size;
+    }
+
+    if ($photo) {
+        $inner = '<img class="avatar-img" src="' . h($picture) . '" alt="" loading="lazy">';
+    } elseif ($kind === 'user') {
+        $classes[] = 'avatar-subtle';
+        $classes[] = 'theme-secondary';
+        $classes[] = 'pg-avatar-user';
+        $inner = h($initials);
+    } else {
+        $classes[] = pg_avatar_theme_class(isset($person['tone']) ? (int) $person['tone'] : pg_avatar_tone($initials));
+        $inner = h($initials);
+    }
+
+    if ($class !== '') {
+        $classes[] = $class;
+    }
+
+    $presence = (string) ($person['presence'] ?? '');
+
+    if (in_array($presence, array('online', 'away', 'offline'), true)) {
+        $inner .= '<span class="avatar-status status-' . $presence . '"></span>';
+    }
+
+    $name = (string) ($person['name'] ?? '');
+
+    return '<span class="' . h(implode(' ', $classes)) . '"' . (($name !== '') ? ' role="img" aria-label="' . h($name) . '"' : ' aria-hidden="true"') . '>' . $inner . '</span>';
 }
 
 /**
@@ -607,6 +725,25 @@ function pg_avatar_for($first_name, $last_name, $username = '', $seed = '')
     $named = (trim((string) $first_name) !== '') || (trim((string) $last_name) !== '');
 
     return pg_initials_avatar_url(pg_initials($first_name, $last_name, $username), $named ? 'contact' : 'user', (string) $seed);
+}
+
+/**
+ * pg_avatar_for() as the panel's Avatar: a person without a picture, drawn
+ * from their name as their letters on their tone, a grey rounded square
+ * from the username when they have no name.
+ *
+ * @param string     $first_name
+ * @param string     $last_name
+ * @param string     $username
+ * @param string|int $seed what keeps a person's colour
+ * @param string     $class more classes (a size of its own)
+ * @return string
+ */
+function pg_avatar_markup_for($first_name, $last_name, $username = '', $seed = '', $class = '')
+{
+    $named = (trim((string) $first_name) !== '') || (trim((string) $last_name) !== '');
+
+    return pg_avatar_markup(array('avatar_kind' => $named ? 'contact' : 'user') + pg_avatar_letters(pg_initials($first_name, $last_name, $username), (string) $seed), '', $class);
 }
 
 /**

@@ -139,14 +139,14 @@ function submit_order($type) {
     if (!$contact_id) {
 
         // get contact id for this order
-        $query = "SELECT contact_id FROM orders WHERE id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT contact_id FROM orders WHERE id = ?";
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $contact_id = $row['contact_id'];
         
         // check to see if this contact is connected to a user
-        $query = "SELECT user_id FROM user WHERE user_contact = '$contact_id'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT user_id FROM user WHERE user_contact = ?";
+        $result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
         
         // if the contact is connected to a user, then the contact should not be used
         if (mysqli_num_rows($result) > 0) {
@@ -166,15 +166,15 @@ function submit_order($type) {
                 user,
                 timestamp)
             VALUES (
-                '$user_id',
+                ?,
                 UNIX_TIMESTAMP())";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $user_id)) or output_error('Query failed.');
         $contact_id = mysqli_insert_id(db::$con);
 
         // if user is logged in, connect new contact record to user record
         if ($user_id) {
-            $query = "UPDATE user SET user_contact = '$contact_id' WHERE user_id = '$user_id'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "UPDATE user SET user_contact = ? WHERE user_id = ?";
+            $result = db_q($query, array((string) $contact_id, (string) $user_id)) or output_error('Query failed.');
         }
     }
 
@@ -208,9 +208,9 @@ function submit_order($type) {
         "SELECT contact_id
         FROM contacts_contact_groups_xref
         WHERE
-            (contact_id = '$contact_id')
-            AND (contact_group_id = '$contact_group_id')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            (contact_id = ?)
+            AND (contact_group_id = ?)";
+    $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
     
     // if contact is not already in contact group, then add contact to Orders contact group
     if (mysqli_num_rows($result) == 0) {
@@ -219,18 +219,18 @@ function submit_order($type) {
                 contact_id,
                 contact_group_id)
             VALUES (
-                '$contact_id',
-                '$contact_group_id')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                ?,
+                ?)";
+        $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
     }
     
     // add user id and contact id to order record in database
     $query = "UPDATE orders
              SET
-                user_id = '$user_id',
-                contact_id = '$contact_id'
-             WHERE id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                user_id = ?,
+                contact_id = ?
+             WHERE id = ?";
+    $result = db_q($query, array((string) $user_id, (string) $contact_id, (string) (int) ($_SESSION['ecommerce']['order_id'] ?? 0))) or output_error('Query failed.');
     
     // initialize a variable for storing the total balance of all gift cards
     $gift_card_balance = 0;
@@ -246,9 +246,9 @@ function submit_order($type) {
                 old_balance,
                 givex
             FROM applied_gift_cards
-            WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'
+            WHERE order_id = ?
             ORDER BY id ASC";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
 
         $applied_gift_cards = array();
 
@@ -323,8 +323,8 @@ function submit_order($type) {
                         $balance = $gift_card['balance'];
 
                         // update old balance in database
-                        $query = "UPDATE applied_gift_cards SET old_balance = '" . escape($balance) . "' WHERE id = '" . $applied_gift_card['id'] . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "UPDATE applied_gift_cards SET old_balance = ? WHERE id = ?";
+                        $result = db_q($query, array((string) $balance, (string) $applied_gift_card['id'])) or output_error('Query failed.');
 
                         // update old balance in array
                         $applied_gift_cards[$key]['old_balance'] = $balance;
@@ -357,8 +357,8 @@ function submit_order($type) {
                             $error_message = lang(array('string'=>'Sorry, we cannot accept the gift card ({var:1}) because there was an error from the gift card service: {var:2}. Therefore, the gift card has been removed from your order. You may try using a different gift card.','vars'=>array(h(protect_givex_gift_card_code($applied_gift_card['code'])), h($result['error_message']))));
                             
                             // remove applied gift card from database
-                            $query = "DELETE FROM applied_gift_cards WHERE id = '" . escape($applied_gift_card['id']) . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                            $query = "DELETE FROM applied_gift_cards WHERE id = ?";
+                            $result = db_q($query, array((string) $applied_gift_card['id'])) or output_error(lang('Query failed.'));
                             
                             // remove applied gift card from array
                             unset($applied_gift_cards[$key]);
@@ -368,8 +368,8 @@ function submit_order($type) {
                             $error_message = lang(array('string'=>'Sorry, we cannot accept the gift card ({var:1}) because there is no remaining balance. Therefore, the gift card has been removed from your order. You may try using a different gift card.','vars'=>array(h(protect_givex_gift_card_code($applied_gift_card['code'])))));
                             
                             // remove applied gift card from database
-                            $query = "DELETE FROM applied_gift_cards WHERE id = '" . escape($applied_gift_card['id']) . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                            $query = "DELETE FROM applied_gift_cards WHERE id = ?";
+                            $result = db_q($query, array((string) $applied_gift_card['id'])) or output_error(lang('Query failed.'));
                             
                             // remove applied gift card from array
                             unset($applied_gift_cards[$key]);
@@ -383,8 +383,8 @@ function submit_order($type) {
                         $balance = $result['balance'] * 100;
                         
                         // update old balance in database
-                        $query = "UPDATE applied_gift_cards SET old_balance = '" . escape($balance) . "' WHERE id = '" . $applied_gift_card['id'] . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "UPDATE applied_gift_cards SET old_balance = ? WHERE id = ?";
+                        $result = db_q($query, array((string) $balance, (string) $applied_gift_card['id'])) or output_error('Query failed.');
                         
                         // update old balance in array
                         $applied_gift_cards[$key]['old_balance'] = $balance;
@@ -399,8 +399,8 @@ function submit_order($type) {
     // else gift cards are disabled, so delete any applied gift cards that might exist for this order
     // this is used to delete any gift cards that might have been applied right before gift cards were disabled
     } else {
-        $query = "DELETE FROM applied_gift_cards WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM applied_gift_cards WHERE order_id = ?";
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
     }
     
     // if the mode is not paypal_express_checkout_return, then add field values to session and validate data
@@ -419,7 +419,7 @@ function submit_order($type) {
         // The billing and payment fields post one value each (express_order.php has done this
         // for an express order already), and the totals the visitor saw are compared below as
         // numbers, so an array there counts as a total not posted.
-        pg_liveform_single_values($liveform, array('billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'custom_field_1', 'custom_field_2', 'opt_in', 'opt_in_displayed', 'tax_exempt', 'tax_number', 'tax_office', 'po_number', 'referral_source', 'update_contact', 'gift_card_code', 'payment_method', 'card_number', 'cardholder', 'expiration', 'expiration_month', 'expiration_year', 'card_verification_number', 'installment', 'notes', 'terms', 'legal_preinfo', 'legal_contract'));
+        pg_liveform_single_values($liveform, array('billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'custom_field_1', 'custom_field_2', 'opt_in', 'opt_in_displayed', 'tax_exempt', 'tax_number', 'tax_office', 'po_number', 'referral_source', 'update_contact', 'gift_card_code', 'payment_method', 'card_number', 'cardholder', 'expiration', 'expiration_month', 'expiration_year', 'card_verification_number', 'installment', 'notes', 'terms', 'legal_preinfo', 'legal_contract', 'legal_kvkk'));
         pg_liveform_single_values($liveform, array('total', 'total_with_surcharge'), null);
 
         // Clear stale field errors from a PREVIOUS submit before re-validating.
@@ -453,8 +453,8 @@ function submit_order($type) {
                     custom_field_2_required,
                     form
                 FROM express_order_pages
-                WHERE page_id = '" . escape($page_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE page_id = ?";
+            $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
             // No row when the id names no express order page: no custom fields then.
             $row = mysqli_fetch_assoc($result) ?: array();
 
@@ -543,8 +543,8 @@ function submit_order($type) {
             }
             
             // get old address verified value from the database
-            $query = "SELECT billing_address_verified FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT billing_address_verified FROM orders WHERE id = ?";
+            $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
 
             // The query above selects billing_address_verified, so that is the key to read.
@@ -572,30 +572,30 @@ function submit_order($type) {
             $query =
                 "UPDATE orders
                  SET
-                    billing_salutation = '" . escape($liveform->get_field_value('billing_salutation')) . "',
-                    billing_first_name = '" . escape($liveform->get_field_value('billing_first_name')) . "',
-                    billing_last_name = '" . escape($liveform->get_field_value('billing_last_name')) . "',
-                    billing_company = '" . escape($liveform->get_field_value('billing_company')) . "',
-                    billing_address_1 = '" . escape($liveform->get_field_value('billing_address_1')) . "',
-                    billing_address_2 = '" . escape($liveform->get_field_value('billing_address_2')) . "',
-                    billing_city = '" . escape($liveform->get_field_value('billing_city')) . "',
-                    billing_state = '" . escape($liveform->get_field_value('billing_state')) . "',
-                    billing_zip_code = '" . escape($liveform->get_field_value('billing_zip_code')) . "',
-                    billing_country = '" . escape($liveform->get_field_value('billing_country')) . "',
-                    billing_address_verified = '" . escape($address_verified) . "',
-                    billing_phone_number = '" . escape($liveform->get_field_value('billing_phone_number')) . "',
-                    billing_fax_number = '" . escape($liveform->get_field_value('billing_fax_number')) . "',
-                    billing_email_address = '" . escape($liveform->get_field_value('billing_email_address')) . "',
-                    custom_field_1 = '" . escape($liveform->get_field_value('custom_field_1')) . "',
-                    custom_field_2 = '" . escape($liveform->get_field_value('custom_field_2')) . "',
-                    opt_in = '$opt_in',
-                    tax_exempt = '$tax_exempt',
-                    po_number = '" . escape($liveform->get_field_value('po_number')) . "',
-                    referral_source_code = '" . escape($liveform->get_field_value('referral_source')) . "',
-                    billing_complete = '$billing_complete',
-                    ip_address = IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0)
-                WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    billing_salutation = ?,
+                    billing_first_name = ?,
+                    billing_last_name = ?,
+                    billing_company = ?,
+                    billing_address_1 = ?,
+                    billing_address_2 = ?,
+                    billing_city = ?,
+                    billing_state = ?,
+                    billing_zip_code = ?,
+                    billing_country = ?,
+                    billing_address_verified = ?,
+                    billing_phone_number = ?,
+                    billing_fax_number = ?,
+                    billing_email_address = ?,
+                    custom_field_1 = ?,
+                    custom_field_2 = ?,
+                    opt_in = ?,
+                    tax_exempt = ?,
+                    po_number = ?,
+                    referral_source_code = ?,
+                    billing_complete = ?,
+                    ip_address = IFNULL(INET_ATON(?), 0)
+                WHERE id = ?";
+            $result = db_q($query, array((string) ($liveform->get_field_value('billing_salutation')), (string) ($liveform->get_field_value('billing_first_name')), (string) ($liveform->get_field_value('billing_last_name')), (string) ($liveform->get_field_value('billing_company')), (string) ($liveform->get_field_value('billing_address_1')), (string) ($liveform->get_field_value('billing_address_2')), (string) ($liveform->get_field_value('billing_city')), (string) ($liveform->get_field_value('billing_state')), (string) ($liveform->get_field_value('billing_zip_code')), (string) ($liveform->get_field_value('billing_country')), (string) $address_verified, (string) ($liveform->get_field_value('billing_phone_number')), (string) ($liveform->get_field_value('billing_fax_number')), (string) ($liveform->get_field_value('billing_email_address')), (string) ($liveform->get_field_value('custom_field_1')), (string) ($liveform->get_field_value('custom_field_2')), (string) $opt_in, (string) $tax_exempt, (string) ($liveform->get_field_value('po_number')), (string) ($liveform->get_field_value('referral_source')), (string) $billing_complete, (string) $_SERVER['REMOTE_ADDR'], (string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
 
             // Visitor-supplied order note (EO widget: `_bindings.eo_field='notes'`).
             // The `notes` column is only present on upgraded installs — probe once
@@ -707,8 +707,8 @@ function submit_order($type) {
             reference_code,
             special_offer_code
         FROM orders
-        WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $billing_salutation = $row['billing_salutation'];
@@ -799,9 +799,9 @@ function submit_order($type) {
         FROM order_items
         LEFT JOIN products ON order_items.product_id = products.id
         LEFT JOIN calendar_events ON order_items.calendar_event_id = calendar_events.id
-        WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'" . pg_order_item_active_sql() . "
+        WHERE order_items.order_id = ?" . pg_order_item_active_sql() . "
         ORDER BY order_items.id ASC";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
 
     $products = array();
 
@@ -910,8 +910,8 @@ function submit_order($type) {
     }
     
     // get shipping total for all ship tos
-    $query = "SELECT SUM(shipping_cost) as shipping FROM ship_tos WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT SUM(shipping_cost) as shipping FROM ship_tos WHERE order_id = ?";
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $shipping = (int) $row['shipping'];
 
@@ -1014,8 +1014,8 @@ function submit_order($type) {
             " . $type_value . "_pages.next_page_id
         FROM " . $type_value . "_pages
         LEFT JOIN page ON " . $type_value . "_pages.terms_page_id = page.page_id
-        WHERE " . $type_value . "_pages.page_id = '" . escape($page_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE " . $type_value . "_pages.page_id = ?";
+    $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
     // No row when the id names no page of this type: none of its settings then.
     $row = mysqli_fetch_assoc($result) ?: array();
     
@@ -1422,15 +1422,15 @@ function submit_order($type) {
                 "SELECT id
                 FROM order_items
                 WHERE
-                    (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
-                    AND (product_id = '" . $product['required_product'] . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    (order_id = ?)" . pg_order_item_active_sql() . "
+                    AND (product_id = ?)";
+            $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $product['required_product'])) or output_error('Query failed.');
 
             // if required product is not in cart, add product to cart and add notice, so user knows that required product was added to cart
             if (mysqli_num_rows($result) == 0) {
                 // get information about required product
-                $query = "SELECT name FROM products WHERE id = '" . $product['required_product'] . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT name FROM products WHERE id = ?";
+                $result = db_q($query, array((string) $product['required_product'])) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $required_product_name = $row['name'];
 
@@ -1457,10 +1457,10 @@ function submit_order($type) {
         FROM order_items
         LEFT JOIN products ON order_items.product_id = products.id
         WHERE
-            (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
+            (order_items.order_id = ?)" . pg_order_item_active_sql() . "
             AND (order_items.ship_to_id > 0)
             AND (order_items.price <= 0)";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
     
     $free_order_items = array();
     
@@ -1475,10 +1475,10 @@ function submit_order($type) {
             "SELECT id
             FROM order_items
             WHERE
-                (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
-                AND (ship_to_id = '" . $free_order_item['ship_to_id'] . "')
+                (order_id = ?)" . pg_order_item_active_sql() . "
+                AND (ship_to_id = ?)
                 AND (price > 0)";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $free_order_item['ship_to_id'])) or output_error('Query failed.');
         
         // if a non-free order item could not be found, add error
         if (mysqli_num_rows($result) == 0) {
@@ -2545,16 +2545,16 @@ function submit_order($type) {
                             FROM order_items
                             LEFT JOIN products ON products.id = order_items.product_id
                             WHERE
-                                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
+                                (order_items.order_id = ?)" . pg_order_item_active_sql() . "
                                 AND (products.shippable = '1')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
                         
                         // if there are shippable items in order, then prepare to send information to PayPal
                         if ($row[0] > 0) {
                             // check how many recipients there are for order
-                            $query = "SELECT COUNT(*) FROM ship_tos WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $query = "SELECT COUNT(*) FROM ship_tos WHERE order_id = ?";
+                            $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
                             $row = mysqli_fetch_row($result);
                             
                             // if there is just one recipient, then prepare to send shipping information to PayPal
@@ -2573,8 +2573,8 @@ function submit_order($type) {
                                         zip_code,
                                         phone_number
                                     FROM ship_tos
-                                    WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    WHERE order_id = ?";
+                                $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
                                 $row = mysqli_fetch_assoc($result);
                                 
                                 $first_name = $row['first_name'];
@@ -2734,16 +2734,16 @@ function submit_order($type) {
                             FROM order_items
                             LEFT JOIN products ON products.id = order_items.product_id
                             WHERE
-                                (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
+                                (order_items.order_id = ?)" . pg_order_item_active_sql() . "
                                 AND (products.shippable = '1')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
                         
                         // if there are shippable items in order, then determine if there is only one recipient
                         if ($row[0] > 0) {
                             // check how many recipients there are for order
-                            $query = "SELECT COUNT(*) FROM ship_tos WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $query = "SELECT COUNT(*) FROM ship_tos WHERE order_id = ?";
+                            $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
                             $row = mysqli_fetch_row($result);
                             
                             // if there is just one recipient, then prepare to send shipping information to Sage
@@ -2762,8 +2762,8 @@ function submit_order($type) {
                                         zip_code,
                                         country
                                     FROM ship_tos
-                                    WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    WHERE order_id = ?";
+                                $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
                                 $row = mysqli_fetch_assoc($result);
                                 
                                 $sage_c_ship_name = $row['first_name'] . ' ' . $row['last_name'];
@@ -3042,22 +3042,22 @@ function submit_order($type) {
                         $Iyzipay_ship_zip = '';
                         $Iyzipay_ship_country = '';
 
-                        $query = "SELECT COUNT(*) FROM order_items LEFT JOIN products ON products.id = order_items.product_id WHERE (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "') AND (products.shippable = '1')" . pg_order_item_active_sql();
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "SELECT COUNT(*) FROM order_items LEFT JOIN products ON products.id = order_items.product_id WHERE (order_items.order_id = ?) AND (products.shippable = '1')" . pg_order_item_active_sql();
+                        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
 
                         if ((int)$row[0] > 0) {
-                            $query = "SELECT COUNT(*) FROM ship_tos WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $query = "SELECT COUNT(*) FROM ship_tos WHERE order_id = ?";
+                            $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
                             $row = mysqli_fetch_row($result);
 
                             if ((int)$row[0] === 1) {
                                 $query = "
                                     SELECT first_name,last_name,address_1,address_2,city,state,zip_code,country
                                     FROM ship_tos
-                                    WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'
+                                    WHERE order_id = ?
                                 ";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
                                 $row = mysqli_fetch_assoc($result);
                                 $Iyzipay_ship_name = $row['first_name'] . ' ' . $row['last_name'];
                                 $Iyzipay_ship_address = $row['address_1'] . ' ' . $row['address_2'] . ' ' . $row['city'];
@@ -3130,15 +3130,15 @@ function submit_order($type) {
                                 INSERT INTO iyzipay_3ds_state
                                     (conversation_id, order_id, subtotal_cents, discount_cents, installment_charge_cents, base_total_cents)
                                 VALUES (
-                                    '" . mysqli_real_escape_string(db::$con, $conversationid) . "',
-                                    '" . (int)($_SESSION['ecommerce']['order_id'] ?? '') . "',
-                                    '" . (int)$subtotal . "',
-                                    '" . (int)$discount . "',
-                                    '" . (int)$installment_charge . "',
-                                    '" . (int)($total - $installment_charge) . "'
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?,
+                                    ?
                                 )
                             ";
-                            mysqli_query(db::$con, $query) or output_error(lang('3DS state insert failed.'));;
+                            db_q($query, array((string) $conversationid, (string) (int) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) (int) $subtotal, (string) (int) $discount, (string) (int) $installment_charge, (string) (int) ($total - $installment_charge))) or output_error(lang('3DS state insert failed.'));;
                         
                             $callbackurl = URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . $type_value . '.php?mode=iyzipay_threedsecure_return&page_id=' . (int)$page_id;
                             $request->setCallbackUrl($callbackurl);
@@ -3263,10 +3263,10 @@ function submit_order($type) {
                             $query = "
                                 SELECT *
                                 FROM iyzipay_3ds_state
-                                WHERE conversation_id = '" . mysqli_real_escape_string(db::$con, $conversationId) . "'
+                                WHERE conversation_id = ?
                                 LIMIT 1
                             ";
-                            $result = mysqli_query(db::$con, $query) or output_error(lang('3DS state select failed.'));
+                            $result = db_q($query, array((string) $conversationId)) or output_error(lang('3DS state select failed.'));
                             $state  = mysqli_fetch_assoc($result);
                         
                             // The state row must belong to the order in this session, otherwise a
@@ -3287,13 +3287,13 @@ function submit_order($type) {
                             // the consumed marker, so a replayed callback cannot complete the order twice.
                             $query = "
                                 UPDATE iyzipay_3ds_state
-                                SET payment_id = '" . mysqli_real_escape_string(db::$con, $paymentId) . "'
+                                SET payment_id = ?
                                 WHERE
-                                    (id = '" . (int)$state['id'] . "')
+                                    (id = ?)
                                     AND ((payment_id IS NULL) OR (payment_id = ''))
                                 LIMIT 1
                             ";
-                            mysqli_query(db::$con, $query) or output_error('3DS state update failed.');
+                            db_q($query, array((string) $paymentId, (string) (int) $state['id'])) or output_error('3DS state update failed.');
 
                             if (mysqli_affected_rows(db::$con) !== 1) {
                                 $liveform->mark_error('payment_gateway', lang('Session could not be verified. Please try again.'));
@@ -3472,16 +3472,16 @@ function submit_order($type) {
                     FROM order_items
                     LEFT JOIN products ON products.id = order_items.product_id
                     WHERE
-                        (order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')" . pg_order_item_active_sql() . "
+                        (order_items.order_id = ?)" . pg_order_item_active_sql() . "
                         AND (products.shippable = '1')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
                 $row = mysqli_fetch_row($result);
                 
                 // if there are shippable order items in order, then prepare to send information to PayPal
                 if ($row[0] > 0) {
                     // check how many recipients there are for order
-                    $query = "SELECT COUNT(*) FROM ship_tos WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $query = "SELECT COUNT(*) FROM ship_tos WHERE order_id = ?";
+                    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
                     $row = mysqli_fetch_row($result);
                     
                     // if there is just one recipient, then prepare to send shipping information to PayPal
@@ -3500,8 +3500,8 @@ function submit_order($type) {
                                 zip_code,
                                 phone_number
                             FROM ship_tos
-                            WHERE order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            WHERE order_id = ?";
+                        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
                         $row = mysqli_fetch_assoc($result);
                         
                         $ship_to_name = $row['ship_to_name'];
@@ -4103,8 +4103,8 @@ function submit_order($type) {
                         }
                         
                         // remove applied gift card from database
-                        $query = "DELETE FROM applied_gift_cards WHERE id = '" . escape($applied_gift_card['id']) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "DELETE FROM applied_gift_cards WHERE id = ?";
+                        $result = db_q($query, array((string) $applied_gift_card['id'])) or output_error('Query failed.');
                         
                     // else the redemption was successful, so update applied gift card and update the current redemption amount
                     } else {
@@ -4114,11 +4114,11 @@ function submit_order($type) {
                         $query =
                             "UPDATE applied_gift_cards
                             SET
-                                amount = '" . $amount . "',
-                                new_balance = '" . escape($new_balance) . "',
-                                authorization_number = '" . escape($result['authorization_number']) . "'
-                            WHERE id = '" . $applied_gift_card['id'] . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                amount = ?,
+                                new_balance = ?,
+                                authorization_number = ?
+                            WHERE id = ?";
+                        $result = db_q($query, array((string) $amount, (string) $new_balance, (string) $result['authorization_number'], (string) $applied_gift_card['id'])) or output_error('Query failed.');
                         
                         $current_redemption_amount = $current_redemption_amount + $amount;
                     }
@@ -4128,8 +4128,8 @@ function submit_order($type) {
             // because no more gift cards need to be redeemed
             } else {
                 // remove applied gift card from database
-                $query = "DELETE FROM applied_gift_cards WHERE id = '" . escape($applied_gift_card['id']) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "DELETE FROM applied_gift_cards WHERE id = ?";
+                $result = db_q($query, array((string) $applied_gift_card['id'])) or output_error('Query failed.');
             }
         }
         
@@ -4254,8 +4254,8 @@ function submit_order($type) {
     // if affiliate program is on and there is an affiliate code, then determine if commission record and recurring commission profiles should be created
     if ((AFFILIATE_PROGRAM == true) && ($affiliate_code != '')) {
         // get affiliate information from contact
-        $query = "SELECT affiliate_commission_rate FROM contacts WHERE (affiliate_code = '" . escape($affiliate_code) . "') AND (affiliate_approved = 1)";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT affiliate_commission_rate FROM contacts WHERE (affiliate_code = ?) AND (affiliate_approved = 1)";
+        $result = db_q($query, array((string) $affiliate_code)) or output_error('Query failed.');
         
         // if a valid affiliate contact was found, continue with calculating commission
         if (mysqli_num_rows($result) > 0) {
@@ -4331,16 +4331,16 @@ function submit_order($type) {
                         last_modified_user_id,
                         last_modified_timestamp)
                     VALUES (
-                        '" . generate_commission_reference_code() . "',
-                        '" . escape($affiliate_code) . "',
-                        '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
-                        '" . $commission . "',
+                        ?,
+                        ?,
+                        ?,
+                        ?,
                         'pending',
-                        '" . $user_id . "',
+                        ?,
                         UNIX_TIMESTAMP(),
-                        '" . $user_id . "',
+                        ?,
                         UNIX_TIMESTAMP())";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) generate_commission_reference_code(), (string) $affiliate_code, (string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $commission, (string) $user_id, (string) $user_id)) or output_error('Query failed.');
             }
             
             // loop through recurring products in order to create recurring commission profiles
@@ -4405,21 +4405,21 @@ function submit_order($type) {
                             last_modified_user_id,
                             last_modified_timestamp)
                         VALUES (
-                            '" . escape($affiliate_code) . "',
-                            '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
-                            '" . $product['order_item_id'] . "',
-                            '" . $product_commission . "',
+                            ?,
+                            ?,
+                            ?,
+                            ?,
                             '1',
-                            '" . $start_date . "',
-                            '" . mb_strtolower($product['recurring_payment_period']) . "',
-                            '" . $product['recurring_number_of_payments'] . "',
-                            '" . escape($product['product_name']) . "',
-                            '" . escape($product['short_description']) . "',
-                            '" . $user_id . "',
+                            ?,
+                            ?,
+                            ?,
+                            ?,
+                            ?,
+                            ?,
                             UNIX_TIMESTAMP(),
-                            '" . $user_id . "',
+                            ?,
                             UNIX_TIMESTAMP())";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $affiliate_code, (string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $product['order_item_id'], (string) $product_commission, (string) $start_date, (string) mb_strtolower($product['recurring_payment_period']), (string) $product['recurring_number_of_payments'], (string) $product['product_name'], (string) $product['short_description'], (string) $user_id, (string) $user_id)) or output_error('Query failed.');
                 }
             }
         }
@@ -4581,9 +4581,9 @@ function submit_order($type) {
 
     // update order number for order
     $query = "UPDATE orders
-             SET order_number = '$order_number'
-             WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+             SET order_number = ?
+             WHERE id = ?";
+    $result = db_q($query, array((string) $order_number, (string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
 
     // Keep the checkout documents with the order as the customer saw them,
     // now that the order has its number. Only reads the order; the totals
@@ -4591,6 +4591,7 @@ function submit_order($type) {
     pg_legal_documents_store($_SESSION['ecommerce']['order_id'] ?? 0, array_keys(array_filter(array(
         'preinfo'  => ($liveform->get_field_value('legal_preinfo') == 1),
         'contract' => ($liveform->get_field_value('legal_contract') == 1),
+        'kvkk'     => ($liveform->get_field_value('legal_kvkk') == 1),
     ))));
 
     // Tell whoever is subscribed that an order was placed.
@@ -5403,10 +5404,10 @@ function submit_order($type) {
                         $query =
                             "UPDATE order_items
                             SET
-                                recurring_profile_id = '" . escape($response['PROFILEID']) . "',
+                                recurring_profile_id = ?,
                                 recurring_profile_enabled = '1'
-                            WHERE id = '" . $product['order_item_id'] . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            WHERE id = ?";
+                        $result = db_q($query, array((string) $response['PROFILEID'], (string) $product['order_item_id'])) or output_error('Query failed.');
                     }
                     
                     break;
@@ -5421,8 +5422,8 @@ function submit_order($type) {
                     $query = "
                         UPDATE order_items
                         SET recurring_profile_enabled = '1'
-                        WHERE id = '" . escape($product['order_item_id']) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        WHERE id = ?";
+                    $result = db_q($query, array((string) $product['order_item_id'])) or output_error('Query failed.');
                 
                     break;
 
@@ -5450,8 +5451,8 @@ function submit_order($type) {
                                 zip_code,
                                 country
                             FROM ship_tos
-                            WHERE id = '" . $product['ship_to_id'] . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            WHERE id = ?";
+                        $result = db_q($query, array((string) $product['ship_to_id'])) or output_error('Query failed.');
                         $row = mysqli_fetch_assoc($result);
                         
                         $sage_shipping_recipient = $row['first_name'] . ' ' . $row['last_name'];
@@ -6392,8 +6393,8 @@ function submit_order($type) {
         // if inventory is enabled for this product and the inventory quantity is not already zero then decrement inventory quantity
         if (($inventory == 1) && ($inventory_quantity != 0)) {
             // the single quotes around the quantity are necessary in order to prevent MySQL from doing strange things
-            $query = "UPDATE products SET inventory_quantity = (inventory_quantity - '" . $quantity . "') WHERE id = '" . $product_id . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "UPDATE products SET inventory_quantity = (inventory_quantity - ?) WHERE id = ?";
+            $result = db_q($query, array((string) $quantity, (string) $product_id)) or output_error('Query failed.');
 
             // Mark the product out of stock from the stock left after this
             // row, not from $inventory_quantity: that value was read before
@@ -6402,14 +6403,15 @@ function submit_order($type) {
             // is unsigned and the session sql_mode is not strict, so a sale
             // through the stock leaves 0. The out_of_stock guard makes the
             // flag and the warning happen once per product.
-            $result = mysqli_query(db::$con,
+            $result = db_q(
                 "UPDATE products SET
                     out_of_stock = '1',
                     out_of_stock_timestamp = UNIX_TIMESTAMP()
                 WHERE
-                    (id = '" . $product_id . "')
+                    (id = ?)
                     AND (inventory_quantity <= 0)
-                    AND (out_of_stock != '1')") or output_error('Query failed.');
+                    AND (out_of_stock != '1')",
+                array((string) $product_id)) or output_error('Query failed.');
 
             if (mysqli_affected_rows(db::$con) > 0) {
                 // The product shows as sold out from now on: every page the
@@ -6453,19 +6455,19 @@ function submit_order($type) {
                     "SELECT calendar_event_id
                     FROM remaining_reservation_spots
                     WHERE
-                        (calendar_event_id = '" . $calendar_event_id . "')
-                        AND (recurrence_number = '" . $recurrence_number . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        (calendar_event_id = ?)
+                        AND (recurrence_number = ?)";
+                $result = db_q($query, array((string) $calendar_event_id, (string) $recurrence_number)) or output_error('Query failed.');
                 
                 // if a remaining spots record was found then decrement it by the quantity
                 if (mysqli_num_rows($result) > 0) {
                     $query =
                         "UPDATE remaining_reservation_spots
-                        SET number_of_remaining_spots = (number_of_remaining_spots - $quantity)
+                        SET number_of_remaining_spots = (number_of_remaining_spots - ?)
                         WHERE
-                            (calendar_event_id = '" . $calendar_event_id . "')
-                            AND (recurrence_number = '" . $recurrence_number . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            (calendar_event_id = ?)
+                            AND (recurrence_number = ?)";
+                    $result = db_q($query, array((int) $quantity, (string) $calendar_event_id, (string) $recurrence_number)) or output_error('Query failed.');
                     
                 // else a remaining spots record was not found, so create new
                 // record using number of initial spots less the spots this
@@ -6479,10 +6481,10 @@ function submit_order($type) {
                             recurrence_number,
                             number_of_remaining_spots)
                         VALUES (
-                            '" . $calendar_event_id . "',
-                            '" . $recurrence_number . "',
-                            '" . $number_of_remaining_spots . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            ?,
+                            ?,
+                            ?)";
+                    $result = db_q($query, array((string) $calendar_event_id, (string) $recurrence_number, (string) $number_of_remaining_spots)) or output_error('Query failed.');
                 }
             }
 
@@ -6504,8 +6506,8 @@ function submit_order($type) {
             // get member id for user
             $query = "SELECT member_id, expiration_date " .
                      "FROM contacts " .
-                     "WHERE id = '$contact_id'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                     "WHERE id = ?";
+            $result = db_q($query, array((string) $contact_id)) or output_error('Query failed');
             $row = mysqli_fetch_assoc($result);
             $member_id = $row['member_id'];
             $expiration_date = $row['expiration_date'];
@@ -6513,8 +6515,8 @@ function submit_order($type) {
             // if user does not have a member id, set member id to the order's reference code and set new member id for user
             if (!$member_id) {
                 $member_id = $reference_code;
-                $query = "UPDATE contacts SET member_id = '" . escape($member_id) . "' WHERE id = '$contact_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                $query = "UPDATE contacts SET member_id = ? WHERE id = ?";
+                $result = db_q($query, array((string) $member_id, (string) $contact_id)) or output_error('Query failed');
             }
 
             // get current date
@@ -6530,8 +6532,8 @@ function submit_order($type) {
             }
 
             // update expiration date for member
-            $query = "UPDATE contacts SET expiration_date = '$new_expiration_date' WHERE member_id = '" . escape($member_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+            $query = "UPDATE contacts SET expiration_date = ? WHERE member_id = ?";
+            $result = db_q($query, array((string) $new_expiration_date, (string) $member_id)) or output_error('Query failed');
             
             // if a membership contact group is selected and membership contact group has not already been added to the array,
             // then add membership contact group to array, so that contact is added to contact group
@@ -6610,8 +6612,8 @@ function submit_order($type) {
 
             // if a send to page is set for this product, set send to page for user
             if ($send_to_page) {
-                $query = "UPDATE user SET user_home = '$send_to_page' WHERE user_id = '$user_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                $query = "UPDATE user SET user_home = ? WHERE user_id = ?";
+                $result = db_q($query, array((string) $send_to_page, (string) $user_id)) or output_error('Query failed');
             }
         }
         
@@ -7772,17 +7774,17 @@ function submit_order($type) {
                             "SELECT COUNT(*)
                             FROM comments
                             WHERE
-                                (page_id = '" . $add_comment_page['id'] . "')
-                                AND (item_id = '$submitted_form_id')
+                                (page_id = ?)
+                                AND (item_id = ?)
                                 AND (item_type = 'submitted_form')
                                 AND (published = '1')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $result = db_q($query, array((string) $add_comment_page['id'], (string) $submitted_form_id)) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
                         $number_of_comments = $row[0];
                         
                         // delete the current record if one exists
-                        $query = "DELETE FROM submitted_form_info WHERE (submitted_form_id = '$submitted_form_id') AND (page_id = '" . $add_comment_page['id'] . "')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "DELETE FROM submitted_form_info WHERE (submitted_form_id = ?) AND (page_id = ?)";
+                        $result = db_q($query, array((string) $submitted_form_id, (string) $add_comment_page['id'])) or output_error('Query failed.');
                         
                         // insert a new record
                         $query = 
@@ -7793,12 +7795,12 @@ function submit_order($type) {
                                 number_of_comments,
                                 newest_comment_id)
                              VALUES (
-                                '$submitted_form_id',
-                                '" . $add_comment_page['id'] . "',
-                                '$number_of_views',
-                                '$number_of_comments',
-                                '$comment_id')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                ?,
+                                ?,
+                                ?,
+                                ?,
+                                ?)";
+                        $result = db_q($query, array((string) $submitted_form_id, (string) $add_comment_page['id'], (string) $number_of_views, (string) $number_of_comments, (string) $comment_id)) or output_error('Query failed.');
                     }
 
                     send_comment_email_to_administrators($comment_id);
@@ -8054,16 +8056,16 @@ function submit_order($type) {
         && ($user_id != '')
     ) {
         // get old reward points in order to get new reward points for user
-        $query = "SELECT user_reward_points FROM user WHERE user_id = '" . $user_id . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT user_reward_points FROM user WHERE user_id = ?";
+        $result = db_q($query, array((string) $user_id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $old_reward_points = $row['user_reward_points'];
         
         $new_reward_points = $old_reward_points + $reward_points;
         
         // update reward points for user
-        $query = "UPDATE user SET user_reward_points = '" . $new_reward_points . "' WHERE user_id = '" . $user_id . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "UPDATE user SET user_reward_points = ? WHERE user_id = ?";
+        $result = db_q($query, array((string) $new_reward_points, (string) $user_id)) or output_error('Query failed.');
     
         // if the user has met the goal,
         // and the user did not already meet the goal before this order,
@@ -8080,8 +8082,8 @@ function submit_order($type) {
                         member_id,
                         expiration_date
                     FROM contacts
-                    WHERE id = '" . $contact_id . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    WHERE id = ?";
+                $result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $member_id = $row['member_id'];
                 $expiration_date = $row['expiration_date'];
@@ -8089,8 +8091,8 @@ function submit_order($type) {
                 // if user does not have a member id, set member id to order number and set new member id for user
                 if ($member_id == '') {
                     $member_id = $order_number;
-                    $query = "UPDATE contacts SET member_id = '" . escape($member_id) . "' WHERE id = '" . $contact_id . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $query = "UPDATE contacts SET member_id = ? WHERE id = ?";
+                    $result = db_q($query, array((string) $member_id, (string) $contact_id)) or output_error('Query failed.');
                 }
                 
                 // if membership days is 0, then give lifetime membership (i.e. set expiration date to 0000-00-00)
@@ -8113,8 +8115,8 @@ function submit_order($type) {
                 }
 
                 // update expiration date for member
-                $query = "UPDATE contacts SET expiration_date = '" . $new_expiration_date . "' WHERE id = '" . $contact_id . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "UPDATE contacts SET expiration_date = ? WHERE id = ?";
+                $result = db_q($query, array((string) $new_expiration_date, (string) $contact_id)) or output_error('Query failed.');
                 
                 // if a membership contact group is selected and membership contact group has not already been added to the array,
                 // then add membership contact group to array, so that contact is added to contact group
@@ -8150,8 +8152,8 @@ function submit_order($type) {
     // loop through all contact groups that contact should be added to
     foreach ($contact_groups as $contact_group_id) {
         // check if contact group exists
-        $query = "SELECT id FROM contact_groups WHERE id = '$contact_group_id'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT id FROM contact_groups WHERE id = ?";
+        $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
         
         // if contact group exists
         if (mysqli_num_rows($result) > 0) {
@@ -8160,9 +8162,9 @@ function submit_order($type) {
                 "SELECT contact_id
                 FROM contacts_contact_groups_xref
                 WHERE
-                    (contact_id = '$contact_id')
-                    AND (contact_group_id = '$contact_group_id')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    (contact_id = ?)
+                    AND (contact_group_id = ?)";
+            $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
             
             // if contact is not already in contact group, then add contact to contact group
             if (mysqli_num_rows($result) == 0) {
@@ -8171,9 +8173,9 @@ function submit_order($type) {
                         contact_id,
                         contact_group_id)
                     VALUES (
-                        '$contact_id',
-                        '$contact_group_id')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        ?,
+                        ?)";
+                $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
             }
         }
     }

@@ -26,4 +26,4 @@ description: Lists inside a record in the designer (#1688): palette items, where
 
 ## What is not done yet?
 - Tried by unit tests only: a browser round (palette drag into a form list and a detail view, the panel, the band, Preview) is still owed.
-- A source change keeps the row's bindings (no rebinding offer). No condition on a list's own loop_area; `eo_visible_if` inside a list is not resolved (W23).
+- A source change keeps the row's bindings (no rebinding offer). No condition on a list's own loop_area; a flag naming a row value: [[widget-list-flags]].

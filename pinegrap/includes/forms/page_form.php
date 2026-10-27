@@ -1267,17 +1267,17 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 <div class="row">
                     <div class="col-12 sm:col-6 lg:col-4 my-3" id="catalog_image_width_row" style="' . $catalog_image_width_row_style . '">
                         <label for="catalog_image_width" class="form-label">' . lang('Image Width') . '</label>
-                        <div class="input-group my-3">
-                            <input value="' . h($catalog_image_width) . '" type="text" name="catalog_image_width" id="catalog_image_width" maxlength="4" class="form-control text-end" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
-                            <label class="input-group-text" for="catalog_image_width">' . lang('pixels') . '</label>
-                        </div>
+                        <label class="form-control form-adorn form-adorn-end my-3">
+                            <span class="form-adorn-text" aria-hidden="true">' . lang('pixels') . '</span>
+                            <input value="' . h($catalog_image_width) . '" type="text" name="catalog_image_width" id="catalog_image_width" maxlength="4" class="form-ghost text-end" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
+                        </label>
                     </div>
                     <div class="col-12 sm:col-6 lg:col-4 my-3" id="catalog_image_height_row" style="' . $catalog_image_height_row_style . '">
                         <label for="catalog_image_height" class="form-label">' . lang('Image Height') . '</label>
-                        <div class="input-group my-3">
-                            <input value="' . h($catalog_image_height) . '" type="text" name="catalog_image_height" id="catalog_image_height" maxlength="4" class="form-control text-end" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
-                            <label class="input-group-text" for="catalog_image_height">' . lang('pixels') . '</label>
-                        </div>
+                        <label class="form-control form-adorn form-adorn-end my-3">
+                            <span class="form-adorn-text" aria-hidden="true">' . lang('pixels') . '</span>
+                            <input value="' . h($catalog_image_height) . '" type="text" name="catalog_image_height" id="catalog_image_height" maxlength="4" class="form-ghost text-end" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
+                        </label>
                     </div>
                 </div>
             </div>
@@ -1407,10 +1407,10 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                             </div>
                             <div class="col-12 md:col-6 lg:col-4 my-1" id="express_order_form_label_column_width_row" style="' . $express_order_form_label_column_width_row_style . '">
                                 <label for="express_order_form_label_column_width" class="form-label">' . lang('Label Column Width') . '</label>
-                                <div class="input-group">
-                                    <input value="' . h(($express_order_properties['form_label_column_width'] ?? '')) . '" type="text" name="express_order_form_label_column_width" id="express_order_form_label_column_width" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
-                                    <label class="input-group-text" for="form_label_column_width">%</label>
-                                </div>
+                                <label class="form-control form-adorn form-adorn-end">
+                                    <span class="form-adorn-text" aria-hidden="true">%</span>
+                                    <input value="' . h(($express_order_properties['form_label_column_width'] ?? '')) . '" type="text" name="express_order_form_label_column_width" id="express_order_form_label_column_width" maxlength="3" class="form-ghost" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                </label>
                                 <div class="form-text text-end">'. lang('leave blank for auto') . '</div>
                             </div>
                         </div>
@@ -1655,10 +1655,10 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                             </div>
                             <div class="col-12 md:col-6 lg:col-4 my-1" id="shipping_address_and_arrival_form_label_column_width_row" style="' . $shipping_address_and_arrival_form_label_column_width_row_style . '">
                                 <label for="shipping_address_and_arrival_form_label_column_width" class="form-label">' . lang('Label Column Width') . '</label>
-                                <div class="input-group">
-                                    <input value="' . h(($shipping_address_and_arrival_properties['form_label_column_width'] ?? '')) . '" type="text" name="shipping_address_and_arrival_form_label_column_width" id="shipping_address_and_arrival_form_label_column_width" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
-                                    <label class="input-group-text" for="shipping_address_and_arrival_form_label_column_width">%</label>
-                                </div>
+                                <label class="form-control form-adorn form-adorn-end">
+                                    <span class="form-adorn-text" aria-hidden="true">%</span>
+                                    <input value="' . h(($shipping_address_and_arrival_properties['form_label_column_width'] ?? '')) . '" type="text" name="shipping_address_and_arrival_form_label_column_width" id="shipping_address_and_arrival_form_label_column_width" maxlength="3" class="form-ghost" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                </label>
                                 <div class="form-text text-end">'. lang('leave blank for auto') . '</div>
                             </div>
                         </div>
@@ -1747,10 +1747,10 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                             </div>
                             <div class="col-12 md:col-6 lg:col-4 my-1" id="billing_information_form_label_column_width_row" style="' . $billing_information_form_label_column_width_row_style . '">
                                 <label for="billing_information_form_label_column_width" class="form-label">' . lang('Label Column Width') . '</label>
-                                <div class="input-group">
-                                    <input value="' . h(($billing_information_properties['form_label_column_width'] ?? '')) . '" type="text" name="billing_information_form_label_column_width" id="billing_information_form_label_column_width" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
-                                    <label class="input-group-text" for="billing_information_form_label_column_width">%</label>
-                                </div>
+                                <label class="form-control form-adorn form-adorn-end">
+                                    <span class="form-adorn-text" aria-hidden="true">%</span>
+                                    <input value="' . h(($billing_information_properties['form_label_column_width'] ?? '')) . '" type="text" name="billing_information_form_label_column_width" id="billing_information_form_label_column_width" maxlength="3" class="form-ghost" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                </label>
                                 <div class="form-text text-end">'. lang('leave blank for auto') . '</div>
                             </div>
                         </div>
@@ -1931,8 +1931,8 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 form_list_view_name,
                 subject_form_field_id
             FROM form_view_directories_form_list_views_xref
-            WHERE form_view_directory_page_id = '" . escape($page_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE form_view_directory_page_id = ?";
+        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
         
         // create selected form list views array
         $selected_form_list_views = array();
@@ -2044,10 +2044,10 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                         <div class="row">
                             <div class="col-12 md:col-12 my-1">
                                 <label for="update_address_book_address_type_page_id" class="form-label">' . lang('Quiz Pass Percentage') . '</label>
-                                <div class="input-group">
-                                    <input value="' . h($custom_form_properties['quiz_pass_percentage'] ?? '') . '" type="text" name="custom_form_quiz_pass_percentage" id="custom_form_quiz_pass_percentage" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
-                                    <label class="input-group-text" for="custom_form_quiz_pass_percentage">%</label>
-                                </div>
+                                <label class="form-control form-adorn form-adorn-end">
+                                    <span class="form-adorn-text" aria-hidden="true">%</span>
+                                    <input value="' . h($custom_form_properties['quiz_pass_percentage'] ?? '') . '" type="text" name="custom_form_quiz_pass_percentage" id="custom_form_quiz_pass_percentage" maxlength="3" class="form-ghost" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                </label>
                             </div>
                         </div>
                     </div>
@@ -2067,10 +2067,10 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             </div>
             <div class="col-12 md:col-6 lg:col-4 my-3" id="custom_form_label_column_width_row" style="' . $custom_form_label_column_width_row_style . '">
                 <label for="custom_form_label_column_width" class="form-label">' . lang('Label Column Width') . '</label>
-                <div class="input-group">
-                    <input value="' . h(($custom_form_properties['label_column_width'] ?? '')) . '" type="text" name="custom_form_label_column_width" id="custom_form_label_column_width" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
-                    <label class="input-group-text" for="custom_form_label_column_width">%</label>
-                </div>
+                <label class="form-control form-adorn form-adorn-end">
+                    <span class="form-adorn-text" aria-hidden="true">%</span>
+                    <input value="' . h(($custom_form_properties['label_column_width'] ?? '')) . '" type="text" name="custom_form_label_column_width" id="custom_form_label_column_width" maxlength="3" class="form-ghost" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
+                </label>
                 <div class="form-text text-end">' . lang('leave blank for auto') . '</div>
             </div>
             <div class="col-12 md:col-6 lg:col-4 my-3" id="custom_form_submit_button_label_row" style="' . $custom_form_submit_button_label_row_style . '">
@@ -2256,10 +2256,10 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                         <div class="row">
                             <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label for="custom_form_membership_days" class="form-label">' . lang('Trial Length') . '</label>
-                                <div class="input-group">
-                                    <input value="' . h(($custom_form_properties['membership_days'] ?? '')) . '" type="text" name="custom_form_membership_days" id="custom_form_membership_days" class="form-control" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
-                                    <span class="input-group-text">' . lang('day(s)') . '</span>
-                                </div>
+                                <label class="form-control form-adorn form-adorn-end">
+                                    <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                                    <input value="' . h(($custom_form_properties['membership_days'] ?? '')) . '" type="text" name="custom_form_membership_days" id="custom_form_membership_days" class="form-ghost" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
+                                </label>
                             </div>
                             <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label class="form-label" for="custom_form_membership_start_page_id">' . lang('Set Member\'s Start Page to') . '</label>
@@ -2284,10 +2284,10 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                             </div>
                             <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label for="custom_form_private_days" class="form-label">' . lang('Length') . '</label>
-                                <div class="input-group">
-                                    <input value="' . h(($custom_form_properties['private_days'] ?? '')) . '" type="text" name="custom_form_private_days" id="custom_form_private_days" class="form-control" size="7" maxlength="9" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
-                                    <span class="input-group-text">' . lang('day(s)') . '</span>
-                                </div>
+                                <label class="form-control form-adorn form-adorn-end">
+                                    <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                                    <input value="' . h(($custom_form_properties['private_days'] ?? '')) . '" type="text" name="custom_form_private_days" id="custom_form_private_days" class="form-ghost" size="7" maxlength="9" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
+                                </label>
                                 <div class="text-end form-text">' . lang('leave blank for no expiration') . '</div>
                             </div>
                             <div class="col-12 md:col-6 lg:col-4 my-1">
@@ -2317,10 +2317,10 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-1">
                                     <label for="custom_form_offer_days" class="form-label">' . lang('Validity Length') . '</label>
-                                    <div class="input-group">
-                                        <input value="' . h(($custom_form_properties['offer_days'] ?? '')) . '" type="text" name="custom_form_offer_days" id="custom_form_offer_days" class="form-control" size="7" maxlength="9" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
-                                        <span class="input-group-text">' . lang('day(s)') . '</span>
-                                    </div>
+                                    <label class="form-control form-adorn form-adorn-end">
+                                        <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                                        <input value="' . h(($custom_form_properties['offer_days'] ?? '')) . '" type="text" name="custom_form_offer_days" id="custom_form_offer_days" class="form-ghost" size="7" maxlength="9" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
+                                    </label>
                                     <div class="text-end form-text">' . lang('leave blank for no expiration') . '</div>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-1">
@@ -2558,10 +2558,10 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                         <div class="row">
                             <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label for="form_view_directory_summary_days" class="form-label">' . lang('Date Range') . '</label>
-                                <div class="input-group">
-                                    <input value="' . $form_view_directory_summary_days . '" type="text" name="form_view_directory_summary_days" id="form_view_directory_summary_days" class="form-control" size="7" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
-                                    <span class="input-group-text">' . lang('day(s)') . '</span>
-                                </div>
+                                <label class="form-control form-adorn form-adorn-end">
+                                    <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                                    <input value="' . $form_view_directory_summary_days . '" type="text" name="form_view_directory_summary_days" id="form_view_directory_summary_days" class="form-ghost" size="7" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
+                                </label>
                             </div>
                             <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label for="form_view_directory_summary_maximum_number_of_results" class="form-label">' . lang('Maximum Number of Results') . '</label>
@@ -2613,9 +2613,9 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     "SELECT calendar_id
                     FROM calendar_views_calendars_xref
                     WHERE
-                        (calendar_id = '" . escape($calendar['id']) . "')
-                        AND (page_id = '" . escape($page_id) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        (calendar_id = ?)
+                        AND (page_id = ?)";
+                $result = db_q($query, array((string) $calendar['id'], (string) $page_id)) or output_error('Query failed.');
                 
                 $checked = '';
                 
@@ -2631,9 +2631,9 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     "SELECT calendar_id
                     FROM calendar_event_views_calendars_xref
                     WHERE
-                        (calendar_id = '" . escape($calendar['id']) . "')
-                        AND (page_id = '" . escape($page_id) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        (calendar_id = ?)
+                        AND (page_id = ?)";
+                $result = db_q($query, array((string) $calendar['id'], (string) $page_id)) or output_error('Query failed.');
                 
                 $checked = '';
                 
@@ -2790,10 +2790,10 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                         </div>
                         <div class="col-12 md:col-8 lg:col-6 xl:col-4 my-3" id="photo_gallery_thumbnail_max_size_row" style="' . $photo_gallery_thumbnail_max_size_row_style . '">
                             <label for="photo_gallery_thumbnail_max_size" class="form-label">' . lang('Thumbnail Max Size') . '</label>
-                            <div class="input-group">
-                                <input value="' . $photo_gallery_thumbnail_max_size . '" type="text" name="photo_gallery_thumbnail_max_size" id="photo_gallery_thumbnail_max_size" class="form-control" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="100"  style="text-align: right;" />
-                                <label for="photo_gallery_thumbnail_max_size"  class="input-group-text">' . lang('pixels') . '</label>
-                            </div>
+                            <label class="form-control form-adorn form-adorn-end">
+                                <span class="form-adorn-text" aria-hidden="true">' . lang('pixels') . '</span>
+                                <input value="' . $photo_gallery_thumbnail_max_size . '" type="text" name="photo_gallery_thumbnail_max_size" id="photo_gallery_thumbnail_max_size" class="form-ghost" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="100"  style="text-align: right;" />
+                            </label>
                         </div>
                         ' . $output_search_results_page_type_properties . '
                         <div class="col-12 my-3" id="update_address_book_address_type_row" style="' . $update_address_book_address_type_row_style . '">

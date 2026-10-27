@@ -27,6 +27,9 @@
  *   motion    when each box, arrow and thread appears as the template is
  *             placed (ws_flow_template_motion())
  *
+ * Beside them, templates a scheduled action has no form for: tasks that
+ * wait for each other, a wait between boxes, approvals and their outcomes.
+ *
  * Templates whose counts the person may not read, or whose texts a flow
  * cannot fill yet (a newcomer, an event's record, a count "since the last
  * run"), are not offered.
@@ -88,12 +91,22 @@ function ws_flow_templates($fill)
         return in_array($key, $metrics, true);
     };
 
+    // The scheduler reads a start date as a day of the site's calendar, so
+    // the days are counted on the date alone, in UTC: in PHP's default
+    // timezone "next monday" is a local midnight, which east of UTC is
+    // still the Sunday before in UTC.
+    $utc = new DateTimeZone('UTC');
     $today = (string) ($fill['today'] ?? '');
-    $day = (preg_match('/^\d{4}-\d{2}-\d{2}$/', $today) === 1) ? strtotime($today . ' 12:00:00 UTC') : time();
-    $tomorrow = gmdate('Y-m-d', $day + 86400);
-    $monday = gmdate('Y-m-d', strtotime('next monday', $day));
-    $first_of_month = gmdate('Y-m-01', strtotime('first day of next month', $day));
-    $today = gmdate('Y-m-d', $day);
+    $day = (preg_match('/^\d{4}-\d{2}-\d{2}$/', $today) === 1) ? date_create_immutable($today . ' 12:00:00', $utc) : false;
+
+    if (!$day) {
+        $day = date_create_immutable(date('Y-m-d') . ' 12:00:00', $utc);
+    }
+
+    $tomorrow = $day->modify('+1 day')->format('Y-m-d');
+    $monday = $day->modify('next monday')->format('Y-m-d');
+    $first_of_month = $day->modify('first day of next month')->format('Y-m-d');
+    $today = $day->format('Y-m-d');
 
     // A box's sentence: a follow-up's {{result}} is what the box it follows
     // said, which a flow reads from that box.
@@ -246,6 +259,70 @@ function ws_flow_templates($fill)
         ),
         'edges' => array(array('start', 'task', 'next')));
 
+    // The templates a scheduled action has no form for: tasks that wait for
+    // each other, a wait between them, approvals and their outcomes.
+
+    // A new customer welcomed, then asked three days later how it is going;
+    // the person is told when that follow-up is not done within two days.
+    $out[] = array('key' => 'new_customer', 'category' => 'sales', 'icon' => 'bi-person-plus',
+        'title' => lang('New customer'),
+        'help' => lang('A welcome task, a follow-up three days after it is done, and a word to you when the follow-up waits over two days.'),
+        'boxes' => array(
+            'start'   => array('kind' => 'manual', 'config' => array('subject' => '')),
+            'welcome' => array('kind' => 'task', 'config' => array('title' => lang('Welcome the new customer'),
+                'description' => lang('Call or write to say welcome, and note what they need.'), 'assignees' => array($me), 'due_in' => 1, 'priority' => 'high'),
+                'setting' => array('person', 'assignees')),
+            'wait'    => array('kind' => 'delay', 'config' => array('amount' => 3, 'unit' => 'days')),
+            'follow'  => array('kind' => 'task', 'config' => array('title' => lang('Ask the customer how it is going'), 'description' => '',
+                'assignees' => array($me), 'due_in' => 2, 'timeout' => 48), 'setting' => array('person', 'assignees')),
+            'late'    => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                'text' => lang('Nobody has asked the new customer how it is going yet.')), 'setting' => array('person', 'user_ids')),
+        ),
+        'edges' => array(array('start', 'welcome', 'next'), array('welcome', 'wait', 'done'), array('wait', 'follow', 'done'),
+            array('follow', 'late', 'timeout')));
+
+    // A quote approved in a channel, with a next step for each way the
+    // request ends; a withdrawn request ends the flow.
+    $out[] = array('key' => 'quote_approval', 'category' => 'sales', 'icon' => 'bi-file-earmark-check',
+        'title' => lang('Quote approval'),
+        'help' => lang('Asks for a quote to be approved within two days, then opens the next task: send it, or rework it.'),
+        'boxes' => array(
+            'start'  => array('kind' => 'manual', 'config' => array('subject' => '')),
+            'ask'    => array('kind' => 'approval', 'config' => array('channel_id' => $channel, 'title' => lang('Approve this quote'),
+                'text' => lang('Please look at the quote and approve or reject it.'), 'approvers' => array($me), 'rule' => 'any', 'closes_in' => 48),
+                'settings' => array(array('channel', 'channel_id'), array('person', 'approvers'))),
+            'send'   => array('kind' => 'task_open', 'config' => array('title' => lang('Send the approved quote to the customer'), 'description' => '',
+                'assignees' => array($me), 'channel_id' => 0, 'due_in' => 1, 'priority' => 'high'), 'setting' => array('person', 'assignees')),
+            'rework' => array('kind' => 'task_open', 'config' => array('title' => lang('Rework the quote'), 'description' => '',
+                'assignees' => array($me), 'channel_id' => 0, 'due_in' => 2, 'priority' => 'normal'), 'setting' => array('person', 'assignees')),
+            'late'   => array('kind' => 'notify', 'config' => array('user_ids' => array($me), 'text' => lang('Nobody decided on the quote in time.')),
+                'setting' => array('person', 'user_ids')),
+            'gone'   => array('kind' => 'end', 'config' => array()),
+        ),
+        'edges' => array(array('start', 'ask', 'next'), array('ask', 'send', 'approved'), array('ask', 'rework', 'rejected'),
+            array('ask', 'late', 'expired'), array('ask', 'gone', 'withdrawn')));
+
+    // A text written, approved once the writing task is done, then
+    // published; the writer is told when it is rejected.
+    $out[] = array('key' => 'text_review', 'category' => 'team', 'icon' => 'bi-pencil-square',
+        'title' => lang('Text review before publishing'),
+        'help' => lang('A writing task, an approval once it is done, then a task to publish it; you are told when the text is rejected.'),
+        'boxes' => array(
+            'start'   => array('kind' => 'manual', 'config' => array('subject' => '')),
+            'write'   => array('kind' => 'task', 'config' => array('title' => lang('Write the text'), 'description' => '',
+                'assignees' => array($me), 'due_in' => 5, 'priority' => 'normal'), 'setting' => array('person', 'assignees')),
+            'review'  => array('kind' => 'approval', 'config' => array('channel_id' => $channel, 'title' => lang('Approve the text for publishing'),
+                'text' => lang('The writing task #{{node.write.task_id}} is done. Please read the text and approve or reject it.'),
+                'approvers' => array($me), 'rule' => 'any', 'closes_in' => 72),
+                'settings' => array(array('channel', 'channel_id'), array('person', 'approvers'))),
+            'publish' => array('kind' => 'task_open', 'config' => array('title' => lang('Publish the approved text'), 'description' => '',
+                'assignees' => array($me), 'channel_id' => 0, 'due_in' => 1, 'priority' => 'normal'), 'setting' => array('person', 'assignees')),
+            'told'    => array('kind' => 'notify', 'config' => array('user_ids' => array($me), 'text' => lang('The text was not approved.')),
+                'setting' => array('person', 'user_ids')),
+        ),
+        'edges' => array(array('start', 'write', 'next'), array('write', 'review', 'done'), array('review', 'publish', 'approved'),
+            array('review', 'told', 'rejected')));
+
     return array_map('ws_flow_template_build', $out);
 }
 
@@ -256,7 +333,8 @@ function ws_flow_templates($fill)
  * 112 apart. Pure.
  *
  * @param array $spec key, category, icon, title, help, boxes (id => kind,
- *                    config, setting [type, key]), edges ([from, to, on])
+ *                    config, setting [type, key] or settings, a list of
+ *                    them), edges ([from, to, on])
  * @return array
  */
 function ws_flow_template_build($spec)
@@ -278,8 +356,8 @@ function ws_flow_template_build($spec)
         $rows[$column] = $row + 1;
         $nodes[] = array('id' => $id, 'kind' => $box['kind'], 'label' => '', 'x' => $column * 256, 'y' => $row * 112, 'config' => $box['config']);
 
-        if (!empty($box['setting'])) {
-            list($type, $key) = $box['setting'];
+        foreach (!empty($box['setting']) ? array($box['setting']) : (array) ($box['settings'] ?? array()) as $setting) {
+            list($type, $key) = $setting;
             $settings[$type] = $settings[$type] ?? array('type' => $type, 'targets' => array());
             $settings[$type]['targets'][] = array($id, $key);
         }
@@ -592,4 +670,125 @@ function ws_flow_template_setup($viewer, $flow, $data)
     $out['publish_error'] = $out['published'] ? '' : (string) $published['error'];
 
     return $out;
+}
+
+/**
+ * A scheduled action as a flow graph its boxes run the same way (pure): the
+ * "when" as the start box (at → schedule, event, join, trigger → started by
+ * hand), each condition a condition box on the yes arrow, the step its step
+ * box (task → task_open, trigger → start_action), each follow-up a box on
+ * the arrow of its outcome (skipped: the no arrow of every condition). A
+ * follow-up on failed that starts the action itself again ($self_id) is the
+ * step box's own retry, as many times as the chain's depth allows. A
+ * follow-up's {{result}} reads the step box's sentence. What a flow keeps
+ * otherwise is told in left, in sentences: a follow-up on skipped without a
+ * condition, and the follow-ups of an approval on done, which a flow runs
+ * once the request is approved rather than once it is asked. Boxes are laid
+ * out as the templates are (ws_flow_template_build()).
+ *
+ * @param array    $data    name, rules, action, follow as the form reads them
+ *                          (ws_scheduled_form_data(), a draft's data)
+ * @param string[] $money   the counts in money (ws_scheduled_money_metrics()):
+ *                          their condition is kept in minor units, the box
+ *                          takes the number as written
+ * @param int      $self_id the action's own id, 0 for a draft
+ * @return array name, graph (ws_flow_graph_normalize()), left (sentences)
+ */
+function ws_flow_graph_from_scheduled($data, $money = array(), $self_id = 0)
+{
+    $data = is_array($data) ? $data : array();
+    $rules = array_values(array_filter((array) ($data['rules'] ?? array()), 'is_array'));
+    $rules = function_exists('ws_scheduled_rules_as_sent') ? ws_scheduled_rules_as_sent($rules, $money) : $rules;
+    $boxes = array();
+    $edges = array();
+    $left = array();
+    $start = array('kind' => 'manual', 'config' => array('subject' => ''));
+    $conditions = array();
+
+    foreach ($rules as $rule) {
+        $type = (string) ($rule['type'] ?? '');
+        unset($rule['type'], $rule['label']);
+
+        if (($type === 'at') && ($start['kind'] === 'manual')) {
+            $start = array('kind' => 'schedule', 'config' => $rule);
+        } elseif (in_array($type, array('event', 'join'), true) && ($start['kind'] === 'manual')) {
+            $start = array('kind' => $type, 'config' => $rule);
+        } elseif (in_array($type, ws_flow_condition_types(), true)) {
+            $conditions[] = array('kind' => 'condition', 'config' => array('rule' => array('type' => $type) + $rule));
+        }
+    }
+
+    // A box's settings as the action keeps them: its type gives the box,
+    // addresses kept as a list become the one text the box takes.
+    $box = function ($action) {
+        $action = is_array($action) ? $action : array();
+        $type = (string) ($action['type'] ?? '');
+        $kinds = array('task' => 'task_open', 'trigger' => 'start_action');
+        unset($action['type'], $action['label'], $action['page_label']);
+
+        if (isset($action['to']) && is_array($action['to'])) {
+            $action['to'] = implode(', ', $action['to']);
+        }
+
+        return array('kind' => $kinds[$type] ?? $type, 'config' => $action);
+    };
+
+    $boxes['start'] = $start;
+    $from = array('start', 'next');
+
+    foreach ($conditions as $i => $condition) {
+        $id = 'if' . ($i + 1);
+        $boxes[$id] = $condition;
+        $edges[] = array($from[0], $id, $from[1]);
+        $from = array($id, 'yes');
+    }
+
+    $step = $box($data['action'] ?? array());
+    $boxes['step'] = $step;
+    $edges[] = array($from[0], 'step', $from[1]);
+    $n = 0;
+
+    foreach ((array) ($data['follow'] ?? array()) as $item) {
+        $on = (string) ($item['on'] ?? '');
+        $do = is_array($item['do'] ?? null) ? $item['do'] : array();
+
+        if (($on === 'failed') && ($self_id > 0) && (($do['type'] ?? '') === 'trigger') && ((int) ($do['target_id'] ?? 0) === (int) $self_id)) {
+            $boxes['step']['config']['retry'] = WS_FLOW_RETRY_MAX;
+            $boxes['step']['config']['retry_after'] = max(1, (int) ($do['delay'] ?? 1));
+            continue;
+        }
+
+        if (($on === 'skipped') && empty($conditions)) {
+            $left[] = lang('A follow-up on skipped was left out: the action has no condition that could skip it.');
+            continue;
+        }
+
+        $id = 'then' . (++$n);
+        $boxes[$id] = $box($do);
+
+        foreach ($boxes[$id]['config'] as $key => $value) {
+            if (is_string($value)) {
+                $boxes[$id]['config'][$key] = str_replace('{{result}}', '{{node.step.text}}', $value);
+            }
+        }
+
+        if ($on === 'skipped') {
+            foreach (array_keys($conditions) as $i) {
+                $edges[] = array('if' . ($i + 1), $id, 'no');
+            }
+
+            continue;
+        }
+
+        if (($on === 'done') && ($step['kind'] === 'approval')) {
+            $left[] = lang('A follow-up of the approval now runs once the request is approved, not once it is asked.');
+            $on = 'approved';
+        }
+
+        $edges[] = array('step', $id, in_array($on, array('done', 'failed', 'always', 'approved'), true) ? $on : 'always');
+    }
+
+    $built = ws_flow_template_build(array('key' => '', 'category' => '', 'title' => '', 'help' => '', 'icon' => '', 'boxes' => $boxes, 'edges' => $edges));
+
+    return array('name' => (string) ($data['name'] ?? ''), 'graph' => $built['graph'], 'left' => $left);
 }

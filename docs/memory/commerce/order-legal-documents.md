@@ -22,7 +22,7 @@ description: Legal documents (pre-information form, distance sales contract): se
 - Panel order view (`view_order.php`, left column under Affiliate): `pg_legal_documents_panel_card()` lists each document, its acceptance time or "Not accepted", the IP as title, a link to the copy. No rows, no card.
 
 ## How does the API read them?
-- `GET /orders/{id}/documents` (`orders:read`, `api_orders_documents()`, object `OrderDocument`): one page, every `order_documents` row of the order in id order, each with `type`, `label` (null for a type `pg_legal_document_types()` does not name yet, such as `kvkk`), `accepted` + `accepted_at`, `ip`, `user_agent`, `created_at` and the stored `html`. Missing table or no rows → empty list, never an error; the switch being off does not hide kept copies. `?fields=` drops the HTML. The MCP tool comes with the route.
+- `GET /orders/{id}/documents` (`orders:read`, `api_orders_documents()`, object `OrderDocument`): one page, every `order_documents` row of the order in id order, each with `type`, `label` (`pg_legal_document_labels()`, `kvkk` included), `accepted` + `accepted_at`, `ip`, `user_agent`, `created_at` and the stored `html`. Missing table or no rows → empty list, never an error; the switch being off does not hide kept copies. `?fields=` drops the HTML. The MCP tool comes with the route.
 
 ## Where is the checkout side?
 - docs/memory/commerce/checkout-legal-checkboxes.md
@@ -31,4 +31,4 @@ description: Legal documents (pre-information form, distance sales contract): se
 - The order view widget (My Account, thank-you page) links each kept copy: docs/memory/commerce/order-view-legal-documents.md.
 
 ## What is left?
-- plans/checkout-legal-documents.md (KVKK); order-withdrawal-deadline.md.
+- KVKK at checkout: checkout-kvkk-notice.md; plans/checkout-legal-documents.md; order-withdrawal-deadline.md.

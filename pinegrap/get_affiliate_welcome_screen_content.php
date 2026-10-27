@@ -19,8 +19,8 @@
 function get_affiliate_welcome_screen_content() {
 
     // get commission rate for affiliate
-    $query = "SELECT affiliate_commission_rate FROM contacts WHERE affiliate_code = '" . escape(($_SESSION['software']['affiliate_welcome']['affiliate_code'] ?? '')) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT affiliate_commission_rate FROM contacts WHERE affiliate_code = ?";
+    $result = db_q($query, array((string) ($_SESSION['software']['affiliate_welcome']['affiliate_code'] ?? ''))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     // if affiliate has a commission rate specifically defined, then use that rate

@@ -72,8 +72,8 @@ function get_catalog_detail($properties) {
                 address_name,
                 attributes
             FROM product_groups
-            WHERE id = '" . escape($item['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $item['id'])) or output_error('Query failed.');
         
     } else {
         // get product information
@@ -95,8 +95,8 @@ function get_catalog_detail($properties) {
                 backorder,
                 out_of_stock_message
             FROM products
-            WHERE id = '" . escape($item['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $item['id'])) or output_error('Query failed.');
     }
     
     $row = mysqli_fetch_assoc($result);
@@ -112,12 +112,12 @@ function get_catalog_detail($properties) {
     //check if type is product group or product
     if($item['type'] == 'product group'){
     	//check for image list from product_groups_images_xref
-    	$item_images = "SELECT product_group,file_name FROM product_groups_images_xref WHERE product_group = '" . $item['id'] . "'";
-        $image_results = mysqli_query(db::$con, $item_images) or output_error('Query failed');
+    	$item_images = "SELECT product_group,file_name FROM product_groups_images_xref WHERE product_group = ?";
+        $image_results = db_q($item_images, array((string) $item['id'])) or output_error('Query failed');
 	} else {
     	//check for image list from products_images_xref
-    	$item_images = "SELECT product,file_name FROM products_images_xref WHERE product = '" . $item['id'] . "'";
-        $image_results = mysqli_query(db::$con, $item_images) or output_error('Query failed');
+    	$item_images = "SELECT product,file_name FROM products_images_xref WHERE product = ?";
+        $image_results = db_q($item_images, array((string) $item['id'])) or output_error('Query failed');
     }
     //if code has ^^image_loop_start^^ and ^^image_url^^ and ^^image_loop_end^^. with these we can make an ease loop
     if( (strpos($row['code'], '^^image_url^^') !== false)&&

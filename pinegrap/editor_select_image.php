@@ -496,7 +496,7 @@ if ($number_of_results > 0) {
 
         $output_images .=
             '<div class="col">
-                <button type="button" class="esi-tile image' . h($images[$key]['access_control_type']) . '" onclick="' . $output_onclick . '" title="' . lang('Image Details') . '" data-bs-content="' . $output_details . '">
+                <button type="button" class="esi-tile hover-lift image' . h($images[$key]['access_control_type']) . '" onclick="' . $output_onclick . '" title="' . lang('Image Details') . '" data-bs-content="' . $output_details . '">
                     <span class="esi-thumb">
                         <img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . OUTPUT_PATH . h($images[$key]['name']) . '" class="lazy" alt="' . h($images[$key]['name']) . '">
                         <span class="esi-overlay"><span class="bi bi-check-lg me-1"></span>' . lang('Select') . '</span>
@@ -645,13 +645,13 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
     background-color: transparent;
     color: inherit;
     text-align: left;
-    transition: border-color .15s ease-in-out, background-color .15s ease-in-out, transform .15s ease-in-out;
+    --pg-lift-y: -2px;
+    --pg-lift-also: border-color .15s ease-in-out, background-color .15s ease-in-out;
 }
 
 .esi-tile:hover,
 .esi-tile:focus-visible {
     outline: 0;
-    transform: translateY(-2px);
     border-color: var(--pg-logo-color-1);
     background-color: var(--pg-bg-1);
 }
@@ -704,7 +704,7 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
 }
 
 .esi-tile-missing { cursor: not-allowed; opacity: .5; }
-.esi-tile-missing:hover { transform: none; border-color: transparent; background-color: transparent; }
+.esi-tile-missing:hover { border-color: transparent; background-color: transparent; }
 
 .esi-empty { padding: 4.5rem 1rem; }
 .esi-empty .bi-images { font-size: 3rem; opacity: .3; margin-bottom: 1rem; }

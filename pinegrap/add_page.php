@@ -234,8 +234,8 @@ if (!$_POST) {
     
     // if page is a custom form, check to see if there is another page with this same form name
     if ($_POST['type'] == 'custom form') {
-        $query = "SELECT id FROM custom_form_pages WHERE form_name = '" . escape($_POST['custom_form_form_name'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT id FROM custom_form_pages WHERE form_name = ?";
+        $result = db_q($query, array((string) ($_POST['custom_form_form_name'] ?? ''))) or output_error('Query failed.');
 
         // if there is another page with this form name, output error
         if (mysqli_num_rows($result) > 0) {
@@ -265,6 +265,7 @@ if (!$_POST) {
 
     $sql_style_fields = "";
     $sql_style_values = "";
+    $style_values = array();
     
     // if user role is Administrator, Designer, or Manager, then allow user to set style and mobile style for folder
     if ($user['role'] < 3) {
@@ -273,8 +274,10 @@ if (!$_POST) {
             mobile_style_id,";
 
         $sql_style_values =
-            "'" . escape($_POST['style'] ?? '') . "',
-            '" . escape($_POST['mobile_style_id'] ?? '') . "',";
+            "?,
+            ?,";
+
+        $style_values = array((string) ($_POST['style'] ?? ''), (string) ($_POST['mobile_style_id'] ?? ''));
     }
     
     // if the user has access to the selected page type, then set page type to selected page type
@@ -386,22 +389,32 @@ if (!$_POST) {
             $sql_noindex_columns
             sitemap)
         VALUES (
-            '" . escape($name) . "',
-            '" . escape($_POST['folder'] ?? '') . "',
-            '" . escape($type) . "',
-            '" . e($layout_type) . "',
+            ?,
+            ?,
+            ?,
+            ?,
             'no',
             '0',
             '',
             UNIX_TIMESTAMP(),
-            '$user[id]',
+            ?,
             $sql_style_values
             '',
             '',
-            '" . escape(lang('We\'re sorry. New comments are no longer being accepted.')) . "',
+            ?,
             $sql_noindex_values
             '" . $sitemap . "')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array_merge(
+        array(
+            (string) $name,
+            (string) ($_POST['folder'] ?? ''),
+            (string) $type,
+            (string) $layout_type,
+            (string) $user['id'],
+        ),
+        $style_values,
+        array((string) lang('We\'re sorry. New comments are no longer being accepted.'))
+    )) or output_error('Query failed.');
     $page_id = mysqli_insert_id(db::$con);
 
     // A page that did not exist before this request. Announced here and
@@ -490,7 +503,7 @@ if (!$_POST) {
     }
 
     // get style code
-    $result = mysqli_query(db::$con, "SELECT style_code FROM style WHERE style_id = '" . escape($style) . "'") or output_error('Query failed');
+    $result = db_q("SELECT style_code FROM style WHERE style_id = ?", array((string) $style)) or output_error('Query failed');
     $row = mysqli_fetch_assoc($result);
     $style_code = $row['style_code'];
 
@@ -500,8 +513,8 @@ if (!$_POST) {
     foreach ($regions[0] as $region)
     {
         $region_name = time() .'_' . $pregion_count;
-        $query = "INSERT INTO pregion (pregion_name, pregion_content, pregion_page, pregion_order, pregion_user, pregion_timestamp) VALUES ('$region_name', '', '$page_id', '$pregion_count', '$user[id]', UNIX_TIMESTAMP())";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+        $query = "INSERT INTO pregion (pregion_name, pregion_content, pregion_page, pregion_order, pregion_user, pregion_timestamp) VALUES (?, '', ?, ?, ?, UNIX_TIMESTAMP())";
+        $result = db_q($query, array((string) $region_name, (string) $page_id, (string) $pregion_count, (string) $user['id'])) or output_error('Query failed');
         $pregion_count++;
     }
 

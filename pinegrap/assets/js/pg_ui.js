@@ -12,8 +12,9 @@
  * the markup, not every caller.
  *
  * Components are named by their Bootstrap 6 kind: 'dialog', 'drawer', 'menu',
- * 'tooltip', 'popover', 'collapse', 'tab', 'toast'. A target is an element, a
- * jQuery object or a selector.
+ * 'tooltip', 'popover', 'collapse', 'tab', 'toast', 'chips', 'combobox', 'datepicker'
+ * (the last three Bootstrap 6 only: under 5 their get() answers null). A target is an element, a jQuery object or
+ * a selector.
  *
  *   pgUI.ready(fn)                    after Bootstrap's script has run
  *   pgUI.show('dialog', el[, opts])   a promise, settled when it is shown
@@ -43,11 +44,18 @@
         popover: { v5: 'Popover', v6: 'Popover', ev5: 'popover', ev6: 'popover' },
         collapse: { v5: 'Collapse', v6: 'Collapse', ev5: 'collapse', ev6: 'collapse' },
         tab: { v5: 'Tab', v6: 'Tab', ev5: 'tab', ev6: 'tab' },
-        toast: { v5: 'Toast', v6: 'Toast', ev5: 'toast', ev6: 'toast' }
+        toast: { v5: 'Toast', v6: 'Toast', ev5: 'toast', ev6: 'toast' },
+        // Bootstrap 6 only: under 5 there is no constructor and get() is null.
+        range: { v5: 'Range', v6: 'Range', ev5: 'range', ev6: 'range' }
     };
 
     // Kinds whose show() and hide() end with a shown/hidden event.
     var EVENTFUL = { dialog: true, drawer: true, menu: true, collapse: true, toast: true, tooltip: true, popover: true };
+
+    // Bootstrap 6 only: under 5 there is no constructor and get() is null.
+    KINDS.chips = { v5: 'Chips', v6: 'Chips', ev5: 'chips', ev6: 'chips' };
+    KINDS.combobox = { v5: 'Combobox', v6: 'Combobox', ev5: 'combobox', ev6: 'combobox' };
+    KINDS.datepicker = { v5: 'Datepicker', v6: 'Datepicker', ev5: 'datepicker', ev6: 'datepicker' };
 
     // A v5 transition that never reports back (an element removed while it
     // was opening) must not leave a caller's promise pending for good.
@@ -348,6 +356,38 @@
         return window.pgBootstrapReady.then(fn);
     }
 
+    // Wrappers given to bubbleRange(), so a redrawn inspector disposes the
+    // instances of the markup it replaced (Bootstrap keeps every instance in
+    // a Map keyed by its element until dispose()).
+    var ranges = [];
+
+    // A Bootstrap 6 Range on a .form-range wrapper, with the value bubble.
+    // Bootstrap starts only the ranges present at DOMContentLoaded, and
+    // without a formatter, so an instance already there is replaced; markup
+    // drawn later comes here too. format(value) gives the bubble's text.
+    // Returns a promise of the instance (null under Bootstrap 5).
+    function bubbleRange(target, format) {
+        var el = node(target);
+        return ready(function () {
+            ranges = ranges.filter(function (r) {
+                if (r.isConnected === false) {
+                    dispose('range', r);
+                    return false;
+                }
+                return r !== el;
+            });
+            if (!el) {
+                return null;
+            }
+            dispose('range', el);
+            var inst = get('range', el, { bubble: true, formatter: format || null });
+            if (inst) {
+                ranges.push(el);
+            }
+            return inst;
+        });
+    }
+
     var pgUI = {
         version: version,
         names: names,
@@ -379,6 +419,7 @@
         };
     });
     pgUI.dialog.build = buildDialog;
+    pgUI.range.bubble = bubbleRange;
 
     window.pgUI = pgUI;
 })(window, document);

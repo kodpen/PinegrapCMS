@@ -26,6 +26,11 @@
  * what a closed screen left. At the end one locked decision says what was
  * done; what is still running shows its progress on the card.
  *
+ * A bulk change may also make new records (action create, products only):
+ * its rows are the fields of each, checked as a single create is, and each
+ * row's place is saved before it is written, so a slice that dies half way
+ * never makes the same record twice when it is carried on.
+ *
  * Deleting in bulk is refused unless an administrator allowed it in the
  * Workspace Settings (config.ws_ai_bulk_delete).
  *
@@ -63,6 +68,22 @@ define('WS_BULK_SAMPLE', 5);
  * The most values given one by one.
  */
 define('WS_BULK_VALUES_MAX', 500);
+
+/**
+ * The most new records one bulk card makes; more go through the import.
+ */
+define('WS_BULK_CREATE_MAX', 200);
+
+/**
+ * New records written per slice.
+ */
+define('WS_BULK_CREATE_STEP', 10);
+
+/**
+ * The most bytes the rows of one bulk card take together, well inside the
+ * MEDIUMTEXT column they are kept in.
+ */
+define('WS_BULK_CREATE_BYTES', 4000000);
 
 /**
  * Is a bulk change possible here: proposed changes are, and the setting
@@ -121,6 +142,110 @@ function ws_bulk_operations()
 }
 
 /**
+ * The kinds of record a bulk change makes new (action create).
+ *
+ * @return string[]
+ */
+function ws_bulk_create_types()
+{
+    return array('product');
+}
+
+/**
+ * Checks the rows of a bulk create as a single create's fields are checked
+ * (ws_changes_input()), with no database: known fields, values in their
+ * field's shape, a name on each and no name twice in the list.
+ *
+ * @param string     $type
+ * @param mixed      $rows       a list of objects of field => value
+ * @param array|null $definition the kind's ws_change_types() entry, read
+ *                               when not given
+ * @return array ok, error, rows (field => value, empty values left out)
+ */
+function ws_bulk_create_rows($type, $rows, $definition = null)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'rows' => array());
+    };
+
+    if (!in_array((string) $type, ws_bulk_create_types(), true)) {
+        return $fail(lang(array('string' => 'Many new records at once are made of: {var:1}.', 'vars' => implode(', ', ws_bulk_create_types()))));
+    }
+
+    if (!is_array($rows) || empty($rows) || (array_values($rows) !== $rows)) {
+        return $fail(lang('rows is a list of objects of field => value, one for each new record.'));
+    }
+
+    if (count($rows) > WS_BULK_CREATE_MAX) {
+        return $fail(lang(array('string' => 'One bulk card makes at most {var:1} records; bring more in with the product import (import_products.php).', 'vars' => WS_BULK_CREATE_MAX)));
+    }
+
+    if ($definition === null) {
+        $types = ws_change_types();
+        $definition = $types[$type] ?? null;
+    }
+
+    if (!is_array($definition)) {
+        return $fail(lang('Invalid request.'));
+    }
+
+    $allowed = ws_change_fields_for($definition, 'create');
+    $required = $definition['required'] ?? array();
+    $out = array();
+    $seen = array();
+
+    foreach ($rows as $index => $row) {
+        $where = 'rows[' . (int) $index . ']: ';
+
+        if (!is_array($row) || empty($row)) {
+            return $fail($where . lang('each row is an object of field => value.'));
+        }
+
+        $values = array();
+
+        foreach ($row as $name => $value) {
+            $name = (string) $name;
+
+            if (!isset($allowed[$name])) {
+                return $fail($where . lang(array('string' => '{var:1} cannot be changed. The fields are: {var:2}.', 'vars' => array($name, implode(', ', array_keys($allowed))))));
+            }
+
+            $to = ws_change_value($allowed[$name], $value);
+
+            if ($to === null) {
+                return $fail($where . ws_change_value_refusal($allowed[$name], $value, $name));
+            }
+
+            if ((($to !== '') && ($to !== array())) || ($allowed[$name][0] === 'bool')) {
+                $values[$name] = $to;
+            }
+        }
+
+        foreach ($required as $name) {
+            if (!isset($values[$name]) || (trim((string) $values[$name]) === '')) {
+                return $fail($where . lang(array('string' => '{var:1} is required', 'vars' => array($name))));
+            }
+        }
+
+        // The name is the product's own code: not twice in one card.
+        $key = mb_strtolower((string) ($values['name'] ?? ''));
+
+        if (($key !== '') && isset($seen[$key])) {
+            return $fail($where . lang(array('string' => 'The name {var:1} is already on row {var:2}.', 'vars' => array($values['name'], $seen[$key]))));
+        }
+
+        $seen[$key] = (int) $index;
+        $out[] = $values;
+    }
+
+    if (strlen((string) json_encode($out, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR)) > WS_BULK_CREATE_BYTES) {
+        return $fail(lang('The rows are too long together for one card; split them into several.'));
+    }
+
+    return array('ok' => true, 'error' => '', 'rows' => $out);
+}
+
+/**
  * The ids a bulk change reaches as the records are now, in their order, at
  * most WS_BULK_MAX (and, for the card, the number there are).
  *
@@ -133,6 +258,13 @@ function ws_bulk_operations()
  */
 function ws_bulk_match($spec, $viewer = null)
 {
+    // New records: the rows' places.
+    if (($spec['action'] ?? '') === 'create') {
+        $count = count((array) ($spec['rows'] ?? array()));
+
+        return array('ids' => ($count > 0) ? range(0, $count - 1) : array(), 'total' => $count);
+    }
+
     $types = ws_change_types();
     $type = $types[$spec['type']];
     $table = $type['table'];
@@ -240,7 +372,13 @@ function ws_bulk_input($asker, $bulk, $for_proposal = false)
             : lang(array('string' => 'The person who asked may not change a record of this kind ({var:1}). Say so in the answer instead of proposing it.', 'vars' => $types[$type]['label'])));
     }
 
-    $action = ((string) ($bulk['action'] ?? 'update') === 'delete') ? 'delete' : 'update';
+    $action = (string) ($bulk['action'] ?? 'update');
+    $action = in_array($action, array('delete', 'create'), true) ? $action : 'update';
+
+    // New records (products only): the rows are checked as a single create.
+    if ($action === 'create') {
+        return ws_bulk_create_input($asker, $type, $bulk['rows'] ?? null);
+    }
 
     if (($action === 'delete') && !in_array('delete', $types[$type]['actions'], true)) {
         return $fail(lang(array('string' => 'A {var:1} takes the actions {var:2}.', 'vars' => array($type, implode(', ', $types[$type]['actions'])))));
@@ -424,6 +562,60 @@ function ws_bulk_input($asker, $bulk, $for_proposal = false)
 }
 
 /**
+ * Checks a bulk create for the person who will apply it (ws_bulk_input()):
+ * the rows (ws_bulk_create_rows()), names no product has yet, and each row
+ * against their rights as a single create is.
+ *
+ * @param array  $asker
+ * @param string $type
+ * @param mixed  $rows
+ * @return array ok, error, spec, matched, sample
+ */
+function ws_bulk_create_input($asker, $type, $rows)
+{
+    $checked = ws_bulk_create_rows($type, $rows);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error'], 'spec' => null, 'matched' => 0, 'sample' => array());
+    }
+
+    foreach ($checked['rows'] as $index => $values) {
+        $list = array();
+
+        foreach ($values as $name => $value) {
+            $list[] = array('name' => $name, 'from' => null, 'to' => $value);
+        }
+
+        $refusal = ws_change_create_check($type, $list);
+        $refusal = ($refusal !== '') ? $refusal : ws_change_check($asker, $type, 'create', null, $values);
+
+        if ($refusal !== '') {
+            return array('ok' => false, 'error' => 'rows[' . (int) $index . ']: ' . $refusal, 'spec' => null, 'matched' => 0, 'sample' => array());
+        }
+    }
+
+    $spec = array(
+        'type'        => $type,
+        'action'      => 'create',
+        'scope'       => 'all',
+        'group_id'    => 0,
+        'search'      => '',
+        'ids'         => array(),
+        'only_empty'  => '',
+        'field'       => '',
+        'fields'      => array(),
+        'operation'   => '',
+        'value'       => null,
+        'instruction' => '',
+        'values'      => array(),
+        'round'       => '',
+        'rows'        => $checked['rows'],
+    );
+
+    return array('ok' => true, 'error' => '', 'spec' => $spec, 'matched' => count($checked['rows']), 'sample' => ws_bulk_sample($asker, $spec, array()));
+}
+
+/**
  * The value a field would take under a bulk change, or null when the record
  * would not change (or the model has yet to write it: generate).
  *
@@ -487,6 +679,19 @@ function ws_bulk_sample($asker, $spec, $ids)
     $field = ($spec['action'] === 'update') ? ws_change_field($types[$spec['type']], $spec['field']) : null;
     $out = array();
 
+    // New records: the first rows by name, with their price.
+    if ($spec['action'] === 'create') {
+        foreach (array_slice((array) ($spec['rows'] ?? array()), 0, WS_BULK_SAMPLE) as $values) {
+            $out[] = array(
+                'label' => (string) ($values['name'] ?? ''),
+                'from'  => '',
+                'to'    => isset($values['price']) ? ws_change_show($spec['type'], 'price', $values['price'], 80) : '',
+            );
+        }
+
+        return $out;
+    }
+
     foreach (array_slice($ids, 0, WS_BULK_SAMPLE * 3) as $id) {
         $record = ws_change_record($spec['type'], $id);
 
@@ -542,6 +747,10 @@ function ws_bulk_summary($spec, $count)
     }
 
     $what = implode(', ', $labels);
+
+    if ($spec['action'] === 'create') {
+        return lang(array('string' => 'Make {var:1} new records ({var:2}), off sale unless a row puts it on sale', 'vars' => array($count, $type['label'])));
+    }
 
     if ($spec['action'] === 'delete') {
         $text = lang(array('string' => 'Delete {var:1} records ({var:2})', 'vars' => array($count, $type['label'])));
@@ -704,7 +913,8 @@ function ws_bulk_step($change_id)
     }
 
     $type = $spec['type'];
-    $slice = array_slice($state['ids'], (int) $state['pos'], ($spec['operation'] === 'generate') ? WS_BULK_AI_STEP : WS_BULK_STEP);
+    $step = ($spec['action'] === 'create') ? WS_BULK_CREATE_STEP : (($spec['operation'] === 'generate') ? WS_BULK_AI_STEP : WS_BULK_STEP);
+    $slice = array_slice($state['ids'], (int) $state['pos'], $step);
     $generated = array();
 
     if (($spec['operation'] === 'generate') && !empty($slice)) {
@@ -741,8 +951,24 @@ function ws_bulk_step($change_id)
         ws_ai_voice_change($change);
     }
 
+    // A card the person made themselves (bulk_sources.php) has no request
+    // behind it: the records' sentences name the person, and the one log
+    // line is the finish's.
+    $own = ((int) $change['request_id'] === 0);
+
+    if ($own) {
+        $GLOBALS['ws_change_log_quiet'] = true;
+        ws_change_source(array('kind' => 'person', 'name' => ws_person_name($viewer['id'])));
+    }
+
     foreach ($slice as $id) {
         $state['pos']++;
+
+        if ($spec['action'] === 'create') {
+            ws_bulk_create_row($viewer, (int) $change['id'], $spec, $state, (int) $id);
+            continue;
+        }
+
         $record = ws_change_record($type, $id);
 
         if (($record === null) || !ws_change_allowed($viewer, $type, (int) $id)) {
@@ -801,6 +1027,11 @@ function ws_bulk_step($change_id)
         }
     }
 
+    if ($own) {
+        ws_change_source(false);
+        $GLOBALS['ws_change_log_quiet'] = false;
+    }
+
     if ($voice) {
         ws_ai_voice_change(is_array($voice_before) ? $voice_before : false);
     }
@@ -808,7 +1039,7 @@ function ws_bulk_step($change_id)
     $state['errors'] = array_slice($state['errors'], -20);
     $finished = ((int) $state['pos'] >= count($state['ids']));
 
-    db("UPDATE ws_ai_changes SET snapshot = '" . e(json_encode($state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . "' WHERE id = '" . (int) $change['id'] . "'");
+    ws_bulk_save_state((int) $change['id'], $state);
 
     if ($finished) {
         ws_bulk_finish($viewer, db_item("SELECT * FROM ws_ai_changes WHERE id = '" . (int) $change['id'] . "'"), $spec, $state);
@@ -818,6 +1049,78 @@ function ws_bulk_step($change_id)
     ws_message_touch($change['message_id']);
 
     return array('status' => $finished ? 'applied' : 'applying', 'progress' => ws_bulk_present(array('fields' => $change['fields'], 'snapshot' => json_encode($state)))['progress']);
+}
+
+/**
+ * Keeps how far a bulk change being applied has got.
+ *
+ * @param int   $change_id
+ * @param array $state
+ */
+function ws_bulk_save_state($change_id, $state)
+{
+    db("UPDATE ws_ai_changes SET snapshot = '" . e(json_encode($state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . "' WHERE id = '" . (int) $change_id . "'");
+}
+
+/**
+ * Makes one row of a bulk create (ws_bulk_step(), under its lock). The
+ * row's place, already counted in pos, is saved first: when the request
+ * dies after the write, the row is not written again on resume, and at
+ * worst it is neither counted nor written, never made twice.
+ *
+ * @param array $viewer
+ * @param int   $change_id
+ * @param array $spec
+ * @param array $state  carried on: done, failed, errors, lines
+ * @param int   $index  the row's place
+ */
+function ws_bulk_create_row($viewer, $change_id, $spec, &$state, $index)
+{
+    $type = (string) $spec['type'];
+    $types = ws_change_types();
+    $values = (array) ($spec['rows'][$index] ?? array());
+    $where = lang(array('string' => 'row {var:1}', 'vars' => $index + 1)) . ': ';
+
+    if (empty($values) || !ws_change_allowed($viewer, $type, 0)) {
+        $state['skipped']++;
+
+        return;
+    }
+
+    // Checked again as it is written: a name may have been taken since the
+    // card was made.
+    $list = array();
+
+    foreach ($values as $name => $value) {
+        $list[] = array('name' => $name, 'from' => null, 'to' => $value);
+    }
+
+    $check = ws_change_create_check($type, $list);
+    $check = ($check !== '') ? $check : ws_change_check($viewer, $type, 'create', null, $values);
+
+    if ($check !== '') {
+        $state['failed']++;
+        $state['errors'][] = $where . $check;
+
+        return;
+    }
+
+    ws_bulk_save_state($change_id, $state);
+
+    $done = ws_change_write($viewer, $type, 'create', null, $values, true);
+
+    if (empty($done['ok'])) {
+        $state['failed']++;
+        $state['errors'][] = $where . (string) ($done['error'] ?? '');
+
+        return;
+    }
+
+    $state['done']++;
+
+    if (count($state['lines']) < 30) {
+        $state['lines'][] = '<#' . $types[$type]['tag'] . ':' . (int) $done['id'] . '>';
+    }
 }
 
 /**
@@ -838,9 +1141,14 @@ function ws_bulk_finish($viewer, $change, $spec, $state)
     // An application's proposal (proposals.php) is named by the application.
     $proposer = function_exists('ws_change_proposer') ? ws_change_proposer($change) : '';
 
-    $body = lang(array('string' => 'Bulk change on {var:1}\'s proposal: {var:2}. {var:3} records changed, {var:4} left as they were, {var:5} could not be changed.', 'vars' => array(
+    $vars = array(
         ($proposer !== '') ? $proposer : ($by_ai ? 'Pinegrap AI' : 'Claude'), ws_bulk_summary($spec + array('fields' => array(), 'only_empty' => ''), (int) $state['total']),
-        (int) $state['done'], (int) $state['skipped'], (int) $state['failed'])));
+        (int) $state['done'], (int) $state['skipped'], (int) $state['failed']);
+    $body = ((int) $change['request_id'] === 0)
+        ? lang(array('string' => 'Bulk change by {var:1}: {var:2}. {var:3} records made, {var:4} left out, {var:5} could not be made.', 'vars' => array_merge(array(ws_person_name($viewer['id'])), array_slice($vars, 1))))
+        : ((($spec['action'] ?? '') === 'create')
+        ? lang(array('string' => 'Bulk change on {var:1}\'s proposal: {var:2}. {var:3} records made, {var:4} left out, {var:5} could not be made.', 'vars' => $vars))
+        : lang(array('string' => 'Bulk change on {var:1}\'s proposal: {var:2}. {var:3} records changed, {var:4} left as they were, {var:5} could not be changed.', 'vars' => $vars)));
 
     if (!empty($state['lines'])) {
         $body .= "\n" . implode(' ', $state['lines']) . (((int) $state['done'] > count($state['lines'])) ? ' …' : '');
@@ -1022,6 +1330,7 @@ function ws_bulk_guide($asker)
         . 'operation set (value), percent (value such as 50 or -10), add (value; money in minor units, so 200 TL is 20000), generate (instruction: Pinegrap AI writes the text of field for each record; field may name up to three text fields separated by commas, such as title,meta_description) or values (values: a JSON object of id => new value). '
         . 'only_empty names a text field the records must have empty ("fill in the missing ones"). round whole rounds money to whole units. '
         . (ws_bulk_delete_allowed() ? 'action delete deletes the records reached (they go to the Recycle Bin where there is one). ' : 'Deleting in bulk is switched off on this site: do not propose it, say an administrator can allow it in the Workspace Settings. ')
+        . (in_array('product', $kinds, true) ? 'To make many new products at once (a list in the request, or products written from a description), call propose_bulk_change once with type product, action create and rows: a JSON list of at most ' . WS_BULK_CREATE_MAX . ' objects of the fields a new product takes, each with a name (its code, unique) and usually short_description and price in minor units; they are made off sale unless a row sets enabled. More than that goes through the product import, so say so. ' : '')
         . 'The person who asked sees how many records it reaches and applies it with one click.';
 }
 
@@ -1102,6 +1411,14 @@ function ws_bulk_js_strings()
         'bulk_result'   => ws_js_template('{var:1} changed · {var:2} left as they were · {var:3} could not be changed', 3),
         'bulk_running'  => lang('Being applied…'),
         'bulk_warning'  => ws_js_template('This changes {var:1} records at once. Go on?', 1),
+        'bulk_make_products'  => lang('Make products'),
+        'bulk_make_intro'     => lang('Paste one product per line: the name, then its price if it has one. A first line of column names (Name, Price, Stock…) is read as a header. Products are made off sale, after you apply the card.'),
+        'bulk_make_placeholder' => lang('Blue mug; 129,90'),
+        'bulk_make_go'        => lang('Make the card'),
+        'bulk_make_done'      => ws_js_template('A card of {var:1} product drafts is waiting for you to apply it.', 1),
+        'bulk_make_ignored'   => ws_js_template('Columns not read: {var:1}.', 1),
+        'bulk_create_result'  => ws_js_template('{var:1} made · {var:2} left out · {var:3} could not be made', 3),
+        'bulk_create_warning' => ws_js_template('This makes {var:1} new records at once. Go on?', 1),
         'bulk_delete_warning' => ws_js_template('This deletes {var:1} records at once. Records with a Recycle Bin go there; the others are deleted for good. Go on?', 1),
     );
 }

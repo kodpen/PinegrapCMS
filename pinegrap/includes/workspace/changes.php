@@ -3149,7 +3149,7 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
                 'type'         => $type,
                 'type_label'   => $types[$type]['label'],
                 'action'       => 'bulk',
-                'action_label' => lang('Bulk change'),
+                'action_label' => (is_array($spec) && (($spec['action'] ?? '') === 'create')) ? lang('New records in bulk') : lang('Bulk change'),
                 'record_html'  => '',
                 'record_label' => $sees ? $bulk['summary'] : '',
                 'fields'       => $items,
@@ -3160,6 +3160,7 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
                 'bulk'         => array(
                     'total'    => $bulk['total'],
                     'delete'   => is_array($spec) && (($spec['action'] ?? '') === 'delete'),
+                    'create'   => is_array($spec) && (($spec['action'] ?? '') === 'create'),
                     'progress' => $bulk['progress'],
                     'mine'     => $asker,
                 ),
@@ -4476,7 +4477,7 @@ function ws_change_write_order($viewer, $action, $record, $values)
         } else {
             // Only while the order still has the status it was read with: a
             // cancellation that came in between is not written over by hand.
-            db("UPDATE orders SET status = '" . e($status) . "' WHERE id = '" . (int) $record['id'] . "' AND status = '" . e($record['status']) . "' LIMIT 1");
+            db("UPDATE orders SET status = '" . e($status) . "', " . pg_order_touch_sql() . " WHERE id = '" . (int) $record['id'] . "' AND status = '" . e($record['status']) . "' LIMIT 1");
 
             if (mysqli_affected_rows(db::$con) < 1) {
                 return array('ok' => false, 'error' => lang('The record changed meanwhile, so nothing was written.'), 'id' => 0);
@@ -4500,7 +4501,7 @@ function ws_change_write_order($viewer, $action, $record, $values)
     }
 
     if (!empty($set)) {
-        db("UPDATE orders SET " . implode(', ', $set) . ", last_modified_timestamp = UNIX_TIMESTAMP() WHERE id = '" . (int) $record['id'] . "' LIMIT 1");
+        db("UPDATE orders SET " . implode(', ', $set) . ", " . pg_order_touch_sql() . " WHERE id = '" . (int) $record['id'] . "' LIMIT 1");
     }
 
     // Through the order screen's own save: new numbers are announced to

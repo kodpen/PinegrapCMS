@@ -1650,10 +1650,9 @@ function pg_pb_clear_form_template($group_id)
  * it survives Google renaming a category.
  *
  * The taxonomy is ~5,595 categories. Rendering it as <option> elements is about
- * 785 KB of markup and 5,595 DOM nodes, and select2 copies every one of them
- * into its own results list and rescans them on each keystroke. So the list
- * never reaches the browser: the field is a select2 in AJAX mode and the search
- * happens here.
+ * 785 KB of markup and 5,595 DOM nodes for a field that shows a handful of
+ * matches. So the list never reaches the browser: the field is a combobox that
+ * searches the server (data-pg-source) and the search happens here.
  *
  * The files are shipped with the software and edited by hand — Google last
  * revised the taxonomy in 2021, so there is nothing to keep in sync and no
@@ -4111,10 +4110,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                 'panel' =>
                     '<div class="col-12 sm:col-6 lg:col-4">
                         <label for="commission_rate_limit" class="form-label">' . lang('Commission Rate Limit') . '</label>
-                        <div class="input-group">
-                            <input type="text" name="commission_rate_limit" id="commission_rate_limit" class="form-control" size="3" maxlength="3" inputmode="numeric" style="text-align:right;" value="' . h($v('commission_rate_limit')) . '" />
-                            <label for="commission_rate_limit" class="input-group-text">%</label>
-                        </div>
+                        <label class="form-control form-adorn form-adorn-end">
+                            <span class="form-adorn-text" aria-hidden="true">%</span>
+                            <input type="text" name="commission_rate_limit" id="commission_rate_limit" class="form-ghost" size="3" maxlength="3" inputmode="numeric" style="text-align:right;" value="' . h($v('commission_rate_limit')) . '" />
+                        </label>
                         <div class="form-text">(' . lang('leave blank for no limit') . ')</div>
                     </div>',
             ));
@@ -4158,10 +4157,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                     'panel' =>
                         '<div class="col-12 sm:col-6 lg:col-4">
                             <label for="compare_at_price" class="form-label">' . lang('Amount') . '</label>
-                            <div class="input-group">
-                                <input value="' . h($v('compare_at_price', '')) . '" type="text" name="compare_at_price" id="compare_at_price" class="form-control" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
-                                <label class="input-group-text" for="compare_at_price">' . BASE_CURRENCY_SYMBOL . '</label>
-                            </div>
+                            <label class="form-control form-adorn form-adorn-end">
+                                <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                <input value="' . h($v('compare_at_price', '')) . '" type="text" name="compare_at_price" id="compare_at_price" class="form-ghost" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
+                            </label>
                             <div class="form-text">' . lang('Empty or zero is none.') . '</div>
                         </div>',
                 )) .
@@ -4238,10 +4237,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     </div>
                                                     <div class="col-6 lg:col-3 my-1">
                                                         <label for="extra_shipping_cost" class="form-label">' . lang('Extra Shipping Cost') . '</label>
-                                                        <div class="input-group">
-                                                            <input value="' . h($v('extra_shipping_cost', '0')) . '" type="text" name="extra_shipping_cost" id="extra_shipping_cost" class="form-control" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
-                                                            <label class="input-group-text" for="extra_shipping_cost">' . BASE_CURRENCY_SYMBOL . '</label>
-                                                        </div>
+                                                        <label class="form-control form-adorn form-adorn-end">
+                                                            <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                                            <input value="' . h($v('extra_shipping_cost', '0')) . '" type="text" name="extra_shipping_cost" id="extra_shipping_cost" class="form-ghost" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
+                                                        </label>
                                                     </div>
 
                                                     ' . $output_zones_field .
@@ -4374,6 +4373,18 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     // entries were loaded is the difference between "the picker is broken" and
     // "the file for this language is missing".
     $taxonomy_status = pg_pb_google_taxonomy_status();
+
+    // The stored category as the search answers it (path and id), so the
+    // field reads the same before and after a pick.
+    $output_google_product_category_option = '';
+    $google_product_category = $v('google_product_category');
+
+    if ($google_product_category !== '') {
+        $google_product_category_path = pg_pb_google_taxonomy_lookup($google_product_category);
+        $output_google_product_category_option = '<option value="' . h($google_product_category) . '" selected>'
+            . h(($google_product_category_path === $google_product_category) ? $google_product_category : $google_product_category_path . '  (' . $google_product_category . ')')
+            . '</option>';
+    }
 
     if ($taxonomy_status['installed']) {
         $output_taxonomy_status = h(lang(array(
@@ -4685,10 +4696,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
                                     <div class="col-12 lg:col-3 my-3">
                                         <label for="price" class="form-label">' . lang('Unit Price') . '</label>
-                                        <div class="input-group">
-                                            <input value="' . h($v('price', '0')) . '" type="text" name="price" id="price" class="form-control" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
-                                            <label class="input-group-text" for="price">' . BASE_CURRENCY_SYMBOL . '</label>
-                                        </div>
+                                        <label class="form-control form-adorn form-adorn-end">
+                                            <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                            <input value="' . h($v('price', '0')) . '" type="text" name="price" id="price" class="form-ghost" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
+                                        </label>
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Starting price for every variant; each row can differ.') . '</div>
                                     </div>
 
@@ -5050,7 +5061,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                     </div>
                                     <div class="col-12 lg:col-3 my-3">
                                         <label for="google_product_category" class="form-label">' . lang('Google Product Category') . '</label>
-                                        <select name="google_product_category" id="google_product_category" class="form-control" style="width:100%" data-pg-combobox data-pg-source="google_taxonomy_action.php?action=search" data-pg-min-length="2" data-pg-free-text data-allow-clear="true" data-placeholder="' . h(lang('Google Product Category')) . '"><option value=""></option>' . ($v('google_product_category') !== '' ? '<option value="' . h($v('google_product_category')) . '" selected>' . h($v('google_product_category')) . '</option>' : '') . '</select>' . pg_fields_script() . '
+                                        <select name="google_product_category" id="google_product_category" class="form-control" data-pg-combobox data-pg-source="google_taxonomy_action.php?action=search" data-pg-min-length="2" data-pg-free-text data-placeholder="' . h(lang('Google Product Category')) . '"><option value=""></option>' . $output_google_product_category_option . '</select>' . pg_fields_script() . '
                                         <div class="form-text" id="pg_pb_taxonomy_status">' . $output_taxonomy_status . '</div>
                                     </div>
                                     ' . $output_barcode_fields . '
@@ -5090,10 +5101,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
                                     <div class="col-12 lg:col-4 my-3">
                                         <label for="membership_renewal" class="form-label">' . lang('Add Days to Customer\'s Membership') . '</label>
-                                        <div class="input-group">
-                                            <input type="text" name="membership_renewal" id="membership_renewal" class="form-control" size="7" maxlength="7" inputmode="numeric" style="text-align:right;" value="' . h($v('membership_renewal')) . '" />
-                                            <span class="input-group-text">' . lang('day(s)') . '</span>
-                                        </div>
+                                        <label class="form-control form-adorn form-adorn-end">
+                                            <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                                            <input type="text" name="membership_renewal" id="membership_renewal" class="form-ghost" size="7" maxlength="7" inputmode="numeric" style="text-align:right;" value="' . h($v('membership_renewal')) . '" />
+                                        </label>
                                         <div class="form-text text-end">' . lang('0 for none') . '</div>
                                     </div>
 
@@ -5123,10 +5134,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     </div>
                                                     <div class="col-12 md:col-6 lg:col-4">
                                                         <label for="private_days" class="form-label">' . lang('Length') . '</label>
-                                                        <div class="input-group">
-                                                            <input type="text" name="private_days" id="private_days" class="form-control" size="7" maxlength="7" inputmode="numeric" style="text-align:right;" value="' . h($v('private_days')) . '" />
-                                                            <span class="input-group-text">' . lang('day(s)') . '</span>
-                                                        </div>
+                                                        <label class="form-control form-adorn form-adorn-end">
+                                                            <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                                                            <input type="text" name="private_days" id="private_days" class="form-ghost" size="7" maxlength="7" inputmode="numeric" style="text-align:right;" value="' . h($v('private_days')) . '" />
+                                                        </label>
                                                         <div class="form-text text-end">' . lang('leave blank for no expiration') . '</div>
                                                     </div>
                                                     <div class="col-12 md:col-6 lg:col-4">
@@ -5266,10 +5277,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     </div>
                                                     <div class="col-12 lg:col-3">
                                                         <label class="form-label" for="form_label_column_width">' . lang('Label Column Width') . '</label>
-                                                        <div class="input-group">
-                                                            <input type="text" id="form_label_column_width" name="form_label_column_width" class="form-control" size="3" maxlength="3" inputmode="numeric" value="' . h($v('form_label_column_width')) . '" />
-                                                            <label class="input-group-text" for="form_label_column_width">%</label>
-                                                        </div>
+                                                        <label class="form-control form-adorn form-adorn-end">
+                                                            <span class="form-adorn-text" aria-hidden="true">%</span>
+                                                            <input type="text" id="form_label_column_width" name="form_label_column_width" class="form-ghost" size="3" maxlength="3" inputmode="numeric" value="' . h($v('form_label_column_width')) . '" />
+                                                        </label>
                                                         <div class="form-text">' . lang('leave blank for auto') . '</div>
                                                     </div>
                                                     <div class="col-12 lg:col-4">

@@ -23,7 +23,7 @@ description: products.compare_at_price (2026.11.0, 11.0.2, PR #658), the merchan
 - `compare_at_price` on the Product object (`integer?`, `api_product_compare_at_price()`), and a `money` body field of `POST /products` and `POST /products/{id}` with `nullable`, min 0, max the INT top: JSON null, `""` or `0` clears. MCP tools take it from the routes. `POST /products/prices` stays price-only.
 
 ## What does not read it yet?
-- The storefront: showing it is step 2 of docs/memory/plans/price-history-reference-price.md. In Turkey a crossed-out price must be the lowest of the previous 30 days, so the merchant's figure is shown only under that step's "manual" rule.
+- The storefront shows it as `__reference_price` only under the "manual" reference price rule (product-reference-price-storefront.md): in Turkey a crossed-out price must be the lowest of the previous 30 days.
 - Not in the file manager's quick edit, the mass edit (`edit_products.php`), the variant set screen or the Workspace record drawer.
 
 ## How was it verified?

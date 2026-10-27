@@ -324,7 +324,7 @@ function api_current_route($route = null) {
 // All routes: the ones that need credentials and the ones that do not.
 function api_all_routes() {
 
-	return array_merge(api_open_routes(), api_schema());
+	return array_merge(api_open_routes(), api_discovery_routes(), api_schema());
 
 }
 

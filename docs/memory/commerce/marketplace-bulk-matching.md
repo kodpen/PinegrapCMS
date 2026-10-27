@@ -4,7 +4,7 @@ description: Bulk matching of marketplace products to the shop's (marketplace_pr
 ---
 
 ## What is it and why?
-- The catalogue view of `marketplace_products.php?account=N` (beside the shop view, `marketplace-shop-view.md`), shown when the connector has `remote_products`. Built because a live n11 store (2026-10-26) could only match one product at a time by typed code, and its n11 codes were not its shop codes.
+- The catalogue view of `marketplace_products.php?account=N` (beside the shop view, `marketplace-shop-view.md`), shown when the connector has `remote_products`. Built because a live n11 store (2026-10-26) could only match one product at a time by typed code, and its n11 codes were not its shop codes. The owner chose a table (not a file) and a screen of its own.
 - Each remote product is drawn beside the shop product it most likely is, both with pictures: accept, pick another from a picture grid, mark "not sold here", remove a match, undo; tick many and accept, or accept every sure one.
 
 ## Where is the remote catalogue kept?
@@ -27,4 +27,4 @@ description: Bulk matching of marketplace products to the shop's (marketplace_pr
 - A `marketplace_product_map` row (`INSERT IGNORE`), refused when the product or the code is already matched on the account. Nothing is queued or sent; other rows offered the same product lose that suggestion.
 - 10,000 x 10,000: about 4 s, 60 MB.
 
-Related: docs/memory/commerce/marketplace-outbound-layer.md, docs/memory/plans/marketplace-product-matching.md
+Related: docs/memory/commerce/marketplace-outbound-layer.md

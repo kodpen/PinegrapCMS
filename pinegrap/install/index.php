@@ -3014,10 +3014,12 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		}
 		.pg-wizard-on .pg-step-panel { display: none; }
 		.pg-wizard-on .pg-step-panel.active { display: block; }
-		.pg-step {
-			display: flex;
-			gap: .7rem;
-			align-items: flex-start;
+		/* The Bootstrap stepper: a finished step is .active.theme-success, the
+		   current one .active (primary), so the line runs green up to it; each
+		   step text is a button that opens it */
+		.pg-install-steps { --bs-stepper-gap: .25rem; --bs-stepper-size: 1.75rem; margin: 0; }
+		.pg-install-steps .stepper-item.done::before { content: "\2713"; }
+		.pg-install-step {
 			width: 100%;
 			text-align: start;
 			padding: .55rem .7rem;
@@ -3026,23 +3028,8 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			background: transparent;
 			color: inherit;
 		}
-		.pg-step:hover { background: var(--pg-bg-2); }
-		.pg-step.active { background: var(--pg-bg-2); border-color: var(--pg-border-color); }
-		.pg-step-dot {
-			width: 28px;
-			height: 28px;
-			border-radius: 50%;
-			border: 2px solid var(--pg-border-color);
-			background: var(--pg-bg-body);
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			flex: none;
-			font-size: .78rem;
-			font-weight: 700;
-		}
-		.pg-step.active .pg-step-dot { background: var(--pg-primary); border-color: var(--pg-primary); color: var(--pg-bg-body); }
-		.pg-step.done .pg-step-dot { background: var(--pg-success); border-color: var(--pg-success); color: var(--pg-bg-body); }
+		.pg-install-step:hover { background: var(--pg-bg-2); }
+		.stepper-item[aria-current="step"] .pg-install-step { background: var(--pg-bg-2); border-color: var(--pg-border-color); }
 		.pg-source {
 			display: flex;
 			gap: .75rem;
@@ -3114,19 +3101,6 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			.pg-upgrade-grid { grid-template-columns: minmax(0, 1fr) 310px; }
 			.pg-upgrade-grid .pg-side { grid-column: auto; display: block; }
 		}
-		/* the line only runs between the dots, so it never hangs below the last step */
-		.pg-step { position: relative; z-index: 1; }
-		.pg-step:not(:last-of-type):after {
-			content: "";
-			position: absolute;
-			left: 1.4rem;
-			top: 2.4rem;
-			height: calc(100% - 1.6rem);
-			width: 2px;
-			background: var(--pg-border-color);
-			z-index: -1;
-		}
-		.pg-step.done:not(:last-of-type):after { background: var(--pg-success); opacity: .5; }
 		#pg_progress_bar { background: linear-gradient(90deg, var(--pg-logo-color-1), var(--pg-logo-color-2)); }
 
 		/* softer notices, closer to the rest of the screen */
@@ -3149,10 +3123,6 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		/* buttons keep the size of their text, so an icon does not make them tall */
 		.pg-install .btn i { font-size: 1rem; line-height: 1; }
 		.pg-install .btn .material-icons { font-size: 1.1rem; }
-
-		.pg-strength { display: flex; gap: .25rem; margin-top: .4rem; }
-		.pg-strength i { height: 4px; flex: 1; border-radius: 999px; background: var(--pg-border-color); }
-		.pg-strength i.on { background: var(--pg-success); }
 
 		/* the question about replacing an existing site */
 		.pg-danger-panel {
@@ -3230,31 +3200,27 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 						<div class="col-12">
 						<div class="pg-wizard-grid">
-							<nav class="pg-rail" id="pg_rail">
-								<button type="button" class="pg-step active" data-step="1">
-									<span class="pg-step-dot">1</span>
-									<span><span class="d-block fw-semibold">' . lang('Source') . '</span><span class="d-block small fg-secondary">' . lang('Starter site, server backup or a zip file') . '</span></span>
-								</button>
-								<button type="button" class="pg-step" data-step="2">
-									<span class="pg-step-dot">2</span>
-									<span><span class="d-block fw-semibold">' . lang('Software Language') . '</span><span class="d-block small fg-secondary">' . lang('Language of the control panel') . '</span></span>
-								</button>
-								<button type="button" class="pg-step" data-step="3">
-									<span class="pg-step-dot">3</span>
-									<span><span class="d-block fw-semibold">' . lang('Site Design') . '</span><span class="d-block small fg-secondary">' . lang('Starter site or a design template') . '</span></span>
-								</button>
-								<button type="button" class="pg-step" data-step="4">
-									<span class="pg-step-dot">4</span>
-									<span><span class="d-block fw-semibold">' . lang('Database') . '</span><span class="d-block small fg-secondary">' . lang('MySQL connection information') . '</span></span>
-								</button>
-								<button type="button" class="pg-step" data-step="5">
-									<span class="pg-step-dot">5</span>
-									<span><span class="d-block fw-semibold">' . lang('Administrator') . '</span><span class="d-block small fg-secondary">' . lang('The first administrator account') . '</span></span>
-								</button>
-								<button type="button" class="pg-step" data-step="6">
-									<span class="pg-step-dot">6</span>
-									<span><span class="d-block fw-semibold">' . lang('Installation') . '</span><span class="d-block small fg-secondary">' . lang('Summary and installation') . '</span></span>
-								</button>
+							<nav class="pg-rail">
+								<ol class="stepper pg-install-steps" id="pg_rail">
+									<li class="stepper-item active" aria-current="step">
+										<button type="button" class="pg-install-step" data-step="1"><span><span class="d-block fw-semibold">' . lang('Source') . '</span><span class="d-block small fg-secondary">' . lang('Starter site, server backup or a zip file') . '</span></span></button>
+									</li>
+									<li class="stepper-item">
+										<button type="button" class="pg-install-step" data-step="2"><span><span class="d-block fw-semibold">' . lang('Software Language') . '</span><span class="d-block small fg-secondary">' . lang('Language of the control panel') . '</span></span></button>
+									</li>
+									<li class="stepper-item">
+										<button type="button" class="pg-install-step" data-step="3"><span><span class="d-block fw-semibold">' . lang('Site Design') . '</span><span class="d-block small fg-secondary">' . lang('Starter site or a design template') . '</span></span></button>
+									</li>
+									<li class="stepper-item">
+										<button type="button" class="pg-install-step" data-step="4"><span><span class="d-block fw-semibold">' . lang('Database') . '</span><span class="d-block small fg-secondary">' . lang('MySQL connection information') . '</span></span></button>
+									</li>
+									<li class="stepper-item">
+										<button type="button" class="pg-install-step" data-step="5"><span><span class="d-block fw-semibold">' . lang('Administrator') . '</span><span class="d-block small fg-secondary">' . lang('The first administrator account') . '</span></span></button>
+									</li>
+									<li class="stepper-item">
+										<button type="button" class="pg-install-step" data-step="6"><span><span class="d-block fw-semibold">' . lang('Installation') . '</span><span class="d-block small fg-secondary">' . lang('Summary and installation') . '</span></span></button>
+									</li>
+								</ol>
 							</nav>
 
 							<div class="pg-panels">
@@ -3272,7 +3238,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 										'name' => 'install_from_folder'
 										)) . '
 										' . $output_restore_unfinished . $output_source_warning . $output_starter_sites . $output_backup_source . $output_upload_source . '
-										<div class="text-end mt-5"><button type="button" class="btn btn-solid theme-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button></div>
+										<div class="text-end mt-5"><button type="button" class="btn btn-solid theme-primary pg-install-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button></div>
 									</div>
 								</div>
 							</div>
@@ -3303,7 +3269,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 										</div>
 										<div class="d-flex justify-content-between mt-5">
 											<button type="button" class="btn btn-outline theme-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
-											<button type="button" class="btn btn-solid theme-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
+											<button type="button" class="btn btn-solid theme-primary pg-install-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
 										</div>
 									</div>
 								</div>
@@ -3361,7 +3327,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 										</div>
 										<div class="d-flex justify-content-between mt-5">
 											<button type="button" class="btn btn-outline theme-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
-											<button type="button" class="btn btn-solid theme-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
+											<button type="button" class="btn btn-solid theme-primary pg-install-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
 										</div>
 									</div>
 								</div>
@@ -3426,7 +3392,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 										<div class="alert small d-none mt-3 mb-0" id="pg_test_result"></div>
 										<div class="d-flex justify-content-between mt-5">
 											<button type="button" class="btn btn-outline theme-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
-											<button type="button" class="btn btn-solid theme-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
+											<button type="button" class="btn btn-solid theme-primary pg-install-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
 										</div>
 									</div>
 								</div>
@@ -3485,8 +3451,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 												'class' => 'form-control',
 												'autocomplete' => 'off'
 												)) . '
-												<div class="pg-strength" id="pg_strength"><i></i><i></i><i></i><i></i></div>
-												<div class="small fg-secondary" id="pg_strength_text">&nbsp;</div>
+												<div class="mt-2">' . pg_password_strength_meter('admin_password', false) . pg_password_strength_script() . '</div>
 											</div>
 											<div class="col-12 md:col-4 my-3">
 												<label for="admin_confirm_password" class="form-label">' . lang('Confirm Password') . '</label>
@@ -3645,7 +3610,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 								</div>
 										<div class="d-flex justify-content-between mt-5">
 											<button type="button" class="btn btn-outline theme-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
-											<button type="button" class="btn btn-solid theme-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
+											<button type="button" class="btn btn-solid theme-primary pg-install-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
 										</div>
 									</div>
 								</div>
@@ -4314,11 +4279,12 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			pg_install_step = step;
 			$(".pg-step-panel").removeClass("active");
 			$(".pg-step-panel[data-panel=" + step + "]").addClass("active");
-			$(".pg-step").each(function() {
+			$(".pg-install-step").each(function() {
 				var number = parseInt($(this).attr("data-step"), 10);
-				$(this).toggleClass("active", number === step);
-				$(this).toggleClass("done", number < step);
-				$(this).find(".pg-step-dot").html((number < step) ? "<i class=\"bi bi-check-lg\"></i>" : number);
+				var item = $(this).closest(".stepper-item");
+				item.toggleClass("active", number <= step);
+				item.toggleClass("done theme-success", number < step);
+				if (number === step) { item.attr("aria-current", "step"); } else { item.removeAttr("aria-current"); }
 			});
 			$("#pg_step_number").text(step);
 			$("#pg_step_title").text(pg_install_step_titles[step]);
@@ -4555,11 +4521,11 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 			$(".pg-install #install_fields").closest("form").addClass("pg-wizard-on");
 
-			$(".pg-step").on("click", function() {
+			$(".pg-install-step").on("click", function() {
 				pg_install_set_step(parseInt($(this).attr("data-step"), 10));
 			});
 
-			$(".pg-next").on("click", function() {
+			$(".pg-install-next").on("click", function() {
 				pg_install_set_step(pg_install_step + 1);
 			});
 
@@ -4614,21 +4580,6 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 						}
 					});
 				}
-			});
-
-			// a rough idea of how strong the administrator password is
-			$("#admin_password").on("input", function() {
-				var value = $(this).val();
-				var score = 0;
-				if (value.length >= 8) { score++; }
-				if (value.length >= 12) { score++; }
-				if (/[A-Z]/.test(value) && /[a-z]/.test(value)) { score++; }
-				if (/[0-9]/.test(value) && /[^A-Za-z0-9]/.test(value)) { score++; }
-				$("#pg_strength i").each(function(index) {
-					$(this).toggleClass("on", index < score);
-				});
-				var labels = ["", "' . escape_javascript(lang('Weak')) . '", "' . escape_javascript(lang('Fair')) . '", "' . escape_javascript(lang('Good')) . '", "' . escape_javascript(lang('Strong')) . '"];
-				$("#pg_strength_text").html(value ? labels[score] : "&nbsp;");
 			});
 
 			// hide the question again as soon as it is answered
@@ -4758,7 +4709,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				} else {
 					$("#pg_install_actions").addClass("d-none");
 					$("#pg_reinstall_box").addClass("d-none");
-					$(".pg-step").addClass("disabled").css("pointer-events", "none");
+					$(".pg-install-step").prop("disabled", true);
 				}
 				return true;
 			});
@@ -8866,6 +8817,7 @@ function get_tables() {
 		'comments',
 		'commissions',
 		'config',
+		'config_text',
 		'connect_accounts',
 		'connect_apps',
 		'consent_log',

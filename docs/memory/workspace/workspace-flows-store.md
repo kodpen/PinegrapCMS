@@ -9,9 +9,9 @@ description: Workspace flows store (graph check, API; runs: workspace-flows-runn
 
 ## What does a graph look like?
 - `{"v":1, "nodes":[{id, kind, label, x, y, config}], "edges":[{from, to, on}], "notes":[{id, text, x, y, w, h}]}`. Ids `^[a-z][a-z0-9_]{0,31}$`.
-- Kinds (`ws_flow_kinds()`): `manual` (outcome next; config subject), `task` (done, cancelled; title, description, assignees or an assign rule of `ws_template_assign_valid()`, due_in, priority), `end`.
+- Kinds: `ws_flow_kinds()`; `task` (title, description, assignees or an assign rule of `ws_template_assign_valid()`, due_in, priority).
 - `ws_flow_graph_normalize()` (pure): casts, drops unknown keys, cuts texts by characters, valid UTF-8 everywhere (a byte cut once broke `json_encode()`), a missing `on` is the box's first outcome.
-- `ws_flow_graph_check()` (pure) codes: too_many, bad_id, duplicate_id, unknown_kind, bad_config, no_trigger, two_triggers, bad_edge, arrow_into_trigger, bad_outcome, duplicate_edge, cycle (Kahn, boxes on the loop only), unreachable. Notes are not checked. `ws_flow_problems()` adds the subject against `ws_scheduled_record_types()`.
+- `ws_flow_graph_check()` (pure) codes: too_many, bad_id, duplicate_id, unknown_kind, bad_config, no_trigger, two_triggers, bad_edge, arrow_into_trigger, bad_outcome, duplicate_edge, cycle (Kahn, boxes on the loop only), unreachable, bad_reference (`workspace-flows-references.md`). Notes are not checked. `ws_flow_problems()` adds the subject against `ws_scheduled_record_types()`.
 - bad_id, bad_config beyond the plan: an id becomes `run_steps.node_id`; a task box needs a title.
 
 ## Who may do what?
@@ -20,7 +20,7 @@ description: Workspace flows store (graph check, API; runs: workspace-flows-runn
 
 ## How do the writes work?
 - `ws_flow_save_check()` / `ws_flow_save()`: name 1-160; home public/private and readable (checked on a change only; not in the draft: changes at once, runs keep theirs); graph normalized; problems answered, not refused. UPDATE `WHERE draft_rev = ?` raises it; 0 rows → 409 `changed_meanwhile`.
-- `ws_flow_publish_check()` / `ws_flow_publish()`: no problem, task boxes with people pass `ws_task_create_check()`; n = MAX+1 via `@mysqli_query` (db() ends the request on 1062), duplicate → 409; status live. A paused flow published is live again (no resume route).
+- `ws_flow_publish_check()` / `ws_flow_publish()`: no problem, task boxes with people pass `ws_task_create_check()`; n = MAX+1 via `@mysqli_query` (db() ends the request on 1062), duplicate → 409; status live (also from paused; resume: `workspace-flows-versions.md`).
 - `ws_flow_pause*()` live → paused (open runs go on); `ws_flow_bin*()` binned, open runs cancelled. Create, publish, pause, delete write a Site Log line (API inside `ws_api_as_owner()`); draft saves do not.
 
 ## Which routes?

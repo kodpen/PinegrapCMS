@@ -251,7 +251,7 @@ function test_widget_conditions_spec()
 // Tokens a renderer looks for, builds as a block or rewrites per node.
 function test_widget_conditions_denied_tokens()
 {
-	foreach (array('__variant_picker', '__filter_chips', '__filters_button', '__filters_offcanvas', '__clear_filters_button',
+	foreach (array('__variant_picker', '__filters_button', '__filters_offcanvas', '__clear_filters_button',
 		'__edit_url', '__comment_edit_url', '__empty_message', '__page_link', '__page_link_0', '__link_label', '__link_label_3',
 		'__item_form_data_html', '__group_tree_html', '__price_block_html', '__comment_message_html', '__EDIT_URL') as $token) {
 		pg_assert_false(pg_sw_cond_token_allowed($token), $token);

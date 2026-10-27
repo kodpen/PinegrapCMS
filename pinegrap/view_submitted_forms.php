@@ -325,9 +325,9 @@ if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] 
             // get fields for custom form, so we can prepare SQL for data joins
             $query = "SELECT form_fields.id
                      FROM form_fields
-                     WHERE form_fields.page_id = '" . escape($custom_form) . "'
+                     WHERE form_fields.page_id = ?
                      ORDER BY form_fields.sort_order";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $custom_form)) or output_error('Query failed.');
 
             $conditions_for_form = '';
 
@@ -478,8 +478,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
     $query =
         "SELECT quiz
         FROM custom_form_pages
-        WHERE page_id = '" . escape($custom_form_page_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE page_id = ?";
+    $result = db_q($query, array((string) $custom_form_page_id)) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $quiz = $row['quiz'];
 
@@ -491,9 +491,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
     // get fields for custom form
     $query = "SELECT name
              FROM form_fields
-             WHERE (page_id = '" . escape($custom_form_page_id) . "') AND (type != 'information') AND (type != 'file upload')
+             WHERE (page_id = ?) AND (type != 'information') AND (type != 'file upload')
              ORDER BY sort_order";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $custom_form_page_id)) or output_error('Query failed.');
 
     while ($row = mysqli_fetch_assoc($result)) {
         // replace quotation mark with two quotation marks
@@ -592,10 +592,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                     form_fields.id,
                     form_data.data
                  FROM form_fields
-                 LEFT JOIN form_data ON ((form_fields.id = form_data.form_field_id) AND (form_data.form_id = '" . $form['id'] . "'))
-                 WHERE (form_fields.page_id = '" . escape($custom_form_page_id) . "') AND (form_fields.type != 'information') AND (form_fields.type != 'file upload')
+                 LEFT JOIN form_data ON ((form_fields.id = form_data.form_field_id) AND (form_data.form_id = ?))
+                 WHERE (form_fields.page_id = ?) AND (form_fields.type != 'information') AND (form_fields.type != 'file upload')
                  ORDER BY form_fields.sort_order";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $form['id'], (string) $custom_form_page_id)) or output_error('Query failed.');
 
         $fields = array();
 
@@ -664,8 +664,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                     files.name
                  FROM form_data
                  LEFT JOIN files ON form_data.file_id = files.id
-                 WHERE (form_data.form_id = '" . $form['id'] . "') AND (form_data.file_id > 0)";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                 WHERE (form_data.form_id = ?) AND (form_data.file_id > 0)";
+        $result = db_q($query, array((string) $form['id'])) or output_error('Query failed.');
 
         $files = array();
 
@@ -678,8 +678,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
             // if file still exists, delete file
             if ($file['id']) {
                 // delete file record
-                $query = "DELETE FROM files WHERE id = '" . $file['id'] . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "DELETE FROM files WHERE id = ?";
+                $result = db_q($query, array((string) $file['id'])) or output_error('Query failed.');
 
                 // delete file
                 @unlink(FILE_DIRECTORY_PATH . '/' . $file['name']);
@@ -687,12 +687,12 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         }
 
         // delete form
-        $query = "DELETE FROM forms WHERE id = '" . $form['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM forms WHERE id = ?";
+        $result = db_q($query, array((string) $form['id'])) or output_error('Query failed.');
 
         // delete form data
-        $query = "DELETE FROM form_data WHERE (form_id = '" . $form['id'] . "') AND (form_id != '0')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM form_data WHERE (form_id = ?) AND (form_id != '0')";
+        $result = db_q($query, array((string) $form['id'])) or output_error('Query failed.');
 
         // delete signature records for this submitted form
         pg_signature_delete($form['id']);
@@ -796,8 +796,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         // get number of forms for custom form
         $query = "SELECT COUNT(id)
                  FROM forms
-                 WHERE page_id = '" . $custom_form['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                 WHERE page_id = ?";
+        $result = db_q($query, array((string) $custom_form['id'])) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         $number_of_forms = $row[0];
 
@@ -1032,8 +1032,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
             // get number of forms for custom form
             $query = "SELECT COUNT(id)
                      FROM forms
-                     WHERE page_id = '" . $custom_form['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                     WHERE page_id = ?";
+            $result = db_q($query, array((string) $custom_form['id'])) or output_error('Query failed.');
             $row = mysqli_fetch_row($result);
             $number_of_forms = $row[0];
 
@@ -1046,9 +1046,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                             form_fields.id,
                             form_fields.name
                          FROM form_fields
-                         WHERE (form_fields.page_id = '" . $custom_form['id'] . "') AND (form_fields.type != 'information') AND (form_fields.type != 'file upload')
+                         WHERE (form_fields.page_id = ?) AND (form_fields.type != 'information') AND (form_fields.type != 'file upload')
                          ORDER BY form_fields.sort_order";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $custom_form['id'])) or output_error('Query failed.');
 
                 while ($row = mysqli_fetch_assoc($result)) {
                     $field_id = $row['id'];
@@ -1274,7 +1274,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                     ' . $output_custom_form_selection . '
                                 </div>
                             </form>
-                            <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_submitted_forms.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
+                            <a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_submitted_forms.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                             ' . pg_period_nav('view_submitted_forms.php', ($_SESSION['software']['forms']['view_submitted_forms'] ?? array()), array(
                                 'day'   => array($decrease_day, $current_day, $increase_day),
                                 'week'  => array($decrease_week, $current_week, $increase_week),

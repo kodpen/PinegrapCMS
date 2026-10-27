@@ -125,12 +125,10 @@ function _pg_render_catalog_group_tree($parent_id, $listing_path_base, $listing_
 //
 // Bindings recognized:
 //   • _bindings.section = '<name>'  (on any container — div, nav, ul, ol)
-//       (breadcrumb: drawn by its default part before this pass,
-//       pg_sw_part_catalog_crumbs())
+//       (breadcrumb, filter_chips, active_filters: drawn by their default
+//       parts before this pass, widgets_parts.php)
 //       group_tree         → emits the nested group navigation tree HTML
-//       filter_chips       → emits the active-filter chip strip
 //       filters_offcanvas  → emits the offcanvas with all filter forms
-//       active_filters     → emits the (smaller) active attr-filter chips
 //       attribute_filters  → emits the standalone attribute filter UI block
 //
 //   • _bindings.action = '<name>'  on btn / form
@@ -183,8 +181,8 @@ function _pg_catalog_binding_disabled($node, $context)
         if ($action === 'open_filters' || $action === 'clear_filters') return true;
         if ($section === 'filters_offcanvas' || $section === 'attribute_filters') return true;
     }
-    // filter_chips / active_filters are intentionally NOT dropped: they also
-    // carry category and search chips, and render to nothing when empty.
+    // The filter chip parts are not dropped: they draw nothing while no
+    // filter is active.
     return false;
 }
 
@@ -345,15 +343,13 @@ function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = nul
     //
     // $bindings_used (by-ref, populated as we walk): the catalog widget
     // renderer reads this set after the binding pass to SKIP auto-stitched
-    // legacy duplicates — e.g. if `section_filter_chips` is set, the body
-    // composition omits the legacy $chips_html so the visitor doesn't see
-    // two chip strips.
+    // legacy duplicates — e.g. if `section_filters_offcanvas` is set, the
+    // body composition omits the legacy offcanvas so the visitor doesn't
+    // see two of them.
     if (isset($bindings['section'])) {
         $section_inner_token_map = array(
             'group_tree'        => '__group_tree_inner_html',
-            'filter_chips'      => '__filter_chips_inner_html',
             'filters_offcanvas' => '__filters_offcanvas_inner_html',
-            'active_filters'    => '__active_filters_inner_html',
             'attribute_filters' => '__attribute_filters_inner_html',
         );
         $sec = $bindings['section'];
@@ -1730,6 +1726,17 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         ? get_discounted_product_prices() : array();
     if (!is_array($_pg_disc_prices)) $_pg_disc_prices = array();
 
+    // The price before the discount of every card, read for the whole page
+    // at once (pg_price_reference_page()): the price each card shows and
+    // whether an offer reduces it.
+    $_pg_ref_items = array();
+    foreach ($products as $p) {
+        $_ref_pid = (int)$p['id'];
+        $_ref_cents = isset($_pg_disc_prices[$_ref_pid]) ? (int)round($_pg_disc_prices[$_ref_pid]) : (int)$p['price'];
+        $_pg_ref_items[$_ref_pid] = array('price' => $_ref_cents, 'reduced' => $_ref_cents < (int)$p['price']);
+    }
+    $_pg_references = pg_price_reference_page($_pg_ref_items);
+
     $loop_output = '';
     foreach ($products as $p) {
         $pid = (int)$p['id'];
@@ -1796,6 +1803,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                                 ? (int)round(($disc_save_cents / $original_price_cents) * 100) : 0;
         $price_block_html     = _pg_format_price_with_discount($original_price_cents, $price_cents, $currency_symbol);
 
+        $ref_tokens = pg_price_reference_tokens(isset($_pg_references[$pid]) ? $_pg_references[$pid] : null, $currency_symbol);
+
         $rating = _pg_catalog_rating_values(
             isset($p['rating_avg']) ? $p['rating_avg'] : 0,
             isset($p['rating_count']) ? $p['rating_count'] : 0
@@ -1854,6 +1863,11 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             '__discount_amount'          => $disc_save_cents > 0 ? number_format($disc_save_cents / 100, 2, '.', '') : '',
             '__discount_amount_formatted'=> $disc_save_cents > 0 ? pg_visitor_money($disc_save_cents / 100, $currency_symbol) : '',
             '__discount_percent'         => $disc_save_pct > 0 ? (string)$disc_save_pct : '',
+            // The price before the discount the shop's rule names
+            // (Settings › Ecommerce › Reference Price); both empty when
+            // there is none to show.
+            '__reference_price'          => $ref_tokens['__reference_price'],
+            '__reference_label'          => $ref_tokens['__reference_label'],
 
             // Image
             '__image_url'           => $image_url,
@@ -2147,7 +2161,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // products. Results drive both the filter UI and the active-chip labels.
     //
     // ^^__attribute_filters_html^^  — the filter widget (checkboxes/buttons)
-    // ^^__active_filters_html^^     — only the active-attribute chips
+    // The active-attribute chips are the catalog.active_filters rows below.
     //
     // Note: always shows all available options for the group regardless of
     // other active filters (so user can combine/remove filters freely).
@@ -2668,35 +2682,31 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     }
 
     // Attribute filter chips — one chip per active {attr, option} pair.
-    // Added to the shared $chips array for inline rendering AND collected
-    // separately for the standalone ^^__active_filters_html^^ token.
+    // Added to the shared $chips array for inline rendering, and published
+    // as the catalog.active_filters rows the filter chip parts draw
+    // (widgets_parts.php); the offcanvas still prints them as markup.
+    $_attr_chip_rows = array();
     if ($attr_filter_enabled && $active_attr_filters) {
+        $_attr_chip_rows = pg_sw_list_active_filter_rows($active_attr_filters, $available_attrs, function ($aid) use ($page_param) {
+            return '?' . _pg_sw_build_query('pg_attr_' . $aid, '', $page_param, '');
+        });
         $_attr_cs = '';
-        foreach ($active_attr_filters as $_c_aid => $_c_oid) {
-            $_c_albl = isset($available_attrs[$_c_aid]) ? $available_attrs[$_c_aid]['attr_label'] : lang('Attribute');
-            $_c_olbl = '';
-            if (isset($available_attrs[$_c_aid])) {
-                foreach ($available_attrs[$_c_aid]['options'] as $_c_opt) {
-                    if ((int)$_c_opt['option_id'] === (int)$_c_oid) {
-                        $_c_olbl = $_c_opt['option_label'];
-                        break;
-                    }
-                }
-            }
-            if ($_c_olbl === '') $_c_olbl = '#' . $_c_oid;
-            $_c_href = '?' . _pg_sw_build_query('pg_attr_' . $_c_aid, '', $page_param, '');
+        foreach ($_attr_chip_rows as $_c_row) {
             $chips[] = array(
-                'label' => $_c_albl . ': ' . $_c_olbl,
-                'href'  => $_c_href,
+                'label' => $_c_row['__filter_chip_label'],
+                'href'  => $_c_row['__filter_chip_url'],
             );
             $_attr_cs .=
-                '<a href="' . h($_c_href) . '" class="badge text-bg-secondary text-decoration-none me-2 mb-1 d-inline-flex align-items-center" style="font-weight:normal">' .
-                    h($_c_albl . ': ' . $_c_olbl) . ' <span class="bi bi-x-lg ms-2" style="font-size:.7em"></span>' .
+                '<a href="' . h($_c_row['__filter_chip_url']) . '" class="badge text-bg-secondary text-decoration-none me-2 mb-1 d-inline-flex align-items-center" style="font-weight:normal">' .
+                    h($_c_row['__filter_chip_label']) . ' <span class="bi bi-x-lg ms-2" style="font-size:.7em"></span>' .
                 '</a>';
         }
         if ($_attr_cs) {
             $active_attr_chips_html = '<div class="pg-sw-attr-active-filters mb-3">' . $_attr_cs . '</div>';
         }
+    }
+    if (pg_sw_list_wanted('filter_chips')) {
+        pg_sw_list_publish('filter_chips', array('catalog.active_filters' => array(1 => $_attr_chip_rows)));
     }
 
     $chips_html = '';
@@ -2721,21 +2731,27 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // The `__filters_offcanvas` token wraps every filter form (price, stock,
     // attribute) inside a Bootstrap left-side offcanvas. The `__filters_button`
     // token renders the trigger that opens it. Active-filter chips appear
-    // both INSIDE the offcanvas (top) and as `^^__filter_chips^^` in the
-    // main page area, so the visitor can clear filters from either place.
+    // both INSIDE the offcanvas (top) and in the main page area (the filter
+    // chip parts, widgets_parts.php), so the visitor can clear filters from
+    // either place.
     $_pg_off_id = 'pgFilters' . (int)$widget_id;
     $_pg_any_filter_ui = ($price_filter_enabled || $stock_filter_enabled || $attr_filter_enabled);
 
     $clear_query_keys = array('pmin','pmax','stock','sort','attr');
     $clear_query_pairs = array();
+    $clear_query_raw   = array();
     if (!empty($_GET) && is_array($_GET)) {
         foreach ($_GET as $k => $v) {
             if (in_array($k, $clear_query_keys, true) || $k === $page_param) continue;
             if (is_array($v)) continue;
             $clear_query_pairs[] = h($k) . '=' . urlencode((string)$v);
+            $clear_query_raw[]   = $k . '=' . urlencode((string)$v);
         }
     }
     $clear_url = '?' . implode('&', $clear_query_pairs);
+    // The same address unescaped, for the clear button of the filter chip
+    // parts (^^__clear_filters_url^^), which the token fill escapes once.
+    $clear_url_raw = '?' . implode('&', $clear_query_raw);
     // `$stock_filter_active` reflects the CURRENT state — including the
     // configured default ("show only in-stock"). Treating that default as
     // "an active filter" makes the chip strip + clear button render on
@@ -2753,16 +2769,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
           . '<i class="bi bi-x-circle me-1"></i>' . h(lang('Clear Filters')) . '</a>'
         : '';
 
-    // Active chips block — used both as the col-12 row in the page layout
-    // AND inside the offcanvas header. Wrapping div added so the designer
-    // can hide-when-empty via CSS (`:empty`).
-    //
-    // Two variants — same data, different wrapping:
-    //   • $filter_chips_inner_html — chips + clear button without a wrapping
-    //     div. Used when designer's container is bound via section=
-    //     filter_chips (their wrapper preserved).
-    //   • $filter_chips_html — wrapped in `<div class="pg-sw-filter-chips ...">`.
-    //     Legacy token for in-text token placement.
+    // Active chips block inside the offcanvas header: the attribute chips
+    // and the clear button in a `<div class="pg-sw-filter-chips ...">`. In
+    // the page the filter chip parts draw the same (widgets_parts.php).
     $filter_chips_inner_html = '';
     $filter_chips_html       = '';
     if ($has_active_filters) {
@@ -2874,11 +2883,12 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // showing only price/stock/attr with our "Filtreleri Temizle" button)
     // lives INSIDE the offcanvas only — emitting both would duplicate.
     //
-    // Same suppression rule as toolbar: when the designer placed bound
-    // versions of these blocks via section bindings, skip the auto-stitched
+    // Same suppression rule as toolbar: when the designer placed these
+    // blocks (the filter chip parts hold a catalog.active_filters list;
+    // pg_sw_placed()) or bound a section, skip the auto-stitched
     // duplicates so the visitor doesn't see two copies.
-    $_skip_chips      = !empty($_pg_bindings_used['section_filter_chips'])
-                       || !empty($_pg_bindings_used['section_active_filters']);
+    $_skip_chips      = pg_sw_placed($tree_decoded, array('catalog.active_filters', '__filter_chips', '__filter_chips_inner_html',
+                                                      '__active_filters_html', '__active_filters_inner_html'));
     $_skip_offcanvas  = !empty($_pg_bindings_used['section_filters_offcanvas']);
     // When there are no products to loop, $loop_output is empty — substitute
     // the "Ürün bulunamadı" message in its place so the visitor sees a clear
@@ -2912,26 +2922,27 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         // Phase 2.5 attribute filter tokens — designer can place them anywhere
         // in the template; they are also auto-injected into $controls_html.
         '__attribute_filters_html'  => $attribute_filters_html,
-        '__active_filters_html'     => $active_attr_chips_html,
         // New offcanvas-based filter tokens (designer can place each piece
         // wherever in the layout, or use the auto-stitched body).
         '__filters_button'          => $filters_button_html,
         '__filters_offcanvas'       => $filters_offcanvas_html,
-        '__filter_chips'            => $filter_chips_html,
         '__has_active_filters'      => $has_active_filters ? '1' : '0',
+        // The filter chip parts (widgets_parts.php): whether an attribute
+        // filter is active (the key of catalog.active_filters) and where
+        // their clear button leads.
+        '__has_active_attr_filters' => $_attr_chip_rows ? '1' : '0',
+        '__clear_filters_url'       => $clear_url_raw,
         '__clear_filters_button'    => $clear_button_html,
 
         // ── Inner-only variants (no outer wrapper) ─────────────────────
         // Used by the section-binding pre-process: when a designer marks
         // their own <nav>/<div>/<aside>/<ul> with section=group_tree
-        // (or filter_chips, etc.), the binding pass replaces
+        // (or filters_offcanvas, etc.), the binding pass replaces
         // that node's children with one of these inner-only tokens — so
         // the designer's wrapping tag, classes, and attributes are
         // preserved while the inner markup comes from the backend.
         '__group_tree_inner_html'        => $group_tree_inner_html,
-        '__filter_chips_inner_html'      => $filter_chips_inner_html,
         '__filters_offcanvas_inner_html' => $filters_offcanvas_inner_html,
-        '__active_filters_inner_html'    => $active_attr_chips_html,
         '__attribute_filters_inner_html' => $attribute_filters_html,
     );
     // The paging values are escaped already.
@@ -3861,17 +3872,24 @@ function _civ_cross_sell_part_node($node)
 // nothing is read for it; a list the design placed elsewhere is read as
 // before. A condition that cannot be read draws nothing, and one on a
 // node holding a required control is ignored, as in _render_tree_node().
+// Of several conditions, only those on __has_related are known here: with
+// 'all' one of them failing cuts the node, with 'any' all of them must be
+// on __has_related and fail.
 function _civ_related_list_shown_when_off($node)
 {
     if (!is_array($node)) return false;
     if (pg_sw_list_is_sourced($node) && $node['props']['source'] === 'product.related') return true;
     $type = isset($node['type']) ? (string)$node['type'] : '';
-    if (isset($node['props']['_bindings']['show_if']) && !in_array($type, array('root', 'loop_area', 'recipient_loop_area'), true)) {
-        $cond = pg_sw_cond_spec($node['props']);
+    if (isset($node['props']) && pg_sw_cond_present($node['props']) && !in_array($type, array('root', 'loop_area', 'recipient_loop_area'), true)) {
+        $cond = pg_sw_cond_specs($node['props']);
         if ($cond !== null && pg_sw_cond_holds_required($node)) $cond = null;
         if ($cond === false) return false;
-        if (is_array($cond) && strtolower($cond['token']) === '__has_related' && !pg_sw_cond_eval($cond['op'], '', $cond['operand'])) {
-            return false;
+        if (is_array($cond)) {
+            $failed = 0;
+            foreach ($cond['conds'] as $c) {
+                if (strtolower($c['token']) === '__has_related' && !pg_sw_cond_eval($c['op'], '', $c['operand'])) $failed++;
+            }
+            if ($cond['join'] === 'any' ? ($failed === count($cond['conds'])) : ($failed > 0)) return false;
         }
     }
     foreach (isset($node['children']) && is_array($node['children']) ? $node['children'] : array() as $child) {
@@ -4898,6 +4916,20 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                 . _civ_expand_variant_attr_markers($_civ_synth_marker, $vattrs, $default_selection)
                 . '</div>';
         }
+        // The price before the discount of every variant, in one read for
+        // the group (pg_price_reference_page()); the variant script swaps
+        // reference_price / reference_label with the rest.
+        $_civ_ref_items = array();
+        foreach ($vproducts as $_pid => $_vp) {
+            $_civ_ref_items[$_pid] = array('price' => (int)$_vp['price_cents'], 'reduced' => (int)$_vp['price_cents'] < (int)$_vp['original_price_cents']);
+        }
+        $_civ_references = pg_price_reference_page($_civ_ref_items);
+        foreach ($vproducts as $_pid => &$_vp_ref3) {
+            $_vp_ref_tokens = pg_price_reference_tokens(isset($_civ_references[$_pid]) ? $_civ_references[$_pid] : null, $currency_symbol);
+            $_vp_ref3['reference_price'] = $_vp_ref_tokens['__reference_price'];
+            $_vp_ref3['reference_label'] = $_vp_ref_tokens['__reference_label'];
+        }
+        unset($_vp_ref3);
         // Build the JS payload — embedded as a script tag at the end of
         // the widget's HTML. Loaded by pg_civ_variants.js (separate file)
         // which wires the attribute selects to DOM update logic.
@@ -5043,6 +5075,8 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__discount_amount'          => '',
             '__discount_amount_formatted'=> '',
             '__discount_percent'         => '',
+            '__reference_price'          => '',
+            '__reference_label'          => '',
         );
     } else {
         $p_id = (int)$p['id'];
@@ -5195,6 +5229,12 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $original_price_formatted = pg_visitor_money($original_price_decimal, $currency_symbol);
         $has_discount             = ($price_cents < $original_price_cents) ? 1 : 0;
         $discount_save_cents      = $original_price_cents - $price_cents;
+        // The variant read above already holds the product shown; a plain
+        // product is read alone.
+        if (!isset($_civ_ref_items[$p_id])) {
+            $_civ_references = pg_price_reference_page(array($p_id => array('price' => $price_cents, 'reduced' => (bool)$has_discount)));
+        }
+        $_civ_ref_tokens = pg_price_reference_tokens(isset($_civ_references[$p_id]) ? $_civ_references[$p_id] : null, $currency_symbol);
         $discount_save_pct        = ($original_price_cents > 0 && $discount_save_cents > 0)
                                     ? (int)round(($discount_save_cents / $original_price_cents) * 100) : 0;
 
@@ -5259,6 +5299,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__discount_amount'          => $discount_save_cents > 0 ? number_format($discount_save_cents / 100, 2, '.', '') : '',
             '__discount_amount_formatted'=> $discount_save_cents > 0 ? pg_visitor_money($discount_save_cents / 100, $currency_symbol) : '',
             '__discount_percent'         => $discount_save_pct > 0 ? (string)$discount_save_pct : '',
+            // The price before the discount the shop's rule names; the
+            // variant payload carries the same per variant.
+            '__reference_price'          => $_civ_ref_tokens['__reference_price'],
+            '__reference_label'          => $_civ_ref_tokens['__reference_label'],
             // Pre-rendered strike+new HTML — the unified discount visual
             // across catalog/cart/cross-sell/upsell. Drop this single
             // token in place of __price_formatted to get the discount
@@ -5371,7 +5415,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
 
     // The product's allow-listed values (widgets_entity_fields.php), empty
     // when no product was found.
-    $values += pg_sw_entity_values('product', $p ? $p : null, array('currency_symbol' => $currency_symbol));
+    $_civ_entity = pg_sw_entity_values('product', $p ? $p : null, array('currency_symbol' => $currency_symbol));
+    $values += $_civ_entity;
+    // The product is the page's record (page_facts.php).
+    pg_page_record_publish('product', $p ? $_civ_entity : null);
 
     // Both branches escape here, so the not-found map cannot drift from the
     // found one.
@@ -5601,7 +5648,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $_civ_v_base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
                      . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
                      . '/assets/js/';
-        $_civ_v_v   = '7';  // bump on pg_civ_variants.js source changes
+        $_civ_v_v   = '8';  // bump on pg_civ_variants.js source changes
         $_civ_variant_script = '<script>window.pgCivVariants = window.pgCivVariants || [];'
             . 'window.pgCivVariants.push(' . json_encode($variant_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ');'
             . '</script>'

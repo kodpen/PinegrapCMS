@@ -872,7 +872,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
         // If the status of this order is complete, then update the status to be exported.
         if ($order['status'] == 'complete') {
-            db("UPDATE orders SET status = 'exported' WHERE id = '" . $order['id'] . "'");
+            db("UPDATE orders SET status = 'exported', " . pg_order_touch_sql() . " WHERE id = '" . $order['id'] . "'");
 
             // Only the status changed, so the line is written from what the
             // export read rather than reading thousands of rows again. An
@@ -1917,8 +1917,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 '"' . $order_item['notes'] . '"' . "\n";
 
             // get maximum quantity number, so we can determine how many product forms there are for this order item
-            $query = "SELECT MAX(quantity_number) as number_of_forms FROM form_data WHERE order_item_id = '" . $order_item['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT MAX(quantity_number) as number_of_forms FROM form_data WHERE order_item_id = ?";
+            $result = db_q($query, array((string) $order_item['id'])) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $number_of_forms = $row['number_of_forms'];
 
@@ -1938,11 +1938,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                             count(*) as number_of_values
                         FROM form_data
                         WHERE
-                            (order_item_id = '" . $order_item['id'] . "')
-                            AND (quantity_number = '$quantity_number')
+                            (order_item_id = ?)
+                            AND (quantity_number = ?)
                         GROUP BY form_field_id
                         ORDER BY id";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $order_item['id'], (string) $quantity_number)) or output_error('Query failed.');
 
                     $form_data_items = array();
 
@@ -1985,11 +1985,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                 "SELECT data
                                 FROM form_data
                                 WHERE
-                                    (order_item_id = '" . $order_item['id'] . "')
-                                    AND (quantity_number = '$quantity_number')
-                                    AND (form_field_id = '" . $form_data_item['form_field_id'] . "')
+                                    (order_item_id = ?)
+                                    AND (quantity_number = ?)
+                                    AND (form_field_id = ?)
                                 ORDER BY id";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $result = db_q($query, array((string) $order_item['id'], (string) $quantity_number, (string) $form_data_item['form_field_id'])) or output_error('Query failed.');
 
                             while ($row = mysqli_fetch_assoc($result)) {
                                 // if data is not empty, then add comma and space
@@ -2154,8 +2154,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     '"' . $order_item['notes'] . '"' . "\n";
 
                 // get maximum quantity number, so we can determine how many product forms there are for this order item
-                $query = "SELECT MAX(quantity_number) as number_of_forms FROM form_data WHERE order_item_id = '" . $order_item['id'] . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT MAX(quantity_number) as number_of_forms FROM form_data WHERE order_item_id = ?";
+                $result = db_q($query, array((string) $order_item['id'])) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $number_of_forms = $row['number_of_forms'];
 
@@ -2175,11 +2175,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                 count(*) as number_of_values
                             FROM form_data
                             WHERE
-                                (order_item_id = '" . $order_item['id'] . "')
-                                AND (quantity_number = '$quantity_number')
+                                (order_item_id = ?)
+                                AND (quantity_number = ?)
                             GROUP BY form_field_id
                             ORDER BY id";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $result = db_q($query, array((string) $order_item['id'], (string) $quantity_number)) or output_error('Query failed.');
 
                         $form_data_items = array();
 
@@ -2222,11 +2222,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                     "SELECT data
                                     FROM form_data
                                     WHERE
-                                        (order_item_id = '" . $order_item['id'] . "')
-                                        AND (quantity_number = '$quantity_number')
-                                        AND (form_field_id = '" . $form_data_item['form_field_id'] . "')
+                                        (order_item_id = ?)
+                                        AND (quantity_number = ?)
+                                        AND (form_field_id = ?)
                                     ORDER BY id";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                $result = db_q($query, array((string) $order_item['id'], (string) $quantity_number, (string) $form_data_item['form_field_id'])) or output_error('Query failed.');
 
                                 while ($row = mysqli_fetch_assoc($result)) {
                                     // if data is not empty, then add comma and space
@@ -2259,7 +2259,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
         // If the status of this order is complete, then update the status to be exported.
         if ($order['status'] == 'complete') {
-            db("UPDATE orders SET status = 'exported' WHERE id = '" . $order['id'] . "'");
+            db("UPDATE orders SET status = 'exported', " . pg_order_touch_sql() . " WHERE id = '" . $order['id'] . "'");
 
             // Only the status changed, so the line is written from what the
             // export read rather than reading thousands of rows again. An
@@ -3195,16 +3195,16 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_order.php"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang(array('string' => 'Add {var:1}', 'vars' => array(lang('Order')))) . '</a>
                     <form id="search" action="view_orders.php" class="disable_shortcut" method="get">
                         ' . get_token_field() . '
-                        <button type="submit" name="submit_data" value="Export Orders (multiple files)" title="' . lang('Multiple files') . '" class="btn btn-sm btn-ghost"><i class="bi bi-file-earmark-zip me-1" aria-hidden="true"></i>' . lang(array('string'=>'Export') ) . '</button>
-                        <button type="submit" name="submit_data" value="Export Orders (single file)" title="' . lang('Single file') . '" class="btn btn-sm btn-ghost"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang(array('string'=>'Export') ) . '</button>
+                        <button type="submit" name="submit_data" value="Export Orders (multiple files)" title="' . lang('Multiple files') . '" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-file-earmark-zip me-1" aria-hidden="true"></i>' . lang(array('string'=>'Export') ) . '</button>
+                        <button type="submit" name="submit_data" value="Export Orders (single file)" title="' . lang('Single file') . '" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang(array('string'=>'Export') ) . '</button>
                         ' . $output_gateway_buttons . '
                     </form>
-                    <a class="btn btn-sm btn-ghost" href="import_shipments.php"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . lang('Import Tracking Numbers') . '</a>
+                    <a class="btn btn-sm btn-text theme-secondary" href="import_shipments.php"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . lang('Import Tracking Numbers') . '</a>
                     <div class="pg-toolbar-grow"></div>
                     ' . pg_list_sort_menu('view_orders.php', $sort_columns, $sort_levels, $sort_default) . '
                     ' . pg_filter_select('status', $status_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['status'] ?? ''), array('label' => lang('Status'), 'action' => 'view_orders.php', 'id' => 'status')) . '
                     ' . pg_filter_select('type', $type_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['type'] ?? ''), array('label' => lang('Order Type'), 'action' => 'view_orders.php', 'id' => 'type')) . '
-                    <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
+                    <a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                     ' . $output_period_navigator . '
                 </nav>
                 ' . $output_order_stats . '

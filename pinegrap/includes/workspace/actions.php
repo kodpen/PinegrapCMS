@@ -655,15 +655,27 @@ function ws_handle_action($action, $request)
 
             $rows = ws_flows_list($viewer);
             $numbers = ws_flow_version_numbers($rows);
+            $starts = empty($rows) ? array() : ws_flows_start_kinds($rows);
 
-            return ws_action_ok(array('flows' => array_map(function ($row) use ($viewer, $numbers) {
-                return ws_flow_brief($viewer, $row, $numbers[(int) $row['version_id']] ?? 0);
+            return ws_action_ok(array('flows' => array_map(function ($row) use ($viewer, $numbers, $starts) {
+                return ws_flow_brief($viewer, $row, $numbers[(int) $row['version_id']] ?? 0, $starts[(int) $row['id']] ?? '');
             }, $rows)));
 
         case 'ws_flow_get':
             $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'view');
 
             return $flow ? ws_action_ok(array('flow' => ws_flow_detail($viewer, $flow))) : ws_action_error(lang('That flow could not be found.'));
+
+        // A scheduled action drafted on a card (scheduled_draft.php) opened
+        // as a new flow of the person who asked for it.
+        case 'ws_flow_from_draft':
+            $result = ws_scheduled_draft_flow_open($viewer, (int) ($request['change_id'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            return ws_action_ok(array('flow_id' => $result['flow_id'], 'left' => $result['left']));
 
         case 'ws_flow_create':
         case 'ws_flow_save':
@@ -687,7 +699,7 @@ function ws_handle_action($action, $request)
                 return ws_action_ok(array('flow' => ws_flow_detail($viewer, ws_flow_for($viewer, $result['flow_id'], 'edit'))));
             }
 
-            return ws_action_ok(array('draft_rev' => $result['draft_rev'], 'problems' => $result['problems']));
+            return ws_action_ok(array('draft_rev' => $result['draft_rev'], 'problems' => $result['problems'], 'warnings' => $result['warnings']));
 
         case 'ws_flow_publish':
         case 'ws_flow_pause':
@@ -2861,6 +2873,21 @@ function ws_handle_action($action, $request)
                 'lines'       => $created['lines'],
                 'decision_id' => $created['decision_id'],
             ));
+
+        // Product drafts from a pasted list or a file posted in a channel
+        // (bulk_sources.php): one bulk create card under a message of the
+        // person's own, which they apply.
+        case 'ws_bulk_create_propose':
+            $proposed = ws_bulk_create_propose($viewer, (int) ($request['channel_id'] ?? 0), array(
+                'text'       => (string) ($request['text'] ?? ''),
+                'message_id' => (int) ($request['message_id'] ?? 0),
+            ));
+
+            if (!$proposed['ok']) {
+                return ws_action_error($proposed['error']);
+            }
+
+            return ws_action_ok(array('message_id' => $proposed['message_id'], 'count' => $proposed['count'], 'ignored' => $proposed['ignored']));
 
         case 'ws_task_get':
             $task = ws_task((int) ($request['task_id'] ?? 0));

@@ -596,11 +596,13 @@ function api_schema() {
 			'handler' => 'api_orders_list',
 			'returns' => array('list' => 'Order'),
 			'summary' => 'List orders',
-			'description' => 'Cursor paged and ordered by the order date, so updated_since walks new orders in one direction without repeating any.',
+			'description' => 'Cursor paged and ordered by the order date, oldest first, so updated_since walks new orders in one direction without repeating any; sort=placed_desc lists the newest first and resumes the same way. modified_since lists the orders changed at or after a moment, oldest change first, so a client asks what changed since its last read and walks forward: a status change, a cancellation, a restore, a refund, notes, shipping or an export moves an order\'s modified_at. A cursor works only under the sort (or the modified_since listing) it was made for; under another one it is 400 invalid_cursor. Each order carries type (online, local for a counter sale, or marketplace), cancelled_at (null unless cancelled), cancellation_reason (\'\' when none) and refund_status (\'\', pending, refunded, failed or manual_required); each is null on a site whose database lacks its column.',
 			'params'  => array(
 				array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only orders placed at or after this moment.'),
 				array('name' => 'date_to',       'in' => 'query', 'type' => 'datetime'),
-				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('incomplete', 'complete', 'exported', 'cancelled')),
+				array('name' => 'modified_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only orders changed at or after this moment (modified_at), oldest change first. Cannot be combined with sort.'),
+				array('name' => 'status',        'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'One status or several, comma separated: incomplete, complete, exported, cancelled (complete,exported are the placed orders that count as sales). An unknown value is refused with 422.'),
+				array('name' => 'sort',          'in' => 'query', 'type' => 'enum', 'values' => array('placed', 'placed_desc'), 'description' => 'placed (the default) lists the oldest placed first, placed_desc the newest first.'),
 				array('name' => 'order_number',  'in' => 'query', 'type' => 'string', 'max_length' => 100),
 				array('name' => 'email',         'in' => 'query', 'type' => 'string', 'max_length' => 190),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
@@ -617,7 +619,7 @@ function api_schema() {
 			'handler' => 'api_orders_get',
 			'returns' => 'Order',
 			'summary' => 'One order, with its lines',
-			'description' => 'The order with its lines and its shipments, one per shipping address. Each shipment lists its tracking_numbers and, in parcels, every number with the carrier (a key such as yurtici, or null when none is known), carrier_name, tracking_url (the carrier\'s own page, or the one built from the carrier\'s tracking address; null when neither is known), status (created, in_transit, out_for_delivery, delivered, returned or exception) and shipped_at / delivered_at (UTC, null when not known) - the carrier and link the order screen shows. The order.shipped and order.delivered webhooks carry the same parcels for the address they are about; order.shipped from a marketplace import carries only the parcel it announces.',
+			'description' => 'The order with its lines and its shipments, one per shipping address. Each shipment lists its tracking_numbers and, in parcels, every number with the carrier (a key such as yurtici, or null when none is known), carrier_name, tracking_url (the carrier\'s own page, or the one built from the carrier\'s tracking address; null when neither is known), status (created, in_transit, out_for_delivery, delivered, returned or exception) and shipped_at / delivered_at (UTC, null when not known) - the carrier and link the order screen shows. The order.shipped and order.delivered webhooks carry the same parcels for the address they are about; order.shipped from a marketplace import carries only the parcel it announces. Like the list, the order carries type (online, local or marketplace), cancelled_at, cancellation_reason and refund_status (\'\', pending, refunded, failed or manual_required), each null on a site whose database lacks its column.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -671,7 +673,7 @@ function api_schema() {
 			'handler' => 'api_orders_documents',
 			'returns' => array('list' => 'OrderDocument'),
 			'summary' => 'The legal documents kept with an order',
-			'description' => 'The pre-information form and the distance sales contract the customer accepted at checkout, each as the HTML that was shown and stored with the order, with when it was accepted and from which address. The copy never changes after the order is placed, so it is the record of what was agreed to even after the templates are edited. One page, at most one document per type; an order placed before the documents were switched on, or on a store that never switched them on, has an empty list. Use ?fields=type,accepted,accepted_at to skip the HTML.',
+			'description' => 'The pre-information form and the distance sales contract the customer accepted at checkout, each as the HTML that was shown and stored with the order, with when it was accepted and from which address. The copy never changes after the order is placed, so it is the record of what was agreed to even after the templates are edited. One page, at most one document per type; an order placed before the documents were switched on, or on a store that never switched them on, has an empty list. A kvkk copy names the KVKK notice page the checkout linked and the explicit consent sentence; it is accepted only when the customer ticked that optional box. Use ?fields=type,accepted,accepted_at to skip the HTML.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -3105,7 +3107,7 @@ function api_schema() {
 			'handler' => 'api_notifications_list',
 			'returns' => array('list' => 'Notification'),
 			'summary' => 'This person\'s notifications',
-			'description' => 'The panel\'s bell for the same person, newest first: the same rows, the same wording, and only the kinds this account may see. Reading the list does not mark anything read. A page can come back shorter than limit with a next_cursor when many rows in between are not for this person; follow the cursor as usual. After a push arrives, ask for unread=true.',
+			'description' => 'The panel\'s bell for the same person, newest first: the same rows, the same wording, and only the kinds this account may see; the kinds also follow the caller\'s scopes: new_order and order_return rows need orders:read. Reading the list does not mark anything read. A page can come back shorter than limit with a next_cursor when many rows in between are not for this person; follow the cursor as usual. After a push arrives, ask for unread=true.',
 			'params'  => array(
 				array('name' => 'unread', 'in' => 'query', 'type' => 'bool',     'description' => 'Only what this person has not read yet.'),
 				array('name' => 'since',  'in' => 'query', 'type' => 'datetime', 'description' => 'Only notifications created at or after this moment.'),
@@ -3122,7 +3124,7 @@ function api_schema() {
 			'handler' => 'api_notifications_count',
 			'returns' => array('unread' => 'integer'),
 			'summary' => 'How many notifications are unread',
-			'description' => 'The number on the bell. Cheap enough to poll; send If-None-Match with the last ETag and an unchanged count answers 304.',
+			'description' => 'The number on the bell, counting only the kinds GET /notifications lists for this caller (new_order and order_return need orders:read). Cheap enough to poll; send If-None-Match with the last ETag and an unchanged count answers 304.',
 			'params'  => array()
 		),
 
