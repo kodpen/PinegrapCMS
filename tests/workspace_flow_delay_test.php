@@ -170,8 +170,13 @@ function test_workspace_flow_delay_runs_by_its_look()
 
 	$recheck = ws_flow_delay_test_source('ws_flow_step_recheck');
 
-	pg_assert_contains('ws_flow_delay_key_until(', $recheck);
-	pg_assert_contains('ws_flow_delay_settlement(', $recheck);
+	pg_assert_contains('ws_flow_delay_recheck(', $recheck);
+	pg_assert_true(strpos($recheck, 'ws_flow_delay_recheck(') < strpos($recheck, 'ws_flow_effect_task_id('), 'before the task is looked for');
+
+	$look = ws_flow_delay_test_source('ws_flow_delay_recheck');
+
+	pg_assert_contains('ws_flow_delay_settlement(', $look);
+	pg_assert_contains("ws_flow_step_settle(\$step, 'waiting', 'done', 'done'", $look);
 
 	// ws_flow_due() and ws_flow_steps_recheck() read a waiting box by its
 	// next look.
