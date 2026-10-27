@@ -943,3 +943,91 @@ JS
 	pg_assert_same(array('event_1: trigger.event=What happened, trigger.record_id=Record, trigger.order_number=Order number'), $result['web'], 'the first box after the start reads only the start');
 	pg_assert_same(array(), $result['manual'], 'a start that gives nothing is not offered');
 }
+
+// A condition on a value (data-passing D7) offers the values "Add value"
+// does, a branch that may be skipped marked; a number's comparisons include
+// more and less, a text's "contains"; choosing a text value after "is more
+// than" goes back to "is". The box reads the value's name.
+function test_workspace_flows_canvas_condition_value_rule()
+{
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups', 'valueNames',
+			'field', 'textInput', 'changeInput', 'conditionValue', 'conditionCompare', 'conditionValueRule', 'conditionMeta'),
+		<<<'JS'
+var uid = 0;
+var DAYS = {};
+var VALUE_OPS = { number: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'empty', 'not_empty'], text: ['eq', 'neq', 'contains', 'empty', 'not_empty'] };
+var KINDS = {
+    manual: { into: false, out: ['next'] },
+    web_check: { name: 'Check a web address', into: true, out: ['done', 'failed'] },
+    condition: { name: 'Condition', into: true, out: ['yes', 'no'] },
+    post: { name: 'Post', into: true, out: ['done', 'failed'] }
+};
+var FL = {
+    outputs: { web_check: [{ key: 'status_code', type: 'number', label: 'Status code', mode: 'status' }], post: [{ key: 'message_id', type: 'number', label: 'Message' }], condition: [] },
+    trigger_outputs: { kinds: { manual: [] }, events: {} },
+    steps: { operators: { eq: 'is', neq: 'is not', gt: 'is more than', gte: 'is at least', lt: 'is less than', lte: 'is at most', contains: 'contains', empty: 'is empty', not_empty: 'is not empty' } }
+};
+K.select = function (options, value) {
+    var node = new FakeNode('select');
+    options.forEach(function (option) {
+        var item = new FakeNode('option', '', option[1]);
+        item.value = String(option[0]);
+        node.appendChild(item);
+    });
+    node.value = String(value);
+    return node;
+};
+var redrawn = 0;
+function refreshNode() {}
+function drawSettings() { redrawn++; }
+function box(id, kind, y) { return { id: id, kind: kind, label: '', config: {}, x: 0, y: y }; }
+state = { edit: true, graph: { nodes: [box('manual_1', 'manual', 0), box('web_check_1', 'web_check', 1), box('post_1', 'post', 2), box('condition_1', 'condition', 3), box('condition_2', 'condition', 4)], edges: [
+    { from: 'manual_1', to: 'web_check_1', on: 'next' },
+    { from: 'web_check_1', to: 'post_1', on: 'done' },
+    { from: 'web_check_1', to: 'condition_1', on: 'failed' },
+    { from: 'post_1', to: 'condition_1', on: 'done' }
+] } };
+function controls(box) { return box.children.map(function (wrap) { return wrap.children[1]; }); }
+function options(select) { return select.children.map(function (item) { return item.value + '=' + item.textContent; }); }
+var rule = { type: 'value', ref: '{{node.web_check_1.status_code}}', op: 'gt', value: '' };
+var node = nodeById('condition_1');
+node.config.rule = rule;
+var form = new FakeNode('div');
+conditionValueRule(form, node, rule);
+var out = { values: options(controls(form)[0]), ops: options(controls(form)[1]).map(function (item) { return item.split('=')[0]; }), meta: conditionMeta(rule, node) };
+var pick = controls(form)[0];
+pick.value = '{{node.web_check_1.text}}';
+pick.listeners.change.forEach(function (fn) { fn(); });
+out.after = { ref: rule.ref, op: rule.op, redrawn: redrawn };
+form = new FakeNode('div');
+conditionValueRule(form, node, rule);
+out.textOps = options(controls(form)[1]).map(function (item) { return item.split('=')[0]; });
+form = new FakeNode('div');
+conditionValueRule(form, nodeById('condition_2'), { type: 'value', ref: '', op: 'eq', value: '' });
+out.alone = options(controls(form)[0]).length;
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'=fl_cond_value_ref_pick',
+		'{{node.web_check_1.text}}=Check a web address › fl_values_text',
+		'{{node.web_check_1.outcome}}=Check a web address › fl_values_outcome',
+		'{{node.web_check_1.status}}=Check a web address › fl_values_status',
+		'{{node.web_check_1.status_code}}=Check a web address › Status code',
+		'{{node.post_1.text}}=Post › fl_values_text (fl_values_skipped)',
+		'{{node.post_1.outcome}}=Post › fl_values_outcome (fl_values_skipped)',
+		'{{node.post_1.status}}=Post › fl_values_status (fl_values_skipped)',
+		'{{node.post_1.message_id}}=Post › Message (fl_values_skipped)',
+	), $result['values'], 'the boxes before, a branch marked');
+	pg_assert_same(array('eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'empty', 'not_empty'), $result['ops'], 'a number\'s comparisons');
+	pg_assert_same('Check a web address › Status code', $result['meta'], 'the box reads the value\'s name');
+	pg_assert_same(array('ref' => '{{node.web_check_1.text}}', 'op' => 'eq', 'redrawn' => 1), $result['after'], 'a text after "is more than" goes back to "is"');
+	pg_assert_same(array('eq', 'neq', 'contains', 'empty', 'not_empty'), $result['textOps'], 'a text\'s comparisons');
+	pg_assert_same(1, $result['alone'], 'a box with nothing before offers no value');
+}

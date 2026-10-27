@@ -509,7 +509,7 @@
         }
 
         if (node.kind === 'condition') {
-            return conditionMeta(config.rule || {});
+            return conditionMeta(config.rule || {}, node);
         }
 
         if (node.kind === 'delay') {
@@ -2482,7 +2482,7 @@
         var add = function (token, item) {
             if (!keys[item.key]) {
                 keys[item.key] = true;
-                list.push({ token: '{{' + token + item.key + '}}', label: item.label });
+                list.push({ token: '{{' + token + item.key + '}}', label: item.label, type: item.type || 'text' });
             }
         };
 
@@ -3937,8 +3937,14 @@
     var DAYS = { 1: 'fl_day_mon', 2: 'fl_day_tue', 3: 'fl_day_wed', 4: 'fl_day_thu', 5: 'fl_day_fri', 6: 'fl_day_sat', 7: 'fl_day_sun' };
 
     // What a condition box's rule is, in a few words on the box.
-    function conditionMeta(rule) {
+    function conditionMeta(rule, node) {
         var lists = stepLists();
+
+        if (rule.type === 'value') {
+            var named = rule.ref ? valueNames(node)[rule.ref] : null;
+
+            return named ? named.label : (rule.ref ? rule.ref.slice(2, -2) : t('fl_cond_none'));
+        }
 
         if (rule.type === 'workday') {
             return t('fl_cond_workday');
@@ -3974,7 +3980,7 @@
     function conditionFields(box, node) {
         var config = node.config;
         var rule = config.rule = (config.rule && typeof config.rule === 'object') ? config.rule : { type: '' };
-        var types = [['', t('fl_cond_pick')], ['workday', t('fl_cond_workday')], ['weekdays', t('fl_cond_weekdays')], ['hours', t('fl_cond_hours')], ['metric', t('fl_cond_metric')], ['record', t('fl_cond_record')]];
+        var types = [['', t('fl_cond_pick')], ['workday', t('fl_cond_workday')], ['weekdays', t('fl_cond_weekdays')], ['hours', t('fl_cond_hours')], ['metric', t('fl_cond_metric')], ['record', t('fl_cond_record')], ['value', t('fl_cond_value_rule')]];
         var type = K.select(types, rule.type || '');
         var changed = function () {
             refreshNode(node);
@@ -3988,9 +3994,13 @@
             } else if (type.value === 'hours') {
                 config.rule.from = '09:00';
                 config.rule.to = '18:00';
-            } else if ((type.value === 'metric') || (type.value === 'record')) {
+            } else if ((type.value === 'metric') || (type.value === 'record') || (type.value === 'value')) {
                 config.rule.op = (type.value === 'metric') ? 'gt' : 'eq';
                 config.rule.value = '';
+            }
+
+            if (type.value === 'value') {
+                config.rule.ref = '';
             }
 
             refreshNode(node);
@@ -4049,6 +4059,51 @@
         if (rule.type === 'record') {
             conditionRecord(box, node, rule);
         }
+
+        if (rule.type === 'value') {
+            conditionValueRule(box, node, rule);
+        }
+    }
+
+    // The comparisons a value takes by its type (ws_flow_condition_value_operators()).
+    var VALUE_OPS = { number: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'empty', 'not_empty'], text: ['eq', 'neq', 'contains', 'empty', 'not_empty'] };
+
+    // A value of the run compared: what started it or a box before this one
+    // (the values "Add value" offers), the comparison its type takes, and
+    // what it is compared with; a number's a number.
+    function conditionValueRule(box, node, rule) {
+        var options = [['', t('fl_cond_value_ref_pick')]];
+        var types = {};
+
+        valueGroups(node).forEach(function (group) {
+            group.values.forEach(function (value) {
+                types[value.token] = value.type;
+                options.push([value.token, nameOf(group.node) + ' › ' + value.label + (group.skipped ? ' (' + t('fl_values_skipped') + ')' : '')]);
+            });
+        });
+
+        if (rule.ref && !types[rule.ref]) {
+            options.push([rule.ref, rule.ref.slice(2, -2)]);
+        }
+
+        var pick = K.select(options, rule.ref || '');
+        var type = (types[rule.ref] === 'number') ? 'number' : 'text';
+
+        pick.addEventListener('change', function () {
+            rule.ref = pick.value;
+
+            if (VALUE_OPS[(types[rule.ref] === 'number') ? 'number' : 'text'].indexOf(rule.op) === -1) {
+                rule.op = 'eq';
+            }
+
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_cond_value_ref'), pick, (options.length > 1) ? '' : t('fl_values_none')));
+
+        var operators = stepLists().operators;
+
+        conditionCompare(box, node, rule, VALUE_OPS[type].map(function (key) { return [key, operators[key] || key]; }), (type === 'number') ? { kind: 'decimal' } : null);
     }
 
     // A count compared with a number; a count of a channel's tasks reads one
