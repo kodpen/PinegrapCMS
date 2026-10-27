@@ -156,6 +156,7 @@ function makeBootstrap(v) {
         b.Dialog = makeComponent('Dialog', 'dialog', true);
         b.Drawer = makeComponent('Drawer', 'drawer', true);
         b.Menu = makeComponent('Menu', 'menu', true);
+        b.Chips = makeComponent('Chips', 'chips', true);
     }
     ['Tooltip', 'Popover', 'Collapse', 'Tab', 'Toast'].forEach(function (n) { b[n] = makeComponent(n, n.toLowerCase(), v === 6); });
     return b;
@@ -216,6 +217,7 @@ async function main() {
     dlg.className = 'dialog';
     out.v6_ctor = ui6.get('dialog', dlg).name;
     out.v6_menu_ctor = ui6.get('menu', d6.createElement('button')).name;
+    out.chips_ctor = [ui6.get('chips', d6.createElement('div')).name, ui.get('chips', d5.createElement('div'))];
     out.v6_options = ui6.options('tooltip', { popperConfig: { strategy: 'fixed' }, placement: 'auto' });
     out.v6_collapse_options = ui6.options('collapse', { toggle: false, parent: '#a' });
     var v6Types = [];
@@ -273,6 +275,7 @@ function test_pg_ui_names_and_options()
 	pg_assert_same(6, $r['v6_version']);
 	pg_assert_same('Dialog', $r['v6_ctor'], 'dialog is Dialog under 6');
 	pg_assert_same('Menu', $r['v6_menu_ctor'], 'menu is Menu under 6');
+	pg_assert_same(array('Chips', null), $r['chips_ctor'], 'chips only under 6');
 	pg_assert_same(array('popperConfig' => array('strategy' => 'fixed')), $r['v5_options'], 'floatingConfig read as popperConfig by 5');
 	pg_assert_same(array('placement' => 'auto', 'floatingConfig' => array('strategy' => 'fixed')), $r['v6_options'], 'popperConfig read as floatingConfig by 6');
 	pg_assert_same(array('parent' => '#a'), $r['v6_collapse_options'], 'v6 Collapse has no toggle option');

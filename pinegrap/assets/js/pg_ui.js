@@ -12,8 +12,9 @@
  * the markup, not every caller.
  *
  * Components are named by their Bootstrap 6 kind: 'dialog', 'drawer', 'menu',
- * 'tooltip', 'popover', 'collapse', 'tab', 'toast'. A target is an element, a
- * jQuery object or a selector.
+ * 'tooltip', 'popover', 'collapse', 'tab', 'toast', 'chips' (Bootstrap 6 only:
+ * under 5 its get() answers null). A target is an element, a jQuery object or
+ * a selector.
  *
  *   pgUI.ready(fn)                    after Bootstrap's script has run
  *   pgUI.show('dialog', el[, opts])   a promise, settled when it is shown
@@ -43,7 +44,8 @@
         popover: { v5: 'Popover', v6: 'Popover', ev5: 'popover', ev6: 'popover' },
         collapse: { v5: 'Collapse', v6: 'Collapse', ev5: 'collapse', ev6: 'collapse' },
         tab: { v5: 'Tab', v6: 'Tab', ev5: 'tab', ev6: 'tab' },
-        toast: { v5: 'Toast', v6: 'Toast', ev5: 'toast', ev6: 'toast' }
+        toast: { v5: 'Toast', v6: 'Toast', ev5: 'toast', ev6: 'toast' },
+        chips: { v5: 'Chips', v6: 'Chips', ev5: 'chips', ev6: 'chips' }
     };
 
     // Kinds whose show() and hide() end with a shown/hidden event.
