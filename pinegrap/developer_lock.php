@@ -42,27 +42,12 @@ if (!$_POST) {
     $row = mysqli_fetch_assoc($result);
     $firstname_or_username = trim((string) $row['first_name']) ?: $row['user_username'];
 
-    // build pin input fields in rows of 4
-    $pin_inputs = '';
-    for ($i = 1; $i <= $pin_length; $i++) {
-        if (($i - 1) % 4 === 0) {
-            $pin_inputs .= '<div class="d-flex justify-content-center gap-3 mb-3">';
-        }
-
-        $pin_inputs .= '<input type="password"
-                            class="text-center pin-input border border-primary rounded-4"
-                            id="pin' . $i . '"
-                            maxlength="1"
-                            size="1"
-                            pattern="[0-9]*"
-                            inputmode="numeric"
-                            autocomplete="new-password"
-                            style="min-width: 40px; height: 50px; font-size: 1.5rem;" />';
-
-        if ($i % 4 === 0 || $i === $pin_length) {
-            $pin_inputs .= '</div>';
-        }
-    }
+    // One masked slot per PIN digit: Bootstrap's OTP component draws them
+    // over a single real input (data-bs-otp starts it), which is what is
+    // posted. A long PIN's slots shrink with the card (.pg-otp-fluid).
+    $pin_inputs = '<div class="otp otp-lg otp-connected pg-otp-fluid justify-content-center" data-bs-otp="" data-bs-mask="true">
+            <input type="text" id="pin" name="pin" class="otp-input" maxlength="' . (int) $pin_length . '" inputmode="numeric" autocomplete="off" spellcheck="false" autofocus="autofocus"/>
+        </div>';
 
     print 
     pg_page_shell(array(
@@ -92,12 +77,10 @@ if (!$_POST) {
                         <div class="col-12 md:col-6 mx-auto">
                             <div class="card my-7">
                                 <div class="card-header bg-transparent border-0  text-center">
-                                    <label for="pin1" class="form-label">' . lang('PIN CODE') . '</label>
+                                    <label for="pin" class="form-label">' . lang('PIN CODE') . '</label>
                                 </div>
                                 <div class="card-body">
-                                    
-                                            ' . $pin_inputs . '
-                                            <input type="password" id="pin" name="pin" style="display:none"/>
+                                    ' . $pin_inputs . '
                                 </div>
                             </div>
                         </div>
@@ -106,59 +89,32 @@ if (!$_POST) {
             </div>
         </div>
     </main>
+    <style>
+    @layer custom {
+        .pg-otp-fluid .otp-slots, .pg-otp-fluid .otp-slot { min-width: 0; }
+    }
+    </style>
     <script>
-// Input filter: allows only numeric input
-(function($) {
-  $.fn.inputFilter = function(inputFilter) {
-    return this.on("input keydown keyup mousedown mouseup select contextmenu drop", function() {
-      if (inputFilter(this.value)) {
-        this.oldValue = this.value;
-        this.oldSelectionStart = this.selectionStart;
-        this.oldSelectionEnd = this.selectionEnd;
-      } else if (this.hasOwnProperty("oldValue")) {
-        this.value = this.oldValue;
-        this.setSelectionRange(this.oldSelectionStart, this.oldSelectionEnd);
-      }
-    });
-  };
-})(jQuery);
-
-// Apply numeric-only filter to all PIN inputs
-$(".pin-input").inputFilter(function(value) {
-  return /^\\d*$/.test(value);
-});
-
-// Handle input events for PIN fields
-$(".pin-input").on("input", function() {
-  // Get index of current input
-  const index = $(".pin-input").index(this);
-
-  // Focus next input if available
-  const nextInput = $(".pin-input").eq(index + 1);
-  if ($(this).val() && nextInput.length) {
-    nextInput.focus();
-  }
-
-  // Combine all input values into hidden #pin field
-  let pin = "";
-  $(".pin-input").each(function() {
-    pin += $(this).val();
-  });
-  $("#pin").val(pin);
-
-  // Auto-submit form when all digits are entered
-  if (pin.length === $(".pin-input").length) {
-    $("form").submit();
-  }
-});
-
-// Focus first input on page load
-$(document).ready(function() {
-  $(".pin-input").first().focus();
-});
-</script>
-    
-    
+    (function () {
+        // Sends the form once every slot holds a digit. The OTP component
+        // takes over typing (beforeinput) and paste, so no native "input"
+        // follows a keystroke: the value is read after each keyup and paste.
+        var pin = document.getElementById("pin");
+        var sent = false;
+        function check() {
+            if (!sent && pin.value.length === ' . (int) $pin_length . ' && /^[0-9]+$/.test(pin.value)) {
+                sent = true;
+                pin.form.submit();
+            }
+        }
+        ["keyup", "input", "change"].forEach(function (type) {
+            pin.addEventListener(type, check);
+        });
+        pin.addEventListener("paste", function () {
+            window.setTimeout(check, 0);
+        });
+    })();
+    </script>
     ';
     $liveform->remove_form();
 
