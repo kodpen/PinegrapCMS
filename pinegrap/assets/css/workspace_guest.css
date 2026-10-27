@@ -1,3 +1,7 @@
+/* Panel rules sit in Bootstrap 6's custom layer: above its components,
+   below its helpers and utilities, which win as they did with !important. */
+@layer custom {
+
 /*
  * Pinegrap - the guest's side of a conversation in the workspace
  * (workspace_guest.php, assets/js/workspace_guest.js).
@@ -538,14 +542,14 @@ body.pg-guest {
   cursor: pointer;
 }
 
-.ws-check .form-check-input {
+.ws-check :is(.check, .radio) {
   position: relative;
   top: .15em;
   flex-shrink: 0;
   margin: 0;
 }
 
-.ws-check .form-check-input:disabled {
+.ws-check :is(.check, .radio):disabled {
   opacity: .7;
 }
 
@@ -762,7 +766,7 @@ div.pg-guest-poll-option {
   border-color: var(--pg-primary-border-subtle);
 }
 
-.pg-guest-poll-option .form-check-input {
+.pg-guest-poll-option :is(.check, .radio) {
   position: relative;
   z-index: 1;
   flex: none;
@@ -831,4 +835,6 @@ div.pg-guest-poll-option {
   .pg-guest-poll-bar {
     transition: none;
   }
+}
+
 }

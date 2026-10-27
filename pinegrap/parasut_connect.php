@@ -112,15 +112,15 @@ header('X-Robots-Tag: noindex');
 header('Cache-Control: private, no-store');
 
 echo '<!DOCTYPE html><html lang="' . h(defined('SOFTWARE_LANGUAGE') ? SOFTWARE_LANGUAGE : 'tr') . '"><head><meta charset="utf-8"><title>' . h(lang('Connect')) . '</title>'
-    . '<link rel="stylesheet" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY) . '/assets/lib/bootstrap-5.3.8/css/bootstrap.min.css">'
+    . '<link rel="stylesheet" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY) . '/assets/lib/bootstrap-6/css/bootstrap.min.css">'
     . '<link rel="stylesheet" href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY) . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">'
-    . '</head><body class="p-4"><div class="container" style="max-width:640px">'
-    . '<div class="alert alert-' . $tone . ' d-flex align-items-start gap-2"><i class="bi ' . $icon . ' fs-4"></i><div>';
+    . '</head><body class="p-7"><div class="container" style="max-width:640px">'
+    . '<div class="alert alert-' . $tone . ' d-flex align-items-start gap-3"><i class="bi ' . $icon . ' fs-xl"></i><div>';
 
 foreach ($lines as $line) {
     echo '<div>' . h($line) . '</div>';
 }
 
 echo '</div></div>'
-    . '<button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.close()">' . h(lang('Close')) . '</button>'
+    . '<button type="button" class="btn btn-sm btn-outline theme-secondary" onclick="window.close()">' . h(lang('Close')) . '</button>'
     . '</div></body></html>';

@@ -1,5 +1,91 @@
 @charset "UTF-8";
 
+/* Panel rules sit in Bootstrap 6's custom layer: above its components,
+   below its helpers and utilities, which win as they did with !important. */
+@layer custom {
+
+/* Bootstrap 6 shell: what the panel keeps of Bootstrap 5's look. */
+.drawer {
+  --bs-drawer-inset: 0;
+  --bs-drawer-border-radius: 0;
+}
+.pg-menu-wrap {
+  position: relative;
+}
+.pg-menu-caret::after {
+  display: inline-block;
+  margin-left: 0.255em;
+  vertical-align: 0.255em;
+  content: "";
+  border-top: 0.3em solid;
+  border-right: 0.3em solid transparent;
+  border-bottom: 0;
+  border-left: 0.3em solid transparent;
+}
+.pg-menu-caret:empty::after {
+  margin-left: 0;
+}
+/* A closed .dialog keeps display: flex (Bootstrap 6 hides it with visibility),
+   so the UA's absolute position would let a tall one stretch the page. */
+.dialog:not(:modal) {
+  position: fixed;
+}
+.pg-open-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 1055;
+  overflow-y: auto;
+  padding: 1.75rem 0;
+}
+.pg-open-sheet > .dialog {
+  position: relative;
+  max-height: none;
+}
+.pg-link-body-emphasis {
+  color: color-mix(in srgb, var(--pg-fg-emphasis) calc(var(--bs-link-opacity, 1) * 100%), transparent) !important;
+  text-decoration-color: color-mix(in srgb, var(--pg-fg-emphasis) calc(var(--bs-link-underline-opacity, 1) * 100%), transparent) !important;
+}
+.pg-link-body-emphasis:hover,
+.pg-link-body-emphasis:focus {
+  color: color-mix(in srgb, var(--pg-fg-emphasis) calc(var(--bs-link-opacity, 0.75) * 100%), transparent) !important;
+  text-decoration-color: color-mix(in srgb, var(--pg-fg-emphasis) calc(var(--bs-link-underline-opacity, 0.75) * 100%), transparent) !important;
+}
+@media print {
+  .pg-print-none {
+    display: none !important;
+  }
+  .pg-print-inline {
+    display: inline !important;
+  }
+  .pg-print-inline-block {
+    display: inline-block !important;
+  }
+  .pg-print-block {
+    display: block !important;
+  }
+  .pg-print-grid {
+    display: grid !important;
+  }
+  .pg-print-inline-grid {
+    display: inline-grid !important;
+  }
+  .pg-print-table {
+    display: table !important;
+  }
+  .pg-print-table-row {
+    display: table-row !important;
+  }
+  .pg-print-table-cell {
+    display: table-cell !important;
+  }
+  .pg-print-flex {
+    display: flex !important;
+  }
+  .pg-print-inline-flex {
+    display: inline-flex !important;
+  }
+}
+
 /* The @charset above must stay the first thing in this file - a comment or a
    blank line before it makes the browser ignore it. It is the stylesheet's own
    declaration of encoding, for hosts that serve .css without a charset (see
@@ -397,7 +483,7 @@
    on tone 300 sits near 2.5:1, near black clears 5.5:1 on every fill and on
    its hover and active tone. */
 
-.btn-primary {
+.btn-solid.theme-primary {
   --bs-btn-color: var(--pg-on-accent);
   --bs-btn-bg: var(--pg-primary);
   --bs-btn-border-color: var(--pg-primary);
@@ -413,7 +499,7 @@
   --bs-btn-disabled-border-color: var(--pg-primary);
 }
 
-.btn-success {
+.btn-solid.theme-success {
   --bs-btn-color: var(--pg-on-accent);
   --bs-btn-bg: var(--pg-success);
   --bs-btn-border-color: var(--pg-success);
@@ -429,7 +515,7 @@
   --bs-btn-disabled-border-color: var(--pg-success);
 }
 
-.btn-danger {
+.btn-solid.theme-danger {
   --bs-btn-color: var(--pg-on-accent);
   --bs-btn-bg: var(--pg-danger);
   --bs-btn-border-color: var(--pg-danger);
@@ -445,7 +531,7 @@
   --bs-btn-disabled-border-color: var(--pg-danger);
 }
 
-.btn-warning {
+.btn-solid.theme-warning {
   --bs-btn-color: var(--pg-on-accent);
   --bs-btn-bg: var(--pg-warning);
   --bs-btn-border-color: var(--pg-warning);
@@ -461,7 +547,7 @@
   --bs-btn-disabled-border-color: var(--pg-warning);
 }
 
-.btn-info {
+.btn-solid.theme-info {
   --bs-btn-color: var(--pg-on-accent);
   --bs-btn-bg: var(--pg-info);
   --bs-btn-border-color: var(--pg-info);
@@ -482,7 +568,7 @@
    and press. The border is kept rather than dropped entirely because most of
    the 760 call sites are the Cancel button beside a Save, where a shape the
    pointer can aim at matters more than the lighter look. */
-.btn-secondary {
+.btn-solid.theme-secondary {
   --bs-btn-color: var(--pg-fg-body);
   --bs-btn-bg: var(--pg-bg-body);
   --bs-btn-border-color: var(--pg-border-color);
@@ -502,7 +588,7 @@
 /* Outline variants take the readable ink for their resting label - the pastel
    fill is 2.2:1 on white and cannot carry text - and the fill itself only on
    hover, where the ink flips to --pg-on-accent. */
-.btn-outline-primary {
+.btn-outline.theme-primary {
   --bs-btn-color: var(--pg-primary-ink);
   --bs-btn-border-color: var(--pg-primary);
   --bs-btn-hover-color: var(--pg-on-accent);
@@ -517,7 +603,7 @@
   --bs-btn-disabled-border-color: var(--pg-primary);
 }
 
-.btn-outline-secondary {
+.btn-outline.theme-secondary {
   --bs-btn-color: var(--pg-secondary-ink);
   --bs-btn-border-color: var(--pg-secondary);
   --bs-btn-hover-color: var(--pg-on-accent);
@@ -533,7 +619,7 @@
   --bs-btn-disabled-border-color: var(--pg-secondary);
 }
 
-.btn-outline-success {
+.btn-outline.theme-success {
   --bs-btn-color: var(--pg-success-ink);
   --bs-btn-border-color: var(--pg-success);
   --bs-btn-hover-color: var(--pg-on-accent);
@@ -548,7 +634,7 @@
   --bs-btn-disabled-border-color: var(--pg-success);
 }
 
-.btn-outline-danger {
+.btn-outline.theme-danger {
   --bs-btn-color: var(--pg-danger-ink);
   --bs-btn-border-color: var(--pg-danger);
   --bs-btn-hover-color: var(--pg-on-accent);
@@ -563,7 +649,7 @@
   --bs-btn-disabled-border-color: var(--pg-danger);
 }
 
-.btn-outline-warning {
+.btn-outline.theme-warning {
   --bs-btn-color: var(--pg-warning-ink);
   --bs-btn-border-color: var(--pg-warning);
   --bs-btn-hover-color: var(--pg-on-accent);
@@ -578,7 +664,7 @@
   --bs-btn-disabled-border-color: var(--pg-warning);
 }
 
-.btn-outline-info {
+.btn-outline.theme-info {
   --bs-btn-color: var(--pg-info-ink);
   --bs-btn-border-color: var(--pg-info);
   --bs-btn-hover-color: var(--pg-on-accent);
@@ -597,51 +683,51 @@
    .text-primary at --bs-primary-rgb, which is now a pastel that reads at
    2.2:1 on the page background; the ink tone clears 4.5:1 in both themes.
    The opacity variables are kept so .text-opacity-* and .link-opacity-* keep
-   working. .text-secondary is included because Bootstrap 5.3 maps it to
+   working. .fg-secondary is included because Bootstrap 5.3 maps it to
    --bs-secondary-rgb, not to the neutral --bs-secondary-color. */
-.text-primary {
+.fg-primary {
   color: rgba(var(--pg-primary-ink-rgb), var(--bs-text-opacity, 1)) !important;
 }
-.text-secondary {
+.fg-secondary {
   color: rgba(var(--pg-secondary-ink-rgb), var(--bs-text-opacity, 1)) !important;
 }
-.text-success {
+.fg-success {
   color: rgba(var(--pg-success-ink-rgb), var(--bs-text-opacity, 1)) !important;
 }
-.text-danger {
+.fg-danger {
   color: rgba(var(--pg-danger-ink-rgb), var(--bs-text-opacity, 1)) !important;
 }
-.text-warning {
+.fg-warning {
   color: rgba(var(--pg-warning-ink-rgb), var(--bs-text-opacity, 1)) !important;
 }
-.text-info {
+.fg-info {
   color: rgba(var(--pg-info-ink-rgb), var(--bs-text-opacity, 1)) !important;
 }
 
-.link-primary {
+.pg-link-primary {
   --pg-link-ink-rgb: var(--pg-primary-ink-rgb);
 }
-.link-secondary {
+.pg-link-secondary {
   --pg-link-ink-rgb: var(--pg-secondary-ink-rgb);
 }
-.link-success {
+.pg-link-success {
   --pg-link-ink-rgb: var(--pg-success-ink-rgb);
 }
-.link-danger {
+.pg-link-danger {
   --pg-link-ink-rgb: var(--pg-danger-ink-rgb);
 }
-.link-warning {
+.pg-link-warning {
   --pg-link-ink-rgb: var(--pg-warning-ink-rgb);
 }
-.link-info {
+.pg-link-info {
   --pg-link-ink-rgb: var(--pg-info-ink-rgb);
 }
-.link-primary,
-.link-secondary,
-.link-success,
-.link-danger,
-.link-warning,
-.link-info {
+.pg-link-primary,
+.pg-link-secondary,
+.pg-link-success,
+.pg-link-danger,
+.pg-link-warning,
+.pg-link-info {
   color: rgba(var(--pg-link-ink-rgb), var(--bs-link-opacity, 1)) !important;
   -webkit-text-decoration-color: rgba(
     var(--pg-link-ink-rgb),
@@ -659,7 +745,7 @@
    so the inherited colour is right in light and unreadable in dark (1.7:1).
    The fills therefore carry the ink themselves. Backgrounds thinned with
    .bg-opacity-* are excluded - those sit close to the page colour and must
-   keep inheriting it. A .text-white beside a pastel fill is overruled: it
+   keep inheriting it. A .fg-white beside a pastel fill is overruled: it
    dates from the saturated palette and would read at 2.2:1 now. */
 .bg-primary:not([class*="bg-opacity"]),
 .bg-secondary:not([class*="bg-opacity"]),
@@ -669,23 +755,23 @@
 .bg-info:not([class*="bg-opacity"]) {
   color: var(--pg-on-accent);
 }
-.bg-primary:not([class*="bg-opacity"]).text-white,
-.bg-secondary:not([class*="bg-opacity"]).text-white,
-.bg-success:not([class*="bg-opacity"]).text-white,
-.bg-danger:not([class*="bg-opacity"]).text-white,
-.bg-warning:not([class*="bg-opacity"]).text-white,
-.bg-info:not([class*="bg-opacity"]).text-white,
-.bg-primary:not([class*="bg-opacity"]) .text-white,
-.bg-secondary:not([class*="bg-opacity"]) .text-white,
-.bg-success:not([class*="bg-opacity"]) .text-white,
-.bg-danger:not([class*="bg-opacity"]) .text-white,
-.bg-warning:not([class*="bg-opacity"]) .text-white,
-.bg-info:not([class*="bg-opacity"]) .text-white {
+.bg-primary:not([class*="bg-opacity"]).fg-white,
+.bg-secondary:not([class*="bg-opacity"]).fg-white,
+.bg-success:not([class*="bg-opacity"]).fg-white,
+.bg-danger:not([class*="bg-opacity"]).fg-white,
+.bg-warning:not([class*="bg-opacity"]).fg-white,
+.bg-info:not([class*="bg-opacity"]).fg-white,
+.bg-primary:not([class*="bg-opacity"]) .fg-white,
+.bg-secondary:not([class*="bg-opacity"]) .fg-white,
+.bg-success:not([class*="bg-opacity"]) .fg-white,
+.bg-danger:not([class*="bg-opacity"]) .fg-white,
+.bg-warning:not([class*="bg-opacity"]) .fg-white,
+.bg-info:not([class*="bg-opacity"]) .fg-white {
   color: var(--pg-on-accent) !important;
 }
 
 /* A badge is a filled accent, so it takes the accent ink. Neutral badges
-   (.bg-dark, .bg-light, .bg-body-*) are left on Bootstrap's own colour. */
+   (.bg-black, .bg-1, .bg-body-*) are left on Bootstrap's own colour. */
 .badge.bg-primary,
 .badge.bg-secondary,
 .badge.bg-success,
@@ -694,12 +780,12 @@
 .badge.bg-info {
   --bs-badge-color: var(--pg-on-accent);
 }
-.text-bg-primary,
-.text-bg-secondary,
-.text-bg-success,
-.text-bg-danger,
-.text-bg-warning,
-.text-bg-info {
+.bg-primary.fg-contrast-primary,
+.bg-secondary.fg-contrast-secondary,
+.bg-success.fg-contrast-success,
+.bg-danger.fg-contrast-danger,
+.bg-warning.fg-contrast-warning,
+.bg-info.fg-contrast-info {
   color: var(--pg-on-accent) !important;
 }
 
@@ -785,9 +871,9 @@
   --bs-pagination-focus-box-shadow: 0 0 0 var(--bs-focus-ring-width)
     var(--bs-focus-ring-color);
 }
-.dropdown-menu {
-  --bs-dropdown-link-active-color: var(--pg-on-accent);
-  --bs-dropdown-link-active-bg: var(--pg-primary);
+.menu {
+  --bs-menu-item-active-color: var(--pg-on-accent);
+  --bs-menu-item-active-bg: var(--pg-primary);
 }
 .list-group {
   --bs-list-group-active-color: var(--pg-on-accent);
@@ -815,33 +901,33 @@ html[data-bs-theme="dark"] .accordion {
 /* Form controls. Bootstrap hard codes #86b7fe for the focus border and
    rgba(13,110,253,.25) for the ring on every control. */
 .form-control:focus,
-.form-select:focus,
-.form-check-input:focus,
+:is(select.form-control):focus,
+:is(.check, .radio):focus,
 .tagin-wrapper.focus {
   border-color: var(--pg-primary);
   box-shadow: 0 0 0 var(--bs-focus-ring-width) var(--bs-focus-ring-color);
 }
-.form-check-input:checked,
-.form-check-input[type="checkbox"]:indeterminate {
+:is(.check, .radio):checked,
+:is(.check, .radio)[type="checkbox"]:indeterminate {
   background-color: var(--pg-primary);
   border-color: var(--pg-primary);
 }
 /* The tick, the dot and the switch knob ship white; on a tone 300 fill that is
    2.2:1, under the 3:1 a graphical control needs, so all three take the ink. */
-.form-check-input:checked[type="checkbox"],
-.form-check-input[type="checkbox"]:indeterminate {
+:is(.check, .radio):checked[type="checkbox"],
+:is(.check, .radio)[type="checkbox"]:indeterminate {
   --bs-form-check-bg-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%231a1c1e' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
 }
-.form-check-input[type="checkbox"]:indeterminate {
+:is(.check, .radio)[type="checkbox"]:indeterminate {
   --bs-form-check-bg-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%231a1c1e' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10h8'/%3e%3c/svg%3e");
 }
-.form-check-input:checked[type="radio"] {
+:is(.check, .radio):checked[type="radio"] {
   --bs-form-check-bg-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='2' fill='%231a1c1e'/%3e%3c/svg%3e");
 }
-.form-switch .form-check-input:focus {
+.form-switch :is(.check, .radio):focus {
   --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%2364b5f6'/%3e%3c/svg%3e");
 }
-.form-switch .form-check-input:checked {
+.form-switch :is(.check, .radio):checked {
   --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%231a1c1e'/%3e%3c/svg%3e");
 }
 .form-range::-webkit-slider-thumb {
@@ -1692,7 +1778,7 @@ body:not(.toolbar) .software-content {
    panel: a small one at the row's right edge, beside the icon. Above lg
    only: below it #menu is never .expanded either, and the drawer shows the
    full arrow with the names. */
-@media (min-width: 992px) {
+@media (min-width: 1024px) {
   #menu:not(.expanded) .pg-menu-main .pg-menu-chevron {
     right: 0.1875rem;
     font-size: 0.5rem;
@@ -1775,7 +1861,7 @@ body:not(.toolbar) .software-content {
 /* The entries are the links output_menu() builds for each row, with the
    Bootstrap button and icon classes they carry; they are drawn here as rows
    of the menu. The id and two classes are what outweighs the 1.3rem the menu
-   gives every .bi. Their colour comes from .link-body-emphasis, which is
+   gives every .bi. Their colour comes from .pg-link-body-emphasis, which is
    !important and drawn from --bs-emphasis-color-rgb at --bs-link-opacity, so
    those two variables are what is set here: full strength on hover, and the
    primary ink for the current page. */
@@ -1855,7 +1941,7 @@ body:not(.toolbar) .software-content {
     animation: pgMenuMainIn 0.22s ease both;
   }
 }
-@media only screen and (max-width: 991px) {
+@media only screen and (max-width: 1023px) {
   #menu.expanded {
     box-shadow: 3px 3px 3px #00000040;
     transition: box-shadow 0.3s ease;
@@ -1890,7 +1976,7 @@ body:not(.toolbar) .software-content {
   }
 }
 
-.dropdown-item-sm {
+.pg-menu-item-sm {
   font-size: 85%;
 }
 
@@ -1922,7 +2008,7 @@ body:not(.toolbar) .software-content {
    The open state uses its own .drawer-open class rather than .expanded on purpose:
    .expanded is rendered server side from the saved desktop preference, so reusing it
    would flash the drawer open on every mobile page load. */
-@media only screen and (max-width: 991.98px) {
+@media only screen and (max-width: 1023.98px) {
   .software-container {
     grid-template-columns: 0 minmax(0, 1fr);
   }
@@ -2016,7 +2102,7 @@ body:not(.toolbar) .software-content {
     transition: none;
   }
 }
-@media only screen and (min-width: 992px) {
+@media only screen and (min-width: 1024px) {
   .software-container.expanded {
     grid-template-columns: var(--pg-rail-w-expanded) minmax(0, 1fr);
   }
@@ -2097,7 +2183,7 @@ body:not(.toolbar) .software-content {
     width: var(--pg-rail-w);
   }
 }
-@media only screen and (min-width: 992px) and (prefers-reduced-motion: reduce) {
+@media only screen and (min-width: 1024px) and (prefers-reduced-motion: reduce) {
   .software-container .software-sidebar,
   .software-container.menu-hidden .software-sidebar {
     transition: none;
@@ -2125,7 +2211,7 @@ body:not(.toolbar) .software-content {
   vertical-align: 0;
   line-height: 1;
 }
-@media (hover: none), (pointer: coarse), (max-width: 991.98px) {
+@media (hover: none), (pointer: coarse), (max-width: 1023.98px) {
   :root,
   #header {
     --pg-tap: 44px;
@@ -2209,14 +2295,14 @@ body:not(.toolbar) .software-content {
 #header #menu_mode_toggle > .bi {
   display: none;
 }
-@media (min-width: 992px) {
+@media (min-width: 1024px) {
   .software-container:not(.expanded):not(.menu-hidden) #header #menu_mode_toggle > .pg-mt-collapsed,
   .software-container.expanded:not(.menu-hidden) #header #menu_mode_toggle > .pg-mt-expanded,
   .software-container.menu-hidden #header #menu_mode_toggle > .pg-mt-hidden {
     display: inline-flex;
   }
 }
-@media (max-width: 991.98px) {
+@media (max-width: 1023.98px) {
   .software-container:not(.drawer-open) #header #menu_mode_toggle > .pg-mt-shut,
   .software-container.drawer-open #header #menu_mode_toggle > .pg-mt-open {
     display: inline-flex;
@@ -2307,7 +2393,7 @@ body:not(.toolbar) .software-content {
 
 /* Only a wrapper of buttons wraps. A form with fields stays on one line -
    its fields carry w-auto - or a date range splits from its label. */
-#button_bar > form:not(.input-group):not(:has(.form-control, .form-select)),
+#button_bar > form:not(.input-group):not(:has(.form-control, :is(select.form-control))),
 #button_bar > span,
 #button_bar > .d-inline-block {
   flex-wrap: wrap;
@@ -2483,7 +2569,7 @@ body:not(.toolbar) .software-content {
 }
 /* Below lg the bar also carries the drawer button, so the description is the
    first thing to give up its space. */
-@media only screen and (max-width: 991.98px) {
+@media only screen and (max-width: 1023.98px) {
   #header .pg-navhead {
     max-width: 45vw;
   }
@@ -2694,20 +2780,20 @@ body:not(.toolbar) .software-content {
 #header .pg-usermenu {
   --pg-um-pad: 0.375rem;
   --pg-um-row: 2.25rem;
-  --bs-dropdown-min-width: 0;
-  --bs-dropdown-padding-x: var(--pg-um-pad);
-  --bs-dropdown-padding-y: var(--pg-um-pad);
-  --bs-dropdown-font-size: 0.875rem;
-  --bs-dropdown-border-radius: 1rem;
-  --bs-dropdown-item-padding-x: 0.625rem;
-  --bs-dropdown-item-padding-y: 0.375rem;
-  --bs-dropdown-item-border-radius: var(--pg-radius-lg);
-  --bs-dropdown-divider-margin-y: var(--pg-um-pad);
-  --bs-dropdown-divider-bg: var(--pg-border-color-translucent);
-  --bs-dropdown-link-hover-bg: var(--pg-tint-hover);
-  --bs-dropdown-link-hover-color: var(--pg-fg-body);
-  --bs-dropdown-link-active-bg: var(--pg-tint-strong);
-  --bs-dropdown-link-active-color: var(--pg-fg-body);
+  --bs-menu-min-width: 0;
+  --bs-menu-padding-x: var(--pg-um-pad);
+  --bs-menu-padding-y: var(--pg-um-pad);
+  --bs-menu-font-size: 0.875rem;
+  --bs-menu-border-radius: 1rem;
+  --bs-menu-item-padding-x: 0.625rem;
+  --bs-menu-item-padding-y: 0.375rem;
+  --bs-menu-item-border-radius: var(--pg-radius-lg);
+  --bs-menu-divider-margin-y: var(--pg-um-pad);
+  --bs-menu-divider-bg: var(--pg-border-color-translucent);
+  --bs-menu-item-hover-bg: var(--pg-tint-hover);
+  --bs-menu-item-hover-color: var(--pg-fg-body);
+  --bs-menu-item-active-bg: var(--pg-tint-strong);
+  --bs-menu-item-active-color: var(--pg-fg-body);
   /* With the acrylic effect on (.advanced-visuals ... .backdrop) the glass is
      kept but thickened: the 60% the other menus use left the dashboard's
      figures legible through the form fields and the rows of this one. */
@@ -2750,20 +2836,20 @@ body:not(.toolbar) .software-content {
   }
 }
 
-#header .pg-usermenu .dropdown-item {
+#header .pg-usermenu .menu-item {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   min-height: var(--pg-um-row);
   white-space: nowrap;
 }
-#header .pg-usermenu .dropdown-item > .bi:first-child {
+#header .pg-usermenu .menu-item > .bi:first-child {
   flex: 0 0 1.25rem;
   font-size: 1.0625rem;
   text-align: center;
   color: var(--pg-fg-2);
 }
-#header .pg-usermenu .dropdown-item:is(:hover, :focus-visible) > .bi:first-child {
+#header .pg-usermenu .menu-item:is(:hover, :focus-visible) > .bi:first-child {
   color: var(--pg-fg-body);
 }
 #header .pg-usermenu .pg-um-text {
@@ -2779,7 +2865,7 @@ body:not(.toolbar) .software-content {
   color: var(--pg-fg-3);
 }
 /* The dividers run edge to edge, through the card's own padding. */
-#header .pg-usermenu .dropdown-divider {
+#header .pg-usermenu .menu-divider {
   margin-right: calc(-1 * var(--pg-um-pad));
   margin-left: calc(-1 * var(--pg-um-pad));
 }
@@ -3096,12 +3182,12 @@ body:not(.toolbar) .software-content {
   #header .pg-usermenu {
     --pg-um-pad: 0.5rem;
     --pg-um-row: var(--pg-tap);
-    --bs-dropdown-font-size: 0.9375rem;
+    --bs-menu-font-size: 0.9375rem;
     /* Solid, glass or not: a sheet over the whole screen has nothing behind
        it worth seeing, and through the 60% the glass leaves the figures of
        the dashboard read straight through the menu. Important only against
        the important of the acrylic rule (.advanced-visuals ... .backdrop). */
-    --bs-dropdown-bg: var(--pg-bg-body) !important;
+    --bs-menu-bg: var(--pg-bg-body) !important;
     top: var(--pg-navbar-h);
     right: 0;
     bottom: 0;
@@ -3134,10 +3220,10 @@ body:not(.toolbar) .software-content {
    pg_shortcuts_dialog() in includes/fn/output.php, opened with ? and from the
    search box. Two groups of keys and what they do, a <dl> each; the keys are
    drawn as caps rather than as Bootstrap's dark code pill. */
-.pg-keys-modal .modal-dialog {
-  max-width: 30rem;
+.pg-keys-modal.dialog {
+  --bs-dialog-width: 30rem;
 }
-.pg-keys-modal .modal-title {
+.pg-keys-modal .dialog-title {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -3198,10 +3284,10 @@ body:not(.toolbar) .software-content {
 }
 
 #bd-themes {
-  --bs-dropdown-link-active-bg: color-mix(in srgb, var(--pg-primary) 10%, transparent);
-  --bs-dropdown-link-active-color: var(--pg-fg-body);
+  --bs-menu-item-active-bg: color-mix(in srgb, var(--pg-primary) 10%, transparent);
+  --bs-menu-item-active-color: var(--pg-fg-body);
 }
-#bd-themes .dropdown-item.active:before {
+#bd-themes .menu-item.active:before {
   content: "\F633";
   display: inline-block;
   font-family: bootstrap-icons !important;
@@ -3214,13 +3300,13 @@ body:not(.toolbar) .software-content {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-.btn:not(.btn-primary):not(.btn-secondary):not(.btn-success):not(
-    .btn-danger
-  ):not(.btn-warning):not(.btn-info):not(.btn-light):not(.btn-dark):not(
-    .btn-outline-primary
-  ):not(.btn-outline-secondary):not(.btn-outline-success):not(
-    .btn-outline-danger
-  ):not(.btn-outline-warning):not(.btn-outline-info):not(
+.btn:not(.btn-solid.theme-primary):not(.btn-solid.theme-secondary):not(.btn-solid.theme-success):not(
+    .btn-solid.theme-danger
+  ):not(.btn-solid.theme-warning):not(.btn-solid.theme-info):not(.btn-subtle.theme-secondary):not(.btn-solid.theme-inverse):not(
+    .btn-outline.theme-primary
+  ):not(.btn-outline.theme-secondary):not(.btn-outline.theme-success):not(
+    .btn-outline.theme-danger
+  ):not(.btn-outline.theme-warning):not(.btn-outline.theme-info):not(
     .btn-outline-light
   ):not(.btn-outline-dark):not(.btn-close):not(.btn-ghost) {
   --bs-btn-bg: transparent;
@@ -3401,7 +3487,7 @@ table.chart thead th {
 
 #notifications .menu-scroll-area {
   max-height: inherit;
-  border-radius: var(--bs-dropdown-border-radius);
+  border-radius: var(--bs-menu-border-radius);
   width: 100%;
 }
 
@@ -3728,10 +3814,10 @@ nav.buttons.navigation:not(:has(.btn:not(.disabled))) {
   margin-top: 0;
 }
 
-/* .btn-secondary is a ghost everywhere else by design, but the bar has no
+/* .btn-solid.theme-secondary is a ghost everywhere else by design, but the bar has no
    surface of its own, so a ghost here floats over table rows with nothing
    behind it. On this bar it gets a fill. */
-nav.buttons.navigation .btn-secondary {
+nav.buttons.navigation .btn-solid.theme-secondary {
   --bs-btn-bg: var(--pg-bg-body);
   --bs-btn-border-color: var(--pg-border-color);
   --bs-btn-color: var(--pg-fg-body);
@@ -3951,7 +4037,7 @@ table.table.dataTable > tbody > tr.selected > * {
     var(--pg-border-color);
 }
 
-@media only screen and (min-width: 1200px) {
+@media only screen and (min-width: 1280px) {
   .advanced-filter-bar {
     top: var(--pg-navbar-h);
     height: calc(100vh - 56px);
@@ -3976,14 +4062,14 @@ table.table.dataTable > tbody > tr.selected > * {
 a.dt-button {
   position: relative;
 }
-.dt-button-collection.fixed.two-column .dropdown-menu {
+.dt-button-collection.fixed.two-column .menu {
   padding: 1rem;
   height: 300px;
   overflow-x: auto;
 }
 
 .dt-button-collection.fixed.two-column
-  .dropdown-menu
+  .menu
   .buttons-columnVisibility
   span {
   padding-right: 1rem;
@@ -3997,8 +4083,8 @@ a.dt-button {
 .btn {
   --bs-btn-border-radius: var(--pg-radius-lg);
 }
-.dropdown-menu {
-  --bs-dropdown-border-radius: var(--pg-radius-lg);
+.menu {
+  --bs-menu-border-radius: var(--pg-radius-lg);
 }
 .pagination {
   --bs-pagination-border-radius: var(--pg-radius-lg);
@@ -4007,18 +4093,18 @@ a.dt-button {
 .software_notice,
 .software_error,
 .software_warning,
-.modal-content,
+.dialog,
 .cke_chrome,
-:root[data-bs-theme="dark"] div.dropdown-menu.dt-button-collection.fixed,
+:root[data-bs-theme="dark"] div.menu.dt-button-collection.fixed,
 .dropzone_previews,
 .advanced-filter-bar,
 .input-group-sm > .btn,
 .input-group-sm > .form-control,
-.input-group-sm > .form-select,
+.input-group-sm > :is(select.form-control),
 .input-group-sm > .input-group-text,
 .btn-group,
 .popover,
-.form-select,
+:is(select.form-control),
 .form-control,
 .tagin-tag,
 .input-group-text,
@@ -4029,40 +4115,40 @@ a.dt-button {
   .select2-selection__choice {
   border-radius: var(--pg-radius-lg);
 }
-.modal-header,
+.dialog-header,
 .popover .popover-header,
 .advanced-filter-bar > *:first-child {
   border-top-left-radius: var(--pg-radius-lg);
   border-top-right-radius: var(--pg-radius-lg);
 }
-.modal-footer,
+.dialog-footer,
 .popover .popover-body,
 .advanced-filter-bar > *:last-child {
   border-bottom-left-radius: var(--pg-radius-lg);
   border-bottom-right-radius: var(--pg-radius-lg);
 }
-.no-arrow.dropdown-toggle::after,
-.dropend.no-arrow .dropdown-toggle::after,
-.dropup.no-arrow .dropdown-toggle::after,
-.dropstart.no-arrow .dropdown-toggle::after,
-.dropdown.no-arrow .dropdown-toggle::after,
-.dropend.no-arrow .dropdown-toggle::before,
-.dropup.no-arrow .dropdown-toggle::before,
-.dropstart.no-arrow .dropdown-toggle::before,
-.dropdown.no-arrow .dropdown-toggle::before {
+.no-arrow.pg-menu-caret::after,
+.pg-menu-wrap.no-arrow .pg-menu-caret::after,
+.pg-menu-wrap.no-arrow .pg-menu-caret::after,
+.pg-menu-wrap.no-arrow .pg-menu-caret::after,
+.pg-menu-wrap.no-arrow .pg-menu-caret::after,
+.pg-menu-wrap.no-arrow .pg-menu-caret::before,
+.pg-menu-wrap.no-arrow .pg-menu-caret::before,
+.pg-menu-wrap.no-arrow .pg-menu-caret::before,
+.pg-menu-wrap.no-arrow .pg-menu-caret::before {
   display: none;
 }
 
-.form-check-input.danger:checked {
+:is(.check, .radio).danger:checked {
   background-color: var(--pg-danger);
   border-color: var(--pg-danger);
 }
 
-.form-switch .form-check-input.danger {
+.form-switch :is(.check, .radio).danger {
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23dc3545'/%3e%3c/svg%3e");
 }
 
-.form-switch .form-check-input.danger:checked {
+.form-switch :is(.check, .radio).danger:checked {
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%231a1c1e'/%3e%3c/svg%3e");
 }
 .show-on-hovered:not(:checked) {
@@ -4321,16 +4407,16 @@ div#software_image_picker_container {
   margin-bottom: 1rem !important;
 }
 
-.advanced-visuals:not(.toolbar) .dropdown-menu.backdrop,
+.advanced-visuals:not(.toolbar) .menu.backdrop,
 .advanced-visuals:not(.toolbar) .popover.backdrop {
-  --bs-dropdown-bg: color-mix(in srgb, var(--pg-bg-body) calc(var(--bs-bg-opacity) * 100%), transparent) !important;
+  --bs-menu-bg: color-mix(in srgb, var(--pg-bg-body) calc(var(--bs-bg-opacity) * 100%), transparent) !important;
   --bs-popover-bg: color-mix(in srgb, var(--pg-bg-body) calc(var(--bs-bg-opacity) * 100%), transparent) !important;
   --bs-bg-opacity: 0.6;
   -webkit-backdrop-filter: brightness(1) saturate(1.5) blur(20px); backdrop-filter: brightness(1) saturate(1.5) blur(20px);
 }
 
 
-[data-bs-theme="dark"] .advanced-visuals:not(.toolbar) .dropdown-menu.backdrop,
+[data-bs-theme="dark"] .advanced-visuals:not(.toolbar) .menu.backdrop,
 [data-bs-theme="dark"] .advanced-visuals:not(.toolbar) .popover.backdrop {
   -webkit-backdrop-filter: brightness(0.7) saturate(1.7) blur(100px); backdrop-filter: brightness(0.7) saturate(1.7) blur(100px);
 }
@@ -5929,7 +6015,7 @@ html[data-bs-theme="dark"] .default #footer {
   color: var(--pg-fg-body) !important;
 }
 
-html[data-bs-theme="dark"] .card.widget p.bg-light {
+html[data-bs-theme="dark"] .card.widget p.bg-1 {
   background-color: #222;
   color: #f2f2f2;
 }
@@ -6753,7 +6839,7 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
   gap: 0.5rem;
   padding: 0.25rem 0 1.25rem;
 }
-@media (min-width: 992px) {
+@media (min-width: 1024px) {
   .pg-clockbar {
     flex-direction: row;
     align-items: center;
@@ -7299,7 +7385,7 @@ textarea:focus-visible,
 [tabindex]:not([tabindex="-1"]):focus-visible,
 .btn:focus-visible,
 .nav-link:focus-visible,
-.dropdown-item:focus-visible,
+.menu-item:focus-visible,
 .breadcrumb-item a:focus-visible {
   outline: 2px solid var(--pg-primary-ink);
   outline-offset: 2px;
@@ -7366,10 +7452,10 @@ button.no-popover:focus-visible {
 
 /* Menus inside the bar anchor to their own button, not to the page, so a
    dropdown near the right edge does not push the layout sideways. */
-.pg-toolbar .dropdown,
-#button_bar .dropdown { position: relative; }
-.pg-toolbar .dropdown-menu,
-#button_bar .dropdown-menu {
+.pg-toolbar .pg-menu-wrap,
+#button_bar .pg-menu-wrap { position: relative; }
+.pg-toolbar .menu,
+#button_bar .menu {
   position: absolute;
   top: 100%;
   left: 0;
@@ -7382,8 +7468,8 @@ button.no-popover:focus-visible {
   max-height: calc(100vh - 10rem);
   overflow-y: auto;
 }
-.pg-toolbar .dropdown-menu.dropdown-menu-end,
-#button_bar .dropdown-menu.dropdown-menu-end { left: auto; right: 0; }
+.pg-toolbar .menu.pg-menu-end,
+#button_bar .menu.pg-menu-end { left: auto; right: 0; }
 
 /* The one element that takes the slack - a breadcrumb, a screen title, a
    filter summary. Everything else keeps its natural width. */
@@ -7449,7 +7535,7 @@ button.no-popover:focus-visible {
 
 /* The design list's shared components panel carries a six column table;
    Bootstrap's 400px offcanvas would wrap every cell. */
-#sd-comp-offcanvas { --bs-offcanvas-width: min(100vw, 860px); }
+#sd-comp-offcanvas { --bs-drawer-width: min(100vw, 860px); }
 
 /* ── Settings screen section anchors ──────────────────────────────────────
    The settings cards carry an id (#pgset-security, #pgset-waf, …) so the
@@ -7610,8 +7696,8 @@ button.no-popover:focus-visible {
   margin-bottom: 0.25rem;
   font-size: 0.8125rem;
 }
-.pg-settings-body .form-check-label,
-.pg-settings-body .form-select,
+.pg-settings-body :is(.form-field > label),
+.pg-settings-body :is(select.form-control),
 .pg-settings-body .form-control {
   font-size: 0.8125rem;
 }
@@ -7627,7 +7713,7 @@ button.no-popover:focus-visible {
    drew. Below xl it is an ordinary block again and the page is untouched --
    which is why the wrapper exists at all, so there is one thing to switch on
    rather than a layout per screen. */
-@media (min-width: 1200px) {
+@media (min-width: 1280px) {
   main.pg-has-rail {
     display: flex;
     /* No align-items here on purpose. The rail has to be as tall as the page
@@ -7648,7 +7734,7 @@ button.no-popover:focus-visible {
 }
 /* Below the split the rail is a panel under the header, the same one the
    settings screen has always used. */
-@media (max-width: 1199.98px) {
+@media (max-width: 1279.98px) {
   main.pg-has-rail > .pg-settings-menu {
     margin-bottom: 1rem;
   }
@@ -7668,12 +7754,12 @@ button.no-popover:focus-visible {
    Written through #content rather than a class pair because #content carries a
    padding of its own from an id selector, and a class pair loses to it -- the
    reservation was silently doing nothing until this was keyed the same way. */
-@media (min-width: 1200px) {
+@media (min-width: 1280px) {
   .software-content.pg-awaiting-rail > #content {
     padding-left: calc(1rem + 13rem + 1.5rem);
   }
 }
-@media (max-width: 1199.98px) {
+@media (max-width: 1279.98px) {
   /* Below the split the rail is a toggle above the form, so what it needs is
      height: #content's own 1rem plus the button. The 1rem margin under the
      button is deliberately not counted -- it collapses and does not move the
@@ -7737,7 +7823,7 @@ button.no-popover:focus-visible {
    becomes a panel that drops from under the header. It overlays the form
    rather than pushing it down, so choosing a section does not move the page
    under the finger that is choosing. */
-@media (max-width: 1199.98px) {
+@media (max-width: 1279.98px) {
   .pg-settings-toggle {
     position: sticky;
     top: calc(var(--pg-navbar-h) + 0.25rem);
@@ -7971,17 +8057,17 @@ button.no-popover:focus-visible {
    wraps is unreadable. Capped at the viewport so a narrow screen still shows
    the page behind it. */
 .pg-perm-panel {
-  --bs-offcanvas-width: min(32rem, 100vw - 2rem);
+  --bs-drawer-width: min(32rem, 100vw - 2rem);
 }
-.pg-perm-panel .offcanvas-header {
+.pg-perm-panel .drawer-header {
   align-items: center;
   border-bottom: var(--pg-border-width) solid var(--pg-border-color-translucent);
 }
-.pg-perm-panel .offcanvas-title {
+.pg-perm-panel .drawer-title {
   font-size: 1rem;
   font-weight: 600;
 }
-.pg-perm-panel .offcanvas-body {
+.pg-perm-panel .drawer-body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -7994,7 +8080,7 @@ button.no-popover:focus-visible {
 .pg-perm-panel-lead:empty {
   display: none;
 }
-.pg-perm-panel .offcanvas-footer {
+.pg-perm-panel .drawer-footer {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -8030,7 +8116,7 @@ button.no-popover:focus-visible {
   flex-direction: column;
   gap: 0.625rem;
 }
-.pg-perm-switch .form-check-label {
+.pg-perm-switch :is(.form-field > label) {
   font-size: 0.8125rem;
 }
 .pg-perm-switch .form-text {
@@ -8306,7 +8392,7 @@ body.pg-side-panel-open .pg-chat-launcher {
 /* Rows inside a permission list. Flex rather than Bootstrap's float, so a row
    can carry something after its label - the expiry box below - and so that box
    can take a line of its own by asking for the full basis. */
-.pg-perm-list .form-check {
+.pg-perm-list .form-field:has(> .check, > .radio, > .switch) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -8314,12 +8400,12 @@ body.pg-side-panel-open .pg-chat-launcher {
   padding-left: 0;
   margin-bottom: 0.125rem;
 }
-.pg-perm-list .form-check > .form-check-input {
+.pg-perm-list .form-field:has(> .check, > .radio, > .switch) > :is(.check, .radio) {
   flex: 0 0 auto;
   float: none;
   margin: 0;
 }
-.pg-perm-list .form-check > .form-check-label {
+.pg-perm-list .form-field:has(> .check, > .radio, > .switch) > :is(.form-field > label) {
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -8594,8 +8680,8 @@ body.pg-side-panel-open .pg-chat-launcher {
    in a stylesheet: the screen still works, it is just plainer. */
 @supports selector(:has(*)) {
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group),
-  .pg-set-card .row > [class]:has(> .form-check > input[type="checkbox"]) {
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group),
+  .pg-set-card .row > [class]:has(> .form-field:has(> .check, > .radio, > .switch) > input[type="checkbox"]) {
     /* The rule and the text start at the same place, which is the card's own
        content edge. A .row carries a negative horizontal margin and gives each
        cell the matching padding back, so a border drawn on the cell runs half a
@@ -8649,8 +8735,8 @@ body.pg-side-panel-open .pg-chat-launcher {
      row on screen is hardly ever the last child. A card with one setting in it
      -- Sign in with Google, when it is off -- then ended with a rule under the
      only thing in it and a gap under that. */
-  .pg-set-card .row > * + [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group),
-  .pg-set-card .row > * + [class]:has(> .form-check > input[type="checkbox"]) {
+  .pg-set-card .row > * + [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group),
+  .pg-set-card .row > * + [class]:has(> .form-field:has(> .check, > .radio, > .switch) > input[type="checkbox"]) {
     padding-top: .85rem;
     border-top: var(--pg-border-width) solid var(--pg-border-color-translucent);
   }
@@ -8671,8 +8757,8 @@ body.pg-side-panel-open .pg-chat-launcher {
      the amount changed with the control, which is what made the card look
      crooked rather than merely offset. Sharing one row makes that row as tall
      as whichever of the two is taller and centres both in it, at any height. */
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group),
-  .pg-set-card .row > [class]:has(> .form-check > input[type="checkbox"]) > .form-check {
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group),
+  .pg-set-card .row > [class]:has(> .form-field:has(> .check, > .radio, > .switch) > input[type="checkbox"]) > .form-field:has(> .check, > .radio, > .switch) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(7rem, 19rem);
     grid-template-areas:
@@ -8687,33 +8773,33 @@ body.pg-side-panel-open .pg-chat-launcher {
   /* Anything the two columns were not expecting takes a line of its own under
      them rather than being wedged into a cell it does not belong in. Stated
      before the placements below so that the placements win. */
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group) > *,
-  .pg-set-card .row > [class]:has(> .form-check > input[type="checkbox"]) > .form-check > * {
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > *,
+  .pg-set-card .row > [class]:has(> .form-field:has(> .check, > .radio, > .switch) > input[type="checkbox"]) > .form-field:has(> .check, > .radio, > .switch) > * {
     grid-column: 1 / -1;
   }
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group) > .form-label,
-  .pg-set-card .row > [class]:has(> .form-check > input[type="checkbox"]) > .form-check > .form-check-label {
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > .form-label,
+  .pg-set-card .row > [class]:has(> .form-field:has(> .check, > .radio, > .switch) > input[type="checkbox"]) > .form-field:has(> .check, > .radio, > .switch) > :is(.form-field > label) {
     grid-area: pgname;
     margin-bottom: 0;
     font-weight: 500;
   }
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group) > .form-text,
-  .pg-set-card .row > [class]:has(> .form-check > input[type="checkbox"]) > .form-check > .form-text {
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > .form-text,
+  .pg-set-card .row > [class]:has(> .form-field:has(> .check, > .radio, > .switch) > input[type="checkbox"]) > .form-field:has(> .check, > .radio, > .switch) > .form-text {
     grid-area: pgnote;
     margin-top: .1rem;
   }
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group) > input.form-control,
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group) > .form-select,
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group) > .input-group {
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > input.form-control,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > :is(select.form-control),
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > .input-group {
     grid-area: pgctrl;
     justify-self: end;
     width: 100%;
   }
 
-  .pg-set-card .row > [class]:has(> .form-check > input[type="checkbox"]) > .form-check > .form-check-input {
+  .pg-set-card .row > [class]:has(> .form-field:has(> .check, > .radio, > .switch) > input[type="checkbox"]) > .form-field:has(> .check, > .radio, > .switch) > :is(.check, .radio) {
     grid-area: pgctrl;
     justify-self: end;
     float: none;
@@ -8725,8 +8811,8 @@ body.pg-side-panel-open .pg-chat-launcher {
      name, and the rule between settings is what keeps them apart. */
   @container (max-width: 34rem) {
 
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group),
-    .pg-set-card .row > [class]:has(> .form-check > input[type="checkbox"]) > .form-check {
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group),
+    .pg-set-card .row > [class]:has(> .form-field:has(> .check, > .radio, > .switch) > input[type="checkbox"]) > .form-field:has(> .check, > .radio, > .switch) {
       grid-template-columns: minmax(0, 1fr);
       grid-template-areas:
         "pgname"
@@ -8736,10 +8822,10 @@ body.pg-side-panel-open .pg-chat-launcher {
       row-gap: .4rem;
     }
 
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group) > input.form-control,
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group) > .form-select,
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > .form-select, > .input-group) > .input-group,
-    .pg-set-card .row > [class]:has(> .form-check > input[type="checkbox"]) > .form-check > .form-check-input {
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > input.form-control,
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > :is(select.form-control),
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > .input-group,
+    .pg-set-card .row > [class]:has(> .form-field:has(> .check, > .radio, > .switch) > input[type="checkbox"]) > .form-field:has(> .check, > .radio, > .switch) > :is(.check, .radio) {
       justify-self: start;
     }
   }
@@ -8777,7 +8863,7 @@ body.pg-side-panel-open .pg-chat-launcher {
    step of the pane it sits on -- measured rgb(16,17,19) on rgb(16,17,20) --
    so what draws a card is its border, not its colour, and leaving the fill in
    would have laid an opaque sheet over the glass for no gain. */
-.advanced-visuals:not(.toolbar) .pg-settings-modal .modal-content.pg-sm {
+.advanced-visuals:not(.toolbar) .pg-settings-modal.pg-sm {
   background-color: transparent;
 }
 .advanced-visuals:not(.toolbar) .pg-settings-modal .pg-sm-main {
@@ -8787,15 +8873,15 @@ body.pg-side-panel-open .pg-chat-launcher {
 /* The dialogs a category opens over the settings are small and hold still,
    so they keep the whole sheet frosted. */
 .advanced-visuals:not(.toolbar) .pg-settings-modal .pg-sm-side,
-.advanced-visuals:not(.toolbar) #pg_settings_modal_extras .modal-content {
+.advanced-visuals:not(.toolbar) #pg_settings_modal_extras .dialog {
   -webkit-backdrop-filter: brightness(1) saturate(1.5) blur(20px); backdrop-filter: brightness(1) saturate(1.5) blur(20px);
 }
-.advanced-visuals:not(.toolbar) #pg_settings_modal_extras .modal-content {
+.advanced-visuals:not(.toolbar) #pg_settings_modal_extras .dialog {
   background-color: color-mix(in srgb, var(--pg-bg-body) 62%, transparent);
 }
 
 [data-bs-theme="dark"] .advanced-visuals:not(.toolbar) .pg-settings-modal .pg-sm-side,
-[data-bs-theme="dark"] .advanced-visuals:not(.toolbar) #pg_settings_modal_extras .modal-content {
+[data-bs-theme="dark"] .advanced-visuals:not(.toolbar) #pg_settings_modal_extras .dialog {
   -webkit-backdrop-filter: brightness(0.7) saturate(1.7) blur(100px); backdrop-filter: brightness(0.7) saturate(1.7) blur(100px);
 }
 
@@ -8818,8 +8904,8 @@ body.pg-side-panel-open .pg-chat-launcher {
 /* Only while the settings are open, and only then: the class is put on the
    body by the dialog itself. Every other modal in the panel still gets the
    scrim it was designed against. */
-.advanced-visuals.pg-settings-open .modal-backdrop {
-  --bs-backdrop-opacity: 0.25;
+.advanced-visuals.pg-settings-open .dialog {
+  --bs-dialog-backdrop-bg: rgba(0, 0, 0, 0.25);
 }
 
 /* A field held shut against autofill is not a disabled field and must not
@@ -8838,19 +8924,19 @@ body.pg-side-panel-open .pg-chat-launcher {
    whose control is wrapped in something else keeps the whole cell, which is
    the safe way to be wrong. */
 .pg-set-card .pg-f-xs > .form-control,
-.pg-set-card .pg-f-xs > .form-select,
+.pg-set-card .pg-f-xs > :is(select.form-control),
 .pg-set-card .pg-f-xs > .input-group { max-width: 11rem; }
 
 .pg-set-card .pg-f-sm > .form-control,
-.pg-set-card .pg-f-sm > .form-select,
+.pg-set-card .pg-f-sm > :is(select.form-control),
 .pg-set-card .pg-f-sm > .input-group { max-width: 19rem; }
 
 .pg-set-card .pg-f-md > .form-control,
-.pg-set-card .pg-f-md > .form-select,
+.pg-set-card .pg-f-md > :is(select.form-control),
 .pg-set-card .pg-f-md > .input-group { max-width: 28rem; }
 
 .pg-set-card .pg-f-lg > .form-control,
-.pg-set-card .pg-f-lg > .form-select,
+.pg-set-card .pg-f-lg > :is(select.form-control),
 .pg-set-card .pg-f-lg > .input-group { max-width: 34rem; }
 
 /* ── The hub ──────────────────────────────────────────────────────────────
@@ -8921,10 +9007,10 @@ body.pg-side-panel-open .pg-chat-launcher {
    Every item in a column chain here therefore carries min-height: 0. Without
    it .pg-sm-main grows to the height of all its cards, the pane never becomes
    a scroller, and the save bar ends up a thousand pixels below the screen. */
-.pg-settings-modal .modal-dialog {
-  max-width: min(1180px, calc(100vw - 3rem));
+.pg-settings-modal.dialog {
+  --bs-dialog-width: min(1180px, calc(100vw - 3rem));
 }
-.pg-settings-modal .modal-content.pg-sm {
+.pg-settings-modal.pg-sm {
   position: relative;
   flex-direction: row;
   overflow: hidden;
@@ -8938,7 +9024,7 @@ body.pg-side-panel-open .pg-chat-launcher {
    below the screen with its save bar out of reach. dvh is the live figure.
    Declared after the vh rule, so a browser that does not know dvh keeps it. */
 @supports (height: 100dvh) {
-  .pg-settings-modal .modal-content.pg-sm {
+  .pg-settings-modal.pg-sm {
     height: min(860px, calc(100dvh - 3.5rem));
   }
 }
@@ -9168,14 +9254,11 @@ body.pg-side-panel-open .pg-chat-launcher {
 }
 
 /* ── the whole screen, below the sidebar breakpoint ────────────────────── */
-@media (max-width: 991.98px) {
+@media (max-width: 1023.98px) {
   /* modal-fullscreen-lg-down asks for 100vw and the rule above caps it at
      calc(100vw - 3rem); the cap is what wins, and the screen behind shows
      along the edge of a dialog that is meant to be the whole screen. */
-  .pg-settings-modal .modal-dialog {
-    max-width: none;
-  }
-  .pg-settings-modal .modal-content.pg-sm {
+  .pg-settings-modal.pg-sm {
     height: 100%;
     border: 0;
     border-radius: 0;
@@ -9373,24 +9456,24 @@ body.pg-side-panel-open .pg-chat-launcher {
      legible wherever the map happens to be dark. */
   background: color-mix(in srgb, var(--pg-bg-body) 72%, transparent);
 }
-.pg-smap-menu .dropdown-menu {
-  --bs-dropdown-font-size: 12px;
-  --bs-dropdown-item-padding-y: .25rem;
-  --bs-dropdown-min-width: 9rem;
+.pg-smap-menu .menu {
+  --bs-menu-font-size: 12px;
+  --bs-menu-item-padding-y: .25rem;
+  --bs-menu-min-width: 9rem;
 }
-.pg-smap-menu .dropdown-item {
+.pg-smap-menu .menu-item {
   display: flex;
   align-items: center;
   gap: .4rem;
 }
 /* The tick is the only thing that marks the current choice: a menu row painted
    in the accent reads as a state, and these rows are a choice. */
-.pg-smap-menu .dropdown-item.active {
+.pg-smap-menu .menu-item.active {
   background: transparent;
   color: inherit;
   font-weight: 600;
 }
-.pg-smap-menu .dropdown-item:not(.active) .pg-smap-tick { visibility: hidden; }
+.pg-smap-menu .menu-item:not(.active) .pg-smap-tick { visibility: hidden; }
 
 /* One layer per view, both in the same box: the one not being shown carries
    .d-none rather than being thrown away, so switching back does not go to the
@@ -9783,7 +9866,7 @@ body.pg-side-panel-open .pg-chat-launcher {
 /* The status column: summary, payment, account. The column is as tall as
    the row, so the stickiness is on this box. */
 .pg-sale-status { display: flex; flex-direction: column; gap: 1rem; }
-@media (min-width: 992px) {
+@media (min-width: 1024px) {
   .pg-sale-status { position: sticky; top: 3.3rem; }
 }
 .pg-sale-total { padding: 1rem 1rem .85rem; }
@@ -9988,7 +10071,7 @@ body:has(#pg-chat-root) .pg-sale-savebar-in { margin-right: 4.75rem; }
 }
 .pg-sale-savebar-in .btn { flex: none; margin-left: auto; }
 
-.pg-sale-recent { --bs-offcanvas-width: min(430px, 100vw); }
+.pg-sale-recent { --bs-drawer-width: min(430px, 100vw); }
 .pg-sale-rs {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -10079,8 +10162,8 @@ body.workspace *:focus-visible,
 /* Drawers and the overview's cards sit on the scale too: a drawer's inner
    corners rounded and the panel lifted on the soft shadow instead of a
    hairline, a home card the same. */
-body.workspace .offcanvas.offcanvas-end,
-[id^="ws-"].offcanvas.offcanvas-end {
+body.workspace .drawer.drawer-end,
+[id^="ws-"].drawer.drawer-end {
   border-left: 0;
   border-radius: var(--ws-radius-lg) 0 0 var(--ws-radius-lg);
   box-shadow: var(--ws-shadow);
@@ -10322,7 +10405,7 @@ button.ws-thread-bar:hover {
   font-size: .68rem;
   color: var(--pg-fg-2);
 }
-@media (max-width: 1199.98px) {
+@media (max-width: 1279.98px) {
   .ws-app.ws-thread-open {
     grid-template-columns: 14rem minmax(0, 1fr) var(--ws-thread-w, minmax(18rem, 22rem));
   }
@@ -10749,7 +10832,7 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
   gap: .35rem;
   margin-bottom: .4rem;
 }
-.ws-sa-follow-head .form-select {
+.ws-sa-follow-head :is(select.form-control) {
   max-width: 14rem;
 }
 .ws-sa-follow-head .ws-sa-remove {
@@ -11235,7 +11318,7 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
   display: none;
 }
 /* The hint is hidden on narrow screens; the send button still goes right. */
-.ws-composer-tools > .btn-primary:last-child {
+.ws-composer-tools > .btn-solid.theme-primary:last-child {
   margin-left: auto;
 }
 .ws-pane-messages {
@@ -11750,13 +11833,13 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
   margin: 0;
   cursor: pointer;
 }
-.ws-check .form-check-input {
+.ws-check :is(.check, .radio) {
   flex-shrink: 0;
   margin: 0;
   position: relative;
   top: .15em;
 }
-.ws-check .form-check-input:disabled {
+.ws-check :is(.check, .radio):disabled {
   opacity: .7;
 }
 .ws-check.ws-checked .ws-check-text {
@@ -11829,7 +11912,7 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
   background: rgba(var(--ws-accent-rgb), .1);
   transition: width .25s ease;
 }
-.ws-poll-option .form-check-input {
+.ws-poll-option :is(.check, .radio) {
   flex-shrink: 0;
   margin: 0;
 }
@@ -12354,8 +12437,8 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
   font-size: .75rem;
   color: var(--pg-fg-2);
 }
-.ws-sa-offcanvas.offcanvas-end {
-  --bs-offcanvas-width: min(40rem, 100vw);
+.ws-sa-offcanvas.drawer-end {
+  --bs-drawer-width: min(40rem, 100vw);
 }
 .ws-sa-section {
   margin-top: 1rem;
@@ -12556,7 +12639,7 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
   align-items: flex-start;
   margin-bottom: .35rem;
 }
-.ws-sa-field-row > .form-select {
+.ws-sa-field-row > :is(select.form-control) {
   flex: 0 0 11rem;
 }
 .ws-sa-picker {
@@ -12601,11 +12684,11 @@ html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86
   .ws-sa-field-row {
     flex-wrap: wrap;
   }
-  .ws-sa-field-row > .form-select {
+  .ws-sa-field-row > :is(select.form-control) {
     flex: 1 1 100%;
   }
 }
-.ws-delete-scopes .form-check {
+.ws-delete-scopes .form-field:has(> .check, > .radio, > .switch) {
   margin-bottom: .45rem;
 }
 /* Who has seen a message. */
@@ -13223,16 +13306,16 @@ a.ws-chip:hover {
 /* The design windows: table, checklist, code. */
 .ws-table-tools {
   position: sticky;
-  top: calc(-1 * var(--bs-modal-padding, 1rem));
+  top: calc(-1 * var(--bs-dialog-padding, 1rem));
   z-index: 2;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: .15rem;
-  margin: calc(-1 * var(--bs-modal-padding, 1rem)) calc(-1 * var(--bs-modal-padding, 1rem)) .6rem;
-  padding: .45rem var(--bs-modal-padding, 1rem);
+  margin: calc(-1 * var(--bs-dialog-padding, 1rem)) calc(-1 * var(--bs-dialog-padding, 1rem)) .6rem;
+  padding: .45rem var(--bs-dialog-padding, 1rem);
   border-bottom: 1px solid var(--pg-border-color);
-  background: var(--bs-modal-bg, var(--pg-bg-body));
+  background: var(--bs-dialog-bg, var(--pg-bg-body));
 }
 /* Under the title field the tools start in the flow, not over it. */
 .ws-block-title-field + .ws-table-tools {
@@ -13293,7 +13376,7 @@ a.ws-chip:hover {
 .ws-check-edit-row:focus-within {
   background: var(--pg-bg-1);
 }
-.ws-check-edit-row > .form-check-input {
+.ws-check-edit-row > :is(.check, .radio) {
   flex-shrink: 0;
   margin: .6rem .15rem 0;
 }
@@ -14535,7 +14618,7 @@ a.ws-chip:hover {
   height: 2rem;
   max-width: 16rem;
 }
-.ws-preview-modal .modal-body {
+.ws-preview-modal .dialog-body {
   background: #111;
   min-height: 60vh;
 }
@@ -16283,7 +16366,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   background: var(--pg-danger);
 }
 .ws-nav-drawer {
-  --bs-offcanvas-width: min(19rem, 88vw);
+  --bs-drawer-width: min(19rem, 88vw);
 }
 .ws-nav-drawer .ws-side-scroll {
   padding-top: .25rem;
@@ -16311,7 +16394,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   font-weight: 600;
   margin: 0 0 .75rem;
 }
-.ws-home .col-md-6 > .ws-home-card {
+.ws-home .md\:col-6 > .ws-home-card {
   height: 100%;
 }
 .ws-home-card + .ws-home-card {
@@ -16612,7 +16695,7 @@ button.ws-home-row:hover,
   gap: .35rem .6rem;
   margin-bottom: .4rem;
 }
-.ws-calc-settings .form-select {
+.ws-calc-settings :is(select.form-control) {
   width: auto;
 }
 .ws-calc-settings .form-control {
@@ -16706,7 +16789,7 @@ button.ws-home-row:hover,
   align-items: flex-start;
   cursor: pointer;
 }
-.ws-nb-import-row .form-check-input {
+.ws-nb-import-row :is(.check, .radio) {
   flex: none;
   margin-top: .2rem;
 }
@@ -17068,7 +17151,7 @@ button.ws-home-row:hover,
     height: var(--ws-avatar-sm);
     border-radius: 50%;
 }
-@media (max-width: 991.98px) {
+@media (max-width: 1023.98px) {
     .ws-nb-open .ws-nb-list-col,
     #ws-root:not(.ws-nb-open) .ws-nb-pane-col {
         display: none;
@@ -17257,7 +17340,7 @@ button.ws-home-row:hover,
     color: var(--pg-warning-fg-emphasis);
 }
 /* The search box of the whole workspace (assets/js/workspace_palette.js) */
-.ws-palette .modal-dialog {
+.ws-palette.dialog {
     margin-top: 8vh;
 }
 .ws-palette-head {
@@ -18262,7 +18345,7 @@ button.ws-ack-count:hover {
   max-width: 50%;
   text-align: right;
 }
-.wsf-share-level .form-select {
+.wsf-share-level :is(select.form-control) {
   width: auto;
 }
 .wsf-main {
@@ -18731,7 +18814,7 @@ html[data-bs-theme="dark"] .wsf-node-end { --wsf-kind: #b3ab9b; }
 .wsf-run-view .wsf-outline-item:not(.wsf-run-none) {
   background: linear-gradient(var(--wsf-run-bg, transparent), var(--wsf-run-bg, transparent)), var(--pg-bg-body);
 }
-@media (max-width: 1199.98px) {
+@media (max-width: 1279.98px) {
   .wsf-app { grid-template-columns: 12rem minmax(0, 1fr) 16rem; }
 }
 @media (max-width: 767.98px) {
@@ -18784,4 +18867,12 @@ html[data-bs-theme="dark"] .wsf-node-sa-follow { --wsf-kind: #c3a8ec; }
   font-weight: 500;
   white-space: normal;
   text-align: left;
+}
+
+}
+
+/* Unlayered: Bootstrap 6 gives .fixed-top 1020 in its helpers layer, which
+   beats @layer custom, and 1020 falls below the sidebar and the menu backdrop. */
+.software-navbar.fixed-top {
+  z-index: 1030;
 }

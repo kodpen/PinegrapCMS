@@ -296,7 +296,7 @@ function pg_shipping_import_run($path, $notify, $max_rows)
     $handle = fopen($path, 'r');
 
     if (!$handle) {
-        return '<div class="alert alert-danger">' . h(lang('The file could not be read.')) . '</div>';
+        return '<div class="alert theme-danger">' . h(lang('The file could not be read.')) . '</div>';
     }
 
     $read = pg_shipping_import_read($handle, $max_rows);
@@ -369,7 +369,7 @@ function pg_shipping_import_run($path, $notify, $max_rows)
     }
 
     $output = '
-        <div class="alert alert-info">
+        <div class="alert theme-info">
             ' . h(lang(array(
                 'string' => 'Added: {var:1}. Already on the order: {var:2}. Not imported: {var:3}.',
                 'vars'   => array(pg_format_number($counts['added'], 0), pg_format_number($counts['present'], 0), pg_format_number($counts['failed'], 0)),
@@ -378,14 +378,14 @@ function pg_shipping_import_run($path, $notify, $max_rows)
 
     if ($read['more']) {
         $output .= '
-        <div class="alert alert-warning">' . h(lang(array(
+        <div class="alert theme-warning">' . h(lang(array(
             'string' => 'Only the first {var:1} rows were read. Please upload the rest in another file.',
             'vars'   => array(pg_format_number($max_rows, 0)),
         ))) . '</div>';
     }
 
     if ($output_rows === '') {
-        return $output . '<div class="alert alert-warning">' . h(lang('The file has no rows.')) . '</div>';
+        return $output . '<div class="alert theme-warning">' . h(lang('The file has no rows.')) . '</div>';
     }
 
     return $output . '

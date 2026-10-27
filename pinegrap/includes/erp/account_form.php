@@ -77,35 +77,35 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
     }
 
     $output = '
-    <div class="card my-4">
-        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+    <div class="card my-7">
+        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
             ' . lang('Account') . '
         </div>
         <div class="card-body">
             <div class="row">
-                <div class="col-12 col-lg-6 my-2">
+                <div class="col-12 lg:col-6 my-3">
                     <label for="title" class="form-label">' . lang('Name') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'title', 'name' => 'title',
                         'class' => 'form-control', 'maxlength' => '255',
                         'autocomplete' => 'off', 'required' => 'required')) . '
                 </div>
-                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="kind" class="form-label">' . lang('Type') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'kind', 'name' => 'kind',
-                        'class' => 'form-select', 'options' => $kind_options)) . '
+                        'class' => 'form-control', 'options' => $kind_options)) . '
                 </div>
-                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="status" class="form-label">' . lang('Status') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'status', 'name' => 'status',
-                        'class' => 'form-select', 'options' => $status_options)) . '
+                        'class' => 'form-control', 'options' => $status_options)) . '
                 </div>
             </div>
             ' . erp_currency_form_row($liveform, $currency_locked, lang('The currency the account is kept in. Its balance is reported in the base currency as well.')) . '
             <div class="row">
-                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="payment_days" class="form-label">' . lang('Payment term (days)') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'payment_days', 'name' => 'payment_days',
@@ -113,7 +113,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                         'autocomplete' => 'off')) . '
                     <div class="form-text">' . h(lang(array('string' => 'Days from the invoice date to its due date. 0 uses the store default, currently {var:1} days.', 'vars' => (defined('ERP_DEFAULT_DUE_DAYS') ? (int) ERP_DEFAULT_DUE_DAYS : 0)))) . '</div>
                 </div>
-                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="overdue_notify_days" class="form-label">' . lang('Reminder threshold (days)') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'overdue_notify_days', 'name' => 'overdue_notify_days',
@@ -121,11 +121,11 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                         'autocomplete' => 'off')) . '
                     <div class="form-text">' . h(lang(array('string' => 'Days overdue before this account\'s invoices are announced. 0 uses the store threshold, currently {var:1} days.', 'vars' => (defined('ERP_OVERDUE_NOTIFY_DAYS') ? (int) ERP_OVERDUE_NOTIFY_DAYS : 0)))) . '</div>
                 </div>
-                <div class="col-12 col-lg-6 my-2">
+                <div class="col-12 lg:col-6 my-3">
                     <div class="form-label">' . lang('Reminder e-mail to the customer') . '</div>
-                    <div class="form-check form-switch">
-                        ' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'overdue_notify_customer', 'name' => 'overdue_notify_customer', 'value' => '1', 'class' => 'form-check-input')) . '
-                        <label class="form-check-label" for="overdue_notify_customer">' . lang('Write to this account when its invoices pass the threshold') . '</label>
+                    <div class="form-field">
+                        <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'overdue_notify_customer', 'name' => 'overdue_notify_customer', 'value' => '1', 'class' => '')) . '</div>
+                        <label class="" for="overdue_notify_customer">' . lang('Write to this account when its invoices pass the threshold') . '</label>
                     </div>
                     <div class="form-text">' . h((defined('ERP_OVERDUE_NOTIFY_CUSTOMER') && ERP_OVERDUE_NOTIFY_CUSTOMER)
                         ? lang('Goes to the e-mail address above. Switch it off for a customer who asked not to be written to.')
@@ -133,18 +133,18 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                 </div>
             </div>' . ((function_exists('erp_mail_ready') && erp_mail_ready() && waf_table_has_column('erp_accounts', 'invoice_email')) ? '
             <div class="row">
-                <div class="col-12 col-lg-6 my-2">
+                <div class="col-12 lg:col-6 my-3">
                     <label for="invoice_email" class="form-label">' . lang('Invoice e-mail address') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'email', 'id' => 'invoice_email', 'name' => 'invoice_email',
                         'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
                     <div class="form-text">' . lang('Where invoices are e-mailed when that is not the address above, such as the customer\'s accounts department. Empty uses the address above.') . '</div>
                 </div>
-                <div class="col-12 col-lg-6 my-2">
+                <div class="col-12 lg:col-6 my-3">
                     <div class="form-label">' . lang('Invoices by e-mail') . '</div>
-                    <div class="form-check form-switch">
-                        ' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'invoice_mail', 'name' => 'invoice_mail', 'value' => '1', 'class' => 'form-check-input')) . '
-                        <label class="form-check-label" for="invoice_mail">' . lang('Send this account its invoices on their own') . '</label>
+                    <div class="form-field">
+                        <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'invoice_mail', 'name' => 'invoice_mail', 'value' => '1', 'class' => '')) . '</div>
+                        <label class="" for="invoice_mail">' . lang('Send this account its invoices on their own') . '</label>
                     </div>
                     <div class="form-text">' . h((function_exists('erp_mail_auto_on') && erp_mail_auto_on())
                         ? lang('Each issued invoice goes to the account by e-mail. Switch it off for a customer who does not want them; an invoice can still be sent from its own screen.')
@@ -152,14 +152,14 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                 </div>
             </div>' : '') . ((function_exists('erp_credit_ready') && erp_credit_ready()) ? '
             <div class="row">
-                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="credit_limit" class="form-label">' . h(lang(array('string' => 'Credit limit ({var:1})', 'vars' => erp_base_currency()))) . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'credit_limit', 'name' => 'credit_limit',
                         'class' => 'form-control', 'maxlength' => '20', 'inputmode' => 'decimal',
                         'autocomplete' => 'off', 'placeholder' => lang('No limit'))) . '
                 </div>
-                <div class="col-12 col-lg-9 my-2 d-flex align-items-end">
+                <div class="col-12 lg:col-9 my-3 d-flex align-items-end">
                     <div class="form-text">' . h((erp_credit_mode() === 'block')
                         ? lang('The most this customer may owe, in the base currency. An invoice typed in the ERP that would take the balance past it is refused until a payment comes in. Empty is no limit; order invoices are never held back.')
                         : lang('The most this customer may owe, in the base currency. An invoice typed in the ERP that takes the balance past it is still issued, with a warning, and the account list shows the account as over. Empty is no limit.')) . '</div>
@@ -168,27 +168,27 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
         </div>
     </div>
 
-    <div class="card my-4">
-        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+    <div class="card my-7">
+        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
             ' . lang('Tax Details') . '
         </div>
         <div class="card-body">
             <div class="row">
-                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="is_person" class="form-label">' . lang('Taxpayer') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'is_person', 'name' => 'is_person',
-                        'class' => 'form-select', 'options' => $person_options)) . '
+                        'class' => 'form-control', 'options' => $person_options)) . '
                     <div class="form-text' . $tr_only . '" data-erp-tr-only>' . lang('Decides whether the number is read as a TCKN or a VKN.') . '</div>
                 </div>
-                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="tax_number" class="form-label" data-label-tr="' . h(lang('VKN / TCKN')) . '" data-label-other="' . h(lang('Tax number')) . '">' . h(erp_tax_id_label($country)) . '</label>
                     ' . ($taxpayer_lookup ? '<div class="input-group">' : '') . '
                     ' . $liveform->output_field(array_merge(array(
                         'type' => 'text', 'id' => 'tax_number', 'name' => 'tax_number',
                         'class' => 'form-control', 'maxlength' => (string) erp_tax_number_width(),
                         'autocomplete' => 'off'), $is_tr ? array('inputmode' => 'numeric') : array())) . '
-                    ' . ($taxpayer_lookup ? '<button type="button" class="btn btn-outline-secondary' . $tr_only . '" data-erp-tr-only data-erp-taxpayer-lookup'
+                    ' . ($taxpayer_lookup ? '<button type="button" class="btn btn-outline theme-secondary' . $tr_only . '" data-erp-tr-only data-erp-taxpayer-lookup'
                         . ' data-account-id="' . $lookup_account_id . '"'
                         . ' data-busy="' . h(lang('Querying')) . '"'
                         . ' data-failed="' . h(lang('The answer could not be read. Try again in a moment.')) . '"'
@@ -198,7 +198,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                         . '<i class="bi bi-search me-1" aria-hidden="true"></i>' . lang('Query') . '</button></div>' : '') . '
                     ' . erp_account_form_einvoice_state($account) . '
                 </div>
-                <div class="col-12 col-lg-6 my-2' . $tr_only . '" data-erp-tr-only>
+                <div class="col-12 lg:col-6 my-3' . $tr_only . '" data-erp-tr-only>
                     <label for="tax_office" class="form-label">' . lang('Tax Office') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'tax_office', 'name' => 'tax_office',
@@ -209,59 +209,59 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
         </div>
     </div>
 
-    <div class="card my-4">
-        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+    <div class="card my-7">
+        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
             ' . lang('Contact Information') . '
         </div>
         <div class="card-body">
             <div class="row">
-                <div class="col-12 col-lg-6 my-2">
+                <div class="col-12 lg:col-6 my-3">
                     <label for="email" class="form-label">' . lang('E-mail Address') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'email', 'name' => 'email',
                         'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 col-lg-6 my-2">
+                <div class="col-12 lg:col-6 my-3">
                     <label for="phone" class="form-label">' . lang('Phone Number') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'phone', 'name' => 'phone',
                         'class' => 'form-control', 'maxlength' => '50', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 my-2">
+                <div class="col-12 my-3">
                     <label for="address" class="form-label">' . lang('Address') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'address', 'name' => 'address',
                         'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="district" class="form-label">' . lang('District') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'district', 'name' => 'district',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="city" class="form-label">' . lang('City') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'city', 'name' => 'city',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 col-sm-6 col-lg-3 my-2' . $not_tr . '" data-erp-not-tr>
+                <div class="col-12 sm:col-6 lg:col-3 my-3' . $not_tr . '" data-erp-not-tr>
                     <label for="state" class="form-label">' . lang('State / Province') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'state', 'name' => 'state',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="postcode" class="form-label">' . lang('Postal Code') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'postcode', 'name' => 'postcode',
                         'class' => 'form-control', 'maxlength' => '20', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 col-sm-6 col-lg-4 my-2">
+                <div class="col-12 sm:col-6 lg:col-4 my-3">
                     <label for="country_code" class="form-label">' . lang('Country') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'country_code', 'name' => 'country_code',
-                        'class' => 'form-select', 'options' => $country_options)) . '
+                        'class' => 'form-control', 'options' => $country_options)) . '
                 </div>
             </div>
         </div>
@@ -309,7 +309,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
         var form = button.closest("form");
         var say = function (text, failed) {
             answer.textContent = text;
-            answer.classList.toggle("text-danger", !!failed);
+            answer.classList.toggle("fg-danger", !!failed);
         };
         var putName = function (name) {
             var field = document.getElementById("title");
@@ -362,7 +362,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                     } else if (field.value.trim() !== name) {
                         var use = document.createElement("button");
                         use.type = "button";
-                        use.className = "btn btn-sm btn-outline-primary ms-2 my-1";
+                        use.className = "btn btn-sm btn-outline theme-primary ms-3 my-1";
                         use.textContent = button.getAttribute("data-use");
                         use.addEventListener("click", function () {
                             putName(name);
@@ -384,13 +384,13 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
 
     if ($with_opening) {
         $output .= '
-    <div class="card my-4">
-        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+    <div class="card my-7">
+        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
             ' . lang('Opening Balance') . '
         </div>
         <div class="card-body">
             <div class="row">
-                <div class="col-12 col-sm-4 col-lg-3 my-2">
+                <div class="col-12 sm:col-4 lg:col-3 my-3">
                     <label for="opening_amount" class="form-label">' . lang('Amount') . '</label>
                     <div class="input-group">
                         ' . $liveform->output_field(array(
@@ -401,15 +401,15 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                     </div>
                     <div class="form-text">' . lang('Positive when they owe you, negative when you owe them.') . (erp_fx_enabled() ? ' ' . lang('A foreign-currency opening figure is converted at the recorded rate of its date.') : '') . '</div>
                 </div>
-                <div class="col-12 col-sm-4 col-lg-3 my-2">
+                <div class="col-12 sm:col-4 lg:col-3 my-3">
                     <label for="opening_date" class="form-label">' . lang('Date') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'opening_date', 'data-pg-date' => '', 'name' => 'opening_date',
                         'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                         'autocomplete' => 'off')) . '
                     ' . get_date_picker_format() . pg_fields_script() . '                </div>
-                <div class="col-12 col-lg-6 my-2">
-                    <div class="form-text pt-4">' . lang('Recorded as a movement rather than written straight onto the balance, so it can be traced later like any other entry.') . '</div>
+                <div class="col-12 lg:col-6 my-3">
+                    <div class="form-text pt-7">' . lang('Recorded as a movement rather than written straight onto the balance, so it can be traced later like any other entry.') . '</div>
                 </div>
             </div>
         </div>
@@ -419,13 +419,13 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
     $output .= erp_account_form_contact_card($liveform, $contact);
 
     $output .= '
-    <div class="card my-4">
-        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+    <div class="card my-7">
+        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
             ' . lang('Notes') . '
         </div>
         <div class="card-body">
             <div class="row">
-                <div class="col-12 my-2">
+                <div class="col-12 my-3">
                     ' . $liveform->output_field(array(
                         'type' => 'textarea', 'id' => 'notes', 'name' => 'notes',
                         'class' => 'form-control', 'rows' => '3')) . '
@@ -489,7 +489,7 @@ function erp_account_form_contact_summary($contact)
         $lines[] = h($contact['company']);
     }
     if ($contact['email'] !== '') {
-        $lines[] = '<a href="mailto:' . h($contact['email']) . '" class="link-body-emphasis">' . h($contact['email']) . '</a>';
+        $lines[] = '<a href="mailto:' . h($contact['email']) . '" class="pg-link-body-emphasis">' . h($contact['email']) . '</a>';
     }
     if ($contact['phone'] !== '') {
         $lines[] = h($contact['phone']);
@@ -500,14 +500,14 @@ function erp_account_form_contact_summary($contact)
     }
 
     $links = array();
-    $links[] = '<a href="edit_contact.php?id=' . (int) $contact['id'] . '" class="btn btn-sm btn-outline-secondary"><i class="bi bi-person-vcard me-1"></i>' . lang('Contact') . '</a>';
+    $links[] = '<a href="edit_contact.php?id=' . (int) $contact['id'] . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-person-vcard me-1"></i>' . lang('Contact') . '</a>';
 
     if (defined('ECOMMERCE') && ECOMMERCE) {
-        $links[] = '<a href="view_orders_for_contact.php?id=' . (int) $contact['id'] . '" class="btn btn-sm btn-outline-secondary"><i class="bi bi-bag me-1"></i>' . h(lang(array('string' => '{var:1} order(s)', 'vars' => (int) $contact['orders']))) . '</a>';
+        $links[] = '<a href="view_orders_for_contact.php?id=' . (int) $contact['id'] . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-bag me-1"></i>' . h(lang(array('string' => '{var:1} order(s)', 'vars' => (int) $contact['orders']))) . '</a>';
     }
 
     if ($contact['user_id'] > 0) {
-        $links[] = '<a href="edit_user.php?id=' . (int) $contact['user_id'] . '" class="btn btn-sm btn-outline-secondary"><i class="bi bi-person-badge me-1"></i>' . h(lang(array('string' => 'User: {var:1}', 'vars' => $contact['username']))) . '</a>';
+        $links[] = '<a href="edit_user.php?id=' . (int) $contact['user_id'] . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-person-badge me-1"></i>' . h(lang(array('string' => 'User: {var:1}', 'vars' => $contact['username']))) . '</a>';
     }
 
     // The contact's own picture, at the size the rest of the panel uses for
@@ -520,12 +520,12 @@ function erp_account_form_contact_summary($contact)
         : '';
 
     return '
-                    <div class="d-flex align-items-start gap-3">
+                    <div class="d-flex align-items-start gap-5">
                         ' . $photo . '
                         <div class="flex-grow-1 min-w-0">
                             <div class="fw-bold">' . h($contact['name']) . '</div>
-                            ' . (($lines !== array()) ? '<div class="small text-body-secondary">' . implode('<br>', $lines) . '</div>' : '') . '
-                            <div class="d-flex flex-wrap gap-2 mt-2">' . implode('', $links) . '</div>
+                            ' . (($lines !== array()) ? '<div class="small fg-secondary">' . implode('<br>', $lines) . '</div>' : '') . '
+                            <div class="d-flex flex-wrap gap-3 mt-3">' . implode('', $links) . '</div>
                         </div>
                     </div>';
 }
@@ -550,26 +550,26 @@ function erp_account_form_contact_card($liveform, $contact)
 
     $output_summary = $is_linked
         ? erp_account_form_contact_summary($contact)
-        : '<div class="text-body-secondary">' . lang('No contact is linked to this account.') . '</div>';
+        : '<div class="fg-secondary">' . lang('No contact is linked to this account.') . '</div>';
 
     return '
-    <div class="card my-4" data-erp-contact-card data-erp-contacts-url="get_erp_contacts.php" data-erp-own-account="' . (int) $liveform->get_field_value('id') . '">
-        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+    <div class="card my-7" data-erp-contact-card data-erp-contacts-url="get_erp_contacts.php" data-erp-own-account="' . (int) $liveform->get_field_value('id') . '">
+        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
             ' . lang('Linked Contact') . '
         </div>
         <div class="card-body">
             ' . $liveform->output_field(array('type' => 'hidden', 'id' => 'contact_id', 'name' => 'contact_id')) . '
             <div class="row">
-                <div class="col-12 col-lg-6 my-2 position-relative">
+                <div class="col-12 lg:col-6 my-3 position-relative">
                     <label for="contact_search" class="form-label">' . lang('Find a contact') . '</label>
                     <input type="text" id="contact_search" class="form-control" maxlength="100" autocomplete="off" placeholder="' . h(lang('Name, company or e-mail address')) . '" data-erp-contact-search />
-                    <div class="dropdown-menu shadow-sm w-100" data-erp-contact-results></div>
+                    <div class="menu shadow-sm w-100" data-erp-contact-results></div>
                     <div class="form-text">' . lang('Orders placed by the linked contact are billed to this account, and the contact screen shows the balance. One contact links to one account.') . '</div>
                 </div>
-                <div class="col-12 col-lg-6 my-2">
+                <div class="col-12 lg:col-6 my-3">
                     <div class="form-label d-flex align-items-center">
                         <span>' . lang('Contact') . '</span>
-                        <button type="button" class="btn btn-sm btn-link link-danger ms-auto no-submit' . ($is_linked ? '' : ' d-none') . '" data-erp-contact-unlink><i class="bi bi-x-circle me-1"></i>' . lang('Unlink') . '</button>
+                        <button type="button" class="btn btn-sm btn-link pg-link-danger ms-auto no-submit' . ($is_linked ? '' : ' d-none') . '" data-erp-contact-unlink><i class="bi bi-x-circle me-1"></i>' . lang('Unlink') . '</button>
                     </div>
                     <div data-erp-contact-summary>' . $output_summary . '</div>
                 </div>
@@ -606,8 +606,8 @@ function erp_account_form_contact_card($liveform, $contact)
                 if (contact.email) { lines.push(escapeHtml(contact.email)); }
                 if (contact.city) { lines.push(escapeHtml(contact.city)); }
                 summary.innerHTML = "<div class=\"fw-bold\">" + escapeHtml(contact.name) + "</div>"
-                    + (lines.length ? "<div class=\"small text-body-secondary\">" + lines.join("<br>") + "</div>" : "")
-                    + "<div class=\"small text-warning-emphasis mt-2\"><i class=\"bi bi-info-circle me-1\"></i>" + escapeHtml(texts.pending) + "</div>";
+                    + (lines.length ? "<div class=\"small fg-secondary\">" + lines.join("<br>") + "</div>" : "")
+                    + "<div class=\"small fg-emphasis-warning mt-3\"><i class=\"bi bi-info-circle me-1\"></i>" + escapeHtml(texts.pending) + "</div>";
                 unlink.classList.remove("d-none");
                 close();
             }
@@ -615,19 +615,19 @@ function erp_account_form_contact_card($liveform, $contact)
                 menu.innerHTML = "";
                 if (!results.length) {
                     var empty = document.createElement("span");
-                    empty.className = "dropdown-item-text text-body-secondary small";
+                    empty.className = "menu-text fg-secondary small";
                     empty.textContent = texts.noResults;
                     menu.appendChild(empty);
                 }
                 results.forEach(function (contact) {
                     var item = document.createElement("button");
                     item.type = "button";
-                    item.className = "dropdown-item text-truncate no-submit";
+                    item.className = "menu-item text-truncate no-submit";
                     var taken = contact.account_id > 0 && String(contact.account_id) !== card.getAttribute("data-erp-own-account");
                     item.innerHTML = escapeHtml(contact.name)
-                        + (contact.company && contact.company !== contact.name ? " <span class=\"text-body-secondary small\">" + escapeHtml(contact.company) + "</span>" : "")
-                        + (contact.email ? " <span class=\"text-body-secondary small\">" + escapeHtml(contact.email) + "</span>" : "")
-                        + (taken ? " <span class=\"badge text-bg-warning ms-1\">" + escapeHtml(texts.taken) + "</span>" : "");
+                        + (contact.company && contact.company !== contact.name ? " <span class=\"fg-secondary small\">" + escapeHtml(contact.company) + "</span>" : "")
+                        + (contact.email ? " <span class=\"fg-secondary small\">" + escapeHtml(contact.email) + "</span>" : "")
+                        + (taken ? " <span class=\"badge theme-warning ms-1\">" + escapeHtml(texts.taken) + "</span>" : "");
                     if (taken) { item.disabled = true; }
                     item.addEventListener("click", function () { pick(contact); });
                     menu.appendChild(item);
@@ -658,8 +658,8 @@ function erp_account_form_contact_card($liveform, $contact)
             });
             unlink.addEventListener("click", function () {
                 hidden.value = "0";
-                summary.innerHTML = "<div class=\"text-body-secondary\">" + escapeHtml(texts.none) + "</div>"
-                    + "<div class=\"small text-warning-emphasis mt-2\"><i class=\"bi bi-info-circle me-1\"></i>" + escapeHtml(texts.unlinkPending) + "</div>";
+                summary.innerHTML = "<div class=\"fg-secondary\">" + escapeHtml(texts.none) + "</div>"
+                    + "<div class=\"small fg-emphasis-warning mt-3\"><i class=\"bi bi-info-circle me-1\"></i>" + escapeHtml(texts.unlinkPending) + "</div>";
                 unlink.classList.add("d-none");
             });
         })();
@@ -704,13 +704,13 @@ function erp_currency_form_row($liveform, $locked, $help)
         }
         $field = $liveform->output_field(array(
             'type' => 'select', 'id' => 'currency', 'name' => 'currency',
-            'class' => 'form-select', 'options' => $options)) . '
+            'class' => 'form-control', 'options' => $options)) . '
                     <div class="form-text">' . $help . '</div>';
     }
 
     return '
             <div class="row">
-                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="currency" class="form-label">' . lang('Currency') . '</label>
                     ' . $field . '
                 </div>

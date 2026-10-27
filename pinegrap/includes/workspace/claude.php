@@ -1780,7 +1780,7 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null)
 
     foreach (ws_claude_required_scopes() as $scope) {
         $has = $app && in_array($scope, $app['scopes'], true);
-        $scope_rows .= '<li><i class="bi ' . ($has ? 'bi-check-circle text-success' : 'bi-x-circle text-danger') . ' me-1" aria-hidden="true"></i><code>' . h($scope) . '</code></li>';
+        $scope_rows .= '<li><i class="bi ' . ($has ? 'bi-check-circle fg-success' : 'bi-x-circle fg-danger') . ' me-1" aria-hidden="true"></i><code>' . h($scope) . '</code></li>';
     }
 
     $readable = array();
@@ -1793,11 +1793,11 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null)
 
     // How it stands.
     if (empty($missing)) {
-        $state = '<span class="badge text-bg-success">' . h(lang('Ready')) . '</span>';
+        $state = '<span class="badge theme-success">' . h(lang('Ready')) . '</span>';
     } elseif (!$config['enabled']) {
-        $state = '<span class="badge text-bg-secondary">' . h(lang('Off')) . '</span>';
+        $state = '<span class="badge theme-secondary">' . h(lang('Off')) . '</span>';
     } else {
-        $state = '<span class="badge text-bg-warning">' . h(lang('Not ready')) . '</span>';
+        $state = '<span class="badge theme-warning">' . h(lang('Not ready')) . '</span>';
     }
 
     $status_list = '';
@@ -1827,7 +1827,7 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null)
                 <i class="bi ' . h($line['icon']) . '" aria-hidden="true"></i>
                 <div class="ws-grow">
                     ' . $where . '
-                    <span class="text-body-secondary">· ' . h(ws_time_label($row['created_at'])) . '</span>
+                    <span class="fg-secondary">· ' . h(ws_time_label($row['created_at'])) . '</span>
                     <div class="small">' . h($line['label']) . '</div>
                 </div>'
                 . (($line['session_url'] !== '') ? '<a class="btn btn-sm btn-ghost" href="' . h($line['session_url']) . '" target="_blank" rel="noopener" title="' . h(lang('Open the session')) . '"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>' : '') . '
@@ -1835,7 +1835,7 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null)
     }
 
     if ($recent === '') {
-        $recent = '<li class="text-body-secondary small">' . h(lang('Nobody has asked Claude yet.')) . '</li>';
+        $recent = '<li class="fg-secondary small">' . h(lang('Nobody has asked Claude yet.')) . '</li>';
     }
 
     $prompt = ws_claude_routine_prompt();
@@ -1846,14 +1846,14 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null)
             : '<input class="form-control form-control-sm font-monospace" type="text" id="' . h($id) . '" value="' . h($value) . '" readonly>';
 
         return '<div class="ws-claude-copy">' . $field
-            . '<button type="button" class="btn btn-sm btn-outline-secondary" data-ws-copy-field="' . h($id) . '" title="' . h(lang('Copy')) . '"><i class="bi bi-clipboard" aria-hidden="true"></i></button></div>';
+            . '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-ws-copy-field="' . h($id) . '" title="' . h(lang('Copy')) . '"><i class="bi bi-clipboard" aria-hidden="true"></i></button></div>';
     };
 
     // The steps, each with its picture (claude_setup.php).
     $guide = ws_claude_setup_guide($base, $host, $prompt, $copy);
 
     $https_note = (URL_SCHEME !== 'https://')
-        ? '<div class="alert alert-warning small py-2">' . h(lang('This site is not opened over HTTPS. The routine runs on the internet and can only reach a site with a public HTTPS address; a site on localhost cannot be asked.')) . '</div>'
+        ? '<div class="alert theme-warning small py-3">' . h(lang('This site is not opened over HTTPS. The routine runs on the internet and can only reach a site with a public HTTPS address; a site on localhost cannot be asked.')) . '</div>'
         : '';
 
     // Claude's key, for an administrator only: made here while no
@@ -1865,26 +1865,26 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null)
         require_once PG_FUNCTIONS_DIR . '/includes/api/scopes.php';
 
         $key_block = '
-                        <form method="post" action="' . h($self_url) . '#ws-claude" class="ws-claude-key mb-4">
+                        <form method="post" action="' . h($self_url) . '#ws-claude" class="ws-claude-key mb-7">
                             ' . get_token_field() . '
                             <input type="hidden" name="ws_action" value="claude_key_create">
-                            <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Create Claude\'s key')) . '</button>
+                            <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-key me-1" aria-hidden="true"></i>' . h(lang('Create Claude\'s key')) . '</button>
                             <div class="form-text">' . h(lang(array('string' => 'The key reads every kind of record except {var:1} and writes only in the Workspace and the Tasks. It cannot propose page layouts or take translation jobs: add those permissions in Application Access if Claude should.', 'vars' => implode(', ', api_assistant_scopes_left_out())))) . '</div>
                         </form>';
     } elseif ($admin) {
         $key_block = '
-                        <div class="ws-claude-key mb-4">
-                            <div class="small fw-semibold mb-2">' . h(lang('The application Claude works through')) . ': ' . h($app['name']) . '</div>
+                        <div class="ws-claude-key mb-7">
+                            <div class="small fw-semibold mb-3">' . h(lang('The application Claude works through')) . ': ' . h($app['name']) . '</div>
                             <label class="form-label small" for="ws-claude-key">' . h(lang('Key')) . '</label>
                             ' . $copy('ws-claude-key', (string) $app['api_key']) . '
-                            <div class="small mt-1 mb-3"><span class="font-monospace">' . h(lang('Secret')) . ': ••••' . h((string) $app['api_secret_hint']) . '</span> <span class="text-body-secondary">' . h(lang('Only its last four characters are kept.')) . '</span></div>
+                            <div class="small mt-1 mb-5"><span class="font-monospace">' . h(lang('Secret')) . ': ••••' . h((string) $app['api_secret_hint']) . '</span> <span class="fg-secondary">' . h(lang('Only its last four characters are kept.')) . '</span></div>
                             <label class="form-label small" for="ws-claude-key-prompt">' . h(lang('The prompt for the routine')) . '</label>
                             ' . $copy('ws-claude-key-prompt', $prompt, 4) . '
                             ' . (((string) $app['kind'] === 'server') ? '
-                            <form method="post" action="' . h($self_url) . '#ws-claude" class="mt-2" onsubmit="return confirm(' . h(json_encode(lang('The routine cannot sign in until the new secret is on claude.ai; anything else using this key stops too.'))) . ');">
+                            <form method="post" action="' . h($self_url) . '#ws-claude" class="mt-3" onsubmit="return confirm(' . h(json_encode(lang('The routine cannot sign in until the new secret is on claude.ai; anything else using this key stops too.'))) . ');">
                                 ' . get_token_field() . '
                                 <input type="hidden" name="ws_action" value="claude_key_reset">
-                                <button type="submit" class="btn btn-sm btn-outline-warning"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Reset secret')) . '</button>
+                                <button type="submit" class="btn btn-sm btn-outline theme-warning"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Reset secret')) . '</button>
                             </form>' : '') . '
                         </div>';
     }
@@ -1896,98 +1896,96 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null)
 
     if ($admin && is_array($credentials) && (($credentials['agent'] ?? '') === 'claude')) {
         $sheet = '
-        <div class="modal fade show" id="ws-claude-sheet" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="ws-claude-sheet-title" style="display:block; background:rgba(0,0,0,.6)">
-            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-                <div class="modal-content">
-                    <div class="modal-header border-0 pb-0">
-                        <h5 class="modal-title" id="ws-claude-sheet-title"><i class="bi bi-key me-2 text-warning" aria-hidden="true"></i>' . h(!empty($credentials['rotated']) ? lang('A new secret was issued') : lang('The application was created')) . ' · ' . h((string) ($credentials['name'] ?? '')) . '</h5>
+        <div class="pg-open-sheet" id="ws-claude-sheet" aria-labelledby="ws-claude-sheet-title" style="background:rgba(0,0,0,.6)">
+            <dialog class="dialog dialog-lg dialog-scrollable" open>
+                    <div class="dialog-header border-0 pb-0">
+                        <h5 class="dialog-title" id="ws-claude-sheet-title"><i class="bi bi-key me-3 fg-warning" aria-hidden="true"></i>' . h(!empty($credentials['rotated']) ? lang('A new secret was issued') : lang('The application was created')) . ' · ' . h((string) ($credentials['name'] ?? '')) . '</h5>
                     </div>
-                    <div class="modal-body">
-                        <p class="mb-3"><b>' . h(lang('Once this window is closed the secret is never shown again.')) . '</b></p>
+                    <div class="dialog-body">
+                        <p class="mb-5"><b>' . h(lang('Once this window is closed the secret is never shown again.')) . '</b></p>
                         <label class="form-label small" for="ws-claude-sheet-key">' . h(lang('Key')) . '</label>
                         ' . $copy('ws-claude-sheet-key', (string) ($credentials['key'] ?? '')) . '
-                        <label class="form-label small mt-2" for="ws-claude-sheet-secret">' . h(lang('Secret')) . '</label>
+                        <label class="form-label small mt-3" for="ws-claude-sheet-secret">' . h(lang('Secret')) . '</label>
                         ' . $copy('ws-claude-sheet-secret', (string) ($credentials['secret'] ?? '')) . '
-                        <label class="form-label small mt-2" for="ws-claude-sheet-host">' . h(lang('Domain')) . '</label>
+                        <label class="form-label small mt-3" for="ws-claude-sheet-host">' . h(lang('Domain')) . '</label>
                         ' . $copy('ws-claude-sheet-host', $host) . '
-                        <label class="form-label small mt-2" for="ws-claude-sheet-prompt">' . h(lang('The prompt for the routine')) . '</label>
+                        <label class="form-label small mt-3" for="ws-claude-sheet-prompt">' . h(lang('The prompt for the routine')) . '</label>
                         ' . $copy('ws-claude-sheet-prompt', $prompt, 4) . '
-                        <div class="small text-body-secondary mt-3">' . ws_claude_setup_credentials_text() . '</div>
-                        <div class="alert alert-warning py-2 px-3 small mt-3 mb-0"><i class="bi bi-lock me-1" aria-hidden="true"></i>' . h(lang('Keep the secret like a password. Do not put it in a URL, an email or a shared file - server logs record those too.')) . '</div>
+                        <div class="small fg-secondary mt-5">' . ws_claude_setup_credentials_text() . '</div>
+                        <div class="alert theme-warning py-3 px-5 small mt-5 mb-0"><i class="bi bi-lock me-1" aria-hidden="true"></i>' . h(lang('Keep the secret like a password. Do not put it in a URL, an email or a shared file - server logs record those too.')) . '</div>
                     </div>
-                    <div class="modal-footer">
-                        <div class="form-check me-auto">
-                            <input class="form-check-input" type="checkbox" id="ws-claude-sheet-ack">
-                            <label class="form-check-label small" for="ws-claude-sheet-ack">' . h(lang('I have copied it and stored it somewhere safe')) . '</label>
+                    <div class="dialog-footer">
+                        <div class="form-field me-auto">
+                            <input class="check" type="checkbox" id="ws-claude-sheet-ack">
+                            <label class="small" for="ws-claude-sheet-ack">' . h(lang('I have copied it and stored it somewhere safe')) . '</label>
                         </div>
-                        <button type="button" class="btn btn-sm btn-success" id="ws-claude-sheet-close" disabled>' . h(lang('Close')) . '</button>
+                        <button type="button" class="btn btn-sm btn-solid theme-success" id="ws-claude-sheet-close" disabled>' . h(lang('Close')) . '</button>
                     </div>
-                </div>
-            </div>
+            </dialog>
         </div>';
     }
 
     return '
-        <div class="card mt-4" id="ws-claude">
-            <div class="card-header d-flex align-items-center gap-2">
+        <div class="card mt-7" id="ws-claude">
+            <div class="card-header d-flex align-items-center gap-3">
                 <h2 class="h6 mb-0 ws-grow"><i class="bi bi-stars me-1" aria-hidden="true"></i>' . h(lang('Claude in the channels')) . '</h2>
                 ' . $state . '
             </div>
             <div class="card-body">
-                <div class="row g-4">
-                    <div class="col-lg-7">
+                <div class="row g-7">
+                    <div class="lg:col-7">
                         ' . $https_note . '
                         ' . $key_block . '
                         <form method="post" action="' . h($self_url) . '#ws-claude">
                             ' . get_token_field() . '
                             <input type="hidden" name="ws_action" value="claude">
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" name="claude_enabled" value="1" id="ws_claude_enabled"' . ($config['enabled'] ? ' checked' : '') . $disabled . '>
-                                <label class="form-check-label" for="ws_claude_enabled">' . h(lang('Claude can be asked in the channels')) . '</label>
+                            <div class="form-field mb-5">
+                                <div class="switch"><input class="" type="checkbox" name="claude_enabled" value="1" id="ws_claude_enabled"' . ($config['enabled'] ? ' checked' : '') . $disabled . '></div>
+                                <label class="" for="ws_claude_enabled">' . h(lang('Claude can be asked in the channels')) . '</label>
                                 <div class="form-text">' . h(lang('A run on the routine owner\'s claude.ai subscription answers the requests; each run counts against that account\'s daily allowance. Public channels are open to Claude, private ones only when their manager allows it.')) . '</div>
                             </div>
-                            <details class="mb-3">
+                            <details class="mb-5">
                                 <summary class="small fw-semibold">' . h(lang('Use another application')) . '</summary>
-                                <div class="mt-2">
+                                <div class="mt-3">
                                     <label class="form-label" for="ws_claude_app_id">' . h(lang('The application Claude works through')) . '</label>
-                                    <select class="form-select form-select-sm" name="claude_app_id" id="ws_claude_app_id"' . $disabled . '>' . $options . '</select>
-                                    <ul class="list-unstyled small mt-2 mb-0 ws-claude-scopes">' . $scope_rows . '</ul>
+                                    <select class="form-control form-control-sm" name="claude_app_id" id="ws_claude_app_id"' . $disabled . '>' . $options . '</select>
+                                    <ul class="list-unstyled small mt-3 mb-0 ws-claude-scopes">' . $scope_rows . '</ul>
                                     <div class="form-text">' . h(empty($readable)
                                         ? lang('It reads no records: Claude sees the channels and the tasks only.')
                                         : lang(array('string' => 'It may also read: {var:1}', 'vars' => implode(', ', $readable)))) . '</div>
                                 </div>
                             </details>
-                            <div class="mb-3">
+                            <div class="mb-5">
                                 <label class="form-label" for="ws_claude_routine_url">' . h(lang('The routine\'s address')) . '</label>
                                 <input class="form-control form-control-sm font-monospace" type="url" name="claude_routine_url" id="ws_claude_routine_url" value="' . h($config['routine_url']) . '" placeholder="https://api.anthropic.com/v1/claude_code/routines/trig_…/fire" autocomplete="off"' . $disabled . '>
                             </div>
-                            <div class="mb-3">
+                            <div class="mb-5">
                                 <label class="form-label" for="ws_claude_token">' . h(lang('The routine\'s token')) . '</label>
                                 <input class="form-control form-control-sm font-monospace" type="password" name="claude_token" id="ws_claude_token" value="" autocomplete="new-password" placeholder="' . h($config['token_set'] ? lang('Stored. Type a new one to replace it.') : 'sk-ant-oat01-…') . '"' . $disabled . '>
                                 ' . ($config['token_set'] && $admin ? '
-                                <div class="form-check mt-1">
-                                    <input class="form-check-input" type="checkbox" name="claude_token_clear" value="1" id="ws_claude_token_clear">
-                                    <label class="form-check-label small" for="ws_claude_token_clear">' . h(lang('Remove the stored token')) . '</label>
+                                <div class="form-field mt-1">
+                                    <input class="check" type="checkbox" name="claude_token_clear" value="1" id="ws_claude_token_clear">
+                                    <label class="small" for="ws_claude_token_clear">' . h(lang('Remove the stored token')) . '</label>
                                 </div>' : '') . '
                                 <div class="form-text">' . h(lang('It is stored encrypted and never shown again. If it leaks, press Regenerate on claude.ai and enter the new one.')) . '</div>
                             </div>
-                            ' . ($admin ? '<button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '<div class="form-text">' . h(lang('Only an administrator can connect Claude.')) . '</div>') . '
+                            ' . ($admin ? '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '<div class="form-text">' . h(lang('Only an administrator can connect Claude.')) . '</div>') . '
                         </form>
-                        <details class="mt-4 ws-claude-guide"' . (empty($missing) ? '' : ' open') . '>
+                        <details class="mt-7 ws-claude-guide"' . (empty($missing) ? '' : ' open') . '>
                             <summary class="fw-semibold">' . h(lang('How to connect it')) . '</summary>
-                            <ol class="ws-claude-steps mt-3">' . $guide . '</ol>
+                            <ol class="ws-claude-steps mt-5">' . $guide . '</ol>
                         </details>
                     </div>
-                    <div class="col-lg-5">
+                    <div class="lg:col-5">
                         <div class="ws-claude-status">
-                            ' . (!empty($missing) ? '<div class="small fw-semibold mb-1">' . h(lang('Still missing')) . '</div><ul class="small mb-3">' . $status_list . '</ul>' : '') . '
-                            ' . (($config['error'] !== '') ? '<div class="alert alert-danger small py-2">' . h($config['error']) . '</div>' : '') . '
-                            ' . (($config['hold_until'] > time()) ? '<div class="alert alert-warning small py-2">' . h(lang(array('string' => 'Requests wait until {var:1}.', 'vars' => date('d.m.Y H:i', $config['hold_until'])))) . '</div>' : '') . '
+                            ' . (!empty($missing) ? '<div class="small fw-semibold mb-1">' . h(lang('Still missing')) . '</div><ul class="small mb-5">' . $status_list . '</ul>' : '') . '
+                            ' . (($config['error'] !== '') ? '<div class="alert theme-danger small py-3">' . h($config['error']) . '</div>' : '') . '
+                            ' . (($config['hold_until'] > time()) ? '<div class="alert theme-warning small py-3">' . h(lang(array('string' => 'Requests wait until {var:1}.', 'vars' => date('d.m.Y H:i', $config['hold_until'])))) . '</div>' : '') . '
                             ' . ($admin && empty($missing) ? '
-                            <form method="post" action="' . h($self_url) . '#ws-claude" class="mb-3">
+                            <form method="post" action="' . h($self_url) . '#ws-claude" class="mb-5">
                                 ' . get_token_field() . '
                                 <input type="hidden" name="ws_action" value="claude_test">
-                                <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Try the connection')) . '</button>
+                                <button type="submit" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Try the connection')) . '</button>
                                 <div class="form-text">' . h(lang('Starts the routine once; it counts as one of today\'s runs.')) . '</div>
                             </form>' : '') . '
                             <div class="small fw-semibold mb-1">' . h(lang('The latest requests')) . '</div>

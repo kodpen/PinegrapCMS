@@ -286,7 +286,7 @@ $title = '<title>' . h(lang('Packing Slip')) . '</title>';
     echo 
     output_header_secure() . '
     '.$title.'
-    <style type="text/css">
+    <style type="text/css">@layer custom {
         body{
             background-color: white;
             color: black;
@@ -333,7 +333,7 @@ $title = '<title>' . h(lang('Packing Slip')) . '</title>';
         .product_form td{
             border: none;
         }
-    </style>
+    }</style>
 
 
             <div id="content">

@@ -58,9 +58,9 @@ if (!$_POST) {
     // If social networking is enabled, then output position pick list.
     if (SOCIAL_NETWORKING == TRUE) {
         $output_social_networking_position =
-            '<div class="col-12 col-md-6 col-lg-4 my-2">
+            '<div class="col-12 md:col-6 lg:col-4 my-3">
                 <label for="social_networking_position" class="form-label">' . lang('Social Networking Position') . '</label>
-                <select id="social_networking_position" name="social_networking_position" class="form-select">
+                <select id="social_networking_position" name="social_networking_position" class="form-control">
                     <option value="top_left">' . lang('Top Left') . '</option>
                     <option value="top_right">' . lang('Top Right') . '</option>
                     <option value="bottom_left" selected="selected">' . lang('Bottom Left') . '</option>
@@ -79,18 +79,18 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Page Style Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-8 col-lg-6 my-2">
+                                        <div class="col-12 md:col-8 lg:col-6 my-3">
                                             <label for="name" class="form-label">' . lang('Name') . '</label>
                                             <input value="' . h($name) . '" name="name" id="name" type="text" placeholder="' . lang('new page style') . '" class="form-control" maxlength="100" required />
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             <label class="form-label">' . lang('HTML Page with embedded Tags') . '</label>
                                             <div id="edit_custom">
                                                 <textarea name="code" id="code" rows="25" cols="60" wrap="off">' . h($code) . '</textarea>
@@ -103,28 +103,28 @@ if (!$_POST) {
                         </div>
                         
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Additional Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 mt-2">
+                                        <div class="col-12 mt-3">
                                             <h5>'. lang('Collection') . '</h5>
                                         </div>
-                                        <div class="col-12 mb-2">
-                                            <div class="form-check form-check-inline">
-                                                <input type="radio" name="collection" id="collection_a" value="a" checked="checked" class="form-check-input" />
-                                                <label class="form-check-label" for="collection_a">' . lang('Collection') . ' A</label>
+                                        <div class="col-12 mb-3">
+                                            <div class="form-field d-inline-grid me-5">
+                                                <input type="radio" name="collection" id="collection_a" value="a" checked="checked" class="radio" />
+                                                <label class="" for="collection_a">' . lang('Collection') . ' A</label>
                                             </div>
-                                            <div class="form-check form-check-inline">
-                                                <input type="radio" name="collection" id="collection_b" value="b" class="form-check-input" />
-                                                <label class="form-check-label" for="collection_b">' . lang('Collection') . ' B</label>
+                                            <div class="form-field d-inline-grid me-5">
+                                                <input type="radio" name="collection" id="collection_b" value="b" class="radio" />
+                                                <label class="" for="collection_b">' . lang('Collection') . ' B</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 col-md-6 col-lg-4 my-2">
+                                        <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="layout_type" class="form-label">' . lang('Override Layout Type') . '</label>
-                                            <select id="layout_type" name="layout_type" class="form-select">
+                                            <select id="layout_type" name="layout_type" class="form-control">
                                                 <option value=""></option>
                                                 <option value="system">' . lang('System') . '</option>
                                                 <option value="custom">' . lang('Custom') . '</option>
@@ -136,10 +136,10 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success " ><span class="bi bi-plus-circle me-2"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success " ><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

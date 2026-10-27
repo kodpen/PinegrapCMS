@@ -2754,7 +2754,7 @@ function parasut_order_invoice_status_badge($value, $in_button = false, $edoc_co
 
     if (parasut_order_invoice_unsure($value)) {
         return ($in_button ? ' ' : '')
-            . '<span class="badge bg-warning text-dark' . ($in_button ? ' ms-1' : '') . '" title="' . h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.')) . '">'
+            . '<span class="badge theme-warning fg-black' . ($in_button ? ' ms-1' : '') . '" title="' . h(lang('The last try to invoice this order got no answer from Paraşüt, which may hold its sales invoice.')) . '">'
             . h(lang('Check Paraşüt')) . '</span>';
     }
 
@@ -2762,19 +2762,19 @@ function parasut_order_invoice_status_badge($value, $in_button = false, $edoc_co
         $title = h(lang('Pinegrap did not see the conversion finish: the e-document failed, was rejected or was still being processed. Check the invoice in Paraşüt.'));
 
         return $in_button
-            ? ' <span class="badge bg-warning text-dark ms-1" title="' . $title . ' ' . lang('Parasut ID') . ': ' . h($value) . '">' . h(lang('E-document not confirmed')) . '</span>'
-            : '<span class="badge bg-warning text-dark" title="' . $title . '">' . h(lang('Sales invoice created, e-document not confirmed')) . '</span>'
-                . ' <small class="text-muted">' . lang('Parasut ID') . ': ' . h($value) . '</small>';
+            ? ' <span class="badge theme-warning fg-black ms-1" title="' . $title . ' ' . lang('Parasut ID') . ': ' . h($value) . '">' . h(lang('E-document not confirmed')) . '</span>'
+            : '<span class="badge theme-warning fg-black" title="' . $title . '">' . h(lang('Sales invoice created, e-document not confirmed')) . '</span>'
+                . ' <small class="fg-secondary">' . lang('Parasut ID') . ': ' . h($value) . '</small>';
     }
 
     if ($value !== '') {
         return $in_button
-            ? ' <span class="badge bg-success ms-1" title="' . lang('Parasut ID') . ': ' . h($value) . '">' . lang('Sent') . '</span>'
-            : '<span class="badge bg-success">' . lang('Sent') . '</span>'
-                . ' <small class="text-muted">' . lang('Parasut ID') . ': ' . h($value) . '</small>';
+            ? ' <span class="badge theme-success ms-1" title="' . lang('Parasut ID') . ': ' . h($value) . '">' . lang('Sent') . '</span>'
+            : '<span class="badge theme-success">' . lang('Sent') . '</span>'
+                . ' <small class="fg-secondary">' . lang('Parasut ID') . ': ' . h($value) . '</small>';
     }
 
-    return $in_button ? '' : '<span class="badge bg-secondary">' . lang('Not Sent') . '</span>';
+    return $in_button ? '' : '<span class="badge theme-secondary">' . lang('Not Sent') . '</span>';
 }
 
 /**
@@ -2828,8 +2828,8 @@ function parasut_order_erp_invoice_badge($record)
         $facts[] = h(lang('Check Paraşüt'));
     }
 
-    return '<span class="badge bg-' . h($tone) . (($tone === 'warning') ? ' text-dark' : '') . '">' . h(lang('Invoiced through the ERP')) . '</span>'
-        . ' <small class="text-muted">' . implode(' · ', $facts) . '</small>';
+    return '<span class="badge bg-' . h($tone) . (($tone === 'warning') ? ' fg-black' : '') . '">' . h(lang('Invoiced through the ERP')) . '</span>'
+        . ' <small class="fg-secondary">' . implode(' · ', $facts) . '</small>';
 }
 
 /**

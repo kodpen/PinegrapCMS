@@ -98,7 +98,7 @@ if (!$_POST) {
         $delete_logs_button = '';
         if (MASS_DELETION == true && $all_logs > 0) {
             $delete_logs_button = '
-                <button type="submit" name="delete_all_site_logs" value="Delete Site Logs" class="btn btn-link link-danger py-0 mb-2 bi bi-trash bi-me-2" onclick="event.preventDefault(); var b=this; pgConfirm({title:\'' . lang('Delete All Site Logs') . '\', message:\'' . lang('WARNING: All site logs will be permanently deleted. View All button will allow you to see which logs will be deleted before you actually delete them. If you would like to continue with the deletion, please click OK. Otherwise, please click Cancel.') . '\', confirmText:\'' . lang('Delete') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'danger\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'delete_all_site_logs\',value:\'Delete Site Logs\'}));b.form.submit();}}); return false;">' . lang('Delete All Site Logs') . '</button>';
+                <button type="submit" name="delete_all_site_logs" value="Delete Site Logs" class="btn btn-link pg-link-danger py-0 mb-3 bi bi-trash bi-me-2" onclick="event.preventDefault(); var b=this; pgConfirm({title:\'' . lang('Delete All Site Logs') . '\', message:\'' . lang('WARNING: All site logs will be permanently deleted. View All button will allow you to see which logs will be deleted before you actually delete them. If you would like to continue with the deletion, please click OK. Otherwise, please click Cancel.') . '\', confirmText:\'' . lang('Delete') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'danger\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'delete_all_site_logs\',value:\'Delete Site Logs\'}));b.form.submit();}}); return false;">' . lang('Delete All Site Logs') . '</button>';
         }
     
         $delete_error_logs_button = '';
@@ -117,14 +117,14 @@ if (!$_POST) {
                 !empty($_SESSION['software']['settings']['view_log']['error_log'])
                 && $deletable_error_log_exists
             ) {
-                $delete_error_logs_button = '<button type="submit" name="delete_all_error_logs" value="Delete Error Logs"  value="1" class="btn btn-link link-danger py-0 mb-2 bi bi-trash bi-me-2" onclick="event.preventDefault(); var b=this; pgConfirm({title:\'' . lang('Delete All Error Logs') . '\', message:\'' . lang('WARNING: error_log files will be permanently deleted around Software. If you would like to continue with the deletion, please click OK. Otherwise, please click Cancel.') . '\', confirmText:\'' . lang('Delete') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'danger\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'delete_all_error_logs\',value:\'Delete Error Logs\'}));b.form.submit();}}); return false;">' . lang('Delete All Error Logs') . '</button>';
+                $delete_error_logs_button = '<button type="submit" name="delete_all_error_logs" value="Delete Error Logs"  value="1" class="btn btn-link pg-link-danger py-0 mb-3 bi bi-trash bi-me-2" onclick="event.preventDefault(); var b=this; pgConfirm({title:\'' . lang('Delete All Error Logs') . '\', message:\'' . lang('WARNING: error_log files will be permanently deleted around Software. If you would like to continue with the deletion, please click OK. Otherwise, please click Cancel.') . '\', confirmText:\'' . lang('Delete') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'danger\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'delete_all_error_logs\',value:\'Delete Error Logs\'}));b.form.submit();}}); return false;">' . lang('Delete All Error Logs') . '</button>';
             }
             
         
             $error_log_controls = '
-                <div class="form-check form-switch me-3 align-middle">
-                    <input class="form-check-input" type="checkbox" name="error_log_toggle" id="error_log_toggle" ' . $checked . '>
-                    <label class="form-check-label" for="error_log_toggle">' . lang('Show Error Logs') . '</label>
+                <div class="form-field me-5 align-middle">
+                    <div class="switch"><input class="" type="checkbox" name="error_log_toggle" id="error_log_toggle" ' . $checked . '></div>
+                    <label class="" for="error_log_toggle">' . lang('Show Error Logs') . '</label>
                 </div>
                 <script>
                   document.getElementById("error_log_toggle").addEventListener("change", function() {
@@ -251,7 +251,7 @@ if (!$_POST) {
                 . '<i class="bi bi-chevron-down me-1"></i><span class="pg-log-toggle-label">' . lang('Show More') . '</span></button>';
         }
         if ($is_error) {
-            $tools .= '<button type="button" class="btn btn-link btn-sm p-0 ms-3 text-decoration-none pg-log-copy"'
+            $tools .= '<button type="button" class="btn btn-link btn-sm p-0 ms-5 text-decoration-none pg-log-copy"'
                 . ' data-target="' . $message_id . '"'
                 . ' data-copy="' . h(lang('Copy')) . '"'
                 . ' data-copied="' . h(lang('Copied')) . '">'
@@ -293,10 +293,10 @@ if (!$_POST) {
             $output_rows .= '
             <tr id="' . h($log_id) . '" class="unselectable ">
                 <td>'. get_relative_time(array('timestamp' => $log_timestamp)). '</td>
-                <td><span title="' . h($log_location) . '" class="badge bg-success me-1">' . lang('Site Log') . '</span><span class="d-none">pglogsite</span></td>
+                <td><span title="' . h($log_location) . '" class="badge theme-success me-1">' . lang('Site Log') . '</span><span class="d-none">pglogsite</span></td>
                 <td>' . h($log_user) . '</td>
                 <td>' . $render_description($log_description, false) . '</td>
-                <td>' . ($log_ip != '' ? h($log_ip) : '<span class="text-muted">&mdash;</span>') . '</td>
+                <td>' . ($log_ip != '' ? h($log_ip) : '<span class="fg-secondary">&mdash;</span>') . '</td>
             </tr>';
         }
     } else {
@@ -500,7 +500,7 @@ if (!$_POST) {
             $row_class = '';
             $is_error_entry = false;
             if($log_type == 'Site Log') {
-            $output_log_type = '<span title="' . $log_location . '" class="badge bg-success me-1">' . h(lang($log_type)) . '</span><span class="d-none">pglogsite</span>';
+            $output_log_type = '<span title="' . $log_location . '" class="badge theme-success me-1">' . h(lang($log_type)) . '</span><span class="d-none">pglogsite</span>';
             } else {
             $is_error_entry = true;
             // Determine badge color based on message severity
@@ -510,7 +510,7 @@ if (!$_POST) {
             $row_class = ' pg-log-row-error';
             if (preg_match('/\bwarning\b/i', $log_description)) {
                 // bg-warning needs dark text, the default white is unreadable on yellow.
-                $badge_class = 'bg-warning text-dark';
+                $badge_class = 'bg-warning fg-black';
                 $type_token = 'pglogwarn';
                 $row_class = ' pg-log-row-warn';
             } elseif (preg_match('/\b(fatal|fatal error|uncaught|uncaught exception|exception|error)\b/i', $log_description)) {
@@ -530,7 +530,7 @@ if (!$_POST) {
                 <td>' . $output_log_type  . '</td>
                 <td>' . h($log_user) . '</td>
                 <td>' . $render_description($log_description, $is_error_entry) . '</td>
-                <td>' . ($log_ip != '' ? h($log_ip) : '<span class="text-muted">&mdash;</span>') . '</td>
+                <td>' . ($log_ip != '' ? h($log_ip) : '<span class="fg-secondary">&mdash;</span>') . '</td>
             </tr>
             ';
         }
@@ -557,13 +557,13 @@ if (!$_POST) {
         // A range is active when both ends match what is currently being displayed.
         $range_is_active = ((date('Y-m-d', $start_timestamp) == date('Y-m-d', $range_start))
             && (date('Y-m-d', $stop_timestamp) == date('Y-m-d')));
-        $output_quick_ranges .= '<a class="btn ' . ($range_is_active ? 'btn-primary' : 'btn-outline-secondary') . '" href="' . $range_url . '">' . $quick_range['label'] . '</a>';
+        $output_quick_ranges .= '<a class="btn ' . ($range_is_active ? 'btn-solid theme-primary' : 'btn-outline theme-secondary') . '" href="' . $range_url . '">' . $quick_range['label'] . '</a>';
     }
     // "View All" reaches back to the oldest entry.  The deletion warning already tells the
     // user about this button, so it has to be reachable from the screen.
     $view_all_is_active = ((date('Y-m-d', $start_timestamp) == date('Y-m-d', $oldest_timestamp))
         && (date('Y-m-d', $stop_timestamp) == date('Y-m-d')));
-    $output_quick_ranges .= '<a class="btn ' . ($view_all_is_active ? 'btn-primary' : 'btn-outline-secondary') . '" href="view_log.php?view=all">' . lang('View All') . '</a>';
+    $output_quick_ranges .= '<a class="btn ' . ($view_all_is_active ? 'btn-solid theme-primary' : 'btn-outline theme-secondary') . '" href="view_log.php?view=all">' . lang('View All') . '</a>';
 
     // Type filter buttons.  They only make sense when error_log entries are mixed in,
     // otherwise every row is a site log.  Filtering happens client side on the already
@@ -571,11 +571,11 @@ if (!$_POST) {
     $output_type_filters = '';
     if ($include_error_logs) {
         $output_type_filters = '
-                        <div class="btn-group btn-group-sm my-1 ms-sm-2" role="group" aria-label="' . h(lang('Type')) . '">
-                            <button type="button" class="btn btn-outline-secondary active pg-log-type-filter" data-token="">' . lang('All') . '</button>
-                            <button type="button" class="btn btn-outline-secondary pg-log-type-filter" data-token="pglogsite">' . lang('Site Log') . '</button>
-                            <button type="button" class="btn btn-outline-secondary pg-log-type-filter" data-token="pglogerror">' . lang('Error Log') . '</button>
-                            <button type="button" class="btn btn-outline-secondary pg-log-type-filter" data-token="pglogwarn">' . lang('Warning') . '</button>
+                        <div class="btn-group btn-group-sm my-1 sm:ms-3" role="group" aria-label="' . h(lang('Type')) . '">
+                            <button type="button" class="btn btn-outline theme-secondary active pg-log-type-filter" data-token="">' . lang('All') . '</button>
+                            <button type="button" class="btn btn-outline theme-secondary pg-log-type-filter" data-token="pglogsite">' . lang('Site Log') . '</button>
+                            <button type="button" class="btn btn-outline theme-secondary pg-log-type-filter" data-token="pglogerror">' . lang('Error Log') . '</button>
+                            <button type="button" class="btn btn-outline theme-secondary pg-log-type-filter" data-token="pglogwarn">' . lang('Warning') . '</button>
                         </div>';
     }
 
@@ -584,23 +584,23 @@ if (!$_POST) {
         . ' &ndash; '
         . get_absolute_time(array('timestamp' => $stop_timestamp, 'type' => 'date', 'format' => 'plain_text'));
     $output_result_summary = '
-                        <span class="badge bg-secondary-subtle text-secondary-emphasis border fw-normal">
+                        <span class="badge bg-subtle-secondary fg-emphasis-secondary border fw-normal">
                             <i class="bi bi-list-ul me-1"></i>' . lang(array(
                                 'string' => '{var:1} record{suffix:1}',
                                 'vars'   => array(pg_format_number($number_of_results, 0)),
                                 'suffix' => array(($number_of_results == 1) ? '' : 's')
                             )) . '
                         </span>
-                        <span class="text-muted small ms-2"><i class="bi bi-calendar3 me-1"></i>' . $output_range_label . '</span>';
+                        <span class="fg-secondary small ms-3"><i class="bi bi-calendar3 me-1"></i>' . $output_range_label . '</span>';
 
     $output_toolbar = '
-                <div class="row align-items-center mb-2 g-2">
-                    <div class="col-12 col-lg-8 text-center text-lg-start">
+                <div class="row align-items-center mb-3 g-3">
+                    <div class="col-12 lg:col-8 text-center lg:text-start">
                         <div class="btn-group btn-group-sm my-1" role="group" aria-label="' . h(lang('Date Range')) . '">
                             ' . $output_quick_ranges . '
                         </div>' . $output_type_filters . '
                     </div>
-                    <div class="col-12 col-lg-4 text-center text-lg-end">
+                    <div class="col-12 lg:col-4 text-center lg:text-end">
                         ' . $output_result_summary . '
                     </div>
                 </div>';
@@ -632,34 +632,34 @@ if (!$_POST) {
 
         $output_advanced_filters = '
         <div class="advanced_filters advanced-filter-bar position-fixed-md" id="advanced_filters">
-            <div class="p-2 border justify-content-between d-flex flex-wrap header">
+            <div class="p-3 border justify-content-between d-flex flex-wrap header">
                 <p class="m-0"><span class="material-icons pe-1">filter_list</span>' . lang('Filters') . '</p>
                 <a class="btn btn-close" title="' . $output_advanced_filters_label . '" href="view_log.php?advanced_filters=' . $output_advanced_filters_value . '"></a>
             </div>
-            <form class="advanced-filter-body p-2 pt-0 disable_shortcut" id="search_advanced" action="view_log.php" method="get" name="form">
+            <form class="advanced-filter-body p-3 pt-0 disable_shortcut" id="search_advanced" action="view_log.php" method="get" name="form">
                 <div class="row">
                     <div class="col-12">
-                        <h5 class="text-success fw-bold mt-4 mb-2">' . lang('Date Range') . '</h5>
+                        <h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Date Range') . '</h5>
                     </div>
                     <div class="col-12">
                         <label class="form-label">' . lang('From') . '</label>
-                        <select class="form-select my-1" name="start_month">' . select_month($saved_start_month) . '</select>
+                        <select class="form-control my-1" name="start_month">' . select_month($saved_start_month) . '</select>
                         <div class="input-group input-group-sm">
-                            <select class="form-select my-1" name="start_day">' . select_day($saved_start_day) . '</select>
-                            <select class="form-select my-1" name="start_year">' . $year_options . '</select>
+                            <select class="form-control my-1" name="start_day">' . select_day($saved_start_day) . '</select>
+                            <select class="form-control my-1" name="start_year">' . $year_options . '</select>
                         </div>
                     </div>
                     <div class="col-12">
                         <label class="form-label">' . lang('To') . '</label>
-                        <select class="form-select my-1" name="stop_month">' . select_month($saved_stop_month) . '</select>
+                        <select class="form-control my-1" name="stop_month">' . select_month($saved_stop_month) . '</select>
                         <div class="input-group input-group-sm">
-                            <select class="form-select my-1" name="stop_day">' . select_day($saved_stop_day) . '</select>
-                            <select class="form-select my-1" name="stop_year">' . $year_options . '</select>
+                            <select class="form-control my-1" name="stop_day">' . select_day($saved_stop_day) . '</select>
+                            <select class="form-control my-1" name="stop_year">' . $year_options . '</select>
                         </div>
                     </div>
-                    <div class="col-12 text-center position-sticky my-2" style="bottom:.5rem;">
-                        <button type="submit" name="submit_data" value="Update" class="btn btn-primary my-1">
-                            <i class="material-icons me-2">sync</i>' . lang('Update') . '
+                    <div class="col-12 text-center position-sticky my-3" style="bottom:.5rem;">
+                        <button type="submit" name="submit_data" value="Update" class="btn btn-solid theme-primary my-1">
+                            <i class="material-icons me-3">sync</i>' . lang('Update') . '
                         </button>
                     </div>
                 </div>
@@ -698,8 +698,8 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             ' . $output_control_buttons . '
@@ -714,8 +714,8 @@ if (!$_POST) {
                             )) . '
                         </nav>
                     </div>
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-3 ">
-                        <div class="row justify-content-center justify-content-md-end">
+                    <div class="col-12 sm:col-12 md:col-6 xl:col-3 ">
+                        <div class="row justify-content-center md:justify-content-end">
                             <form action="view_log.php" method="get" name="form" class="search_form col-auto">
                                 <div class="input-group input-group-sm">   
                                     <a class="btn btn-sm  my-1 ' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_log.php?advanced_filters=' . $output_advanced_filters_value . '" ><i class="material-icons">'. $advanced_filters_icon . '</i></a>
@@ -725,7 +725,7 @@ if (!$_POST) {
                     </div>
                 </div>
                 ' . $output_toolbar . '
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <table class="chart table-hover table " style="width:100%;display:none">
                             <thead>
@@ -743,7 +743,7 @@ if (!$_POST) {
                 </div>
             </div>
         </div>
-    <style>
+    <style>@layer custom {
         /* Clipped log messages: show the first few lines and fade out the rest. */
         .pg-log-msg { white-space: normal; }
         .pg-log-msg-code { font-family: var(--pg-font-mono); font-size: .8125rem; }
@@ -762,7 +762,7 @@ if (!$_POST) {
         /* Severity stripe on the first cell, subtler than tinting the whole row. */
         tr.pg-log-row-error > td:first-child { box-shadow: inset 3px 0 0 var(--pg-danger); }
         tr.pg-log-row-warn > td:first-child { box-shadow: inset 3px 0 0 var(--pg-warning); }
-    </style>
+    }</style>
     <script>
         // Delegated handlers so they keep working after DataTables redraws the table.
         // Registered without waiting for jQuery, which is resolved lazily on click.

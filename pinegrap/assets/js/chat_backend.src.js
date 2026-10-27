@@ -421,7 +421,7 @@
         // Tabs live inside the header ("Users | Conversations") — no
         // separate tab row, saving vertical space. Flat header (no
         // gradient).
-        var header = el('div', 'card-header border-0 d-flex align-items-center justify-content-between py-2 gap-2');
+        var header = el('div', 'card-header border-0 d-flex align-items-center justify-content-between py-3 gap-3');
 
         var tabsWrap = el('ul', 'nav nav-pills pg-chat-tabs flex-nowrap mb-0');
         var onlineTab = el('li', 'nav-item');
@@ -446,9 +446,9 @@
             refreshLists();
         });
 
-        var headerActions = el('div', 'd-flex align-items-center gap-2 flex-shrink-0');
+        var headerActions = el('div', 'd-flex align-items-center gap-3 flex-shrink-0');
 
-        var soundButton = el('button', 'btn btn-sm btn-link text-muted p-0');
+        var soundButton = el('button', 'btn btn-sm btn-link fg-secondary p-0');
         soundButton.type = 'button';
         soundButton.title = STR.sound;
         soundButton.appendChild(el('i', soundEnabled() ? 'bi bi-bell' : 'bi bi-bell-slash'));
@@ -473,7 +473,7 @@
         panel.appendChild(body);
 
         if (!data) {
-            body.appendChild(el('div', 'text-center text-muted small py-4', STR.loading + '...'));
+            body.appendChild(el('div', 'text-center fg-secondary small py-7', STR.loading + '...'));
             return body;
         }
 
@@ -516,7 +516,7 @@
     // Header link to a profile page. Opens in a new tab so the panel keeps
     // its place, and stops the click so the header does not act on it.
     function headerLink(iconClass, title, href) {
-        var link = el('a', 'btn btn-sm btn-link text-muted p-0 me-2 pg-chat-link');
+        var link = el('a', 'btn btn-sm btn-link fg-secondary p-0 me-3 pg-chat-link');
 
         link.href = href;
         link.target = '_blank';
@@ -628,7 +628,7 @@
         var nameLine = el('div', 'd-flex align-items-center gap-1');
         nameLine.appendChild(el('span', 'pg-chat-row-name fw-semibold', config.ai.label));
 
-        var badgeAi = el('span', 'badge rounded-pill text-bg-success flex-shrink-0', 'AI');
+        var badgeAi = el('span', 'badge rounded-pill theme-success flex-shrink-0', 'AI');
         badgeAi.style.fontSize = '10px';
         nameLine.appendChild(badgeAi);
 
@@ -651,9 +651,9 @@
 
         panel.textContent = '';
 
-        var header = el('div', 'card-header border-0 d-flex align-items-center py-2');
+        var header = el('div', 'card-header border-0 d-flex align-items-center py-3');
 
-        var backButton = el('button', 'btn btn-sm btn-link text-muted p-0 me-2');
+        var backButton = el('button', 'btn btn-sm btn-link fg-secondary p-0 me-3');
         backButton.type = 'button';
         backButton.title = STR.back;
         backButton.appendChild(el('i', 'bi bi-arrow-left'));
@@ -664,7 +664,7 @@
         var titleLine = el('div', 'fw-semibold text-truncate', config.ai.label);
         titleLine.style.fontSize = '13px';
         titleWrap.appendChild(titleLine);
-        titleWrap.appendChild(el('small', 'text-muted', STR.online));
+        titleWrap.appendChild(el('small', 'fg-secondary', STR.online));
         header.appendChild(titleWrap);
 
         panel.appendChild(header);
@@ -724,7 +724,7 @@
         }
 
         if (!users.length) {
-            body.appendChild(el('div', 'text-center text-muted small py-4 px-3', STR.no_online_users));
+            body.appendChild(el('div', 'text-center fg-secondary small py-7 px-5', STR.no_online_users));
             return;
         }
 
@@ -741,11 +741,11 @@
         if (!conversations.length) {
             // Empty state centered + a start button that switches to the
             // Users tab.
-            var empty = el('div', 'd-flex flex-column align-items-center justify-content-center text-center gap-2 px-3');
+            var empty = el('div', 'd-flex flex-column align-items-center justify-content-center text-center gap-3 px-5');
             empty.style.height = '100%';
-            empty.appendChild(el('div', 'text-muted small', STR.no_conversations));
+            empty.appendChild(el('div', 'fg-secondary small', STR.no_conversations));
 
-            var startButton = el('button', 'btn btn-sm btn-primary');
+            var startButton = el('button', 'btn btn-sm btn-solid theme-primary');
             startButton.type = 'button';
             startButton.textContent = STR.start_chat;
             startButton.addEventListener('click', function () {
@@ -895,9 +895,9 @@
 
         // Header: back + name/presence + manage buttons (flat header, no
         // gradient).
-        var header = el('div', 'card-header border-0 d-flex align-items-center py-2');
+        var header = el('div', 'card-header border-0 d-flex align-items-center py-3');
 
-        var backButton = el('button', 'btn btn-sm btn-link text-muted p-0 me-2');
+        var backButton = el('button', 'btn btn-sm btn-link fg-secondary p-0 me-3');
         backButton.type = 'button';
         backButton.title = STR.back;
         backButton.appendChild(el('i', 'bi bi-arrow-left'));
@@ -918,12 +918,12 @@
         titleLine.textContent = state.conversation.title;
 
         if (headerPeer && headerPeer.username) {
-            var accountName = el('span', 'text-muted ms-1', '@' + headerPeer.username);
+            var accountName = el('span', 'fg-secondary ms-1', '@' + headerPeer.username);
             accountName.style.fontSize = '11px';
             accountName.style.fontWeight = 'normal';
             titleLine.appendChild(accountName);
         }
-        var presenceLine = el('small', 'text-muted');
+        var presenceLine = el('small', 'fg-secondary');
         if (state.conversation.peer) {
             presenceLine.textContent = presenceText(state.conversation.peer);
             presenceLine.title = presenceTitle(state.conversation.peer);
@@ -977,7 +977,7 @@
         }
 
         if (state.conversation.canManage) {
-            var closeConversationButton = el('button', 'btn btn-sm btn-link text-muted p-0 me-2');
+            var closeConversationButton = el('button', 'btn btn-sm btn-link fg-secondary p-0 me-3');
             closeConversationButton.type = 'button';
             closeConversationButton.title = STR.close_conversation;
             closeConversationButton.appendChild(el('i', 'bi bi-check2-circle'));
@@ -993,7 +993,7 @@
             });
             header.appendChild(closeConversationButton);
 
-            var deleteButton = el('button', 'btn btn-sm btn-link text-danger p-0');
+            var deleteButton = el('button', 'btn btn-sm btn-link fg-danger p-0');
             deleteButton.type = 'button';
             deleteButton.title = STR.delete_conversation;
             deleteButton.appendChild(el('i', 'bi bi-trash'));
@@ -1003,14 +1003,14 @@
 
         panel.appendChild(header);
 
-        var body = el('div', 'pg-chat-body bg-body-tertiary px-2 py-2');
+        var body = el('div', 'pg-chat-body bg-body-tertiary px-3 py-3');
         panel.appendChild(body);
 
         // ── Composer ────────────────────────────────────────────────────
         // A framed box: the text area on top, the tool row (attach, emoji,
         // microphone) and the round send button underneath. The same shape
         // the site widget draws, so the two windows read as one feature.
-        var compose = el('div', 'card-footer p-2 pg-chat-compose');
+        var compose = el('div', 'card-footer p-3 pg-chat-compose');
         var composer = el('div', 'pg-chat-composer');
         var textarea = el('textarea');
         textarea.placeholder = STR.type_a_message;

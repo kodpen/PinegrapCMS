@@ -119,7 +119,7 @@
      * The sun takes the accent colour where one is defined.
      */
     function _markSvg() {
-        return '<svg class="me-2 flex-shrink-0" width="19" height="19" viewBox="0 0 20 20" aria-hidden="true" focusable="false">' +
+        return '<svg class="me-3 flex-shrink-0" width="19" height="19" viewBox="0 0 20 20" aria-hidden="true" focusable="false">' +
             '<rect x="1.9" y="2.9" width="16.2" height="14.2" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.6"/>' +
             '<circle cx="6.9" cy="7.8" r="1.5" fill="var(--bs-primary, currentColor)"/>' +
             '<path d="M2.6 14.9l4.6-4.5 3 2.9 2.4-2.3 4.2 4.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' +
@@ -130,30 +130,26 @@
         if (_modalEl) return;
 
         var html =
-            '<div class="modal fade" id="pgImageEditorModal" tabindex="-1" aria-hidden="true">' +
-                '<div class="modal-dialog modal-xl modal-dialog-centered">' +
-                    '<div class="modal-content" style="height:88vh">' +
-                        '<div class="modal-header py-2">' +
-                            '<h6 class="modal-title mb-0 d-flex align-items-center" id="pgImageEditorTitle">' +
+            '<dialog class="dialog dialog-xl" id="pgImageEditorModal" style="height:88vh">' +
+                '<div class="dialog-header py-3">' +
+                            '<h6 class="dialog-title mb-0 d-flex align-items-center" id="pgImageEditorTitle">' +
                                 _markSvg() +
                                 '<span id="pgImageEditorTitleText">' + t('Pintura Image Editor') + '</span>' +
                             '</h6>' +
-                            '<button type="button" class="btn btn-sm btn-link text-body-secondary p-0 ms-auto me-2 lh-1" ' +
+                            '<button type="button" class="btn btn-sm btn-link fg-secondary p-0 ms-auto me-3 lh-1" ' +
                                 'id="pgImageEditorFull" aria-pressed="false">' +
                                 '<span class="bi bi-arrows-fullscreen" id="pgImageEditorFullIcon"></span>' +
                             '</button>' +
-                            '<button type="button" class="btn-close" data-bs-dismiss="modal"></button>' +
+                            '<button type="button" class="btn-close" data-bs-dismiss="dialog"></button>' +
                         '</div>' +
-                        '<div class="modal-body p-0 position-relative" style="overflow:hidden">' +
+                        '<div class="dialog-body p-0 position-relative" style="overflow:hidden">' +
                             '<div id="pgImageEditorHost" style="width:100%;height:100%"></div>' +
                         '</div>' +
-                        '<div class="modal-footer py-2 justify-content-between" id="pgImageEditorFoot">' +
-                            '<span class="small text-muted" id="pgImageEditorHint"></span>' +
-                            '<span class="d-flex align-items-center gap-2" id="pgImageEditorActions"></span>' +
+                        '<div class="dialog-footer py-3 justify-content-between" id="pgImageEditorFoot">' +
+                            '<span class="small fg-secondary" id="pgImageEditorHint"></span>' +
+                            '<span class="d-flex align-items-center gap-3" id="pgImageEditorActions"></span>' +
                         '</div>' +
-                    '</div>' +
-                '</div>' +
-            '</div>';
+                    '</dialog>';
 
         var host = document.createElement('div');
         host.innerHTML = html;
@@ -162,17 +158,17 @@
 
         var style = document.createElement('style');
         style.textContent =
-            '#pgImageEditorModal .modal-body { min-height:0; }' +
+            '#pgImageEditorModal .dialog-body { min-height:0; }' +
             '#pgImageEditorHost .pintura-editor, #pgImageEditorHost { height:100%; }' +
             // The 88vh below is what makes the windowed editor a window. Full
             // screen has to drop it, or the editor keeps a band of page
             // showing underneath the dialog that now covers the screen.
-            '#pgImageEditorModal .modal-dialog.modal-fullscreen .modal-content { height:100% !important; }' +
+            '#pgImageEditorModal.dialog-fullscreen { height:100% !important; }' +
             // Bootstrap gives .btn-close its own margin-left:auto. With the
             // fullscreen button also pushed right, two auto margins split the
             // free space and left a gap between the pair; the close button
             // only needs to sit next to its neighbour.
-            '#pgImageEditorModal .modal-header .btn-close { margin-left:0; }';
+            '#pgImageEditorModal .dialog-header .btn-close { margin-left:0; }';
         document.head.appendChild(style);
 
         var fullButton = _modalEl.querySelector('#pgImageEditorFull');
@@ -212,26 +208,24 @@
 
     // ── Full screen ─────────────────────────────────────────────────────
     //
-    // Bootstrap's own modal-fullscreen class does the layout; the work here is
+    // Bootstrap's own dialog-fullscreen class does the layout; the work here is
     // telling the editor about it. Pintura measures its canvas when its box
     // changes, and a class swap is not an event it watches, so the resize is
     // announced once the dialog has settled at its new size.
     function _isFullscreen() {
-        var dialog = _modalEl ? _modalEl.querySelector('.modal-dialog') : null;
-        return !!(dialog && dialog.classList.contains('modal-fullscreen'));
+        return !!(_modalEl && _modalEl.classList.contains('dialog-fullscreen'));
     }
 
     function _setFullscreen(on) {
         if (!_modalEl) return;
 
-        var dialog = _modalEl.querySelector('.modal-dialog');
+        var dialog = _modalEl;
         var button = _modalEl.querySelector('#pgImageEditorFull');
         var icon   = _modalEl.querySelector('#pgImageEditorFullIcon');
         if (!dialog) return;
 
-        dialog.classList.toggle('modal-fullscreen', !!on);
-        dialog.classList.toggle('modal-xl', !on);
-        dialog.classList.toggle('modal-dialog-centered', !on);
+        dialog.classList.toggle('dialog-fullscreen', !!on);
+        dialog.classList.toggle('dialog-xl', !on);
 
         if (icon) {
             icon.className = on ? 'bi bi-fullscreen-exit' : 'bi bi-arrows-fullscreen';
@@ -281,13 +275,13 @@
 
         hint.innerHTML =
             '<span class="bi bi-image me-1"></span><strong>' + _esc(name) + '</strong>' +
-            '<span id="pgImageEditorMeta" class="ms-2 opacity-75"></span>' +
-            (isGif ? '<span class="ms-2 text-warning">' +
+            '<span id="pgImageEditorMeta" class="ms-3 opacity-75"></span>' +
+            (isGif ? '<span class="ms-3 fg-warning">' +
                      t('Animated GIF — new file only.') + '</span>' : '');
 
         actions.innerHTML =
-            '<span class="small text-muted me-1">' + t('Save as') + '</span>' +
-            '<select class="form-select form-select-sm" id="pgImageEditorType" style="width:auto">' +
+            '<span class="small fg-secondary me-1">' + t('Save as') + '</span>' +
+            '<select class="form-control form-control-sm" id="pgImageEditorType" style="width:auto">' +
                 (isNew ? '' : '<option value="">' + t('Same format') + '</option>') +
                 '<option value="jpg">jpg</option>' +
                 // png for a new picture: it is the only one of the three that
@@ -297,14 +291,14 @@
                 '<option value="webp">webp</option>' +
             '</select>' +
             (allowCopy
-                ? '<button type="button" class="btn btn-sm btn-primary" id="pgImageEditorSaveCopy" ' +
+                ? '<button type="button" class="btn btn-sm btn-solid theme-primary" id="pgImageEditorSaveCopy" ' +
                   'title="' + t('Keeps the original file and points this page at the copy.') + '">' +
                   '<span class="bi bi-files me-1"></span>' +
                   ((_opts && _opts.saveLabel) ? _esc(_opts.saveLabel) : t('Save as new file')) +
                   '</button>'
                 : '') +
             (allowReplace
-                ? '<button type="button" class="btn btn-sm btn-outline-warning" id="pgImageEditorSaveReplace" ' +
+                ? '<button type="button" class="btn btn-sm btn-outline theme-warning" id="pgImageEditorSaveReplace" ' +
                   'title="' + t('Writes over the file. Every page using it changes.') + '">' +
                   '<span class="bi bi-arrow-repeat me-1"></span>' + t('Replace') + '</button>'
                 : '');
@@ -371,7 +365,7 @@
         actions.querySelectorAll('button, select').forEach(function (b) { b.disabled = on; });
         var hint = document.getElementById('pgImageEditorHint');
         if (on && hint) {
-            hint.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>' +
+            hint.innerHTML = '<span class="spinner-border spinner-border-sm me-3"></span>' +
                              t('Saving...');
         }
     }
@@ -420,7 +414,7 @@
 
     function _footError(msg) {
         var hint = document.getElementById('pgImageEditorHint');
-        if (hint) hint.innerHTML = '<span class="text-danger"><span class="bi bi-x-circle me-1"></span>' + _esc(msg) + '</span>';
+        if (hint) hint.innerHTML = '<span class="fg-danger"><span class="bi bi-x-circle me-1"></span>' + _esc(msg) + '</span>';
     }
 
     function _post(mode, type, dataUrl) {
@@ -454,7 +448,7 @@
                     ? res.data.message
                     : (t('The image could not be saved.') + ' (' + res.status + ')');
                 var hint = document.getElementById('pgImageEditorHint');
-                if (hint) hint.innerHTML = '<span class="text-danger">' + msg + '</span>';
+                if (hint) hint.innerHTML = '<span class="fg-danger">' + msg + '</span>';
                 return;
             }
             _didSave = true;
@@ -466,7 +460,7 @@
         .catch(function () {
             _busyState(false);
             var hint = document.getElementById('pgImageEditorHint');
-            if (hint) hint.innerHTML = '<span class="text-danger">' + t('Network error.') + '</span>';
+            if (hint) hint.innerHTML = '<span class="fg-danger">' + t('Network error.') + '</span>';
         });
     }
 

@@ -84,21 +84,21 @@ foreach (erp_accounts(array('status' => 'active')) as $account) {
 
 $step_form = function ($step, $title, $button, $class, $fields, $note) use ($cheque_id) {
     return '
-        <form method="post" action="erp_cheque.php" class="card my-3">
+        <form method="post" action="erp_cheque.php" class="card my-5">
             ' . get_token_field() . '
             <input type="hidden" name="id" value="' . $cheque_id . '" />
             <input type="hidden" name="step" value="' . $step . '" />
-            <div class="card-body row g-2 align-items-end">
+            <div class="card-body row g-3 align-items-end">
                 <div class="col-12 fw-semibold">' . $title . '</div>
                 ' . $fields . '
-                <div class="col-12 col-md-3"><button type="submit" class="btn btn-sm ' . $class . ' w-100">' . $button . '</button></div>
+                <div class="col-12 md:col-3"><button type="submit" class="btn btn-sm ' . $class . ' w-100">' . $button . '</button></div>
                 ' . (($note !== '') ? '<div class="col-12 form-text">' . $note . '</div>' : '') . '
             </div>
         </form>';
 };
 
-$date_field = '<div class="col-6 col-md-3"><label class="form-label small">' . lang('Date') . '</label><input type="date" class="form-control form-control-sm" name="date" value="' . date('Y-m-d') . '" /></div>';
-$bank_field = '<div class="col-6 col-md-4"><label class="form-label small">' . lang('Bank account') . '</label><select class="form-select form-select-sm" name="bank_till_id">' . $tills . '</select></div>';
+$date_field = '<div class="col-6 md:col-3"><label class="form-label small">' . lang('Date') . '</label><input type="date" class="form-control form-control-sm" name="date" value="' . date('Y-m-d') . '" /></div>';
+$bank_field = '<div class="col-6 md:col-4"><label class="form-label small">' . lang('Bank account') . '</label><select class="form-control form-control-sm" name="bank_till_id">' . $tills . '</select></div>';
 
 $output_steps = '';
 if (!$readonly) {
@@ -107,10 +107,10 @@ if (!$readonly) {
     }
     if ($received && in_array($status, array('portfolio', 'deposited'), true)) {
         $output_steps .= $step_form('collect', lang('Collected'), lang('Collected'), 'btn-success', $date_field . $bank_field, lang('The amount moves from the portfolio to the bank account.'));
-        $output_steps .= $step_form('bounce', lang('Bounced'), lang('Bounced'), 'btn-outline-danger', $date_field . '<div class="col-12 col-md-6"><label class="form-label small">' . lang('Reason') . '</label><input type="text" class="form-control form-control-sm" name="reason" maxlength="150" /></div>', lang('The amount leaves the portfolio and goes back on the customer\'s account: they owe it again.'));
+        $output_steps .= $step_form('bounce', lang('Bounced'), lang('Bounced'), 'btn-outline-danger', $date_field . '<div class="col-12 md:col-6"><label class="form-label small">' . lang('Reason') . '</label><input type="text" class="form-control form-control-sm" name="reason" maxlength="150" /></div>', lang('The amount leaves the portfolio and goes back on the customer\'s account: they owe it again.'));
     }
     if ($received && ($status === 'portfolio')) {
-        $output_steps .= $step_form('endorse', lang('Passed on to a supplier'), lang('Pass on'), 'btn-outline-secondary', $date_field . '<div class="col-12 col-md-6"><label class="form-label small" for="erp_endorse_account_id">' . lang('Account') . '</label><select class="form-select form-select-sm" data-pg-combobox id="erp_endorse_account_id" name="account_id"><option value="">' . lang('Choose an account') . '</option>' . $accounts . '</select>' . erp_account_quick_link('#erp_endorse_account_id', 'supplier') . '</div>', lang('A payment to that account out of the portfolio: what the store owes it comes down.'));
+        $output_steps .= $step_form('endorse', lang('Passed on to a supplier'), lang('Pass on'), 'btn-outline-secondary', $date_field . '<div class="col-12 md:col-6"><label class="form-label small" for="erp_endorse_account_id">' . lang('Account') . '</label><select class="form-control form-control-sm" data-pg-combobox id="erp_endorse_account_id" name="account_id"><option value="">' . lang('Choose an account') . '</option>' . $accounts . '</select>' . erp_account_quick_link('#erp_endorse_account_id', 'supplier') . '</div>', lang('A payment to that account out of the portfolio: what the store owes it comes down.'));
         $output_steps .= erp_account_quick_modal();
     }
     if (!$received && ($status === 'given')) {
@@ -126,14 +126,14 @@ foreach (array('open_cash_id', 'close_cash_id') as $column) {
             WHERE t.id = '" . (int) $cheque[$column] . "' LIMIT 1");
         if (is_array($move)) {
             $link = in_array((string) $move['doc_type'], array('collection', 'payment'), true) ? 'erp_receipt.php?id=' . (int) $move['id'] : 'erp_cash.php';
-            $movements .= '<tr><td class="text-nowrap">' . h(prepare_form_data_for_output((string) $move['doc_date'], 'date')) . '</td><td><a class="link-body-emphasis" href="' . h($link) . '">' . h((string) $move['description']) . '</a></td><td>' . h((string) $move['till_name']) . '</td>'
-                . '<td class="text-end text-nowrap ' . (((string) $move['direction'] === 'in') ? 'text-success' : 'text-danger') . '">' . (((string) $move['direction'] === 'in') ? '+' : '−') . h(erp_money_out_currency((int) $move['amount'], (string) $move['currency'])) . '</td></tr>';
+            $movements .= '<tr><td class="text-nowrap">' . h(prepare_form_data_for_output((string) $move['doc_date'], 'date')) . '</td><td><a class="pg-link-body-emphasis" href="' . h($link) . '">' . h((string) $move['description']) . '</a></td><td>' . h((string) $move['till_name']) . '</td>'
+                . '<td class="text-end text-nowrap ' . (((string) $move['direction'] === 'in') ? 'fg-success' : 'fg-danger') . '">' . (((string) $move['direction'] === 'in') ? '+' : '−') . h(erp_money_out_currency((int) $move['amount'], (string) $move['currency'])) . '</td></tr>';
         }
     }
 }
 
 $fact = function ($label, $value) {
-    return ((string) $value !== '') ? '<div class="col-6 col-md-3"><div class="small text-body-secondary">' . $label . '</div><div>' . h((string) $value) . '</div></div>' : '';
+    return ((string) $value !== '') ? '<div class="col-6 md:col-3"><div class="small fg-secondary">' . $label . '</div><div>' . h((string) $value) . '</div></div>' : '';
 };
 
 echo
@@ -141,7 +141,7 @@ pg_page_shell([
     'title' => ($name !== '') ? $name : lang('Cheques and notes'),
     'extra classes' => 'erp erp_cash',
     'icon' => 'erp',
-    'heading' => h($name) . ' <span class="badge text-bg-' . h($state[1]) . ' ms-1 align-middle fs-6">' . h($state[0]) . '</span>',
+    'heading' => h($name) . ' <span class="badge text-bg-' . h($state[1]) . ' ms-1 align-middle fs-md">' . h($state[0]) . '</span>',
     'heading_description' => (string) $cheque['account_title'] . ' · ' . erp_money_out_currency((int) $cheque['amount'], (string) $cheque['currency']) . ' · ' . lang(array('string' => 'due {var:1}', 'vars' => prepare_form_data_for_output((string) $cheque['due_date'], 'date', false))),
     'cancel' => array('enable' => 'true', 'url' => 'erp_cheques.php'),
     'breadcrumb' => array(
@@ -151,13 +151,13 @@ pg_page_shell([
 ]) . '
 <main id="content" class="container-fluid">
     <div class="row">
-        <div class="col-12 col-xxl-9">
+        <div class="col-12 2xl:col-9">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <div class="card my-4">
-                <div class="card-body row g-3">
+            <div class="card my-7">
+                <div class="card-body row g-5">
                     ' . $fact(lang('Direction'), $received ? lang('Taken from a customer') : lang('Given to a supplier')) . '
                     ' . $fact(lang('Account'), (string) $cheque['account_title']) . '
                     ' . $fact(lang('Amount'), erp_money_out_currency((int) $cheque['amount'], (string) $cheque['currency'])) . '
@@ -172,8 +172,8 @@ pg_page_shell([
                 </div>
             </div>
 
-            ' . (($movements !== '') ? '<div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Movements') . '</div>
+            ' . (($movements !== '') ? '<div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Movements') . '</div>
                 <div class="card-body p-0 table-responsive"><table class="table table-sm align-middle mb-0"><tbody>' . $movements . '</tbody></table></div>
             </div>' : '') . '
 

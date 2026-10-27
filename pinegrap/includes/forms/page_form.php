@@ -590,9 +590,9 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
 
     if (pg_fs_ready()) {
         $custom_form_double_opt_in_switch =
-            '<div class="form-check form-switch mt-2">
-                <input type="checkbox" class="form-check-input" role="switch" id="custom_form_double_opt_in" name="custom_form_double_opt_in" value="1"' . ((($custom_form_properties['double_opt_in'] ?? '') == 1) ? ' checked="checked"' : '') . ' />
-                <label class="form-check-label" for="custom_form_double_opt_in">' . h(lang('Ask for confirmation by e-mail before adding to the group (double opt-in)')) . '</label>
+            '<div class="form-field mt-3">
+                <div class="switch"><input type="checkbox" class="" role="switch" id="custom_form_double_opt_in" name="custom_form_double_opt_in" value="1"' . ((($custom_form_properties['double_opt_in'] ?? '') == 1) ? ' checked="checked"' : '') . ' /></div>
+                <label class="" for="custom_form_double_opt_in">' . h(lang('Ask for confirmation by e-mail before adding to the group (double opt-in)')) . '</label>
             </div>
             <div class="form-text">' . h(lang('The sender gets a link at the address of their contact record and joins the group only after pressing the button behind it.')) . ' ' . h(lang('Say in the message after submission that a confirmation e-mail is on its way: the form does not say it by itself.')) . '</div>';
     }
@@ -1163,9 +1163,9 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
     // for search results properties.
     if (SEARCH_TYPE == 'advanced') {
         $output_search_results_page_type_properties .=
-            '<div class="col-12 col-md-12 col-lg-6 my-2" id="search_results_search_folder_id_row" style="' . $search_results_search_folder_id_row_style . '">
+            '<div class="col-12 md:col-12 lg:col-6 my-3" id="search_results_search_folder_id_row" style="' . $search_results_search_folder_id_row_style . '">
                 <label for="search_results_search_folder_id" class="form-label">' . lang('Search Folder') . '</label>
-                <select name="search_results_search_folder_id" id="search_results_search_folder_id" class="form-select"  >' . select_folder(($search_results_properties['search_folder_id'] ?? '')) . '</select>
+                <select name="search_results_search_folder_id" id="search_results_search_folder_id" class="form-control"  >' . select_folder(($search_results_properties['search_folder_id'] ?? '')) . '</select>
             </div>';
     }
 
@@ -1175,23 +1175,23 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         // if the user is an advanced user then prepare to output search results page type properties
         if ($user['role'] < 3) {
             $output_search_results_page_type_properties .=
-                '<div class="col-12 my-2" id="search_results_search_catalog_items_row" style="' . $search_results_search_catalog_items_row_style . '">
-                    <div class="form-check form-switch">
-                        <input value="1" id="search_results_search_catalog_items" name="search_results_search_catalog_items" class="form-check-input collapse-switcher" type="checkbox" role="switch"' . $search_results_search_catalog_items_checked . ' data-bs-target="#search_catalog_items_options_row" />
-                        <label class="form-check-label" for="search_results_search_catalog_items">' . lang('Search Products') . '</label>
+                '<div class="col-12 my-3" id="search_results_search_catalog_items_row" style="' . $search_results_search_catalog_items_row_style . '">
+                    <div class="form-field">
+                        <div class="switch"><input value="1" id="search_results_search_catalog_items" name="search_results_search_catalog_items" class="collapse-switcher" type="checkbox" role="switch"' . $search_results_search_catalog_items_checked . ' data-bs-target="#search_catalog_items_options_row" /></div>
+                        <label class="" for="search_results_search_catalog_items">' . lang('Search Products') . '</label>
                     </div>
-                    <div class="collapse popover  fade bs-popover-bottom p-0 mb-2" id="search_catalog_items_options_row">
+                    <div class="collapse popover  fade bs-popover-bottom p-0 mb-3" id="search_catalog_items_options_row">
                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                         <div class="popover-body">
                             <div class="row">
-                                <div class="col-12 col-md-12 col-lg-6 my-1">
+                                <div class="col-12 md:col-12 lg:col-6 my-1">
                                     <label for="search_results_product_group_id" class="form-label">' . lang('In Product Group') . '</label>
-                                    <select name="search_results_product_group_id" id="search_results_product_group_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Product Group')) )) . '-</option>' . get_product_group_options(($search_results_properties['product_group_id'] ?? ''),  $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = FALSE, 'text', false, true, false) . '</select>
+                                    <select name="search_results_product_group_id" id="search_results_product_group_id" class="form-control"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Product Group')) )) . '-</option>' . get_product_group_options(($search_results_properties['product_group_id'] ?? ''),  $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = FALSE, 'text', false, true, false) . '</select>
                                     <div class="form-text">' . lang('leave unselected for all product groups') . '</div>
                                 </div>
-                                <div class="col-12 col-md-12 col-lg-6 my-1">
+                                <div class="col-12 md:col-12 lg:col-6 my-1">
                                     <label for="search_results_catalog_detail_page_id" class="form-label">' . lang('Catalog Detail Page') . '</label>
-                                    <select name="search_results_catalog_detail_page_id" id="search_results_catalog_detail_page_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($search_results_properties['catalog_detail_page_id'] ?? ''), 'catalog detail') . '</select>
+                                    <select name="search_results_catalog_detail_page_id" id="search_results_catalog_detail_page_id" class="form-control"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($search_results_properties['catalog_detail_page_id'] ?? ''), 'catalog detail') . '</select>
                                 </div>
                             </div>
                         </div>
@@ -1207,205 +1207,205 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         // if allow offline orders is on, then output offline payment label
         if (ECOMMERCE_OFFLINE_PAYMENT == TRUE) {
             $output_express_order_offline_payment_rows = 
-            '<div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_offline_payment_label_row" style="' . $express_order_offline_payment_label_row_style . '">
+            '<div class="col-12 sm:col-6 lg:col-4 my-3" id="express_order_offline_payment_label_row" style="' . $express_order_offline_payment_label_row_style . '">
                 <label class="form-label" for="express_order_offline_payment_label">'. lang('Offline Payment Label') . '</label>
                 <input value="' . h(($express_order_properties['offline_payment_label'] ?? '')) . '" type="text" id="express_order_offline_payment_label" name="express_order_offline_payment_label" class="form-control" maxlength="255" >
             </div>';
             $output_express_order_offline_payment_checkbox_rows = 
-            '<div class="col-12 my-2" id="express_order_offline_payment_always_allowed_row" style="' . $express_order_offline_payment_always_allowed_row_style . '">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" name="express_order_offline_payment_always_allowed" id="express_order_offline_payment_always_allowed" value="1"' . $express_order_offline_payment_always_allowed_checked . ' />
-                    <label class="form-check-label" for="express_order_offline_payment_always_allowed">' . lang('Always Allow Offline Payments') . '</label>
+            '<div class="col-12 my-3" id="express_order_offline_payment_always_allowed_row" style="' . $express_order_offline_payment_always_allowed_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input class="" type="checkbox" name="express_order_offline_payment_always_allowed" id="express_order_offline_payment_always_allowed" value="1"' . $express_order_offline_payment_always_allowed_checked . ' /></div>
+                    <label class="" for="express_order_offline_payment_always_allowed">' . lang('Always Allow Offline Payments') . '</label>
                 </div>
             </div>';
             
             $output_order_preview_offline_payment_rows = 
-            '<div class="col-12 col-sm-6 col-lg-4 my-2" id="order_preview_offline_payment_label_row" style="' . $order_preview_offline_payment_label_row_style . '">
+            '<div class="col-12 sm:col-6 lg:col-4 my-3" id="order_preview_offline_payment_label_row" style="' . $order_preview_offline_payment_label_row_style . '">
                 <label class="form-label" for="order_preview_offline_payment_label">'. lang('Offline Payment Label') . '</label>
                 <input value="' . h(($order_preview_properties['offline_payment_label'] ?? '')) . '" type="text" id="order_preview_offline_payment_label" name="order_preview_offline_payment_label" class="form-control" maxlength="255" >
             </div>';
             $output_order_preview_offline_payment_checkbox_rows = 
-            '<div class="col-12 my-2" id="order_preview_offline_payment_always_allowed_row" style="' . $order_preview_offline_payment_always_allowed_row_style . '">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" name="order_preview_offline_payment_always_allowed" id="order_preview_offline_payment_always_allowed" value="1"' . $order_preview_offline_payment_always_allowed_checked . ' />
-                    <label class="form-check-label" for="order_preview_offline_payment_always_allowed">' . lang('Always Allow Offline Payments') . '</label>
+            '<div class="col-12 my-3" id="order_preview_offline_payment_always_allowed_row" style="' . $order_preview_offline_payment_always_allowed_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input class="" type="checkbox" name="order_preview_offline_payment_always_allowed" id="order_preview_offline_payment_always_allowed" value="1"' . $order_preview_offline_payment_always_allowed_checked . ' /></div>
+                    <label class="" for="order_preview_offline_payment_always_allowed">' . lang('Always Allow Offline Payments') . '</label>
                 </div>
             </div>';
         }
         
         $output_ecommerce_page_type_properties =
-            '<div class="col-12 col-md-6 my-2" id="catalog_product_group_id_row" style="' . $catalog_product_group_id_row_style . '">
+            '<div class="col-12 md:col-6 my-3" id="catalog_product_group_id_row" style="' . $catalog_product_group_id_row_style . '">
                 <label for="catalog_product_group_id" class="form-label">' . lang('Product Group') . '</label>
-                <select name="catalog_product_group_id" id="catalog_product_group_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options(($catalog_properties['product_group_id'] ?? ''), $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = FALSE, 'text', false, true, false) . '</select>
+                <select name="catalog_product_group_id" id="catalog_product_group_id" class="form-control"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options(($catalog_properties['product_group_id'] ?? ''), $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = FALSE, 'text', false, true, false) . '</select>
                 <div class="form-text text-end">' . lang('leave unselected for all product groups') . '</div>
             </div>
-            <div class="col-12 my-2" id="catalog_menu_row" style="' . $catalog_menu_row_style . '">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="catalog_menu" name="catalog_menu" value="1"' . $catalog_menu_checked . '>
-                    <label class="form-check-label" for="catalog_menu">' . lang('Enable Menu') . '</label>
+            <div class="col-12 my-3" id="catalog_menu_row" style="' . $catalog_menu_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input class="" type="checkbox" id="catalog_menu" name="catalog_menu" value="1"' . $catalog_menu_checked . '></div>
+                    <label class="" for="catalog_menu">' . lang('Enable Menu') . '</label>
                 </div>
             </div>
-            <div class="col-12 my-2" id="catalog_search_row" style="' . $catalog_search_row_style . '">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="catalog_search" name="catalog_search" value="1"' . $catalog_search_checked . '>
-                    <label class="form-check-label" for="catalog_search">' . lang('Enable Search') . '</label>
+            <div class="col-12 my-3" id="catalog_search_row" style="' . $catalog_search_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input class="" type="checkbox" id="catalog_search" name="catalog_search" value="1"' . $catalog_search_checked . '></div>
+                    <label class="" for="catalog_search">' . lang('Enable Search') . '</label>
                 </div>
             </div>
-            <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_number_of_featured_items_row" style="' . $catalog_number_of_featured_items_row_style . '">
+            <div class="col-12 sm:col-6 lg:col-4 my-3" id="catalog_number_of_featured_items_row" style="' . $catalog_number_of_featured_items_row_style . '">
                 <label for="catalog_number_of_featured_items" class="form-label">' . lang('Number of Featured Items') . '</label>
                 <input value="' . h($catalog_properties['number_of_featured_items'] ?? '') . '" type="text" name="catalog_number_of_featured_items" id="catalog_number_of_featured_items" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
             </div>
-            <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_number_of_new_items_row" style="' . $catalog_number_of_new_items_row_style . '">
+            <div class="col-12 sm:col-6 lg:col-4 my-3" id="catalog_number_of_new_items_row" style="' . $catalog_number_of_new_items_row_style . '">
                 <label for="catalog_number_of_new_items" class="form-label">' . lang('Number of New Items') . '</label>
                 <input value="' . h($catalog_properties['number_of_new_items'] ?? '') . '" type="text" name="catalog_number_of_new_items" id="catalog_number_of_new_items" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
             </div>
-            <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_number_of_columns_row" style="' . $catalog_number_of_columns_row_style . '">
+            <div class="col-12 sm:col-6 lg:col-4 my-3" id="catalog_number_of_columns_row" style="' . $catalog_number_of_columns_row_style . '">
                 <label for="catalog_number_of_columns" class="form-label">' . lang('Number of Columns') . '</label>
                 <input value="' . h($catalog_number_of_columns) . '" type="text" name="catalog_number_of_columns" id="catalog_number_of_columns" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
             </div>
             <div class="col-12">
                 <div class="row">
-                    <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_image_width_row" style="' . $catalog_image_width_row_style . '">
+                    <div class="col-12 sm:col-6 lg:col-4 my-3" id="catalog_image_width_row" style="' . $catalog_image_width_row_style . '">
                         <label for="catalog_image_width" class="form-label">' . lang('Image Width') . '</label>
-                        <div class="input-group my-2">
+                        <div class="input-group my-3">
                             <input value="' . h($catalog_image_width) . '" type="text" name="catalog_image_width" id="catalog_image_width" maxlength="4" class="form-control text-end" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
                             <label class="input-group-text" for="catalog_image_width">' . lang('pixels') . '</label>
                         </div>
                     </div>
-                    <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_image_height_row" style="' . $catalog_image_height_row_style . '">
+                    <div class="col-12 sm:col-6 lg:col-4 my-3" id="catalog_image_height_row" style="' . $catalog_image_height_row_style . '">
                         <label for="catalog_image_height" class="form-label">' . lang('Image Height') . '</label>
-                        <div class="input-group my-2">
+                        <div class="input-group my-3">
                             <input value="' . h($catalog_image_height) . '" type="text" name="catalog_image_height" id="catalog_image_height" maxlength="4" class="form-control text-end" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0" />
                             <label class="input-group-text" for="catalog_image_height">' . lang('pixels') . '</label>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_back_button_label_row" style="' . $catalog_back_button_label_row_style . '">
+            <div class="col-12 sm:col-6 lg:col-4 my-3" id="catalog_back_button_label_row" style="' . $catalog_back_button_label_row_style . '">
                 <label for="catalog_back_button_label" class="form-label">' . lang('Back Button Label') . '</label>
                 <input value="' . h($catalog_properties['back_button_label'] ?? '') . '" type="text" name="catalog_back_button_label" id="catalog_back_button_label" maxlength="50" class="form-control" />
             </div>
-            <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_catalog_detail_page_id_row" style="' . $catalog_catalog_detail_page_id_row_style . '">
+            <div class="col-12 sm:col-6 lg:col-4 my-3" id="catalog_catalog_detail_page_id_row" style="' . $catalog_catalog_detail_page_id_row_style . '">
                 <label for="catalog_catalog_detail_page_id" class="form-label">' . lang('Catalog Detail Page') . '</label>
-                <select class="form-select" id="catalog_catalog_detail_page_id" name="catalog_catalog_detail_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>lang('Page') )) . '-</option>' . select_page(($catalog_properties['catalog_detail_page_id'] ?? ''), 'catalog detail') . '</select>
+                <select class="form-control" id="catalog_catalog_detail_page_id" name="catalog_catalog_detail_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>lang('Page') )) . '-</option>' . select_page(($catalog_properties['catalog_detail_page_id'] ?? ''), 'catalog detail') . '</select>
             </div>
-            <div class="col-12 my-2" id="catalog_detail_allow_customer_to_add_product_to_order_row" style="' . $catalog_detail_allow_customer_to_add_product_to_order_row_style . '">
-                <div class="form-check form-switch">
-                    <input id="catalog_detail_allow_customer_to_add_product_to_order" name="catalog_detail_allow_customer_to_add_product_to_order" class="form-check-input collapse-switcher" value="1"' . $catalog_detail_allow_customer_to_add_product_to_order_checked . ' type="checkbox" role="switch" data-bs-target="#catalog_detail_allow_customer_to_add_product_to_order_row_popover" />
-                    <label class="form-check-label" for="catalog_detail_allow_customer_to_add_product_to_order">' . lang('Allow customer to add product to order') . '</label>
+            <div class="col-12 my-3" id="catalog_detail_allow_customer_to_add_product_to_order_row" style="' . $catalog_detail_allow_customer_to_add_product_to_order_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input id="catalog_detail_allow_customer_to_add_product_to_order" name="catalog_detail_allow_customer_to_add_product_to_order" class="collapse-switcher" value="1"' . $catalog_detail_allow_customer_to_add_product_to_order_checked . ' type="checkbox" role="switch" data-bs-target="#catalog_detail_allow_customer_to_add_product_to_order_row_popover" /></div>
+                    <label class="" for="catalog_detail_allow_customer_to_add_product_to_order">' . lang('Allow customer to add product to order') . '</label>
                 </div>
-                <div class="collapse popover  fade bs-popover-bottom p-0 mb-2" id="catalog_detail_allow_customer_to_add_product_to_order_row_popover">
+                <div class="collapse popover  fade bs-popover-bottom p-0 mb-3" id="catalog_detail_allow_customer_to_add_product_to_order_row_popover">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 col-md-12 my-1">
+                            <div class="col-12 md:col-12 my-1">
                                 <label for="catalog_detail_add_button_label" class="form-label">' . lang('Add Button Label') . '</label>
                                 <input value="' . h($catalog_detail_properties['add_button_label'] ?? '') . '" type="text" name="catalog_detail_add_button_label" id="catalog_detail_add_button_label" maxlength="50" class="form-control" />
                             </div>
-                            <div class="col-12 col-md-12 my-1">
+                            <div class="col-12 md:col-12 my-1">
                                 <label for="catalog_detail_next_page_id" class="form-label">' . lang('Next Page') . '</label>
-                                <select class="form-select" id="catalog_detail_next_page_id" name="catalog_detail_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>lang('Page') )) . '-</option>' . select_page(($catalog_detail_properties['next_page_id'] ?? '')) . '</select>
+                                <select class="form-control" id="catalog_detail_next_page_id" name="catalog_detail_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>lang('Page') )) . '-</option>' . select_page(($catalog_detail_properties['next_page_id'] ?? '')) . '</select>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-sm-6 col-lg-4 my-2" id="catalog_detail_back_button_label_row" style="' . $catalog_detail_back_button_label_row_style . '">
+            <div class="col-12 sm:col-6 lg:col-4 my-3" id="catalog_detail_back_button_label_row" style="' . $catalog_detail_back_button_label_row_style . '">
                 <label for="catalog_detail_back_button_label" class="form-label">' . lang('Back Button Label') . '</label>
                 <input value="' . h($catalog_detail_properties['back_button_label'] ?? '') . '" type="text" name="catalog_detail_back_button_label" id="catalog_detail_back_button_label" maxlength="50" class="form-control" />
             </div>
-            <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_shopping_cart_label_row" style="' . $express_order_shopping_cart_label_row_style . '">
+            <div class="col-12 sm:col-6 lg:col-4 my-3" id="express_order_shopping_cart_label_row" style="' . $express_order_shopping_cart_label_row_style . '">
                 <label for="express_order_shopping_cart_label" class="form-label">' . lang('Shopping Cart Label') . '</label>
                 <input value="' . h($express_order_properties['shopping_cart_label'] ?? '') . '" type="text" name="express_order_shopping_cart_label" id="express_order_shopping_cart_label" maxlength="50" class="form-control" />
             </div>
-            <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_quick_add_label_row" style="' . $express_order_quick_add_label_row_style . '">
+            <div class="col-12 sm:col-6 lg:col-4 my-3" id="express_order_quick_add_label_row" style="' . $express_order_quick_add_label_row_style . '">
                 <label for="express_order_quick_add_label" class="form-label">' . lang('Quick Add Label') . '</label>
                 <input value="' . h($express_order_properties['quick_add_label'] ?? '') . '" type="text" name="express_order_quick_add_label" id="express_order_quick_add_label" maxlength="255" class="form-control" />
             </div>
-            <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_quick_add_product_group_id_row" style="' . $express_order_quick_add_product_group_id_row_style . '">
+            <div class="col-12 sm:col-6 lg:col-4 my-3" id="express_order_quick_add_product_group_id_row" style="' . $express_order_quick_add_product_group_id_row_style . '">
                 <label for="express_order_quick_add_product_group_id" class="form-label">' . lang('Quick Add Product Group') . '</label>
-                <select class="form-select" name="express_order_quick_add_product_group_id" id="express_order_quick_add_product_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options(($express_order_properties['quick_add_product_group_id'] ?? ''), 0, 0, 0, array(), true, 'text', false, true, false) . '</select>
+                <select class="form-control" name="express_order_quick_add_product_group_id" id="express_order_quick_add_product_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options(($express_order_properties['quick_add_product_group_id'] ?? ''), 0, 0, 0, array(), true, 'text', false, true, false) . '</select>
             </div>
-            <div class="col-12 my-2" id="express_order_product_description_type_row" style="' . $express_order_product_description_type_row_style . '">
+            <div class="col-12 my-3" id="express_order_product_description_type_row" style="' . $express_order_product_description_type_row_style . '">
                 <label class="form-label" for="">'. lang('Product Description Type') . '</label>
-                <div class="form-check">
-                    <input value="full_description" class="form-check-input" type="radio" id="express_order_product_description_type_full_description" name="express_order_product_description_type"' . $express_order_product_description_type_full_description_checked . '>
-                    <label class="form-check-label" for="express_order_product_description_type_full_description">'. lang('Full Description') . '</label>
+                <div class="form-field">
+                    <input value="full_description" class="radio" type="radio" id="express_order_product_description_type_full_description" name="express_order_product_description_type"' . $express_order_product_description_type_full_description_checked . '>
+                    <label class="" for="express_order_product_description_type_full_description">'. lang('Full Description') . '</label>
                 </div>
-                <div class="form-check">
-                    <input value="short_description" class="form-check-input" type="radio" id="express_order_product_description_type_short_description" name="express_order_product_description_type"' . $express_order_product_description_type_short_description_checked . '>
-                    <label class="form-check-label" for="express_order_product_description_type_short_description">'. lang('Short Description') . '</label>
+                <div class="form-field">
+                    <input value="short_description" class="radio" type="radio" id="express_order_product_description_type_short_description" name="express_order_product_description_type"' . $express_order_product_description_type_short_description_checked . '>
+                    <label class="" for="express_order_product_description_type_short_description">'. lang('Short Description') . '</label>
                 </div>
             </div>
-            <div class="col-12 my-2" id="express_order_shipping_form_row" style="' . $express_order_shipping_form_row_style . '">
-                <div class="form-check form-switch">
-                    <input value="1" id="express_order_shipping_form" name="express_order_shipping_form" class="form-check-input" type="checkbox" role="switch" onclick="toggle_express_order_custom_shipping_form();show_or_hide_express_order_custom_billing_form();"' . $express_order_shipping_form_checked . '/>
-                    <label class="form-check-label" for="express_order_shipping_form">' . lang('Enable Custom Shipping Form') . '</label>
+            <div class="col-12 my-3" id="express_order_shipping_form_row" style="' . $express_order_shipping_form_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input value="1" id="express_order_shipping_form" name="express_order_shipping_form" class="" type="checkbox" role="switch" onclick="toggle_express_order_custom_shipping_form();show_or_hide_express_order_custom_billing_form();"' . $express_order_shipping_form_checked . '/></div>
+                    <label class="" for="express_order_shipping_form">' . lang('Enable Custom Shipping Form') . '</label>
                 </div>
                 <script>
                     var original_express_order_shipping_form = "' . ($express_order_properties['shipping_form'] ?? '') . '";
                 </script>
 
                 <div id="express_order_shipping_form_notice" style="display:none;">
-                    <div class="alert alert-primary">
+                    <div class="alert theme-primary">
                        <p class="mb-0">' . lang('when ready, click \'Save & Continue\' at the bottom of this screen to create the Custom Shipping Form.') . '</p>
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_special_offer_code_label_row" style="' . $express_order_special_offer_code_label_row_style . '">
+            <div class="col-12 sm:col-6 lg:col-4 my-3" id="express_order_special_offer_code_label_row" style="' . $express_order_special_offer_code_label_row_style . '">
                 <label for="express_order_special_offer_code_label" class="form-label">' . lang('Special Offer Code Label') . '</label>
                 <input value="' . h($express_order_properties['special_offer_code_label'] ?? '') . '" type="text" name="express_order_special_offer_code_label" id="express_order_special_offer_code_label" maxlength="50" class="form-control" />
             </div>
-            <div class="col-12 col-sm-6 col-lg-8 my-2" id="express_order_special_offer_code_message_row" style="' . $express_order_special_offer_code_message_row_style . '">
+            <div class="col-12 sm:col-6 lg:col-8 my-3" id="express_order_special_offer_code_message_row" style="' . $express_order_special_offer_code_message_row_style . '">
                 <label for="express_order_special_offer_code_message" class="form-label">' . lang('Special Offer Code Message') . '</label>
                 <input value="' . h($express_order_properties['special_offer_code_message'] ?? '') . '" type="text" name="express_order_special_offer_code_message" id="express_order_special_offer_code_message" maxlength="255" class="form-control" />
             </div>
-            <div class="col-12 col-sm-6 my-2" id="express_order_custom_field_1_label_row" style="' . $express_order_custom_field_1_label_row_style . '">
-                <div class="border-1 border p-2 my-2 rounded">
+            <div class="col-12 sm:col-6 my-3" id="express_order_custom_field_1_label_row" style="' . $express_order_custom_field_1_label_row_style . '">
+                <div class="border-1 border p-3 my-3 rounded-4">
                     <label for="express_order_custom_field_1_label" class="form-label">' . lang('Custom Field #1 Label') . '</label>
                     <input value="' . h($express_order_properties['custom_field_1_label'] ?? '') . '" type="text" name="express_order_custom_field_1_label" id="express_order_custom_field_1_label" maxlength="50" class="form-control" />
-                    <div class="form-check form-switch ms-1 mt-2">
-                        <input class="form-check-input" type="checkbox" name="express_order_custom_field_1_required" id="express_order_custom_field_1_required" value="1"' . $express_order_custom_field_1_required_checked . ' />
-                        <label class="form-check-label" for="express_order_custom_field_1_required">' . lang('Required') . '</label>
+                    <div class="form-field ms-1 mt-3">
+                        <div class="switch"><input class="" type="checkbox" name="express_order_custom_field_1_required" id="express_order_custom_field_1_required" value="1"' . $express_order_custom_field_1_required_checked . ' /></div>
+                        <label class="" for="express_order_custom_field_1_required">' . lang('Required') . '</label>
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-sm-6 my-2" id="express_order_custom_field_2_label_row" style="' . $express_order_custom_field_2_label_row_style . '">
-                <div class="border-1 border p-2 my-2 rounded">
+            <div class="col-12 sm:col-6 my-3" id="express_order_custom_field_2_label_row" style="' . $express_order_custom_field_2_label_row_style . '">
+                <div class="border-1 border p-3 my-3 rounded-4">
                     <label for="express_order_custom_field_2_label" class="form-label">' . lang('Custom Field #2 Label') . '</label>
                     <input value="' . h($express_order_properties['custom_field_2_label'] ?? '') . '" type="text" name="express_order_custom_field_2_label" id="express_order_custom_field_2_label" maxlength="255" class="form-control" />
-                    <div class="form-check form-switch ms-1 mt-2">
-                        <input class="form-check-input" type="checkbox" name="express_order_custom_field_2_required" id="express_order_custom_field_2_required" value="1"' . $express_order_custom_field_2_required_checked . ' />
-                        <label class="form-check-label" for="express_order_custom_field_2_required">' . lang('Required') . '</label>
+                    <div class="form-field ms-1 mt-3">
+                        <div class="switch"><input class="" type="checkbox" name="express_order_custom_field_2_required" id="express_order_custom_field_2_required" value="1"' . $express_order_custom_field_2_required_checked . ' /></div>
+                        <label class="" for="express_order_custom_field_2_required">' . lang('Required') . '</label>
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-2" id="express_order_po_number_row" style="' . $express_order_po_number_row_style . '">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" name="express_order_po_number" id="express_order_po_number" value="1"' . $express_order_po_number_checked . ' />
-                    <label class="form-check-label" for="express_order_po_number">' . lang('Enable PO Number') . '</label>
+            <div class="col-12 my-3" id="express_order_po_number_row" style="' . $express_order_po_number_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input class="" type="checkbox" name="express_order_po_number" id="express_order_po_number" value="1"' . $express_order_po_number_checked . ' /></div>
+                    <label class="" for="express_order_po_number">' . lang('Enable PO Number') . '</label>
                 </div>
             </div>
-            <div class="col-12 my-2" id="express_order_form_row" style="' . $express_order_form_row_style . '">
-                <div class="form-check form-switch">
-                    <input value="1"' . $express_order_form_checked . ' id="express_order_form" name="express_order_form" class="form-check-input collapse-switcher" type="checkbox" onclick="show_or_hide_express_order_custom_billing_form()" data-bs-target="#show_or_hide_express_order_custom_billing_form_row"/>
-                    <label class="form-check-label" for="express_order_form">' . lang('Enable Custom Billing Form') . '</label>
+            <div class="col-12 my-3" id="express_order_form_row" style="' . $express_order_form_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input value="1"' . $express_order_form_checked . ' id="express_order_form" name="express_order_form" class="collapse-switcher" type="checkbox" onclick="show_or_hide_express_order_custom_billing_form()" data-bs-target="#show_or_hide_express_order_custom_billing_form_row"/></div>
+                    <label class="" for="express_order_form">' . lang('Enable Custom Billing Form') . '</label>
                 </div>
                 <script>var original_express_order_form = "' . ($express_order_properties['form'] ?? '') . '";</script>
-                <div class="collapse popover  fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_express_order_custom_billing_form_row">
+                <div class="collapse popover  fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_express_order_custom_billing_form_row">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
                             <div class="col-12 my-1" id="express_order_form_notice" style="display:none;">
-                                <div class="alert alert-primary">
+                                <div class="alert theme-primary">
                                    <p class="mb-0">' . lang('when ready, click \'Save & Continue\' at the bottom of this screen to create the Custom Billing Form.') . '</p>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-6 col-lg-8 my-1" id="express_order_form_name_row" style="' . $express_order_form_name_row_style . '">
+                            <div class="col-12 md:col-6 lg:col-8 my-1" id="express_order_form_name_row" style="' . $express_order_form_name_row_style . '">
                                 <label for="express_order_form_name" class="form-label">' . lang('Form Title for Display') . '</label>
                                 <input value="' . h(($express_order_properties['form_name'] ?? '')) . '" type="text" name="express_order_form_name" id="express_order_form_name" maxlength="100" class="form-control" />
                             </div>
-                            <div class="col-12 col-md-6 col-lg-4 my-1" id="express_order_form_label_column_width_row" style="' . $express_order_form_label_column_width_row_style . '">
+                            <div class="col-12 md:col-6 lg:col-4 my-1" id="express_order_form_label_column_width_row" style="' . $express_order_form_label_column_width_row_style . '">
                                 <label for="express_order_form_label_column_width" class="form-label">' . lang('Label Column Width') . '</label>
                                 <div class="input-group">
                                     <input value="' . h(($express_order_properties['form_label_column_width'] ?? '')) . '" type="text" name="express_order_form_label_column_width" id="express_order_form_label_column_width" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
@@ -1417,27 +1417,27 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-2" id="express_order_auto_registration_row" style="display: none">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" name="express_order_auto_registration" id="express_order_auto_registration" value="1"' . $express_order_auto_registration_checked . ' />
-                    <label class="form-check-label" for="express_order_auto_registration">' . lang('Enable Auto-Registration') . '</label>
+            <div class="col-12 my-3" id="express_order_auto_registration_row" style="display: none">
+                <div class="form-field">
+                    <div class="switch"><input class="" type="checkbox" name="express_order_auto_registration" id="express_order_auto_registration" value="1"' . $express_order_auto_registration_checked . ' /></div>
+                    <label class="" for="express_order_auto_registration">' . lang('Enable Auto-Registration') . '</label>
                 </div>
             </div>
             ' . $output_express_order_offline_payment_checkbox_rows . '
-            <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_card_verification_number_page_id_row" style="' . $express_order_card_verification_number_page_id_row_style . '">
+            <div class="col-12 sm:col-6 lg:col-4 my-3" id="express_order_card_verification_number_page_id_row" style="' . $express_order_card_verification_number_page_id_row_style . '">
                 <label for="express_order_card_verification_number_page_id" class="form-label">' . lang('Card Verification Number Page') . '</label>
-                <select class="form-select" name="express_order_card_verification_number_page_id" id="express_order_card_verification_number_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($express_order_properties['card_verification_number_page_id'] ?? '')) . '</select>
+                <select class="form-control" name="express_order_card_verification_number_page_id" id="express_order_card_verification_number_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($express_order_properties['card_verification_number_page_id'] ?? '')) . '</select>
             </div>
             ' . $output_express_order_offline_payment_rows . '
-            <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_terms_page_id_row" style="' . $express_order_terms_page_id_row_style . '">
+            <div class="col-12 sm:col-6 lg:col-4 my-3" id="express_order_terms_page_id_row" style="' . $express_order_terms_page_id_row_style . '">
                 <label for="express_order_terms_page_id" class="form-label">' . lang('Terms Page') . '</label>
-                <select class="form-select" name="express_order_terms_page_id" id="express_order_terms_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($express_order_properties['terms_page_id'] ?? '')) . '</select>
+                <select class="form-control" name="express_order_terms_page_id" id="express_order_terms_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($express_order_properties['terms_page_id'] ?? '')) . '</select>
             </div>
-            <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_update_button_label_row" style="' . $express_order_update_button_label_row_style . '">
+            <div class="col-12 sm:col-6 lg:col-4 my-3" id="express_order_update_button_label_row" style="' . $express_order_update_button_label_row_style . '">
                 <label class="form-label" for="express_order_update_button_label">'. lang('Update Button Label') . '</label>
                 <input value="' . h($express_order_properties['update_button_label'] ?? '') . '" type="text" id="express_order_update_button_label" name="express_order_update_button_label" class="form-control" maxlength="50" >
             </div>
-            <div class="col-12 col-sm-6 col-lg-4 my-2" id="express_order_purchase_now_button_label_row" style="' . $express_order_purchase_now_button_label_row_style . '">
+            <div class="col-12 sm:col-6 lg:col-4 my-3" id="express_order_purchase_now_button_label_row" style="' . $express_order_purchase_now_button_label_row_style . '">
                 <label class="form-label" for="express_order_purchase_now_button_label">'. lang('Purchase Now Button Label') . '</label>
                 <input value="' . h($express_order_properties['purchase_now_button_label'] ?? '') . '" type="text" id="express_order_purchase_now_button_label" name="express_order_purchase_now_button_label" class="form-control" maxlength="50" >
             </div>';
@@ -1447,11 +1447,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             $output_ecommerce_page_type_properties .=
                 '<div class="col-12">
                     <div class="row">
-                        <div class="col-12 col-lg-6 my-2" id="express_order_pre_save_hook_code_row" style="' . $express_order_pre_save_hook_code_row_style . '">
+                        <div class="col-12 lg:col-6 my-3" id="express_order_pre_save_hook_code_row" style="' . $express_order_pre_save_hook_code_row_style . '">
                             <label class="form-label" for="express_order_pre_save_hook_code">' . lang('Pre-Save Hook Code') . '</label>
                             <textarea id="express_order_pre_save_hook_code" name="express_order_pre_save_hook_code" class="form-control">' . h(($express_order_properties['pre_save_hook_code'] ?? '')) . '</textarea>
                         </div>
-                        <div class="col-12 col-lg-6 my-2" id="express_order_post_save_hook_code_row" style="' . $express_order_post_save_hook_code_row_style . '">
+                        <div class="col-12 lg:col-6 my-3" id="express_order_post_save_hook_code_row" style="' . $express_order_post_save_hook_code_row_style . '">
                             <label class="form-label" for="express_order_post_save_hook_code">' . lang('Post-Save Hook Code') . '</label>
                             <textarea id="express_order_post_save_hook_code" name="express_order_post_save_hook_code" class="form-control">' . h(($express_order_properties['post_save_hook_code'] ?? '')) . '</textarea>
                         </div>
@@ -1460,20 +1460,20 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         }
 
         $output_ecommerce_page_type_properties .=
-            '<div class="col-12 col-md-6 col-lg-4 my-2" id="express_order_next_page_id_row" style="' . $express_order_next_page_id_row_style . '">
+            '<div class="col-12 md:col-6 lg:col-4 my-3" id="express_order_next_page_id_row" style="' . $express_order_next_page_id_row_style . '">
                 <label class="form-label" for="express_order_next_page_id">' . lang('Next Page') . '</label>
-                <select class="form-select" id="express_order_next_page_id" name="express_order_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('order receipt page')) )) . '-</option>' . select_page(($express_order_properties['next_page_id'] ?? ''), 'order receipt') . '</select>
+                <select class="form-control" id="express_order_next_page_id" name="express_order_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('order receipt page')) )) . '-</option>' . select_page(($express_order_properties['next_page_id'] ?? ''), 'order receipt') . '</select>
             </div>
-            <div class="col-12 my-2" id="express_order_order_receipt_email_row" style="' . $express_order_order_receipt_email_row_style . '">
-                <div class="form-check form-switch">
-                    <input value="1"' . $express_order_order_receipt_email_checked . ' id="express_order_order_receipt_email" name="express_order_order_receipt_email" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_express_order_order_receipt_email" />
-                    <label class="form-check-label" for="express_order_order_receipt_email">' . lang('E-mail Order Receipt') . '</label>
+            <div class="col-12 my-3" id="express_order_order_receipt_email_row" style="' . $express_order_order_receipt_email_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input value="1"' . $express_order_order_receipt_email_checked . ' id="express_order_order_receipt_email" name="express_order_order_receipt_email" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_express_order_order_receipt_email" /></div>
+                    <label class="" for="express_order_order_receipt_email">' . lang('E-mail Order Receipt') . '</label>
                 </div>
-                <div class="collapse popover  fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_express_order_order_receipt_email">
+                <div class="collapse popover  fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_express_order_order_receipt_email">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 col-sm-6 col-md-8 my-1">
+                            <div class="col-12 sm:col-6 md:col-8 my-1">
                                 <label class="form-label" for="express_order_order_receipt_email_subject">' . lang('Subject') . '</label>
                                 <input value="' . h(($express_order_properties['order_receipt_email_subject'] ?? '')) . '" type="text" id="express_order_order_receipt_email_subject" name="express_order_order_receipt_email_subject" class="form-control" maxlength="255">
                             </div> 
@@ -1481,15 +1481,15 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                 <div class="col-12">
                                     <label class="form-label">' . lang('Format') . '</label>
                                 </div>
-                                <div class="form-check  form-check-inline">
-                                    <input class="form-check-input collapse-switcher" type="radio" id="express_order_order_receipt_email_format_plain_text" name="express_order_order_receipt_email_format"' . $express_order_order_receipt_email_format_plain_text_checked . ' value="plain_text" data-bs-target="#express_order_order_receipt_email_format_plain_text_row" />
+                                <div class="form-field  d-inline-grid me-5">
+                                    <input class="radio collapse-switcher" type="radio" id="express_order_order_receipt_email_format_plain_text" name="express_order_order_receipt_email_format"' . $express_order_order_receipt_email_format_plain_text_checked . ' value="plain_text" data-bs-target="#express_order_order_receipt_email_format_plain_text_row" />
                                     <label for="express_order_order_receipt_email_format_plain_text">' . lang('Plain Text') . '</label> 
                                 </div>
-                                <div class="form-check  form-check-inline">
-                                    <input class="form-check-input collapse-switcher" type="radio" id="express_order_order_receipt_email_format_html" name="express_order_order_receipt_email_format"' . $express_order_order_receipt_email_format_html_checked . ' value="html" data-bs-target="#express_order_order_receipt_email_format_html_row"/>
+                                <div class="form-field  d-inline-grid me-5">
+                                    <input class="radio collapse-switcher" type="radio" id="express_order_order_receipt_email_format_html" name="express_order_order_receipt_email_format"' . $express_order_order_receipt_email_format_html_checked . ' value="html" data-bs-target="#express_order_order_receipt_email_format_html_row"/>
                                     <label for="express_order_order_receipt_email_format_html">' . lang('HTML') . '</label>
                                 </div>
-                                <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="express_order_order_receipt_email_format_plain_text_row">
+                                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="express_order_order_receipt_email_format_plain_text_row">
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                                     <div class="popover-body">
                                         <div class="row">
@@ -1504,13 +1504,13 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                         </div>
                                     </div>
                                 </div>
-                                <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="express_order_order_receipt_email_format_html_row">
+                                <div class="collapse popover fade bs-popover-bottom p-0 mb-3" id="express_order_order_receipt_email_format_html_row">
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                                     <div class="popover-body">
                                         <div class="row">
                                             <div class="col-12 my-1">
                                                 <label class="form-label" for="express_order_order_receipt_email_page_id">' . lang('Page') . '</label>
-                                                <select class="form-select" id="express_order_order_receipt_email_page_id" name="express_order_order_receipt_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('order receipt page')) )) . '-</option>' . select_page(($express_order_properties['order_receipt_email_page_id'] ?? ''), 'order receipt') . '</select>
+                                                <select class="form-control" id="express_order_order_receipt_email_page_id" name="express_order_order_receipt_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('order receipt page')) )) . '-</option>' . select_page(($express_order_properties['order_receipt_email_page_id'] ?? ''), 'order receipt') . '</select>
                                             </div>
                                         </div>
                                     </div>
@@ -1520,81 +1520,81 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="order_form_product_group_id_row" style="' . $order_form_product_group_id_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="order_form_product_group_id_row" style="' . $order_form_product_group_id_row_style . '">
                 <label class="form-label" for="order_form_product_group_id">' . lang('Product Group') . '</label>
-                <select class="form-select" id="order_form_product_group_id" name="order_form_product_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options(($order_form_properties['product_group_id'] ?? ''), 0, 0, 0, array(), true, 'text', false, true, false) . '</select>
+                <select class="form-control" id="order_form_product_group_id" name="order_form_product_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options(($order_form_properties['product_group_id'] ?? ''), 0, 0, 0, array(), true, 'text', false, true, false) . '</select>
             </div>
-            <div class="col-12 my-3" id="order_form_product_layout_row_1" style="' . $order_form_product_layout_row_1_style . '">
+            <div class="col-12 my-5" id="order_form_product_layout_row_1" style="' . $order_form_product_layout_row_1_style . '">
                 <label class="form-label">' . lang('Format') . '</label>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" id="order_form_product_layout_list" name="order_form_product_layout"' . $order_form_product_layout_list . ' value="list" />
+                <div class="form-field">
+                    <input class="radio" type="radio" id="order_form_product_layout_list" name="order_form_product_layout"' . $order_form_product_layout_list . ' value="list" />
                     <label for="order_form_product_layout_list">' . lang('List (full description)') . '</label> 
                 </div>
-                <div class="form-check" id="order_form_product_layout_row_2" style="' . $order_form_product_layout_row_2_style . '">
-                    <input class="form-check-input" type="radio" id="order_form_product_layout_drop_down_selection" name="order_form_product_layout"' . $order_form_product_layout_drop_down_selection . ' value="drop-down selection" />
+                <div class="form-field" id="order_form_product_layout_row_2" style="' . $order_form_product_layout_row_2_style . '">
+                    <input class="radio" type="radio" id="order_form_product_layout_drop_down_selection" name="order_form_product_layout"' . $order_form_product_layout_drop_down_selection . ' value="drop-down selection" />
                     <label for="order_form_product_layout_drop_down_selection">' . lang('Drop-Down Selection (short description)') . '</label>
                 </div>
             </div>
-            <div class="col-12 my-2" id="order_form_add_button_row" style="' . $order_form_add_button_row_style . '">
-                <div class="row p-1 border border-1 rounded bg-light">
-                    <div class="col-12 col-md-6 col-lg-4 my-2">
+            <div class="col-12 my-3" id="order_form_add_button_row" style="' . $order_form_add_button_row_style . '">
+                <div class="row p-1 border border-1 rounded-4 bg-1">
+                    <div class="col-12 md:col-6 lg:col-4 my-3">
                         <label class="form-label" for="order_form_add_button_label">' . lang('Add Button Label') . '</label>
                         <input value="' . h($order_form_properties['add_button_label'] ?? '') . '" type="text" class="form-control" id="order_form_add_button_label" name="order_form_add_button_label" maxlength="50"/>
                     </div>
-                    <div class="col-12 col-md-6 col-lg-4 my-2">
+                    <div class="col-12 md:col-6 lg:col-4 my-3">
                         <label class="form-label" for="order_form_add_button_next_page_id">' . lang('Next Page') . '</label>
-                        <select class="form-select" id="order_form_add_button_next_page_id" name="order_form_add_button_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($order_form_properties['add_button_next_page_id'] ?? '')) . '</select>
+                        <select class="form-control" id="order_form_add_button_next_page_id" name="order_form_add_button_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($order_form_properties['add_button_next_page_id'] ?? '')) . '</select>
                     </div> 
                 </div>
             </div>
-            <div class="col-12 my-2" id="order_form_skip_button_row" style="' . $order_form_skip_button_row_style . '">
-                <div class="row p-1 border border-1 rounded bg-light">
-                    <div class="col-12 col-md-6 col-lg-4 my-2">
+            <div class="col-12 my-3" id="order_form_skip_button_row" style="' . $order_form_skip_button_row_style . '">
+                <div class="row p-1 border border-1 rounded-4 bg-1">
+                    <div class="col-12 md:col-6 lg:col-4 my-3">
                         <label class="form-label" for="order_form_skip_button_label">' . lang('Skip Button Label') . '</label>
                         <input value="' . h($order_form_properties['skip_button_label'] ?? '') . '" type="text" class="form-control" id="order_form_skip_button_label" name="order_form_skip_button_label" maxlength="50"/>
                     </div>
-                    <div class="col-12 col-md-6 col-lg-4 my-2">
+                    <div class="col-12 md:col-6 lg:col-4 my-3">
                         <label class="form-label" for="order_form_skip_button_next_page_id">' . lang('Next Page') . '</label>
-                        <select class="form-select" id="order_form_skip_button_next_page_id" name="order_form_skip_button_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($order_form_properties['skip_button_next_page_id'] ?? '')) . '</select>
+                        <select class="form-control" id="order_form_skip_button_next_page_id" name="order_form_skip_button_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($order_form_properties['skip_button_next_page_id'] ?? '')) . '</select>
                     </div> 
                 </div>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="shopping_cart_shopping_cart_label_row" style="' . $shopping_cart_shopping_cart_label_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="shopping_cart_shopping_cart_label_row" style="' . $shopping_cart_shopping_cart_label_row_style . '">
                 <label class="form-label" for="shopping_cart_shopping_cart_label">' . lang('Shopping Cart Label') . '</label>
                 <input value="' . h($shopping_cart_properties['shopping_cart_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_shopping_cart_label" name="shopping_cart_shopping_cart_label" maxlength="50"/>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="shopping_cart_quick_add_label_row" style="' . $shopping_cart_quick_add_label_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="shopping_cart_quick_add_label_row" style="' . $shopping_cart_quick_add_label_row_style . '">
                 <label class="form-label" for="shopping_cart_quick_add_label">' . lang('Quick Add Label') . '</label>
                 <input value="' . h($shopping_cart_properties['quick_add_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_quick_add_label" name="shopping_cart_quick_add_label" maxlength="255"/>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="shopping_cart_quick_add_product_group_id_row" style="' . $shopping_cart_quick_add_product_group_id_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="shopping_cart_quick_add_product_group_id_row" style="' . $shopping_cart_quick_add_product_group_id_row_style . '">
                 <label class="form-label" for="shopping_cart_quick_add_product_group_id">' . lang('Quick Add Product Group') . '</label>
-                <select class="form-select" id="shopping_cart_quick_add_product_group_id" name="shopping_cart_quick_add_product_group_id"><option value="">-' . lang('None') . '-</option>' . get_product_group_options(($shopping_cart_properties['quick_add_product_group_id'] ?? ''), 0, 0, 0, array(), true, 'text', false, true, false) . '</select>
+                <select class="form-control" id="shopping_cart_quick_add_product_group_id" name="shopping_cart_quick_add_product_group_id"><option value="">-' . lang('None') . '-</option>' . get_product_group_options(($shopping_cart_properties['quick_add_product_group_id'] ?? ''), 0, 0, 0, array(), true, 'text', false, true, false) . '</select>
             </div> 
-            <div class="col-12 my-3" id="shopping_cart_product_description_type_row" style="' . $shopping_cart_product_description_type_row_style . '">
+            <div class="col-12 my-5" id="shopping_cart_product_description_type_row" style="' . $shopping_cart_product_description_type_row_style . '">
                 <label class="form-label">' . lang('Product Description Type') . '</label>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" id="shopping_cart_product_description_type_full_description" name="shopping_cart_product_description_type"' . $shopping_cart_product_description_type_full_description_checked . ' value="full_description" />
+                <div class="form-field">
+                    <input class="radio" type="radio" id="shopping_cart_product_description_type_full_description" name="shopping_cart_product_description_type"' . $shopping_cart_product_description_type_full_description_checked . ' value="full_description" />
                     <label for="shopping_cart_product_description_type_full_description">' . lang('Full Description') . '</label> 
                 </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" id="shopping_cart_product_description_type_short_description" name="shopping_cart_product_description_type"' . $shopping_cart_product_description_type_short_description_checked . ' value="short_description" />
+                <div class="form-field">
+                    <input class="radio" type="radio" id="shopping_cart_product_description_type_short_description" name="shopping_cart_product_description_type"' . $shopping_cart_product_description_type_short_description_checked . ' value="short_description" />
                     <label for="shopping_cart_product_description_type_short_description">' . lang('Short Description') . '</label>
                 </div>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="shopping_cart_special_offer_code_label_row" style="' . $shopping_cart_special_offer_code_label_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="shopping_cart_special_offer_code_label_row" style="' . $shopping_cart_special_offer_code_label_row_style . '">
                 <label class="form-label" for="shopping_cart_special_offer_code_label">' . lang('Special Offer Code Label') . '</label>
                 <input value="' . h($shopping_cart_properties['special_offer_code_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_special_offer_code_label" name="shopping_cart_special_offer_code_label" maxlength="50"/>
             </div>
-            <div class="col-12 col-md-6 col-lg-8 my-2" id="shopping_cart_special_offer_code_message_row" style="' . $shopping_cart_special_offer_code_message_row_style . '">
+            <div class="col-12 md:col-6 lg:col-8 my-3" id="shopping_cart_special_offer_code_message_row" style="' . $shopping_cart_special_offer_code_message_row_style . '">
                 <label class="form-label" for="shopping_cart_special_offer_code_message">' . lang('Special Offer Code Message') . '</label>
                 <input value="' . h($shopping_cart_properties['special_offer_code_message'] ?? '') . '" type="text" class="form-control" id="shopping_cart_special_offer_code_message" name="shopping_cart_special_offer_code_message" maxlength="255"/>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="shopping_cart_update_button_label_row" style="' . $shopping_cart_update_button_label_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="shopping_cart_update_button_label_row" style="' . $shopping_cart_update_button_label_row_style . '">
                 <label class="form-label" for="shopping_cart_update_button_label">' . lang('Update Button Label') . '</label>
                 <input value="' . h($shopping_cart_properties['update_button_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_update_button_label" name="shopping_cart_update_button_label" maxlength="50"/>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="shopping_cart_checkout_button_label_row" style="' . $shopping_cart_checkout_button_label_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="shopping_cart_checkout_button_label_row" style="' . $shopping_cart_checkout_button_label_row_style . '">
                 <label class="form-label" for="shopping_cart_checkout_button_label">' . lang('Checkout Button Label') . '</label>
                 <input value="' . h($shopping_cart_properties['checkout_button_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_checkout_button_label" name="shopping_cart_checkout_button_label" maxlength="50"/>
             </div>';
@@ -1602,58 +1602,58 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         // If hooks are enabled and the user is a designer or administrator then output hook row for PHP code.
         if ((defined('PHP_REGIONS') and PHP_REGIONS === true) && (USER_ROLE < 2)) {
             $output_ecommerce_page_type_properties .=
-                '<div class="col-12 my-2" id="shopping_cart_hook_code_row" style="' . $shopping_cart_hook_code_row_style . '">
+                '<div class="col-12 my-3" id="shopping_cart_hook_code_row" style="' . $shopping_cart_hook_code_row_style . '">
                     <label class="form-label" for="shopping_cart_hook_code">' . lang('Hook Code') . '</label>
                     <textarea id="shopping_cart_hook_code" name="shopping_cart_hook_code" class="form-control">' . h(($shopping_cart_properties['hook_code'] ?? '')) . '</textarea>
                 </div>';
         }
 
         $output_ecommerce_page_type_properties .=
-            '<div class="col-12 col-lg-6 col-xl-4 my-2" id="shopping_cart_next_page_id_with_shipping_row" style="' . $shopping_cart_next_page_id_with_shipping_row_style . '">
+            '<div class="col-12 lg:col-6 xl:col-4 my-3" id="shopping_cart_next_page_id_with_shipping_row" style="' . $shopping_cart_next_page_id_with_shipping_row_style . '">
                 <label class="form-label" for="shopping_cart_next_page_id_with_shipping">' . lang('Next Page') . ' (' . lang('with shipping') . ')</label>
-                <select class="form-select" id="shopping_cart_next_page_id_with_shipping" name="shopping_cart_next_page_id_with_shipping"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Shipping Address & Arrival or Express Order Page')) )) . '-</option>' . select_page(($shopping_cart_properties['next_page_id_with_shipping'] ?? ''), array('shipping address and arrival', 'express order')) . '</select>
+                <select class="form-control" id="shopping_cart_next_page_id_with_shipping" name="shopping_cart_next_page_id_with_shipping"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Shipping Address & Arrival or Express Order Page')) )) . '-</option>' . select_page(($shopping_cart_properties['next_page_id_with_shipping'] ?? ''), array('shipping address and arrival', 'express order')) . '</select>
             </div>
-            <div class="col-12 col-lg-6 col-xl-4 my-2" id="shopping_cart_next_page_id_without_shipping_row" style="' . $shopping_cart_next_page_id_without_shipping_row_style . '">
+            <div class="col-12 lg:col-6 xl:col-4 my-3" id="shopping_cart_next_page_id_without_shipping_row" style="' . $shopping_cart_next_page_id_without_shipping_row_style . '">
                 <label class="form-label" for="shopping_cart_next_page_id_without_shipping">' . lang('Next Page') . ' (' . lang('without shipping') . ')</label>
-                <select class="form-select" id="shopping_cart_next_page_id_without_shipping" name="shopping_cart_next_page_id_without_shipping"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Billing Information or Express Order Page')) )) . '-</option>' . select_page(($shopping_cart_properties['next_page_id_without_shipping'] ?? ''), array('billing information', 'express order')) . '</select>
+                <select class="form-control" id="shopping_cart_next_page_id_without_shipping" name="shopping_cart_next_page_id_without_shipping"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Billing Information or Express Order Page')) )) . '-</option>' . select_page(($shopping_cart_properties['next_page_id_without_shipping'] ?? ''), array('billing information', 'express order')) . '</select>
             </div> 
-            <div class="col-12 my-2" id="shipping_address_and_arrival_address_type_row" style="' . $shipping_address_and_arrival_address_type_row_style . '">
-                <div class="form-check form-switch">
-                    <input value="1" id="shipping_address_and_arrival_address_type" name="shipping_address_and_arrival_address_type" class="form-check-input collapse-switcher" type="checkbox"' . $shipping_address_and_arrival_address_type_checked . '  data-bs-target="#shipping_address_and_arrival_address_type_page_row"/>
-                    <label class="form-check-label" for="shipping_address_and_arrival_address_type">' . lang('Enable Address Type') . '</label>
+            <div class="col-12 my-3" id="shipping_address_and_arrival_address_type_row" style="' . $shipping_address_and_arrival_address_type_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input value="1" id="shipping_address_and_arrival_address_type" name="shipping_address_and_arrival_address_type" class="collapse-switcher" type="checkbox"' . $shipping_address_and_arrival_address_type_checked . '  data-bs-target="#shipping_address_and_arrival_address_type_page_row"/></div>
+                    <label class="" for="shipping_address_and_arrival_address_type">' . lang('Enable Address Type') . '</label>
                 </div>
-                <div class="collapse popover  fade bs-popover-bottom p-0 mb-2" id="shipping_address_and_arrival_address_type_page_row">
+                <div class="collapse popover  fade bs-popover-bottom p-0 mb-3" id="shipping_address_and_arrival_address_type_page_row">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
                             <div class="col-12 my-1">
                                 <label class="form-label" for="shipping_address_and_arrival_address_type_page_id">' . lang('Address Type Page') . '</label>
-                                <select class="form-select" id="shipping_address_and_arrival_address_type_page_id" name="shipping_address_and_arrival_address_type_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($shipping_address_and_arrival_properties['address_type_page_id'] ?? '')) . '</select>
+                                <select class="form-control" id="shipping_address_and_arrival_address_type_page_id" name="shipping_address_and_arrival_address_type_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($shipping_address_and_arrival_properties['address_type_page_id'] ?? '')) . '</select>
                             </div> 
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-2" id="shipping_address_and_arrival_form_row" style="' . $shipping_address_and_arrival_form_row_style . '">
-                <div class="form-check form-switch">
-                    <input value="1"' . $shipping_address_and_arrival_form_checked . ' id="shipping_address_and_arrival_form" name="shipping_address_and_arrival_form" class="form-check-input collapse-switcher" type="checkbox" onclick="show_or_hide_custom_shipping_form()" data-bs-target="#show_or_hide_custom_shipping_form_row"/>
-                    <label class="form-check-label" for="shipping_address_and_arrival_form">' . lang('Enable Custom Shipping Form') . '</label>
+            <div class="col-12 my-3" id="shipping_address_and_arrival_form_row" style="' . $shipping_address_and_arrival_form_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input value="1"' . $shipping_address_and_arrival_form_checked . ' id="shipping_address_and_arrival_form" name="shipping_address_and_arrival_form" class="collapse-switcher" type="checkbox" onclick="show_or_hide_custom_shipping_form()" data-bs-target="#show_or_hide_custom_shipping_form_row"/></div>
+                    <label class="" for="shipping_address_and_arrival_form">' . lang('Enable Custom Shipping Form') . '</label>
                 </div>
                 <script type="text/javascript">var original_shipping_address_and_arrival_form = "' . ($shipping_address_and_arrival_properties['form'] ?? '') . '";</script>
-                <div class="collapse popover  fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_custom_shipping_form_row">
+                <div class="collapse popover  fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_custom_shipping_form_row">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
                             <div class="col-12 my-1" id="shipping_address_and_arrival_form_notice" style="display:none;">
-                                <div class="alert alert-primary">
+                                <div class="alert theme-primary">
                                    <p class="mb-0">' . lang('when ready, click \'Save & Continue\' at the bottom of this screen to create the Custom Shipping Form.') . '</p>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-6 col-lg-8 my-1" id="shipping_address_and_arrival_form_name_row" style="' . $shipping_address_and_arrival_form_name_row_style . '">
+                            <div class="col-12 md:col-6 lg:col-8 my-1" id="shipping_address_and_arrival_form_name_row" style="' . $shipping_address_and_arrival_form_name_row_style . '">
                                 <label for="shipping_address_and_arrival_form_name" class="form-label">' . lang('Form Title for Display') . '</label>
                                 <input value="' . h(($shipping_address_and_arrival_properties['form_name'] ?? '')) . '" type="text" name="shipping_address_and_arrival_form_name" id="shipping_address_and_arrival_form_name" maxlength="100" class="form-control" />
                             </div>
-                            <div class="col-12 col-md-6 col-lg-4 my-1" id="shipping_address_and_arrival_form_label_column_width_row" style="' . $shipping_address_and_arrival_form_label_column_width_row_style . '">
+                            <div class="col-12 md:col-6 lg:col-4 my-1" id="shipping_address_and_arrival_form_label_column_width_row" style="' . $shipping_address_and_arrival_form_label_column_width_row_style . '">
                                 <label for="shipping_address_and_arrival_form_label_column_width" class="form-label">' . lang('Label Column Width') . '</label>
                                 <div class="input-group">
                                     <input value="' . h(($shipping_address_and_arrival_properties['form_label_column_width'] ?? '')) . '" type="text" name="shipping_address_and_arrival_form_label_column_width" id="shipping_address_and_arrival_form_label_column_width" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
@@ -1665,87 +1665,87 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-2" id="shipping_address_and_arrival_submit_button_row" style="' . $shipping_address_and_arrival_submit_button_row_style . '">
-                <div class="row p-1 border border-1 rounded bg-light">
-                    <div class="col-12 col-md-6 col-lg-4 my-2">
+            <div class="col-12 my-3" id="shipping_address_and_arrival_submit_button_row" style="' . $shipping_address_and_arrival_submit_button_row_style . '">
+                <div class="row p-1 border border-1 rounded-4 bg-1">
+                    <div class="col-12 md:col-6 lg:col-4 my-3">
                         <label class="form-label" for="shipping_address_and_arrival_submit_button_label">' . lang('Submit Button Label') . '</label>
                         <input value="' . h($shipping_address_and_arrival_properties['submit_button_label'] ?? '') . '" type="text" class="form-control" id="shipping_address_and_arrival_submit_button_label" name="shipping_address_and_arrival_submit_button_label" maxlength="50"/>
                     </div>
-                    <div class="col-12 col-md-6 col-lg-4 my-2">
+                    <div class="col-12 md:col-6 lg:col-4 my-3">
                         <label class="form-label" for="shipping_address_and_arrival_next_page_id">' . lang('Next Page') . '</label>
-                        <select class="form-select" id="shipping_address_and_arrival_next_page_id" name="shipping_address_and_arrival_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Shipping Method Page')) )) . '-</option>' . select_page(($shipping_address_and_arrival_properties['next_page_id'] ?? ''), 'shipping method') . '</select>
+                        <select class="form-control" id="shipping_address_and_arrival_next_page_id" name="shipping_address_and_arrival_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Shipping Method Page')) )) . '-</option>' . select_page(($shipping_address_and_arrival_properties['next_page_id'] ?? ''), 'shipping method') . '</select>
                     </div> 
                 </div>
             </div>
-            <div class="col-12 my-2" id="shipping_method_product_description_type_row" style="' . $shipping_method_product_description_type_row_style . '">
+            <div class="col-12 my-3" id="shipping_method_product_description_type_row" style="' . $shipping_method_product_description_type_row_style . '">
                 <label class="form-label" for="">'. lang('Product Description Type') . '</label>
-                <div class="form-check">
-                    <input value="full_description" class="form-check-input" type="radio" id="shipping_method_product_description_type_full_description" name="shipping_method_product_description_type"' . $shipping_method_product_description_type_full_description_checked . '>
-                    <label class="form-check-label" for="shipping_method_product_description_type_full_description">'. lang('Full Description') . '</label>
+                <div class="form-field">
+                    <input value="full_description" class="radio" type="radio" id="shipping_method_product_description_type_full_description" name="shipping_method_product_description_type"' . $shipping_method_product_description_type_full_description_checked . '>
+                    <label class="" for="shipping_method_product_description_type_full_description">'. lang('Full Description') . '</label>
                 </div>
-                <div class="form-check">
-                    <input value="short_description" class="form-check-input" type="radio" id="shipping_method_product_description_type_short_description" name="shipping_method_product_description_type"' . $shipping_method_product_description_type_short_description_checked . '>
-                    <label class="form-check-label" for="shipping_method_product_description_type_short_description">'. lang('Short Description') . '</label>
+                <div class="form-field">
+                    <input value="short_description" class="radio" type="radio" id="shipping_method_product_description_type_short_description" name="shipping_method_product_description_type"' . $shipping_method_product_description_type_short_description_checked . '>
+                    <label class="" for="shipping_method_product_description_type_short_description">'. lang('Short Description') . '</label>
                 </div>
             </div>
-            <div class="col-12 my-2" id="shipping_method_submit_button_row" style="' . $shipping_method_submit_button_row_style . '">
-                <div class="row p-1 border border-1 rounded bg-light">
-                    <div class="col-12 col-md-6 col-lg-4 my-2">
+            <div class="col-12 my-3" id="shipping_method_submit_button_row" style="' . $shipping_method_submit_button_row_style . '">
+                <div class="row p-1 border border-1 rounded-4 bg-1">
+                    <div class="col-12 md:col-6 lg:col-4 my-3">
                         <label class="form-label" for="shipping_method_submit_button_label">' . lang('Submit Button Label') . '</label>
                         <input value="' . h($shipping_method_properties['submit_button_label'] ?? '') . '" type="text" class="form-control" id="shipping_method_submit_button_label" name="shipping_method_submit_button_label" maxlength="50"/>
                     </div>
-                    <div class="col-12 col-md-6 col-lg-4 my-2">
+                    <div class="col-12 md:col-6 lg:col-4 my-3">
                         <label class="form-label" for="shipping_method_next_page_id">' . lang('Next Page') . '</label>
-                        <select class="form-select" id="shipping_method_next_page_id" name="shipping_method_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($shipping_method_properties['next_page_id'] ?? '')) . '</select>
+                        <select class="form-control" id="shipping_method_next_page_id" name="shipping_method_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($shipping_method_properties['next_page_id'] ?? '')) . '</select>
                     </div> 
                 </div>
             </div>
-            <div class="col-12 col-sm-6 my-2" id="billing_information_custom_field_1_label_row" style="' . $billing_information_custom_field_1_label_row_style . '">
-                <div class="border-1 border p-2 my-2 rounded">
+            <div class="col-12 sm:col-6 my-3" id="billing_information_custom_field_1_label_row" style="' . $billing_information_custom_field_1_label_row_style . '">
+                <div class="border-1 border p-3 my-3 rounded-4">
                     <label for="billing_information_custom_field_1_label" class="form-label">' . lang('Custom Field #1 Label') . '</label>
                     <input value="' . h($billing_information_properties['custom_field_1_label'] ?? '') . '" type="text" name="billing_information_custom_field_1_label" id="billing_information_custom_field_1_label" maxlength="255" class="form-control" />
-                    <div class="form-check form-switch ms-1 mt-2">
-                        <input class="form-check-input" type="checkbox" name="billing_information_custom_field_1_required" id="billing_information_custom_field_1_required" value="1"' . $billing_information_custom_field_1_required_checked . ' />
-                        <label class="form-check-label" for="billing_information_custom_field_1_required">' . lang('Required') . '</label>
+                    <div class="form-field ms-1 mt-3">
+                        <div class="switch"><input class="" type="checkbox" name="billing_information_custom_field_1_required" id="billing_information_custom_field_1_required" value="1"' . $billing_information_custom_field_1_required_checked . ' /></div>
+                        <label class="" for="billing_information_custom_field_1_required">' . lang('Required') . '</label>
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-sm-6 my-2" id="billing_information_custom_field_2_label_row" style="' . $billing_information_custom_field_2_label_row_style . '">
-                <div class="border-1 border p-2 my-2 rounded">
+            <div class="col-12 sm:col-6 my-3" id="billing_information_custom_field_2_label_row" style="' . $billing_information_custom_field_2_label_row_style . '">
+                <div class="border-1 border p-3 my-3 rounded-4">
                     <label for="billing_information_custom_field_2_label" class="form-label">' . lang('Custom Field #2 Label') . '</label>
                     <input value="' . h($billing_information_properties['custom_field_2_label'] ?? '') . '" type="text" name="billing_information_custom_field_2_label" id="billing_information_custom_field_2_label" maxlength="255" class="form-control" />
-                    <div class="form-check form-switch ms-1 mt-2">
-                        <input class="form-check-input" type="checkbox" name="billing_information_custom_field_2_required" id="billing_information_custom_field_2_required" value="1"' . $billing_information_custom_field_2_required_checked . ' />
-                        <label class="form-check-label" for="billing_information_custom_field_2_required">' . lang('Required') . '</label>
+                    <div class="form-field ms-1 mt-3">
+                        <div class="switch"><input class="" type="checkbox" name="billing_information_custom_field_2_required" id="billing_information_custom_field_2_required" value="1"' . $billing_information_custom_field_2_required_checked . ' /></div>
+                        <label class="" for="billing_information_custom_field_2_required">' . lang('Required') . '</label>
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-2" id="billing_information_po_number_row" style="' . $billing_information_po_number_row_style . '">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" name="billing_information_po_number" id="billing_information_po_number" value="1"' . $billing_information_po_number_checked . ' />
-                    <label class="form-check-label" for="billing_information_po_number">' . lang('Enable PO Number') . '</label>
+            <div class="col-12 my-3" id="billing_information_po_number_row" style="' . $billing_information_po_number_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input class="" type="checkbox" name="billing_information_po_number" id="billing_information_po_number" value="1"' . $billing_information_po_number_checked . ' /></div>
+                    <label class="" for="billing_information_po_number">' . lang('Enable PO Number') . '</label>
                 </div>
             </div>
-            <div class="col-12 my-2" id="billing_information_form_row" style="' . $billing_information_form_row_style . '">
-                <div class="form-check form-switch">
-                    <input value="1"' . $billing_information_form_checked . ' id="billing_information_form" name="billing_information_form" class="form-check-input collapse-switcher" type="checkbox" onclick="show_or_hide_billing_information_custom_billing_form()" data-bs-target="#show_or_hide_billing_information_custom_billing_form_row"/>
-                    <label class="form-check-label" for="billing_information_form">' . lang('Enable Custom Billing Form') . '</label>
+            <div class="col-12 my-3" id="billing_information_form_row" style="' . $billing_information_form_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input value="1"' . $billing_information_form_checked . ' id="billing_information_form" name="billing_information_form" class="collapse-switcher" type="checkbox" onclick="show_or_hide_billing_information_custom_billing_form()" data-bs-target="#show_or_hide_billing_information_custom_billing_form_row"/></div>
+                    <label class="" for="billing_information_form">' . lang('Enable Custom Billing Form') . '</label>
                 </div>
                 <script type="text/javascript">var original_billing_information_form = "' . ($billing_information_properties['form'] ?? '') . '";</script>
-                <div class="collapse popover  fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_billing_information_custom_billing_form_row">
+                <div class="collapse popover  fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_billing_information_custom_billing_form_row">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
                             <div class="col-12 my-1" id="billing_information_form_notice" style="display:none;">
-                                <div class="alert alert-primary">
+                                <div class="alert theme-primary">
                                    <p class="mb-0">' . lang('when ready, click \'Save & Continue\' at the bottom of this screen to create the Custom Billing Form.') . '</p>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-6 col-lg-8 my-1" id="billing_information_form_name_row" style="' . $billing_information_form_name_row_style . '">
+                            <div class="col-12 md:col-6 lg:col-8 my-1" id="billing_information_form_name_row" style="' . $billing_information_form_name_row_style . '">
                                 <label for="billing_information_form_name" class="form-label">' . lang('Form Title for Display') . '</label>
                                 <input value="' . h(($billing_information_properties['form_name'] ?? '')) . '" type="text" name="billing_information_form_name" id="billing_information_form_name" maxlength="100" class="form-control" />
                             </div>
-                            <div class="col-12 col-md-6 col-lg-4 my-1" id="billing_information_form_label_column_width_row" style="' . $billing_information_form_label_column_width_row_style . '">
+                            <div class="col-12 md:col-6 lg:col-4 my-1" id="billing_information_form_label_column_width_row" style="' . $billing_information_form_label_column_width_row_style . '">
                                 <label for="billing_information_form_label_column_width" class="form-label">' . lang('Label Column Width') . '</label>
                                 <div class="input-group">
                                     <input value="' . h(($billing_information_properties['form_label_column_width'] ?? '')) . '" type="text" name="billing_information_form_label_column_width" id="billing_information_form_label_column_width" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
@@ -1757,42 +1757,42 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="billing_information_submit_button_label_row" style="' . $billing_information_submit_button_label_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="billing_information_submit_button_label_row" style="' . $billing_information_submit_button_label_row_style . '">
                 <label class="form-label" for="billing_information_submit_button_label">' . lang('Submit Button Label') . '</label>
                 <input value="' . h($billing_information_properties['submit_button_label'] ?? '') . '" type="text" class="form-control" id="billing_information_submit_button_label" name="billing_information_submit_button_label" maxlength="50"/>
             </div>
-            <div class="col-12 col-lg-6 col-xl-4 my-2" id="billing_information_next_page_id_row" style="' . $billing_information_next_page_id_row_style . '">
+            <div class="col-12 lg:col-6 xl:col-4 my-3" id="billing_information_next_page_id_row" style="' . $billing_information_next_page_id_row_style . '">
                 <label class="form-label" for="billing_information_next_page_id">' . lang('Next Page') . ' (' . lang('without shipping') . ')</label>
-                <select class="form-select" id="billing_information_next_page_id" name="billing_information_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Order Preview or Express Order Page')) )) . '-</option>' . select_page(($billing_information_properties['next_page_id'] ?? ''), 'order preview') . select_page(($billing_information_properties['next_page_id'] ?? ''), 'express order') . '</select>
+                <select class="form-control" id="billing_information_next_page_id" name="billing_information_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Order Preview or Express Order Page')) )) . '-</option>' . select_page(($billing_information_properties['next_page_id'] ?? ''), 'order preview') . select_page(($billing_information_properties['next_page_id'] ?? ''), 'express order') . '</select>
             </div> 
-            <div class="col-12 my-2" id="order_preview_product_description_type_row" style="' . $order_preview_product_description_type_row_style . '">
+            <div class="col-12 my-3" id="order_preview_product_description_type_row" style="' . $order_preview_product_description_type_row_style . '">
                 <label class="form-label" for="">'. lang('Product Description Type') . '</label>
-                <div class="form-check">
-                    <input value="full_description" class="form-check-input" type="radio" id="order_preview_product_description_type_full_description" name="order_preview_product_description_type"' . $order_preview_product_description_type_full_description_checked . '>
-                    <label class="form-check-label" for="order_preview_product_description_type_full_description">'. lang('Full Description') . '</label>
+                <div class="form-field">
+                    <input value="full_description" class="radio" type="radio" id="order_preview_product_description_type_full_description" name="order_preview_product_description_type"' . $order_preview_product_description_type_full_description_checked . '>
+                    <label class="" for="order_preview_product_description_type_full_description">'. lang('Full Description') . '</label>
                 </div>
-                <div class="form-check">
-                    <input value="short_description" class="form-check-input" type="radio" id="order_preview_product_description_type_short_description" name="order_preview_product_description_type"' . $order_preview_product_description_type_short_description_checked . '>
-                    <label class="form-check-label" for="order_preview_product_description_type_short_description">'. lang('Short Description') . '</label>
+                <div class="form-field">
+                    <input value="short_description" class="radio" type="radio" id="order_preview_product_description_type_short_description" name="order_preview_product_description_type"' . $order_preview_product_description_type_short_description_checked . '>
+                    <label class="" for="order_preview_product_description_type_short_description">'. lang('Short Description') . '</label>
                 </div>
             </div>
-            <div class="col-12 my-2" id="order_preview_auto_registration_row" style="' . $order_preview_auto_registration_row_style . '">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" name="order_preview_auto_registration" id="order_preview_auto_registration" value="1"' . $order_preview_auto_registration_checked . ' />
-                    <label class="form-check-label" for="order_preview_auto_registration">' . lang('Enable Auto-Registration') . '</label>
+            <div class="col-12 my-3" id="order_preview_auto_registration_row" style="' . $order_preview_auto_registration_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input class="" type="checkbox" name="order_preview_auto_registration" id="order_preview_auto_registration" value="1"' . $order_preview_auto_registration_checked . ' /></div>
+                    <label class="" for="order_preview_auto_registration">' . lang('Enable Auto-Registration') . '</label>
                 </div>
             </div>
             ' . $output_order_preview_offline_payment_checkbox_rows . '
-            <div class="col-12 col-sm-6 col-lg-4 my-2" id="order_preview_card_verification_number_page_id_row" style="' . $order_preview_card_verification_number_page_id_row_style . '">
+            <div class="col-12 sm:col-6 lg:col-4 my-3" id="order_preview_card_verification_number_page_id_row" style="' . $order_preview_card_verification_number_page_id_row_style . '">
                 <label for="order_preview_card_verification_number_page_id" class="form-label">' . lang('Card Verification Number Page') . '</label>
-                <select class="form-select" name="order_preview_card_verification_number_page_id" id="order_preview_card_verification_number_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($order_preview_properties['card_verification_number_page_id'] ?? '')) . '</select>
+                <select class="form-control" name="order_preview_card_verification_number_page_id" id="order_preview_card_verification_number_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($order_preview_properties['card_verification_number_page_id'] ?? '')) . '</select>
             </div>
             ' . $output_order_preview_offline_payment_rows . '
-            <div class="col-12 col-sm-6 col-lg-4 my-2" id="order_preview_terms_page_id_row" style="' . $order_preview_terms_page_id_row_style . '">
+            <div class="col-12 sm:col-6 lg:col-4 my-3" id="order_preview_terms_page_id_row" style="' . $order_preview_terms_page_id_row_style . '">
                 <label for="order_preview_terms_page_id" class="form-label">' . lang('Terms Page') . '</label>
-                <select class="form-select" name="order_preview_terms_page_id" id="order_preview_terms_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($order_preview_properties['terms_page_id'] ?? '')) . '</select>
+                <select class="form-control" name="order_preview_terms_page_id" id="order_preview_terms_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($order_preview_properties['terms_page_id'] ?? '')) . '</select>
             </div>
-            <div class="col-12 col-sm-6 col-lg-4 my-2" id="order_preview_submit_button_label_row" style="' . $order_preview_submit_button_label_row_style . '">
+            <div class="col-12 sm:col-6 lg:col-4 my-3" id="order_preview_submit_button_label_row" style="' . $order_preview_submit_button_label_row_style . '">
                 <label class="form-label" for="order_preview_submit_button_label">'. lang('Update Button Label') . '</label>
                 <input value="' . h($order_preview_properties['submit_button_label'] ?? '') . '" type="text" id="order_preview_submit_button_label" name="order_preview_submit_button_label" class="form-control" maxlength="50" >
             </div>';
@@ -1802,11 +1802,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             $output_ecommerce_page_type_properties .=
                 '<div class="col-12">
                     <div class="row">
-                        <div class="col-12 col-lg-6 my-2" id="order_preview_pre_save_hook_code_row" style="' . $order_preview_pre_save_hook_code_row_style . '">
+                        <div class="col-12 lg:col-6 my-3" id="order_preview_pre_save_hook_code_row" style="' . $order_preview_pre_save_hook_code_row_style . '">
                             <label class="form-label" for="order_preview_pre_save_hook_code">' . lang('Pre-Save Hook Code') . '</label>
                             <textarea id="order_preview_pre_save_hook_code" name="order_preview_pre_save_hook_code" class="form-control">' . h(($order_preview_properties['pre_save_hook_code'] ?? '')) . '</textarea>
                         </div>
-                        <div class="col-12 col-lg-6 my-2" id="order_preview_post_save_hook_code_row" style="' . $order_preview_post_save_hook_code_row_style . '">
+                        <div class="col-12 lg:col-6 my-3" id="order_preview_post_save_hook_code_row" style="' . $order_preview_post_save_hook_code_row_style . '">
                             <label class="form-label" for="order_preview_post_save_hook_code">' . lang('Post-Save Hook Code') . '</label>
                             <textarea id="order_preview_post_save_hook_code" name="order_preview_post_save_hook_code" class="form-control">' . h(($order_preview_properties['post_save_hook_code'] ?? '')) . '</textarea>
                         </div> 
@@ -1815,20 +1815,20 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         }
 
         $output_ecommerce_page_type_properties .=
-            '<div class="col-12 col-md-6 col-lg-4 my-2" id="order_preview_next_page_id_row" style="' . $order_preview_next_page_id_row_style . '">
+            '<div class="col-12 md:col-6 lg:col-4 my-3" id="order_preview_next_page_id_row" style="' . $order_preview_next_page_id_row_style . '">
                 <label class="form-label" for="order_preview_next_page_id">' . lang('Next Page') . '</label>
-                <select class="form-select" id="order_preview_next_page_id" name="order_preview_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('order receipt page')) )) . '-</option>' . select_page(($order_preview_properties['next_page_id'] ?? ''), 'order receipt') . '</select>
+                <select class="form-control" id="order_preview_next_page_id" name="order_preview_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('order receipt page')) )) . '-</option>' . select_page(($order_preview_properties['next_page_id'] ?? ''), 'order receipt') . '</select>
             </div>
-            <div class="col-12 my-2" id="order_preview_order_receipt_email_row" style="' . $order_preview_order_receipt_email_row_style . '">
-                <div class="form-check form-switch">
-                    <input value="1"' . $order_preview_order_receipt_email_checked . ' id="order_preview_order_receipt_email" name="order_preview_order_receipt_email" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_order_preview_order_receipt_email" />
-                    <label class="form-check-label" for="order_preview_order_receipt_email">' . lang('E-mail Order Receipt') . '</label>
+            <div class="col-12 my-3" id="order_preview_order_receipt_email_row" style="' . $order_preview_order_receipt_email_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input value="1"' . $order_preview_order_receipt_email_checked . ' id="order_preview_order_receipt_email" name="order_preview_order_receipt_email" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_order_preview_order_receipt_email" /></div>
+                    <label class="" for="order_preview_order_receipt_email">' . lang('E-mail Order Receipt') . '</label>
                 </div>
-                <div class="collapse popover  fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_order_preview_order_receipt_email">
+                <div class="collapse popover  fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_order_preview_order_receipt_email">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 col-sm-6 col-md-8 my-1">
+                            <div class="col-12 sm:col-6 md:col-8 my-1">
                                 <label class="form-label" for="order_preview_order_receipt_email_subject">' . lang('Subject') . '</label>
                                 <input value="' . h(($order_preview_properties['order_receipt_email_subject'] ?? '')) . '" type="text" id="order_preview_order_receipt_email_subject" name="order_preview_order_receipt_email_subject" class="form-control" maxlength="255">
                             </div> 
@@ -1836,15 +1836,15 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                 <div class="col-12">
                                     <label class="form-label">' . lang('Format') . '</label>
                                 </div>
-                                <div class="form-check  form-check-inline">
-                                    <input class="form-check-input collapse-switcher" type="radio" id="order_preview_order_receipt_email_format_plain_text" name="order_preview_order_receipt_email_format"' . $order_preview_order_receipt_email_format_plain_text_checked . ' value="plain_text" data-bs-target="#order_preview_order_receipt_email_format_plain_text_row" />
+                                <div class="form-field  d-inline-grid me-5">
+                                    <input class="radio collapse-switcher" type="radio" id="order_preview_order_receipt_email_format_plain_text" name="order_preview_order_receipt_email_format"' . $order_preview_order_receipt_email_format_plain_text_checked . ' value="plain_text" data-bs-target="#order_preview_order_receipt_email_format_plain_text_row" />
                                     <label for="order_preview_order_receipt_email_format_plain_text">' . lang('Plain Text') . '</label> 
                                 </div>
-                                <div class="form-check  form-check-inline">
-                                    <input class="form-check-input collapse-switcher" type="radio" id="order_preview_order_receipt_email_format_html" name="order_preview_order_receipt_email_format"' . $order_preview_order_receipt_email_format_html_checked . ' value="html"  data-bs-target="#order_preview_order_receipt_email_format_html_row"/>
+                                <div class="form-field  d-inline-grid me-5">
+                                    <input class="radio collapse-switcher" type="radio" id="order_preview_order_receipt_email_format_html" name="order_preview_order_receipt_email_format"' . $order_preview_order_receipt_email_format_html_checked . ' value="html"  data-bs-target="#order_preview_order_receipt_email_format_html_row"/>
                                     <label for="order_preview_order_receipt_email_format_html">' . lang('HTML') . '</label>
                                 </div>
-                                <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="order_preview_order_receipt_email_format_plain_text_row">
+                                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="order_preview_order_receipt_email_format_plain_text_row">
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                                     <div class="popover-body">
                                         <div class="row">
@@ -1859,13 +1859,13 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                         </div>
                                     </div>
                                 </div>
-                                <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="order_preview_order_receipt_email_format_html_row">
+                                <div class="collapse popover fade bs-popover-bottom p-0 mb-3" id="order_preview_order_receipt_email_format_html_row">
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                                     <div class="popover-body">
                                         <div class="row">
                                             <div class="col-12 my-1">
                                                 <label class="form-label" for="order_preview_order_receipt_email_page_id">' . lang('Page') . '</label>
-                                                <select class="form-select" id="order_preview_order_receipt_email_page_id" name="order_preview_order_receipt_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('order receipt page')) )) . '-</option>' . select_page(($order_preview_properties['order_receipt_email_page_id'] ?? ''), 'order receipt') . '</select>
+                                                <select class="form-control" id="order_preview_order_receipt_email_page_id" name="order_preview_order_receipt_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('order receipt page')) )) . '-</option>' . select_page(($order_preview_properties['order_receipt_email_page_id'] ?? ''), 'order receipt') . '</select>
                                             </div>
                                         </div>
                                     </div>
@@ -1875,15 +1875,15 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-2" id="order_receipt_product_description_type_row" style="' . $order_receipt_product_description_type_row_style . '">
+            <div class="col-12 my-3" id="order_receipt_product_description_type_row" style="' . $order_receipt_product_description_type_row_style . '">
                 <label class="form-label" for="">'. lang('Product Description Type') . '</label>
-                <div class="form-check">
-                    <input value="full_description" class="form-check-input" type="radio" id="order_receipt_product_description_type_full_description" name="order_receipt_product_description_type"' . $order_receipt_product_description_type_full_description_checked . '>
-                    <label class="form-check-label" for="order_receipt_product_description_type_full_description">'. lang('Full Description') . '</label>
+                <div class="form-field">
+                    <input value="full_description" class="radio" type="radio" id="order_receipt_product_description_type_full_description" name="order_receipt_product_description_type"' . $order_receipt_product_description_type_full_description_checked . '>
+                    <label class="" for="order_receipt_product_description_type_full_description">'. lang('Full Description') . '</label>
                 </div>
-                <div class="form-check">
-                    <input value="short_description" class="form-check-input" type="radio" id="order_receipt_product_description_type_short_description" name="order_receipt_product_description_type"' . $order_receipt_product_description_type_short_description_checked . '>
-                    <label class="form-check-label" for="order_receipt_product_description_type_short_description">'. lang('Short Description') . '</label>
+                <div class="form-field">
+                    <input value="short_description" class="radio" type="radio" id="order_receipt_product_description_type_short_description" name="order_receipt_product_description_type"' . $order_receipt_product_description_type_short_description_checked . '>
+                    <label class="" for="order_receipt_product_description_type_short_description">'. lang('Short Description') . '</label>
                 </div>
             </div>';
     }
@@ -2000,21 +2000,21 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 }
                 
                 $output_form_view_directory_form_list_view_rows .=
-                    '<div class="form-check">
-                        <input type="checkbox" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '" name="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '" value="1"' . $form_list_view_checked . ' class="form-check-input collapse-switcher" data-bs-target="#form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_row"/>
-                        <label class="form-check-label" for="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '">' . h($form_list_view['page_name']) . '</label>
+                    '<div class="form-field">
+                        <input type="checkbox" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '" name="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '" value="1"' . $form_list_view_checked . ' class="check collapse-switcher" data-bs-target="#form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_row"/>
+                        <label class="" for="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '">' . h($form_list_view['page_name']) . '</label>
                     </div>
-                    <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_row">
+                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_row">
                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                         <div class="popover-body">
                             <div class="row">
-                                <div class="col-12 col-lg-6 my-1" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_name_container" >
+                                <div class="col-12 lg:col-6 my-1" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_name_container" >
                                     <label for="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_name" class="form-label">' . lang('Name') . '</label>
                                     <input value="' . $output_form_list_view_name . '" name="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_name" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_name" type="text" class="form-control" maxlength="100" />
                                 </div>
-                                <div class="col-12 col-lg-6 my-1" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id_container">
+                                <div class="col-12 lg:col-6 my-1" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id_container">
                                     <label for="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id" class="form-label">' . lang('Subject Field') . '</label>
-                                    <select class="form-select" name="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id"><option value=""></option>' . $output_form_view_directory_subject_field_options . '</select>
+                                    <select class="form-control" name="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id"><option value=""></option>' . $output_form_view_directory_subject_field_options . '</select>
                                 </div>
                             </div>
                         </div>
@@ -2023,26 +2023,26 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         }
         
         $output_forms_page_type_properties =
-            '<div class="col-12 col-md-6 col-lg-4 my-2" id="custom_form_form_name_row" style="' . $custom_form_form_name_row_style . '">
+            '<div class="col-12 md:col-6 lg:col-4 my-3" id="custom_form_form_name_row" style="' . $custom_form_form_name_row_style . '">
                 <label for="custom_form_form_name" class="form-label">' . lang('Form Name') . '</label>
                 <input value="' . h(($custom_form_properties['form_name'] ?? '')) . '" type="text" name="custom_form_form_name" id="custom_form_form_name" maxlength="100" class="form-control" />
             </div>
-            <div class="col-12 my-2" id="custom_form_enabled_row" style="' . $custom_form_enabled_row_style . '">
-                <div class="form-check form-switch">
-                    <input type="checkbox" class="form-check-input" id="custom_form_enabled" name="custom_form_enabled" value="1"' . $custom_form_enabled_checked . ' />
+            <div class="col-12 my-3" id="custom_form_enabled_row" style="' . $custom_form_enabled_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input type="checkbox" class="" id="custom_form_enabled" name="custom_form_enabled" value="1"' . $custom_form_enabled_checked . ' /></div>
                     <label for="custom_form_enabled">' . lang('Enable Form') . '</label> 
                 </div>
             </div>
-            <div class="col-12 my-2" id="custom_form_quiz_row" style="' . $custom_form_quiz_row_style . '">
-                <div class="form-check form-switch">
-                    <input value="1"' . $custom_form_quiz_checked . ' id="custom_form_quiz" name="custom_form_quiz" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#custom_form_quiz_collapse" />
-                    <label class="form-check-label" for="custom_form_quiz">' . lang('Enable Quiz') . '</label>
+            <div class="col-12 my-3" id="custom_form_quiz_row" style="' . $custom_form_quiz_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input value="1"' . $custom_form_quiz_checked . ' id="custom_form_quiz" name="custom_form_quiz" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#custom_form_quiz_collapse" /></div>
+                    <label class="" for="custom_form_quiz">' . lang('Enable Quiz') . '</label>
                 </div>
-                <div class="collapse popover  fade bs-popover-bottom p-0 mb-2" id="custom_form_quiz_collapse">
+                <div class="collapse popover  fade bs-popover-bottom p-0 mb-3" id="custom_form_quiz_collapse">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 col-md-12 my-1">
+                            <div class="col-12 md:col-12 my-1">
                                 <label for="update_address_book_address_type_page_id" class="form-label">' . lang('Quiz Pass Percentage') . '</label>
                                 <div class="input-group">
                                     <input value="' . h($custom_form_properties['quiz_pass_percentage'] ?? '') . '" type="text" name="custom_form_quiz_pass_percentage" id="custom_form_quiz_pass_percentage" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
@@ -2053,19 +2053,19 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-2" id="custom_form_save_row" style="' . $custom_form_save_row_style . '">
-                <div class="form-check form-switch">
-                    <input type="checkbox" class="form-check-input" id="custom_form_save" name="custom_form_save" value="1"' . $custom_form_save_checked . ' />
+            <div class="col-12 my-3" id="custom_form_save_row" style="' . $custom_form_save_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input type="checkbox" class="" id="custom_form_save" name="custom_form_save" value="1"' . $custom_form_save_checked . ' /></div>
                     <label for="custom_form_save">' . lang('Enable Save-for-Later') . '</label> 
                 </div>
             </div>
-            <div class="col-12 my-2" id="custom_form_auto_registration_row" style="' . $custom_form_auto_registration_row_style . '">
-                <div class="form-check form-switch">
-                    <input type="checkbox" class="form-check-input" id="custom_form_auto_registration" name="custom_form_auto_registration" value="1"' . $custom_form_auto_registration_checked . ' />
+            <div class="col-12 my-3" id="custom_form_auto_registration_row" style="' . $custom_form_auto_registration_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input type="checkbox" class="" id="custom_form_auto_registration" name="custom_form_auto_registration" value="1"' . $custom_form_auto_registration_checked . ' /></div>
                     <label for="custom_form_auto_registration">' . lang('Enable Auto-Registration') . '</label> 
                 </div>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="custom_form_label_column_width_row" style="' . $custom_form_label_column_width_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="custom_form_label_column_width_row" style="' . $custom_form_label_column_width_row_style . '">
                 <label for="custom_form_label_column_width" class="form-label">' . lang('Label Column Width') . '</label>
                 <div class="input-group">
                     <input value="' . h(($custom_form_properties['label_column_width'] ?? '')) . '" type="text" name="custom_form_label_column_width" id="custom_form_label_column_width" maxlength="3" class="form-control" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;"/>
@@ -2073,20 +2073,20 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 </div>
                 <div class="form-text text-end">' . lang('leave blank for auto') . '</div>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="custom_form_submit_button_label_row" style="' . $custom_form_submit_button_label_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="custom_form_submit_button_label_row" style="' . $custom_form_submit_button_label_row_style . '">
                 <label for="custom_form_submit_button_label" class="form-label">' . lang('Submit Button Label') . '</label>
                 <input value="' . h($custom_form_properties['submit_button_label'] ?? '') . '" type="text" name="custom_form_submit_button_label" id="custom_form_submit_button_label" maxlength="50" class="form-control" />
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="custom_form_watcher_page_id_row" style="' . $custom_form_watcher_page_id_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="custom_form_watcher_page_id_row" style="' . $custom_form_watcher_page_id_row_style . '">
                 <label for="custom_form_watcher_page_id" class="form-label">' . lang('Enable Watcher Option') . '</label>
-                <select class="form-select" name="custom_form_watcher_page_id" id="custom_form_watcher_page_id">
+                <select class="form-control" name="custom_form_watcher_page_id" id="custom_form_watcher_page_id">
                 <option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('form item view page')) )) . '-</option>' . select_page(($custom_form_properties['watcher_page_id'] ?? ''), 'form item view') . '</select>
             </div>';
 
         // If hooks are enabled and the user is a designer or administrator then output hook row for PHP code.
         if ((defined('PHP_REGIONS') and PHP_REGIONS === true) && (USER_ROLE < 2)) {
             $output_forms_page_type_properties .=
-                '<div class="col-12 my-2" id="custom_form_hook_code_row" style="' . $custom_form_hook_code_row_style . '">
+                '<div class="col-12 my-3" id="custom_form_hook_code_row" style="' . $custom_form_hook_code_row_style . '">
                     <label class="form-label" for="custom_form_hook_code">' . lang('Hook Code') . '</label>
                     <textarea id="custom_form_hook_code" name="custom_form_hook_code" class="form-control">' . h(($custom_form_properties['hook_code'] ?? '')) . '</textarea>
                 </div>';
@@ -2120,29 +2120,29 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
 
         // If mysql version is old then output warning about viewer filter feature not being supported.
         if ($mysql_version_new == false) {
-            $output_viewer_filter_warning = '<div class="form-text alert alert-danger">' . lang('Sorry, not supported with your MySQL version.') . '</div>';
+            $output_viewer_filter_warning = '<div class="form-text alert theme-danger">' . lang('Sorry, not supported with your MySQL version.') . '</div>';
         }
 
         $output_forms_page_type_properties .=
-            '<div class="col-12 col-md-6 col-lg-4 my-2" id="custom_form_contact_group_id_row" style="' . $custom_form_contact_group_id_row_style . '">
+            '<div class="col-12 md:col-6 lg:col-4 my-3" id="custom_form_contact_group_id_row" style="' . $custom_form_contact_group_id_row_style . '">
                 <label class="form-label" for="custom_form_contact_group_id">' . lang('Add to Contact Group') . '</label>
-                <select class="form-select" id="custom_form_contact_group_id" name="custom_form_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Contact Group')) )) . '-</option>' . select_contact_group(($custom_form_properties['contact_group_id'] ?? ''), $user) . '</select>
+                <select class="form-control" id="custom_form_contact_group_id" name="custom_form_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Contact Group')) )) . '-</option>' . select_contact_group(($custom_form_properties['contact_group_id'] ?? ''), $user) . '</select>
                 ' . $custom_form_double_opt_in_switch . '
             </div>
-            <div class="col-12 my-2" id="custom_form_submitter_email_row" style="' . $custom_form_submitter_email_row_style . '">
-                <div class="form-check form-switch">
-                    <input value="1"' . $custom_form_submitter_email_checked . ' id="custom_form_submitter_email" name="custom_form_submitter_email" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_custom_form_submitter_email" />
-                    <label class="form-check-label" for="custom_form_submitter_email">' . lang('E-mail Submitter') . '</label>
+            <div class="col-12 my-3" id="custom_form_submitter_email_row" style="' . $custom_form_submitter_email_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input value="1"' . $custom_form_submitter_email_checked . ' id="custom_form_submitter_email" name="custom_form_submitter_email" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_custom_form_submitter_email" /></div>
+                    <label class="" for="custom_form_submitter_email">' . lang('E-mail Submitter') . '</label>
                 </div>
-                <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_custom_form_submitter_email">
+                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_custom_form_submitter_email">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 col-sm-6 col-xl-4 my-1">
+                            <div class="col-12 sm:col-6 xl:col-4 my-1">
                                 <label class="form-label" for="custom_form_submitter_email_from_email_address">' . lang('From E-mail Address') . '</label>
                                 <input value="' . h($custom_form_properties['submitter_email_from_email_address'] ?? '') . '" type="text" class="form-control text-end" id="custom_form_submitter_email_from_email_address" name="custom_form_submitter_email_from_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                             </div>
-                            <div class="col-12 col-sm-6 col-xl-8 my-1">
+                            <div class="col-12 sm:col-6 xl:col-8 my-1">
                                 <label class="form-label" for="custom_form_submitter_email_subject">' . lang('Subject') . '</label>
                                 <input value="' . h(($custom_form_properties['submitter_email_subject'] ?? '')) . '" type="text" id="custom_form_submitter_email_subject" name="custom_form_submitter_email_subject" class="form-control" maxlength="255">
                             </div>
@@ -2150,15 +2150,15 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                 <div class="col-12">
                                     <label class="form-label">' . lang('Format') . '</label>
                                 </div>
-                                <div class="form-check  form-check-inline">
-                                    <input class="form-check-input collapse-switcher" type="radio" id="custom_form_submitter_email_format_plain_text" name="custom_form_submitter_email_format"' . $custom_form_submitter_email_format_plain_text_checked . ' value="plain_text" data-bs-target="#custom_form_submitter_email_format_plain_text_row" />
+                                <div class="form-field  d-inline-grid me-5">
+                                    <input class="radio collapse-switcher" type="radio" id="custom_form_submitter_email_format_plain_text" name="custom_form_submitter_email_format"' . $custom_form_submitter_email_format_plain_text_checked . ' value="plain_text" data-bs-target="#custom_form_submitter_email_format_plain_text_row" />
                                     <label for="custom_form_submitter_email_format_plain_text">' . lang('Plain Text') . '</label> 
                                 </div>
-                                <div class="form-check  form-check-inline">
-                                    <input class="form-check-input collapse-switcher" type="radio" id="custom_form_submitter_email_format_html" name="custom_form_submitter_email_format"' . $custom_form_submitter_email_format_html_checked . ' value="html"  data-bs-target="#custom_form_submitter_email_format_html_row"/>
+                                <div class="form-field  d-inline-grid me-5">
+                                    <input class="radio collapse-switcher" type="radio" id="custom_form_submitter_email_format_html" name="custom_form_submitter_email_format"' . $custom_form_submitter_email_format_html_checked . ' value="html"  data-bs-target="#custom_form_submitter_email_format_html_row"/>
                                     <label for="custom_form_submitter_email_format_html">' . lang('HTML') . '</label>
                                 </div>
-                                <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="custom_form_submitter_email_format_plain_text_row">
+                                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="custom_form_submitter_email_format_plain_text_row">
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                                     <div class="popover-body">
                                         <div class="row">
@@ -2169,13 +2169,13 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                         </div>
                                     </div>
                                 </div>
-                                <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="custom_form_submitter_email_format_html_row">
+                                <div class="collapse popover fade bs-popover-bottom p-0 mb-3" id="custom_form_submitter_email_format_html_row">
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                                     <div class="popover-body">
                                         <div class="row">
                                             <div class="col-12 my-1">
                                                 <label class="form-label" for="custom_form_submitter_email_page_id">' . lang('Page') . '</label>
-                                                <select class="form-select" id="custom_form_submitter_email_page_id" name="custom_form_submitter_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_properties['submitter_email_page_id'] ?? '')) . '</select>
+                                                <select class="form-control" id="custom_form_submitter_email_page_id" name="custom_form_submitter_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_properties['submitter_email_page_id'] ?? '')) . '</select>
                                             </div>
                                         </div>
                                     </div>
@@ -2185,24 +2185,24 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-2" id="custom_form_administrator_email_row" style="' . $custom_form_administrator_email_row_style . '">
-                <div class="form-check form-switch">
-                    <input value="1"' . $custom_form_administrator_email_checked . ' id="custom_form_administrator_email" name="custom_form_administrator_email" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_custom_form_administrator_email" />
-                    <label class="form-check-label" for="custom_form_administrator_email">' . lang('E-mail Administrator') . '</label>
+            <div class="col-12 my-3" id="custom_form_administrator_email_row" style="' . $custom_form_administrator_email_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input value="1"' . $custom_form_administrator_email_checked . ' id="custom_form_administrator_email" name="custom_form_administrator_email" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_custom_form_administrator_email" /></div>
+                    <label class="" for="custom_form_administrator_email">' . lang('E-mail Administrator') . '</label>
                 </div>
-                <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_custom_form_administrator_email">
+                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_custom_form_administrator_email">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 col-sm-6 col-xl-4 my-1">
+                            <div class="col-12 sm:col-6 xl:col-4 my-1">
                                 <label class="form-label" for="custom_form_administrator_email_to_email_address">' . lang('To E-mail Address') . '</label>
                                 <input value="' . h($custom_form_properties['administrator_email_to_email_address'] ?? '') . '" type="text" class="form-control text-end" id="custom_form_administrator_email_to_email_address" name="custom_form_administrator_email_to_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                             </div>
-                            <div class="col-12 col-sm-6 col-xl-4 my-1">
+                            <div class="col-12 sm:col-6 xl:col-4 my-1">
                                 <label class="form-label" for="custom_form_administrator_email_bcc_email_address">' . lang('BCC E-mail Address') . '</label>
                                 <input value="' . h($custom_form_properties['administrator_email_bcc_email_address'] ?? '') . '" type="text" class="form-control text-end" id="custom_form_administrator_email_bcc_email_address" name="custom_form_administrator_email_bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                             </div>
-                            <div class="col-12 col-sm-12 col-xl-4 my-1">
+                            <div class="col-12 sm:col-12 xl:col-4 my-1">
                                 <label class="form-label" for="custom_form_administrator_email_subject">' . lang('Subject') . '</label>
                                 <input value="' . h(($custom_form_properties['administrator_email_subject'] ?? '')) . '" type="text" id="custom_form_administrator_email_subject" name="custom_form_administrator_email_subject" class="form-control" maxlength="255">
                             </div>
@@ -2210,15 +2210,15 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                 <div class="col-12">
                                     <label class="form-label">' . lang('Format') . '</label>
                                 </div>
-                                <div class="form-check  form-check-inline">
-                                    <input class="form-check-input collapse-switcher" type="radio" id="custom_form_administrator_email_format_plain_text" name="custom_form_administrator_email_format"' . $custom_form_administrator_email_format_plain_text_checked . ' value="plain_text" data-bs-target="#custom_form_administrator_email_format_plain_text_row" />
+                                <div class="form-field  d-inline-grid me-5">
+                                    <input class="radio collapse-switcher" type="radio" id="custom_form_administrator_email_format_plain_text" name="custom_form_administrator_email_format"' . $custom_form_administrator_email_format_plain_text_checked . ' value="plain_text" data-bs-target="#custom_form_administrator_email_format_plain_text_row" />
                                     <label for="custom_form_administrator_email_format_plain_text">' . lang('Plain Text') . '</label> 
                                 </div>
-                                <div class="form-check  form-check-inline">
-                                    <input class="form-check-input collapse-switcher" type="radio" id="custom_form_administrator_email_format_html" name="custom_form_administrator_email_format"' . $custom_form_administrator_email_format_html_checked . ' value="html"  data-bs-target="#custom_form_administrator_email_format_html_row"/>
+                                <div class="form-field  d-inline-grid me-5">
+                                    <input class="radio collapse-switcher" type="radio" id="custom_form_administrator_email_format_html" name="custom_form_administrator_email_format"' . $custom_form_administrator_email_format_html_checked . ' value="html"  data-bs-target="#custom_form_administrator_email_format_html_row"/>
                                     <label for="custom_form_administrator_email_format_html">' . lang('HTML') . '</label>
                                 </div>
-                                <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="custom_form_administrator_email_format_plain_text_row">
+                                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="custom_form_administrator_email_format_plain_text_row">
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                                     <div class="popover-body">
                                         <div class="row">
@@ -2229,13 +2229,13 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                         </div>
                                     </div>
                                 </div>
-                                <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="custom_form_administrator_email_format_html_row">
+                                <div class="collapse popover fade bs-popover-bottom p-0 mb-3" id="custom_form_administrator_email_format_html_row">
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                                     <div class="popover-body">
                                         <div class="row">
                                             <div class="col-12 my-1">
                                                 <label class="form-label" for="custom_form_administrator_email_page_id">' . lang('Page') . '</label>
-                                                <select class="form-select" id="custom_form_administrator_email_page_id" name="custom_form_administrator_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_properties['administrator_email_page_id'] ?? '')) . '</select>
+                                                <select class="form-control" id="custom_form_administrator_email_page_id" name="custom_form_administrator_email_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_properties['administrator_email_page_id'] ?? '')) . '</select>
                                             </div>
                                         </div>
                                     </div>
@@ -2245,44 +2245,44 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-2" id="custom_form_membership_row" style="' . $custom_form_membership_row_style . '">
-                <div class="form-check form-switch">
-                    <input value="1"' . $custom_form_membership_checked . ' id="custom_form_membership" name="custom_form_membership" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_custom_form_membership" />
-                    <label class="form-check-label" for="custom_form_membership">' . lang('Grant Membership Trial') . '</label>
+            <div class="col-12 my-3" id="custom_form_membership_row" style="' . $custom_form_membership_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input value="1"' . $custom_form_membership_checked . ' id="custom_form_membership" name="custom_form_membership" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_custom_form_membership" /></div>
+                    <label class="" for="custom_form_membership">' . lang('Grant Membership Trial') . '</label>
                 </div>
-                <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_custom_form_membership">
+                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_custom_form_membership">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 col-md-6 col-lg-4 my-1">
+                            <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label for="custom_form_membership_days" class="form-label">' . lang('Trial Length') . '</label>
                                 <div class="input-group">
                                     <input value="' . h(($custom_form_properties['membership_days'] ?? '')) . '" type="text" name="custom_form_membership_days" id="custom_form_membership_days" class="form-control" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
                                     <span class="input-group-text">' . lang('day(s)') . '</span>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-6 col-lg-4 my-1">
+                            <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label class="form-label" for="custom_form_membership_start_page_id">' . lang('Set Member\'s Start Page to') . '</label>
-                                <select class="form-select" id="custom_form_membership_start_page_id" name="custom_form_membership_start_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($custom_form_properties['membership_start_page_id'] ?? '')) . '</select>
+                                <select class="form-control" id="custom_form_membership_start_page_id" name="custom_form_membership_start_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($custom_form_properties['membership_start_page_id'] ?? '')) . '</select>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-2" id="custom_form_private_row" style="' . $custom_form_private_row_style . '">
-                <div class="form-check form-switch">
-                    <input value="1"' . $custom_form_private_checked . ' id="custom_form_private" name="custom_form_private" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#toggle_custom_form_private" />
-                    <label class="form-check-label" for="custom_form_private">' . lang('Grant Private Access') . '</label>
+            <div class="col-12 my-3" id="custom_form_private_row" style="' . $custom_form_private_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input value="1"' . $custom_form_private_checked . ' id="custom_form_private" name="custom_form_private" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#toggle_custom_form_private" /></div>
+                    <label class="" for="custom_form_private">' . lang('Grant Private Access') . '</label>
                 </div>
-                <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="toggle_custom_form_private">
+                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="toggle_custom_form_private">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 col-md-6 col-lg-4 my-1">
+                            <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label class="form-label" for="custom_form_private_folder_id">' . lang('Set "View" Access to Folder') . '</label>
-                                <select class="form-select" id="custom_form_private_folder_id" name="custom_form_private_folder_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('private folder')) )) . '-</option>' . select_folder(($custom_form_properties['private_folder_id'] ?? ''), 0, 0, 0, array(), array(), 'private') . '</select>
+                                <select class="form-control" id="custom_form_private_folder_id" name="custom_form_private_folder_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('private folder')) )) . '-</option>' . select_folder(($custom_form_properties['private_folder_id'] ?? ''), 0, 0, 0, array(), array(), 'private') . '</select>
                             </div>
-                            <div class="col-12 col-md-6 col-lg-4 my-1">
+                            <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label for="custom_form_private_days" class="form-label">' . lang('Length') . '</label>
                                 <div class="input-group">
                                     <input value="' . h(($custom_form_properties['private_days'] ?? '')) . '" type="text" name="custom_form_private_days" id="custom_form_private_days" class="form-control" size="7" maxlength="9" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
@@ -2290,9 +2290,9 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                 </div>
                                 <div class="text-end form-text">' . lang('leave blank for no expiration') . '</div>
                             </div>
-                            <div class="col-12 col-md-6 col-lg-4 my-1">
+                            <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label class="form-label" for="custom_form_private_start_page_id">' . lang('Set User\'s Start Page to') . '</label>
-                                <select class="form-select" id="custom_form_private_start_page_id" name="custom_form_private_start_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($custom_form_properties['private_start_page_id'] ?? '')) . '</select>
+                                <select class="form-control" id="custom_form_private_start_page_id" name="custom_form_private_start_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($custom_form_properties['private_start_page_id'] ?? '')) . '</select>
                             </div>
                         </div>
                     </div>
@@ -2302,20 +2302,20 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         // If commerce is enabled and the user has access to commerce, then output grant offer rows.
         if ((ECOMMERCE) && (USER_MANAGE_ECOMMERCE)) {
             $output_forms_page_type_properties .=
-                '<div class="col-12 my-2" id="custom_form_offer_row" style="' . $custom_form_offer_row_style . '">
-                    <div class="form-check form-switch">
-                        <input value="1"' . $custom_form_offer_checked . ' id="custom_form_offer" name="custom_form_offer" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#toggle_custom_form_offer" />
-                        <label class="form-check-label" for="custom_form_offer">' . lang('Grant Offer') . '</label>
+                '<div class="col-12 my-3" id="custom_form_offer_row" style="' . $custom_form_offer_row_style . '">
+                    <div class="form-field">
+                        <div class="switch"><input value="1"' . $custom_form_offer_checked . ' id="custom_form_offer" name="custom_form_offer" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#toggle_custom_form_offer" /></div>
+                        <label class="" for="custom_form_offer">' . lang('Grant Offer') . '</label>
                     </div>
-                    <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="toggle_custom_form_offer">
+                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="toggle_custom_form_offer">
                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                         <div class="popover-body">
                             <div class="row">
-                                <div class="col-12 col-md-6 col-lg-4 my-1">
+                                <div class="col-12 md:col-6 lg:col-4 my-1">
                                     <label class="form-label" for="custom_form_offer_id">' . lang('Offer') . '</label>
-                                    <select class="form-select" id="custom_form_offer_id" name="custom_form_offer_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('offer')) )) . '-</option>' . select_offer(($custom_form_properties['offer_id'] ?? '')) . '</select>
+                                    <select class="form-control" id="custom_form_offer_id" name="custom_form_offer_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('offer')) )) . '-</option>' . select_offer(($custom_form_properties['offer_id'] ?? '')) . '</select>
                                 </div>
-                                <div class="col-12 col-md-6 col-lg-4 my-1">
+                                <div class="col-12 md:col-6 lg:col-4 my-1">
                                     <label for="custom_form_offer_days" class="form-label">' . lang('Validity Length') . '</label>
                                     <div class="input-group">
                                         <input value="' . h(($custom_form_properties['offer_days'] ?? '')) . '" type="text" name="custom_form_offer_days" id="custom_form_offer_days" class="form-control" size="7" maxlength="9" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
@@ -2323,9 +2323,9 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                     </div>
                                     <div class="text-end form-text">' . lang('leave blank for no expiration') . '</div>
                                 </div>
-                                <div class="col-12 col-md-6 col-lg-4 my-1">
+                                <div class="col-12 md:col-6 lg:col-4 my-1">
                                     <label class="form-label" for="custom_form_offer_eligibility">' . lang('Eligibility') . '</label>
-                                    <select class="form-select" id="custom_form_offer_eligibility" name="custom_form_offer_eligibility"><option value="everyone"' . $custom_form_offer_eligibility_everyone . '>' . lang('Everyone') . '</option><option value="new_contacts"' . $custom_form_offer_eligibility_new_contacts . '>' . lang('New Contacts') . '</option><option value="existing_contacts"' . $custom_form_offer_eligibility_existing_contacts . '>' . lang('Existing Contacts') . '</option></select>
+                                    <select class="form-control" id="custom_form_offer_eligibility" name="custom_form_offer_eligibility"><option value="everyone"' . $custom_form_offer_eligibility_everyone . '>' . lang('Everyone') . '</option><option value="new_contacts"' . $custom_form_offer_eligibility_new_contacts . '>' . lang('New Contacts') . '</option><option value="existing_contacts"' . $custom_form_offer_eligibility_existing_contacts . '>' . lang('Existing Contacts') . '</option></select>
                                 </div>
                             </div>
                         </div>
@@ -2338,15 +2338,15 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 <div class="col-12">
                     <label class="form-label">' . lang('Confirmation Type') . '</label>
                 </div>
-                <div class="form-check  form-check-inline">
-                    <input class="form-check-input collapse-switcher" type="radio" id="custom_form_confirmation_type_message" name="custom_form_confirmation_type"' . $custom_form_confirmation_type_message_checked . ' value="message" onclick="show_or_hide_custom_form_confirmation_type()" data-bs-target="#custom_form_confirmation_type_message_row" />
+                <div class="form-field  d-inline-grid me-5">
+                    <input class="radio collapse-switcher" type="radio" id="custom_form_confirmation_type_message" name="custom_form_confirmation_type"' . $custom_form_confirmation_type_message_checked . ' value="message" onclick="show_or_hide_custom_form_confirmation_type()" data-bs-target="#custom_form_confirmation_type_message_row" />
                     <label for="custom_form_confirmation_type_message">' . lang('Message') . '</label> 
                 </div>
-                <div class="form-check  form-check-inline">
-                    <input class="form-check-input collapse-switcher" type="radio" id="custom_form_confirmation_type_page" name="custom_form_confirmation_type"' . $custom_form_confirmation_type_page_checked . ' value="page" onclick="show_or_hide_custom_form_confirmation_type()" data-bs-target="#custom_form_confirmation_type_page_row"/>
+                <div class="form-field  d-inline-grid me-5">
+                    <input class="radio collapse-switcher" type="radio" id="custom_form_confirmation_type_page" name="custom_form_confirmation_type"' . $custom_form_confirmation_type_page_checked . ' value="page" onclick="show_or_hide_custom_form_confirmation_type()" data-bs-target="#custom_form_confirmation_type_page_row"/>
                     <label for="custom_form_confirmation_type_page">' . lang('Next Page') . '</label>
                 </div>
-                <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="custom_form_confirmation_type_message_row">
+                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="custom_form_confirmation_type_message_row">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
@@ -2357,30 +2357,30 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                         </div>
                     </div>
                 </div>
-                <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="custom_form_confirmation_type_page_row">
+                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="custom_form_confirmation_type_page_row">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 col-md-6 col-lg-4 my-1">
+                            <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label class="form-label" for="custom_form_confirmation_page_id">' . lang('Next Page') . '</label>
-                                <select class="form-select" id="custom_form_confirmation_page_id" name="custom_form_confirmation_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_properties['confirmation_page_id'] ?? '')) . '</select>
+                                <select class="form-control" id="custom_form_confirmation_page_id" name="custom_form_confirmation_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_properties['confirmation_page_id'] ?? '')) . '</select>
                             </div>
                             <div class="col-12 my-1">
-                                <div class="form-check form-switch">
-                                    <input value="1"' . $custom_form_confirmation_alternative_page_checked . ' id="custom_form_confirmation_alternative_page" name="custom_form_confirmation_alternative_page" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_custom_form_confirmation_alternative_page" />
-                                    <label class="form-check-label" for="custom_form_confirmation_alternative_page">' . lang('Alternative Next Page') . '</label>
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . $custom_form_confirmation_alternative_page_checked . ' id="custom_form_confirmation_alternative_page" name="custom_form_confirmation_alternative_page" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_custom_form_confirmation_alternative_page" /></div>
+                                    <label class="" for="custom_form_confirmation_alternative_page">' . lang('Alternative Next Page') . '</label>
                                 </div>
-                                <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_custom_form_confirmation_alternative_page">
+                                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_custom_form_confirmation_alternative_page">
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                     <div class="popover-body">
-                                        <div class="row p-1 border border-1 rounded bg-light">
-                                            <div class="col-12 col-lg-6 my-1">
+                                        <div class="row p-1 border border-1 rounded-4 bg-1">
+                                            <div class="col-12 lg:col-6 my-1">
                                                 <label class="form-label" for="custom_form_confirmation_alternative_page_contact_group_id">' . lang('If Contact Group') . '</label>
-                                                <select class="form-select" id="custom_form_confirmation_alternative_page_contact_group_id" name="custom_form_confirmation_alternative_page_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('contact group')) )) . '-</option>' . select_contact_group(($custom_form_properties['confirmation_alternative_page_contact_group_id'] ?? ''), $user) . '</select>
+                                                <select class="form-control" id="custom_form_confirmation_alternative_page_contact_group_id" name="custom_form_confirmation_alternative_page_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('contact group')) )) . '-</option>' . select_contact_group(($custom_form_properties['confirmation_alternative_page_contact_group_id'] ?? ''), $user) . '</select>
                                             </div>
-                                            <div class="col-12 col-lg-6 my-1">
+                                            <div class="col-12 lg:col-6 my-1">
                                                 <label class="form-label" for="custom_form_confirmation_alternative_page_id">' . lang('Then Go to Page') . '</label>
-                                                <select class="form-select" id="custom_form_confirmation_alternative_page_id" name="custom_form_confirmation_alternative_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_properties['confirmation_alternative_page_id'] ?? '')) . '</select>
+                                                <select class="form-control" id="custom_form_confirmation_alternative_page_id" name="custom_form_confirmation_alternative_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_properties['confirmation_alternative_page_id'] ?? '')) . '</select>
                                             </div>
                                         </div>
                                     </div>
@@ -2394,19 +2394,19 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 <div class="col-12">
                     <label class="form-label">' . lang('If User has already submitted form in the past, then show') . '</label>
                 </div>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input collapse-switcher" type="radio" id="custom_form_return_type_custom_form" name="custom_form_return_type"' . $custom_form_return_type_custom_form_checked . ' value="custom_form" onclick="show_or_hide_custom_form_return_type()"  />
+                <div class="form-field d-inline-grid me-5">
+                    <input class="radio collapse-switcher" type="radio" id="custom_form_return_type_custom_form" name="custom_form_return_type"' . $custom_form_return_type_custom_form_checked . ' value="custom_form" onclick="show_or_hide_custom_form_return_type()"  />
                     <label for="custom_form_return_type_custom_form">' . lang('Custom Form') . '</label> 
                 </div>
-                <div class="form-check form-check-inline">
-                    <input class="form-check-input collapse-switcher" type="radio" id="custom_form_return_type_message" name="custom_form_return_type"' . $custom_form_return_type_message_checked . ' value="message" onclick="show_or_hide_custom_form_return_type()" data-bs-target="#custom_form_return_type_message_row"/>
+                <div class="form-field d-inline-grid me-5">
+                    <input class="radio collapse-switcher" type="radio" id="custom_form_return_type_message" name="custom_form_return_type"' . $custom_form_return_type_message_checked . ' value="message" onclick="show_or_hide_custom_form_return_type()" data-bs-target="#custom_form_return_type_message_row"/>
                     <label for="custom_form_return_type_message">' . lang('Message') . '</label>
                 </div>
-                <div class="form-check  form-check-inline">
-                    <input class="form-check-input collapse-switcher" type="radio" id="custom_form_return_type_page" name="custom_form_return_type"' . $custom_form_return_type_page_checked . ' value="page" onclick="show_or_hide_custom_form_return_type()" data-bs-target="#custom_form_return_type_page_row"/>
+                <div class="form-field  d-inline-grid me-5">
+                    <input class="radio collapse-switcher" type="radio" id="custom_form_return_type_page" name="custom_form_return_type"' . $custom_form_return_type_page_checked . ' value="page" onclick="show_or_hide_custom_form_return_type()" data-bs-target="#custom_form_return_type_page_row"/>
                     <label for="custom_form_return_type_page">' . lang('Page') . '</label>
                 </div>
-                <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="custom_form_return_type_message_row">
+                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="custom_form_return_type_message_row">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(140px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
@@ -2417,30 +2417,30 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                         </div>
                     </div>
                 </div>
-                <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="custom_form_return_type_page_row">
+                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="custom_form_return_type_page_row">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(230px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 col-md-6 col-lg-4 my-1">
+                            <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label class="form-label" for="custom_form_return_page_id">' . lang('Page') . '</label>
-                                <select class="form-select" id="custom_form_return_page_id" name="custom_form_return_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_properties['return_page_id'] ?? '')) . '</select>
+                                <select class="form-control" id="custom_form_return_page_id" name="custom_form_return_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_properties['return_page_id'] ?? '')) . '</select>
                             </div>
                             <div class="col-12 my-1">
-                                <div class="form-check form-switch">
-                                    <input value="1"' . $custom_form_return_alternative_page_checked . ' id="custom_form_return_alternative_page" name="custom_form_return_alternative_page" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_custom_form_return_alternative_page" />
-                                    <label class="form-check-label" for="custom_form_return_alternative_page">' . lang('Alternative Next Page') . '</label>
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . $custom_form_return_alternative_page_checked . ' id="custom_form_return_alternative_page" name="custom_form_return_alternative_page" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_custom_form_return_alternative_page" /></div>
+                                    <label class="" for="custom_form_return_alternative_page">' . lang('Alternative Next Page') . '</label>
                                 </div>
-                                <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_custom_form_return_alternative_page">
+                                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_custom_form_return_alternative_page">
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                     <div class="popover-body">
-                                        <div class="row p-1 border border-1 rounded bg-light">
-                                            <div class="col-12 col-lg-6 my-1">
+                                        <div class="row p-1 border border-1 rounded-4 bg-1">
+                                            <div class="col-12 lg:col-6 my-1">
                                                 <label class="form-label" for="custom_form_return_alternative_page_contact_group_id">' . lang('If Contact Group') . '</label>
-                                                <select class="form-select" id="custom_form_return_alternative_page_contact_group_id" name="custom_form_return_alternative_page_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('contact group')) )) . '-</option>' . select_contact_group(($custom_form_properties['return_alternative_page_contact_group_id'] ?? ''), $user) . '</select>
+                                                <select class="form-control" id="custom_form_return_alternative_page_contact_group_id" name="custom_form_return_alternative_page_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('contact group')) )) . '-</option>' . select_contact_group(($custom_form_properties['return_alternative_page_contact_group_id'] ?? ''), $user) . '</select>
                                             </div>
-                                            <div class="col-12 col-lg-6 my-1">
+                                            <div class="col-12 lg:col-6 my-1">
                                                 <label class="form-label" for="custom_form_return_alternative_page_id">' . lang('Then Go to Page') . '</label>
-                                                <select class="form-select" id="custom_form_return_alternative_page_id" name="custom_form_return_alternative_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_properties['return_alternative_page_id'] ?? '')) . '</select>
+                                                <select class="form-control" id="custom_form_return_alternative_page_id" name="custom_form_return_alternative_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_properties['return_alternative_page_id'] ?? '')) . '</select>
                                             </div>
                                         </div>
                                     </div>
@@ -2450,81 +2450,81 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-3" id="custom_form_pretty_urls_row" style="' . $custom_form_pretty_urls_row_style . '">
-                <div class="form-check form-switch">
-                    <input value="1"' . $custom_form_pretty_urls_checked . ' id="custom_form_pretty_urls" name="custom_form_pretty_urls" class="form-check-input" type="checkbox" role="switch" />
-                    <label class="form-check-label" for="custom_form_pretty_urls">' . lang('Enable Pretty URLs') . '</label>
+            <div class="col-12 my-5" id="custom_form_pretty_urls_row" style="' . $custom_form_pretty_urls_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input value="1"' . $custom_form_pretty_urls_checked . ' id="custom_form_pretty_urls" name="custom_form_pretty_urls" class="" type="checkbox" role="switch" /></div>
+                    <label class="" for="custom_form_pretty_urls">' . lang('Enable Pretty URLs') . '</label>
                 </div>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="custom_form_confirmation_continue_button_label_row" style="' . $custom_form_confirmation_continue_button_label_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="custom_form_confirmation_continue_button_label_row" style="' . $custom_form_confirmation_continue_button_label_row_style . '">
                 <label for="custom_form_confirmation_continue_button_label" class="form-label">' . lang('Continue Button Label') . '</label>
                 <input value="' . h($custom_form_confirmation_properties['continue_button_label'] ?? '') . '" type="text" name="custom_form_confirmation_continue_button_label" id="custom_form_confirmation_continue_button_label" maxlength="50" class="form-control" />
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="custom_form_confirmation_next_page_id_row" style="' . $custom_form_confirmation_next_page_id_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="custom_form_confirmation_next_page_id_row" style="' . $custom_form_confirmation_next_page_id_row_style . '">
                 <label class="form-label" for="custom_form_confirmation_next_page_id">' . lang('Next Page') . '</label>
-                <select class="form-select" id="custom_form_confirmation_next_page_id" name="custom_form_confirmation_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_confirmation_properties['next_page_id'] ?? '')) . '</select>
+                <select class="form-control" id="custom_form_confirmation_next_page_id" name="custom_form_confirmation_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('page')) )) . '-</option>' . select_page(($custom_form_confirmation_properties['next_page_id'] ?? '')) . '</select>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="form_list_view_custom_form_page_id_row" style="' . $form_list_view_custom_form_page_id_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="form_list_view_custom_form_page_id_row" style="' . $form_list_view_custom_form_page_id_row_style . '">
                 <label class="form-label" for="form_list_view_custom_form_page_id">' . lang('Custom Form') . '</label>
-                <select class="form-select" id="form_list_view_custom_form_page_id" name="form_list_view_custom_form_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('custom form')) )) . '-</option>' . select_custom_form(($form_list_view_properties['custom_form_page_id'] ?? ''), $user) . '</select>
+                <select class="form-control" id="form_list_view_custom_form_page_id" name="form_list_view_custom_form_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('custom form')) )) . '-</option>' . select_custom_form(($form_list_view_properties['custom_form_page_id'] ?? ''), $user) . '</select>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="form_list_view_form_item_view_page_id_row" style="' . $form_list_view_form_item_view_page_id_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="form_list_view_form_item_view_page_id_row" style="' . $form_list_view_form_item_view_page_id_row_style . '">
                 <label class="form-label" for="form_list_view_form_item_view_page_id">' . lang('Form Item View') . '</label>
-                <select class="form-select" id="form_list_view_form_item_view_page_id" name="form_list_view_form_item_view_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('form item view page')) )) . '-</option>' . select_page(($form_list_view_properties['form_item_view_page_id'] ?? ''), 'form item view') . '</select>
+                <select class="form-control" id="form_list_view_form_item_view_page_id" name="form_list_view_form_item_view_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('form item view page')) )) . '-</option>' . select_page(($form_list_view_properties['form_item_view_page_id'] ?? ''), 'form item view') . '</select>
             </div>
             <div class="col-12 my-1" id="form_list_view_viewer_filter_row" style="' . $form_list_view_viewer_filter_row_style . '">
-                <div class="form-check form-switch">
-                    <input value="1"' . $form_list_view_viewer_filter_checked . ' id="form_list_view_viewer_filter" name="form_list_view_viewer_filter" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_form_list_view_viewer_filter" />
-                    <label class="form-check-label" for="form_list_view_viewer_filter">' . lang('Enable Viewer Filter') . '</label>
+                <div class="form-field">
+                    <div class="switch"><input value="1"' . $form_list_view_viewer_filter_checked . ' id="form_list_view_viewer_filter" name="form_list_view_viewer_filter" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_form_list_view_viewer_filter" /></div>
+                    <label class="" for="form_list_view_viewer_filter">' . lang('Enable Viewer Filter') . '</label>
                     ' . $output_viewer_filter_warning . '
                 </div>
-                <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_form_list_view_viewer_filter">
+                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_form_list_view_viewer_filter">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
                             <div class="col-12 my-1">
-                                <div class="form-check form-switch">
-                                    <input value="1"' . $form_list_view_viewer_filter_submitter_checked . ' id="form_list_view_viewer_filter_submitter" name="form_list_view_viewer_filter_submitter" class="form-check-input"  type="checkbox" role="switch"/>
-                                    <label class="form-check-label" for="form_list_view_viewer_filter_submitter">' . lang('Include Forms from Submitter') . '</label>
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . $form_list_view_viewer_filter_submitter_checked . ' id="form_list_view_viewer_filter_submitter" name="form_list_view_viewer_filter_submitter" class=""  type="checkbox" role="switch"/></div>
+                                    <label class="" for="form_list_view_viewer_filter_submitter">' . lang('Include Forms from Submitter') . '</label>
                                 </div>
                             </div>
                             <div class="col-12 my-1">
-                                <div class="form-check form-switch">
-                                    <input value="1"' . $form_list_view_viewer_filter_watcher_checked . ' id="form_list_view_viewer_filter_watcher" name="form_list_view_viewer_filter_watcher" class="form-check-input"  type="checkbox" role="switch"/>
-                                    <label class="form-check-label" for="form_list_view_viewer_filter_watcher">' . lang('Include Forms for Watchers') . '</label>
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . $form_list_view_viewer_filter_watcher_checked . ' id="form_list_view_viewer_filter_watcher" name="form_list_view_viewer_filter_watcher" class=""  type="checkbox" role="switch"/></div>
+                                    <label class="" for="form_list_view_viewer_filter_watcher">' . lang('Include Forms for Watchers') . '</label>
                                 </div>
                             </div>
                             <div class="col-12 my-1">
-                                <div class="form-check form-switch">
-                                    <input value="1"' . $form_list_view_viewer_filter_editor_checked . ' id="form_list_view_viewer_filter_editor" name="form_list_view_viewer_filter_editor" class="form-check-input"  type="checkbox" role="switch"/>
-                                    <label class="form-check-label" for="form_list_view_viewer_filter_editor">' . lang('Include Forms for Form Editors') . '</label>
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . $form_list_view_viewer_filter_editor_checked . ' id="form_list_view_viewer_filter_editor" name="form_list_view_viewer_filter_editor" class=""  type="checkbox" role="switch"/></div>
+                                    <label class="" for="form_list_view_viewer_filter_editor">' . lang('Include Forms for Form Editors') . '</label>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="form_item_view_custom_form_page_id_row" style="' . $form_item_view_custom_form_page_id_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="form_item_view_custom_form_page_id_row" style="' . $form_item_view_custom_form_page_id_row_style . '">
                 <label class="form-label" for="form_item_view_custom_form_page_id">' . lang('Custom Form') . '</label>
-                <select class="form-select" id="form_item_view_custom_form_page_id" name="form_item_view_custom_form_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('custom form')) )) . '-</option>' . select_custom_form(($form_item_view_properties['custom_form_page_id'] ?? ''), $user) . '</select>
+                <select class="form-control" id="form_item_view_custom_form_page_id" name="form_item_view_custom_form_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('custom form')) )) . '-</option>' . select_custom_form(($form_item_view_properties['custom_form_page_id'] ?? ''), $user) . '</select>
             </div>
-            <div class="col-12 my-3" id="form_item_view_submitter_security_row" style="' . $form_item_view_submitter_security_row_style . '">
-                <div class="form-check form-switch">
-                    <input value="1"' . $form_item_view_submitter_security_checked . ' id="form_item_view_submitter_security" name="form_item_view_submitter_security" class="form-check-input"  type="checkbox" role="switch"/>
-                    <label class="form-check-label" for="form_item_view_submitter_security">' . lang('Allow only submitter and watchers to view his/her submitted form(s)') . '</label>
+            <div class="col-12 my-5" id="form_item_view_submitter_security_row" style="' . $form_item_view_submitter_security_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input value="1"' . $form_item_view_submitter_security_checked . ' id="form_item_view_submitter_security" name="form_item_view_submitter_security" class=""  type="checkbox" role="switch"/></div>
+                    <label class="" for="form_item_view_submitter_security">' . lang('Allow only submitter and watchers to view his/her submitted form(s)') . '</label>
                 </div>
             </div>
-            <div class="col-12 my-3" id="form_item_view_submitted_form_editable_by_registered_user_row" style="' . $form_item_view_submitted_form_editable_by_registered_user_row_style . '">
-                <div class="form-check form-switch">
-                    <input value="1"' . $form_item_view_submitted_form_editable_by_registered_user_checked . ' id="form_item_view_submitted_form_editable_by_registered_user" name="form_item_view_submitted_form_editable_by_registered_user" class="form-check-input collapse-switcher"  type="checkbox" role="switch" data-bs-target="#show_or_hide_form_item_view_editor"/>
-                    <label class="form-check-label" for="form_item_view_submitted_form_editable_by_registered_user">' . lang('Allow any registered user to edit submitted form(s)') . '</label>
+            <div class="col-12 my-5" id="form_item_view_submitted_form_editable_by_registered_user_row" style="' . $form_item_view_submitted_form_editable_by_registered_user_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input value="1"' . $form_item_view_submitted_form_editable_by_registered_user_checked . ' id="form_item_view_submitted_form_editable_by_registered_user" name="form_item_view_submitted_form_editable_by_registered_user" class="collapse-switcher"  type="checkbox" role="switch" data-bs-target="#show_or_hide_form_item_view_editor"/></div>
+                    <label class="" for="form_item_view_submitted_form_editable_by_registered_user">' . lang('Allow any registered user to edit submitted form(s)') . '</label>
                 </div>
             </div>
             <div class="col-12" id="form_item_view_submitted_form_editable_by_submitter_row" style="' . $form_item_view_submitted_form_editable_by_submitter_row_style . '">
-                <div class="my-3 collapse show-reverse" id="show_or_hide_form_item_view_editor">
-                    <div class="form-check form-switch">
-                        <input value="1" ' . $form_item_view_submitted_form_editable_by_submitter_checked . ' id="form_item_view_submitted_form_editable_by_submitter" name="form_item_view_submitted_form_editable_by_submitter" class="form-check-input"  type="checkbox" role="switch"/>
-                        <label class="form-check-label" for="form_item_view_submitted_form_editable_by_submitter">' . lang('Allow submitter to edit his/her submitted form(s)') . '</label>
+                <div class="my-5 collapse show-reverse" id="show_or_hide_form_item_view_editor">
+                    <div class="form-field">
+                        <div class="switch"><input value="1" ' . $form_item_view_submitted_form_editable_by_submitter_checked . ' id="form_item_view_submitted_form_editable_by_submitter" name="form_item_view_submitted_form_editable_by_submitter" class=""  type="checkbox" role="switch"/></div>
+                        <label class="" for="form_item_view_submitted_form_editable_by_submitter">' . lang('Allow submitter to edit his/her submitted form(s)') . '</label>
                     </div>
                 </div>
             </div>';
@@ -2532,38 +2532,38 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         // If hooks are enabled and the user is a designer or administrator then output hook row for PHP code.
         if ((defined('PHP_REGIONS') and PHP_REGIONS === true) && (USER_ROLE < 2)) {
             $output_forms_page_type_properties .=
-                '<div class="col-12 my-2" id="form_item_view_hook_code_row" style="' . $form_item_view_hook_code_row_style . '">
+                '<div class="col-12 my-3" id="form_item_view_hook_code_row" style="' . $form_item_view_hook_code_row_style . '">
                     <label class="form-label" for="form_item_view_hook_code">' . lang('Hook Code') . '</label>
                     <textarea id="form_item_view_hook_code" name="form_item_view_hook_code" class="form-control">' . h(($form_item_view_properties['hook_code'] ?? '')) . '</textarea>
                 </div>';
         }
 
         $output_forms_page_type_properties .=
-            '<div class="col-12 my-2" id="form_view_directory_form_list_views_row" style="' . $form_view_directory_form_list_views_row_style . '">
+            '<div class="col-12 my-3" id="form_view_directory_form_list_views_row" style="' . $form_view_directory_form_list_views_row_style . '">
                 <h5>' . lang('Form List Views') . '</h5>
-                <div class="card multiselect-checkbox-container rounded-0 mb-4">
+                <div class="card multiselect-checkbox-container rounded-0 mb-7">
                     <div class="card-body overflow-auto" >
                         ' . $output_form_view_directory_form_list_view_rows . '
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-2" id="form_view_directory_summary_row" style="' . $form_view_directory_summary_row_style . '">
-                <div class="form-check form-switch">
-                    <input value="1"' . $form_view_directory_summary_checked . ' id="form_view_directory_summary" name="form_view_directory_summary" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_form_view_directory_summary" />
-                    <label class="form-check-label" for="form_view_directory_summary">' . lang('Display Summary') . '</label>
+            <div class="col-12 my-3" id="form_view_directory_summary_row" style="' . $form_view_directory_summary_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input value="1"' . $form_view_directory_summary_checked . ' id="form_view_directory_summary" name="form_view_directory_summary" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_form_view_directory_summary" /></div>
+                    <label class="" for="form_view_directory_summary">' . lang('Display Summary') . '</label>
                 </div>
-                <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="show_or_hide_form_view_directory_summary">
+                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_form_view_directory_summary">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 col-md-6 col-lg-4 my-1">
+                            <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label for="form_view_directory_summary_days" class="form-label">' . lang('Date Range') . '</label>
                                 <div class="input-group">
                                     <input value="' . $form_view_directory_summary_days . '" type="text" name="form_view_directory_summary_days" id="form_view_directory_summary_days" class="form-control" size="7" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
                                     <span class="input-group-text">' . lang('day(s)') . '</span>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-6 col-lg-4 my-1">
+                            <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label for="form_view_directory_summary_maximum_number_of_results" class="form-label">' . lang('Maximum Number of Results') . '</label>
                                 <input value="' . $form_view_directory_summary_maximum_number_of_results . '" type="text" name="form_view_directory_summary_maximum_number_of_results" id="form_view_directory_summary_maximum_number_of_results" class="form-control" size="2" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
                             </div>
@@ -2571,15 +2571,15 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="form_view_directory_form_list_view_heading_row" style="' . $form_view_directory_form_list_view_heading_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="form_view_directory_form_list_view_heading_row" style="' . $form_view_directory_form_list_view_heading_row_style . '">
                 <label for="form_view_directory_form_list_view_heading" class="form-label">' . lang('Form List View Heading') . '</label>
                 <input value="' . h($form_view_directory_form_list_view_heading) . '" type="text" name="form_view_directory_form_list_view_heading" id="form_view_directory_form_list_view_heading" maxlength="50" class="form-control" />
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="form_view_directory_subject_heading_row" style="' . $form_view_directory_subject_heading_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="form_view_directory_subject_heading_row" style="' . $form_view_directory_subject_heading_row_style . '">
                 <label for="form_view_directory_subject_heading" class="form-label">' . lang('Subject Heading') . '</label>
                 <input value="' . h($form_view_directory_subject_heading) . '" type="text" name="form_view_directory_subject_heading" id="form_view_directory_subject_heading" maxlength="50" class="form-control" />
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="form_view_directory_number_of_submitted_forms_heading_row" style="' . $form_view_directory_number_of_submitted_forms_heading_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="form_view_directory_number_of_submitted_forms_heading_row" style="' . $form_view_directory_number_of_submitted_forms_heading_row_style . '">
                 <label for="form_view_directory_number_of_submitted_forms_heading" class="form-label">' . lang('Number of Submitted Forms Heading') . '</label>
                 <input value="' . h($form_view_directory_number_of_submitted_forms_heading) . '" type="text" name="form_view_directory_number_of_submitted_forms_heading" id="form_view_directory_number_of_submitted_forms_heading" maxlength="50" class="form-control" />
             </div>';
@@ -2624,7 +2624,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     $checked = ' checked="checked"';
                 }
                 
-                $calendar_view_calendar_check_boxes .= '<div class="form-check"><input type="checkbox" id="calendar_view_calendar_' . $calendar['id'] . '" name="calendar_view_calendar_' . $calendar['id'] . '" value="1"' . $checked . ' class="form-check-input multiselect-checkbox" /><label class="form-check-label" for="calendar_view_calendar_' . $calendar['id'] . '">' . h($calendar['name']) . '</label></div>';
+                $calendar_view_calendar_check_boxes .= '<div class="form-field"><input type="checkbox" id="calendar_view_calendar_' . $calendar['id'] . '" name="calendar_view_calendar_' . $calendar['id'] . '" value="1"' . $checked . ' class="check multiselect-checkbox" /><label class="" for="calendar_view_calendar_' . $calendar['id'] . '">' . h($calendar['name']) . '</label></div>';
                 
                 // check if calendar should be checked for calendar event view
                 $query =
@@ -2642,7 +2642,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     $checked = ' checked="checked"';
                 }
                 
-                $calendar_event_view_calendar_check_boxes .= '<div class="form-check"><input type="checkbox" id="calendar_event_view_calendar_' . $calendar['id'] . '" name="calendar_event_view_calendar_' . $calendar['id'] . '" value="1"' . $checked . ' class="form-check-input multiselect-checkbox" /><label class="form-check-label" for="calendar_event_view_calendar_' . $calendar['id'] . '">' . h($calendar['name']) . '</label></div>';
+                $calendar_event_view_calendar_check_boxes .= '<div class="form-field"><input type="checkbox" id="calendar_event_view_calendar_' . $calendar['id'] . '" name="calendar_event_view_calendar_' . $calendar['id'] . '" value="1"' . $checked . ' class="check multiselect-checkbox" /><label class="" for="calendar_event_view_calendar_' . $calendar['id'] . '">' . h($calendar['name']) . '</label></div>';
             }
         }
         
@@ -2654,13 +2654,13 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         }
         
         $output_calendars_page_type_properties =
-            '<div class="col-12 my-2" id="calendar_view_calendars_row" style="' . $calendar_view_calendars_row_style . '">
+            '<div class="col-12 my-3" id="calendar_view_calendars_row" style="' . $calendar_view_calendars_row_style . '">
                 <h5>' . lang('Calendars') . '</h5>
-                <div class="card multiselect-checkbox-container rounded-0 mb-4">
+                <div class="card multiselect-checkbox-container rounded-0 mb-7">
                     <div class="card-header border-0 bg-reset">
-                        <div class="form-check form-switch">
-                            <input id="multiselect-checkbox-checker-0" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                            <label for="multiselect-checkbox-checker-0" class="form-check-label">' . lang('Select All') . '</label>
+                        <div class="form-field">
+                            <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox"></div>
+                            <label for="multiselect-checkbox-checker-0" class="">' . lang('Select All') . '</label>
                         </div>
                     </div>
                     <div class="card-body overflow-auto" style="max-height:300px">
@@ -2668,25 +2668,25 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="calendar_view_default_view_row" style="' . $calendar_view_default_view_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="calendar_view_default_view_row" style="' . $calendar_view_default_view_row_style . '">
                 <label for="calendar_view_default_view" class="form-label">' . lang('View Type') . '</label>
-                <select class="form-select" name="calendar_view_default_view" id="calendar_view_default_view" onchange="show_or_hide_calendar_view_number_of_upcoming_events()"><option value="monthly"' . $calendar_view_default_view_monthly . '>' . lang('Monthly') . '</option><option value="weekly"' . $calendar_view_default_view_weekly . '>' . lang('Weekly') . '</option><option value="upcoming"' . $calendar_view_default_view_upcoming . '>' . lang('Upcoming') . '</option></select>
+                <select class="form-control" name="calendar_view_default_view" id="calendar_view_default_view" onchange="show_or_hide_calendar_view_number_of_upcoming_events()"><option value="monthly"' . $calendar_view_default_view_monthly . '>' . lang('Monthly') . '</option><option value="weekly"' . $calendar_view_default_view_weekly . '>' . lang('Weekly') . '</option><option value="upcoming"' . $calendar_view_default_view_upcoming . '>' . lang('Upcoming') . '</option></select>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="calendar_view_number_of_upcoming_events_row" style="' . $calendar_view_number_of_upcoming_events_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="calendar_view_number_of_upcoming_events_row" style="' . $calendar_view_number_of_upcoming_events_row_style . '">
                 <label for="calendar_view_number_of_upcoming_events" class="form-label">' . lang('Number of Events') . '</label>
                 <input value="' . h($calendar_view_number_of_upcoming_events_value) . '" name="calendar_view_number_of_upcoming_events" id="calendar_view_number_of_upcoming_events" type="text" maxlength="2" class="form-control" />
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="calendar_view_calendar_event_view_page_id_row" style="' . $calendar_view_calendar_event_view_page_id_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="calendar_view_calendar_event_view_page_id_row" style="' . $calendar_view_calendar_event_view_page_id_row_style . '">
                 <label for="calendar_view_calendar_event_view_page_id" class="form-label">' . lang('Calendar Event View') . '</label>
-                <select class="form-select" name="calendar_view_calendar_event_view_page_id" id="calendar_view_calendar_event_view_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('calendar event view page')) )) . '-</option>' . select_page(($calendar_view_properties['calendar_event_view_page_id'] ?? ''), 'calendar event view') . '</select>
+                <select class="form-control" name="calendar_view_calendar_event_view_page_id" id="calendar_view_calendar_event_view_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('calendar event view page')) )) . '-</option>' . select_page(($calendar_view_properties['calendar_event_view_page_id'] ?? ''), 'calendar event view') . '</select>
             </div>
-            <div class="col-12 my-2" id="calendar_event_view_calendars_row" style="' . $calendar_event_view_calendars_row_style . '">
+            <div class="col-12 my-3" id="calendar_event_view_calendars_row" style="' . $calendar_event_view_calendars_row_style . '">
                 <h5>' . lang('Calendars') . '</h5>
-                <div class="card multiselect-checkbox-container rounded-0 mb-4">
+                <div class="card multiselect-checkbox-container rounded-0 mb-7">
                     <div class="card-header border-0 bg-reset">
-                        <div class="form-check form-switch">
-                            <input id="multiselect-checkbox-checker-1" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                            <label for="multiselect-checkbox-checker-1" class="form-check-label">' . lang('Select All') . '</label>
+                        <div class="form-field">
+                            <div class="switch"><input id="multiselect-checkbox-checker-1" class="multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox"></div>
+                            <label for="multiselect-checkbox-checker-1" class="">' . lang('Select All') . '</label>
                         </div>
                     </div>
                     <div class="card-body overflow-auto" style="max-height:300px">
@@ -2694,44 +2694,44 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="calendar_event_view_back_button_label_row" style="' . $calendar_event_view_back_button_label_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="calendar_event_view_back_button_label_row" style="' . $calendar_event_view_back_button_label_row_style . '">
                 <label for="calendar_event_view_back_button_label" class="form-label">' . lang('Back Button Label') . '</label>
                 <input value="' . h($calendar_event_view_properties['back_button_label'] ?? '') . '" name="calendar_event_view_back_button_label" id="calendar_event_view_back_button_label" type="text" maxlength="50" class="form-control" />
             </div>
-            <div class="col-12 my-2" id="calendar_event_view_notes_row" style="' . $calendar_event_view_notes_row_style . '">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="calendar_event_view_notes" name="calendar_event_view_notes" value="1"' . $calendar_event_view_notes_checked . ' />
-                    <label class="form-check-label" for="calendar_event_view_notes">' . lang('Show Notes') . '</label>
+            <div class="col-12 my-3" id="calendar_event_view_notes_row" style="' . $calendar_event_view_notes_row_style . '">
+                <div class="form-field">
+                    <div class="switch"><input class="" type="checkbox" id="calendar_event_view_notes" name="calendar_event_view_notes" value="1"' . $calendar_event_view_notes_checked . ' /></div>
+                    <label class="" for="calendar_event_view_notes">' . lang('Show Notes') . '</label>
                 </div>
             </div>';
     }
     
     if (AFFILIATE_PROGRAM == true) {
         $output_affiliate_page_type_properties =
-            '<div class="col-12 col-md-6 col-lg-4 my-2" id="affiliate_sign_up_form_terms_page_id_row" style="' . $affiliate_sign_up_form_terms_page_id_row_style . '">
+            '<div class="col-12 md:col-6 lg:col-4 my-3" id="affiliate_sign_up_form_terms_page_id_row" style="' . $affiliate_sign_up_form_terms_page_id_row_style . '">
                 <label for="affiliate_sign_up_form_terms_page_id" class="form-label">' . lang('Terms Page') . '</label>
-                <select class="form-select" name="affiliate_sign_up_form_terms_page_id" id="affiliate_sign_up_form_terms_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($affiliate_sign_up_form_properties['terms_page_id'] ?? '')) . '</select>
+                <select class="form-control" name="affiliate_sign_up_form_terms_page_id" id="affiliate_sign_up_form_terms_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($affiliate_sign_up_form_properties['terms_page_id'] ?? '')) . '</select>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="affiliate_sign_up_form_submit_button_label_row" style="' . $affiliate_sign_up_form_submit_button_label_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="affiliate_sign_up_form_submit_button_label_row" style="' . $affiliate_sign_up_form_submit_button_label_row_style . '">
                 <label for="affiliate_sign_up_form_submit_button_label" class="form-label">' . lang('Submit Button Label') . '</label>
                 <input value="' . h($affiliate_sign_up_form_properties['submit_button_label'] ?? '') . '" type="text" name="affiliate_sign_up_form_submit_button_label" id="affiliate_sign_up_form_submit_button_label" placeholder="' . lang('Sign Up') . '"  class="form-control" maxlength="50"/>
             </div>
-            <div class="col-12 col-md-6 col-lg-4 my-2" id="affiliate_sign_up_form_next_page_id_row" style="' . $affiliate_sign_up_form_next_page_id_row_style . '">
+            <div class="col-12 md:col-6 lg:col-4 my-3" id="affiliate_sign_up_form_next_page_id_row" style="' . $affiliate_sign_up_form_next_page_id_row_style . '">
                 <label class="form-label" for="affiliate_sign_up_form_next_page_id">' . lang('Next Page') . '</label>
-                <select class="form-select" id="affiliate_sign_up_form_next_page_id" name="affiliate_sign_up_form_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('affiliate sign up confirmation page')) )) . '-</option>' . select_page(($affiliate_sign_up_form_properties['next_page_id'] ?? ''), 'affiliate sign up confirmation') . '</select>
+                <select class="form-control" id="affiliate_sign_up_form_next_page_id" name="affiliate_sign_up_form_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('affiliate sign up confirmation page')) )) . '-</option>' . select_page(($affiliate_sign_up_form_properties['next_page_id'] ?? ''), 'affiliate sign up confirmation') . '</select>
             </div>';
     }
     
     $output_page_type_selector = 
-        '<div class="col-12 col-md-4 col-lg-3 col-xl-2">
-            <div class="card my-4 position-sticky" style="top:56px;">
-                <label for="type" class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+        '<div class="col-12 md:col-4 lg:col-3 xl:col-2">
+            <div class="card my-7 position-sticky" style="top:56px;">
+                <label for="type" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Page Type') . '
                 </label>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-12">
-                            <select id="page_type" name="type" class="form-select" onchange="change_page_type(this.options[this.selectedIndex].value)">' . select_page_type($page_type, $user) . '</select>
+                            <select id="page_type" name="type" class="form-control" onchange="change_page_type(this.options[this.selectedIndex].value)">' . select_page_type($page_type, $user) . '</select>
                             <script>
                                 var original_page_type = "' . $page_type . '";
                                 $(document).ready(function() {
@@ -2747,48 +2747,48 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
     $output_page_type_properties =
         '<a name="interactive_page_feature"></a>
         <div class="col-12 collapse" id="options_row">
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('System Options') . '
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-12 my-2" id="layout_type_row" style="' . $layout_type_row_style . '">
+                        <div class="col-12 my-3" id="layout_type_row" style="' . $layout_type_row_style . '">
                             <label class="form-label" for="">'. lang('Layout Type') . '</label>
-                            <div class="form-check">
-                                <input value="system" class="form-check-input" type="radio" id="layout_type_system" name="layout_type"' . $layout_type_system_checked . '>
-                                <label class="form-check-label" for="layout_type_system">'. lang('System') . '</label>
+                            <div class="form-field">
+                                <input value="system" class="radio" type="radio" id="layout_type_system" name="layout_type"' . $layout_type_system_checked . '>
+                                <label class="" for="layout_type_system">'. lang('System') . '</label>
                             </div>
-                            <div class="form-check">
-                                <input value="custom" class="form-check-input" type="radio" id="layout_type_custom" name="layout_type"' . $layout_type_custom_option_disabled . $layout_type_custom_checked . '>
+                            <div class="form-field">
+                                <input value="custom" class="radio" type="radio" id="layout_type_custom" name="layout_type"' . $layout_type_custom_option_disabled . $layout_type_custom_checked . '>
                                 <label title="' . $layout_type_custom_label_title . '" class="form-check-label' . $layout_type_custom_label_class . '" for="layout_type_custom">'. lang('Custom') . '</label>
                             </div>
                         </div>
-                        <div class="col-12 col-md-6 col-lg-4 my-2" id="email_a_friend_submit_button_label_row" style="' . $email_a_friend_submit_button_label_row_style . '">
+                        <div class="col-12 md:col-6 lg:col-4 my-3" id="email_a_friend_submit_button_label_row" style="' . $email_a_friend_submit_button_label_row_style . '">
                             <label for="email_a_friend_submit_button_label" class="form-label">' . lang('Submit Button Label') . '</label>
                             <input value="' . h($email_a_friend_properties['submit_button_label'] ?? '') . '" type="text" name="email_a_friend_submit_button_label" id="email_a_friend_submit_button_label" placeholder="' . lang('Submit') . '"  class="form-control" maxlength="50"/>
                         </div>
-                        <div class="col-12 col-md-6 col-lg-4 my-2" id="email_a_friend_next_page_id_row" style="' . $email_a_friend_next_page_id_row_style . '">
+                        <div class="col-12 md:col-6 lg:col-4 my-3" id="email_a_friend_next_page_id_row" style="' . $email_a_friend_next_page_id_row_style . '">
                             <label for="email_a_friend_next_page_id" class="form-label">' . lang('Next Page') . '</label>
-                            <select name="email_a_friend_next_page_id" id="email_a_friend_next_page_id" class="form-select"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($email_a_friend_properties['next_page_id'] ?? '')) . '</select>
+                            <select name="email_a_friend_next_page_id" id="email_a_friend_next_page_id" class="form-control"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($email_a_friend_properties['next_page_id'] ?? '')) . '</select>
                         </div>
-                        <div class="col-12 my-2" id="folder_view_pages_row" style="' . $folder_view_pages_row_style . '">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="folder_view_pages" name="folder_view_pages" value="1"' . $folder_view_pages_checked . '>
-                                <label class="form-check-label" for="folder_view_pages">' . lang('Include Pages') . '</label>
+                        <div class="col-12 my-3" id="folder_view_pages_row" style="' . $folder_view_pages_row_style . '">
+                            <div class="form-field">
+                                <div class="switch"><input class="" type="checkbox" id="folder_view_pages" name="folder_view_pages" value="1"' . $folder_view_pages_checked . '></div>
+                                <label class="" for="folder_view_pages">' . lang('Include Pages') . '</label>
                             </div>
                         </div>
-                        <div class="col-12 my-2" id="folder_view_files_row" style="' . $folder_view_files_row_style . '">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="folder_view_files" name="folder_view_files" value="1"' . $folder_view_files_checked . '>
-                                <label class="form-check-label" for="folder_view_files">' . lang('Include Files') . '</label>
+                        <div class="col-12 my-3" id="folder_view_files_row" style="' . $folder_view_files_row_style . '">
+                            <div class="form-field">
+                                <div class="switch"><input class="" type="checkbox" id="folder_view_files" name="folder_view_files" value="1"' . $folder_view_files_checked . '></div>
+                                <label class="" for="folder_view_files">' . lang('Include Files') . '</label>
                             </div>
                         </div>
-                        <div class="col-12 col-md-4 col-lg-3 my-2" id="photo_gallery_number_of_columns_row" style="' . $photo_gallery_number_of_columns_row_style . '">
+                        <div class="col-12 md:col-4 lg:col-3 my-3" id="photo_gallery_number_of_columns_row" style="' . $photo_gallery_number_of_columns_row_style . '">
                             <label for="photo_gallery_number_of_columns" class="form-label">' . lang('Number of Columns') . '</label>
                             <input value="' . $photo_gallery_number_of_columns . '" type="text" name="photo_gallery_number_of_columns" id="photo_gallery_number_of_columns" class="form-control" maxlength="2" inputmode="numeric" data-inputmask-alias="decimal"/>
                         </div>
-                        <div class="col-12 col-md-8 col-lg-6 col-xl-4 my-2" id="photo_gallery_thumbnail_max_size_row" style="' . $photo_gallery_thumbnail_max_size_row_style . '">
+                        <div class="col-12 md:col-8 lg:col-6 xl:col-4 my-3" id="photo_gallery_thumbnail_max_size_row" style="' . $photo_gallery_thumbnail_max_size_row_style . '">
                             <label for="photo_gallery_thumbnail_max_size" class="form-label">' . lang('Thumbnail Max Size') . '</label>
                             <div class="input-group">
                                 <input value="' . $photo_gallery_thumbnail_max_size . '" type="text" name="photo_gallery_thumbnail_max_size" id="photo_gallery_thumbnail_max_size" class="form-control" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="100"  style="text-align: right;" />
@@ -2796,18 +2796,18 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                             </div>
                         </div>
                         ' . $output_search_results_page_type_properties . '
-                        <div class="col-12 my-2" id="update_address_book_address_type_row" style="' . $update_address_book_address_type_row_style . '">
-                            <div class="form-check form-switch">
-                                <input value="1"' . $update_address_book_address_type_checked . ' id="update_address_book_address_type" name="update_address_book_address_type" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#update_address_book_address_type_page_id_row" />
-                                <label class="form-check-label" for="update_address_book_address_type">' . lang('Enable Address Type') . '</label>
+                        <div class="col-12 my-3" id="update_address_book_address_type_row" style="' . $update_address_book_address_type_row_style . '">
+                            <div class="form-field">
+                                <div class="switch"><input value="1"' . $update_address_book_address_type_checked . ' id="update_address_book_address_type" name="update_address_book_address_type" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#update_address_book_address_type_page_id_row" /></div>
+                                <label class="" for="update_address_book_address_type">' . lang('Enable Address Type') . '</label>
                             </div>
-                            <div class="collapse popover  fade bs-popover-bottom p-0 mb-2" id="update_address_book_address_type_page_id_row">
+                            <div class="collapse popover  fade bs-popover-bottom p-0 mb-3" id="update_address_book_address_type_page_id_row">
                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                 <div class="popover-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-12 my-1">
+                                        <div class="col-12 md:col-12 my-1">
                                             <label for="update_address_book_address_type_page_id" class="form-label">' . lang('Address Type Page') . '</label>
-                                            <select name="update_address_book_address_type_page_id" id="update_address_book_address_type_page_id" class="form-select"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($update_address_book_properties['address_type_page_id'] ?? '')) . '</select>
+                                            <select name="update_address_book_address_type_page_id" id="update_address_book_address_type_page_id" class="form-control"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($update_address_book_properties['address_type_page_id'] ?? '')) . '</select>
                                         </div>
                                     </div>
                                 </div>

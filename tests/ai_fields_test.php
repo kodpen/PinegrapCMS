@@ -240,7 +240,7 @@ function test_ai_fields_marker()
 
 	pg_assert_contains('data-pg-ai-mark="title"', $html, 'column');
 	pg_assert_contains('data-pg-ai-field="title"', $html, 'element');
-	pg_assert_contains('class="pg-ai-mark badge rounded-pill bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-normal d-inline-flex align-items-center gap-1"', $html, 'classes');
+	pg_assert_contains('class="pg-ai-mark badge rounded-pill bg-subtle-primary fg-emphasis-primary border border-subtle-primary fw-normal d-inline-flex align-items-center gap-1"', $html, 'classes');
 	pg_assert_contains('data-bs-toggle="tooltip" title="' . h(lang('Written with AI')) . '"', $html, 'tooltip');
 	pg_assert_contains('no-popover', $html, 'no popover');
 	pg_assert_contains('<span class="visually-hidden">' . h(lang('Written with AI')) . '</span>', $html, 'screen readers');
@@ -265,8 +265,8 @@ function test_ai_fields_input()
 // The marker sits beside the label, with or without the button.
 function test_ai_fields_label_row_with_marker()
 {
-	pg_assert_same('<div class="d-flex flex-wrap align-items-baseline column-gap-2"><label>A</label><span>M</span></div>', pg_ai_write_label_row('<label>A</label>', '', '<span>M</span>'), 'no button');
-	pg_assert_same('<div class="d-flex flex-wrap align-items-baseline justify-content-between column-gap-2"><div class="d-flex flex-wrap align-items-baseline column-gap-2"><label>A</label><span>M</span></div><button></button></div>', pg_ai_write_label_row('<label>A</label>', '<button></button>', '<span>M</span>'), 'with button');
+	pg_assert_same('<div class="d-flex flex-wrap align-items-baseline column-gap-3"><label>A</label><span>M</span></div>', pg_ai_write_label_row('<label>A</label>', '', '<span>M</span>'), 'no button');
+	pg_assert_same('<div class="d-flex flex-wrap align-items-baseline justify-content-between column-gap-3"><div class="d-flex flex-wrap align-items-baseline column-gap-3"><label>A</label><span>M</span></div><button></button></div>', pg_ai_write_label_row('<label>A</label>', '<button></button>', '<span>M</span>'), 'with button');
 	pg_assert_same('<label>A</label>', pg_ai_write_label_row('<label>A</label>', '', ''), 'neither');
 }
 

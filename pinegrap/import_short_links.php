@@ -147,43 +147,43 @@ pg_page_shell(
             <form name="form" action="import_short_links.php" method="post" enctype="multipart/form-data">
                 ' . get_token_field() . '
                 <div class="row">
-                    <div class="col-12 col-lg-8 col-xxl-9 order-1">
-                        <div class="card my-4">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . h(lang('CSV file')) . '</div>
+                    <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                        <div class="card my-7">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('CSV file')) . '</div>
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-12 col-md-8 my-2">
+                                    <div class="col-12 md:col-8 my-3">
                                         <label for="file" class="form-label">' . h(lang('File')) . '</label>
                                         <input type="file" id="file" name="file" class="form-control" accept=".csv,.txt,text/csv,text/plain" required>
                                     </div>
-                                    <div class="col-12 my-2">
-                                        <div class="form-check">
-                                            ' . $liveform->output_field(array('type' => 'checkbox', 'name' => 'replace', 'id' => 'replace', 'value' => '1', 'class' => 'form-check-input')) . '
-                                            <label class="form-check-label" for="replace">' . h(lang('Where a short link to an address already has the name, give it the new address and code from the file')) . '</label>
+                                    <div class="col-12 my-3">
+                                        <div class="form-field">
+                                            ' . $liveform->output_field(array('type' => 'checkbox', 'name' => 'replace', 'id' => 'replace', 'value' => '1', 'class' => 'check')) . '
+                                            <label class="" for="replace">' . h(lang('Where a short link to an address already has the name, give it the new address and code from the file')) . '</label>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="col-12 col-lg-4 col-xxl-3 order-2">
-                        <div class="card my-4 position-sticky" style="top:56px;">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . h(lang('File Format')) . '</div>
+                    <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                        <div class="card my-7 position-sticky" style="top:56px;">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('File Format')) . '</div>
                             <div class="card-body">
                                 <p>' . h(lang('One short link per line: the old address, where it sends visitors and, if you like, 301 (for good, the default), 302 (for now) or 0 (as a short link). A first line with column names is skipped.')) . '</p>
-                                <pre class="bg-body-tertiary border rounded p-2 small mb-3">from,to,code
+                                <pre class="bg-body-tertiary border rounded-4 p-3 small mb-5">from,to,code
 /eski-sayfa,/yeni-sayfa,301
 /blog/*,/yazilar/$1,301
 /hakkinda.html,/hakkimizda,</pre>
-                                <p class="small text-body-secondary mb-0">' . h(lang('Commas, semicolons or tabs can separate the columns. The short link list exports its links in this form.')) . '</p>
+                                <p class="small fg-secondary mb-0">' . h(lang('Commas, semicolons or tabs can separate the columns. The short link list exports its links in this form.')) . '</p>
                             </div>
                         </div>
                     </div>
                     <div class="col-12 order-3">
-                        <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                             <div class="container">
                                 <div class="btn-group flex-wrap justify-content-center">
-                                    <button type="submit" id="submit_import" name="submit_save" value="Import" class="btn my-1 btn-success"><i class="bi bi-upload me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Import Short Links')) . '</span></button>
+                                    <button type="submit" id="submit_import" name="submit_save" value="Import" class="btn my-1 btn-solid theme-success"><i class="bi bi-upload me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Import Short Links')) . '</span></button>
                                 </div>
                             </div>
                         </nav>

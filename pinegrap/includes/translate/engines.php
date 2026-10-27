@@ -185,15 +185,15 @@ function pg_tr_browser_pages_html()
     $rows = '';
 
     foreach (pg_tr_browser_pages() as $page) {
-        $rows .= '<div class="d-flex align-items-center gap-2 mt-1 flex-wrap">'
-            . '<span class="badge text-bg-light fw-normal">' . h($page[0]) . '</span>'
+        $rows .= '<div class="d-flex align-items-center gap-3 mt-1 flex-wrap">'
+            . '<span class="badge badge-subtle theme-secondary fw-normal">' . h($page[0]) . '</span>'
             . '<code class="user-select-all">' . h($page[1]) . '</code>'
             . '<button type="button" class="btn btn-sm btn-ghost btn-icon py-0 pg-tr-copy" data-copy="' . h($page[1]) . '" onclick="if (navigator.clipboard) { navigator.clipboard.writeText(this.getAttribute(\'data-copy\')); this.querySelector(\'i\').className = \'bi bi-clipboard-check\'; }" title="' . h(lang('Copy')) . '" aria-label="' . h(lang('Copy')) . '"><i class="bi bi-clipboard" aria-hidden="true"></i></button>'
-            . '<span class="text-body-secondary">' . h($page[2]) . '</span>'
+            . '<span class="fg-secondary">' . h($page[2]) . '</span>'
             . '</div>';
     }
 
-    return '<div class="small mt-2">' . h(lang('Copy the address into the browser\'s address bar; browsers do not open these pages from a link.')) . $rows . '</div>';
+    return '<div class="small mt-3">' . h(lang('Copy the address into the browser\'s address bar; browsers do not open these pages from a link.')) . $rows . '</div>';
 }
 
 /* ---------------------------------------------------------------------------

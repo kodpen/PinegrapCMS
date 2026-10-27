@@ -122,7 +122,7 @@ function pg_settings_modal_markup($user)
     }
 
     return '
-<div class="modal fade pg-settings-modal" id="pg_settings_modal" tabindex="-1" aria-labelledby="pg_settings_modal_title" aria-hidden="true"
+<dialog class="dialog pg-settings-modal dialog-xl lg-down:dialog-fullscreen pg-sm" id="pg_settings_modal" aria-labelledby="pg_settings_modal_title"
     data-pgurl="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_pane.php') . '"
     data-pganchors="' . h(json_encode($output_anchors)) . '"
     data-pghelp="' . h(json_encode($output_help)) . '"
@@ -133,8 +133,6 @@ function pg_settings_modal_markup($user)
     data-pgclose="' . h(lang('Close')) . '"
     data-pgfailed="' . h(lang('The request could not be completed. Please try again.')) . '"
     data-pgfilled="' . h(lang('A password manager filled in a field nobody was editing, so it has been put back.')) . '">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-lg-down">
-        <div class="modal-content pg-sm">
 
             <aside class="pg-sm-side" id="pg_settings_modal_side">
                 <div class="pg-sm-brand">
@@ -162,7 +160,7 @@ function pg_settings_modal_markup($user)
                     <a class="pg-sm-help no-popover' . (($output_help_start === '') ? ' d-none' : '') . '" id="pg_settings_modal_help"
                         href="' . h($output_help_start) . '" target="_blank" rel="noopener"
                         title="' . h(lang('Help for this section')) . ' (F1)" aria-label="' . h(lang('Help for this section')) . '"><i class="bi bi-question-circle" aria-hidden="true"></i></a>
-                    <button type="button" class="btn-close no-popover" data-bs-dismiss="modal" aria-label="' . h(lang('Close')) . '"></button>
+                    <button type="button" class="btn-close no-popover" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                 </header>
 
                 <!-- The only sign of life while a pane is on its way. -->
@@ -204,27 +202,25 @@ function pg_settings_modal_markup($user)
                     <div class="pg-sm-notice" id="pg_settings_modal_notice" role="status" aria-live="polite"></div>
 
                     <div id="pg_settings_modal_pane" class="pg-settings-body" tabindex="-1">
-                        <div class="pg-sm-start text-body-secondary text-center py-5">
-                            <i class="bi bi-sliders d-block fs-1 mb-2 opacity-50" aria-hidden="true"></i>
+                        <div class="pg-sm-start fg-secondary text-center py-12">
+                            <i class="bi bi-sliders d-block fs-4xl mb-3 opacity-50" aria-hidden="true"></i>
                             ' . h(lang('Choose a section.')) . '
                         </div>
                     </div>
                 </form>
 
                 <footer class="pg-sm-foot">
-                    <span class="pg-sm-meta small text-body-secondary" id="pg_settings_modal_meta"></span>
-                    <div class="ms-auto d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-sm btn-link link-body-emphasis text-decoration-none no-popover" data-bs-dismiss="modal">' . h(lang('Close')) . '</button>
-                        <button type="button" class="btn btn-success btn-sm" id="pg_settings_modal_save" disabled="disabled">
-                            <i class="bi bi-save me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span>
+                    <span class="pg-sm-meta small fg-secondary" id="pg_settings_modal_meta"></span>
+                    <div class="ms-auto d-flex align-items-center gap-3">
+                        <button type="button" class="btn btn-sm btn-link pg-link-body-emphasis text-decoration-none no-popover" data-bs-dismiss="dialog">' . h(lang('Close')) . '</button>
+                        <button type="button" class="btn btn-solid theme-success btn-sm" id="pg_settings_modal_save" disabled="disabled">
+                            <i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span>
                         </button>
                     </div>
                 </footer>
             </section>
 
-        </div>
-    </div>
-</div>
+</dialog>
 
 <!--
     Where a card\'s own dialog goes. A Bootstrap modal nested inside another

@@ -605,19 +605,19 @@ function pg_carrier_api_settings_fields($carrier, $legacy_set)
 
     if (!pg_connect_schema_ready()) {
         $html .= '
-            <div class="col-12"><div class="alert alert-warning mb-0">' . lang('The database has not been upgraded yet. Run the software update first.') . '</div></div>';
+            <div class="col-12"><div class="alert theme-warning mb-0">' . lang('The database has not been upgraded yet. Run the software update first.') . '</div></div>';
     } elseif (!pg_connect_can_seal()) {
         $html .= '
-            <div class="col-12"><div class="alert alert-warning mb-0">' . lang('This site has no encryption key, so it cannot keep the client secret of a carrier.') . '</div></div>';
+            <div class="col-12"><div class="alert theme-warning mb-0">' . lang('This site has no encryption key, so it cannot keep the client secret of a carrier.') . '</div></div>';
     } elseif ($legacy_set && !pg_carrier_api_ready($carrier)) {
         $html .= '
-            <div class="col-12"><div class="alert alert-warning mb-0">' . lang(array(
+            <div class="col-12"><div class="alert theme-warning mb-0">' . lang(array(
                 'string' => '{var:1} retired the sign-in with the old credentials. Real-time {var:1} information stays off until the new credentials are entered here. The old values are kept but no longer used.',
                 'vars'   => array(h($definition['label'])))) . '</div></div>';
     }
 
     $html .= '
-            <div class="col-12 form-text mt-2">' . lang(array(
+            <div class="col-12 form-text mt-3">' . lang(array(
                 'string' => 'Create an application at {var:1} with these APIs: {var:2}. Then enter its {var:3} and {var:4} here.',
                 'vars'   => array(
                     '<a href="' . h($definition['portal']) . '" target="_blank" rel="noopener">' . h(preg_replace('#^https://|/$#', '', $definition['portal'])) . '</a>',
@@ -634,7 +634,7 @@ function pg_carrier_api_settings_fields($carrier, $legacy_set)
             </div>
             <div class="pg-f-md">
                 <label for="' . h($name) . 'environment" class="form-label">' . lang('Environment') . '</label>
-                <select name="' . h($name) . 'environment" id="' . h($name) . 'environment" class="form-select">
+                <select name="' . h($name) . 'environment" id="' . h($name) . 'environment" class="form-control">
                     <option value="production"' . (($app['environment'] === 'production') ? ' selected="selected"' : '') . '>' . lang('Production') . '</option>
                     <option value="test"' . (($app['environment'] === 'test') ? ' selected="selected"' : '') . '>' . lang('Test environment') . '</option>
                 </select>
@@ -653,7 +653,7 @@ function pg_carrier_api_test_button($carrier)
 {
     return '
             <div class="col-12">
-                <button type="submit" name="carrier_api_test" value="' . h($carrier) . '" class="btn btn-sm btn-outline-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
+                <button type="submit" name="carrier_api_test" value="' . h($carrier) . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
             </div>';
 }
 

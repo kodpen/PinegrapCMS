@@ -270,7 +270,7 @@ if ($ads) {
         $output_rows .=
             '<tr>
                 <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                 </td>
                 <td class="chart_label">' . h($ad['ad_name']) . '</td>
                 <td class="chart_label">' . h($ad['ad_region_name']) . '</td>
@@ -298,27 +298,27 @@ print
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1 " href="add_ad.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                            <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_ad.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <div class="pg-toolbar-grow"></div>
                             ' . pg_list_sort_menu('view_ads.php', $sort_columns, $sort_levels, $sort_default) . '
                         </nav>
                     </div>
-                    <div class="col-12 col-sm-12 col-md-6 col-xl-3 ">
-                        <div class="row justify-content-center justify-content-md-end">
+                    <div class="col-12 sm:col-12 md:col-6 xl:col-3 ">
+                        <div class="row justify-content-center md:justify-content-end">
                             <form id="search_form" action="view_ads.php" method="get" class="search_form col-auto">
                                 <div class="input-group input-group-sm">
                                     <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
-                                    <select id="ad_region_id" name="ad_region_id" class="form-select mt-1 mb-1" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')"><option value="[All]">[' . lang('All') . '] (' . pg_format_number($all_ads, 0) . ')</option>' . $output_ad_region_options . '</select>
+                                    <select id="ad_region_id" name="ad_region_id" class="form-control mt-1 mb-1" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')"><option value="[All]">[' . lang('All') . '] (' . pg_format_number($all_ads, 0) . ')</option>' . $output_ad_region_options . '</select>
                                 </div>
                             </form>
                         </div>
                     </div>
                 </div>
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <table class="chart table-hover table" style="width:100%;display:none">
                             <thead>

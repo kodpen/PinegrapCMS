@@ -147,9 +147,9 @@ foreach (ws_team_members() as $person) {
 
 $kind_radio = function ($value, $label, $help) use ($template) {
     return '
-        <div class="form-check">
-            <input class="form-check-input" type="radio" name="kind" id="ws_tpl_kind_' . h($value) . '" value="' . h($value) . '"' . (($template['kind'] === $value) ? ' checked' : '') . '>
-            <label class="form-check-label" for="ws_tpl_kind_' . h($value) . '">' . h($label) . '</label>
+        <div class="form-field">
+            <input class="radio" type="radio" name="kind" id="ws_tpl_kind_' . h($value) . '" value="' . h($value) . '"' . (($template['kind'] === $value) ? ' checked' : '') . '>
+            <label class="" for="ws_tpl_kind_' . h($value) . '">' . h($label) . '</label>
             <div class="form-text mt-0">' . h($help) . '</div>
         </div>';
 };
@@ -195,29 +195,29 @@ pg_page_shell([
 <div class="ws-shell-main">
     ' . $liveform->output_errors() . '
     ' . $liveform->output_notices() . '
-    ' . (($draft_from !== '') ? '<div class="alert alert-info small">' . h(lang(array('string' => 'A draft made from #{var:1}: its open tasks, the notes shared in it, its summary and its pinned message. Nothing is kept until it is saved.', 'vars' => $draft_from))) . '</div>' : '') . '
-    <nav id="button_bar" class="pg-toolbar navigation mb-3" aria-label="' . h(lang('Button Bar')) . '">
+    ' . (($draft_from !== '') ? '<div class="alert theme-info small">' . h(lang(array('string' => 'A draft made from #{var:1}: its open tasks, the notes shared in it, its summary and its pinned message. Nothing is kept until it is saved.', 'vars' => $draft_from))) . '</div>' : '') . '
+    <nav id="button_bar" class="pg-toolbar navigation mb-5" aria-label="' . h(lang('Button Bar')) . '">
         <a class="btn btn-sm btn-ghost" href="' . h($settings_url) . '"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>' . h(lang('Channel templates')) . '</a>
     </nav>
-    <form method="post" action="' . h($self_url) . '" id="ws-template-form" class="row g-4">
+    <form method="post" action="' . h($self_url) . '" id="ws-template-form" class="row g-7">
         ' . get_token_field() . '
         <input type="hidden" name="id" value="' . (int) $template['id'] . '">
         <input type="hidden" name="body" id="ws-template-body" value="' . h($body_json) . '">
 
-        <div class="col-12 col-lg-8 col-xxl-9 order-1">
-            <div class="card mb-4">
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+            <div class="card mb-7">
                 <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-card-heading me-1" aria-hidden="true"></i>' . h(lang('The template')) . '</h2></div>
                 <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-12 col-md-6">
+                    <div class="row g-5">
+                        <div class="col-12 md:col-6">
                             <label class="form-label" for="ws_tpl_name">' . h(lang('Name')) . '</label>
                             <input class="form-control" type="text" name="name" id="ws_tpl_name" maxlength="100" required value="' . h($template['name']) . '">
                         </div>
-                        <div class="col-12 col-md-6">
+                        <div class="col-12 md:col-6">
                             <label class="form-label" for="ws_tpl_description">' . h(lang('Description')) . '</label>
                             <input class="form-control" type="text" name="description" id="ws_tpl_description" maxlength="255" value="' . h($template['description']) . '">
                         </div>
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 md:col-4">
                             <label class="form-label" for="ws_tpl_icon">' . h(lang('Icon')) . '</label>
                             <div class="input-group">
                                 <span class="input-group-text"><i class="bi ' . h($icon) . '" id="ws_tpl_icon_preview" aria-hidden="true"></i></span>
@@ -225,13 +225,13 @@ pg_page_shell([
                             </div>
                             <div class="form-text">' . h(lang('A Bootstrap Icons class, such as bi-briefcase.')) . ' ' . h(lang('A channel made from the template takes the icon only when it is one of the channel icons.')) . '</div>
                         </div>
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 md:col-4">
                             <label class="form-label" for="ws_tpl_color">' . h(lang('Colour')) . '</label>
-                            <select class="form-select" name="color" id="ws_tpl_color">' . $color_options . '</select>
+                            <select class="form-control" name="color" id="ws_tpl_color">' . $color_options . '</select>
                         </div>
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 md:col-4">
                             <label class="form-label" for="ws_tpl_department">' . h(lang('Department')) . '</label>
-                            <select class="form-select" name="department_id" id="ws_tpl_department">' . $department_options . '</select>
+                            <select class="form-control" name="department_id" id="ws_tpl_department">' . $department_options . '</select>
                             <div class="form-text">' . h(lang('Suggested for the channel; a task given to the lead of the department goes to its lead.')) . '</div>
                         </div>
                         <div class="col-12">
@@ -243,15 +243,15 @@ pg_page_shell([
                 </div>
             </div>
 
-            <div class="card mb-4">
+            <div class="card mb-7">
                 <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-chat-left-text me-1" aria-hidden="true"></i>' . h(lang('Texts of the channel')) . '</h2></div>
                 <div class="card-body">
-                    <div class="mb-3">
+                    <div class="mb-5">
                         <label class="form-label" for="ws_tpl_summary">' . h(lang('Summary')) . '</label>
                         <textarea class="form-control" name="summary" id="ws_tpl_summary" rows="4" data-ws-rich>' . h($template['summary']) . '</textarea>
                         <div class="form-text">' . h(lang('Written into the channel\'s summary when it has none yet.')) . '</div>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-5">
                         <label class="form-label" for="ws_tpl_pinned">' . h(lang('Pinned message')) . '</label>
                         <textarea class="form-control" name="pinned" id="ws_tpl_pinned" rows="3" data-ws-rich>' . h($template['pinned']) . '</textarea>
                         <div class="form-text">' . h(lang('Posted and pinned to the top of the channel when nothing is pinned there yet.')) . '</div>
@@ -264,49 +264,49 @@ pg_page_shell([
                 </div>
             </div>
 
-            <div class="card mb-4">
-                <div class="card-header d-flex align-items-center gap-2">
+            <div class="card mb-7">
+                <div class="card-header d-flex align-items-center gap-3">
                     <h2 class="h6 mb-0 ws-grow"><i class="bi bi-check2-square me-1" aria-hidden="true"></i>' . h(lang('Tasks')) . '</h2>
                 </div>
                 <div class="card-body">
-                    <p class="small text-body-secondary">' . h(lang('Days are counted in calendar days from the day the template is applied; 0 is that day.')) . '</p>
+                    <p class="small fg-secondary">' . h(lang('Days are counted in calendar days from the day the template is applied; 0 is that day.')) . '</p>
                     <div id="ws-template-tasks" class="ws-tpl-list"><div class="ws-empty">' . h(lang('Loading…')) . '</div></div>
                 </div>
             </div>
 
-            <div class="card mb-4">
-                <div class="card-header d-flex align-items-center gap-2">
+            <div class="card mb-7">
+                <div class="card-header d-flex align-items-center gap-3">
                     <h2 class="h6 mb-0 ws-grow"><i class="bi bi-journal-text me-1" aria-hidden="true"></i>' . h(lang('Notes')) . '</h2>
                 </div>
                 <div class="card-body">
-                    <p class="small text-body-secondary">' . h(lang('Each note is written as the notes of whoever applies the template and shared in the channel.')) . '</p>
+                    <p class="small fg-secondary">' . h(lang('Each note is written as the notes of whoever applies the template and shared in the channel.')) . '</p>
                     <div id="ws-template-notes" class="ws-tpl-list"><div class="ws-empty">' . h(lang('Loading…')) . '</div></div>
                 </div>
             </div>
         </div>
 
-        <div class="col-12 col-lg-4 col-xxl-3 order-2">
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
             <div class="position-sticky" style="top:3.3rem;">
-                <div class="card mb-4">
+                <div class="card mb-7">
                     <div class="card-body">
                         <div class="ws-tpl-row border-0 p-0">
                             <span class="ws-tpl-icon"' . (($hex !== '') ? ' style="background:' . h($hex) . '"' : '') . '><i class="bi ' . h($icon) . '" aria-hidden="true"></i></span>
                             <div class="ws-grow">
                                 <div class="fw-semibold">' . h(($template['name'] !== '') ? $template['name'] : lang('New channel template')) . '</div>
-                                <div class="small text-body-secondary">' . h($counts) . '</div>
+                                <div class="small fg-secondary">' . h($counts) . '</div>
                             </div>
                         </div>
-                        ' . (!$is_new ? '<hr><div class="small text-body-secondary">' . h(lang(array('string' => 'used {var:1} times', 'vars' => (int) $template['uses']))) . '</div>' : '') . '
-                        ' . (!empty($template['archived']) ? '<div class="mt-2"><span class="badge text-bg-secondary">' . h(lang('In the archive')) . '</span></div>' : '') . '
+                        ' . (!$is_new ? '<hr><div class="small fg-secondary">' . h(lang(array('string' => 'used {var:1} times', 'vars' => (int) $template['uses']))) . '</div>' : '') . '
+                        ' . (!empty($template['archived']) ? '<div class="mt-3"><span class="badge theme-secondary">' . h(lang('In the archive')) . '</span></div>' : '') . '
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="col-12 order-3">
-            <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+            <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                 <a class="btn btn-sm btn-ghost" href="' . h($settings_url) . '">' . h(lang('Cancel')) . '</a>
-                <button type="submit" name="submit_save" value="Save" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save the template')) . '</button>
+                <button type="submit" name="submit_save" value="Save" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save the template')) . '</button>
             </nav>
         </div>
     </form>

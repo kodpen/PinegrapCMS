@@ -43,14 +43,14 @@ while ($row = mysqli_fetch_assoc($result)) {
         $number_of_contacts = get_number_of_contacts($id);
         
         $output_add_to_contact_groups .= '
-        <div class="form-check">
-            <input type="checkbox" name="add_to_contact_groups" id="add_to_contact_group_' . $id . '" value="' . $id . '" class="checkbox form-check-input multiselect-checkbox" />
-            <label class="form-check-label" for="add_to_contact_group_' . $id . '">' . h($name) . ' (' . pg_format_number($number_of_contacts, 0) . ')</label>    
+        <div class="form-field">
+            <input type="checkbox" name="add_to_contact_groups" id="add_to_contact_group_' . $id . '" value="' . $id . '" class="checkbox check multiselect-checkbox" />
+            <label class="" for="add_to_contact_group_' . $id . '">' . h($name) . ' (' . pg_format_number($number_of_contacts, 0) . ')</label>    
         </div>';
         $output_remove_from_contact_groups .= '
-        <div class="form-check">
-        <input type="checkbox" name="remove_from_contact_groups" id="remove_from_contact_group_' . $id . '" value="' . $id . '" class="checkbox form-check-input multiselect-checkbox" />
-            <label class="form-check-label" for="remove_from_contact_group_' . $id . '">' . h($name) . ' (' . pg_format_number($number_of_contacts, 0) . ')</label>    
+        <div class="form-field">
+        <input type="checkbox" name="remove_from_contact_groups" id="remove_from_contact_group_' . $id . '" value="' . $id . '" class="checkbox check multiselect-checkbox" />
+            <label class="" for="remove_from_contact_group_' . $id . '">' . h($name) . ' (' . pg_format_number($number_of_contacts, 0) . ')</label>    
         </div>';
     }
 }
@@ -99,12 +99,12 @@ output_header_secure(array('title'=>lang('Organize Contacts'),'icon'=>'contact')
     <div class="container-fluid">
         <span class="navbar-text me-auto">' . lang('Organize Contacts') . '</span>
         <ul class="navbar-nav ms-auto">
-            <li class="nav-item dropdown no-popover"  title="' . lang('Software Theme') . '">
-                <button class="nav-link nav-link-sm position-relative dropdown-toggle dropdown-menu-right d-none" data-bs-toggle="dropdown" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
-                <ul aria-labelledby="bd-theme" class="dropdown-menu shadow dropdown-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-dropdown-min-width: 8rem;">
-                    <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-2"></i>' . lang('Light') . '</button></li>
-                    <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-2"></i>' . lang('Dark') . '</button></li>
-                    <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-2"></i>' . lang('Auto') . '</button></li>
+            <li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
+                <button class="nav-link nav-link-sm position-relative pg-menu-caret dropdown-menu-right d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
+                <ul aria-labelledby="bd-theme" class="menu shadow pg-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-menu-min-width: 8rem;">
+                    <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i>' . lang('Light') . '</button></li>
+                    <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i>' . lang('Dark') . '</button></li>
+                    <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-3"></i>' . lang('Auto') . '</button></li>
                 </ul>
             </li>
             <li class="nav-item">
@@ -119,13 +119,13 @@ output_header_secure(array('title'=>lang('Organize Contacts'),'icon'=>'contact')
 <main id="content" class="container-fluid">
 	<form name="form">
 		<div class="row">
-            <div class="col-xs-12  col-sm-12 col-md-8 col-lg-6 card-group">
-                <div class="card mt-1 mb-2 multiselect-checkbox-container">
+            <div class="col-xs-12  sm:col-12 md:col-8 lg:col-6 card-group">
+                <div class="card mt-1 mb-3 multiselect-checkbox-container">
                     <div class="card-header bg-reset border-0">' . lang(array('string'=>'Add to Contact Groups') ) . '</div>
                     <div class="card-header border-0 bg-reset">
-                        <div class="form-check form-switch">
-                            <input id="multiselect-checkbox-checker-0" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                            <label for="multiselect-checkbox-checker-0" class="form-check-label">' . lang('Select All') . '</label>
+                        <div class="form-field">
+                            <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox"></div>
+                            <label for="multiselect-checkbox-checker-0" class="">' . lang('Select All') . '</label>
                         </div>
                     </div>
                     <div class="card-body overflow-auto" style="max-height:300px">
@@ -133,13 +133,13 @@ output_header_secure(array('title'=>lang('Organize Contacts'),'icon'=>'contact')
                     </div>
                 </div>
             </div>
-            <div class="col-xs-12  col-sm-12 col-md-8 col-lg-6 card-group">
-                <div class="card mt-1 mb-2 multiselect-checkbox-container">
+            <div class="col-xs-12  sm:col-12 md:col-8 lg:col-6 card-group">
+                <div class="card mt-1 mb-3 multiselect-checkbox-container">
                     <div class="card-header bg-reset  border-0">' . lang(array('string'=>'Remove from Contact Groups') ) . '</div>
                     <div class="card-header border-0 bg-reset">
-                        <div class="form-check form-switch">
-                            <input id="multiselect-checkbox-checker-1" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                            <label for="multiselect-checkbox-checker-1" class="form-check-label">' . lang('Select All') . '</label>
+                        <div class="form-field">
+                            <div class="switch"><input id="multiselect-checkbox-checker-1" class="multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox"></div>
+                            <label for="multiselect-checkbox-checker-1" class="">' . lang('Select All') . '</label>
                         </div>
                     </div>
                     <div class="card-body overflow-auto" style="max-height:300px">
@@ -151,7 +151,7 @@ output_header_secure(array('title'=>lang('Organize Contacts'),'icon'=>'contact')
 		<nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
 			<div class="container">
 				<div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
-					<button type="button" name="submit_save" value="Organize Contact(s)" class="btn mb-1 mt-1  btn-primary submit-primary" onclick="select_groups()"><span class="material-icons me-2">edit</span>' . lang(array('string'=>'Organize Contact(s)') ) . '</button>
+					<button type="button" name="submit_save" value="Organize Contact(s)" class="btn mb-1 mt-1  btn-solid theme-primary submit-primary" onclick="select_groups()"><span class="material-icons me-3">edit</span>' . lang(array('string'=>'Organize Contact(s)') ) . '</button>
 				</div>
 			</div>
 		</nav>

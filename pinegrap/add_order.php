@@ -371,7 +371,7 @@ echo
         )
     ) . '
 
-    <main class="container-fluid mb-5" id="content">
+    <main class="container-fluid mb-12" id="content">
         ' . $liveform->get_messages() . '
 
         <div class="pg-sale" id="pg_sale" data-mode="' . $default_mode . '">
@@ -392,27 +392,27 @@ echo
             <div class="pg-toolbar" id="button_bar">
                 <button type="button" class="btn btn-sm btn-ghost no-submit" id="pg_sale_recent_btn"><i class="bi bi-clock-history" aria-hidden="true"></i><span class="pg-sale-lbl">' . lang('Recent sales') . '</span></button>
                 <button type="button" class="btn btn-sm btn-ghost no-submit" id="pg_sale_clear_btn"' . (($totals['count'] > 0) ? '' : ' disabled') . '><i class="bi bi-cart-x" aria-hidden="true"></i><span class="pg-sale-lbl">' . lang('Empty the cart') . '</span></button>
-                <div class="pg-toolbar-grow small text-body-secondary text-truncate" id="pg_sale_info"></div>'
+                <div class="pg-toolbar-grow small fg-secondary text-truncate" id="pg_sale_info"></div>'
                 . ($can_erp ? '
                 <div class="pg-sale-switch" role="group" aria-label="' . h(lang('View')) . '">
                     <button type="button" class="btn btn-sm btn-ghost no-submit" data-sale-mode="kasa" title="' . h(lang('Till view: prices with VAT, change, large controls')) . '"><i class="bi bi-shop" aria-hidden="true"></i><span class="pg-sale-lbl">' . lang('Till') . '</span></button>
                     <button type="button" class="btn btn-sm btn-ghost no-submit" data-sale-mode="belge" title="' . h(lang('Document view: VAT breakdown, account and due date')) . '"><i class="bi bi-journal-text" aria-hidden="true"></i><span class="pg-sale-lbl">' . lang('Document') . '</span></button>
                 </div>' : '') . '
-                <div class="dropdown">
-                    <button type="button" class="btn btn-sm btn-ghost no-submit" data-bs-toggle="dropdown" aria-expanded="false" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><button type="button" class="dropdown-item link-body-emphasis no-submit" data-sale-keys><i class="bi bi-keyboard me-2" aria-hidden="true"></i>' . lang('Keyboard shortcuts') . '</button></li>
-                        <li><button type="button" class="dropdown-item link-body-emphasis d-flex align-items-center no-submit" data-sale-sound><i class="bi bi-volume-up me-2" aria-hidden="true"></i>' . lang('Error sound') . '<i class="bi bi-check2 ms-auto ps-3" id="pg_sale_sound_tick" aria-hidden="true"></i></button></li>'
+                <div class="pg-menu-wrap">
+                    <button type="button" class="btn btn-sm btn-ghost no-submit" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                    <ul class="menu pg-menu-end">
+                        <li><button type="button" class="menu-item pg-link-body-emphasis no-submit" data-sale-keys><i class="bi bi-keyboard me-3" aria-hidden="true"></i>' . lang('Keyboard shortcuts') . '</button></li>
+                        <li><button type="button" class="menu-item pg-link-body-emphasis d-flex align-items-center no-submit" data-sale-sound><i class="bi bi-volume-up me-3" aria-hidden="true"></i>' . lang('Error sound') . '<i class="bi bi-check2 ms-auto ps-5" id="pg_sale_sound_tick" aria-hidden="true"></i></button></li>'
                         . ($output_can_settings ? '
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item link-body-emphasis" href="' . h(pg_settings_link('commerce', 'pgset-erp')) . '"><i class="bi bi-gear me-2" aria-hidden="true"></i>' . lang('Sales settings (ERP card)') . '</a></li>' : '') . '
+                        <li><hr class="menu-divider"></li>
+                        <li><a class="menu-item pg-link-body-emphasis" href="' . h(pg_settings_link('commerce', 'pgset-erp')) . '"><i class="bi bi-gear me-3" aria-hidden="true"></i>' . lang('Sales settings (ERP card)') . '</a></li>' : '') . '
                     </ul>
                 </div>
             </div>
 
-            <div class="row g-3">
+            <div class="row g-5">
 
-                <section class="col-12 col-lg-8 col-xxl-9 order-1" aria-label="' . h(lang('Sale')) . '">
+                <section class="col-12 lg:col-8 2xl:col-9 order-1" aria-label="' . h(lang('Sale')) . '">
                     <div class="card pg-sale-entry">
                         <div class="card-body">
                             <div class="pg-sale-field">
@@ -424,7 +424,7 @@ echo
                                         aria-describedby="pg_sale_product_foot"
                                         placeholder="' . h(lang('Scan a barcode or search for a product')) . '">
                                     <label class="pg-sale-mult" title="' . h(lang('Quantity for the next product')) . '"><span aria-hidden="true">×</span><input type="number" id="pg_sale_qty" min="1" max="9999" value="1" aria-label="' . h(lang('Quantity for the next product')) . '"></label>
-                                    <button type="button" class="btn btn-primary no-submit" id="pg_sale_add">' . lang('Add') . '</button>
+                                    <button type="button" class="btn btn-solid theme-primary no-submit" id="pg_sale_add">' . lang('Add') . '</button>
                                 </div>
                                 <div class="pg-sale-foot" id="pg_sale_product_foot"></div>
                                 <div class="pg-sale-results" id="pg_sale_results" role="listbox" aria-label="' . h(lang('Products')) . '" hidden></div>
@@ -436,10 +436,10 @@ echo
                         </div>
                     </div>
 
-                    <div class="card pg-sale-cart mt-3">
+                    <div class="card pg-sale-cart mt-5">
                         <div class="card-header">
-                            <h2 class="pg-sale-ch text-primary">' . lang('Cart') . '</h2>
-                            <span class="small text-body-secondary" id="pg_sale_count">' . (($totals['count'] > 0) ? h(lang(array('string' => '{var:1} lines · {var:2} units', 'vars' => array($totals['count'], $totals['units'])))) : '') . '</span>
+                            <h2 class="pg-sale-ch fg-primary">' . lang('Cart') . '</h2>
+                            <span class="small fg-secondary" id="pg_sale_count">' . (($totals['count'] > 0) ? h(lang(array('string' => '{var:1} lines · {var:2} units', 'vars' => array($totals['count'], $totals['units'])))) : '') . '</span>
                         </div>
                         <div class="table-responsive">
                             <table class="table mb-0 pg-sale-table">
@@ -473,11 +473,11 @@ echo
 
                     Stickiness sits on the box inside the column, not on the column.
                 -->
-                <aside class="col-12 col-lg-4 col-xxl-3 order-2" aria-label="' . h(lang('Summary and payment')) . '">
+                <aside class="col-12 lg:col-4 2xl:col-3 order-2" aria-label="' . h(lang('Summary and payment')) . '">
                     <div class="pg-sale-status" id="pg_sale_status">
                         <div id="pg_sale_done" hidden></div>
                         <div class="card" id="pg_sale_summary_card">
-                            <div class="card-header pg-belge"><h2 class="pg-sale-ch text-primary">' . lang('Summary') . '</h2></div>
+                            <div class="card-header pg-belge"><h2 class="pg-sale-ch fg-primary">' . lang('Summary') . '</h2></div>
                             <div id="pg_sale_summary">' . local_sale_render_summary($totals) . '</div>
                         </div>
                         ' . local_sale_render_pay($user) . '
@@ -485,10 +485,10 @@ echo
                     </div>
                 </aside>
 
-                <div class="col-12 order-3 position-sticky d-lg-none pg-sale-savebar" id="pg_sale_savebar" hidden>
+                <div class="col-12 order-3 position-sticky lg:d-none pg-sale-savebar" id="pg_sale_savebar" hidden>
                     <div class="pg-sale-savebar-in">
                         <div class="pg-sale-savebar-text"><b id="pg_sale_bar_total"></b><small id="pg_sale_bar_how"></small></div>
-                        <button type="button" class="btn btn-success rounded-pill px-3 no-submit" id="pg_sale_bar_go"><i class="bi bi-check2-circle me-1" aria-hidden="true"></i>' . lang('Complete the sale') . '</button>
+                        <button type="button" class="btn btn-solid theme-success rounded-pill px-5 no-submit" id="pg_sale_bar_go"><i class="bi bi-check2-circle me-1" aria-hidden="true"></i>' . lang('Complete the sale') . '</button>
                     </div>
                 </div>
 
@@ -497,23 +497,21 @@ echo
             <div class="visually-hidden" aria-live="polite" aria-atomic="true" id="pg_sale_live"></div>
         </div>
 
-        <div class="offcanvas offcanvas-end pg-sale-recent" tabindex="-1" id="pg_sale_recent" aria-labelledby="pg_sale_recent_title">
-            <div class="offcanvas-header border-bottom">
-                <h5 class="offcanvas-title" id="pg_sale_recent_title">' . lang('Recent Local Sales') . '</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="' . h(lang('Close')) . '"></button>
+        <dialog class="drawer drawer-end pg-sale-recent" id="pg_sale_recent" aria-labelledby="pg_sale_recent_title">
+            <div class="drawer-header border-bottom">
+                <h5 class="drawer-title" id="pg_sale_recent_title">' . lang('Recent Local Sales') . '</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
             </div>
-            <div class="offcanvas-body p-0" id="pg_sale_recent_body"></div>
-            <div class="border-top px-3 py-2 small"><a href="view_orders.php" class="link-body-emphasis">' . lang('All orders') . ' <i class="bi bi-arrow-right" aria-hidden="true"></i></a></div>
-        </div>
+            <div class="drawer-body p-0" id="pg_sale_recent_body"></div>
+            <div class="border-top px-5 py-3 small"><a href="view_orders.php" class="pg-link-body-emphasis">' . lang('All orders') . ' <i class="bi bi-arrow-right" aria-hidden="true"></i></a></div>
+        </dialog>
 
-        <div class="modal fade" id="pg_sale_keys" tabindex="-1" aria-labelledby="pg_sale_keys_title" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="pg_sale_keys_title">' . lang('Keyboard shortcuts') . '</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . h(lang('Close')) . '"></button>
+        <dialog class="dialog" id="pg_sale_keys" aria-labelledby="pg_sale_keys_title">
+                    <div class="dialog-header">
+                        <h5 class="dialog-title" id="pg_sale_keys_title">' . lang('Keyboard shortcuts') . '</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
-                    <div class="modal-body">
+                    <div class="dialog-body">
                         <dl class="pg-sale-keys">
                             <dt><kbd>F2</kbd></dt><dd>' . lang('Go to the product box') . '</dd>
                             <dt><kbd>F4</kbd></dt><dd>' . lang('Pick the customer') . '</dd>
@@ -523,68 +521,60 @@ echo
                             <dt><kbd>Enter</kbd></dt><dd>' . lang('Start a new sale once one is complete') . '</dd>
                         </dl>
                     </div>
-                </div>
-            </div>
-        </div>
+        </dialog>
 
-        <div class="modal fade" id="pg_sale_clear" tabindex="-1" aria-labelledby="pg_sale_clear_title" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered modal-sm">
-                <div class="modal-content">
-                    <div class="modal-header"><h5 class="modal-title" id="pg_sale_clear_title">' . lang('Empty the cart?') . '</h5></div>
-                    <div class="modal-body small">' . lang('Every line leaves the cart. Nothing has left the stock yet, so nothing is put back.') . '</div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-sm btn-ghost no-submit" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
-                        <button type="button" class="btn btn-sm btn-outline-warning no-submit" id="pg_sale_clear_go"><i class="bi bi-cart-x me-1" aria-hidden="true"></i>' . lang('Empty the cart') . '</button>
+        <dialog class="dialog dialog-sm" id="pg_sale_clear" aria-labelledby="pg_sale_clear_title">
+                    <div class="dialog-header"><h5 class="dialog-title" id="pg_sale_clear_title">' . lang('Empty the cart?') . '</h5></div>
+                    <div class="dialog-body small">' . lang('Every line leaves the cart. Nothing has left the stock yet, so nothing is put back.') . '</div>
+                    <div class="dialog-footer">
+                        <button type="button" class="btn btn-sm btn-ghost no-submit" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                        <button type="button" class="btn btn-sm btn-outline theme-warning no-submit" id="pg_sale_clear_go"><i class="bi bi-cart-x me-1" aria-hidden="true"></i>' . lang('Empty the cart') . '</button>
                     </div>
-                </div>
-            </div>
-        </div>'
+        </dialog>'
 
         . ($can_erp ? '
-        <div class="modal fade" id="pg_sale_account_modal" tabindex="-1" aria-labelledby="pg_sale_account_title" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <form class="modal-content disable_shortcut" id="pg_sale_account_form" data-pg-no-curtain novalidate>
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="pg_sale_account_title">' . lang('New account') . '</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' . h(lang('Close')) . '"></button>
+        <dialog class="dialog" id="pg_sale_account_modal" aria-labelledby="pg_sale_account_title">
+                <form class="d-contents disable_shortcut" id="pg_sale_account_form" data-pg-no-curtain novalidate>
+                    <div class="dialog-header">
+                        <h5 class="dialog-title" id="pg_sale_account_title">' . lang('New account') . '</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
-                    <div class="modal-body">
-                        <p class="small text-body-secondary">' . lang('Only the name is needed. Whatever the buyer does not give now, the ERP manager completes on the card later.') . '</p>
-                        <div class="btn-group btn-group-sm mb-3" role="group" aria-label="' . h(lang('Taxpayer type')) . '">
+                    <div class="dialog-body">
+                        <p class="small fg-secondary">' . lang('Only the name is needed. Whatever the buyer does not give now, the ERP manager completes on the card later.') . '</p>
+                        <div class="btn-group btn-group-sm mb-5" role="group" aria-label="' . h(lang('Taxpayer type')) . '">
                             <input type="radio" class="btn-check" name="is_person" id="pg_sale_acc_person" value="1" checked>
-                            <label class="btn btn-outline-secondary" for="pg_sale_acc_person"><i class="bi bi-person me-1" aria-hidden="true"></i>' . lang('Person') . '</label>
+                            <label class="btn btn-outline theme-secondary" for="pg_sale_acc_person"><i class="bi bi-person me-1" aria-hidden="true"></i>' . lang('Person') . '</label>
                             <input type="radio" class="btn-check" name="is_person" id="pg_sale_acc_company" value="0">
-                            <label class="btn btn-outline-secondary" for="pg_sale_acc_company"><i class="bi bi-building me-1" aria-hidden="true"></i>' . lang('Company') . '</label>
+                            <label class="btn btn-outline theme-secondary" for="pg_sale_acc_company"><i class="bi bi-building me-1" aria-hidden="true"></i>' . lang('Company') . '</label>
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-5">
                             <label class="form-label" for="pg_sale_acc_title">' . lang('Name and surname, or company name') . '</label>
                             <input type="text" class="form-control" id="pg_sale_acc_title" name="title" maxlength="255" required autocomplete="off">
                             <div class="invalid-feedback" data-sale-error="title"></div>
                         </div>
-                        <div class="row g-2">
-                            <div class="col-sm-6">
+                        <div class="row g-3">
+                            <div class="sm:col-6">
                                 <label class="form-label" for="pg_sale_acc_phone">' . lang('Phone') . '</label>
                                 <input type="tel" class="form-control" id="pg_sale_acc_phone" name="phone" maxlength="50" autocomplete="off">
                             </div>
-                            <div class="col-sm-6">
+                            <div class="sm:col-6">
                                 <label class="form-label" for="pg_sale_acc_email">' . lang('Email') . '</label>
                                 <input type="email" class="form-control" id="pg_sale_acc_email" name="email" maxlength="255" autocomplete="off">
                                 <div class="invalid-feedback" data-sale-error="email"></div>
                             </div>
                         </div>
-                        <div class="mt-3">
-                            <label class="form-label" for="pg_sale_acc_tax">' . h((pg_erp_store_country() === 'TR') ? lang('VKN / TCKN') : lang('Tax number')) . ' <span class="text-body-secondary fw-normal">(' . lang('optional') . ')</span></label>
+                        <div class="mt-5">
+                            <label class="form-label" for="pg_sale_acc_tax">' . h((pg_erp_store_country() === 'TR') ? lang('VKN / TCKN') : lang('Tax number')) . ' <span class="fg-secondary fw-normal">(' . lang('optional') . ')</span></label>
                             <input type="text" class="form-control" id="pg_sale_acc_tax" name="tax_number"' . ((pg_erp_store_country() === 'TR') ? ' inputmode="numeric" maxlength="11"' : ' maxlength="32"') . ' autocomplete="off">
                             <div class="invalid-feedback" data-sale-error="tax_number"></div>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-sm btn-ghost no-submit" data-bs-dismiss="modal">' . lang('Cancel') . '</button>
-                        <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 no-submit" id="pg_sale_account_go">' . lang('Open and pick') . '</button>
+                    <div class="dialog-footer">
+                        <button type="button" class="btn btn-sm btn-ghost no-submit" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+                        <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 no-submit" id="pg_sale_account_go">' . lang('Open and pick') . '</button>
                     </div>
                 </form>
-            </div>
-        </div>
+        </dialog>
         ' . erp_drawer_markup('account') : '') . '
 
         <script type="application/json" id="pg_sale_config">' . json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) . '</script>

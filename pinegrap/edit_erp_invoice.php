@@ -423,18 +423,18 @@ foreach ($lines as $line) {
         $discount_parts[] = erp_percent_text($line['discount_rate']);
     }
     $output_discount_note = (($discount > 0) && (count($discount_parts) > 0))
-        ? '<div class="small text-body-secondary text-nowrap">' . h(implode(' + ', $discount_parts)) . '</div>'
+        ? '<div class="small fg-secondary text-nowrap">' . h(implode(' + ', $discount_parts)) . '</div>'
         : '';
 
     $output_lines .= '
         <tr>
-            <td class="align-middle text-body-secondary">' . (int) $line['line_no'] . '</td>
+            <td class="align-middle fg-secondary">' . (int) $line['line_no'] . '</td>
             ' . ($output_line_thumbs
                 ? '<td class="align-middle" style="width:3.5rem">' . erp_product_thumb((string) ($line['image_name'] ?? ''), 40) . '</td>'
                 : '') . '
             <td class="align-middle">' . h($line['description'])
                 . ((trim((string) ($line['withholding_code'] ?? '')) !== '')
-                    ? '<div class="small text-body-secondary">' . h(lang(array('string' => 'VAT withholding {var:1}: {var:2}', 'vars' => array(
+                    ? '<div class="small fg-secondary">' . h(lang(array('string' => 'VAT withholding {var:1}: {var:2}', 'vars' => array(
                         erp_withholding_label((string) $line['withholding_code'], (float) $line['withholding_rate'], false),
                         erp_money_out_currency((int) ($line['withholding_amount'] ?? 0), $currency))))) . '</div>'
                     : '') . '</td>
@@ -448,7 +448,7 @@ foreach ($lines as $line) {
 }
 
 if ($output_lines === '') {
-    $output_lines = '<tr data-pg-sort-fixed><td colspan="' . $output_line_columns . '" class="text-center text-body-secondary py-4">' . lang('This invoice has no lines.') . '</td></tr>';
+    $output_lines = '<tr data-pg-sort-fixed><td colspan="' . $output_line_columns . '" class="text-center fg-secondary py-7">' . lang('This invoice has no lines.') . '</td></tr>';
 }
 
 // What the document did to stock and cost (includes/erp/stock.php). A move
@@ -468,7 +468,7 @@ if (function_exists('erp_stock_ready') && erp_stock_ready() && ((string) $invoic
 
         $stock_rows .= '
                         <tr>
-                            <td class="align-middle">' . h($product_name) . ((trim((string) $move['product_sku']) !== '') ? '<div class="small text-body-secondary font-monospace">' . h($move['product_sku']) . '</div>' : '') . '</td>
+                            <td class="align-middle">' . h($product_name) . ((trim((string) $move['product_sku']) !== '') ? '<div class="small fg-secondary font-monospace">' . h($move['product_sku']) . '</div>' : '') . '</td>
                             <td class="align-middle">' . h($stock_kinds[(string) $move['kind']] ?? (string) $move['kind']) . '</td>
                             <td class="align-middle">' . h(erp_stock_effect_text($move)) . '</td>
                             <td class="align-middle text-end text-nowrap" data-sort="' . (int) $move['unit_cost'] . '">' . h(erp_money_out((int) $move['unit_cost'])) . '</td>
@@ -489,10 +489,10 @@ if (function_exists('erp_stock_ready') && erp_stock_ready() && ((string) $invoic
     }
 
     $output_stock = '
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
                     <span>' . lang('Stock') . '</span>
-                    <a class="btn btn-sm btn-outline-secondary m-1" href="erp_stock.php"><i class="bi bi-boxes me-2" aria-hidden="true"></i>' . lang('Stock and cost') . '</a>
+                    <a class="btn btn-sm btn-outline theme-secondary m-1" href="erp_stock.php"><i class="bi bi-boxes me-3" aria-hidden="true"></i>' . lang('Stock and cost') . '</a>
                 </div>' . (($stock_rows !== '') ? '
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
@@ -508,7 +508,7 @@ if (function_exists('erp_stock_ready') && erp_stock_ready() && ((string) $invoic
                         <tbody>' . $stock_rows . '</tbody>
                     </table>
                 </div>' : '
-                <div class="card-body pt-0 small text-body-secondary">' . h($stock_note) . '</div>') . '
+                <div class="card-body pt-0 small fg-secondary">' . h($stock_note) . '</div>') . '
             </div>';
 }
 
@@ -519,7 +519,7 @@ $output_settlements = '';
 if (!empty($settlements)) {
     $output_settlements = '
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0 mt-3" data-pg-sort>
+                        <table class="table table-sm table-hover align-middle mb-0 mt-5" data-pg-sort>
                             <thead>
                                 <tr>
                                     <th>' . lang('Date') . '</th>
@@ -541,7 +541,7 @@ if (!empty($settlements)) {
 
         $output_actions = '';
         if ($is_receipt && ((int) $settlement['cash_id'] > 0)) {
-            $output_actions .= '<a class="btn btn-sm btn-outline-secondary" href="erp_receipt.php?id=' . (int) $settlement['cash_id'] . '" title="' . lang('Receipt') . '"><i class="bi bi-receipt"></i></a> ';
+            $output_actions .= '<a class="btn btn-sm btn-outline theme-secondary" href="erp_receipt.php?id=' . (int) $settlement['cash_id'] . '" title="' . lang('Receipt') . '"><i class="bi bi-receipt"></i></a> ';
         }
         if ($can_unsettle && ((string) $settlement['source_type'] !== 'gift_card')) {
             $output_actions .= '<form method="post" action="edit_erp_invoice.php" class="d-inline">
@@ -549,7 +549,7 @@ if (!empty($settlements)) {
                                         <input type="hidden" name="id" value="' . $invoice_id . '" />
                                         <input type="hidden" name="erp_action" value="unsettle" />
                                         <input type="hidden" name="settlement_id" value="' . (int) $settlement['id'] . '" />
-                                        <button type="submit" class="btn btn-sm btn-outline-warning" title="' . lang('Remove allocation') . '" onclick="return confirm(\'' . h(lang('Remove this allocation? The money stays on the account; the invoice will ask for it again.')) . '\');"><i class="bi bi-x-circle"></i></button>
+                                        <button type="submit" class="btn btn-sm btn-outline theme-warning" title="' . lang('Remove allocation') . '" onclick="return confirm(\'' . h(lang('Remove this allocation? The money stays on the account; the invoice will ask for it again.')) . '\');"><i class="bi bi-x-circle"></i></button>
                                     </form>';
         }
 
@@ -559,7 +559,7 @@ if (!empty($settlements)) {
                                     <td>' . h($settlement['description']) . '</td>
                                     <td>' . h($settlement['cash_account_name']) . '</td>
                                     <td class="text-end" data-sort="' . (int) $settlement['amount'] . '">' . $money((int) $settlement['amount'])
-                                        . ($is_foreign ? ' <span class="text-body-secondary small">' . h(erp_money_out((int) $settlement['amount_base'])) . '</span>' : '') . '</td>
+                                        . ($is_foreign ? ' <span class="fg-secondary small">' . h(erp_money_out((int) $settlement['amount_base'])) . '</span>' : '') . '</td>
                                     <td class="text-end text-nowrap">' . $output_actions . '</td>
                                 </tr>';
     }
@@ -577,7 +577,7 @@ $output_returns = '';
 if (!empty($returns)) {
     $output_returns = '
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0 mt-3" data-pg-sort>
+                        <table class="table table-sm table-hover align-middle mb-0 mt-5" data-pg-sort>
                             <thead>
                                 <tr>
                                     <th>' . lang('Date') . '</th>
@@ -604,14 +604,14 @@ if (!empty($returns)) {
 
 $output_order = ((int) $invoice['order_id'] > 0)
     ? '<a href="view_order.php?id=' . (int) $invoice['order_id'] . '">' . h($invoice['order_number'] ?: ('#' . (int) $invoice['order_id'])) . '</a>'
-    : '<span class="text-body-secondary">&mdash;</span>';
+    : '<span class="fg-secondary">&mdash;</span>';
 
 // The quote the invoice was made from (8.58), when it is still there.
 $quote_number = ((int) ($invoice['quote_id'] ?? 0) > 0)
     ? (string) db_value("SELECT full_number FROM erp_quotes WHERE id = '" . (int) $invoice['quote_id'] . "' LIMIT 1")
     : '';
 $output_quote = ($quote_number !== '')
-    ? '<div class="col-12 my-2"><a href="edit_erp_quote.php?id=' . (int) $invoice['quote_id'] . '"><i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'From quote {var:1}', 'vars' => $quote_number))) . '</a></div>'
+    ? '<div class="col-12 my-3"><a href="edit_erp_quote.php?id=' . (int) $invoice['quote_id'] . '"><i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'From quote {var:1}', 'vars' => $quote_number))) . '</a></div>'
     : '';
 
 // The purchase order it was made from (10.58), the same way.
@@ -619,7 +619,7 @@ $purchase_order_number = ((int) ($invoice['purchase_order_id'] ?? 0) > 0)
     ? (string) db_value("SELECT full_number FROM erp_purchase_orders WHERE id = '" . (int) $invoice['purchase_order_id'] . "' LIMIT 1")
     : '';
 if ($purchase_order_number !== '') {
-    $output_quote .= '<div class="col-12 my-2"><a href="edit_erp_purchase_order.php?id=' . (int) $invoice['purchase_order_id'] . '"><i class="bi bi-cart-check me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'From purchase order {var:1}', 'vars' => $purchase_order_number))) . '</a></div>';
+    $output_quote .= '<div class="col-12 my-3"><a href="edit_erp_purchase_order.php?id=' . (int) $invoice['purchase_order_id'] . '"><i class="bi bi-cart-check me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'From purchase order {var:1}', 'vars' => $purchase_order_number))) . '</a></div>';
 }
 
 // The counterparty as it read when the document was issued; the live card
@@ -641,9 +641,9 @@ $output_supplier = '';
 if (((string) $invoice['direction'] === 'purchase') && (trim((string) $invoice['supplier_invoice_no']) !== '')) {
     $supplier_date = (string) $invoice['supplier_invoice_date'];
     $output_supplier = '
-                        <div class="col-6 col-sm-4 col-lg-12 my-2">
-                            <div class="form-label text-body-secondary">' . lang('Supplier Invoice Number') . '</div>
-                            <div>' . h($invoice['supplier_invoice_no']) . (($supplier_date !== '' && $supplier_date !== '0000-00-00') ? ' <span class="text-body-secondary">' . h(prepare_form_data_for_output($supplier_date, 'date')) . '</span>' : '') . '</div>
+                        <div class="col-6 sm:col-4 lg:col-12 my-3">
+                            <div class="form-label fg-secondary">' . lang('Supplier Invoice Number') . '</div>
+                            <div>' . h($invoice['supplier_invoice_no']) . (($supplier_date !== '' && $supplier_date !== '0000-00-00') ? ' <span class="fg-secondary">' . h(prepare_form_data_for_output($supplier_date, 'date')) . '</span>' : '') . '</div>
                         </div>';
 }
 
@@ -652,7 +652,7 @@ if (((string) $invoice['direction'] === 'purchase') && (trim((string) $invoice['
 // when they left, and the address it was sold at. Only shown for such a sale.
 $output_internet_sale = '';
 if ((int) ($invoice['is_internet_sale'] ?? 0) === 1) {
-    $empty = '<span class="text-body-secondary">&mdash;</span>';
+    $empty = '<span class="fg-secondary">&mdash;</span>';
 
     $date_out = function ($date) use ($empty) {
         $date = (string) $date;
@@ -666,32 +666,32 @@ if ((int) ($invoice['is_internet_sale'] ?? 0) === 1) {
     $carrier_title = (string) ($invoice['carrier_title'] ?? '');
     $carrier_vkn = (string) ($invoice['carrier_vkn'] ?? '');
     $output_carrier = ($carrier_title !== '' || $carrier_vkn !== '')
-        ? h($carrier_title) . (($carrier_vkn !== '') ? ' <span class="text-body-secondary">' . h($carrier_vkn) . '</span>' : '')
+        ? h($carrier_title) . (($carrier_vkn !== '') ? ' <span class="fg-secondary">' . h($carrier_vkn) . '</span>' : '')
         : $empty;
 
     $web_address = (string) ($invoice['web_address'] ?? '');
     $output_web_address = ($web_address !== '') ? h($web_address) : $empty;
 
     $output_internet_sale = '
-                    <div class="row border-top mt-2 pt-2">
-                        <div class="col-12 col-sm-6 col-lg-12 my-1">
-                            <div class="form-label text-body-secondary">' . lang('Payment Method') . '</div>
+                    <div class="row border-top mt-3 pt-3">
+                        <div class="col-12 sm:col-6 lg:col-12 my-1">
+                            <div class="form-label fg-secondary">' . lang('Payment Method') . '</div>
                             <div>' . $output_payment_method . '</div>
                         </div>
-                        <div class="col-12 col-sm-6 col-lg-12 my-1">
-                            <div class="form-label text-body-secondary">' . lang('Payment Date') . '</div>
+                        <div class="col-12 sm:col-6 lg:col-12 my-1">
+                            <div class="form-label fg-secondary">' . lang('Payment Date') . '</div>
                             <div>' . $date_out($invoice['payment_date'] ?? '') . '</div>
                         </div>
-                        <div class="col-12 col-sm-6 col-lg-12 my-1">
-                            <div class="form-label text-body-secondary">' . lang('Shipment Date') . '</div>
+                        <div class="col-12 sm:col-6 lg:col-12 my-1">
+                            <div class="form-label fg-secondary">' . lang('Shipment Date') . '</div>
                             <div>' . $date_out($invoice['shipment_date'] ?? '') . '</div>
                         </div>
-                        <div class="col-12 col-sm-6 col-lg-12 my-1">
-                            <div class="form-label text-body-secondary">' . lang('Carrier') . '</div>
+                        <div class="col-12 sm:col-6 lg:col-12 my-1">
+                            <div class="form-label fg-secondary">' . lang('Carrier') . '</div>
                             <div>' . $output_carrier . '</div>
                         </div>
-                        <div class="col-12 col-sm-6 col-lg-12 my-1">
-                            <div class="form-label text-body-secondary">' . lang('Web Address') . '</div>
+                        <div class="col-12 sm:col-6 lg:col-12 my-1">
+                            <div class="form-label fg-secondary">' . lang('Web Address') . '</div>
                             <div>' . $output_web_address . '</div>
                         </div>
                     </div>';
@@ -781,43 +781,43 @@ if (($reminder['phase'] !== 'off') || ($reminder['notified_at'] > 0) || ($remind
         }
 
         $output_snooze = '
-                        <form name="snooze_form" action="edit_erp_invoice.php" method="post" class="row g-2 align-items-end">
+                        <form name="snooze_form" action="edit_erp_invoice.php" method="post" class="row g-3 align-items-end">
                             ' . get_token_field() . '
                             <input type="hidden" name="id" value="' . $invoice_id . '" />
                             <input type="hidden" name="erp_action" value="snooze" />
-                            <div class="col-12 col-sm-7">
+                            <div class="col-12 sm:col-7">
                                 <label for="snooze_until" class="form-label">' . lang('Put the reminders off until') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'text', 'id' => 'snooze_until', 'data-pg-date' => '', 'name' => 'snooze_until',
                                     'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                                     'autocomplete' => 'off')) . '
                                 ' . get_date_picker_format() . pg_fields_script() . '                            </div>
-                            <div class="col-12 col-sm-5">
-                                <button type="submit" name="submit_snooze" value="Snooze" class="btn btn-outline-secondary w-100"><i class="bi bi-bell-slash me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Put off') . '</span></button>
+                            <div class="col-12 sm:col-5">
+                                <button type="submit" name="submit_snooze" value="Snooze" class="btn btn-outline theme-secondary w-100"><i class="bi bi-bell-slash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Put off') . '</span></button>
                             </div>
                         </form>'
             . (($reminder['phase'] === 'snoozed')
                 ? '
-                        <form name="unsnooze_form" action="edit_erp_invoice.php" method="post" class="mt-2">
+                        <form name="unsnooze_form" action="edit_erp_invoice.php" method="post" class="mt-3">
                             ' . get_token_field() . '
                             <input type="hidden" name="id" value="' . $invoice_id . '" />
                             <input type="hidden" name="erp_action" value="unsnooze" />
-                            <button type="submit" name="submit_unsnooze" value="Resume" class="btn btn-link link-body-emphasis text-decoration-none p-0"><i class="bi bi-bell me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Let the reminders resume') . '</span></button>
+                            <button type="submit" name="submit_unsnooze" value="Resume" class="btn btn-link pg-link-body-emphasis text-decoration-none p-0"><i class="bi bi-bell me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Let the reminders resume') . '</span></button>
                         </form>'
                 : '');
     }
 
     $output_reminders = '
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Overdue reminders') . '
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-12 col-lg-7 my-2">' . $output_reminder_lines . '
+                        <div class="col-12 lg:col-7 my-3">' . $output_reminder_lines . '
                             <div class="form-text">' . lang('The digest goes to the panel bell, by e-mail and to subscribed devices as set on the ERP settings card. A document is announced when it passes the threshold and once more a month later; putting it off keeps it out of the digests until the date you choose.') . '</div>
                         </div>
-                        <div class="col-12 col-lg-5 my-2">' . $output_snooze . '
+                        <div class="col-12 lg:col-5 my-3">' . $output_snooze . '
                         </div>
                     </div>
                 </div>
@@ -836,9 +836,9 @@ if (((string) $invoice['direction'] === 'sales') && !$is_return && !$is_cancelle
     }
 
     if ($invoice_waybills) {
-        $output_waybill_button = '<a class="btn btn-sm btn-outline-secondary m-1" href="edit_erp_waybill.php?id=' . (int) $invoice_waybills[0]['id'] . '"><i class="bi bi-truck me-2"></i>' . h($invoice_waybills[0]['full_number']) . '</a>';
+        $output_waybill_button = '<a class="btn btn-sm btn-outline theme-secondary m-1" href="edit_erp_waybill.php?id=' . (int) $invoice_waybills[0]['id'] . '"><i class="bi bi-truck me-3"></i>' . h($invoice_waybills[0]['full_number']) . '</a>';
     } else {
-        $output_waybill_button = '<a class="btn btn-sm btn-outline-primary m-1" href="add_erp_waybill.php?invoice_id=' . $invoice_id . '"><i class="bi bi-truck me-2"></i>' . lang('Issue the Delivery Note') . '</a>';
+        $output_waybill_button = '<a class="btn btn-sm btn-outline theme-primary m-1" href="add_erp_waybill.php?invoice_id=' . $invoice_id . '"><i class="bi bi-truck me-3"></i>' . lang('Issue the Delivery Note') . '</a>';
     }
 }
 
@@ -865,9 +865,9 @@ if (((string) $invoice['direction'] === 'sales')
     $edoc_carrier_label = is_array($edoc_carrier_info) ? (string) $edoc_carrier_info['label'] : $edoc_carrier;
     $edoc_environment = ($edoc_carrier !== '') ? erp_edoc_environment($edoc_carrier) : array('is_test' => false, 'label' => '');
     $edoc_test_badge = !empty($edoc_environment['is_test'])
-        ? ' <span class="badge text-bg-warning">' . h((string) $edoc_environment['label']) . '</span>'
+        ? ' <span class="badge theme-warning">' . h((string) $edoc_environment['label']) . '</span>'
         : '';
-    $empty = '<span class="text-body-secondary">&mdash;</span>';
+    $empty = '<span class="fg-secondary">&mdash;</span>';
 
     $output_edoc_buttons = '';
 
@@ -886,15 +886,15 @@ if (((string) $invoice['direction'] === 'sales')
     $edoc_send_gaps = array_merge((array) erp_edoc_invoice_party_missing($invoice)['fields'], (array) erp_edoc_invoice_document_missing($invoice)['fields']);
 
     if ($edoc_gate['ok'] && !empty($edoc_send_gaps) && erp_edoc_invoice_party_editable($invoice)) {
-        $output_edoc_buttons .= '<a class="btn btn-sm btn-outline-warning m-1" href="#edoc_fix"><i class="bi bi-pencil-square me-2" aria-hidden="true"></i>' . lang('Complete the missing fields') . '</a>';
+        $output_edoc_buttons .= '<a class="btn btn-sm btn-outline theme-warning m-1" href="#edoc_fix"><i class="bi bi-pencil-square me-3" aria-hidden="true"></i>' . lang('Complete the missing fields') . '</a>';
     } elseif ($edoc_gate['ok'] && $edoc_date_blocked) {
-        $output_edoc_buttons .= '<a class="btn btn-sm btn-outline-warning m-1" href="#edoc_date"><i class="bi bi-calendar-x me-2" aria-hidden="true"></i>' . lang('Fix the date') . '</a>';
+        $output_edoc_buttons .= '<a class="btn btn-sm btn-outline theme-warning m-1" href="#edoc_date"><i class="bi bi-calendar-x me-3" aria-hidden="true"></i>' . lang('Fix the date') . '</a>';
     } elseif ($edoc_gate['ok']) {
         $output_edoc_buttons .= '<form method="post" action="edit_erp_invoice.php" class="d-inline">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $invoice_id . '" />
                         <input type="hidden" name="erp_action" value="edoc_send" />
-                        <button type="submit" class="btn btn-sm btn-primary m-1"><i class="bi bi-send me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang(array('string' => 'Send to {var:1}', 'vars' => $edoc_carrier_label))) . '</span></button>
+                        <button type="submit" class="btn btn-sm btn-solid theme-primary m-1"><i class="bi bi-send me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang(array('string' => 'Send to {var:1}', 'vars' => $edoc_carrier_label))) . '</span></button>
                     </form>';
     }
 
@@ -905,7 +905,7 @@ if (((string) $invoice['direction'] === 'sales')
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $invoice_id . '" />
                         <input type="hidden" name="erp_action" value="edoc_submit" />
-                        <button type="submit" class="btn btn-sm btn-primary m-1"><i class="bi bi-bank me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Hand to GİB') . '</span></button>
+                        <button type="submit" class="btn btn-sm btn-solid theme-primary m-1"><i class="bi bi-bank me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Hand to GİB') . '</span></button>
                     </form>';
     }
 
@@ -914,19 +914,19 @@ if (((string) $invoice['direction'] === 'sales')
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $invoice_id . '" />
                         <input type="hidden" name="erp_action" value="edoc_poll" />
-                        <button type="submit" class="btn btn-sm btn-outline-secondary m-1"><i class="bi bi-arrow-repeat me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Ask After the Status') . '</span></button>
+                        <button type="submit" class="btn btn-sm btn-outline theme-secondary m-1"><i class="bi bi-arrow-repeat me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Ask After the Status') . '</span></button>
                     </form>';
     }
 
     if (($edoc_provider !== '') && erp_edoc_supports('fetch_document', $edoc_provider)) {
         if ((string) $invoice['gib_uuid'] !== '') {
-            $output_edoc_buttons .= '<a class="btn btn-sm btn-outline-secondary m-1" href="get_erp_edoc_document.php?id=' . $invoice_id . '&amp;format=pdf" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text me-2"></i>' . h(lang(array('string' => 'The document at {var:1}', 'vars' => $edoc_carrier_label))) . '</a>';
+            $output_edoc_buttons .= '<a class="btn btn-sm btn-outline theme-secondary m-1" href="get_erp_edoc_document.php?id=' . $invoice_id . '&amp;format=pdf" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text me-3"></i>' . h(lang(array('string' => 'The document at {var:1}', 'vars' => $edoc_carrier_label))) . '</a>';
         }
 
         // Only a provider that hands the UBL back offers it (Paraşüt's API
         // gives the PDF alone).
         if (((string) $invoice['edoc_external_id'] !== '') && erp_edoc_has_capability('ubl', $edoc_provider)) {
-            $output_edoc_buttons .= '<a class="btn btn-sm btn-outline-secondary m-1" href="get_erp_edoc_document.php?id=' . $invoice_id . '&amp;format=xml"><i class="bi bi-filetype-xml me-2"></i>' . lang('UBL') . '</a>';
+            $output_edoc_buttons .= '<a class="btn btn-sm btn-outline theme-secondary m-1" href="get_erp_edoc_document.php?id=' . $invoice_id . '&amp;format=xml"><i class="bi bi-filetype-xml me-3"></i>' . lang('UBL') . '</a>';
         }
     }
 
@@ -952,8 +952,8 @@ if (((string) $invoice['direction'] === 'sales')
                 ? lang(array('string' => 'The invoice is dated {var:1}, but {var:2} already has documents dated {var:3}. GİB takes documents of one type only in date order, so it will refuse this one.', 'vars' => array(prepare_form_data_for_output((string) $invoice['issue_date'], 'date', false), $edoc_carrier_label, prepare_form_data_for_output($edoc_date_latest, 'date', false))))
                 : lang(array('string' => '{var:1} refused the invoice for its date: a document of the same type dated later has already been issued. GİB takes them only in date order.', 'vars' => $edoc_carrier_label)));
         $output_edoc_date = '
-                    <div class="border-top mt-3 pt-3" id="edoc_date">
-                        <div class="alert alert-warning d-flex align-items-start gap-2 mb-2" role="alert">
+                    <div class="border-top mt-5 pt-5" id="edoc_date">
+                        <div class="alert theme-warning d-flex align-items-start gap-3 mb-3" role="alert">
                             <i class="bi bi-calendar-x"></i>
                             <div>' . h($edoc_date_text) . '
                                 <div class="small">' . h($edoc_redate['ok']
@@ -961,18 +961,18 @@ if (((string) $invoice['direction'] === 'sales')
                                     : $edoc_redate['reason']) . '</div>
                             </div>
                         </div>
-                        ' . ($edoc_redate['ok'] ? '<div class="d-flex flex-wrap gap-2">
+                        ' . ($edoc_redate['ok'] ? '<div class="d-flex flex-wrap gap-3">
                         ' . ($edoc_gate['ok'] && empty($edoc_send_gaps) ? '<form method="post" action="edit_erp_invoice.php">
                             ' . get_token_field() . '
                             <input type="hidden" name="id" value="' . $invoice_id . '" />
                             <input type="hidden" name="erp_action" value="edoc_redate_send" />
-                            <button type="submit" class="btn btn-sm btn-primary" data-confirm-content="' . h(lang(array('string' => 'Date the invoice {var:1} instead of {var:2} and send it to {var:3}?', 'vars' => array(prepare_form_data_for_output(date('Y-m-d'), 'date', false), prepare_form_data_for_output((string) $invoice['issue_date'], 'date', false), $edoc_carrier_label)))) . '"><i class="bi bi-send-check me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang(array('string' => 'Move to today ({var:1}) and send', 'vars' => prepare_form_data_for_output(date('Y-m-d'), 'date', false)))) . '</span></button>
+                            <button type="submit" class="btn btn-sm btn-solid theme-primary" data-confirm-content="' . h(lang(array('string' => 'Date the invoice {var:1} instead of {var:2} and send it to {var:3}?', 'vars' => array(prepare_form_data_for_output(date('Y-m-d'), 'date', false), prepare_form_data_for_output((string) $invoice['issue_date'], 'date', false), $edoc_carrier_label)))) . '"><i class="bi bi-send-check me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang(array('string' => 'Move to today ({var:1}) and send', 'vars' => prepare_form_data_for_output(date('Y-m-d'), 'date', false)))) . '</span></button>
                         </form>' : '') . '
                         <form method="post" action="edit_erp_invoice.php">
                             ' . get_token_field() . '
                             <input type="hidden" name="id" value="' . $invoice_id . '" />
                             <input type="hidden" name="erp_action" value="edoc_redate" />
-                            <button type="submit" class="btn btn-sm ' . ($edoc_gate['ok'] && empty($edoc_send_gaps) ? 'btn-outline-secondary' : 'btn-primary') . '" data-confirm-content="' . h(lang(array('string' => 'Date the invoice {var:1} instead of {var:2}?', 'vars' => array(prepare_form_data_for_output(date('Y-m-d'), 'date', false), prepare_form_data_for_output((string) $invoice['issue_date'], 'date', false))))) . '"><i class="bi bi-calendar-check me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang(array('string' => 'Move to today ({var:1})', 'vars' => prepare_form_data_for_output(date('Y-m-d'), 'date', false)))) . '</span></button>
+                            <button type="submit" class="btn btn-sm ' . ($edoc_gate['ok'] && empty($edoc_send_gaps) ? 'btn-outline theme-secondary' : 'btn-solid theme-primary') . '" data-confirm-content="' . h(lang(array('string' => 'Date the invoice {var:1} instead of {var:2}?', 'vars' => array(prepare_form_data_for_output(date('Y-m-d'), 'date', false), prepare_form_data_for_output((string) $invoice['issue_date'], 'date', false))))) . '"><i class="bi bi-calendar-check me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang(array('string' => 'Move to today ({var:1})', 'vars' => prepare_form_data_for_output(date('Y-m-d'), 'date', false)))) . '</span></button>
                         </form>
                         </div>' : '') . '
                     </div>';
@@ -1013,7 +1013,7 @@ if (((string) $invoice['direction'] === 'sales')
 
         // One box: its short name, the value known so far, and - under it -
         // the provider's reason when the reason says more than the name.
-        $edoc_fix_box = function ($name, $reason, $width = 'col-12 col-sm-6 col-xl-4') use ($edoc_fix_names, $edoc_fix_party, $edoc_fix_card, $edoc_fix_order, $liveform) {
+        $edoc_fix_box = function ($name, $reason, $width = 'col-12 sm:col-6 xl:col-4') use ($edoc_fix_names, $edoc_fix_party, $edoc_fix_card, $edoc_fix_order, $liveform) {
             $label = isset($edoc_fix_names[$name]) ? $edoc_fix_names[$name]['label'] : $reason;
             $value = '';
             foreach (array($edoc_fix_party, $edoc_fix_card, $edoc_fix_order) as $source) {
@@ -1056,7 +1056,7 @@ if (((string) $invoice['direction'] === 'sales')
 
         if ($edoc_fix_buyer !== '') {
             $output_edoc_fix_fields .= '
-                                <div class="col-12 mt-1"><div class="fw-semibold">' . lang('Buyer') . '</div><div class="small text-body-secondary">' . lang('Saved here, it goes on the account card as well, so the next invoice has it too.') . '</div></div>' . $edoc_fix_buyer;
+                                <div class="col-12 mt-1"><div class="fw-semibold">' . lang('Buyer') . '</div><div class="small fg-secondary">' . lang('Saved here, it goes on the account card as well, so the next invoice has it too.') . '</div></div>' . $edoc_fix_buyer;
         }
 
         // The carrier comes as a pair, whichever half is missing: whether a
@@ -1073,9 +1073,9 @@ if (((string) $invoice['direction'] === 'sales')
                     $edoc_fix_options .= '<option value="' . h($edoc_fix_carrier['vkn']) . '" data-title="' . h($edoc_fix_carrier['title']) . '">' . h($edoc_fix_carrier['title'] . ' - ' . $edoc_fix_carrier['vkn']) . '</option>';
                 }
                 $edoc_fix_pick = '
-                                <div class="col-12 col-xl-4 my-1">
+                                <div class="col-12 xl:col-4 my-1">
                                     <label class="form-label" for="fix_carrier_pick">' . lang('Known carriers') . '</label>
-                                    <select class="form-select form-select-sm" id="fix_carrier_pick" onchange="if (this.value) { document.getElementById(\'fix_carrier_title\').value = this.options[this.selectedIndex].getAttribute(\'data-title\'); document.getElementById(\'fix_carrier_vkn\').value = this.value; }">' . $edoc_fix_options . '</select>
+                                    <select class="form-control form-control-sm" id="fix_carrier_pick" onchange="if (this.value) { document.getElementById(\'fix_carrier_title\').value = this.options[this.selectedIndex].getAttribute(\'data-title\'); document.getElementById(\'fix_carrier_vkn\').value = this.value; }">' . $edoc_fix_options . '</select>
                                 </div>';
             }
 
@@ -1088,19 +1088,19 @@ if (((string) $invoice['direction'] === 'sales')
                     WHERE ship_tos.order_id = '" . (int) $invoice['order_id'] . "' ORDER BY ship_tos.id ASC LIMIT 1")
                 : null;
             $edoc_fix_method_note = (is_array($edoc_fix_method) && (trim((string) $edoc_fix_method['carrier_vkn']) === ''))
-                ? ' <a href="edit_shipping_method.php?id=' . (int) $edoc_fix_method['id'] . '" class="link-body-emphasis">' . h(lang(array('string' => 'Write the carrier on the "{var:1}" shipping method once and the next orders bring it along.', 'vars' => (string) $edoc_fix_method['name']))) . '</a>'
+                ? ' <a href="edit_shipping_method.php?id=' . (int) $edoc_fix_method['id'] . '" class="pg-link-body-emphasis">' . h(lang(array('string' => 'Write the carrier on the "{var:1}" shipping method once and the next orders bring it along.', 'vars' => (string) $edoc_fix_method['name']))) . '</a>'
                 : '';
 
             $output_edoc_fix_fields .= '
-                                <div class="col-12 mt-3"><div class="fw-semibold">' . lang('Carrier') . '</div><div class="small text-body-secondary">' . lang('A cargo company: its title and its 10-digit VKN. A courier or a person: first name, surname and the 11-digit TCKN. Saved on this invoice only.') . $edoc_fix_method_note . '</div></div>'
+                                <div class="col-12 mt-5"><div class="fw-semibold">' . lang('Carrier') . '</div><div class="small fg-secondary">' . lang('A cargo company: its title and its 10-digit VKN. A courier or a person: first name, surname and the 11-digit TCKN. Saved on this invoice only.') . $edoc_fix_method_note . '</div></div>'
                 . $edoc_fix_pick
                 . $edoc_fix_box('carrier_title', (string) ($edoc_fix_carrier_missing['carrier_title'] ?? ''))
                 . $edoc_fix_box('carrier_vkn', (string) ($edoc_fix_carrier_missing['carrier_vkn'] ?? ''));
         }
 
         $output_edoc_fix = '
-                    <div class="border-top mt-3 pt-3" id="edoc_fix">
-                        <div class="alert alert-warning d-flex align-items-start gap-2 mb-3" role="alert">
+                    <div class="border-top mt-5 pt-5" id="edoc_fix">
+                        <div class="alert theme-warning d-flex align-items-start gap-3 mb-5" role="alert">
                             <i class="bi bi-exclamation-triangle-fill"></i>
                             <div>' . h(lang(array('string' => '{var:1} will not take this document until these are filled in.', 'vars' => $edoc_missing['label']))) . '</div>
                         </div>
@@ -1109,8 +1109,8 @@ if (((string) $invoice['direction'] === 'sales')
                             <input type="hidden" name="id" value="' . $invoice_id . '" />
                             <input type="hidden" name="erp_action" value="edoc_fix" />
                             <div class="row">' . $output_edoc_fix_fields . '
-                                <div class="col-12 mt-2">
-                                    <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Complete and save') . '</span></button>
+                                <div class="col-12 mt-3">
+                                    <button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Complete and save') . '</span></button>
                                 </div>
                             </div>
                         </form>
@@ -1121,62 +1121,62 @@ if (((string) $invoice['direction'] === 'sales')
 
     foreach (erp_edoc_log_for('invoice', $invoice_id, 8) as $log_row) {
         $output_edoc_log .= '<tr>
-                                <td class="text-nowrap text-body-secondary small" data-sort="' . (int) $log_row['created_at'] . '">' . h(date('d.m.Y H:i:s', (int) $log_row['created_at'])) . '</td>
+                                <td class="text-nowrap fg-secondary small" data-sort="' . (int) $log_row['created_at'] . '">' . h(date('d.m.Y H:i:s', (int) $log_row['created_at'])) . '</td>
                                 <td class="small"><code>' . h($log_row['method'] . ' ' . $log_row['path']) . '</code></td>
-                                <td class="text-end small">' . (((int) $log_row['http_code'] >= 200 && (int) $log_row['http_code'] < 300) ? '<span class="text-success">' : '<span class="text-danger">') . (int) $log_row['http_code'] . '</span></td>
+                                <td class="text-end small">' . (((int) $log_row['http_code'] >= 200 && (int) $log_row['http_code'] < 300) ? '<span class="fg-success">' : '<span class="fg-danger">') . (int) $log_row['http_code'] . '</span></td>
                                 <td class="small text-break">' . h(mb_substr((string) $log_row['response_excerpt'], 0, 200)) . '</td>
                             </tr>';
     }
 
     $output_edoc = '
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
                     <span>' . lang('e-Document') . $edoc_test_badge . '</span>
                     <span>' . $output_edoc_buttons . '</span>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-12 col-sm-6 col-lg-3 my-2">
-                            <div class="form-label text-body-secondary">' . lang('Status') . '</div>
+                        <div class="col-12 sm:col-6 lg:col-3 my-3">
+                            <div class="form-label fg-secondary">' . lang('Status') . '</div>
                             <div><span class="badge text-bg-' . h($edoc_label[1]) . '">' . h($edoc_label[0]) . '</span></div>
                         </div>
-                        <div class="col-12 col-sm-6 col-lg-3 my-2">
-                            <div class="form-label text-body-secondary">' . lang('Provider') . '</div>
-                            <div>' . (($edoc_provider !== '') ? h($edoc_carrier_label) : (($edoc_active !== '') ? '<span class="text-body-secondary">' . h(lang(array('string' => '{var:1} (not sent yet)', 'vars' => $edoc_carrier_label))) . '</span>' : $empty)) . '</div>
+                        <div class="col-12 sm:col-6 lg:col-3 my-3">
+                            <div class="form-label fg-secondary">' . lang('Provider') . '</div>
+                            <div>' . (($edoc_provider !== '') ? h($edoc_carrier_label) : (($edoc_active !== '') ? '<span class="fg-secondary">' . h(lang(array('string' => '{var:1} (not sent yet)', 'vars' => $edoc_carrier_label))) . '</span>' : $empty)) . '</div>
                         </div>
-                        <div class="col-12 col-sm-6 col-lg-3 my-2">
-                            <div class="form-label text-body-secondary">' . lang('GİB Number') . '</div>
+                        <div class="col-12 sm:col-6 lg:col-3 my-3">
+                            <div class="form-label fg-secondary">' . lang('GİB Number') . '</div>
                             <div>' . (((string) $invoice['gib_number'] !== '') ? h($invoice['gib_number']) : $empty) . '</div>
                         </div>
-                        <div class="col-12 col-sm-6 col-lg-3 my-2">
-                            <div class="form-label text-body-secondary">' . lang('ETTN') . '</div>
+                        <div class="col-12 sm:col-6 lg:col-3 my-3">
+                            <div class="form-label fg-secondary">' . lang('ETTN') . '</div>
                             <div class="text-break small">' . (((string) $invoice['gib_uuid'] !== '') ? h($invoice['gib_uuid']) : $empty) . '</div>
                         </div>
-                        <div class="col-12 col-sm-6 col-lg-3 my-2">
-                            <div class="form-label text-body-secondary">' . lang('Provider Id') . '</div>
+                        <div class="col-12 sm:col-6 lg:col-3 my-3">
+                            <div class="form-label fg-secondary">' . lang('Provider Id') . '</div>
                             <div>' . (((string) $invoice['edoc_external_id'] !== '') ? h($invoice['edoc_external_id']) : $empty) . '</div>
                         </div>
-                        <div class="col-12 col-sm-6 col-lg-3 my-2">
-                            <div class="form-label text-body-secondary">' . lang('Sent At') . '</div>
+                        <div class="col-12 sm:col-6 lg:col-3 my-3">
+                            <div class="form-label fg-secondary">' . lang('Sent At') . '</div>
                             <div>' . (((int) $invoice['edoc_sent_at'] > 0) ? h(date('d.m.Y H:i', (int) $invoice['edoc_sent_at'])) : $empty) . '</div>
                         </div>
                         ' . ((trim((string) $invoice['edoc_error']) !== '')
-                            ? '<div class="col-12 my-2">
-                            <div class="form-label text-body-secondary">' . lang('Last Message') . '</div>
-                            <div class="' . (in_array($edoc_status, array('error', 'rejected'), true) ? 'text-danger' : '') . '">' . h($invoice['edoc_error']) . '</div>
+                            ? '<div class="col-12 my-3">
+                            <div class="form-label fg-secondary">' . lang('Last Message') . '</div>
+                            <div class="' . (in_array($edoc_status, array('error', 'rejected'), true) ? 'fg-danger' : '') . '">' . h($invoice['edoc_error']) . '</div>
                         </div>'
                             : '') . '
                         ' . ((!$edoc_gate['ok'] && in_array($edoc_status, array('none', 'error'), true))
-                            ? '<div class="col-12 my-2"><div class="form-text">' . h($edoc_gate['reason']) . '</div></div>'
+                            ? '<div class="col-12 my-3"><div class="form-text">' . h($edoc_gate['reason']) . '</div></div>'
                             : '') . '
                         ' . (erp_edoc_invoice_send_stalled($invoice)
-                            ? '<div class="col-12 my-2"><div class="form-text">' . h(lang(array('string' => 'The last send stopped before {var:1} answered, so a draft of the document may already be there. Look on {var:1}\'s screen before sending it again.', 'vars' => $edoc_carrier_label))) . '</div></div>'
+                            ? '<div class="col-12 my-3"><div class="form-text">' . h(lang(array('string' => 'The last send stopped before {var:1} answered, so a draft of the document may already be there. Look on {var:1}\'s screen before sending it again.', 'vars' => $edoc_carrier_label))) . '</div></div>'
                             : '') . '
                     </div>
                     ' . $output_edoc_date . '
                     ' . $output_edoc_fix . '
                     ' . (($output_edoc_log !== '')
-                        ? '<div class="table-responsive border-top mt-2 pt-2">
+                        ? '<div class="table-responsive border-top mt-3 pt-3">
                         <table class="table table-sm mb-0" data-pg-sort>
                             <thead><tr><th>' . lang('Time') . '</th><th>' . lang('Call') . '</th><th class="text-end">' . lang('HTTP') . '</th><th>' . lang('Answer') . '</th></tr></thead>
                             <tbody>' . $output_edoc_log . '</tbody>
@@ -1191,27 +1191,27 @@ if (((string) $invoice['direction'] === 'sales')
     $inbox_id = erp_edoc_inbox_installed()
         ? (int) db_value("SELECT id FROM erp_edoc_inbox WHERE invoice_id = '" . $invoice_id . "' OR gib_uuid = '" . escape((string) $invoice['gib_uuid']) . "' ORDER BY (invoice_id = '" . $invoice_id . "') DESC, id ASC LIMIT 1")
         : 0;
-    $empty = '<span class="text-body-secondary">&mdash;</span>';
+    $empty = '<span class="fg-secondary">&mdash;</span>';
 
     $output_edoc = '
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
                     <span>' . lang('Incoming e-invoice') . '</span>
                     ' . (($inbox_id > 0)
                         ? '<span>
-                        <a class="btn btn-sm btn-outline-secondary m-1" href="erp_inbox_document.php?id=' . $inbox_id . '"><i class="bi bi-inbox me-2" aria-hidden="true"></i>' . lang('The e-invoice') . '</a>
-                        <a class="btn btn-sm btn-outline-secondary m-1" href="get_erp_inbox_file.php?id=' . $inbox_id . '&amp;format=pdf" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-2" aria-hidden="true"></i>' . lang('PDF') . '</a>
+                        <a class="btn btn-sm btn-outline theme-secondary m-1" href="erp_inbox_document.php?id=' . $inbox_id . '"><i class="bi bi-inbox me-3" aria-hidden="true"></i>' . lang('The e-invoice') . '</a>
+                        <a class="btn btn-sm btn-outline theme-secondary m-1" href="get_erp_inbox_file.php?id=' . $inbox_id . '&amp;format=pdf" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-3" aria-hidden="true"></i>' . lang('PDF') . '</a>
                     </span>'
                         : '') . '
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-12 col-sm-6 col-lg-3 my-2">
-                            <div class="form-label text-body-secondary">' . lang('GİB Number') . '</div>
+                        <div class="col-12 sm:col-6 lg:col-3 my-3">
+                            <div class="form-label fg-secondary">' . lang('GİB Number') . '</div>
                             <div>' . (((string) $invoice['gib_number'] !== '') ? h($invoice['gib_number']) : $empty) . '</div>
                         </div>
-                        <div class="col-12 col-sm-6 col-lg-9 my-2">
-                            <div class="form-label text-body-secondary">' . lang('ETTN') . '</div>
+                        <div class="col-12 sm:col-6 lg:col-9 my-3">
+                            <div class="form-label fg-secondary">' . lang('ETTN') . '</div>
                             <div class="text-break small">' . h($invoice['gib_uuid']) . '</div>
                         </div>
                     </div>
@@ -1246,8 +1246,8 @@ if (($mail_invoice !== null) && ((string) $invoice['direction'] === 'sales') && 
             <tr>
                 <td class="text-nowrap" data-sort="' . (int) $mail['created_at'] . '">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $mail['created_at']), 'date and time')) . '</td>
                 <td class="text-break">' . h((string) $mail['to_address']) . '
-                    ' . (((string) $mail['attachments'] !== '') ? '<div class="small text-body-secondary"><i class="bi bi-paperclip" aria-hidden="true"></i> ' . h((string) $mail['attachments']) . '</div>' : '') . '
-                    ' . (((string) $mail['error'] !== '') ? '<div class="small text-danger">' . h((string) $mail['error']) . '</div>' : '') . '</td>
+                    ' . (((string) $mail['attachments'] !== '') ? '<div class="small fg-secondary"><i class="bi bi-paperclip" aria-hidden="true"></i> ' . h((string) $mail['attachments']) . '</div>' : '') . '
+                    ' . (((string) $mail['error'] !== '') ? '<div class="small fg-danger">' . h((string) $mail['error']) . '</div>' : '') . '</td>
                 <td>' . (((string) $mail['mode'] === 'auto') ? lang('On its own') : h(((string) $mail['created_by_name'] !== '') ? (string) $mail['created_by_name'] : '—')) . '</td>
                 <td><span class="badge text-bg-' . h($status[1]) . '">' . h($status[0]) . '</span></td>
             </tr>';
@@ -1264,18 +1264,18 @@ if (($mail_invoice !== null) && ((string) $invoice['direction'] === 'sales') && 
 
     if (($mail_refusal === '') && !$mail_readonly) {
         $output_mail_form = '
-            <form name="mail_form" action="edit_erp_invoice.php" method="post" class="row g-2">
+            <form name="mail_form" action="edit_erp_invoice.php" method="post" class="row g-3">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $invoice_id . '" />
                 <input type="hidden" name="erp_action" value="mail" />
-                <div class="col-12 col-md-6">
+                <div class="col-12 md:col-6">
                     <label class="form-label" for="mail_to">' . lang('Recipient e-mail') . '</label>
                     <input type="text" class="form-control" id="mail_to" name="mail_to" value="' . h((string) $mail_defaults['to']) . '" maxlength="500" autocomplete="off" required />
                     <div class="form-text">' . (((string) $mail_defaults['to'] === '')
                         ? lang('The account has no e-mail address. Type one, or add it to the account.')
                         : lang('More than one address: separate them with commas.')) . '</div>
                 </div>
-                <div class="col-12 col-md-6">
+                <div class="col-12 md:col-6">
                     <label class="form-label" for="mail_subject">' . lang('Subject') . '</label>
                     <input type="text" class="form-control" id="mail_subject" name="mail_subject" value="' . h((string) $mail_defaults['subject']) . '" maxlength="255" />
                 </div>
@@ -1285,23 +1285,23 @@ if (($mail_invoice !== null) && ((string) $invoice['direction'] === 'sales') && 
                     <div class="form-text"><i class="bi bi-paperclip" aria-hidden="true"></i> ' . h($mail_note) . '</div>
                 </div>
                 <div class="col-12">
-                    <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-envelope me-2" aria-hidden="true"></i>' . lang('Send the e-mail') . '</button>
+                    <button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-envelope me-3" aria-hidden="true"></i>' . lang('Send the e-mail') . '</button>
                 </div>
             </form>';
-        $output_mail_button = '<a class="btn btn-sm btn-outline-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
+        $output_mail_button = '<a class="btn btn-sm btn-outline theme-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
     } elseif ($mail_refusal !== '') {
-        $output_mail_form = '<p class="text-body-secondary mb-0">' . h($mail_refusal) . '</p>';
+        $output_mail_form = '<p class="fg-secondary mb-0">' . h($mail_refusal) . '</p>';
     }
 
     $output_mail = '
-            <div class="card my-4" id="erp-mail">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card my-7" id="erp-mail">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('E-mail to the customer') . '
                 </div>
                 <div class="card-body">
                     ' . $output_mail_form . '
                     ' . (($mail_rows !== '') ? '
-                    <div class="table-responsive mt-3">
+                    <div class="table-responsive mt-5">
                         <table class="table table-sm align-middle mb-0" data-pg-sort>
                             <thead><tr><th>' . lang('Date') . '</th><th>' . lang('Recipient') . '</th><th>' . lang('Sent by') . '</th><th>' . lang('Status') . '</th></tr></thead>
                             <tbody>' . $mail_rows . '</tbody>
@@ -1321,14 +1321,14 @@ if (function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_read
     $recur_body = '';
 
     if ($recurrence !== null) {
-        $recur_body = '<p class="mb-2"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(erp_invoice_recurrence_text($recurrence))
+        $recur_body = '<p class="mb-3"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(erp_invoice_recurrence_text($recurrence))
             . (((string) $recurrence['end_date'] !== '0000-00-00') ? ' ' . h(lang(array('string' => 'Until {var:1}.', 'vars' => prepare_form_data_for_output((string) $recurrence['end_date'], 'date', false)))) : '') . '</p>'
-            . (((int) $recurrence['occurrences'] > 0) ? '<p class="small text-body-secondary mb-2">' . h(lang(array('string' => '{var:1} invoice(s) written so far.', 'vars' => (int) $recurrence['occurrences']))) . '</p>' : '')
-            . (((string) $recurrence['last_error'] !== '') ? '<div class="alert alert-warning small py-2">' . h((string) $recurrence['last_error']) . '</div>' : '')
+            . (((int) $recurrence['occurrences'] > 0) ? '<p class="small fg-secondary mb-3">' . h(lang(array('string' => '{var:1} invoice(s) written so far.', 'vars' => (int) $recurrence['occurrences']))) . '</p>' : '')
+            . (((string) $recurrence['last_error'] !== '') ? '<div class="alert theme-warning small py-3">' . h((string) $recurrence['last_error']) . '</div>' : '')
             . (!$recur_readonly ? '<form method="post" action="edit_erp_invoice.php">' . get_token_field() . '<input type="hidden" name="id" value="' . $invoice_id . '" /><input type="hidden" name="erp_action" value="recur_stop" /><input type="hidden" name="recurrence_id" value="' . (int) $recurrence['id'] . '" />'
-                . '<button type="submit" class="btn btn-sm btn-outline-secondary" data-confirm-content="' . h(lang('Stop repeating this invoice? The invoices it already wrote stay.')) . '"><i class="bi bi-stop-circle me-1" aria-hidden="true"></i>' . lang('Stop repeating') . '</button></form>' : '');
+                . '<button type="submit" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang('Stop repeating this invoice? The invoices it already wrote stay.')) . '"><i class="bi bi-stop-circle me-1" aria-hidden="true"></i>' . lang('Stop repeating') . '</button></form>' : '');
     } elseif ($recur_refusal !== '') {
-        $recur_body = '<p class="text-body-secondary mb-0">' . h($recur_refusal) . '</p>';
+        $recur_body = '<p class="fg-secondary mb-0">' . h($recur_refusal) . '</p>';
     } elseif (!$recur_readonly) {
         $period_options = '';
         foreach (erp_expense_recurring_periods() as $months => $label) {
@@ -1339,37 +1339,37 @@ if (function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_read
             $mode_options .= '<option value="' . h($mode) . '">' . h($label) . '</option>';
         }
         $recur_body = '
-                    <form method="post" action="edit_erp_invoice.php" class="row g-2 align-items-end">
+                    <form method="post" action="edit_erp_invoice.php" class="row g-3 align-items-end">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $invoice_id . '" />
                         <input type="hidden" name="erp_action" value="recur_start" />
-                        <div class="col-6 col-md-3">
+                        <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_every">' . lang('Repeats') . '</label>
-                            <select class="form-select form-select-sm" id="recur_every" name="recur_every">' . $period_options . '</select>
+                            <select class="form-control form-control-sm" id="recur_every" name="recur_every">' . $period_options . '</select>
                         </div>
-                        <div class="col-6 col-md-3">
+                        <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_first">' . lang('Next invoice on') . '</label>
                             <input type="date" class="form-control form-control-sm" id="recur_first" name="recur_first" value="' . h(erp_expense_recurring_step((string) $invoice['issue_date'], 1, (int) substr((string) $invoice['issue_date'], 8, 2))) . '" required />
                         </div>
-                        <div class="col-6 col-md-3">
+                        <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_end">' . lang('Until (optional)') . '</label>
                             <input type="date" class="form-control form-control-sm" id="recur_end" name="recur_end" />
                         </div>
-                        <div class="col-6 col-md-3">
+                        <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_mode">' . lang('Each invoice is') . '</label>
-                            <select class="form-select form-select-sm" id="recur_mode" name="recur_mode">' . $mode_options . '</select>
+                            <select class="form-control form-control-sm" id="recur_mode" name="recur_mode">' . $mode_options . '</select>
                         </div>
                         <div class="col-12">
-                            <div class="form-text mb-2">' . lang('The same account, lines and prices, dated on the day. Issued straight away, each takes the next number, and the e-document and e-mail settings apply to it.') . '</div>
-                            <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Repeat this invoice') . '</button>
+                            <div class="form-text mb-3">' . lang('The same account, lines and prices, dated on the day. Issued straight away, each takes the next number, and the e-document and e-mail settings apply to it.') . '</div>
+                            <button type="submit" class="btn btn-sm btn-outline theme-primary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Repeat this invoice') . '</button>
                         </div>
                     </form>';
     }
 
     if ($recur_body !== '') {
         $output_recurring = '
-            <div class="card my-4" id="erp-recurring">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Repeating invoice') . '</div>
+            <div class="card my-7" id="erp-recurring">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Repeating invoice') . '</div>
                 <div class="card-body">' . $recur_body . '</div>
             </div>';
     }
@@ -1403,13 +1403,13 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                        <a class="btn btn-sm btn-outline-secondary" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>' . lang('PDF') . '</a>
-                        <a class="btn btn-sm btn-outline-secondary" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '&amp;download=1"><i class="bi bi-download me-1"></i>' . lang('Download') . '</a>
-                        ' . ((((string) $invoice['doc_type'] === 'invoice') && ((int) $invoice['order_id'] === 0) && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_manual_invoice.php?copy=' . $invoice_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>' : '') . '
+                        <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>' . lang('PDF') . '</a>
+                        <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '&amp;download=1"><i class="bi bi-download me-1"></i>' . lang('Download') . '</a>
+                        ' . ((((string) $invoice['doc_type'] === 'invoice') && ((int) $invoice['order_id'] === 0) && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_manual_invoice.php?copy=' . $invoice_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>' : '') . '
                         ' . $output_mail_button . '
                         ' . $output_waybill_button . '
                         ' . $output_workspace_button . '
-                        ' . ((function_exists('erp_audit_ready') && erp_audit_ready() && ((((int) $user['role'] < 3) || !empty($user['manage_erp_settings']) || (defined('USER_ERP_READONLY') && USER_ERP_READONLY)))) ? '<a class="btn btn-sm btn-outline-secondary" href="erp_audit.php?type=invoice&amp;id=' . $invoice_id . '"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>' . lang('Audit trail') . '</a>' : '') . '
+                        ' . ((function_exists('erp_audit_ready') && erp_audit_ready() && ((((int) $user['role'] < 3) || !empty($user['manage_erp_settings']) || (defined('USER_ERP_READONLY') && USER_ERP_READONLY)))) ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_audit.php?type=invoice&amp;id=' . $invoice_id . '"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>' . lang('Audit trail') . '</a>' : '') . '
                     </nav>
         </div>
 
@@ -1419,12 +1419,12 @@ pg_page_shell([
             cards reads as spread out - the decision is in CLAUDE.md and
             the pattern is the one the product editor uses.
         -->
-        <div class="col-12 col-lg-8 col-xxl-9 order-1">
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
 
             ' . $output_reminders . '
 
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Lines') . '
                 </div>
                 <div class="card-body p-0 position-relative table-responsive">
@@ -1455,52 +1455,52 @@ pg_page_shell([
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $invoice_id . '" />
                 <input type="hidden" name="erp_action" value="notes" />
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Notes') . '
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-12 col-lg-9 my-2">
+                            <div class="col-12 lg:col-9 my-3">
                                 ' . $liveform->output_field(array(
                                     'type' => 'textarea', 'id' => 'notes', 'name' => 'notes',
                                     'class' => 'form-control', 'rows' => '2', 'maxlength' => '5000',
                                     'aria-label' => lang('Notes'))) . '
                                 <div class="form-text">' . lang('Printed at the foot of the document. The only part of an issued invoice that may still be changed; the figures and the lines cannot.') . '</div>
                             </div>
-                            <div class="col-12 col-lg-3 my-2 d-flex align-items-start">
-                                <button type="submit" name="submit_notes" value="Save" class="btn btn-outline-secondary"><i class="bi bi-save me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save the Note') . '</span></button>
+                            <div class="col-12 lg:col-3 my-3 d-flex align-items-start">
+                                <button type="submit" name="submit_notes" value="Save" class="btn btn-outline theme-secondary"><i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save the Note') . '</span></button>
                             </div>
                         </div>
                     </div>
                 </div>
             </form>
 
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
                     <span>' . lang('Settlement') . '</span>
                     ' . (($open_amount > 0 && (string) $invoice['status'] !== 'cancelled')
-                        ? '<a class="btn btn-sm btn-primary" href="add_erp_receipt.php?direction=' . (((string) $invoice['direction'] === 'sales') ? 'collection' : 'payment') . '&amp;invoice_id=' . $invoice_id . '"><i class="bi bi-cash-coin me-2" aria-hidden="true"></i>' . lang('Record a Receipt') . '</a>'
+                        ? '<a class="btn btn-sm btn-solid theme-primary" href="add_erp_receipt.php?direction=' . (((string) $invoice['direction'] === 'sales') ? 'collection' : 'payment') . '&amp;invoice_id=' . $invoice_id . '"><i class="bi bi-cash-coin me-3" aria-hidden="true"></i>' . lang('Record a Receipt') . '</a>'
                         : '') . '
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-12 col-sm-3 my-2">
-                            <div class="form-label text-body-secondary">' . lang('Invoice Total') . '</div>
+                        <div class="col-12 sm:col-3 my-3">
+                            <div class="form-label fg-secondary">' . lang('Invoice Total') . '</div>
                             <div class="h5 mb-0">' . $money((int) $invoice['grand_total']) . '</div>
-                            ' . ($is_foreign ? '<div class="text-body-secondary small">' . h(erp_money_out((int) $invoice['grand_total_base'])) . '</div>' : '') . '
+                            ' . ($is_foreign ? '<div class="fg-secondary small">' . h(erp_money_out((int) $invoice['grand_total_base'])) . '</div>' : '') . '
                         </div>
-                        <div class="col-12 col-sm-3 my-2">
-                            <div class="form-label text-body-secondary">' . lang('Paid') . '</div>
-                            <div class="h5 mb-0 text-success">' . $money((int) $invoice['paid_total']) . '</div>
+                        <div class="col-12 sm:col-3 my-3">
+                            <div class="form-label fg-secondary">' . lang('Paid') . '</div>
+                            <div class="h5 mb-0 fg-success">' . $money((int) $invoice['paid_total']) . '</div>
                         </div>
-                        <div class="col-12 col-sm-3 my-2">
-                            <div class="form-label text-body-secondary">' . lang('Returned') . '</div>
-                            <div class="h5 mb-0 ' . (($returned_total > 0) ? 'text-warning' : 'text-body-secondary') . '">' . $money($returned_total) . '</div>
+                        <div class="col-12 sm:col-3 my-3">
+                            <div class="form-label fg-secondary">' . lang('Returned') . '</div>
+                            <div class="h5 mb-0 ' . (($returned_total > 0) ? 'fg-warning' : 'fg-secondary') . '">' . $money($returned_total) . '</div>
                         </div>
-                        <div class="col-12 col-sm-3 my-2">
-                            <div class="form-label text-body-secondary">' . lang('Outstanding') . '</div>
-                            <div class="h5 mb-0 ' . (($open_amount > 0) ? 'text-danger' : 'text-body-secondary') . '">' . $money($open_amount) . '</div>
+                        <div class="col-12 sm:col-3 my-3">
+                            <div class="form-label fg-secondary">' . lang('Outstanding') . '</div>
+                            <div class="h5 mb-0 ' . (($open_amount > 0) ? 'fg-danger' : 'fg-secondary') . '">' . $money($open_amount) . '</div>
                         </div>
                     </div>
                     ' . $output_settlements . '
@@ -1513,17 +1513,17 @@ pg_page_shell([
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $invoice_id . '" />
                 <input type="hidden" name="erp_action" value="cancel" />
-                <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             ' . ($can_return
-                                ? '<a class="btn my-1 btn-outline-warning" href="add_erp_return.php?invoice_id=' . $invoice_id . '"><i class="bi bi-arrow-return-left me-2" aria-hidden="true"></i>' . lang('Return an Invoice') . '</a>'
+                                ? '<a class="btn my-1 btn-outline theme-warning" href="add_erp_return.php?invoice_id=' . $invoice_id . '"><i class="bi bi-arrow-return-left me-3" aria-hidden="true"></i>' . lang('Return an Invoice') . '</a>'
                                 : '') . '
                             ' . ($can_cancel
-                                ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-outline-danger"' . (((string) $provider_cancellable['reason'] !== '') ? ' title="' . h((string) $provider_cancellable['reason']) . '"' : '') . '><i class="bi bi-x-circle me-2" aria-hidden="true"></i><span class="pg-btn-label">' . (!empty($provider_cancellable['manual']) ? lang('Cancelled there: cancel it here too') : lang('Cancel the Document')) . '</span></button>'
+                                ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-outline theme-danger"' . (((string) $provider_cancellable['reason'] !== '') ? ' title="' . h((string) $provider_cancellable['reason']) . '"' : '') . '><i class="bi bi-x-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . (!empty($provider_cancellable['manual']) ? lang('Cancelled there: cancel it here too') : lang('Cancel the Document')) . '</span></button>'
                                 : '') . '
                             ' . (($cancel_locked !== '')
-                                ? '<span class="d-inline-block my-1" tabindex="0" title="' . h($cancel_locked) . '"><button type="button" class="btn btn-outline-danger" disabled><i class="bi bi-x-circle me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Cancel the Document') . '</span></button></span>'
+                                ? '<span class="d-inline-block my-1" tabindex="0" title="' . h($cancel_locked) . '"><button type="button" class="btn btn-outline theme-danger" disabled><i class="bi bi-x-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Cancel the Document') . '</span></button></span>'
                                 : '') . '
                         </div>
                     </div>
@@ -1532,8 +1532,8 @@ pg_page_shell([
                 : '') . '
 
             <div class="row">
-                <div class="col-12 col-lg-5 ms-auto">
-                    <div class="card my-4">
+                <div class="col-12 lg:col-5 ms-auto">
+                    <div class="card my-7">
                         <div class="card-body">
                             <div class="d-flex justify-content-between py-1">
                                 <span>' . lang('Subtotal') . '</span><b>' . $money((int) $invoice['subtotal']) . '</b>
@@ -1555,16 +1555,16 @@ pg_page_shell([
                                 <span>' . lang('VAT withholding') . '</span><b>&minus;' . $money((int) $invoice['withholding_total']) . '</b>
                             </div>'
                                 : '') . '
-                            <div class="d-flex justify-content-between py-2 border-top h5 mb-0">
+                            <div class="d-flex justify-content-between py-3 border-top h5 mb-0">
                                 <span>' . (((int) $invoice['withholding_total'] !== 0) ? lang('Amount payable') : lang('Total')) . '</span><b>' . $money((int) $invoice['grand_total']) . '</b>
                             </div>
                             ' . ($is_foreign
-                                ? '<div class="d-flex justify-content-between py-1 text-body-secondary">
+                                ? '<div class="d-flex justify-content-between py-1 fg-secondary">
                                 <span>' . h(lang(array('string' => 'Total in {var:1}', 'vars' => erp_base_currency()))) . '</span><b>' . h(erp_money_out((int) $invoice['grand_total_base'])) . '</b>
                             </div>'
                                 : '') . '
                             ' . (((int) $invoice['gift_card_total'] > 0)
-                                ? '<div class="d-flex justify-content-between py-1 text-body-secondary">
+                                ? '<div class="d-flex justify-content-between py-1 fg-secondary">
                                 <span>' . lang('Settled by gift card') . '</span><b>' . $money((int) $invoice['gift_card_total']) . '</b>
                             </div>'
                                 : '') . '
@@ -1579,63 +1579,63 @@ pg_page_shell([
             after the form column in source order so a narrow screen puts it
             below the document rather than in front of it.
         -->
-        <div class="col-12 col-lg-4 col-xxl-3 order-2">
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
             <div class="position-sticky" style="top:3.3rem;">
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . ($is_return ? lang('Return') : lang('Invoice')) . '
                     </div>
                     <div class="card-body">
                         <div class="row">
                             ' . $output_quote . '
-                            <div class="col-6 col-sm-4 col-lg-12 my-2">
-                                <div class="form-label text-body-secondary">' . lang('Account') . '</div>
+                            <div class="col-6 sm:col-4 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Account') . '</div>
                                 <div>' . $output_account . '</div>
                             </div>
-                            <div class="col-6 col-sm-4 col-lg-12 my-2">
-                                <div class="form-label text-body-secondary">' . h(erp_tax_id_label($has_snapshot ? (string) $invoice['account_country_code'] : (string) ($invoice['live_country_code'] ?? ''))) . '</div>
-                                <div>' . h($account_tax_number ?: '—') . ' <span class="text-body-secondary">' . h($account_tax_office) . '</span></div>
+                            <div class="col-6 sm:col-4 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . h(erp_tax_id_label($has_snapshot ? (string) $invoice['account_country_code'] : (string) ($invoice['live_country_code'] ?? ''))) . '</div>
+                                <div>' . h($account_tax_number ?: '—') . ' <span class="fg-secondary">' . h($account_tax_office) . '</span></div>
                             </div>
-                            <div class="col-6 col-sm-4 col-lg-12 my-2">
-                                <div class="form-label text-body-secondary">' . lang('Date') . '</div>
+                            <div class="col-6 sm:col-4 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Date') . '</div>
                                 <div>' . h(prepare_form_data_for_output($invoice['issue_date'], 'date')) . '</div>
                             </div>
-                            <div class="col-6 col-sm-4 col-lg-12 my-2">
-                                <div class="form-label text-body-secondary">' . lang('Due Date') . '</div>
+                            <div class="col-6 sm:col-4 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Due Date') . '</div>
                                 <div>' . h(prepare_form_data_for_output(((string) $invoice['due_date'] !== '0000-00-00') ? $invoice['due_date'] : $invoice['issue_date'], 'date')) . '</div>
                             </div>
-                            <div class="col-6 col-sm-4 col-lg-12 my-2">
-                                <div class="form-label text-body-secondary">' . lang('Status') . '</div>
+                            <div class="col-6 sm:col-4 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Status') . '</div>
                                 <div>' . h($status_labels[$invoice['status']] ?? $invoice['status']) . '</div>
                             </div>
-                            <div class="col-6 col-sm-4 col-lg-12 my-2">
-                                <div class="form-label text-body-secondary">' . lang('Order') . '</div>
+                            <div class="col-6 sm:col-4 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Order') . '</div>
                                 <div>' . $output_order . '</div>
                             </div>
                             ' . ($is_return
-                                ? '<div class="col-6 col-sm-4 col-lg-12 my-2">
-                                <div class="form-label text-body-secondary">' . lang('Against Invoice') . '</div>
+                                ? '<div class="col-6 sm:col-4 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Against Invoice') . '</div>
                                 <div><a href="edit_erp_invoice.php?id=' . (int) $invoice['parent_invoice_id'] . '">' . h((string) db_value("SELECT full_number FROM erp_invoices WHERE id = '" . (int) $invoice['parent_invoice_id'] . "'")) . '</a></div>
                             </div>'
                                 : '') . '
                             ' . $output_supplier . '
                         </div>
                         ' . ($is_foreign
-                            ? '<div class="row border-top mt-2 pt-2">
-                            <div class="col-6 col-sm-4 col-lg-12 my-2">
-                                <div class="form-label text-body-secondary">' . lang('Currency') . '</div>
+                            ? '<div class="row border-top mt-3 pt-3">
+                            <div class="col-6 sm:col-4 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Currency') . '</div>
                                 <div>' . h($currency) . '</div>
                             </div>
-                            <div class="col-6 col-sm-4 col-lg-12 my-2">
-                                <div class="form-label text-body-secondary">' . lang('Exchange Rate') . '</div>
-                                <div>' . h(erp_fx_rate_text((float) $invoice['exchange_rate'])) . ' <span class="text-body-secondary">' . h(erp_base_currency()) . ((trim((string) $invoice['exchange_rate_source']) !== '') ? ' · ' . h($invoice['exchange_rate_source']) : '') . '</span></div>
+                            <div class="col-6 sm:col-4 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Exchange Rate') . '</div>
+                                <div>' . h(erp_fx_rate_text((float) $invoice['exchange_rate'])) . ' <span class="fg-secondary">' . h(erp_base_currency()) . ((trim((string) $invoice['exchange_rate_source']) !== '') ? ' · ' . h($invoice['exchange_rate_source']) : '') . '</span></div>
                             </div>
-                            <div class="col-6 col-sm-4 col-lg-12 my-2">
-                                <div class="form-label text-body-secondary">' . lang('Exchange Rate Date') . '</div>
+                            <div class="col-6 sm:col-4 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Exchange Rate Date') . '</div>
                                 <div>' . h(prepare_form_data_for_output($invoice['exchange_rate_date'], 'date')) . '</div>
                             </div>
-                            <div class="col-6 col-sm-4 col-lg-12 my-2">
-                                <div class="form-label text-body-secondary">' . h(lang(array('string' => 'Total in {var:1}', 'vars' => erp_base_currency()))) . '</div>
+                            <div class="col-6 sm:col-4 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . h(lang(array('string' => 'Total in {var:1}', 'vars' => erp_base_currency()))) . '</div>
                                 <div>' . h(erp_money_out((int) $invoice['grand_total_base'])) . '</div>
                             </div>
                         </div>'

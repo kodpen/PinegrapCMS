@@ -191,37 +191,37 @@ foreach ($servers as $server) {
     $asks_first = count(ws_mcp_tools_on($server)) - count($tools);
 
     if (!$mine['oauth']) {
-        $badge = '<span class="badge text-bg-secondary fw-normal">' . h(lang('Site connection')) . '</span>';
-        $account = '<p class="small text-body-secondary mb-2">' . h(lang('Everybody uses the site\'s connection to this server: there is nothing of yours to connect.')) . '</p>';
+        $badge = '<span class="badge theme-secondary fw-normal">' . h(lang('Site connection')) . '</span>';
+        $account = '<p class="small fg-secondary mb-3">' . h(lang('Everybody uses the site\'s connection to this server: there is nothing of yours to connect.')) . '</p>';
     } else {
         if ($mine['works']) {
-            $badge = '<span class="badge text-bg-success fw-normal">' . h(lang('Connected')) . '</span>';
+            $badge = '<span class="badge theme-success fw-normal">' . h(lang('Connected')) . '</span>';
             $line = lang(array('string' => 'Your own account is connected ({var:1}).', 'vars' => ws_time_label($mine['mine']['refreshed_timestamp'] ?: $mine['mine']['created_timestamp'])));
 
             if ((int) $mine['mine']['last_used_timestamp'] > 0) {
                 $line .= ' ' . lang(array('string' => 'Last used {var:1}.', 'vars' => ws_time_label($mine['mine']['last_used_timestamp'])));
             }
 
-            $button = '<button type="button" class="btn btn-sm btn-outline-danger ws-mcp-action" data-action="disconnect" data-id="' . $id . '"'
+            $button = '<button type="button" class="btn btn-sm btn-outline theme-danger ws-mcp-action" data-action="disconnect" data-id="' . $id . '"'
                 . ' data-confirm="' . h(lang(array('string' => 'Disconnect your own account from @{var:1}? Calls that wait for your approval cannot run until you connect it again.', 'vars' => $server['alias']))) . '">'
                 . '<i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect my account')) . '</button>';
         } else {
             $badge = $mine['mine']
-                ? '<span class="badge text-bg-danger fw-normal">' . h(lang('Connect again')) . '</span>'
-                : '<span class="badge text-bg-warning fw-normal">' . h(lang('Not connected')) . '</span>';
+                ? '<span class="badge theme-danger fw-normal">' . h(lang('Connect again')) . '</span>'
+                : '<span class="badge theme-warning fw-normal">' . h(lang('Not connected')) . '</span>';
             $line = $mine['mine'] ? lang('Your own connection ended.') : lang('Your own account is not connected.');
             $line .= ' ' . ($mine['site']
                 ? lang('Tools that read use the site\'s account until you connect yours.')
                 : lang('Nothing can be called for you until you connect it.'));
 
-            $button = '<button type="button" class="btn btn-sm btn-primary ws-mcp-action" data-action="connect" data-id="' . $id . '">'
+            $button = '<button type="button" class="btn btn-sm btn-solid theme-primary ws-mcp-action" data-action="connect" data-id="' . $id . '">'
                 . '<i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i>' . h($mine['mine'] ? lang('Connect my account again') : lang('Connect my account')) . '</button>';
         }
 
         $account = '
-            <p class="small mb-2">' . h($line) . '</p>
-            ' . (($asks_first > 0) ? '<p class="small text-body-secondary mb-2">' . h(lang(array('string' => '{var:1} tools here ask first: each call waits under the answer until you approve it, and runs with your own account only.', 'vars' => $asks_first))) . '</p>' : '') . '
-            <div class="mb-3">' . $button . '</div>';
+            <p class="small mb-3">' . h($line) . '</p>
+            ' . (($asks_first > 0) ? '<p class="small fg-secondary mb-3">' . h(lang(array('string' => '{var:1} tools here ask first: each call waits under the answer until you approve it, and runs with your own account only.', 'vars' => $asks_first))) . '</p>' : '') . '
+            <div class="mb-5">' . $button . '</div>';
     }
 
     $links = '';
@@ -229,7 +229,7 @@ foreach ($servers as $server) {
     foreach ($tools as $name => $tool) {
         $active = $open_tool && ((int) $open_server['id'] === $id) && ($open_name === $name);
 
-        $links .= '<a class="btn btn-sm ' . ($active ? 'btn-secondary' : 'btn-outline-secondary') . ' text-start" href="' . h($self_url . ws_mcp_form_query($id, $name, $channel_id)) . '"'
+        $links .= '<a class="btn btn-sm ' . ($active ? 'btn-solid theme-secondary' : 'btn-outline theme-secondary') . ' text-start" href="' . h($self_url . ws_mcp_form_query($id, $name, $channel_id)) . '"'
             . (($tool['description'] !== '') ? ' title="' . h(mb_substr($tool['description'], 0, 200)) . '"' : '')
             . ($active ? ' aria-current="true"' : '') . '>'
             . '<i class="bi bi-ui-checks me-1" aria-hidden="true"></i>' . h(($tool['title'] !== '') ? $tool['title'] : $name) . '</a>';
@@ -242,21 +242,21 @@ foreach ($servers as $server) {
     }
 
     $server_cards .= '
-        <div class="card mb-3' . (($open_server && ((int) $open_server['id'] === $id)) ? ' border-primary' : '') . '" id="ws-mcp-' . $id . '">
+        <div class="card mb-5' . (($open_server && ((int) $open_server['id'] === $id)) ? ' border-primary' : '') . '" id="ws-mcp-' . $id . '">
             <div class="card-body">
-                <div class="d-flex align-items-start gap-2 mb-2">
-                    <i class="bi bi-plug fs-5 opacity-75" aria-hidden="true"></i>
+                <div class="d-flex align-items-start gap-3 mb-3">
+                    <i class="bi bi-plug fs-lg opacity-75" aria-hidden="true"></i>
                     <div class="flex-grow-1 min-w-0">
-                        <div class="fw-semibold">@' . h($server['alias']) . (($server['name'] !== '') ? ' <span class="fw-normal text-body-secondary">· ' . h($server['name']) . '</span>' : '') . '</div>
-                        <div class="small text-body-secondary">' . h(implode(' · ', $details)) . '</div>
+                        <div class="fw-semibold">@' . h($server['alias']) . (($server['name'] !== '') ? ' <span class="fw-normal fg-secondary">· ' . h($server['name']) . '</span>' : '') . '</div>
+                        <div class="small fg-secondary">' . h(implode(' · ', $details)) . '</div>
                     </div>
                     ' . $badge . '
                 </div>
                 ' . $account . '
                 <div class="small fw-semibold mb-1">' . h(lang('Run a tool with a form')) . '</div>
                 ' . (($links !== '')
-                    ? '<div class="d-flex flex-wrap gap-2">' . $links . '</div>'
-                    : '<p class="small text-body-secondary mb-0">' . h(lang('No tool that reads is turned on here.')) . '</p>') . '
+                    ? '<div class="d-flex flex-wrap gap-3">' . $links . '</div>'
+                    : '<p class="small fg-secondary mb-0">' . h(lang('No tool that reads is turned on here.')) . '</p>') . '
             </div>
         </div>';
 }
@@ -275,7 +275,7 @@ if ($open_tool) {
     }
 
     if ($output_fields === '') {
-        $output_fields = '<p class="small text-body-secondary">' . h(lang('This tool takes nothing: run it as it is.')) . '</p>';
+        $output_fields = '<p class="small fg-secondary">' . h(lang('This tool takes nothing: run it as it is.')) . '</p>';
     }
 
     $options = '<option value="0">' . h(lang('Nowhere: only show it to me')) . '</option>';
@@ -301,34 +301,34 @@ if ($open_tool) {
 
         $result = '
             <hr>
-            <h3 class="h6 d-flex align-items-center gap-2">' . h(lang('Answer')) . ($state['result']['is_error'] ? ' <span class="badge text-bg-danger fw-normal">' . h(lang('Error')) . '</span>' : '') . '</h3>
+            <h3 class="h6 d-flex align-items-center gap-3">' . h(lang('Answer')) . ($state['result']['is_error'] ? ' <span class="badge theme-danger fw-normal">' . h(lang('Error')) . '</span>' : '') . '</h3>
             ' . (($text !== '')
-                ? '<pre class="small bg-body-tertiary border rounded p-2 mb-0" style="max-height: 30rem; overflow: auto; white-space: pre-wrap; word-break: break-word;">' . h($text) . '</pre>'
-                : '<p class="small text-body-secondary mb-0">' . h(lang('(empty)')) . '</p>');
+                ? '<pre class="small bg-body-tertiary border rounded-4 p-3 mb-0" style="max-height: 30rem; overflow: auto; white-space: pre-wrap; word-break: break-word;">' . h($text) . '</pre>'
+                : '<p class="small fg-secondary mb-0">' . h(lang('(empty)')) . '</p>');
     }
 
     $form_card = '
-        <div class="card mb-3" id="ws-mcp-form">
+        <div class="card mb-5" id="ws-mcp-form">
             <div class="card-header">
-                <h2 class="h6 mb-0"><i class="bi bi-ui-checks me-1" aria-hidden="true"></i>@' . h($open_server['alias']) . ': ' . h(($open_tool['title'] !== '') ? $open_tool['title'] : $open_name) . ' <code class="small text-body-secondary">' . h($open_name) . '</code></h2>
+                <h2 class="h6 mb-0"><i class="bi bi-ui-checks me-1" aria-hidden="true"></i>@' . h($open_server['alias']) . ': ' . h(($open_tool['title'] !== '') ? $open_tool['title'] : $open_name) . ' <code class="small fg-secondary">' . h($open_name) . '</code></h2>
             </div>
             <div class="card-body">
-                ' . (($open_tool['description'] !== '') ? '<p class="small text-body-secondary" style="white-space: pre-line;">' . h(mb_substr($open_tool['description'], 0, 1000)) . '</p>' : '') . '
+                ' . (($open_tool['description'] !== '') ? '<p class="small fg-secondary" style="white-space: pre-line;">' . h(mb_substr($open_tool['description'], 0, 1000)) . '</p>' : '') . '
                 <form method="post" action="' . h($self_url) . '" class="disable_shortcut">
                     ' . get_token_field() . '
                     <input type="hidden" name="mcp_action" value="run">
                     <input type="hidden" name="mcp_id" value="' . (int) $open_server['id'] . '">
                     <input type="hidden" name="mcp_tool" value="' . h($open_name) . '">
                     ' . $output_fields . '
-                    <div class="mb-3 mt-3">
+                    <div class="mb-5 mt-5">
                         <label class="form-label small mb-1" for="ws_mcp_channel">' . h(lang('Post the answer in')) . '</label>
-                        <select class="form-select form-select-sm" name="mcp_channel" id="ws_mcp_channel">' . $options . '</select>
+                        <select class="form-control form-control-sm" name="mcp_channel" id="ws_mcp_channel">' . $options . '</select>
                         <div class="form-text">' . h(lang('In a channel the answer is posted in your name and nobody can edit it.')) . '</div>
                     </div>
                     ' . (($runs_with !== '')
-                        ? '<p class="small text-body-secondary mb-2"><i class="bi bi-person-check me-1" aria-hidden="true"></i>' . h($runs_with) . '</p>
-                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-play-fill me-1" aria-hidden="true"></i>' . h(lang('Run')) . '</button>'
-                        : '<div class="alert alert-warning small py-2 mb-0">' . h(lang(array('string' => 'Connect your own account to @{var:1} first: nobody\'s account is connected there for you.', 'vars' => $open_server['alias']))) . '</div>') . '
+                        ? '<p class="small fg-secondary mb-3"><i class="bi bi-person-check me-1" aria-hidden="true"></i>' . h($runs_with) . '</p>
+                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-play-fill me-1" aria-hidden="true"></i>' . h(lang('Run')) . '</button>'
+                        : '<div class="alert theme-warning small py-3 mb-0">' . h(lang(array('string' => 'Connect your own account to @{var:1} first: nobody\'s account is connected there for you.', 'vars' => $open_server['alias']))) . '</div>') . '
                 </form>
                 ' . $result . '
             </div>
@@ -336,11 +336,11 @@ if ($open_tool) {
 }
 
 $help = '
-        <div class="card mb-3">
+        <div class="card mb-5">
             <div class="card-body small">
-                <h2 class="h6 mb-2"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . h(lang('How it works')) . '</h2>
-                <p class="text-body-secondary">' . h(lang('Written in a channel where Pinegrap AI may be asked, an alias such as @github is answered by Pinegrap AI with the server\'s tools. On a server people sign in to, it uses your own account when you have connected one.')) . '</p>
-                <p class="text-body-secondary mb-0">' . h(lang('Here you can also run a tool that reads yourself, without Pinegrap AI: choose it, fill in its form and choose whether the answer goes to a channel.')) . '</p>
+                <h2 class="h6 mb-3"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . h(lang('How it works')) . '</h2>
+                <p class="fg-secondary">' . h(lang('Written in a channel where Pinegrap AI may be asked, an alias such as @github is answered by Pinegrap AI with the server\'s tools. On a server people sign in to, it uses your own account when you have connected one.')) . '</p>
+                <p class="fg-secondary mb-0">' . h(lang('Here you can also run a tool that reads yourself, without Pinegrap AI: choose it, fill in its form and choose whether the answer goes to a channel.')) . '</p>
             </div>
         </div>';
 
@@ -367,14 +367,14 @@ pg_page_shell(array(
 <div class="ws-shell-main">
     ' . $liveform_messages . '
     ' . ($viewer['settings'] ? '
-    <nav id="button_bar" class="pg-toolbar navigation mb-3" aria-label="' . lang('Button Bar') . '">
+    <nav id="button_bar" class="pg-toolbar navigation mb-5" aria-label="' . lang('Button Bar') . '">
         <a class="btn btn-sm btn-ghost" href="workspace_settings.php#ws-mcp"><i class="bi bi-sliders me-1" aria-hidden="true"></i>' . h(lang('MCP servers')) . '</a>
     </nav>' : '') . '
     ' . (empty($servers)
         ? pg_empty_state('bi-plug', lang('No MCP server yet'), lang('An administrator adds the other services\' MCP servers under Workspace Settings › MCP servers. They appear here once they are on.'))
-        : '<div class="row g-3">
-        <div class="col-12 col-xl-5">' . $server_cards . '</div>
-        <div class="col-12 col-xl-7">' . (($form_card !== '') ? $form_card : $help) . '</div>
+        : '<div class="row g-5">
+        <div class="col-12 xl:col-5">' . $server_cards . '</div>
+        <div class="col-12 xl:col-7">' . (($form_card !== '') ? $form_card : $help) . '</div>
     </div>') . '
 
     <form method="post" action="' . h($self_url) . '" id="ws_mcp_action_form" class="disable_shortcut d-none">

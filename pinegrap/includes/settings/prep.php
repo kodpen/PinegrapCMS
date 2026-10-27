@@ -458,9 +458,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $erp_edoc_capability_labels = erp_edoc_capability_labels();
 
         $output_erp_edoc_options = '
-                                                            <div class="form-check">
-                                                                <input class="form-check-input collapse-switcher" type="radio" name="edoc_provider" id="edoc_provider_none" value="" data-bs-target="#edoc_fields_none"' . (($erp_edoc_active === '') ? ' checked="checked"' : '') . ' />
-                                                                <label class="form-check-label" for="edoc_provider_none"><b>' . lang('Off') . '</b>
+                                                            <div class="form-field">
+                                                                <input class="radio collapse-switcher" type="radio" name="edoc_provider" id="edoc_provider_none" value="" data-bs-target="#edoc_fields_none"' . (($erp_edoc_active === '') ? ' checked="checked"' : '') . ' />
+                                                                <label class="" for="edoc_provider_none"><b>' . lang('Off') . '</b>
                                                                     <div class="form-text mt-0">' . lang('Invoices and delivery notes are printed as PDF and sent to the tax authority by other means.') . '</div>
                                                                 </label>
                                                             </div>
@@ -479,14 +479,14 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
             foreach ($erp_edoc_info['capabilities'] as $erp_edoc_capability) {
                 if (isset($erp_edoc_capability_labels[$erp_edoc_capability])) {
-                    $erp_edoc_badges .= ' <span class="badge text-bg-light border fw-normal">' . h($erp_edoc_capability_labels[$erp_edoc_capability]) . '</span>';
+                    $erp_edoc_badges .= ' <span class="badge badge-subtle theme-secondary border fw-normal">' . h($erp_edoc_capability_labels[$erp_edoc_capability]) . '</span>';
                 }
             }
 
             $erp_edoc_status = '';
 
             if (is_array($erp_edoc_row) && ((int) $erp_edoc_row['checked_at'] > 0)) {
-                $erp_edoc_status = '<div class="small mt-1 ' . (($erp_edoc_row['check_status'] === 'ok') ? 'text-success' : 'text-body-secondary') . '"><i class="bi ' . (($erp_edoc_row['check_status'] === 'ok') ? 'bi-check-circle' : 'bi-info-circle') . ' me-1"></i>'
+                $erp_edoc_status = '<div class="small mt-1 ' . (($erp_edoc_row['check_status'] === 'ok') ? 'fg-success' : 'fg-secondary') . '"><i class="bi ' . (($erp_edoc_row['check_status'] === 'ok') ? 'bi-check-circle' : 'bi-info-circle') . ' me-1"></i>'
                     . h(lang(array('string' => 'Last checked {var:1}: {var:2}', 'vars' => array(date('d.m.Y H:i', (int) $erp_edoc_row['checked_at']), (string) $erp_edoc_row['check_message'])))) . '</div>';
             }
 
@@ -500,7 +500,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 // A choice (test or live, say) is a select; everything else
                 // is a box, and a password box is drawn empty with a hint.
                 if (($erp_edoc_field['type'] === 'select') && !empty($erp_edoc_field['options'])) {
-                    $erp_edoc_control = '<select class="form-select" id="' . h($erp_edoc_name) . '" name="' . h($erp_edoc_name) . '">';
+                    $erp_edoc_control = '<select class="form-control" id="' . h($erp_edoc_name) . '" name="' . h($erp_edoc_name) . '">';
 
                     foreach ((array) $erp_edoc_field['options'] as $erp_edoc_option => $erp_edoc_option_label) {
                         $erp_edoc_control .= '<option value="' . h((string) $erp_edoc_option) . '"' . (((string) $erp_edoc_option === $erp_edoc_value) ? ' selected="selected"' : '') . '>' . h((string) $erp_edoc_option_label) . '</option>';
@@ -518,7 +518,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
                 $erp_edoc_fields .= '
                                                                 <div class="pg-f-md">
-                                                                    <label class="form-label" for="' . h($erp_edoc_name) . '">' . h($erp_edoc_field['label']) . (!empty($erp_edoc_field['required']) ? ' <span class="text-danger">*</span>' : '') . '</label>
+                                                                    <label class="form-label" for="' . h($erp_edoc_name) . '">' . h($erp_edoc_field['label']) . (!empty($erp_edoc_field['required']) ? ' <span class="fg-danger">*</span>' : '') . '</label>
                                                                     ' . $erp_edoc_control
                     . (($erp_edoc_field['help'] !== '') ? '<div class="form-text">' . h($erp_edoc_field['help']) . '</div>' : '') . '
                                                                 </div>';
@@ -530,21 +530,21 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             $erp_edoc_environment = erp_edoc_environment($erp_edoc_code);
 
             if (!empty($erp_edoc_environment['is_test'])) {
-                $erp_edoc_badges .= ' <span class="badge text-bg-warning">' . h((string) $erp_edoc_environment['label']) . '</span>';
+                $erp_edoc_badges .= ' <span class="badge theme-warning">' . h((string) $erp_edoc_environment['label']) . '</span>';
             }
 
             $output_erp_edoc_options .= '
-                                                            <div class="form-check">
-                                                                <input class="form-check-input collapse-switcher" type="radio" name="edoc_provider" id="edoc_provider_' . h($erp_edoc_code) . '" value="' . h($erp_edoc_code) . '" data-bs-target="#edoc_fields_' . h($erp_edoc_code) . '"' . (($erp_edoc_active === $erp_edoc_code) ? ' checked="checked"' : '') . ' />
-                                                                <label class="form-check-label" for="edoc_provider_' . h($erp_edoc_code) . '"><b>' . h($erp_edoc_info['label']) . '</b>' . $erp_edoc_badges . '
+                                                            <div class="form-field">
+                                                                <input class="radio collapse-switcher" type="radio" name="edoc_provider" id="edoc_provider_' . h($erp_edoc_code) . '" value="' . h($erp_edoc_code) . '" data-bs-target="#edoc_fields_' . h($erp_edoc_code) . '"' . (($erp_edoc_active === $erp_edoc_code) ? ' checked="checked"' : '') . ' />
+                                                                <label class="" for="edoc_provider_' . h($erp_edoc_code) . '"><b>' . h($erp_edoc_info['label']) . '</b>' . $erp_edoc_badges . '
                                                                     <div class="form-text mt-0">' . h($erp_edoc_info['description'])
                                                                         . (($erp_edoc_info['docs_url'] !== '') ? ' <a href="' . h($erp_edoc_info['docs_url']) . '" target="_blank" rel="noopener">' . lang('API documentation') . '</a>' : '') . '</div>'
                                                                     . $erp_edoc_status . '
                                                                 </label>
                                                             </div>
-                                                            <div id="edoc_fields_' . h($erp_edoc_code) . '" class="ms-4 mb-3" style="display:none">
-                                                                ' . (($erp_edoc_info['settings_note'] !== '') ? '<div class="form-text mb-2">' . h($erp_edoc_info['settings_note']) . '</div>' : '') . '
-                                                                <div class="row gy-3">' . $erp_edoc_fields . '
+                                                            <div id="edoc_fields_' . h($erp_edoc_code) . '" class="ms-7 mb-5" style="display:none">
+                                                                ' . (($erp_edoc_info['settings_note'] !== '') ? '<div class="form-text mb-3">' . h($erp_edoc_info['settings_note']) . '</div>' : '') . '
+                                                                <div class="row gy-5">' . $erp_edoc_fields . '
                                                                 </div>
                                                             </div>';
         }
@@ -666,9 +666,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             continue;
         }
         $output_erp_fx_currencies .= '
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" name="erp_fx_currencies[]" id="erp_fx_currency_' . h($erp_fx_code) . '" value="' . h($erp_fx_code) . '"' . (in_array($erp_fx_code, $erp_fx_selected, true) ? ' checked="checked"' : '') . ' />
-                                    <label class="form-check-label" for="erp_fx_currency_' . h($erp_fx_code) . '">' . h($erp_fx_code . ' - ' . $erp_fx_currency['name']) . '</label>
+                                <div class="form-field d-inline-grid me-5">
+                                    <input class="check" type="checkbox" name="erp_fx_currencies[]" id="erp_fx_currency_' . h($erp_fx_code) . '" value="' . h($erp_fx_code) . '"' . (in_array($erp_fx_code, $erp_fx_selected, true) ? ' checked="checked"' : '') . ' />
+                                    <label class="" for="erp_fx_currency_' . h($erp_fx_code) . '">' . h($erp_fx_code . ' - ' . $erp_fx_currency['name']) . '</label>
                                 </div>';
     }
     if ($output_erp_fx_currencies === '') {
@@ -786,24 +786,24 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             }
 
             $output_app_icon_picker = '
-                                        <div id="pgsub-app" class="col-12  mb-0"><h6 class="text-muted text-uppercase">' . lang('Installed Application') . '</h6></div>
+                                        <div id="pgsub-app" class="col-12  mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Installed Application') . '</h6></div>
                                         <div class="pg-f-md">
                                             <label for="app_icon" class="form-label">' . lang('Application Icon') . '</label>
-                                            <select name="app_icon" id="app_icon" class="form-select">' . $app_icon_options . '</select>
+                                            <select name="app_icon" id="app_icon" class="form-control">' . $app_icon_options . '</select>
                                             <div class="form-text">' . lang('Shown on the home screen when the panel is installed as an application. The picture is fitted whole onto a square, so nothing is cropped; a square picture of at least 512x512 looks best.') . '</div>
                                         </div>';
         }
 
         $output_share_image_pickers = '
-                                        <div id="pgsub-social" class="col-12  mb-0"><h6 class="text-muted text-uppercase">' . lang('Social Sharing') . '</h6></div>
+                                        <div id="pgsub-social" class="col-12  mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Social Sharing') . '</h6></div>
                                         <div class="pg-f-md">
                                             <label for="og_default_image" class="form-label">' . lang('Default Share Image') . '</label>
-                                            <select name="og_default_image" id="og_default_image" class="form-select">' . $og_image_options . '</select>
+                                            <select name="og_default_image" id="og_default_image" class="form-control">' . $og_image_options . '</select>
                                             <div class="form-text">' . lang('Used as the social share picture for pages that do not have one of their own.') . '</div>
                                         </div>
                                         <div class="pg-f-md">
                                             <label for="organization_logo" class="form-label">' . lang('Organization Logo') . '</label>
-                                            <select name="organization_logo" id="organization_logo" class="form-select">' . $logo_image_options . '</select>
+                                            <select name="organization_logo" id="organization_logo" class="form-control">' . $logo_image_options . '</select>
                                             <div class="form-text">' . lang('Used in the structured data that introduces your organization and as the publisher logo on blog posts.') . '</div>
                                         </div>';
 
@@ -815,7 +815,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                         <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="strutured_data_dependent_row">
                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                             <div class="popover-body">
-                                               <div class="row gy-3">
+                                               <div class="row gy-5">
                                                     <div class="col-12 ">
                                                         <label for="custom_jsonld" class="form-label">' . lang('Site-Wide JSON-LD') . '</label>
                                                         <textarea name="custom_jsonld" id="custom_jsonld" class="form-control" >' . h($site_custom_jsonld) . '</textarea>
@@ -823,7 +823,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                                         <div class="form-text">' . lang('Added to every page as structured data. Must be valid JSON. Use this for blocks you would otherwise paste into a template by hand, such as an Organization or SoftwareApplication description.') . '</div>
                                                     </div>
                                                     <div class="col-12 ">
-                                                        <h6 class="text-muted">' . lang('Structured Data (Google Merchant)') . '</h6>
+                                                        <h6 class="fg-secondary">' . lang('Structured Data (Google Merchant)') . '</h6>
                                                         <div class="form-text">' . lang('These facts appear on every physical product as Google Merchant shipping and return details. Digital products are left out automatically.') . '</div>
                                                     </div>
                                                     <div class="pg-f-xs">
@@ -850,7 +850,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                                     </div>
                                                     <div class="pg-f-md">
                                                         <label for="merchant_return_fees" class="form-label">' . lang('Return Shipping') . '</label>
-                                                        <select name="merchant_return_fees" id="merchant_return_fees" class="form-select">
+                                                        <select name="merchant_return_fees" id="merchant_return_fees" class="form-control">
                                                             <option value="0"' . (($merchant_return_fees == 0) ? ' selected="selected"' : '') . '>' . lang('Free for the customer') . '</option>
                                                             <option value="1"' . (($merchant_return_fees == 1) ? ' selected="selected"' : '') . '>' . lang('Customer pays') . '</option>
                                                         </select>
@@ -869,11 +869,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $strutured_data_switch_checked = ($strutured_data == 1) ? ' checked="checked"' : '';
 
     $output_structured_data_section = '
-                                        <div id="pgsub-structured" class="col-12  mb-0"><h6 class="text-muted text-uppercase">' . lang('Structured Data') . '</h6></div>
+                                        <div id="pgsub-structured" class="col-12  mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Structured Data') . '</h6></div>
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
+                                            <div class="form-field">
                                                 <input value="1"' . $strutured_data_switch_checked . ' class="form-check-input' . (($output_structured_data_dependent != '') ? ' collapse-switcher' : '') . '" type="checkbox" id="strutured_data" name="strutured_data"' . (($output_structured_data_dependent != '') ? ' data-bs-target="#strutured_data_dependent_row"' : '') . '/>
-                                                <label class="form-check-label" for="strutured_data">' . lang('Describe pages to search engines with structured data') . '</label>
+                                                <label class="" for="strutured_data">' . lang('Describe pages to search engines with structured data') . '</label>
                                             </div>
                                             <div class="form-text">' . lang('Products, product lists, blog posts, breadcrumbs and your organization are described in machine-readable form. The fields below only apply while this is on.') . '</div>
                                         </div>
@@ -914,7 +914,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $output_software_language ='
         <div class="pg-f-md">
             <label class="form-label" for="software_language">' . lang('Software Language') . $output_enforcement . '</label>
-            <select class="form-select" id="software_language" name="software_language">'.$select_software_language_options.'</select>
+            <select class="form-control" id="software_language" name="software_language">'.$select_software_language_options.'</select>
         </div>';
     }
 
@@ -1135,7 +1135,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
         }
 
-        $output_iyzipay_protected_currency_select = '<select class="form-select" name="iyzipay_protected_currency_code">' . $output_iyzipay_protected_currency_select_options . '</select>';
+        $output_iyzipay_protected_currency_select = '<select class="form-control" name="iyzipay_protected_currency_code">' . $output_iyzipay_protected_currency_select_options . '</select>';
 
     }
   
@@ -1231,7 +1231,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             foreach ($auto_rows as $auto_row) {
                 $remaining = max(0, (int) $auto_row['expires_at'] - time());
 
-                $output_auto_bans .= '<span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle me-1 ">'
+                $output_auto_bans .= '<span class="badge bg-subtle-danger fg-emphasis-danger border border-subtle-danger me-1 ">'
                     . '<i class="bi bi-shield-slash me-1"></i>' . h($auto_row['ip_address'])
                     . ' <span class="opacity-75">(' . ceil($remaining / 60) . ' ' . lang('minute(s)') . ')</span>'
                     . '</span>';
@@ -1865,9 +1865,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
         $output_job_dispatch_switches .= '
                                         <div class="pg-f-md">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . (in_array($job_dispatch_name, $job_dispatch_selection, true) ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="job_dispatch_job_' . h($job_dispatch_name) . '" name="job_dispatch_job[' . h($job_dispatch_name) . ']"/>
-                                                <label class="form-check-label" for="job_dispatch_job_' . h($job_dispatch_name) . '">' . h($job_dispatch_job['label']) . ' <span class="text-muted">(' . h(!empty($job_dispatch_job['inline']) ? lang('on every run of the general job') : pg_cron_interval_label($job_dispatch_job['interval'])) . ')</span>' . (pg_cron_job_active($job_dispatch_name) ? '' : ' <span class="text-warning-emphasis">&middot; ' . lang('disabled in config.php') . '</span>') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . (in_array($job_dispatch_name, $job_dispatch_selection, true) ? ' checked="checked"' : '') . ' class="" type="checkbox" id="job_dispatch_job_' . h($job_dispatch_name) . '" name="job_dispatch_job[' . h($job_dispatch_name) . ']"/></div>
+                                                <label class="" for="job_dispatch_job_' . h($job_dispatch_name) . '">' . h($job_dispatch_job['label']) . ' <span class="fg-secondary">(' . h(!empty($job_dispatch_job['inline']) ? lang('on every run of the general job') : pg_cron_interval_label($job_dispatch_job['interval'])) . ')</span>' . (pg_cron_job_active($job_dispatch_name) ? '' : ' <span class="fg-emphasis-warning">&middot; ' . lang('disabled in config.php') . '</span>') . '</label>
                                             </div>
                                         </div>';
     }
@@ -1890,15 +1890,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
         $output_login_throttle = '
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch ">
-                                                <input value="1"' . $login_throttle_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="login_throttle" name="login_throttle" data-bs-target="#login_throttle_row"/>
-                                                <label class="form-check-label" for="login_throttle">' . lang('Limit Failed Sign-in Attempts') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $login_throttle_checked . ' class="collapse-switcher" type="checkbox" id="login_throttle" name="login_throttle" data-bs-target="#login_throttle_row"/></div>
+                                                <label class="" for="login_throttle">' . lang('Limit Failed Sign-in Attempts') . '</label>
                                                 <div class="form-text">' . lang('Counts failed sign-ins against both the visitor\'s address and the account being tried, and locks that pair out for a while once the limit is passed. Successful sign-ins are never counted.') . '</div>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="login_throttle_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
                                                 <div class="popover-body">
-                                                   <div class="row gy-3">
+                                                   <div class="row gy-5">
                                                         <div class="pg-f-xs">
                                                             <label for="login_throttle_attempts" class="form-label">' . lang('Failed Attempts') . '</label>
                                                             <input type="text" name="login_throttle_attempts" id="login_throttle_attempts" class="form-control" value="' . (int) $login_throttle_attempts . '" size="5" maxlength="4" inputmode="numeric" style="text-align: right;"/>
@@ -1977,21 +1977,21 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
         $output_waf_ai_block = '
                                                         <div class="col-12 ">
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . $waf_allow_ai_fetchers_checked . ' class="form-check-input" type="checkbox" id="waf_allow_ai_fetchers" name="waf_allow_ai_fetchers"/>
-                                                                <label class="form-check-label" for="waf_allow_ai_fetchers">' . lang('Allow AI Assistant Fetchers (IP Verified)') . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . $waf_allow_ai_fetchers_checked . ' class="" type="checkbox" id="waf_allow_ai_fetchers" name="waf_allow_ai_fetchers"/></div>
+                                                                <label class="" for="waf_allow_ai_fetchers">' . lang('Allow AI Assistant Fetchers (IP Verified)') . '</label>
                                                                 <div class="form-text">' . lang('ChatGPT-User, Claude-User and Perplexity-User fetch a single page at the moment a person asks the assistant about your site. Allowing them lets your pages appear as sources in AI answers. Each request is verified against the operator\'s published IP list, so a scraper merely claiming the name is still blocked. AI training crawlers such as GPTBot and ClaudeBot stay blocked regardless of this switch.') . '</div>
                                                             </div>
                                                         </div>
                                                         <div class="col-12 ">
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . $waf_allow_ai_search_checked . ' class="form-check-input" type="checkbox" id="waf_allow_ai_search" name="waf_allow_ai_search"/>
-                                                                <label class="form-check-label" for="waf_allow_ai_search">' . lang('Allow AI Search Indexers (IP Verified)') . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . $waf_allow_ai_search_checked . ' class="" type="checkbox" id="waf_allow_ai_search" name="waf_allow_ai_search"/></div>
+                                                                <label class="" for="waf_allow_ai_search">' . lang('Allow AI Search Indexers (IP Verified)') . '</label>
                                                                 <div class="form-text">' . lang('OAI-SearchBot and Claude-SearchBot index pages for AI search results, the way a search engine crawler does. Allowing them lets your site rank in ChatGPT and Claude search. Verified against published IP lists as well.') . '</div>
                                                             </div>
                                                         </div>
                                                         <div class="col-12 ">
-                                                            <button type="submit" name="waf_refresh_ranges" value="1" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-repeat me-1"></i>' . lang('Update Bot IP Lists') . '</button>
+                                                            <button type="submit" name="waf_refresh_ranges" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-arrow-repeat me-1"></i>' . lang('Update Bot IP Lists') . '</button>
                                                             <div class="form-text">' . h(implode(' · ', $waf_ai_freshness_parts)) . '</div>
                                                             <div class="form-text">' . lang('The lists refresh on their own: with panel visits, and daily when the Bot IP lists job is enabled under Cron jobs. This button fetches them right now and also saves the settings above.') . '</div>
                                                         </div>';
@@ -2042,18 +2042,18 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     if ($waf_external_name) {
         $output_waf_external =
-            '<div class="alert alert-info d-flex align-items-start py-2 px-3 ">'
-            . '<i class="bi bi-shield-check me-2 "></i>'
+            '<div class="alert theme-info d-flex align-items-start py-3 px-5 ">'
+            . '<i class="bi bi-shield-check me-3 "></i>'
             . '<div class="small">'
             . '<strong>' . lang(array('string' => '{var:1} detected in front of this site.', 'vars' => h($waf_external_name))) . '</strong>'
-            . ($waf_external_live ? '' : ' <span class="text-muted">(' . lang('last seen on a previous request') . ')</span>')
+            . ($waf_external_live ? '' : ' <span class="fg-secondary">(' . lang('last seen on a previous request') . ')</span>')
             . '<br>' . lang('Its rules run before this one, so Pinegrap acts as a second layer. Keep this firewall on: requests made straight to the server address bypass the external service entirely.')
             . '<br>' . lang('Add the provider edge addresses to Trusted Proxies below, otherwise every visitor will appear to share one IP address.')
             . '</div></div>';
     } else {
         $output_waf_external =
-            '<div class="alert alert-secondary d-flex align-items-start py-2 px-3 ">'
-            . '<i class="bi bi-info-circle me-2 "></i>'
+            '<div class="alert theme-secondary d-flex align-items-start py-3 px-5 ">'
+            . '<i class="bi bi-info-circle me-3 "></i>'
             . '<div class="small">' . lang('No external firewall or CDN was detected in front of this site, so this firewall is the only layer protecting it.') . '</div>'
             . '</div>';
     }
@@ -2072,20 +2072,20 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         && waf_ip_is_infrastructure($waf_detected_ip));
 
     $output_waf_ip_check =
-        '<div class="' . ($waf_ip_unresolved ? 'alert alert-warning' : 'alert alert-light border')
-        . ' d-flex align-items-start py-2 px-3 "><i class="bi '
-        . ($waf_ip_unresolved ? 'bi-exclamation-triangle' : 'bi-geo-alt') . ' me-2 "></i>'
+        '<div class="' . ($waf_ip_unresolved ? 'alert theme-warning' : 'alert theme-secondary border')
+        . ' d-flex align-items-start py-3 px-5 "><i class="bi '
+        . ($waf_ip_unresolved ? 'bi-exclamation-triangle' : 'bi-geo-alt') . ' me-3 "></i>'
         . '<div class="small"><strong>' . lang('Your address as the firewall sees it') . ':</strong> '
         . '<code>' . h($waf_detected_ip) . '</code>'
         . ($waf_detected_ip !== $waf_raw_ip
-            ? ' <span class="text-muted">(' . lang('connection from') . ' <code>' . h($waf_raw_ip) . '</code>)</span>'
+            ? ' <span class="fg-secondary">(' . lang('connection from') . ' <code>' . h($waf_raw_ip) . '</code>)</span>'
             : '');
 
     if ($waf_ip_unresolved) {
         $output_waf_ip_check .= '<br>'
             . lang('This is not a visitor address — it is your server or proxy. Every visitor is currently being seen as this same address, so rate limiting and IP rules cannot tell them apart. Add the address shown in brackets to Trusted Proxies below to fix it.');
     } elseif ($waf_detected_ip !== $waf_raw_ip) {
-        $output_waf_ip_check .= '<br><span class="text-success">'
+        $output_waf_ip_check .= '<br><span class="fg-success">'
             . lang('Resolved through a trusted proxy — visitor addresses are being read correctly.') . '</span>';
     }
 
@@ -2102,8 +2102,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     if ($waf_detected_ip !== '' && function_exists('waf_ip_is_blocked')) {
         if (waf_ip_is_blocked($waf_detected_ip)) {
             $output_waf_self_ban =
-                '<div class="alert alert-danger d-flex align-items-start py-2 px-3 ">'
-                . '<i class="bi bi-exclamation-octagon me-2 "></i>'
+                '<div class="alert theme-danger d-flex align-items-start py-3 px-5 ">'
+                . '<i class="bi bi-exclamation-octagon me-3 "></i>'
                 . '<div class="small"><strong>'
                 . lang(array('string' => 'Your own address ({var:1}) is on the banned list.', 'vars' => h($waf_detected_ip)))
                 . '</strong><br>'
@@ -2126,11 +2126,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     if (function_exists('pinegrap_user_agent')) {
         $output_waf_identity =
-            '<div class="d-flex align-items-start py-2 px-3  border rounded">'
-            . '<i class="bi bi-send me-2  text-muted"></i>'
+            '<div class="d-flex align-items-start py-3 px-5  border rounded-4">'
+            . '<i class="bi bi-send me-3  fg-secondary"></i>'
             . '<div class="small"><strong>' . lang('This site identifies itself as') . ':</strong> '
             . '<code>' . h(pinegrap_user_agent()) . '</code>'
-            . '<br><span class="text-muted">'
+            . '<br><span class="fg-secondary">'
             . lang('Sent with licence checks, update checks and other outgoing requests. The host part differs per site, so match on "Pinegrap" if you ever need to list it somewhere.')
             . '<br>'
             . lang('On the site being called, exclude the endpoint path instead — one entry covers every site that calls it, forever. It is not treated as privileged here: a user agent is a claim, not a credential.')
@@ -2141,8 +2141,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $output_waf_self_ban = '';
         $output_waf_ip_check = '';
         $output_waf_external =
-            '<div class="alert alert-warning d-flex align-items-start py-2 px-3 ">'
-            . '<i class="bi bi-exclamation-triangle me-2 "></i>'
+            '<div class="alert theme-warning d-flex align-items-start py-3 px-5 ">'
+            . '<i class="bi bi-exclamation-triangle me-3 "></i>'
             . '<div class="small">' . lang('The database has not been upgraded for the firewall yet. Run the software update, then reload this screen.') . '</div>'
             . '</div>';
     }
@@ -2288,7 +2288,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     }
     $output_warnings_for_auto_backup = '';
     if (!extension_loaded('pdo_mysql') ) {
-        $output_warnings_for_auto_backup = '<div class="alert alert-warning">' . lang('pdo_mysql.dll is not enabled. Please enable it for Auto Backup feature.') . '</div>';
+        $output_warnings_for_auto_backup = '<div class="alert theme-warning">' . lang('pdo_mysql.dll is not enabled. Please enable it for Auto Backup feature.') . '</div>';
     }
 
     // Backups card (2026.4.8, 8.33). The columns arrive with the upgrade; until
@@ -2360,7 +2360,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // a scheduled task that reports healthy and analyzes nothing.
     $output_warnings_for_seo_analyze = '';
     if (!class_exists('DOMDocument')) {
-        $output_warnings_for_seo_analyze = '<div class="alert alert-warning">' . lang('The PHP DOM extension is not enabled. Please enable it for the SEO structure analysis job.') . '</div>';
+        $output_warnings_for_seo_analyze = '<div class="alert theme-warning">' . lang('The PHP DOM extension is not enabled. Please enable it for the SEO structure analysis job.') . '</div>';
     }
     //localhost default ip.
     $server_addr = '127.0.0.1';

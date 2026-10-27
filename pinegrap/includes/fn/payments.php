@@ -841,7 +841,7 @@ function pg_payment_settings_fields_html($definition, $fields, $settings)
 
     if (!$settings['readable']) {
         $html .= '
-                                                                                        <div class="col-12"><div class="alert alert-warning mb-0">' . lang(array(
+                                                                                        <div class="col-12"><div class="alert theme-warning mb-0">' . lang(array(
                                                                                             'string' => 'The stored keys of {var:1} cannot be read with this site\'s encryption key. Enter them again.',
                                                                                             'vars'   => array(h($definition['label'])))) . '</div></div>';
     }
@@ -863,9 +863,9 @@ function pg_payment_settings_fields_html($definition, $fields, $settings)
             case 'switch':
                 $html .= '
                                                                                         <div class="col-12">
-                                                                                            <div class="form-check form-switch">
-                                                                                                <input value="1"' . (($value === '1') ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="' . h($id) . '" name="' . h($id) . '"/>
-                                                                                                <label class="form-check-label" for="' . h($id) . '">' . h($field['label']) . '</label>
+                                                                                            <div class="form-field">
+                                                                                                <div class="switch"><input value="1"' . (($value === '1') ? ' checked="checked"' : '') . ' class="" type="checkbox" id="' . h($id) . '" name="' . h($id) . '"/></div>
+                                                                                                <label class="" for="' . h($id) . '">' . h($field['label']) . '</label>
                                                                                             </div>' . $help . '
                                                                                         </div>';
                 break;
@@ -880,7 +880,7 @@ function pg_payment_settings_fields_html($definition, $fields, $settings)
                 $html .= '
                                                                                         <div class="pg-f-md">
                                                                                             <label class="form-label" for="' . h($id) . '">' . h($field['label']) . '</label>
-                                                                                            <select class="form-select" id="' . h($id) . '" name="' . h($id) . '">' . $options . '</select>' . $help . '
+                                                                                            <select class="form-control" id="' . h($id) . '" name="' . h($id) . '">' . $options . '</select>' . $help . '
                                                                                         </div>';
                 break;
 
@@ -952,7 +952,7 @@ function pg_payment_settings_card_rows($gateway, $card_enabled)
 
         $html .= '
                                                                                         <div class="col-12" data-pg-payment-gateway="' . h($definition['gateway']) . '"' . ($shown ? '' : ' style="display: none"') . '>
-                                                                                            <div class="row gy-3">' . pg_payment_settings_fields_html($definition, $fields, pg_payment_settings($key)) . '
+                                                                                            <div class="row gy-5">' . pg_payment_settings_fields_html($definition, $fields, pg_payment_settings($key)) . '
                                                                                             </div>
                                                                                         </div>';
     }
@@ -980,14 +980,14 @@ function pg_payment_settings_redirect_rows()
 
         $html .= '
                                                         <div class="col-12 ">
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . ($settings['enabled'] ? ' checked="checked"' : '') . ' class="form-check-input collapse-switcher" type="checkbox" id="' . h($switch) . '" name="' . h($switch) . '" data-bs-target="#' . h($row) . '"/>
-                                                                <label class="form-check-label" for="' . h($switch) . '">' . h($definition['label']) . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . ($settings['enabled'] ? ' checked="checked"' : '') . ' class="collapse-switcher" type="checkbox" id="' . h($switch) . '" name="' . h($switch) . '" data-bs-target="#' . h($row) . '"/></div>
+                                                                <label class="" for="' . h($switch) . '">' . h($definition['label']) . '</label>
                                                             </div>
                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="' . h($row) . '">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                 <div class="popover-body">
-                                                                    <div class="row gy-3">' . pg_payment_settings_fields_html($definition, pg_payment_fields($key), $settings) . '
+                                                                    <div class="row gy-5">' . pg_payment_settings_fields_html($definition, pg_payment_fields($key), $settings) . '
                                                                     </div>
                                                                 </div>
                                                             </div>

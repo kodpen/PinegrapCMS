@@ -43,7 +43,7 @@ if (!$_POST) {
     // if ecommerce is on, then output orders button to show orders for contact
     if ((ECOMMERCE === true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))) {
         $output_bar_links .= '
-                    <a class="btn btn-link link-secondary py-0 mb-2 " href="view_orders_for_contact.php?id=' . h(urlencode($_REQUEST['id'])) . '"><span class="material-icons me-1">storefront</span>' . lang('View Orders') . '</a>';
+                    <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="view_orders_for_contact.php?id=' . h(urlencode($_REQUEST['id'])) . '"><span class="material-icons me-1">storefront</span>' . lang('View Orders') . '</a>';
     }
 
     // The ledger account behind this contact, for a user the ERP module lets
@@ -60,11 +60,11 @@ if (!$_POST) {
             $erp_side = ($erp_balance > 0) ? lang('owes you') : (($erp_balance < 0) ? lang('you owe') : '');
 
             $output_bar_links .= '
-                    <a class="btn btn-link link-secondary py-0 mb-2 " href="edit_erp_account.php?id=' . (int) $erp_account['id'] . '"><i class="bi bi-journal-text me-1"></i>' . lang('Ledger account') . ': <b class="' . (($erp_balance > 0) ? 'text-success' : (($erp_balance < 0) ? 'text-danger' : '')) . '">' . h(erp_money_out(abs($erp_balance))) . '</b>' . (($erp_side !== '') ? ' <span class="text-body-secondary">' . h($erp_side) . '</span>' : '') . '</a>';
+                    <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="edit_erp_account.php?id=' . (int) $erp_account['id'] . '"><i class="bi bi-journal-text me-1"></i>' . lang('Ledger account') . ': <b class="' . (($erp_balance > 0) ? 'fg-success' : (($erp_balance < 0) ? 'fg-danger' : '')) . '">' . h(erp_money_out(abs($erp_balance))) . '</b>' . (($erp_side !== '') ? ' <span class="fg-secondary">' . h($erp_side) . '</span>' : '') . '</a>';
         } elseif (($user['role'] < 3) || empty($user['manage_erp_readonly'])) {
             // The ERP's read-only right opens no account.
             $output_bar_links .= '
-                    <a class="btn btn-link link-secondary py-0 mb-2 " href="add_erp_account.php?contact_id=' . (int) $_REQUEST['id'] . '"><i class="bi bi-journal-plus me-1"></i>' . lang('Open an Account') . '</a>';
+                    <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="add_erp_account.php?contact_id=' . (int) $_REQUEST['id'] . '"><i class="bi bi-journal-plus me-1"></i>' . lang('Open an Account') . '</a>';
         }
     }
 
@@ -73,8 +73,8 @@ if (!$_POST) {
     // to staff only).
     if ($user['role'] < 3) {
         $output_bar_links .= '
-                    <a class="btn btn-link link-secondary py-0 mb-2 " href="privacy_export.php?contact_id=' . (int) $id . '"><i class="bi bi-person-down me-1" aria-hidden="true"></i>' . lang('Export personal data') . '</a>
-                    <a class="btn btn-link link-secondary py-0 mb-2 " href="privacy_erase.php?contact_id=' . (int) $id . '"><i class="bi bi-person-x me-1" aria-hidden="true"></i>' . lang('Erase personal data') . '</a>';
+                    <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="privacy_export.php?contact_id=' . (int) $id . '"><i class="bi bi-person-down me-1" aria-hidden="true"></i>' . lang('Export personal data') . '</a>
+                    <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="privacy_erase.php?contact_id=' . (int) $id . '"><i class="bi bi-person-x me-1" aria-hidden="true"></i>' . lang('Erase personal data') . '</a>';
     }
 
     // Where the contact was talked about in the workspace, its customer
@@ -85,7 +85,7 @@ if (!$_POST) {
         $workspace_label = is_array($workspace_contact)
             ? trim(trim($workspace_contact['first_name'] . ' ' . $workspace_contact['last_name']) ?: (string) $workspace_contact['company'])
             : '';
-        $output_bar_links .= ws_record_button($user, 'contact', (int) $_REQUEST['id'], $workspace_label, 'btn btn-link link-secondary py-0 mb-2');
+        $output_bar_links .= ws_record_button($user, 'contact', (int) $_REQUEST['id'], $workspace_label, 'btn btn-link pg-link-secondary py-0 mb-3');
     }
 
     if ($output_bar_links !== '') {
@@ -154,8 +154,8 @@ if (!$_POST) {
             $image = '
             <div class="item col">
                 <div class="card bg-transparent border-0 shadow-none cursor-pointer image">
-                    <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link link-danger bi bi-x-lg p-0" title="remove" onclick=" $(this).closest(\'.item\').remove();"></button></div>
-                    <div class="card-body overflow-hidden position-relative rounded ratio ratio-2x1 w-100" style="--bs-aspect-ratio: 80%;background: radial-gradient(transparent, #00000024);" title="' . h($row['image']) . '">
+                    <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="remove" onclick=" $(this).closest(\'.item\').remove();"></button></div>
+                    <div class="card-body overflow-hidden position-relative rounded-4 ratio ratio-2x1 w-100" style="--bs-aspect-ratio: 80%;background: radial-gradient(transparent, #00000024);" title="' . h($row['image']) . '">
                         <input type="hidden" name="image_url" id="image_url" value="' . e($row['image']) . '">
                         <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($row['image']) . '" />
                     </div>
@@ -165,8 +165,8 @@ if (!$_POST) {
             $image = '
             <div class="item col">
                 <div class="card bg-transparent border-0 shadow-none cursor-pointer image">
-                    <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link link-danger bi bi-x-lg p-0 opacity-0"></button></div>
-                    <div class="card-body overflow-hidden position-relative rounded ratio ratio-2x1 w-100" style="--bs-aspect-ratio: 80%;background: radial-gradient(transparent, #00000024);" title="' . h($row['image']) . '">
+                    <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0 opacity-0"></button></div>
+                    <div class="card-body overflow-hidden position-relative rounded-4 ratio ratio-2x1 w-100" style="--bs-aspect-ratio: 80%;background: radial-gradient(transparent, #00000024);" title="' . h($row['image']) . '">
                         <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(function_exists('pg_avatar_for') ? pg_avatar_for($row['first_name'] ?? '', $row['last_name'] ?? '', $row['company'] ?? '', $_REQUEST['id'] ?? '') : 'assets/images/person1.png') . '" />
                     </div>
                 </div>
@@ -186,8 +186,8 @@ if (!$_POST) {
         $image = '
         <div class="item col">
             <div class="card bg-transparent border-0 shadow-none cursor-pointer image">
-                <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link link-danger bi bi-x-lg p-0" title="remove" onclick=" $(this).closest(\'.item\').remove();"></button></div>
-                <div class="card-body overflow-hidden position-relative rounded ratio ratio-2x1 w-100" style="--bs-aspect-ratio: 80%;background: radial-gradient(transparent, #00000024);" title="' . h($file_name) . '">
+                <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="remove" onclick=" $(this).closest(\'.item\').remove();"></button></div>
+                <div class="card-body overflow-hidden position-relative rounded-4 ratio ratio-2x1 w-100" style="--bs-aspect-ratio: 80%;background: radial-gradient(transparent, #00000024);" title="' . h($file_name) . '">
                     <input type="hidden" name="file_id" id="file_id" value="' . $row['file_id'] . '"/>
                     <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($file_name) . '" />
                 </div>
@@ -246,16 +246,16 @@ if (!$_POST) {
         // then prepare username with link.
         if ((USER_ROLE == 0) || (USER_ROLE < $user_role)) {
             $output_user_info = '
-            <div class="col-12 my-2">
-                <a class="btn btn-link link-secondary py-0 mb-2  users-color" href="edit_user.php?id=' . $user_id . '"><span class="material-icons me-2">account_circle</span>' . h($username) . '</a>
+            <div class="col-12 my-3">
+                <a class="btn btn-link pg-link-secondary py-0 mb-3  users-color" href="edit_user.php?id=' . $user_id . '"><span class="material-icons me-3">account_circle</span>' . h($username) . '</a>
             </div>';
 
         // Otherwise the editor user does not have access to edit this user,
         // so prepare username without link.
         } else {
             $output_user_info ='
-            <div class="col-12 my-2">
-                <span class="py-2 mb-2 users-color" href="edit_user.php?id=' . $user_id . '"><span class="material-icons me-2">account_circle</span>' . h($username) . '</span>
+            <div class="col-12 my-3">
+                <span class="py-3 mb-3 users-color" href="edit_user.php?id=' . $user_id . '"><span class="material-icons me-3">account_circle</span>' . h($username) . '</span>
             </div>';
         }
 
@@ -269,8 +269,8 @@ if (!$_POST) {
         }
 
         $output_user_info ='
-        <div class="col-12 my-2">
-            <div class="alert alert-primary">
+        <div class="col-12 my-3">
+            <div class="alert theme-primary">
                 <p class="mb-0">' . lang('This Contact does not currently have a User connected to it.') . $output_create_user_button . '</p>
             </div>
         </div>';
@@ -359,14 +359,14 @@ if (!$_POST) {
 
             $contact_group_target = ' data-bs-target="#contact_group_opt_in_cell_' . $contact_group['id'] . '"';
             $output_opt_in = '
-            <div class="collapse popover  fade bs-popover-bottom p-0 mb-2" id="contact_group_opt_in_cell_' . $contact_group['id'] . '">
+            <div class="collapse popover  fade bs-popover-bottom p-0 mb-3" id="contact_group_opt_in_cell_' . $contact_group['id'] . '">
                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(45px, 0px);"></div>
                 <div class="popover-body py-0">
                     <div class="row">
-                        <div class="col-12 my-2">
-                            <div class="form-check form-switch">
-                                <input type="checkbox" name="contact_group_opt_in_' . $contact_group['id'] . '" id="contact_group_opt_in_' . $contact_group['id'] . '" value="1"' . $contact_group_opt_in_checked . ' class="form-check-input" />
-                                <label class="form-check-label" for="contact_group_opt_in_' . $contact_group['id'] . '"> ' . lang('Opt-In Status') . '</label>
+                        <div class="col-12 my-3">
+                            <div class="form-field">
+                                <div class="switch"><input type="checkbox" name="contact_group_opt_in_' . $contact_group['id'] . '" id="contact_group_opt_in_' . $contact_group['id'] . '" value="1"' . $contact_group_opt_in_checked . ' class="" /></div>
+                                <label class="" for="contact_group_opt_in_' . $contact_group['id'] . '"> ' . lang('Opt-In Status') . '</label>
                             </div>
                         </div>
                     </div>
@@ -378,10 +378,10 @@ if (!$_POST) {
         }
         
         $output_contact_groups .=
-        '<div class="col-12 col-md-4 my-2">
-            <div class="form-check form-switch">
-                <input type="checkbox" name="contact_group_' . $contact_group['id'] . '" id="contact_group_' . $contact_group['id'] . '" value="1" class="collapse-switcher form-check-input"' . $contact_group_checked . $contact_group_target . '/>
-                <label class="form-check-label" for="contact_group_' . $contact_group['id'] . '"> ' . h($contact_group['name']) . '</label>
+        '<div class="col-12 md:col-4 my-3">
+            <div class="form-field">
+                <div class="switch"><input type="checkbox" name="contact_group_' . $contact_group['id'] . '" id="contact_group_' . $contact_group['id'] . '" value="1" class="collapse-switcher"' . $contact_group_checked . $contact_group_target . '/></div>
+                <label class="" for="contact_group_' . $contact_group['id'] . '"> ' . h($contact_group['name']) . '</label>
             </div>
             ' . $output_opt_in . '
         </div>';
@@ -403,29 +403,29 @@ if (!$_POST) {
         
         $output_affiliate =
         '<div class="col-12">
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Affiliate Information') . '
                 </div>
                 <div class="card-body">
                     <div class="row">
                     
                         <div class="col-12 my-1">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="affiliate_approved" name="affiliate_approved" value="1"' . $affiliate_approved_checked . '>
-                                <label class="form-check-label" for="affiliate_approved">' . lang('Approved') . '</label>
+                            <div class="form-field">
+                                <div class="switch"><input class="" type="checkbox" id="affiliate_approved" name="affiliate_approved" value="1"' . $affiliate_approved_checked . '></div>
+                                <label class="" for="affiliate_approved">' . lang('Approved') . '</label>
                             </div>
                         </div>
-                        <div class="col-12 col-md-3 my-2">
+                        <div class="col-12 md:col-3 my-3">
                             <label for="affiliate_name" class="form-label">' . lang('Affiliate Name') . '</label>
                             <input value="' . $affiliate_name . '" type="text" name="affiliate_name" id="affiliate_name" class="form-control" maxlength="100" />
                         </div>
-                        <div class="col-12 col-md-6 my-2">
+                        <div class="col-12 md:col-6 my-3">
                             <label for="affiliate_code" class="form-label">' . lang('Affiliate Code') . '</label>
                             <input value="' . $affiliate_code . '" type="text" name="affiliate_code" id="affiliate_code" class="form-control" maxlength="100" />
                             <div class="form-text text-end">' . lang('leave blank to automatically generate code') . '</div>
                         </div>
-                        <div class="col-12 col-md-3 my-2">
+                        <div class="col-12 md:col-3 my-3">
                             <label for="affiliate_commission_rate" class="form-label">' . lang('Commission Rate') . '</label>
                             <div class="input-group">
                                 <input value="' . $affiliate_commission_rate . '" type="text" name="affiliate_commission_rate" id="affiliate_commission_rate" class="form-control" size="3" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" style="text-align: right;">
@@ -455,8 +455,8 @@ if (!$_POST) {
 <main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
 
                         ' . $output_orders_button . '
                     </div>
@@ -465,30 +465,30 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
                     <div class="row justify-content-center">
-                        <div class="col-12 col-sm order-sm-2 align-self-end">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 sm:col sm:order-2 align-self-end">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Contact\'s Name') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="salutation" class="form-label">' . lang('Salutation') . '</label>
                                             <input value="' . $salutation . '" type="text" name="salutation" id="salutation" class="form-control" size="30" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="first_name" class="form-label">' . lang('First Name') . '</label>
                                             <input value="' . $first_name . '" type="text" name="first_name" id="first_name" class="form-control" size="30" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="last_name" class="form-label">' . lang('Last Name') . '</label>
                                             <input value="' . $last_name . '" type="text" name="last_name" id="last_name" class="form-control" size="30" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="suffix" class="form-label">' . lang('Suffix') . '</label>
                                             <input value="' . $suffix . '" type="text" name="suffix" id="suffix" class="form-control" size="30" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="nickname" class="form-label">' . lang('Nickname') . '</label>
                                             <input value="' . $nickname . '" type="text" name="nickname" id="nickname" class="form-control" size="30" maxlength="50" />
                                         </div>
@@ -496,44 +496,44 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-auto order-sm-1 ">
-                            <div class="card my-4 display-on-hover overflow-hidden position-relative" style="width:200px;height:auto;">
-                                <div id="software_image_picker_container" ondblclick="software_image_picker({initialize:true,SingleImage:true,file_input_name:\'file_id\'});" class="user-select-none sortable-list img-list bg-body-tertiary rounded p-2 row g-4">' . $image . '</div>
+                        <div class="col-auto sm:order-1 ">
+                            <div class="card my-7 display-on-hover overflow-hidden position-relative" style="width:200px;height:auto;">
+                                <div id="software_image_picker_container" ondblclick="software_image_picker({initialize:true,SingleImage:true,file_input_name:\'file_id\'});" class="user-select-none sortable-list img-list bg-body-tertiary rounded-4 p-3 row g-7">' . $image . '</div>
                                 <div class="card-footer border-0 bg-transparent">
-                                    <button type="button" class="btn"  onclick="software_image_picker({initialize:true,SingleImage:true,file_input_name:\'file_id\'});"><span class="material-icons me-2">image_search</span>' . lang('Change Image') . '</button>
+                                    <button type="button" class="btn"  onclick="software_image_picker({initialize:true,SingleImage:true,file_input_name:\'file_id\'});"><span class="material-icons me-3">image_search</span>' . lang('Change Image') . '</button>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <div class="row">
-                        <div class="col-12 col-md-6">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Contact\'s Subscriber Information') . '
                                 </div>
                                 <div class="card-body" >
                                     <div class="row">
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             <label for="email_address" class="form-label">' . lang('Email') . '</label>
                                             <div class="input-group">
                                                 <input value="' . $email_address . '" type="text" name="email_address" id="email_address" autocomplete="off" class="form-control text-end" maxlength="100" inputmode="email" data-inputmask-alias="email" />
-                                                <a class="btn btn-primary" href="mailto:' . $email_address . '" ><span class="material-icons">email</span></a>
+                                                <a class="btn btn-solid theme-primary" href="mailto:' . $email_address . '" ><span class="material-icons">email</span></a>
                                             </div>
                                         </div>
                                         <div class="col-12 my-1">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="opt_in" name="opt_in" value="1"' . $opt_in_checked . '>
-                                                <label class="form-check-label" for="opt_in">' . lang('Opt-In Status') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" type="checkbox" id="opt_in" name="opt_in" value="1"' . $opt_in_checked . '></div>
+                                                <label class="" for="opt_in">' . lang('Opt-In Status') . '</label>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-6">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Connected Account of this Contact') . '
                                 </div>
                                 <div class="card-body" >
@@ -547,86 +547,86 @@ if (!$_POST) {
 
                     <div class="row">
                         <div class="col-12 ">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Contact\'s Work Information') . '
                                 </div>
                                 <div class="card-body" >
                                     <div class="row">
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="company" class="form-label">' . lang('Company') . '</label>
                                             <input value="' . $company . '" type="text" name="company" id="company" class="form-control" maxlength="50"/>
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="title" class="form-label">' . lang('Title') . '</label>
                                             <input value="' . $title . '" type="text" name="title" id="title" class="form-control" maxlength="50"/>
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="department" class="form-label">' . lang('Department') . '</label>
                                             <input value="' . $department . '" type="text" name="department" id="department" class="form-control" maxlength="50"/>
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="office_location" class="form-label">' . lang('Office Location') . '</label>
                                             <input value="' . $office_location . '" type="text" name="office_location" id="office_location" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="website" class="form-label">' . lang('Website') . '</label>
                                             <input value="' . $website . '" type="text" name="website" id="website" class="form-control" maxlength="255" />
                                         </div>
                                     </div>
                                     <div class="row">
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="business_address_1" class="form-label">' . lang('Business Address') . ' 1</label>
                                             <input value="' . $business_address_1 . '" type="text" name="business_address_1" id="business_address_1" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="business_address_2" class="form-label">' . lang('Business Address') . ' 2</label>
                                             <input value="' . $business_address_2 . '" type="text" name="business_address_2" id="business_address_2" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="business_city" class="form-label">' . lang('Business City') . '</label>
                                             <input value="' . $business_city . '" type="text" name="business_city" id="business_city" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="business_state" class="form-label">' . lang('Business State') . '</label>
                                             <input value="' . $business_state . '" type="text" name="business_state" id="business_state" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="business_country" class="form-label">' . lang('Business Country') . '</label>
                                             <input value="' . $business_country . '" type="text" name="business_country" id="business_country" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="business_zip_code" class="form-label">' . lang('Business Zip Code') . '</label>
                                             <input value="' . $business_zip_code . '" type="text" name="business_zip_code" id="business_zip_code" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="business_phone" class="form-label">' . lang('Business Phone') . '</label>
                                             <input value="' . $business_phone . '" type="text" name="business_phone" id="business_phone" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="business_fax" class="form-label">' . lang('Business Fax') . '</label>
                                             <input value="' . $business_fax . '" type="text" name="business_fax" id="business_fax" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="tax_number" class="form-label">VKN / TCKN</label>
                                             <input value="' . $tax_number . '" type="text" name="tax_number" id="tax_number" class="form-control" maxlength="11" inputmode="numeric" />
                                             <div class="form-text">' . lang('11-digit TCKN for individuals, 10-digit VKN for companies.') . '</div>
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="tax_office" class="form-label">' . lang('Tax Office') . '</label>
                                             <input value="' . $tax_office . '" type="text" name="tax_office" id="tax_office" class="form-control" maxlength="100" />
                                         </div>
                                         ' . (ENABLE_PARASUT ? ($parasut_contact_id ? '
-                                        <div class="col-12 col-md-4 my-2">
-                                            <label class="form-label text-muted small">' . lang('Parasut Contact ID') . '</label>
+                                        <div class="col-12 md:col-4 my-3">
+                                            <label class="form-label fg-secondary small">' . lang('Parasut Contact ID') . '</label>
                                             <div class="input-group">
-                                                <input value="' . $parasut_contact_id . '" type="text" name="parasut_contact_id" class="form-control form-control-sm font-monospace text-muted" />
-                                                <span class="input-group-text small text-muted" title="' . lang('Set automatically when the first invoice is created.') . '"><i class="bi bi-link-45deg"></i></span>
+                                                <input value="' . $parasut_contact_id . '" type="text" name="parasut_contact_id" class="form-control form-control-sm font-monospace fg-secondary" />
+                                                <span class="input-group-text small fg-secondary" title="' . lang('Set automatically when the first invoice is created.') . '"><i class="bi bi-link-45deg"></i></span>
                                             </div>
                                         </div>' : '
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <input type="hidden" name="parasut_contact_id" value="" />
-                                            <div class="form-text text-muted"><i class="bi bi-info-circle me-1"></i>' . lang('Parasut Contact ID will be set automatically when the first invoice is created.') . '</div>
+                                            <div class="form-text fg-secondary"><i class="bi bi-info-circle me-1"></i>' . lang('Parasut Contact ID will be set automatically when the first invoice is created.') . '</div>
                                         </div>') : '<input type="hidden" name="parasut_contact_id" value="' . $parasut_contact_id . '" />') . '
                                     </div>
                                 </div>
@@ -634,45 +634,45 @@ if (!$_POST) {
                         </div>
 
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Contact\'s Home Information') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="home_address_1" class="form-label">' . lang('Home Address') . ' 1</label>
                                             <input value="' . $home_address_1 . '" type="text" name="home_address_1" id="home_address_1" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="home_address_2" class="form-label">' . lang('Home Address') . ' 2</label>
                                             <input value="' . $home_address_2 . '" type="text" name="home_address_2" id="home_address_2" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="home_city" class="form-label">' . lang('Home City') . '</label>
                                             <input value="' . $home_city . '" type="text" name="home_city" id="home_city" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="home_state" class="form-label">' . lang('Home State') . '</label>
                                             <input value="' . $home_state . '" type="text" name="home_state" id="home_state" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="home_country" class="form-label">' . lang('Home Country') . '</label>
                                             <input value="' . $home_country . '" type="text" name="home_country" id="home_country" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="home_zip_code" class="form-label">' . lang('Home Zip Code') . '</label>
                                             <input value="' . $home_zip_code . '" type="text" name="home_zip_code" id="home_zip_code" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="home_phone" class="form-label">' . lang('Home Phone') . '</label>
                                             <input value="' . $home_phone . '" type="text" name="home_phone" id="home_phone" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="home_fax" class="form-label">' . lang('Home Fax') . '</label>
                                             <input value="' . $home_fax . '" type="text" name="home_fax" id="home_fax" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="mobile_phone" class="form-label">' . lang('Mobile Phone') . '</label>
                                             <input value="' . $mobile_phone . '" type="text" name="mobile_phone" id="mobile_phone" class="form-control" maxlength="255" />
                                         </div>
@@ -681,19 +681,19 @@ if (!$_POST) {
                             </div>
                         </div>
 
-                        <div class="col-12 col-md-6">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Membership Access') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             <label for="member_id" class="form-label">' . h(MEMBER_ID_LABEL) . '</label>
                                             <input value="' . $member_id . '" type="text" name="member_id" id="member_id" class="form-control" />
                                             <div class="form-text text-end">' . lang('leave blank for no membership') . '</div>
                                         </div>
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             <label for="expiration_date" class="form-label">' . lang('Expiration Date') . '</label>
                                             <input value="' . $expiration_date . '" type="text" name="expiration_date" id="expiration_date" class="form-control" data-pg-date />
                                             <div class="form-text text-end">' . lang('leave blank for lifetime membership') . '</div>
@@ -703,18 +703,18 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-6">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Additional Notes') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             <label for="lead_source" class="form-label">' . lang('Lead Source') . '</label>
                                             <input value="' . $lead_source . '" type="text" name="lead_source" id="lead_source" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             <label for="description" class="form-label">' . lang('Description') . '</label>
                                             <textarea type="text" name="description" id="description" class="form-control" maxlength="50" >' . $description . '</textarea>
                                         </div>
@@ -726,8 +726,8 @@ if (!$_POST) {
                         ' . $output_affiliate . '
 
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Contact Groups & Subscriptions') . '
                                 </div>
                                 <div class="card-body">
@@ -738,11 +738,11 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

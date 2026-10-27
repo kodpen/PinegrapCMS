@@ -91,7 +91,7 @@
 
         if ($items.length) {
             $items.first().append(
-                '<span class="badge text-bg-primary pg-pb-cover-badge">' + esc(label('Cover')) + '</span>');
+                '<span class="badge theme-primary pg-pb-cover-badge">' + esc(label('Cover')) + '</span>');
         }
 
         $('#pg_pb_image_empty').toggleClass('d-none', $items.length > 0);
@@ -262,7 +262,7 @@
            part the operator has to do something about. */
         if ((result.tooBig || []).length) {
             output +=
-                '<div class="alert alert-danger py-2 mb-2">' +
+                '<div class="alert theme-danger py-3 mb-3">' +
                 esc(label('upload_too_big')
                     .replace('{limit}', readableBytes(result.fileMax || 0))
                     .replace('{files}', result.tooBig.join(', '))) +
@@ -271,12 +271,12 @@
 
         $.each(result.failed || [], function (index, failure) {
             output +=
-                '<div class="alert alert-danger py-2 mb-2">' + esc(failure.message || '') + '</div>';
+                '<div class="alert theme-danger py-3 mb-3">' + esc(failure.message || '') + '</div>';
         });
 
         if (small.length) {
             output +=
-                '<div class="alert alert-warning py-2 mb-2">' +
+                '<div class="alert theme-warning py-3 mb-3">' +
                 esc(label('image_too_small')
                     .replace('{min}', result.minimum_dimension || 0)
                     .replace('{files}', small.join(', '))) +
@@ -285,7 +285,7 @@
 
         if (result.shrunk) {
             output +=
-                '<div class="alert alert-info py-2 mb-2">' +
+                '<div class="alert theme-info py-3 mb-3">' +
                 esc(label('images_shrunk_in_browser').replace('{count}', result.shrunk)) +
                 '</div>';
         }
@@ -296,7 +296,7 @@
            warnings above it. */
         if (count && ((before - after) > (50 * 1024))) {
             output +=
-                '<div class="alert alert-success py-2 mb-0">' +
+                '<div class="alert theme-success py-3 mb-0">' +
                 esc(label('images_optimized')
                     .replace('{count}', count)
                     .replace('{before}', readableBytes(before))
@@ -956,7 +956,7 @@
     }
 
     function imageAddChip() {
-        return '<button type="button" class="btn btn-sm btn-outline-secondary pg-pb-chip-add" title="' + esc(label('Add Image')) + '">' +
+        return '<button type="button" class="btn btn-sm btn-outline theme-secondary pg-pb-chip-add" title="' + esc(label('Add Image')) + '">' +
             '<i class="bi bi-plus-lg"></i></button>';
     }
 
@@ -1213,15 +1213,15 @@
         var html = '';
 
         for (var i = 0; i < combos.length && i < PREVIEW_LIMIT; i++) {
-            html += '<span class="badge text-bg-light border fw-normal">' + esc(comboLabel(combos[i])) + '</span>';
+            html += '<span class="badge badge-subtle theme-secondary border fw-normal">' + esc(comboLabel(combos[i])) + '</span>';
         }
 
         if (combos.length > PREVIEW_LIMIT) {
-            html += '<span class="badge text-bg-secondary fw-normal">+' + (combos.length - PREVIEW_LIMIT) + '</span>';
+            html += '<span class="badge theme-secondary fw-normal">+' + (combos.length - PREVIEW_LIMIT) + '</span>';
         }
 
         $preview.removeClass('d-none').html(
-            '<div class="form-label small text-muted mb-1">' + esc(label('Combinations')) + '</div>' +
+            '<div class="form-label small fg-secondary mb-1">' + esc(label('Combinations')) + '</div>' +
             '<div class="d-flex flex-wrap gap-1">' + html + '</div>');
     }
 
@@ -1535,21 +1535,21 @@
                     (disabled ? ' disabled="disabled"' : '') + '>' + esc(text) + '</option>';
             };
 
-            html += '<div class="pg-pb-pr-attr border rounded px-3 py-2 mb-2" data-attr-id="' + esc(attrId) + '">' +
-                '<div class="d-flex flex-wrap align-items-center gap-2">' +
+            html += '<div class="pg-pb-pr-attr border rounded-4 px-5 py-3 mb-3" data-attr-id="' + esc(attrId) + '">' +
+                '<div class="d-flex flex-wrap align-items-center gap-3">' +
                 '<span class="fw-semibold">' + esc(attrName) + '</span>' +
-                '<select class="form-select form-select-sm pg-pb-pr-mode" aria-label="' + esc(attrName) + '">' +
+                '<select class="form-control form-control-sm pg-pb-pr-mode" aria-label="' + esc(attrName) + '">' +
                 choice('', label('No effect on price'), false) +
                 choice('set', label('Sets the price'), (setOwner !== '') && (setOwner !== attrId)) +
                 choice('multiply', label('Multiplier'), false) +
                 choice('adjust', label('Adds a difference'), false) +
                 '</select>' +
-                (mode ? '<span class="small text-body-secondary">' + esc(hints[mode]) + '</span>' : '') +
+                (mode ? '<span class="small fg-secondary">' + esc(hints[mode]) + '</span>' : '') +
                 '</div>';
 
             if (mode) {
 
-                html += '<div class="d-flex flex-wrap gap-2 mt-2">';
+                html += '<div class="d-flex flex-wrap gap-3 mt-3">';
 
                 for (var j = 0; j < dimensions[i].length; j++) {
 
@@ -1571,7 +1571,7 @@
                            stored as an entity, as in variantRow(). */
                         ((mode === 'set') ? '<span class="input-group-text">' + symbol + '</span>' : '') +
                         ((mode === 'adjust')
-                            ? '<select class="form-select pg-pb-pr-unit" aria-label="' + esc(attrName + ': ' + part.label) + '">' +
+                            ? '<select class="form-control pg-pb-pr-unit" aria-label="' + esc(attrName + ': ' + part.label) + '">' +
                                 '<option value="percent"' + ((unit === 'percent') ? ' selected="selected"' : '') + '>%</option>' +
                                 '<option value="amount"' + ((unit === 'amount') ? ' selected="selected"' : '') + '>' + symbol + '</option>' +
                               '</select>'
@@ -1624,8 +1624,8 @@
         $formula
             .text(result.formula)
             .toggleClass('d-none', !result.applied)
-            .toggleClass('text-danger', result.clamped)
-            .toggleClass('text-body-secondary', !result.clamped)
+            .toggleClass('fg-danger', result.clamped)
+            .toggleClass('fg-secondary', !result.clamped)
             .attr('title', result.clamped ? label('price_rule_clamped') : '');
     }
 
@@ -1697,7 +1697,7 @@
     }
 
     function cellLabel(text) {
-        return '<span class="d-lg-none d-block text-muted small">' + esc(text) + '</span>';
+        return '<span class="lg:d-none d-block fg-secondary small">' + esc(text) + '</span>';
     }
 
     /* -------------------------------------------- per-variant recurring */
@@ -1747,14 +1747,14 @@
             (barcodeFormat.hint ? ' \u00b7 ' + barcodeFormat.type + ' ' + barcodeFormat.hint : '');
 
         var identifiers =
-            '<div class="col-12"><hr class="my-2" /></div>' +
+            '<div class="col-12"><hr class="my-3" /></div>' +
 
-            '<div class="col-12 col-sm-6 col-lg-3">' +
+            '<div class="col-12 sm:col-6 lg:col-3">' +
             '<label class="form-label small mb-1">' + esc(label('GTIN')) + '</label>' +
             '<input type="text" class="form-control form-control-sm pg-pb-v-gtin" value="' + esc(saved.gtin || '') + '" />' +
             '</div>' +
 
-            '<div class="col-12 col-sm-6 col-lg-3">' +
+            '<div class="col-12 sm:col-6 lg:col-3">' +
             '<label class="form-label small mb-1">' + esc(barcodeLabel) + '</label>' +
             '<input type="text" class="form-control form-control-sm pg-pb-v-barcode font-monospace"' +
             barcodeAttributes() +
@@ -1767,7 +1767,7 @@
                the identifiers above are not conditional. */
             return '<tr class="pg-pb-adv-row d-none" data-pg-pb-adv="' + index + '">' +
                 '<td colspan="6" class="bg-body-tertiary">' +
-                '<div class="row g-2 align-items-start">' + identifiers + '</div>' +
+                '<div class="row g-3 align-items-start">' + identifiers + '</div>' +
                 '</td></tr>';
         }
 
@@ -1775,7 +1775,7 @@
 
         if (hasStartField()) {
             startField =
-                '<div class="col-12 col-sm-6 col-lg-3">' +
+                '<div class="col-12 sm:col-6 lg:col-3">' +
                 '<label class="form-label small mb-1">' + esc(label('Start (days)')) + '</label>' +
                 '<input type="number" min="0" class="form-control form-control-sm pg-pb-v-start" value="' + esc(defaults.start) + '" />' +
                 '</div>';
@@ -1788,22 +1788,22 @@
            d-block: a cell taken out of table layout loses colspan entirely. */
         return '<tr class="pg-pb-adv-row d-none" data-pg-pb-adv="' + index + '">' +
             '<td colspan="6" class="bg-body-tertiary">' +
-            '<div class="row g-2 align-items-start">' +
+            '<div class="row g-3 align-items-start">' +
 
             '<div class="col-12">' +
-            '<div class="form-check form-switch">' +
-            '<input class="form-check-input pg-pb-v-editable" type="checkbox" role="switch" id="pg_pb_v_editable_' + index + '" />' +
-            '<label class="form-check-label small" for="pg_pb_v_editable_' + index + '">' + esc(label('Allow customer to set schedule')) + '</label>' +
+            '<div class="form-field">' +
+            '<div class="switch"><input class="pg-pb-v-editable" type="checkbox" role="switch" id="pg_pb_v_editable_' + index + '" /></div>' +
+            '<label class="small" for="pg_pb_v_editable_' + index + '">' + esc(label('Allow customer to set schedule')) + '</label>' +
             '</div></div>' +
 
-            '<div class="col-12 col-sm-6 col-lg-3">' +
+            '<div class="col-12 sm:col-6 lg:col-3">' +
             '<label class="form-label small mb-1">' + esc(label('Number of Payments')) + '</label>' +
             '<input type="number" min="0" class="form-control form-control-sm pg-pb-v-payments" value="' + esc(defaults.payments) + '" />' +
             '</div>' +
 
-            '<div class="col-12 col-sm-6 col-lg-3">' +
+            '<div class="col-12 sm:col-6 lg:col-3">' +
             '<label class="form-label small mb-1">' + esc(label('Payment Period')) + '</label>' +
-            '<select class="form-select form-select-sm pg-pb-v-period">' + defaults.periodOptions + '</select>' +
+            '<select class="form-control form-control-sm pg-pb-v-period">' + defaults.periodOptions + '</select>' +
             '</div>' +
 
             startField +
@@ -1881,7 +1881,7 @@
         }
 
         return '' +
-            '<tr class="pg-pb-variant d-block d-lg-table-row"' +
+            '<tr class="pg-pb-variant d-block lg:d-table-row"' +
             ' data-pg-pb-adv="' + index + '"' +
             ' data-combo-key="' + esc(key) + '"' +
             ' data-combo-suffix="' + esc(suffix) + '"' +
@@ -1890,23 +1890,23 @@
             ' data-combo=\'' + JSON.stringify(combo).replace(/'/g, '&#39;') + '\'' +
             ' data-attributes=\'' + JSON.stringify(attributes).replace(/'/g, '&#39;') + '\'>' +
 
-            '<td class="d-block d-lg-table-cell align-middle">' +
-            '<span class="badge text-bg-secondary me-1">' + (index + 1) + '</span>' +
+            '<td class="d-block lg:d-table-cell align-middle">' +
+            '<span class="badge theme-secondary me-1">' + (index + 1) + '</span>' +
             '<span class="fw-semibold">' + esc(comboLabel(combo)) + '</span>' +
             advancedToggle(index) +
             '</td>' +
 
-            '<td class="d-block d-lg-table-cell align-middle">' +
+            '<td class="d-block lg:d-table-cell align-middle">' +
             cellLabel(label('Product ID / SKU')) +
             '<input type="text" class="form-control form-control-sm pg-pb-v-name" value="' + esc(sku) + '" />' +
             '</td>' +
 
-            '<td class="d-block d-lg-table-cell align-middle">' +
+            '<td class="d-block lg:d-table-cell align-middle">' +
             cellLabel(label('Short Description')) +
             '<input type="text" class="form-control form-control-sm pg-pb-v-short" value="' + esc(short) + '" />' +
             '</td>' +
 
-            '<td class="d-block d-lg-table-cell align-middle">' +
+            '<td class="d-block lg:d-table-cell align-middle">' +
             cellLabel(label('Unit Price')) +
             '<div class="input-group input-group-sm">' +
             '<input type="number" step="0.01" min="0" class="form-control pg-pb-v-price" value="' + esc(price) + '" />' +
@@ -1920,23 +1920,23 @@
                them. Both stay hidden while there are no rules. */
             '<div class="small mt-1 pg-pb-v-formula' +
                 ((priced && priced.applied) ? '' : ' d-none') +
-                ((priced && priced.clamped) ? ' text-danger' : ' text-body-secondary') + '"' +
+                ((priced && priced.clamped) ? ' fg-danger' : ' fg-secondary') + '"' +
                 ((priced && priced.clamped) ? ' title="' + esc(label('price_rule_clamped')) + '"' : '') + '>' +
                 esc(priced ? priced.formula : '') + '</div>' +
             '<div class="small mt-1 align-items-center gap-1 pg-pb-v-manual' + ((activeRules && manual) ? ' d-inline-flex' : ' d-none') + '">' +
-                '<span class="badge rounded-pill text-bg-light border">' + esc(label('Typed by hand')) + '</span>' +
+                '<span class="badge rounded-pill badge-subtle theme-secondary border">' + esc(label('Typed by hand')) + '</span>' +
                 '<button type="button" class="btn btn-sm btn-link p-0 pg-pb-v-price-reset"' +
                 ' title="' + esc(label('Back to the rule')) + '" aria-label="' + esc(label('Back to the rule')) + '">' +
                 '<i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></button>' +
             '</div>' +
             '</td>' +
 
-            '<td class="d-block d-lg-table-cell align-middle">' +
+            '<td class="d-block lg:d-table-cell align-middle">' +
             cellLabel(label('Inventory Quantity')) +
             '<input type="number" min="0" class="form-control form-control-sm pg-pb-v-stock" value="' + esc(stock) + '" />' +
             '</td>' +
 
-            '<td class="d-block d-lg-table-cell align-middle">' +
+            '<td class="d-block lg:d-table-cell align-middle">' +
             cellLabel(label('Images')) +
             '<div class="pg-pb-strip">' + chips + imageAddChip() + '</div>' +
             '</td>' +
@@ -1990,7 +1990,7 @@
 
         for (var i = 0; i < dimensions.length; i++) {
             var name = dimensions[i][0].attr_name;
-            html += '<button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-0 pg-pb-token" ' +
+            html += '<button type="button" class="btn btn-sm btn-outline theme-secondary rounded-pill py-0 pg-pb-token" ' +
                 'data-pg-pb-token="' + esc(name) + '">{' + esc(name) + '}</button>';
         }
 
@@ -2360,14 +2360,14 @@
 
         if (todo.length) {
             $('#pg_pb_todo').html(
-                '<div class="d-flex align-items-center gap-2 text-body-secondary mb-1">' +
+                '<div class="d-flex align-items-center gap-3 fg-secondary mb-1">' +
                 '<i class="bi bi-list-check"></i><span class="fw-semibold">' + esc(label('Still empty')) + '</span></div>' +
-                '<ul class="mb-0 ps-3">' +
+                '<ul class="mb-0 ps-5">' +
                 todo.map(function (item) { return '<li>' + esc(item) + '</li>'; }).join('') +
                 '</ul>');
         } else {
             $('#pg_pb_todo').html(
-                '<div class="d-flex align-items-center gap-2 text-success">' +
+                '<div class="d-flex align-items-center gap-3 fg-success">' +
                 '<i class="bi bi-check-circle"></i><span>' + esc(label('Ready to create')) + '</span></div>');
         }
     }
@@ -2422,13 +2422,13 @@
         var $text = $('#pg_pb_summary_text');
 
         if (comboCount > 1) {
-            $box.removeClass('text-body-secondary').addClass('text-primary-emphasis');
+            $box.removeClass('fg-secondary').addClass('fg-emphasis-primary');
             $icon.attr('class', 'bi bi-diagram-3 mt-1');
             $text.text(label('group_summary').replace('{count}', comboCount));
             $('.pg-pb-group-only').removeClass('d-none');
             $('.pg-pb-single-only').addClass('d-none');
         } else {
-            $box.removeClass('text-primary-emphasis').addClass('text-body-secondary');
+            $box.removeClass('fg-emphasis-primary').addClass('fg-secondary');
             $icon.attr('class', 'bi bi-box mt-1');
             $text.text(label('single_summary'));
             $('.pg-pb-group-only').addClass('d-none');
@@ -2797,13 +2797,13 @@
     /* ---- "new attribute" modal */
 
     function optionRow() {
-        return '<div class="input-group input-group-sm mb-2 pg-pb-attr-option">' +
+        return '<div class="input-group input-group-sm mb-3 pg-pb-attr-option">' +
             '<input type="text" class="form-control pg-pb-attr-option-label" maxlength="255" placeholder="' + esc(label('Label')) + '" />' +
             '<span class="input-group-text">' +
-            '<input class="form-check-input mt-0 me-2 pg-pb-attr-option-novalue" type="checkbox" />' +
+            '<input class="check mt-0 me-3 pg-pb-attr-option-novalue" type="checkbox" />' +
             '<span class="small">' + esc(label("'No Thanks' Option")) + '</span>' +
             '</span>' +
-            '<button type="button" class="btn btn-outline-danger pg-pb-attr-option-remove" title="' + esc(label('Remove')) + '"><i class="bi bi-trash"></i></button>' +
+            '<button type="button" class="btn btn-outline theme-danger pg-pb-attr-option-remove" title="' + esc(label('Remove')) + '"><i class="bi bi-trash"></i></button>' +
             '</div>';
     }
 

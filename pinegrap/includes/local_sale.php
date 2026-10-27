@@ -1340,7 +1340,7 @@ function local_sale_render_rows($lines, $line_errors = array(), $flash_id = 0)
         if ($tracked) {
             $sub .= (($sub !== '') ? ' · ' : '') . h(lang(array('string' => 'In stock: {var:1}', 'vars' => array((int) $line['inventory_quantity']))));
             if ($at_limit) {
-                $sub .= ' · <span class="text-danger-emphasis">' . lang('at the limit') . '</span>';
+                $sub .= ' · <span class="fg-emphasis-danger">' . lang('at the limit') . '</span>';
             }
         }
 
@@ -1510,7 +1510,7 @@ function local_sale_render_ledger($user)
     }
 
     $account_id = local_sale_billing_account();
-    $header = '<div class="card-header"><h2 class="pg-sale-ch text-primary">' . lang('Ledger account') . '</h2>';
+    $header = '<div class="card-header"><h2 class="pg-sale-ch fg-primary">' . lang('Ledger account') . '</h2>';
 
     if ($account_id <= 0) {
         return '<div class="card pg-belge-block">' . $header . '</div><div class="card-body"><div class="pg-sale-note"><i class="bi bi-info-circle" aria-hidden="true"></i><span>'
@@ -1525,17 +1525,17 @@ function local_sale_render_ledger($user)
 
     $statement = erp_account_statement($account_id);
     $balance = (int) $statement['closing'];
-    $balance_class = ($balance > 0) ? 'text-success' : (($balance < 0) ? 'text-danger' : 'text-body-secondary');
+    $balance_class = ($balance > 0) ? 'fg-success' : (($balance < 0) ? 'fg-danger' : 'fg-secondary');
     $balance_side = ($balance > 0) ? lang('owes you') : (($balance < 0) ? lang('you owe') : lang('No balance'));
 
     $term = (int) $account['payment_days'];
-    $facts = '<dt>' . h(function_exists('erp_tax_id_label') ? erp_tax_id_label((string) ($account['country_code'] ?? '')) : lang('VKN / TCKN')) . '</dt><dd>' . ((trim((string) $account['tax_number']) !== '') ? h($account['tax_number']) : '<span class="text-body-secondary">—</span>') . '</dd>';
+    $facts = '<dt>' . h(function_exists('erp_tax_id_label') ? erp_tax_id_label((string) ($account['country_code'] ?? '')) : lang('VKN / TCKN')) . '</dt><dd>' . ((trim((string) $account['tax_number']) !== '') ? h($account['tax_number']) : '<span class="fg-secondary">—</span>') . '</dd>';
 
     $type = local_sale_doc_type_label($account_id);
     if ($type !== '') {
         $facts .= '<dt>' . lang('e-Document') . '</dt><dd>' . (((int) $account['einvoice_user'] === 1)
-            ? '<span class="badge text-bg-success">' . lang('e-Invoice taxpayer') . '</span>'
-            : '<span class="badge text-bg-secondary">' . lang('e-Archive') . '</span>') . '</dd>';
+            ? '<span class="badge theme-success">' . lang('e-Invoice taxpayer') . '</span>'
+            : '<span class="badge theme-secondary">' . lang('e-Archive') . '</span>') . '</dd>';
     }
 
     $facts .= '<dt>' . lang('Payment term') . '</dt><dd>' . (($term > 0) ? h(lang(array('string' => '{var:1} days', 'vars' => array($term)))) : lang('Store default')) . '</dd>';
@@ -1544,7 +1544,7 @@ function local_sale_render_ledger($user)
     if (function_exists('erp_edoc_invoice_party_missing')) {
         $missing = erp_edoc_invoice_party_missing(array('direction' => 'sales', 'doc_type' => 'invoice', 'status' => 'draft', 'account_id' => $account_id));
         if (!empty($missing['fields'])) {
-            $warning = '<div class="alert alert-warning d-flex gap-2 mt-3 mb-0 small"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span>'
+            $warning = '<div class="alert theme-warning d-flex gap-3 mt-5 mb-0 small"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span>'
                 . h(lang(array('string' => 'For e-documents this account is missing: {var:1}. The invoice is issued, but it cannot go out until the card is completed.', 'vars' => array(implode(', ', $missing['fields'])))))
                 . ' <a href="edit_erp_account.php?id=' . $account_id . '" class="alert-link">' . lang('Edit the account') . '</a></span></div>';
         }
@@ -1553,7 +1553,7 @@ function local_sale_render_ledger($user)
     return '<div class="card pg-belge-block">' . $header
         . '<button type="button" class="btn btn-sm btn-ghost no-submit" data-sale-ledger="' . $account_id . '"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . lang('Account summary') . '</button></div>'
         . '<div class="card-body">'
-        . '<div class="pg-sale-balance"><b class="' . $balance_class . '">' . h(erp_money_out(abs($balance))) . '</b><span class="text-body-secondary">' . h($balance_side) . '</span></div>'
+        . '<div class="pg-sale-balance"><b class="' . $balance_class . '">' . h(erp_money_out(abs($balance))) . '</b><span class="fg-secondary">' . h($balance_side) . '</span></div>'
         . '<dl class="pg-sale-facts">' . $facts . '</dl>' . $warning
         . '</div></div>';
 }
@@ -1588,7 +1588,7 @@ function local_sale_render_pay($user)
 
         $extra = in_array($method, array('cheque', 'other'), true);
         $output .= '<button type="button" class="pg-sale-link no-submit" data-sale-extra-show' . ($extra ? ' hidden' : '') . '>' . lang('Cheque or another method') . '</button>'
-            . '<select class="form-select form-select-sm" id="pg_sale_extra" aria-label="' . h(lang('Other payment method')) . '"' . ($extra ? '' : ' hidden') . '>'
+            . '<select class="form-control form-control-sm" id="pg_sale_extra" aria-label="' . h(lang('Other payment method')) . '"' . ($extra ? '' : ' hidden') . '>'
             . '<option value="">' . lang('Cheque or another method') . '</option>'
             . '<option value="cheque"' . (($method === 'cheque') ? ' selected' : '') . '>' . h($methods['cheque']) . '</option>'
             . '<option value="other"' . (($method === 'other') ? ' selected' : '') . '>' . h($methods['other']) . '</option>'
@@ -1603,7 +1603,7 @@ function local_sale_render_pay($user)
             $options .= '<option value="' . (int) $till['id'] . '" data-kind="' . h($till['kind']) . '"' . (((int) $till['id'] === $default_till) ? ' selected' : '') . '>' . h($till['name']) . '</option>';
         }
         $output .= '<div class="pg-sale-till" data-sale-when-not="later split"><label class="form-label" for="pg_sale_till">' . lang('Till or bank account') . '</label>'
-            . '<select class="form-select" id="pg_sale_till">' . $options . '</select></div>';
+            . '<select class="form-control" id="pg_sale_till">' . $options . '</select></div>';
 
         // Two ways of paying one sale - part in cash, part by card - with
         // what the parts leave kept open on the account.
@@ -1618,15 +1618,15 @@ function local_sale_render_pay($user)
         $parts = '';
         foreach (array(1, 2) as $part) {
             $parts .= '<div class="row g-1 mb-1" data-sale-part="' . $part . '">'
-                . '<div class="col-6"><select class="form-select form-select-sm" data-part-method aria-label="' . h(lang(array('string' => 'Part {var:1}: how it is paid', 'vars' => $part))) . '">' . $part_methods . '</select></div>'
+                . '<div class="col-6"><select class="form-control form-control-sm" data-part-method aria-label="' . h(lang(array('string' => 'Part {var:1}: how it is paid', 'vars' => $part))) . '">' . $part_methods . '</select></div>'
                 . '<div class="col-6"><input type="text" class="form-control form-control-sm text-end fw-semibold" data-part-amount inputmode="decimal" autocomplete="off" placeholder="0' . h(local_sale_number_separators()['decimal']) . '00" aria-label="' . h(lang(array('string' => 'Part {var:1}: amount', 'vars' => $part))) . '"></div>'
-                . '<div class="col-12"><select class="form-select form-select-sm" data-part-till aria-label="' . h(lang(array('string' => 'Part {var:1}: till or bank account', 'vars' => $part))) . '">' . $part_tills . '</select></div>'
+                . '<div class="col-12"><select class="form-control form-control-sm" data-part-till aria-label="' . h(lang(array('string' => 'Part {var:1}: till or bank account', 'vars' => $part))) . '">' . $part_tills . '</select></div>'
                 . '</div>';
         }
         $output .= '<button type="button" class="pg-sale-link no-submit" data-sale-method="split" data-sale-when-not="split">' . lang('Split between two ways of paying') . '</button>'
             . '<div class="pg-sale-split" data-sale-when="split"><div class="d-flex flex-column gap-1">'
             . '<div class="form-label mb-0">' . lang('Split payment') . '</div>' . $parts
-            . '<div class="small text-body-secondary" id="pg_sale_split_rest" aria-live="polite"></div>'
+            . '<div class="small fg-secondary" id="pg_sale_split_rest" aria-live="polite"></div>'
             . '<button type="button" class="pg-sale-link no-submit align-self-start" data-sale-method="cash">' . lang('One way of paying') . '</button>'
             . '</div></div>';
     } elseif ($erp && $can_cash) {
@@ -1642,15 +1642,15 @@ function local_sale_render_pay($user)
         . '<input type="text" class="form-control fw-semibold" id="pg_sale_received" inputmode="decimal" autocomplete="off" placeholder="0' . h(local_sale_number_separators()['decimal']) . '00"></div>'
         . '<div class="pg-sale-quick" id="pg_sale_quick"></div>'
         . '<div class="pg-sale-change" id="pg_sale_change" hidden><span></span><b></b></div>'
-        . (!$erp ? '<div class="pg-sale-note mt-2"><i class="bi bi-info-circle" aria-hidden="true"></i><span>' . lang('This amount is not stored; it only works out the change.') . '</span></div>' : '')
+        . (!$erp ? '<div class="pg-sale-note mt-3"><i class="bi bi-info-circle" aria-hidden="true"></i><span>' . lang('This amount is not stored; it only works out the change.') . '</span></div>' : '')
         . '</div>';
 
     $output .= '<div id="pg_sale_invoice">' . local_sale_render_invoice_note($user) . '</div>';
 
-    $output .= '<button type="button" class="btn btn-success pg-sale-go no-submit" id="pg_sale_complete" disabled>'
+    $output .= '<button type="button" class="btn btn-solid theme-success pg-sale-go no-submit" id="pg_sale_complete" disabled>'
         . '<i class="bi bi-check2-circle" aria-hidden="true"></i><span>' . lang('Complete the sale') . '</span><kbd>F9</kbd></button>';
 
-    return '<div class="card pg-sale-pay-card" id="pg_sale_pay"><div class="card-header"><h2 class="pg-sale-ch text-primary">' . ($erp ? lang('Payment') : lang('Change due')) . '</h2></div>'
+    return '<div class="card pg-sale-pay-card" id="pg_sale_pay"><div class="card-header"><h2 class="pg-sale-ch fg-primary">' . ($erp ? lang('Payment') : lang('Change due')) . '</h2></div>'
         . '<div class="card-body pg-sale-pay" data-method="' . h($method) . '">' . $output . '</div></div>';
 }
 
@@ -1676,10 +1676,10 @@ function local_sale_render_done($r, $user)
     $output = '<div class="card pg-sale-done" id="pg_sale_done_card">'
         . '<div class="pg-sale-done-head"><i class="bi bi-check-circle-fill" aria-hidden="true"></i><div><b>' . lang('Sale complete') . '</b><small>'
         . h(lang(array('string' => 'Order #{var:1} · {var:2}', 'vars' => array($r['order_number'], ($r['who'] !== '') ? $r['who'] : lang('Walk-in sale'))))) . '</small></div></div>'
-        . '<div class="pg-sale-total pb-2"><div class="pg-sale-total-label">' . lang('Total') . '</div><div class="pg-sale-total-amount pg-sale-total-sm">' . local_sale_money($r['total']) . '</div><div class="pg-sale-total-sub">' . h($how) . '</div></div>';
+        . '<div class="pg-sale-total pb-3"><div class="pg-sale-total-label">' . lang('Total') . '</div><div class="pg-sale-total-amount pg-sale-total-sm">' . local_sale_money($r['total']) . '</div><div class="pg-sale-total-sub">' . h($how) . '</div></div>';
 
     if (($r['method'] === 'cash') && ($r['received'] > $r['total'])) {
-        $output .= '<div class="px-3 pb-3"><div class="pg-sale-change"><span>' . lang('Change due') . '</span><b>' . local_sale_money($r['received'] - $r['total']) . '</b></div></div>';
+        $output .= '<div class="px-5 pb-5"><div class="pg-sale-change"><span>' . lang('Change due') . '</span><b>' . local_sale_money($r['received'] - $r['total']) . '</b></div></div>';
     }
 
     if (!empty($r['invoice']) || !empty($r['receipt']) || !empty($r['receipts'])) {
@@ -1688,35 +1688,35 @@ function local_sale_render_done($r, $user)
             $text = h(lang(array('string' => 'Invoice {var:1}', 'vars' => array($r['invoice']['number']))));
             $output .= '<li><i class="bi bi-receipt" aria-hidden="true"></i>'
                 . ($can_erp ? '<a href="edit_erp_invoice.php?id=' . (int) $r['invoice']['id'] . '">' . $text . '</a>' : '<span>' . $text . '</span>')
-                . (($r['invoice']['type'] !== '') ? '<span class="badge text-bg-info ms-auto">' . h($r['invoice']['type']) . '</span>' : '') . '</li>';
+                . (($r['invoice']['type'] !== '') ? '<span class="badge theme-info ms-auto">' . h($r['invoice']['type']) . '</span>' : '') . '</li>';
         }
         if (!empty($r['receipt'])) {
             $text = h(lang(array('string' => 'Receipt #{var:1}', 'vars' => array($r['receipt']['id']))));
             $output .= '<li><i class="bi bi-cash-coin" aria-hidden="true"></i>'
                 . ($can_erp ? '<a href="erp_receipt.php?id=' . (int) $r['receipt']['id'] . '">' . $text . '</a>' : '<span>' . $text . '</span>')
-                . '<span class="badge text-bg-success ms-auto">' . lang('invoice paid') . '</span></li>';
+                . '<span class="badge theme-success ms-auto">' . lang('invoice paid') . '</span></li>';
         }
         foreach ((array) ($r['receipts'] ?? array()) as $receipt) {
             $text = h(lang(array('string' => 'Receipt #{var:1}', 'vars' => array($receipt['id']))));
             $output .= '<li><i class="bi ' . (($receipt['method'] === 'card') ? 'bi-credit-card' : 'bi-cash-coin') . '" aria-hidden="true"></i>'
                 . ($can_erp ? '<a href="erp_receipt.php?id=' . (int) $receipt['id'] . '">' . $text . '</a>' : '<span>' . $text . '</span>')
-                . '<span class="small text-body-secondary">' . h(($methods[$receipt['method']] ?? '') . ' · ' . $receipt['till']) . '</span>'
-                . '<span class="badge text-bg-success ms-auto">' . local_sale_money($receipt['amount']) . '</span></li>';
+                . '<span class="small fg-secondary">' . h(($methods[$receipt['method']] ?? '') . ' · ' . $receipt['till']) . '</span>'
+                . '<span class="badge theme-success ms-auto">' . local_sale_money($receipt['amount']) . '</span></li>';
         }
         $output .= '</ul>';
     }
 
     foreach ($r['warnings'] as $warning) {
-        $output .= '<div class="px-3 pb-2"><div class="alert alert-warning d-flex gap-2 mb-0 small"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span>' . h($warning) . '</span></div></div>';
+        $output .= '<div class="px-5 pb-3"><div class="alert theme-warning d-flex gap-3 mb-0 small"><i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i><span>' . h($warning) . '</span></div></div>';
     }
 
     $output .= '<div class="pg-sale-done-actions">'
-        . '<a class="btn btn-sm btn-outline-secondary" href="print_order.php?id=' . (int) $r['order_id'] . '" target="_blank" rel="noopener" data-sale-print><i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print') . '</a>'
-        . '<a class="btn btn-sm btn-outline-secondary" href="view_order.php?id=' . (int) $r['order_id'] . '"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . lang('Open the order') . '</a>'
-        . ($r['retry_invoice'] ? '<button type="button" class="btn btn-sm btn-outline-success no-submit" data-sale-invoice="' . (int) $r['order_id'] . '"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Try the invoice again') . '</button>' : '')
+        . '<a class="btn btn-sm btn-outline theme-secondary" href="print_order.php?id=' . (int) $r['order_id'] . '" target="_blank" rel="noopener" data-sale-print><i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print') . '</a>'
+        . '<a class="btn btn-sm btn-outline theme-secondary" href="view_order.php?id=' . (int) $r['order_id'] . '"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . lang('Open the order') . '</a>'
+        . ($r['retry_invoice'] ? '<button type="button" class="btn btn-sm btn-outline theme-success no-submit" data-sale-invoice="' . (int) $r['order_id'] . '"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Try the invoice again') . '</button>' : '')
         . '</div>'
         . '<div class="pg-sale-next"><span>' . lang('Scanning the next product starts a new sale.') . '</span>'
-        . '<button type="button" class="btn btn-sm btn-primary rounded-pill px-3 no-submit" data-sale-new>' . lang('New sale') . ' <kbd>Enter</kbd></button></div>'
+        . '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 no-submit" data-sale-new>' . lang('New sale') . ' <kbd>Enter</kbd></button></div>'
         . '</div>';
 
     return $output;
@@ -1749,7 +1749,7 @@ function local_sale_render_recent($user)
     );
 
     if (empty($rows)) {
-        return '<div class="p-4 text-center text-body-secondary">' . lang('No local orders yet.') . '</div>';
+        return '<div class="p-7 text-center fg-secondary">' . lang('No local orders yet.') . '</div>';
     }
 
     $output = '';
@@ -1769,16 +1769,16 @@ function local_sale_render_recent($user)
             if ((int) $row['erp_invoice_id'] > 0) {
                 $number = '<i class="bi bi-receipt me-1" aria-hidden="true"></i>' . h((string) $row['invoice_number']);
                 $invoice = $can_erp
-                    ? '<a class="badge text-bg-success text-decoration-none" href="edit_erp_invoice.php?id=' . (int) $row['erp_invoice_id'] . '">' . $number . '</a>'
-                    : '<span class="badge text-bg-success">' . $number . '</span>';
+                    ? '<a class="badge theme-success text-decoration-none" href="edit_erp_invoice.php?id=' . (int) $row['erp_invoice_id'] . '">' . $number . '</a>'
+                    : '<span class="badge theme-success">' . $number . '</span>';
             } else {
-                $invoice = '<button type="button" class="btn btn-sm btn-outline-success no-submit" data-sale-invoice="' . (int) $row['id'] . '"><i class="bi bi-receipt me-1" aria-hidden="true"></i>' . lang('Issue the Invoice') . '</button>';
+                $invoice = '<button type="button" class="btn btn-sm btn-outline theme-success no-submit" data-sale-invoice="' . (int) $row['id'] . '"><i class="bi bi-receipt me-1" aria-hidden="true"></i>' . lang('Issue the Invoice') . '</button>';
             }
         }
 
         $output .= '<div class="pg-sale-rs">'
-            . '<div><b>#' . h($row['order_number']) . '</b> <small class="text-body-secondary">· ' . get_relative_time(array('timestamp' => $row['order_date'])) . '</small>'
-            . '<br><small class="text-body-secondary">' . h(lang(array('string' => '{var:1} · {var:2} lines', 'vars' => array($who, (int) $row['item_count'])))) . '</small></div>'
+            . '<div><b>#' . h($row['order_number']) . '</b> <small class="fg-secondary">· ' . get_relative_time(array('timestamp' => $row['order_date'])) . '</small>'
+            . '<br><small class="fg-secondary">' . h(lang(array('string' => '{var:1} · {var:2} lines', 'vars' => array($who, (int) $row['item_count'])))) . '</small></div>'
             . '<div class="text-end fw-semibold">' . local_sale_money($row['total']) . '</div>'
             . '<div class="pg-sale-rs-acts">' . $invoice
             . '<a class="btn btn-sm btn-ghost ms-auto" href="view_order.php?id=' . (int) $row['id'] . '" title="' . h(lang('View')) . '" aria-label="' . h(lang('View')) . '"><i class="bi bi-eye" aria-hidden="true"></i></a></div>'

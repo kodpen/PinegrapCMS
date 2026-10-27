@@ -226,7 +226,7 @@ switch ($_SESSION['software']['device_type']) {
         $style_column_heading_label = lang('Desktop Page Style');
 
         // output toggle to show mobile
-        $output_device_type_toggle = '<a class="btn btn-sm btn-secondary p-1 material-icons" href="update_device_type.php?device_type=mobile&amp;send_to=' . h(urlencode(get_request_uri())) . get_token_query_string_field() . '" title="' . lang('Show mobile Page Styles') . '">phone_iphone</a>';
+        $output_device_type_toggle = '<a class="btn btn-sm btn-solid theme-secondary p-1 material-icons" href="update_device_type.php?device_type=mobile&amp;send_to=' . h(urlencode(get_request_uri())) . get_token_query_string_field() . '" title="' . lang('Show mobile Page Styles') . '">phone_iphone</a>';
 
         break;
     
@@ -238,7 +238,7 @@ switch ($_SESSION['software']['device_type']) {
         $style_column_heading_label = lang('Mobile Page Style');
 
         // output toggle to show desktop
-        $output_device_type_toggle = '<a class="btn btn-sm btn-secondary p-1 material-icons" href="update_device_type.php?device_type=desktop&amp;send_to=' . h(urlencode(get_request_uri())) . get_token_query_string_field() . '" title="' . lang('Show desktop Page Styles') . '">computer</a>';
+        $output_device_type_toggle = '<a class="btn btn-sm btn-solid theme-secondary p-1 material-icons" href="update_device_type.php?device_type=desktop&amp;send_to=' . h(urlencode(get_request_uri())) . get_token_query_string_field() . '" title="' . lang('Show desktop Page Styles') . '">computer</a>';
 
         break;
 }
@@ -315,16 +315,16 @@ if (($user['role'] < '3') || ($user['create_pages'] == TRUE)) {
             // A designer adds a visual page to a design of their choosing
             // (pg_designer_target_modal()); the classic page screen stays
             // beside it.
-            ? '<button type="button" class="btn btn-sm btn-primary m-1" data-pg-design-target="add" data-from="pages"><span class="bi bi-plus-circle me-2"></span>' . lang('Add Page') . '</button>
-               <a class="btn btn-sm btn-outline-primary m-1" href="add_page.php"><span class="bi bi-plus-circle me-2"></span>' . lang('Add Page (Legacy)') . '</a>'
-            : '<a class="btn btn-sm btn-primary m-1" href="add_page.php"><span class="bi bi-plus-circle me-2"></span>' . lang('Add Page') . '</a>') . '
+            ? '<button type="button" class="btn btn-sm btn-solid theme-primary m-1" data-pg-design-target="add" data-from="pages"><span class="bi bi-plus-circle me-3"></span>' . lang('Add Page') . '</button>
+               <a class="btn btn-sm btn-outline theme-primary m-1" href="add_page.php"><span class="bi bi-plus-circle me-3"></span>' . lang('Add Page (Legacy)') . '</a>'
+            : '<a class="btn btn-sm btn-solid theme-primary m-1" href="add_page.php"><span class="bi bi-plus-circle me-3"></span>' . lang('Add Page') . '</a>') . '
         ';
 
     // If advanced search is enabled and the user is a manager or above then output "Update Search Index" button.
     if ((SEARCH_TYPE == 'advanced') && (USER_ROLE != 3)) {
         $output_button_bar .= '
         <div class=" btn-group btn-group-sm flex-wrap">
-            <button type="button" class="btn btn-link link-secondary py-0 m-1" onclick="window.open(\'update_search_index.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\');"><span class="material-icons me-1">manage_search</span>' . lang(array('string'=>'Update Search Index') ) . '</button>
+            <button type="button" class="btn btn-link pg-link-secondary py-0 m-1" onclick="window.open(\'update_search_index.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\');"><span class="material-icons me-1">manage_search</span>' . lang(array('string'=>'Update Search Index') ) . '</button>
         </div>';
     }
 
@@ -333,9 +333,9 @@ if (($user['role'] < '3') || ($user['create_pages'] == TRUE)) {
     if (USER_ROLE < 3) {
         $output_button_bar .= '
         <div class=" btn-group btn-group-sm flex-wrap">
-            <a class="btn btn-link link-secondary py-0 m-1" href="view_pages.php?recalculate_seo=1' . get_token_query_string_field() . '"><span class="bi bi-speedometer2 me-1"></span>' . lang('Refresh SEO Scores') . '</a>
-            <a class="btn btn-link link-secondary py-0 m-1" href="view_pages.php?analyze_seo=1' . get_token_query_string_field() . '" title="' . lang('Renders each page and examines the resulting HTML. Covers products and product groups too. Slower than a score refresh, and it may take several clicks on a large site.') . '"><span class="bi bi-code-slash me-1"></span>' . lang('Analyze HTML Structure') . '</a>
-            <a class="btn btn-link link-secondary py-0 m-1" href="view_accessibility.php"><span class="bi bi-universal-access me-1"></span>' . lang('Accessibility report') . '</a>
+            <a class="btn btn-link pg-link-secondary py-0 m-1" href="view_pages.php?recalculate_seo=1' . get_token_query_string_field() . '"><span class="bi bi-speedometer2 me-1"></span>' . lang('Refresh SEO Scores') . '</a>
+            <a class="btn btn-link pg-link-secondary py-0 m-1" href="view_pages.php?analyze_seo=1' . get_token_query_string_field() . '" title="' . lang('Renders each page and examines the resulting HTML. Covers products and product groups too. Slower than a score refresh, and it may take several clicks on a large site.') . '"><span class="bi bi-code-slash me-1"></span>' . lang('Analyze HTML Structure') . '</a>
+            <a class="btn btn-link pg-link-secondary py-0 m-1" href="view_accessibility.php"><span class="bi bi-universal-access me-1"></span>' . lang('Accessibility report') . '</a>
         </div>';
     }
 
@@ -1262,10 +1262,10 @@ if ($pages) {
         
         $output_rows .=
             '<tr>
-                <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="pages[]" value="' . $page['page_id'] . '" class="checkbox" /></td>
+                <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="pages[]" value="' . $page['page_id'] . '" class="checkbox" /></td>
 			    <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_edit_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-secondary border-2 " title="' . lang('Preview') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-link"></i></button>
+                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_edit_url . '\'"><i class="bi bi-pencil"></i></button>
+                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " title="' . lang('Preview') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-link"></i></button>
                 </td>
                 <td class="align-middle chart_label position-relative">' . $output_home_icon . h($page['page_name']) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=page&amp;id=' . $page['page_id'] . get_token_query_string_field() . '">' . pg_seo_render_bar($page) . '</a></td>
                 ' . $output_form_name_row . '
@@ -1310,18 +1310,18 @@ if ($seo_summary && (($seo_summary['in_sitemap'] > 0) || ($seo_summary['in_searc
 
     if ($seo_summary['in_sitemap'] > 0) {
         $seo_summary_part =
-            '<a class="link-secondary" href="view_pages.php?filter=my_sitemap_pages">'
+            '<a class="pg-link-secondary" href="view_pages.php?filter=my_sitemap_pages">'
             . lang(array('string' => '{var:1} page{suffix:1} in the site map', 'vars' => (int) $seo_summary['in_sitemap'], 'suffix' => (($seo_summary['in_sitemap'] == 1) ? '' : 's')))
             . '</a>';
 
         if ($seo_summary['sitemap_no_title'] > 0) {
-            $seo_summary_part .= ' · <a class="link-danger" href="view_pages.php?filter=seo_sitemap_no_title">'
+            $seo_summary_part .= ' · <a class="pg-link-danger" href="view_pages.php?filter=seo_sitemap_no_title">'
                 . lang(array('string' => '{var:1} missing a title', 'vars' => (int) $seo_summary['sitemap_no_title']))
                 . '</a>';
         }
 
         if ($seo_summary['sitemap_no_description'] > 0) {
-            $seo_summary_part .= ' · <a class="link-danger" href="view_pages.php?filter=seo_sitemap_no_description">'
+            $seo_summary_part .= ' · <a class="pg-link-danger" href="view_pages.php?filter=seo_sitemap_no_description">'
                 . lang(array('string' => '{var:1} missing a description', 'vars' => (int) $seo_summary['sitemap_no_description']))
                 . '</a>';
         }
@@ -1331,12 +1331,12 @@ if ($seo_summary && (($seo_summary['in_sitemap'] > 0) || ($seo_summary['in_searc
 
     if ($seo_summary['in_search'] > 0) {
         $seo_summary_part =
-            '<a class="link-secondary" href="view_pages.php?filter=my_searchable_pages">'
+            '<a class="pg-link-secondary" href="view_pages.php?filter=my_searchable_pages">'
             . lang(array('string' => '{var:1} page{suffix:1} in the site search', 'vars' => (int) $seo_summary['in_search'], 'suffix' => (($seo_summary['in_search'] == 1) ? '' : 's')))
             . '</a>';
 
         if ($seo_summary['search_weak_keywords'] > 0) {
-            $seo_summary_part .= ' · <a class="link-danger" href="view_pages.php?filter=seo_search_weak_keywords">'
+            $seo_summary_part .= ' · <a class="pg-link-danger" href="view_pages.php?filter=seo_search_weak_keywords">'
                 . lang(array('string' => '{var:1} with weak or missing keywords', 'vars' => (int) $seo_summary['search_weak_keywords']))
                 . '</a>';
         }
@@ -1352,13 +1352,13 @@ if ($seo_summary && (($seo_summary['in_sitemap'] > 0) || ($seo_summary['in_searc
         $seo_structure_bits = array();
 
         if ($seo_summary['no_h1'] > 0) {
-            $seo_structure_bits[] = '<a class="link-danger" href="view_pages.php?filter=seo_no_h1">'
+            $seo_structure_bits[] = '<a class="pg-link-danger" href="view_pages.php?filter=seo_no_h1">'
                 . lang(array('string' => '{var:1} without an H1 heading', 'vars' => (int) $seo_summary['no_h1']))
                 . '</a>';
         }
 
         if ($seo_summary['img_no_alt'] > 0) {
-            $seo_structure_bits[] = '<a class="link-danger" href="view_pages.php?filter=seo_img_no_alt">'
+            $seo_structure_bits[] = '<a class="pg-link-danger" href="view_pages.php?filter=seo_img_no_alt">'
                 . lang(array('string' => '{var:1} with images missing alt text', 'vars' => (int) $seo_summary['img_no_alt']))
                 . '</a>';
         }
@@ -1368,13 +1368,13 @@ if ($seo_summary && (($seo_summary['in_sitemap'] > 0) || ($seo_summary['in_searc
 
     if ($seo_summary['not_calculated'] > 0) {
         $seo_summary_parts[] =
-            '<a class="link-secondary" href="view_pages.php?filter=seo_not_calculated">'
+            '<a class="pg-link-secondary" href="view_pages.php?filter=seo_not_calculated">'
             . lang(array('string' => '{var:1} not calculated yet', 'vars' => (int) $seo_summary['not_calculated']))
             . '</a>';
     }
 
     $output_seo_summary =
-        '<div class="col-12 mb-2 small text-body-secondary">
+        '<div class="col-12 mb-3 small fg-secondary">
             <span class="bi bi-graph-up-arrow me-1"></span>' . implode(' &nbsp;|&nbsp; ', $seo_summary_parts) . '
         </div>';
 }
@@ -1388,7 +1388,7 @@ if (($user['role'] < '3') || ($user['delete_pages'] == TRUE)) {
     $delete_confirmation = pg_recycle_ready()
         ? lang('The selected pages will be moved to the Recycle Bin. Those already in it will be deleted permanently.')
         : lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('pages'))));
-    $output_delete_selected_button = '<button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
+    $output_delete_selected_button = '<button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>';
 }
 
 echo
@@ -1408,19 +1408,19 @@ pg_page_shell(
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
+            <div class="row mb-3  flex-wrap">
+                <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
                     
                     ' . $output_button_bar . '
                 </div>
-                <div class="col-12 col-sm-12 col-md-6 col-xl-3 ">
-                    <div class="row justify-content-center justify-content-md-end">
+                <div class="col-12 sm:col-12 md:col-6 xl:col-3 ">
+                    <div class="row justify-content-center md:justify-content-end">
                         <div class="col-auto mt-1 mb-1">' . pg_list_sort_menu('view_pages.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter)) . '</div>
                         <form id="search_form" action="view_pages.php" method="get" class="search_form col-auto">
                             <input type="hidden" name="filter" value="' . h($filter) . '" />
                             <div class="input-group input-group-sm">
                                 <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
-                                <select id="filter_select" name="filter" class="form-select mt-1 mb-1" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
+                                <select id="filter_select" name="filter" class="form-control mt-1 mb-1" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
                             </div>
                         </form>
                     </div>
@@ -1429,7 +1429,7 @@ pg_page_shell(
             <div class="row">
                 ' . $output_seo_summary . '
             </div>
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <form name="form"  action="edit_pages.php" method="post">
                         ' . get_token_field() . '
@@ -1444,8 +1444,8 @@ pg_page_shell(
                             <thead>
                                 <tr>
                                     <th class="noVis">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all">
+                                        <div class="form-field">
+                                            <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
                                         </div>
                                     </th>
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
@@ -1471,7 +1471,7 @@ pg_page_shell(
                         <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
                             <div class="container">
                                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">                                   
-                                    <button type="button" value="Modify Selected" class=" btn mb-1 mt-1 btn-primary disabled" onclick="window.open(\'edit_pages.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'edit\',\'product\')"><span class="material-icons me-2">edit</span>' . lang(array('string'=>'Modify Selected') ) . '</button>
+                                    <button type="button" value="Modify Selected" class=" btn mb-1 mt-1 btn-solid theme-primary disabled" onclick="window.open(\'edit_pages.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'edit\',\'product\')"><span class="material-icons me-3">edit</span>' . lang(array('string'=>'Modify Selected') ) . '</button>
                                     ' . $output_delete_selected_button . '
                                 </div>
                             </div>

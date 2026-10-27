@@ -1977,16 +1977,16 @@ function ws_mcp_settings_form($self_url, $server, $admin, $typed = array(), $pro
             <input type="hidden" name="ws_action" value="mcp_save">
             <input type="hidden" name="mcp_id" value="' . $id . '">
             ' . ($entry ? '<input type="hidden" name="mcp_catalogue" value="' . h($catalogue) . '">' : '') . '
-            ' . (($problem !== '') ? '<div class="alert alert-danger small py-2" role="alert">' . h($problem) . '</div>' : '') . '
-            <div class="row g-2">
-                <div class="col-sm-4">
+            ' . (($problem !== '') ? '<div class="alert theme-danger small py-3" role="alert">' . h($problem) . '</div>' : '') . '
+            <div class="row g-3">
+                <div class="sm:col-4">
                     <label class="form-label small" for="' . $prefix . 'alias">' . h(lang('Alias')) . '</label>
                     <div class="input-group input-group-sm">
                         <span class="input-group-text">@</span>
                         <input class="form-control" type="text" name="mcp_alias" id="' . $prefix . 'alias" value="' . h($values['mcp_alias']) . '" maxlength="32" pattern="[A-Za-z][A-Za-z0-9_\-]{1,31}" required autocomplete="off"' . $disabled . '>
                     </div>
                 </div>
-                <div class="col-sm-8">
+                <div class="sm:col-8">
                     <label class="form-label small" for="' . $prefix . 'name">' . h(lang('Name')) . '</label>
                     <input class="form-control form-control-sm" type="text" name="mcp_name" id="' . $prefix . 'name" value="' . h($values['mcp_name']) . '" maxlength="100" placeholder="' . h(lang('GitHub, the documentation, …')) . '"' . $disabled . '>
                 </div>
@@ -1995,17 +1995,17 @@ function ws_mcp_settings_form($self_url, $server, $admin, $typed = array(), $pro
                     <input class="form-control form-control-sm" type="url" name="mcp_url" id="' . $prefix . 'url" value="' . h($values['mcp_url']) . '" maxlength="500" placeholder="https://" required autocomplete="off"' . $disabled . '>
                     <div class="form-text">' . h(lang('The address of the service\'s remote MCP server (Streamable HTTP), as its documentation gives it. Servers that run on a computer (npx, stdio) cannot be reached from a website.')) . '</div>
                 </div>
-                <div class="col-sm-5">
+                <div class="sm:col-5">
                     <label class="form-label small" for="' . $prefix . 'auth">' . h(lang('How the site signs in')) . '</label>
-                    <select class="form-select form-select-sm" name="mcp_auth" id="' . $prefix . 'auth" data-ws-mcp-auth' . $disabled . '>' . $options . '</select>
+                    <select class="form-control form-control-sm" name="mcp_auth" id="' . $prefix . 'auth" data-ws-mcp-auth' . $disabled . '>' . $options . '</select>
                 </div>
-                <div class="col-sm-7' . (($kind === 'bearer') ? '' : ' d-none') . '" data-ws-mcp-auth-for="bearer">
+                <div class="sm:col-7' . (($kind === 'bearer') ? '' : ' d-none') . '" data-ws-mcp-auth-for="bearer">
                     <label class="form-label small" for="' . $prefix . 'token">' . h(lang('Access token')) . '</label>
                     <input class="form-control form-control-sm" type="password" name="mcp_token" id="' . $prefix . 'token" autocomplete="new-password"' . (($stored_kind === 'bearer') ? $kept : '') . (($entry && ($entry['token_url'] !== '') && ($kind === 'bearer')) ? ' autofocus' : '') . $disabled . '>
                     ' . (($entry && ($entry['token_url'] !== '')) ? '<div class="form-text">' . h(lang(array('string' => 'Make a token on {var:1} and paste it here. A read-only one is enough for the tools that read.', 'vars' => $entry['name']))) . ' <a href="' . h($entry['token_url']) . '" target="_blank" rel="noopener noreferrer">' . h(lang('Open the token page')) . ' <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a></div>' : '') . '
                 </div>
-                <div class="col-sm-7' . (($kind === 'header') ? '' : ' d-none') . '" data-ws-mcp-auth-for="header">
-                    <div class="row g-2">
+                <div class="sm:col-7' . (($kind === 'header') ? '' : ' d-none') . '" data-ws-mcp-auth-for="header">
+                    <div class="row g-3">
                         <div class="col-5">
                             <label class="form-label small" for="' . $prefix . 'header_name">' . h(lang('Header')) . '</label>
                             <input class="form-control form-control-sm" type="text" name="mcp_header_name" id="' . $prefix . 'header_name" value="' . h($values['mcp_header_name']) . '" maxlength="64" placeholder="X-API-Key" autocomplete="off"' . $disabled . '>
@@ -2016,8 +2016,8 @@ function ws_mcp_settings_form($self_url, $server, $admin, $typed = array(), $pro
                         </div>
                     </div>
                 </div>
-                <div class="col-sm-7' . (($kind === 'basic') ? '' : ' d-none') . '" data-ws-mcp-auth-for="basic">
-                    <div class="row g-2">
+                <div class="sm:col-7' . (($kind === 'basic') ? '' : ' d-none') . '" data-ws-mcp-auth-for="basic">
+                    <div class="row g-3">
                         <div class="col-6">
                             <label class="form-label small" for="' . $prefix . 'user">' . h(lang('User name')) . '</label>
                             <input class="form-control form-control-sm" type="text" name="mcp_user" id="' . $prefix . 'user" value="' . h($values['mcp_user']) . '" autocomplete="off"' . $disabled . '>
@@ -2028,8 +2028,8 @@ function ws_mcp_settings_form($self_url, $server, $admin, $typed = array(), $pro
                         </div>
                     </div>
                 </div>
-                <div class="col-sm-7' . (($kind === 'oauth') ? '' : ' d-none') . '" data-ws-mcp-auth-for="oauth">
-                    <div class="row g-2">
+                <div class="sm:col-7' . (($kind === 'oauth') ? '' : ' d-none') . '" data-ws-mcp-auth-for="oauth">
+                    <div class="row g-3">
                         <div class="col-6">
                             <label class="form-label small" for="' . $prefix . 'client_id">' . h(lang('Client ID (if the service needs one)')) . '</label>
                             <input class="form-control form-control-sm" type="text" name="mcp_client_id" id="' . $prefix . 'client_id" value="' . h($values['mcp_client_id']) . '" maxlength="255" autocomplete="off"' . $disabled . '>
@@ -2045,7 +2045,7 @@ function ws_mcp_settings_form($self_url, $server, $admin, $typed = array(), $pro
                     <div class="form-text">' . h(lang('The credential is kept encrypted with the site\'s key and is never shown again. Everybody who may ask the alias works with this one account on the other service, so give it the least it needs, read-only where the service offers that.')) . '</div>
                 </div>
             </div>
-            ' . ($admin ? '<button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 mt-3"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h($server ? lang('Save') : lang('Add and connect')) . '</button>' : '') . '
+            ' . ($admin ? '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 mt-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h($server ? lang('Save') : lang('Add and connect')) . '</button>' : '') . '
         </form>';
 }
 
@@ -2062,7 +2062,7 @@ function ws_mcp_settings_tools($self_url, $server, $admin)
     $tools = ws_mcp_tools($server);
 
     if (empty($tools)) {
-        return '<div class="ws-empty py-3"><i class="bi bi-tools" aria-hidden="true"></i>' . h((int) $server['tools_at'] > 0
+        return '<div class="ws-empty py-5"><i class="bi bi-tools" aria-hidden="true"></i>' . h((int) $server['tools_at'] > 0
             ? lang('The server lists no tools.')
             : lang('The tools have not been read yet. Ask the server for them with the button above.')) . '</div>';
     }
@@ -2087,16 +2087,16 @@ function ws_mcp_settings_tools($self_url, $server, $admin)
         }
 
         if ($can === 'read') {
-            $badge = '<span class="badge text-bg-success-subtle text-success-emphasis">' . h(lang('Reads only')) . '</span>';
+            $badge = '<span class="badge text-bg-success-subtle fg-emphasis-success">' . h(lang('Reads only')) . '</span>';
             $hint = '';
         } elseif ($can === 'declare') {
-            $badge = '<span class="badge text-bg-warning-subtle text-warning-emphasis">' . h(lang('Not said')) . '</span>';
+            $badge = '<span class="badge text-bg-warning-subtle fg-emphasis-warning">' . h(lang('Not said')) . '</span>';
             $hint = $approve
                 ? lang('The server does not say whether this tool changes anything. Choose "Reads only" only if you know it does; otherwise each call waits for the approval of the person who asked.')
                 : lang('The server does not say whether this tool changes anything. Turn it on only if you know it only reads.');
             $choice = $approve;
         } else {
-            $badge = '<span class="badge text-bg-danger-subtle text-danger-emphasis">' . h((($tool['hints']['destructiveHint'] ?? null) === true) ? lang('Can delete') : lang('Writes')) . '</span>';
+            $badge = '<span class="badge text-bg-danger-subtle fg-emphasis-danger">' . h((($tool['hints']['destructiveHint'] ?? null) === true) ? lang('Can delete') : lang('Writes')) . '</span>';
             $hint = $approve
                 ? lang('It changes things on the other service. Each call waits for the approval of the person who asked and runs with their own account.')
                 : lang('It changes things on the other service. With one connection for everybody it stays off.');
@@ -2110,16 +2110,16 @@ function ws_mcp_settings_tools($self_url, $server, $admin)
         if ($choice) {
             $current = isset($on[$name]) ? (string) ($rules[$name] ?? '') : '';
             $control = '
-                <select class="form-select form-select-sm w-auto mt-1" name="mcp_tool[' . h($name) . ']" id="' . $field . '" aria-label="' . h($name) . '"' . ($admin ? '' : ' disabled') . '>
+                <select class="form-control form-control-sm w-auto mt-1" name="mcp_tool[' . h($name) . ']" id="' . $field . '" aria-label="' . h($name) . '"' . ($admin ? '' : ' disabled') . '>
                     <option value="">' . h(lang('Off')) . '</option>
                     <option value="auto_declared"' . (($current === 'auto_declared') ? ' selected' : '') . '>' . h(lang('Reads only')) . '</option>
                     <option value="approve"' . (($current === 'approve') ? ' selected' : '') . '>' . h(lang('Ask before each call')) . '</option>
                 </select>';
         } else {
             $control = '
-                <div class="form-check form-switch mt-1">
-                    <input class="form-check-input" type="checkbox" name="mcp_tool[' . h($name) . ']" value="' . $value . '" id="' . $field . '"'
-                        . (isset($on[$name]) ? ' checked' : '') . (((($can === '') && !$approve) || !$admin) ? ' disabled' : '') . '>
+                <div class="form-field mt-1">
+                    <div class="switch"><input class="" type="checkbox" name="mcp_tool[' . h($name) . ']" value="' . $value . '" id="' . $field . '"'
+                        . (isset($on[$name]) ? ' checked' : '') . (((($can === '') && !$approve) || !$admin) ? ' disabled' : '') . '></div>
                 </div>';
         }
 
@@ -2128,11 +2128,11 @@ function ws_mcp_settings_tools($self_url, $server, $admin)
                 ' . $control . '
                 <label class="ws-grow" for="' . $field . '">
                     <span class="fw-semibold"><code>' . h($name) . '</code></span>
-                    ' . (($tool['title'] !== '') ? '<span class="text-body-secondary">· ' . h($tool['title']) . '</span>' : '') . '
+                    ' . (($tool['title'] !== '') ? '<span class="fg-secondary">· ' . h($tool['title']) . '</span>' : '') . '
                     ' . $badge . '
-                    ' . (!empty($on[$name]['approve']) ? '<span class="badge text-bg-primary-subtle text-primary-emphasis">' . h(lang('Asks first')) . '</span>' : '') . '
-                    ' . (($description !== '') ? '<span class="d-block small text-body-secondary">' . h(mb_strimwidth($description, 0, 240, '…')) . '</span>' : '') . '
-                    ' . (($hint !== '') ? '<span class="d-block small text-body-secondary fst-italic">' . h($hint) . '</span>' : '') . '
+                    ' . (!empty($on[$name]['approve']) ? '<span class="badge text-bg-primary-subtle fg-emphasis-primary">' . h(lang('Asks first')) . '</span>' : '') . '
+                    ' . (($description !== '') ? '<span class="d-block small fg-secondary">' . h(mb_strimwidth($description, 0, 240, '…')) . '</span>' : '') . '
+                    ' . (($hint !== '') ? '<span class="d-block small fg-secondary fst-italic">' . h($hint) . '</span>' : '') . '
                 </label>
             </li>';
     }
@@ -2148,17 +2148,17 @@ function ws_mcp_settings_tools($self_url, $server, $admin)
             ' . get_token_field() . '
             <input type="hidden" name="ws_action" value="mcp_tools">
             <input type="hidden" name="mcp_id" value="' . (int) $server['id'] . '">
-            ' . (empty($on) ? '<div class="alert alert-warning small py-2 mb-2">' . h(lang(array('string' => 'No tool of @{var:1} is on yet, so it is not offered after @ in the channels and cannot be asked. Turn on the ones that may be used and save.', 'vars' => $server['alias']))) . '</div>' : '') . '
+            ' . (empty($on) ? '<div class="alert theme-warning small py-3 mb-3">' . h(lang(array('string' => 'No tool of @{var:1} is on yet, so it is not offered after @ in the channels and cannot be asked. Turn on the ones that may be used and save.', 'vars' => $server['alias']))) . '</div>' : '') . '
             ' . (function_exists('ws_mcp_agent_settings_field') ? ws_mcp_agent_settings_field($server, $admin) : '') . '
-            <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="d-flex align-items-center gap-3 mb-3">
                 <div class="small fw-semibold ws-grow">' . h(lang(array('string' => 'Tools ({var:1} of {var:2} turned on)', 'vars' => array(count($on), count($tools)))))
-                    . ((defined('WS_MCP_ASK_MAX_TOOLS') && (count($on) > WS_MCP_ASK_MAX_TOOLS)) ? '<span class="d-block fw-normal text-warning-emphasis">' . h(lang(array('string' => 'Pinegrap AI is offered the first {var:1} of them, in alphabetical order.', 'vars' => WS_MCP_ASK_MAX_TOOLS))) . '</span>' : '') . '</div>
-                ' . ($admin ? '<button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '') . '
+                    . ((defined('WS_MCP_ASK_MAX_TOOLS') && (count($on) > WS_MCP_ASK_MAX_TOOLS)) ? '<span class="d-block fw-normal fg-emphasis-warning">' . h(lang(array('string' => 'Pinegrap AI is offered the first {var:1} of them, in alphabetical order.', 'vars' => WS_MCP_ASK_MAX_TOOLS))) . '</span>' : '') . '</div>
+                ' . ($admin ? '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '') . '
             </div>
-            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
                 <input class="form-control form-control-sm ws-grow" type="search" placeholder="' . h(lang('Filter the tools')) . '" aria-label="' . h(lang('Filter the tools')) . '" autocomplete="pg-no-autofill" data-ws-mcp-filter>
-                ' . (($admin && ($reads > 0)) ? '<button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" data-ws-mcp-all-read><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang('Every tool that reads only')) . '</button>' : '') . '
-                ' . (($admin && ($unsaid_off > 0)) ? '<button type="submit" name="mcp_declare_all" value="1" class="btn btn-sm btn-outline-warning text-nowrap" onclick="return confirm(' . h(json_encode($declare_warning)) . ');"><i class="bi bi-shield-exclamation me-1" aria-hidden="true"></i>' . h(lang('Declare the "Not said" ones read-only')) . '</button>' : '') . '
+                ' . (($admin && ($reads > 0)) ? '<button type="button" class="btn btn-sm btn-outline theme-secondary text-nowrap" data-ws-mcp-all-read><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang('Every tool that reads only')) . '</button>' : '') . '
+                ' . (($admin && ($unsaid_off > 0)) ? '<button type="submit" name="mcp_declare_all" value="1" class="btn btn-sm btn-outline theme-warning text-nowrap" onclick="return confirm(' . h(json_encode($declare_warning)) . ');"><i class="bi bi-shield-exclamation me-1" aria-hidden="true"></i>' . h(lang('Declare the "Not said" ones read-only')) . '</button>' : '') . '
             </div>
             <ul class="list-unstyled ws-mcp-tools mb-0">' . $rows . '</ul>
         </form>';
@@ -2251,7 +2251,7 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null)
                     ' . get_token_field() . '
                     <input type="hidden" name="ws_action" value="mcp_connect">
                     <input type="hidden" name="mcp_id" value="' . $id . '">
-                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i>' . h($account ? lang('Connect again') : lang('Connect')) . '</button>
+                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i>' . h($account ? lang('Connect again') : lang('Connect')) . '</button>
                 </form>';
         } elseif ($admin && $account) {
             $sign_in = '
@@ -2274,8 +2274,8 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null)
         if ($oauth && ($server['status'] === 'active')) {
             $own_works = $mine && ($mine['status'] === 'active');
             $own = '
-                <div class="small d-flex flex-wrap align-items-center gap-2 mt-1">
-                    <span class="text-body-secondary">' . h($own_works
+                <div class="small d-flex flex-wrap align-items-center gap-3 mt-1">
+                    <span class="fg-secondary">' . h($own_works
                         ? lang(array('string' => 'Your own account is connected ({var:1}).', 'vars' => ws_time_label($mine['refreshed_timestamp'] ?: $mine['created_timestamp'])))
                         : ($mine ? lang('Your own connection ended.') : lang('Your own account is not connected.'))) . '</span>
                     <form method="post" action="' . h($self_url) . '" class="d-inline">
@@ -2291,9 +2291,9 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null)
             <div class="ws-dept-row' . (($server['status'] !== 'active') ? ' opacity-75' : '') . '" id="ws-mcp-' . $id . '">
                 <i class="bi bi-plug" aria-hidden="true"></i>
                 <div class="ws-grow">
-                    <div class="fw-semibold">@' . h($server['alias']) . (($server['name'] !== '') ? ' <span class="fw-normal text-body-secondary">· ' . h($server['name']) . '</span>' : '') . ' ' . $state . '</div>
-                    <div class="small text-body-secondary">' . h(implode(' · ', $details)) . '</div>
-                    ' . (($server['last_error'] !== '') ? '<div class="small text-danger">' . h($server['last_error']) . '</div>' : '') . '
+                    <div class="fw-semibold">@' . h($server['alias']) . (($server['name'] !== '') ? ' <span class="fw-normal fg-secondary">· ' . h($server['name']) . '</span>' : '') . ' ' . $state . '</div>
+                    <div class="small fg-secondary">' . h(implode(' · ', $details)) . '</div>
+                    ' . (($server['last_error'] !== '') ? '<div class="small fg-danger">' . h($server['last_error']) . '</div>' : '') . '
                     ' . $own . '
                 </div>
                 ' . $sign_in . '
@@ -2319,18 +2319,18 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null)
                 </form>' : '') . '
             </div>
             <div class="collapse' . ($open ? ' show' : '') . '" id="ws-mcp-edit-' . $id . '">
-                <div class="row g-3 py-2">
-                    <div class="col-lg-6">' . ws_mcp_settings_form($self_url, $server, $admin, $typed, $typed ? $kept['problem'] : '') . '</div>
-                    <div class="col-lg-6">' . ws_mcp_settings_tools($self_url, $server, $admin) . '</div>
+                <div class="row g-5 py-3">
+                    <div class="lg:col-6">' . ws_mcp_settings_form($self_url, $server, $admin, $typed, $typed ? $kept['problem'] : '') . '</div>
+                    <div class="lg:col-6">' . ws_mcp_settings_tools($self_url, $server, $admin) . '</div>
                 </div>
             </div>';
     }
 
     // An administrator's empty list is the catalogue below it.
     if ($list !== '') {
-        $list = '<h3 class="h6">' . h(lang('Added servers')) . '</h3>' . $list . '<div class="mb-4"></div>';
+        $list = '<h3 class="h6">' . h(lang('Added servers')) . '</h3>' . $list . '<div class="mb-7"></div>';
     } elseif (!$admin) {
-        $list = '<div class="ws-empty py-3"><i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('No MCP server yet.')) . '</div>';
+        $list = '<div class="ws-empty py-5"><i class="bi bi-plug" aria-hidden="true"></i>' . h(lang('No MCP server yet.')) . '</div>';
     }
 
     // Pinegrap AI not connected, or connected but failing (its gateway
@@ -2339,20 +2339,20 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null)
     $ai_alert = '';
 
     if (function_exists('ws_ai_ready') && !ws_ai_ready()) {
-        $ai_alert = '<div class="alert alert-warning small py-2">' . h($agents
+        $ai_alert = '<div class="alert theme-warning small py-3">' . h($agents
             ? lang('Pinegrap AI is not connected yet, so only the aliases of servers that answer on their own can be asked. Connect it on the Pinegrap AI card.')
             : lang('Pinegrap AI is not connected yet, so the aliases cannot be asked. Connect it on the Pinegrap AI card.')) . '</div>';
     } elseif (function_exists('ws_ai_config') && ((string) ws_ai_config()['error'] !== '')) {
-        $ai_alert = '<div class="alert alert-warning small py-2">'
+        $ai_alert = '<div class="alert theme-warning small py-3">'
             . h(lang('Pinegrap AI is set up, but its last call failed, so the aliases it answers wait until it answers again. Meanwhile their tools that read can be run with a form under My MCP connections.'))
-            . '<div class="mt-1 text-body-secondary">' . h((string) ws_ai_config()['error']) . '</div></div>';
+            . '<div class="mt-1 fg-secondary">' . h((string) ws_ai_config()['error']) . '</div></div>';
     }
 
     // Adding: the ready-made connectors, then a server by its address, with
     // the whole form behind More settings. A form a check refused, or one a
     // connector that takes a token filled, opens with its values; what the
     // check of an address found fills it too, closed.
-    $add = '<div class="form-text mb-2">' . h(lang('Only an administrator can add MCP servers.')) . '</div>';
+    $add = '<div class="form-text mb-3">' . h(lang('Only an administrator can add MCP servers.')) . '</div>';
 
     if ($admin) {
         $refused = ($kept['for'] === 'new');
@@ -2364,17 +2364,17 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null)
     }
 
     return '
-        <div class="card mt-4" id="ws-mcp">
-            <div class="card-header d-flex align-items-center gap-2">
+        <div class="card mt-7" id="ws-mcp">
+            <div class="card-header d-flex align-items-center gap-3">
                 <h2 class="h6 mb-0 ws-grow"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('MCP servers')) . '</h2>
                 <a class="btn btn-sm btn-ghost" href="workspace_mcp.php" title="' . h(lang('Your own accounts in one place, and the tools that read run with a form')) . '"><i class="bi bi-person-gear me-1" aria-hidden="true"></i>' . h(lang('My MCP connections')) . '</a>
-                ' . ($admin ? '<a class="btn btn-sm btn-primary rounded-pill px-3" href="#ws-mcp-catalogue"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add a server')) . '</a>' : '') . '
+                ' . ($admin ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="#ws-mcp-catalogue"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add a server')) . '</a>' : '') . '
             </div>
             <div class="card-body">
                 <p class="small mb-1">' . h(lang('Connect another service\'s tools under an alias, then ask in a channel: "@github which pull requests wait for a review?" Add a ready-made connector with one click, or any other by its address.')) . '</p>
-                <details class="small text-body-secondary mb-3">
+                <details class="small fg-secondary mb-5">
                     <summary>' . h(lang('How it works')) . '</summary>
-                    <p class="mt-2 mb-0">' . h(lang('Connect the tools of other services - a code host, a project tracker, a documentation site - under an alias such as @github. The tools the server marks as reading only are turned on when its tools are first read; the others stay off until you turn them on here.'))
+                    <p class="mt-3 mb-0">' . h(lang('Connect the tools of other services - a code host, a project tracker, a documentation site - under an alias such as @github. The tools the server marks as reading only are turned on when its tools are first read; the others stay off until you turn them on here.'))
                     . ' ' . h(lang('Written in a channel where Pinegrap AI may be asked, the alias is answered by Pinegrap AI with the server\'s tools.'))
                     . ((function_exists('ws_mcp_agent_ready') && ws_mcp_agent_ready()) ? ' ' . h(lang('A server that is an agent itself can answer on its own, without Pinegrap AI: choose the tool that takes the messages under Tools and settings.')) : '')
                     . ' ' . h(lang('On a server people sign in to (OAuth), everybody may connect their own account, and tools that write can be turned on too: each call waits under the answer until the person who asked approves it, and runs with their own account.')) . '</p>

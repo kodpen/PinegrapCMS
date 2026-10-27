@@ -65,7 +65,7 @@
     }
 
     function select(options, value) {
-        var node = el('select', 'form-select form-select-sm');
+        var node = el('select', 'form-control form-control-sm');
 
         options.forEach(function (option) {
             var item = el('option', '', option[1]);
@@ -233,9 +233,9 @@
             return null;
         }
 
-        var wrap = el('div', 'form-check form-switch mb-3 ws-watch-field');
-        var input = el('input', 'form-check-input');
-        var label = el('label', 'form-check-label', text('watch_label'));
+        var wrap = el('div', 'form-field mb-5 ws-watch-field');
+        var input = el('input', '');
+        var label = el('label', '', text('watch_label'));
 
         uid += 1;
         input.type = 'checkbox';
@@ -243,7 +243,7 @@
         input.checked = !!channel.watch;
         label.htmlFor = input.id;
 
-        wrap.appendChild(input);
+        wrap.appendChild(el('div', 'switch')).appendChild(input);
         wrap.appendChild(label);
         wrap.appendChild(el('div', 'form-text mt-0', text('watch_help')));
 

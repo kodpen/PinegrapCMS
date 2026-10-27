@@ -71,8 +71,8 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
 
                     </div>
                 </div>
@@ -81,16 +81,16 @@ if (!$_POST) {
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$_GET['id'])) . '
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Status') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                ' . $liveform->output_field(array('type'=>'checkbox', 'id'=>'enabled', 'name'=>'enabled', 'value'=>'1', 'class'=>'form-check-input')) . '
-                                                <label class="form-check-label" for="enabled">' . lang('Enable') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'id'=>'enabled', 'name'=>'enabled', 'value'=>'1', 'class'=>'')) . '</div>
+                                                <label class="" for="enabled">' . lang('Enable') . '</label>
                                             </div>
                                         </div>
                                     </div>
@@ -98,10 +98,10 @@ if (!$_POST) {
                             </div> 
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

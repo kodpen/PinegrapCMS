@@ -139,7 +139,7 @@ function pg_settings_stamp_autocomplete($html)
  */
 function pg_settings_own_dialog_triggers($html)
 {
-    return str_ireplace('data-bs-toggle="modal"', 'data-pgdialog="modal"', $html);
+    return str_ireplace('data-bs-toggle="dialog"', 'data-pgdialog="modal"', $html);
 }
 
 /**

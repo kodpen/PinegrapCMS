@@ -108,10 +108,10 @@ function init_page_designer(properties) {
 
         $('#editorpanel').html(`
             <div class="card-header d-flex align-items-center border-0 bg-transparent">
-                    <span class="type rounded-top">${h(output_heading)}</span>
-                    <span class="name me-2"></span>
-                    <button data-bs-target="#editor_region_modal" data-bs-toggle="modal" class="me-auto  hide-on-fullscreen btn btn-sm btn-link link-secondary border-0 no-popover lh-1 p-0 bi bi-question" title="${h(labels['Help about the system tags'])}"></button>
-                    <button class="btn btn-sm btn-link link-secondary border-0 no-popover lh-1 p-0 ms-auto me-2 bi fullscreen-toggle" data-bs-target="#editorpanel" title="${h(labels['Toggle Fullscreen'])}"></button>
+                    <span class="type rounded-top-4">${h(output_heading)}</span>
+                    <span class="name me-3"></span>
+                    <button data-bs-target="#editor_region_modal" data-bs-toggle="dialog" class="me-auto  hide-on-fullscreen btn btn-sm btn-link pg-link-secondary border-0 no-popover lh-1 p-0 bi bi-question" title="${h(labels['Help about the system tags'])}"></button>
+                    <button class="btn btn-sm btn-link pg-link-secondary border-0 no-popover lh-1 p-0 ms-auto me-3 bi fullscreen-toggle" data-bs-target="#editorpanel" title="${h(labels['Toggle Fullscreen'])}"></button>
             </div>
             <div class="card-body p-0 overflow-auto position-relative">
                 <div class="editor_container">
@@ -120,8 +120,8 @@ function init_page_designer(properties) {
             </div>
             <div class="card-footer editor_control_buttons border-0" aria-label="content edit buttons">
                 <div class="">
-                    <button type="button" value="Save" class="btn btn-sm  btn-success save submit-primary disabled" title="${h(labels['Save'])} (Ctrl+S | &#8984;+S)"><span class="statusicon bi bi-floppy me-2" role="status" aria-hidden="true"></span> ${h(labels['Save'])}</button>
-                    <button type="button" value="Cancel" class="btn btn-sm border-0 cancel submit-dark disabled" title="${h(labels['Undo Changes'])}" ><span class="statusicon bi bi-arrow-counterclockwise me-2" role="status" aria-hidden="true"></span>${h(labels['Undo Changes'])}</button>
+                    <button type="button" value="Save" class="btn btn-sm  btn-solid theme-success save submit-primary disabled" title="${h(labels['Save'])} (Ctrl+S | &#8984;+S)"><span class="statusicon bi bi-floppy me-3" role="status" aria-hidden="true"></span> ${h(labels['Save'])}</button>
+                    <button type="button" value="Cancel" class="btn btn-sm border-0 cancel submit-dark disabled" title="${h(labels['Undo Changes'])}" ><span class="statusicon bi bi-arrow-counterclockwise me-3" role="status" aria-hidden="true"></span>${h(labels['Undo Changes'])}</button>
                 </div>
             </div>
             `);
@@ -199,7 +199,7 @@ function init_page_designer(properties) {
                         if (response.style.type == 'system') {
                             readonly = true;
 
-                            $('.code .type').html(labels['System Page Style'] + '<strong class="ms-2 text-warning" style="font-size: 120%">(' + labels['read-only'] + ')</strong>');
+                            $('.code .type').html(labels['System Page Style'] + '<strong class="ms-3 fg-warning" style="font-size: 120%">(' + labels['read-only'] + ')</strong>');
                         }
 
                         break;
@@ -217,7 +217,7 @@ function init_page_designer(properties) {
                         if (response.file.theme_type == 'system') {
                             readonly = true;
 
-                            $('.code .type').html(labels['System Theme'] + '<strong class="ms-2 text-warning" style="font-size: 120%">(' + labels['read-only'] + ')</strong>');
+                            $('.code .type').html(labels['System Theme'] + '<strong class="ms-3 fg-warning" style="font-size: 120%">(' + labels['read-only'] + ')</strong>');
                         }
 
                         break;
@@ -322,8 +322,8 @@ function init_page_designer(properties) {
                     activeLineMarker: regionTypes ? function () {
                         var addButton = document.createElement('button');
                         addButton.type = 'button';
-                        addButton.className = 'btn btn-primary bi bi-plus p-0 lh-1 position-absolute start-50 top-50 translate-middle hide-on-fullscreen';
-                        addButton.setAttribute('data-bs-toggle', 'modal');
+                        addButton.className = 'btn btn-solid theme-primary bi bi-plus p-0 lh-1 position-absolute start-50 top-50 translate-middle hide-on-fullscreen';
+                        addButton.setAttribute('data-bs-toggle', 'dialog');
                         addButton.setAttribute('data-bs-target', '#regionModal');
                         return addButton;
                     } : null,
@@ -514,9 +514,9 @@ function init_page_designer(properties) {
                                     $('.cancel').unbind('click');
                                     $('.cancel').addClass('disabled');
 
-                                    $('.save').html('<span class="statusicon bi bi-check-lg me-2" role="status" aria-hidden="true"></span>' + labels['Saved']);
+                                    $('.save').html('<span class="statusicon bi bi-check-lg me-3" role="status" aria-hidden="true"></span>' + labels['Saved']);
                                     setTimeout(function () {
-                                        $('.save').html('<span class="statusicon bi bi-floppy me-2" role="status" aria-hidden="true"></span>' + labels['Save']);
+                                        $('.save').html('<span class="statusicon bi bi-floppy me-3" role="status" aria-hidden="true"></span>' + labels['Save']);
                                     }, 1500);
 
                                 }
@@ -551,17 +551,17 @@ function init_page_designer(properties) {
 
     var output_dynamic_region_button = '';
     if (dynamic_regions && dynamic_regions === 1) {
-        output_dynamic_region_button = '<a type="button" id="dregionButton" class="btn text-start my-1" data-bs-toggle="modal" data-bs-target="#editor_modal_add_dynamic_region"><span class="bi text-warning-emphasis bi-filetype-php me-2"></span> ' + labels['Create Dynamic Region'] + '</a>';
+        output_dynamic_region_button = '<a type="button" id="dregionButton" class="btn text-start my-1" data-bs-toggle="dialog" data-bs-target="#editor_modal_add_dynamic_region"><span class="bi fg-emphasis-warning bi-filetype-php me-3"></span> ' + labels['Create Dynamic Region'] + '</a>';
     }
     $('body').append(`
         <main>
         <div class="container-fluid h-100 overflow-hidden pe-0">
           <div class="row h-100">
-              <div class="col-9 col-md-10 col-xl-11 h-100">
+              <div class="col-9 md:col-10 xl:col-11 h-100">
                     <div class="row h-100">
-                        <div class="col-12 col-lg-5 h-50 h-lg-100 p-2 pe-1 d-flex flex-column justify-content-center align-items-center">
-                          <div id="previewpanel" class="card overflow-hidden rounded-4 border-2 border shadow-lg resizeable ">
-                                <div class="card-header border shadow-sm rounded-4 d-flex flex-column pb-0 align-items-center z-1 hide-on-fullscreen backdrop" style="backdrop-filter: brightness(1) saturate(1.5) blur(20px);background-color: rgba(var(--bs-body-bg-rgb),60%);">
+                        <div class="col-12 lg:col-5 h-50 h-lg-100 p-3 pe-1 d-flex flex-column justify-content-center align-items-center">
+                          <div id="previewpanel" class="card overflow-hidden rounded-9 border-2 border shadow-lg resizeable ">
+                                <div class="card-header border shadow-sm rounded-9 d-flex flex-column pb-0 align-items-center z-1 hide-on-fullscreen backdrop" style="backdrop-filter: brightness(1) saturate(1.5) blur(20px);background-color: rgba(var(--bs-body-bg-rgb),60%);">
                                     <div class="mx-auto d-flex flex-row ">
                                         <button devicetype-set="mobile" class="fs-smaller px-1 py-0 btn btn-sm   bi bi-phone"></button>
                                         <button devicetype-set="tablet" class="fs-smaller px-1 py-0 btn btn-sm   bi bi-tablet"></button>
@@ -569,37 +569,37 @@ function init_page_designer(properties) {
                                         <button devicetype-set="wide" class="fs-smaller px-1 py-0 btn btn-sm     bi bi-badge-hd"></button>
                                         <button devicetype-set="desktop" class="fs-smaller px-1 py-0 btn btn-sm  bi bi-display"></button>
                                         <button devicetype-set="wider" class="fs-smaller px-1 py-0 btn btn-sm    bi bi-badge-4k"></button>
-                                        <button data-bs-target="#previewpanel" class="fs-smaller px-1 py-0 btn btn-sm  bi fullscreen-toggle ms-2 no-popover " title="${h(labels['Toggle Fullscreen'])}"></button>
+                                        <button data-bs-target="#previewpanel" class="fs-smaller px-1 py-0 btn btn-sm  bi fullscreen-toggle ms-3 no-popover " title="${h(labels['Toggle Fullscreen'])}"></button>
                                     </div>
-                                    <span id="previewpanelsize" class="badge text-body mb-0 "></span>
+                                    <span id="previewpanelsize" class="badge fg-body mb-0 "></span>
                                 </div>
-                                <button data-bs-target="#previewpanel" class="fs-smaller px-1 py-0 btn btn-sm bi fullscreen-toggle show-on-fullscreen position-absolute end-0 top-0 me-3 mt-3 no-popover  z-3" title="${h(labels['Toggle Fullscreen'])}"></button>
+                                <button data-bs-target="#previewpanel" class="fs-smaller px-1 py-0 btn btn-sm bi fullscreen-toggle show-on-fullscreen position-absolute end-0 top-0 me-5 mt-5 no-popover  z-3" title="${h(labels['Toggle Fullscreen'])}"></button>
 
-                              <div class="card-body p-2">
-                                  <iframe id="preview" src="${h(url)}" frameBorder="0" class="border-2 border rounded-3 overflow-hidden"></iframe>
+                              <div class="card-body p-3">
+                                  <iframe id="preview" src="${h(url)}" frameBorder="0" class="border-2 border rounded-5 overflow-hidden"></iframe>
                               </div>
                           </div>
                         </div>
-                        <div class="col-12 col-lg-7 h-50 h-lg-100 p-2 ps-1 d-flex flex-column justify-content-center">
+                        <div class="col-12 lg:col-7 h-50 h-lg-100 p-3 ps-1 d-flex flex-column justify-content-center">
                           <div id="editorpanel" class="code card h-auto max-h-100 min-h-200px overflow-hidden">
                           <div class="progress" role="progressbar" aria-label="Animated striped example" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar progress-bar-striped bg-secondary progress-bar-animated" style="width: 100%"></div></div>
                           </div>
                         </div>
                     </div>
               </div> 
-              <div class="col-3 col-md-2 col-xl-1 h-100 panel tool" id="panel_2" >
+              <div class="col-3 md:col-2 xl:col-1 h-100 panel tool" id="panel_2" >
                     <div class="card rounded-0 bg-software-navbar content border-0 border-start h-100 overflow-hidden backdrop d-flex flex-column">
-                        <div class="card-body p-0 p-lg-2 overflow-auto flex-shrink-1">
+                        <div class="card-body p-0 lg:p-3 overflow-auto flex-shrink-1">
                             <span class="style"></span>
                             <ul class="listtree theme"></ul>
                             <ul class="listtree layout"></ul>
                             <ul class="listtree related_items"></ul>
                         </div>
                         <div id="console_errors" class="flex-shrink-0 border-top" style="display:none">
-                            <div class="pd-console-header d-flex align-items-center px-2 py-1 gap-1" onclick="pdConsoleToggle()" style="cursor:pointer;user-select:none">
+                            <div class="pd-console-header d-flex align-items-center px-3 py-1 gap-1" onclick="pdConsoleToggle()" style="cursor:pointer;user-select:none">
                                 <span class="bi bi-terminal" style="font-size:.75rem"></span>
                                 <span style="font-size:.7rem;font-family:monospace;font-weight:600">${h(labels['Console'])}</span>
-                                <span id="pd_console_badge" class="badge rounded-pill bg-danger ms-1" style="font-size:.6rem;display:none"></span>
+                                <span id="pd_console_badge" class="badge rounded-pill theme-danger ms-1" style="font-size:.6rem;display:none"></span>
                                 <button class="btn btn-sm p-0 px-1 ms-auto border-0" style="font-size:.65rem" title="${h(labels['Clear'])}" onclick="event.stopPropagation();pdConsoleClear()"><span class="bi bi-x-lg"></span></button>
                             </div>
                             <div id="pd_console_body" class="overflow-auto" style="display:none;max-height:200px"></div>
@@ -609,89 +609,75 @@ function init_page_designer(properties) {
 
 
 
-              <div class="modal fade" id="regionModal" tabindex="-1" aria-labelledby="regionModalLabel" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
-                  <div class="modal-content">
-                    <div class="modal-header">
-                      <h5 class="modal-title" id="regionModalLabel">${labels["Please choose a region type to create"]}</h5>
-                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              <dialog class="dialog" id="regionModal" aria-labelledby="regionModalLabel">
+                    <div class="dialog-header">
+                      <h5 class="dialog-title" id="regionModalLabel">${labels["Please choose a region type to create"]}</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body d-flex flex-wrap flex-column">
-                          <a type="button" id="pregionButton" class="btn text-start my-1"><span class="bi text-primary-emphasis bi-window me-2"></span> ${labels["Create Page Region"]}</a>
-                          <a type="button" id="cregionButton" class="btn text-start my-1" data-bs-toggle="modal" data-bs-target="#editor_modal_add_designer_region"><span class="bi text-danger-emphasis fs-smaller bi-window-dock me-2"></span> ${labels["Create Designer Region"]}</a>
+                    <div class="dialog-body d-flex flex-wrap flex-column">
+                          <a type="button" id="pregionButton" class="btn text-start my-1"><span class="bi fg-emphasis-primary bi-window me-3"></span> ${labels["Create Page Region"]}</a>
+                          <a type="button" id="cregionButton" class="btn text-start my-1" data-bs-toggle="dialog" data-bs-target="#editor_modal_add_designer_region"><span class="bi fg-emphasis-danger fs-smaller bi-window-dock me-3"></span> ${labels["Create Designer Region"]}</a>
                           ${output_dynamic_region_button}
                     </div>
-                  </div>
-                </div>
-              </div>
-              <div class="modal modal-lg fade" id="editor_modal_add_designer_region" tabindex="-1" aria-labelledby="cregionModalDesignLabel" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
-                  <div class="modal-content">
-                    <div class="modal-header">
-                      <h5 class="modal-title" id="cregionModalDesignLabel">${labels["Create Designer Region"]}</h5>
-                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </dialog>
+              <dialog class="dialog modal-lg" id="editor_modal_add_designer_region" aria-labelledby="cregionModalDesignLabel">
+                    <div class="dialog-header">
+                      <h5 class="dialog-title" id="cregionModalDesignLabel">${labels["Create Designer Region"]}</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body">
+                    <div class="dialog-body">
                           <div class="row">
-                              <div class="col-12 col-md-6 my-2">
+                              <div class="col-12 md:col-6 my-3">
                                   <label for="designer_region_name" class="form-label">${labels["Designer Region Name"]}</label>
                                   <div class="input-group">
                                       <div class="input-group-text">&#60;cregion&#62;</div><input name="designer_region_name" id="designer_region_name" type="text" class="form-control" maxlength="100" required /><div class="input-group-text">&#60;/cregion&#62;</div>
                                   </div>
                               </div>
-                              <h5 class="mt-5">${labels["Shared HTML Content to appear on associated Pages"]}</h5>
-                              <div class="col-12 my-2">
+                              <h5 class="mt-12">${labels["Shared HTML Content to appear on associated Pages"]}</h5>
+                              <div class="col-12 my-3">
                                   <label for="designer_region_code" class="form-label">${labels["HTML Code Snippet"]}</label>
                                   <textarea name="designer_region_code" id="designer_region_code" rows="30" cols="60" wrap="off"></textarea>
                               </div>
                           </div>
                     </div>
-                    <div class="modal-footer">
-                      <button type="button" id="saveCregionButton" name="submit_create" value="Create Designer Region" class="btn my-1 btn-success "><span class="pg-btn-label">${labels["Create & Add"]}</span></button>
+                    <div class="dialog-footer">
+                      <button type="button" id="saveCregionButton" name="submit_create" value="Create Designer Region" class="btn my-1 btn-solid theme-success "><span class="pg-btn-label">${labels["Create & Add"]}</span></button>
                     </div>
-                  </div>
-                </div>
-              </div>
+              </dialog>
 
-              <div class="modal modal-lg fade" id="editor_modal_add_dynamic_region" tabindex="-1" aria-labelledby="cregionModalDynamicLabel" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
-                  <div class="modal-content">
-                    <div class="modal-header">
-                      <h5 class="modal-title" id="cregionModalDynamicLabel">${labels["Create Dynamic Region"]}</h5>
-                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              <dialog class="dialog modal-lg" id="editor_modal_add_dynamic_region" aria-labelledby="cregionModalDynamicLabel">
+                    <div class="dialog-header">
+                      <h5 class="dialog-title" id="cregionModalDynamicLabel">${labels["Create Dynamic Region"]}</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body">
+                    <div class="dialog-body">
                           <div class="row">
-                              <div class="col-12 col-md-6 my-2">
+                              <div class="col-12 md:col-6 my-3">
                                   <label for="dynamic_region_name" class="form-label">${labels["Dynamic Region Name"]}</label>
                                   <div class="input-group">
                                       <div class="input-group-text">&#60;dregion&#62;</div><input name="dynamic_region_name" id="dynamic_region_name" type="text" class="form-control" maxlength="100" required /><div class="input-group-text">&#60;/dregion&#62;</div>
                                   </div>
                               </div>
-                              <h5 class="mt-5">${labels["Shared PHP Content to appear on associated Pages"]}</h5>
-                              <div class="col-12 my-2">
+                              <h5 class="mt-12">${labels["Shared PHP Content to appear on associated Pages"]}</h5>
+                              <div class="col-12 my-3">
                                   <label for="dynamic_region_code" class="form-label">${labels["PHP Code Snippet"]}</label>
                                   <textarea name="dynamic_region_code" id="dynamic_region_code" rows="30" cols="60" wrap="off"></textarea>
                               </div>
                           </div>
                     </div>
-                    <div class="modal-footer">
-                      <button type="button" id="saveDregionButton" name="submit_create" value="Create Dynamic Region" class="btn my-1 btn-success "><span class="pg-btn-label">${labels["Create & Add"]}</span></button>
+                    <div class="dialog-footer">
+                      <button type="button" id="saveDregionButton" name="submit_create" value="Create Dynamic Region" class="btn my-1 btn-solid theme-success "><span class="pg-btn-label">${labels["Create & Add"]}</span></button>
                     </div>
-                  </div>
-                </div>
-              </div>
+              </dialog>
 
 
               
-              <div class="modal modal-lg fade" id="editor_region_modal" tabindex="-1" aria-hidden="true">
-                  <div class="modal-dialog modal-dialog-centered">
-                      <div class="modal-content">
-                          <div class="modal-header">
-                              <h1 class="modal-title fs-5" id="exampleModalLabel">${h(labels['The System Tags'])}</h1>
-                              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              <dialog class="dialog modal-lg" id="editor_region_modal">
+                          <div class="dialog-header">
+                              <h1 class="dialog-title fs-lg" id="exampleModalLabel">${h(labels['The System Tags'])}</h1>
+                              <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
                           </div>
-                          <div class="modal-body overflow-auto " style="white-space: nowrap;">
+                          <div class="dialog-body overflow-auto " style="white-space: nowrap;">
                               <code clas="text-nowrap"><p class="mb-0">&lt;head&gt;</p>
                                       &nbsp;&nbsp;&nbsp;&nbsp; &lt;meta_tags&gt;&lt;/meta_tags&gt;<br/>
                                       &nbsp;&nbsp;&nbsp;&nbsp; &lt;stylesheet&gt;&lt;/stylesheet&gt;<br/>
@@ -718,9 +704,7 @@ function init_page_designer(properties) {
                                   <p class="mb-0">&lt;/body&gt;</p>
                               </code>
                           </div>
-                      </div>
-                  </div>
-              </div>
+              </dialog>
           </div>
         </div>
     </main>`);
@@ -1213,7 +1197,7 @@ function init_page_designer(properties) {
                                     preview_iframe.attr('src', url);
                                 });
                             } else {
-                                page_link.html('<button title="' + labels['No Page'] + '"  style="cursor:default;" class="position-relative btn-sm  bg-transparent border border-2 border-auto-color rounded-pill p-1 m-1 material-icons pages-color">refresh<span class="position-absolute top-0 start-100 translate-middle material-icons h6 badge p-0 bg-danger rounded fw-light">priority_high</span></button>');
+                                page_link.html('<button title="' + labels['No Page'] + '"  style="cursor:default;" class="position-relative btn-sm  bg-transparent border border-2 border-auto-color rounded-pill p-1 m-1 material-icons pages-color">refresh<span class="position-absolute top-0 start-100 translate-middle material-icons h6 badge p-0 theme-danger rounded-4 fw-light">priority_high</span></button>');
                                 // Remove any previous click events.
                                 page_link.unbind('click');
                             }
@@ -1234,7 +1218,7 @@ function init_page_designer(properties) {
                                 check_if_page_type_supports_layout(page.type) &&
                                 (layout_type == 'custom')
                             ) {
-                                layout_link.html('<li><div class="d-flex lh-2"><a id="page_designer_page_id_' + page.id + '" href="#!" title="' + labels['Layout'] + '" class="btn btn-link link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi text-success-emphasis bi-file-earmark-code me-1"></span>' + labels['Layout'] + '</span></a></div></li>');
+                                layout_link.html('<li><div class="d-flex lh-2"><a id="page_designer_page_id_' + page.id + '" href="#!" title="' + labels['Layout'] + '" class="btn btn-link pg-link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi fg-emphasis-success bi-file-earmark-code me-1"></span>' + labels['Layout'] + '</span></a></div></li>');
                                 // Store the page id so that if a different URL is loaded in the preview panel,
                                 // that might not have a page (e.g. backend screen), then it won't break layout click event.
                                 var page_id = page.id;
@@ -1303,7 +1287,7 @@ function init_page_designer(properties) {
                             var style_link = $('.tool .style');
                             style_link.empty();
                             if (style) {
-                                style_link.html('<div class="d-flex lh-2"><a id="page_designer_style_id_' + style.id + '" href="#!" title="' + labels['Set in Page Properties'] + ' | ' + h(style.name) + '" class="btn btn-link link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi text-primary-emphasis bi-window me-2"></span>' + h(style.name) + '</span></a></div>');
+                                style_link.html('<div class="d-flex lh-2"><a id="page_designer_style_id_' + style.id + '" href="#!" title="' + labels['Set in Page Properties'] + ' | ' + h(style.name) + '" class="btn btn-link pg-link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi fg-emphasis-primary bi-window me-3"></span>' + h(style.name) + '</span></a></div>');
                                 // Remove any previous click events.
                                 style_link.unbind('click');
                                 // Open the style in the code panel when the style link is clicked.
@@ -1315,7 +1299,7 @@ function init_page_designer(properties) {
                                     });
                                 });
                             } else {
-                                style_link.html('<div class="d-flex lh-2"><a href="#!" title="' + labels['no page style'] + '" class="btn btn-link link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item">' + labels['no page style'] + '</span></a></div>');
+                                style_link.html('<div class="d-flex lh-2"><a href="#!" title="' + labels['no page style'] + '" class="btn btn-link pg-link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item">' + labels['no page style'] + '</span></a></div>');
                                 // Remove any previous click events.
                                 style_link.unbind('click');
                             }
@@ -1327,7 +1311,7 @@ function init_page_designer(properties) {
                             if (theme) {
 
 
-                                theme_link.html('<li><div class="d-flex lh-2"><a id="page_designer_theme_id_' + theme.id + '"  href="#!" title="&lt;stylesheet&gt;&lt;/stylesheet&gt; | ' + h(theme.name) + '" class="btn btn-link link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi text-danger-emphasis bi-palette2 me-2 fs-smaller"></span>' + h(theme.name) + '</span></a></div></li>')
+                                theme_link.html('<li><div class="d-flex lh-2"><a id="page_designer_theme_id_' + theme.id + '"  href="#!" title="&lt;stylesheet&gt;&lt;/stylesheet&gt; | ' + h(theme.name) + '" class="btn btn-link pg-link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi fg-emphasis-danger bi-palette2 me-3 fs-smaller"></span>' + h(theme.name) + '</span></a></div></li>')
                                 // Remove any previous click events.
                                 theme_link.unbind('click');
                                 // Open the theme in the code panel when the theme link is clicked.
@@ -1340,7 +1324,7 @@ function init_page_designer(properties) {
                                     });
                                 });
                             } else {
-                                theme_link.html('<li><div class="d-flex lh-2"><a href="#!" style="cursor:default;"  title="&lt;stylesheet&gt;&lt;/stylesheet&gt; | ' + labels['no theme'] + '" class="btn btn-link link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi text-danger-emphasis bi-palette2 me-2 fs-smaller"></span>' + labels['no theme'] + '</span></a></div></li>')
+                                theme_link.html('<li><div class="d-flex lh-2"><a href="#!" style="cursor:default;"  title="&lt;stylesheet&gt;&lt;/stylesheet&gt; | ' + labels['no theme'] + '" class="btn btn-link pg-link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi fg-emphasis-danger bi-palette2 me-3 fs-smaller"></span>' + labels['no theme'] + '</span></a></div></li>')
 
                                 // Remove any previous click events.
                                 theme_link.unbind('click');
@@ -1366,7 +1350,7 @@ function init_page_designer(properties) {
                                         if (style_designer_regions.length > 0) {
                                             $.each(style_designer_regions, function (index, designer_region) {
                                                 var item_id_for_active_classes = 'page_designer_designer_region_id_' + designer_region.id;
-                                                var related_item = $('<li><a id="' + item_id_for_active_classes + '" href="#!" title="' + h('<cregion>' + designer_region.name + '</cregion>') + '" class="btn btn-link link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi text-danger-emphasis fs-smaller bi-window-dock me-2"></span>' + h(designer_region.name) + '</span></a></li>');
+                                                var related_item = $('<li><a id="' + item_id_for_active_classes + '" href="#!" title="' + h('<cregion>' + designer_region.name + '</cregion>') + '" class="btn btn-link pg-link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi fg-emphasis-danger fs-smaller bi-window-dock me-3"></span>' + h(designer_region.name) + '</span></a></li>');
                                                 related_item.click(function () {
                                                     open_item({
                                                         type: 'designer_region',
@@ -1381,7 +1365,7 @@ function init_page_designer(properties) {
                                         if (style_dynamic_regions.length > 0) {
                                             $.each(style_dynamic_regions, function (index, dynamic_region) {
                                                 var item_id_for_active_classes = 'page_designer_dynamic_region_id_' + dynamic_region.id;
-                                                var related_item = $('<li><a id="' + item_id_for_active_classes + '" href="#!" title="' + h('<dregion>' + dynamic_region.name + '</dregion>') + '" class="btn btn-link link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi text-warning-emphasis bi-filetype-php me-2"></span>' + h(dynamic_region.name) + '</span></a></li>');
+                                                var related_item = $('<li><a id="' + item_id_for_active_classes + '" href="#!" title="' + h('<dregion>' + dynamic_region.name + '</dregion>') + '" class="btn btn-link pg-link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi fg-emphasis-warning bi-filetype-php me-3"></span>' + h(dynamic_region.name) + '</span></a></li>');
                                                 related_item.click(function () {
                                                     open_item({
                                                         type: 'dynamic_region',
@@ -1395,7 +1379,7 @@ function init_page_designer(properties) {
                                         // If there is at least one result for system regions, then output it/them.
                                         if (style_system_regions.length > 0) {
                                             $.each(style_system_regions, function (index, system_region) {
-                                                var related_item = $('<li><a href="#!" title="' + h('<cregion>' + system_region.name + '</cregion>') + '" class="btn btn-link link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi text-primary-emphasis bi-filetype-html me-2"></span>' + h(system_region.name) + '</span></a></li>');
+                                                var related_item = $('<li><a href="#!" title="' + h('<cregion>' + system_region.name + '</cregion>') + '" class="btn btn-link pg-link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi fg-emphasis-primary bi-filetype-html me-3"></span>' + h(system_region.name) + '</span></a></li>');
                                                 related_item.click(function () {
                                                     preview_iframe.attr('src', path + encodeURI(system_region.name));
                                                 });
@@ -1433,7 +1417,7 @@ function init_page_designer(properties) {
                                                         a_title = 'title="' + h('<script src="{path}' + encodeURI(design_file.name) + '" rel="javascript" type="text/javascript"></script>') + '"';
                                                     }
                                                     var item_id_for_active_classes = 'page_designer_design_file_id_' + design_file.id;
-                                                    var related_item = $('<li><a id="' + item_id_for_active_classes + '" href="#!" ' + a_title + ' class="btn btn-link link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi text-info-emphasis ' + design_file_icon + ' me-2"></span>' + h(design_file.name) + '</span></a></li>');
+                                                    var related_item = $('<li><a id="' + item_id_for_active_classes + '" href="#!" ' + a_title + ' class="btn btn-link pg-link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi fg-emphasis-info ' + design_file_icon + ' me-3"></span>' + h(design_file.name) + '</span></a></li>');
                                                     related_item.click(function () {
                                                         open_item({
                                                             type: design_file.type,
@@ -1637,7 +1621,7 @@ function init_page_designer(properties) {
             // If there is at least one result for styles, then output it/them.
             if (styles.length > 0) {
                 $.each(styles, function (index, style) {
-                    var search_result = $('<button type="button" title="' + labels['Set in Page Properties'] + ' | ' + h(style.name) + '" class="btn btn-link d-flex text-nowrap w-100  link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item page_style"><span class="bi text-primary-emphasis bi-window me-2"></span>' + h(style.name) + '</button>');
+                    var search_result = $('<button type="button" title="' + labels['Set in Page Properties'] + ' | ' + h(style.name) + '" class="btn btn-link d-flex text-nowrap w-100  pg-link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item page_style"><span class="bi fg-emphasis-primary bi-window me-3"></span>' + h(style.name) + '</button>');
                     search_result.click(function () {
                         open_item({
                             type: 'style',
@@ -1652,7 +1636,7 @@ function init_page_designer(properties) {
             // If there is at least one result for designer regions, then output it/them.
             if (designer_regions.length > 0) {
                 $.each(designer_regions, function (index, designer_region) {
-                    var search_result = $('<button title="' + h('<cregion>' + designer_region.name + '</cregion>') + '" class="btn btn-link d-flex text-nowrap w-100  link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi text-danger-emphasis fs-smaller bi-window-dock me-2"></span>' + h(designer_region.name) + '</button>');
+                    var search_result = $('<button title="' + h('<cregion>' + designer_region.name + '</cregion>') + '" class="btn btn-link d-flex text-nowrap w-100  pg-link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi fg-emphasis-danger fs-smaller bi-window-dock me-3"></span>' + h(designer_region.name) + '</button>');
                     search_result.click(function () {
                         open_item({
                             type: 'designer_region',
@@ -1667,7 +1651,7 @@ function init_page_designer(properties) {
             // If there is at least one result for dynamic regions, then output it/them.
             if (dynamic_regions.length > 0) {
                 $.each(dynamic_regions, function (index, dynamic_region) {
-                    var search_result = $('<button class="btn btn-link d-flex text-nowrap w-100  link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item" title="' + h('<dregion>' + dynamic_region.name + '</dregion>') + '"><span class="bi text-warning-emphasis bi-filetype-php me-2"></span>' + h(dynamic_region.name) + '</button>');
+                    var search_result = $('<button class="btn btn-link d-flex text-nowrap w-100  pg-link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item" title="' + h('<dregion>' + dynamic_region.name + '</dregion>') + '"><span class="bi fg-emphasis-warning bi-filetype-php me-3"></span>' + h(dynamic_region.name) + '</button>');
                     search_result.click(function () {
                         open_item({
                             type: 'dynamic_region',
@@ -1700,7 +1684,7 @@ function init_page_designer(properties) {
                         a_title = 'title="' + h('<script src="{path}' + encodeURI(design_file.name) + '" rel="javascript" type="text/javascript"></script>') + '"';
                     }
 
-                    var search_result = $('<button ' + a_title + ' class="btn btn-link d-flex text-nowrap w-100  link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi text-info-emphasis ' + design_file_icon + ' me-2"></span>' + h(design_file.name) + '</button>');
+                    var search_result = $('<button ' + a_title + ' class="btn btn-link d-flex text-nowrap w-100  pg-link-body-emphasis text-decoration-none py-0 ps-1 page_designer_item"><span class="bi fg-emphasis-info ' + design_file_icon + ' me-3"></span>' + h(design_file.name) + '</button>');
                     search_result.click(function () {
                         open_item({
                             type: design_file.type,
@@ -1715,7 +1699,7 @@ function init_page_designer(properties) {
 
 
             if ((styles.length === 0) && (designer_regions.length === 0) && (dynamic_regions.length === 0) && (design_files.length === 0)) {
-                $('#search_results').append('<p class="w-100  my-2 text-danger">' + labels['No Search Result'] + '.</p>');
+                $('#search_results').append('<p class="w-100  my-3 fg-danger">' + labels['No Search Result'] + '.</p>');
             }
 
             $('#search_results button').click(function () {

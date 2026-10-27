@@ -440,7 +440,7 @@ function mp_products_row_html($account, $row) {
 	// The tick box, only where there is a suggestion to accept.
 	$output .= '<div class="mpp-check">'
 		. ($suggested
-			? '<input class="form-check-input" type="checkbox" data-mp-select="' . $id . '" aria-label="' . h(lang('Select')) . '">'
+			? '<input class="check" type="checkbox" data-mp-select="' . $id . '" aria-label="' . h(lang('Select')) . '">'
 			: '')
 		. '</div>';
 
@@ -509,7 +509,7 @@ function mp_products_row_html($account, $row) {
 
 		if (empty($product['enabled'])) {
 
-			$shop_meta[] = '<span class="text-warning">' . h(lang('Disabled')) . '</span>';
+			$shop_meta[] = '<span class="fg-warning">' . h(lang('Disabled')) . '</span>';
 
 		}
 
@@ -546,14 +546,14 @@ function mp_products_row_html($account, $row) {
 
 	if ($suggested) {
 
-		$buttons[] = '<button type="button" class="btn btn-sm btn-success" data-mp-act="accept" data-mp-product="' . (int) $product['id'] . '">'
+		$buttons[] = '<button type="button" class="btn btn-sm btn-solid theme-success" data-mp-act="accept" data-mp-product="' . (int) $product['id'] . '">'
 			. '<i class="bi bi-check-lg me-1" aria-hidden="true"></i>' . h(lang('Accept')) . '</button>';
 
 	}
 
 	if (!$matched && !$dismissed) {
 
-		$buttons[] = '<button type="button" class="btn btn-sm ' . ($suggested ? 'btn-outline-secondary' : 'btn-primary') . '" data-mp-act="pick">'
+		$buttons[] = '<button type="button" class="btn btn-sm ' . ($suggested ? 'btn-outline theme-secondary' : 'btn-solid theme-primary') . '" data-mp-act="pick">'
 			. '<i class="bi bi-grid-3x3-gap me-1" aria-hidden="true"></i>' . h($suggested ? lang('Another product') : lang('Pick a product')) . '</button>';
 
 		$buttons[] = '<button type="button" class="btn btn-sm btn-ghost" data-mp-act="dismiss" title="' . h(lang('This shop does not sell it')) . '">'
@@ -570,7 +570,7 @@ function mp_products_row_html($account, $row) {
 
 	if ($dismissed) {
 
-		$buttons[] = '<button type="button" class="btn btn-sm btn-outline-secondary" data-mp-act="restore">'
+		$buttons[] = '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-mp-act="restore">'
 			. '<i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Undo')) . '</button>';
 
 	}
@@ -733,7 +733,7 @@ function mp_products_shop_row_html($account, $row) {
 
 	$output = '<div class="mpp-row' . ($matched ? ' is-matched' : '') . (($state === 'error' || $state === 'rejected') ? ' is-error' : '') . '"'
 		. ' data-mp-row="' . $id . '" data-mp-shop="1" data-mp-code="' . h($matched ? $row['remote_code'] : '') . '" data-mp-own="' . h($own) . '">'
-		. '<div class="mpp-check"><input class="form-check-input" type="checkbox" data-mp-select="' . $id . '" aria-label="' . h(lang('Select')) . '"></div>';
+		. '<div class="mpp-check"><input class="check" type="checkbox" data-mp-select="' . $id . '" aria-label="' . h(lang('Select')) . '"></div>';
 
 	$meta = array(
 		'<code>' . h($row['name']) . '</code>',
@@ -745,7 +745,7 @@ function mp_products_shop_row_html($account, $row) {
 
 	if (empty($row['enabled'])) {
 
-		$meta[] = '<span class="text-warning">' . h(lang('Disabled')) . '</span>';
+		$meta[] = '<span class="fg-warning">' . h(lang('Disabled')) . '</span>';
 
 	}
 
@@ -801,12 +801,12 @@ function mp_products_shop_row_html($account, $row) {
 
 	if ($matched) {
 
-		$buttons[] = '<button type="button" class="btn btn-sm btn-outline-secondary" data-mp-act="code"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Change code')) . '</button>';
+		$buttons[] = '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-mp-act="code"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Change code')) . '</button>';
 
 		// Only an active match is sent; a refused one shows its reason above.
 		if ($row['map_status'] === 'active') {
 
-			$buttons[] = '<button type="button" class="btn btn-sm btn-outline-secondary" data-mp-act="shop_send"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Send now')) . '</button>';
+			$buttons[] = '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-mp-act="shop_send"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Send now')) . '</button>';
 
 		}
 
@@ -816,11 +816,11 @@ function mp_products_shop_row_html($account, $row) {
 
 		if ($own !== '') {
 
-			$buttons[] = '<button type="button" class="btn btn-sm btn-primary" data-mp-act="shop_own"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . h(lang('Match with its own code')) . '</button>';
+			$buttons[] = '<button type="button" class="btn btn-sm btn-solid theme-primary" data-mp-act="shop_own"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . h(lang('Match with its own code')) . '</button>';
 
 		}
 
-		$buttons[] = '<button type="button" class="btn btn-sm btn-outline-secondary" data-mp-act="code"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Type a code')) . '</button>';
+		$buttons[] = '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-mp-act="code"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Type a code')) . '</button>';
 
 	}
 
@@ -847,7 +847,7 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 	};
 
 	echo '
-	<div class="card mb-3">
+	<div class="card mb-5">
 		<div class="card-body">
 			<div class="mpp-hero">
 				<div class="flex-grow-1">
@@ -860,15 +860,15 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 					</div>
 					<div class="mpp-meter" id="mpp-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' . $matched_share . '"'
 						. ' aria-label="' . h(lang('Matched')) . '"><i style="width:' . $matched_share . '%"></i></div>
-					<div class="small mt-2">' . h(lang('Only matched products are sent. Their stock and price go from here; the rest is left alone on the marketplace.')) . '</div>
+					<div class="small mt-3">' . h(lang('Only matched products are sent. Their stock and price go from here; the rest is left alone on the marketplace.')) . '</div>
 				</div>
 				<div class="mpp-hero-actions">
-					<button type="button" class="btn btn-outline-secondary" data-mp-bulk="shop_send_all"' . ($counts['matched'] ? '' : ' disabled') . '>'
+					<button type="button" class="btn btn-outline theme-secondary" data-mp-bulk="shop_send_all"' . ($counts['matched'] ? '' : ' disabled') . '>'
 						. '<i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Send all now')) . '</button>
 				</div>
 			</div>'
 			. (($account['status'] !== 'active')
-				? '<div class="alert alert-warning small mt-3 mb-0"><i class="bi bi-pause-circle me-1" aria-hidden="true"></i>'
+				? '<div class="alert theme-warning small mt-5 mb-0"><i class="bi bi-pause-circle me-1" aria-hidden="true"></i>'
 					. h(lang('This account is paused. Nothing is sent while it is, and changes made in the meantime are not queued.')) . '</div>'
 				: '') . '
 		</div>
@@ -889,18 +889,18 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 	echo '
 			</div>
 			<div class="flex-grow-1"></div>
-			<form method="get" action="marketplace_products.php" class="d-flex gap-2 disable_shortcut" role="search">
+			<form method="get" action="marketplace_products.php" class="d-flex gap-3 disable_shortcut" role="search">
 				<input type="hidden" name="account" value="' . $account_id . '">
 				<input type="hidden" name="mode" value="shop">
 				<input type="hidden" name="view" value="' . h($view) . '">
 				<input type="search" name="q" value="' . h($search) . '" class="form-control form-control-sm" style="min-width:220px"'
 					. ' placeholder="' . h(lang('Search by name, code or barcode')) . '" aria-label="' . h(lang('Search')) . '">
-				<button type="submit" class="btn btn-sm btn-outline-secondary" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
+				<button type="submit" class="btn btn-sm btn-outline theme-secondary" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
 			</form>
 		</div>'
 		. ($list['rows'] ? '
 		<div class="mpp-list-head pt-0 small">
-			<label class="form-check mb-0"><input class="form-check-input" type="checkbox" id="mpp-select-all"> ' . h(lang('Select all on this page')) . '</label>
+			<label class="form-field mb-0"><input class="check" type="checkbox" id="mpp-select-all"> ' . h(lang('Select all on this page')) . '</label>
 		</div>' : '') . '
 		<div id="mpp-list">';
 
@@ -913,7 +913,7 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 	if (!$list['rows']) {
 
 		echo '
-			<div class="text-center text-body-secondary py-5 border-top">' . h(lang('Nothing found.')) . '</div>';
+			<div class="text-center fg-secondary py-12 border-top">' . h(lang('Nothing found.')) . '</div>';
 
 	}
 
@@ -925,11 +925,11 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 	if ($pages > 1) {
 
 		echo '
-		<nav class="d-flex justify-content-center align-items-center gap-2 py-3 border-top" aria-label="' . h(lang('Pages')) . '">
-			<a class="btn btn-sm btn-outline-secondary' . ($page <= 1 ? ' disabled' : '') . '" href="' . h($query(array('page' => max(1, $page - 1)))) . '">'
+		<nav class="d-flex justify-content-center align-items-center gap-3 py-5 border-top" aria-label="' . h(lang('Pages')) . '">
+			<a class="btn btn-sm btn-outline theme-secondary' . ($page <= 1 ? ' disabled' : '') . '" href="' . h($query(array('page' => max(1, $page - 1)))) . '">'
 				. '<i class="bi bi-chevron-left" aria-hidden="true"></i></a>
 			<span class="small">' . h(lang(array('string' => 'Page {var:1} of {var:2}', 'vars' => array($page, $pages)))) . '</span>
-			<a class="btn btn-sm btn-outline-secondary' . ($page >= $pages ? ' disabled' : '') . '" href="' . h($query(array('page' => min($pages, $page + 1)))) . '">'
+			<a class="btn btn-sm btn-outline theme-secondary' . ($page >= $pages ? ' disabled' : '') . '" href="' . h($query(array('page' => min($pages, $page + 1)))) . '">'
 				. '<i class="bi bi-chevron-right" aria-hidden="true"></i></a>
 		</nav>';
 
@@ -941,10 +941,10 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 		<span class="small"><b id="mpp-bulk-n">0</b> ' . h(lang('selected')) . '</span>
 		<div class="flex-grow-1"></div>
 		<button type="button" class="btn btn-sm btn-ghost" id="mpp-bulk-clear">' . h(lang('Clear')) . '</button>
-		<button type="button" class="btn btn-sm btn-primary" data-mp-bulk="shop_own"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . h(lang('Match with own codes')) . '</button>
-		<button type="button" class="btn btn-sm btn-outline-secondary" data-mp-bulk="shop_send"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Send now')) . '</button>'
+		<button type="button" class="btn btn-sm btn-solid theme-primary" data-mp-bulk="shop_own"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . h(lang('Match with own codes')) . '</button>
+		<button type="button" class="btn btn-sm btn-outline theme-secondary" data-mp-bulk="shop_send"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Send now')) . '</button>'
 		. (mp_can($account['provider'], 'update_listings')
-			? '<button type="button" class="btn btn-sm btn-outline-secondary" data-mp-bulk="shop_listing_update" title="'
+			? '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-mp-bulk="shop_listing_update" title="'
 				. h(lang('Sends the title, description and pictures of the ticked approved listings. Price and stock go on their own.')) . '">'
 				. '<i class="bi bi-cloud-upload me-1" aria-hidden="true"></i>' . h(lang('Send listing changes')) . '</button>'
 			: '') . '
@@ -1140,7 +1140,7 @@ a.mpp-title:hover { text-decoration: underline; }
 .mpp-code-edit { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; width: 100%; }
 .mpp-code-edit .form-control { flex: 1 1 160px; min-width: 0; }
 .mpp-code-edit small { flex-basis: 100%; color: var(--pg-fg-2); }
-@media (max-width: 1199.98px) {
+@media (max-width: 1279.98px) {
 	.mpp-row { grid-template-columns: 22px minmax(0, 1fr) 96px minmax(0, 1fr); }
 	.mpp-actions { grid-column: 2 / -1; justify-content: flex-start; }
 }
@@ -1182,7 +1182,7 @@ if ($account && $supported) {
 if (!$account) {
 
 	echo '
-	<div class="alert alert-warning">' . h(lang('That marketplace account no longer exists.')) . '</div>';
+	<div class="alert theme-warning">' . h(lang('That marketplace account no longer exists.')) . '</div>';
 
 } elseif ($mode === 'shop') {
 
@@ -1191,7 +1191,7 @@ if (!$account) {
 } elseif (!$ready) {
 
 	echo '
-	<div class="alert alert-warning">' . h(lang('The database has not been upgraded for this screen yet. Run the upgrade, then come back.')) . '</div>';
+	<div class="alert theme-warning">' . h(lang('The database has not been upgraded for this screen yet. Run the upgrade, then come back.')) . '</div>';
 
 } else {
 
@@ -1200,7 +1200,7 @@ if (!$account) {
 	$read_label = $read_at ? lang('Read again') : lang(array('string' => 'Read products from {var:1}', 'vars' => array($provider_name)));
 
 	echo '
-	<div class="card mb-3">
+	<div class="card mb-5">
 		<div class="card-body">
 			<div class="mpp-hero">
 				<div class="flex-grow-1">
@@ -1213,15 +1213,15 @@ if (!$account) {
 					</div>
 					<div class="mpp-meter" id="mpp-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' . $matched_share . '"'
 						. ' aria-label="' . h(lang('Matched')) . '"><i style="width:' . $matched_share . '%"></i></div>
-					<div class="small mt-2" id="mpp-progress-text">'
+					<div class="small mt-3" id="mpp-progress-text">'
 						. ($read_at
 							// get_relative_time() answers a <time> element.
 							? lang(array('string' => '{var:1}% matched. Read {var:2}.', 'vars' => array($matched_share, get_relative_time(array('timestamp' => $read_at)))))
 							: h(lang('Nothing has been read yet.'))) . '</div>
 				</div>
 				<div class="mpp-hero-actions">
-					<button type="button" class="btn btn-primary" id="mpp-read"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . h($read_label) . '</button>'
-					. '<button type="button" class="btn btn-success' . ($counts['sure'] ? '' : ' d-none') . '" id="mpp-accept-sure">'
+					<button type="button" class="btn btn-solid theme-primary" id="mpp-read"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . h($read_label) . '</button>'
+					. '<button type="button" class="btn btn-solid theme-success' . ($counts['sure'] ? '' : ' d-none') . '" id="mpp-accept-sure">'
 						. '<i class="bi bi-check2-all me-1" aria-hidden="true"></i>'
 						. h(lang('Accept all sure ones')) . ' (<span data-mp-count="sure">' . pg_format_number($counts['sure'], 0) . '</span>)</button>
 				</div>
@@ -1235,8 +1235,8 @@ if (!$account) {
 	<div class="card">
 		<div class="mpp-intro">
 			<i class="bi bi-boxes" aria-hidden="true"></i>
-			<h2 class="h5 mt-3">' . h(lang(array('string' => 'Bring in what you sell on {var:1}', 'vars' => array($provider_name)))) . '</h2>
-			<p class="text-body-secondary">' . h(lang('Your products there are read with their pictures, codes, barcodes and prices. Nothing is changed on the marketplace, and nothing is matched until you say so.')) . '</p>
+			<h2 class="h5 mt-5">' . h(lang(array('string' => 'Bring in what you sell on {var:1}', 'vars' => array($provider_name)))) . '</h2>
+			<p class="fg-secondary">' . h(lang('Your products there are read with their pictures, codes, barcodes and prices. Nothing is changed on the marketplace, and nothing is matched until you say so.')) . '</p>
 			<div class="mpp-steps">
 				<div><b>1. ' . h(lang('Read')) . '</b>' . h(lang('Every product of yours on the marketplace comes in, a page at a time.')) . '</div>
 				<div><b>2. ' . h(lang('Compare')) . '</b>' . h(lang('Each one is put beside the shop product it most likely is: same barcode, same code or a similar title.')) . '</div>
@@ -1272,12 +1272,12 @@ if (!$account) {
 		echo '
 			</div>
 			<div class="flex-grow-1"></div>
-			<form method="get" action="marketplace_products.php" class="d-flex gap-2 disable_shortcut" role="search">
+			<form method="get" action="marketplace_products.php" class="d-flex gap-3 disable_shortcut" role="search">
 				<input type="hidden" name="account" value="' . $account_id . '">
 				<input type="hidden" name="view" value="' . h($view) . '">
 				<input type="search" name="q" value="' . h($search) . '" class="form-control form-control-sm" style="min-width:220px"'
 					. ' placeholder="' . h(lang('Search by title, code or barcode')) . '" aria-label="' . h(lang('Search')) . '">
-				<button type="submit" class="btn btn-sm btn-outline-secondary" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
+				<button type="submit" class="btn btn-sm btn-outline theme-secondary" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
 			</form>
 		</div>';
 
@@ -1285,9 +1285,9 @@ if (!$account) {
 
 			echo '
 		<div class="mpp-list-head pt-0 small">
-			<label class="form-check mb-0"><input class="form-check-input" type="checkbox" id="mpp-select-all"> '
+			<label class="form-field mb-0"><input class="check" type="checkbox" id="mpp-select-all"> '
 				. h(lang('Select all on this page')) . '</label>
-			<span class="text-body-secondary">' . h(lang('Sure suggestions come first. A sure one scores high and nothing else comes close.')) . '</span>
+			<span class="fg-secondary">' . h(lang('Sure suggestions come first. A sure one scores high and nothing else comes close.')) . '</span>
 		</div>';
 
 		}
@@ -1312,7 +1312,7 @@ if (!$account) {
 			);
 
 			echo '
-			<div class="text-center text-body-secondary py-5 border-top">' . h(($search !== '') ? lang('Nothing found.') : $empty[$view]) . '</div>';
+			<div class="text-center fg-secondary py-12 border-top">' . h(($search !== '') ? lang('Nothing found.') : $empty[$view]) . '</div>';
 
 		}
 
@@ -1324,11 +1324,11 @@ if (!$account) {
 		if ($pages > 1) {
 
 			echo '
-		<nav class="d-flex justify-content-center align-items-center gap-2 py-3 border-top" aria-label="' . h(lang('Pages')) . '">
-			<a class="btn btn-sm btn-outline-secondary' . ($page <= 1 ? ' disabled' : '') . '" href="' . h($query(array('page' => max(1, $page - 1)))) . '">'
+		<nav class="d-flex justify-content-center align-items-center gap-3 py-5 border-top" aria-label="' . h(lang('Pages')) . '">
+			<a class="btn btn-sm btn-outline theme-secondary' . ($page <= 1 ? ' disabled' : '') . '" href="' . h($query(array('page' => max(1, $page - 1)))) . '">'
 				. '<i class="bi bi-chevron-left" aria-hidden="true"></i></a>
 			<span class="small">' . h(lang(array('string' => 'Page {var:1} of {var:2}', 'vars' => array($page, $pages)))) . '</span>
-			<a class="btn btn-sm btn-outline-secondary' . ($page >= $pages ? ' disabled' : '') . '" href="' . h($query(array('page' => min($pages, $page + 1)))) . '">'
+			<a class="btn btn-sm btn-outline theme-secondary' . ($page >= $pages ? ' disabled' : '') . '" href="' . h($query(array('page' => min($pages, $page + 1)))) . '">'
 				. '<i class="bi bi-chevron-right" aria-hidden="true"></i></a>
 		</nav>';
 
@@ -1340,7 +1340,7 @@ if (!$account) {
 		<span class="small"><b id="mpp-bulk-n">0</b> ' . h(lang('selected')) . '</span>
 		<div class="flex-grow-1"></div>
 		<button type="button" class="btn btn-sm btn-ghost" id="mpp-bulk-clear">' . h(lang('Clear')) . '</button>
-		<button type="button" class="btn btn-sm btn-success" id="mpp-bulk-accept"><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang('Accept selected')) . '</button>
+		<button type="button" class="btn btn-sm btn-solid theme-success" id="mpp-bulk-accept"><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang('Accept selected')) . '</button>
 	</div>';
 
 	}
