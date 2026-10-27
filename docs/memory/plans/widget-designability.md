@@ -21,9 +21,10 @@ description: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in wid
 - Owner (2026-10-26): words translatable wherever possible; design elements over placeholder tokens. So no "default text": a sibling with `show_if empty` holds it ([[widget-fill-shop]]).
 - Owner (2026-10-26), detail and reasons in [[widget-designability-decisions]]: W16 equal look and behaviour, not bytes; W5 three sources, filtered, copied; W8 the allow-list of [[widget-entity-fields]].
 - Owner (2026-10-27), every proposal accepted, reasons in [[widget-designability-decisions-2]].
+- Owner (2026-10-27) to the coordinator, "bekleyen işçilere yanıtı sen ver benim yerime", "en makul ve işlevsel seçimle" (answer the waiting workers for me, with the most reasonable and functional choice); the W17/W18 answers given under it: (1) the page's record is the record the address opens (product, event, form record), never the page row; (2) its values show outside the widget (W17): a value element anywhere on the page, escaped as the widget prints it, empty when the page opens no record; (3) the form record's public fields (title, date, summary, image, author name; what the item view already shows) join the W8 allow-list, nothing private (no e-mail, IP, notes).
 
 ## What does the owner still answer?
-- W17/W18 (#2334): record = what the address opens? Its values shown outside widgets (W17)? A form record's own fields too?
+- Nothing open.
 
 ## What are the steps? (one PR each)
 - W1 done (#1592, [[widget-finish-pass]], [[widget-conditions]]).
@@ -33,7 +34,7 @@ description: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in wid
 - W9 done #1752 #1768 ([[widget-lists-product]]). W10 done (#1783, [[widget-lists-order]]). W11 done #1796 ([[widget-lists-cart]]). W12 done #1924 to #2245 ([[widget-list-paging]]). W13 done (#1758).
 - W14 done (#1602, #1701, #1719, [[widget-fill-filters]], [[widget-fill-shop]]).
 - W15 done (#1734). W16 default parts: #1808 #1824 #1863 #1908 #1945 #1973 #2067 #2218, cart gift card #2260, schedule #2311, cancel and return forms #2330, return moves #2361; left: the cart's product order form (`_pg_render_cart_item_form_data()`, start from [[widget-default-parts-cart-schedule]]).
-- W17 Parts anywhere, record values outside widgets. W18 done #2308 #2334 ([[page-conditions]]).
+- W17 Parts anywhere, record values outside widgets: record values in progress. W18 done #2308 #2334 ([[page-conditions]]).
 - W19 done #1904 #1914 #1928, opening state #2232 ([[widget-condition-canvas]]).
 - W20 Parts palette, starter library. W21 done #2326 #2345. W22 done: #2317, W22b #2368 ([[layout-form-converter]]). W23 done #2225 #2307. W24 done #2259 #2304 ([[widget-lists-checkout]]).
 - W25 done (#2221, [[widget-condition-rows]]).
