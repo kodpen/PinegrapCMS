@@ -290,13 +290,13 @@ function test_shipment_view()
 // The badge of each status.
 function test_shipment_status_badges()
 {
-	pg_assert_same('text-bg-success', pg_shipment_status_class('delivered'));
-	pg_assert_same('text-bg-primary', pg_shipment_status_class('in_transit'));
-	pg_assert_same('text-bg-primary', pg_shipment_status_class('out_for_delivery'));
-	pg_assert_same('text-bg-warning', pg_shipment_status_class('returned'));
-	pg_assert_same('text-bg-danger', pg_shipment_status_class('exception'));
-	pg_assert_same('text-bg-secondary', pg_shipment_status_class('created'));
-	pg_assert_same('text-bg-secondary', pg_shipment_status_class('anything'));
+	pg_assert_same('theme-success', pg_shipment_status_class('delivered'));
+	pg_assert_same('theme-primary', pg_shipment_status_class('in_transit'));
+	pg_assert_same('theme-primary', pg_shipment_status_class('out_for_delivery'));
+	pg_assert_same('theme-warning', pg_shipment_status_class('returned'));
+	pg_assert_same('theme-danger', pg_shipment_status_class('exception'));
+	pg_assert_same('theme-secondary', pg_shipment_status_class('created'));
+	pg_assert_same('theme-secondary', pg_shipment_status_class('anything'));
 	pg_assert_same(lang('Recorded'), pg_shipment_status_label('anything'), 'unknown reads as recorded');
 	pg_assert_same(lang('Delivered'), pg_shipment_status_label('delivered'));
 }

@@ -148,33 +148,31 @@ const StyleDesigner = (function () {
         var all = !current.length;
         var rows = _pages.map(function (p) {
             var ref = _sdAssetPageRef(p);
-            return '<label class="form-check d-flex align-items-center gap-2 mb-1">' +
-                       '<input class="form-check-input mt-0" type="checkbox" data-page-ref="' + esc(ref).replace(/"/g, '&quot;') + '"' +
+            return '<label class="form-field d-flex align-items-center gap-3 mb-1">' +
+                       '<input class="check mt-0" type="checkbox" data-page-ref="' + esc(ref).replace(/"/g, '&quot;') + '"' +
                            (current.indexOf(ref) !== -1 ? ' checked' : '') + (all ? ' disabled' : '') + '>' +
-                       '<span class="form-check-label text-truncate">' + esc(p.page_name || _sdT('New Page')) + '</span>' +
+                       '<span class="text-truncate">' + esc(p.page_name || _sdT('New Page')) + '</span>' +
                    '</label>';
         }).join('');
-        var el = document.createElement('div');
-        el.className = 'modal fade';
+        var el = document.createElement('dialog');
+        el.className = 'dialog pg-dialog-centered dialog-scrollable';
         el.tabIndex = -1;
         el.innerHTML =
-            '<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">' +
-                '<div class="modal-header py-2"><h6 class="modal-title mb-0 text-truncate">' + esc(_sdT('Pages for "{var}"', entry.name)) + '</h6>' +
-                    '<button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>' +
-                '<div class="modal-body small">' +
-                    '<p class="text-body-secondary mb-2">' + esc(_sdT('A file that only some pages need (a map, a form script) is better kept to those pages, so the others open faster.')) + '</p>' +
-                    '<label class="form-check mb-1"><input class="form-check-input" type="radio" name="sd-ap-mode" value="all"' + (all ? ' checked' : '') + '>' +
-                        '<span class="form-check-label">' + esc(_sdT('Every page')) + '</span></label>' +
-                    '<label class="form-check mb-2"><input class="form-check-input" type="radio" name="sd-ap-mode" value="some"' + (all ? '' : ' checked') + '>' +
-                        '<span class="form-check-label">' + esc(_sdT('Only these pages:')) + '</span></label>' +
-                    '<div class="sd-ap-pages ps-4">' + rows + '</div>' +
-                    '<div class="text-danger mt-2 d-none" data-ap-error>' + esc(_sdT('Choose at least one page, or pick every page.')) + '</div>' +
+            '<div class="dialog-header py-3"><h6 class="dialog-title mb-0 text-truncate">' + esc(_sdT('Pages for "{var}"', entry.name)) + '</h6>' +
+                    '<button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>' +
+                '<div class="dialog-body small">' +
+                    '<p class="fg-secondary mb-3">' + esc(_sdT('A file that only some pages need (a map, a form script) is better kept to those pages, so the others open faster.')) + '</p>' +
+                    '<label class="form-field mb-1"><input class="radio" type="radio" name="sd-ap-mode" value="all"' + (all ? ' checked' : '') + '>' +
+                        '<span class="">' + esc(_sdT('Every page')) + '</span></label>' +
+                    '<label class="form-field mb-3"><input class="radio" type="radio" name="sd-ap-mode" value="some"' + (all ? '' : ' checked') + '>' +
+                        '<span class="">' + esc(_sdT('Only these pages:')) + '</span></label>' +
+                    '<div class="sd-ap-pages ps-7">' + rows + '</div>' +
+                    '<div class="fg-danger mt-3 d-none" data-ap-error>' + esc(_sdT('Choose at least one page, or pick every page.')) + '</div>' +
                 '</div>' +
-                '<div class="modal-footer py-2">' +
-                    '<button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">' + esc(_sdT('Cancel')) + '</button>' +
-                    '<button type="button" class="btn btn-sm btn-primary" data-ap-apply>' + esc(_sdT('Apply')) + '</button>' +
-                '</div>' +
-            '</div></div>';
+                '<div class="dialog-footer py-3">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-dismiss="dialog">' + esc(_sdT('Cancel')) + '</button>' +
+                    '<button type="button" class="btn btn-sm btn-solid theme-primary" data-ap-apply>' + esc(_sdT('Apply')) + '</button>' +
+                '</div>';
         document.body.appendChild(el);
         var boxes = Array.prototype.slice.call(el.querySelectorAll('[data-page-ref]'));
         el.addEventListener('change', function (e) {
@@ -1292,17 +1290,17 @@ const StyleDesigner = (function () {
         var list = _swListCache.list_calendars;
         if (!list) {
             _swFetchList('list_calendars', 'calendars', function () { renderProperties(); });
-            return '<div class="small text-muted">' + esc(_sdT('Loading...')) + '</div>';
+            return '<div class="small fg-secondary">' + esc(_sdT('Loading...')) + '</div>';
         }
-        if (!list.length) return '<div class="small text-muted">' + esc(_sdT('There are no calendars yet.')) + '</div>';
+        if (!list.length) return '<div class="small fg-secondary">' + esc(_sdT('There are no calendars yet.')) + '</div>';
         var chosen = {};
         (Array.isArray(ids) ? ids : []).forEach(function (id) { chosen[parseInt(id, 10)] = true; });
         return list.map(function (c) {
             var id = parseInt(c.id, 10);
-            return '<div class="form-check">' +
-                '<input class="form-check-input" type="checkbox" id="sd-sw-cal-' + sid + '-' + id + '" value="' + id + '"' +
+            return '<div class="form-field">' +
+                '<input class="check" type="checkbox" id="sd-sw-cal-' + sid + '-' + id + '" value="' + id + '"' +
                 ' data-sw-id="' + sid + '" data-sw-cfg-list="calendar_ids"' + (chosen[id] ? ' checked' : '') + '>' +
-                '<label class="form-check-label" for="sd-sw-cal-' + sid + '-' + id + '">' + esc(c.name || ('#' + id)) + '</label>' +
+                '<label class="" for="sd-sw-cal-' + sid + '-' + id + '">' + esc(c.name || ('#' + id)) + '</label>' +
                 '</div>';
         }).join('') +
         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('None ticked means every calendar.')) + '</div>';
@@ -2248,7 +2246,7 @@ const StyleDesigner = (function () {
     }
 
     function _cfSel(cls, current, entries, blankLabel) {
-        var html = '<select class="form-select form-select-sm ' + cls + '">';
+        var html = '<select class="form-control form-control-sm ' + cls + '">';
         if (blankLabel !== null && blankLabel !== undefined) {
             html += '<option value="">' + esc(blankLabel) + '</option>';
         }
@@ -2261,9 +2259,9 @@ const StyleDesigner = (function () {
 
     function _cfSwitch(cls, on, label) {
         var id = cls.replace(/[^a-z0-9_-]/gi, '') + '_' + Math.random().toString(36).slice(2, 7);
-        return '<div class="form-check form-switch">' +
-               '<input class="form-check-input ' + cls + '" type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '>' +
-               '<label class="form-check-label" for="' + id + '" style="font-size:.72rem">' + esc(label) + '</label>' +
+        return '<div class="form-field">' +
+               '<div class="switch"><input class="' + cls + '" type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '></div>' +
+               '<label class="" for="' + id + '" style="font-size:.72rem">' + esc(label) + '</label>' +
                '</div>';
     }
 
@@ -2679,8 +2677,8 @@ const StyleDesigner = (function () {
     /* ── Palette blocks: plain Bootstrap controls, label first ─────────── */
 
     // Every kind the Form palette offers. `type` is the <input type>; the
-    // block is <div class="mb-3"><label for><control> — or, for a group,
-    // <fieldset class="mb-3"><legend>… so the legend names the question.
+    // block is <div class="mb-5"><label for><control> — or, for a group,
+    // <fieldset class="mb-5"><legend>… so the legend names the question.
     var CF_PALETTE = {
         text:       { label: _sdT('Text'),            control: 'input',    type: 'text',           icon: 'bi-input-cursor-text',        name: 'metin' },
         email:      { label: _sdT('Email'),          control: 'input',    type: 'email',          icon: 'bi-envelope',                 name: 'eposta' },
@@ -3118,7 +3116,7 @@ const StyleDesigner = (function () {
         var w = _sdCommentsWidgetOf(node);
         if (!w) return '';
         return '<div class="sd-prop-row" style="margin-bottom:6px">' +
-            '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-cmt-open-settings" data-sw-id="' + w.sid + '">' +
+            '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-cmt-open-settings" data-sw-id="' + w.sid + '">' +
                 '<i class="bi bi-chat-square-text me-1"></i>' + esc(_sdT('Comment settings')) +
             '</button>' +
             (_getCmtVal('pg_comments') !== '1'
@@ -3141,7 +3139,7 @@ const StyleDesigner = (function () {
         if (!w) return '';
         var silent = w.owns && _cfSettingsSilent(_cfPageSettings());
         return '<div class="sd-prop-row" style="margin-bottom:6px">' +
-            '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-cf-open-settings" data-sw-id="' + w.sid + '">' +
+            '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-cf-open-settings" data-sw-id="' + w.sid + '">' +
                 '<i class="bi bi-ui-checks me-1"></i>' + esc(_sdT('Form settings')) +
             '</button>' +
             (silent
@@ -14744,7 +14742,7 @@ const StyleDesigner = (function () {
             row(_sdT('Icon'),
                 '<div class="sd-pick-group">' +
                     '<input type="text" class="form-control form-control-sm" data-sd-bi-icon value="' + esc(ico) + '" placeholder="bi-icon-name">' +
-                    '<button class="btn btn-sm btn-outline-secondary sd-pick-btn sd-bi-icon-trigger" type="button">' + esc(_sdT('Select')) + '</button>' +
+                    '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn sd-bi-icon-trigger" type="button">' + esc(_sdT('Select')) + '</button>' +
                 '</div>'));
     }
 
@@ -22503,7 +22501,7 @@ const StyleDesigner = (function () {
                 var c = CONTENT[k];
                 return { label: c.label, type: 'content', icon: c.icon, extra: { contentType: k } };
             })},
-            // Plain form controls. Each lands as <div class="mb-3"><label><control>
+            // Plain form controls. Each lands as <div class="mb-5"><label><control>
             // (a group as <fieldset><legend>…) with a Turkish default label
             // and a seeded name. Inside a custom form widget the block is a
             // field of the form from the moment it lands.
@@ -22687,7 +22685,7 @@ const StyleDesigner = (function () {
             if (!noted.length) {
                 listEl.innerHTML =
                     '<div class="sd-notes-empty">' +
-                        '<span class="bi bi-chat-dots d-block mb-2" style="font-size:1.3rem;opacity:.5"></span>' +
+                        '<span class="bi bi-chat-dots d-block mb-3" style="font-size:1.3rem;opacity:.5"></span>' +
                         esc(_sdT('No note has been added yet.')) + '<br>' +
                         '<span style="font-size:11px;opacity:.7">' +
                             _sdT('Select an element and click the <span class="bi bi-chat"></span> icon, or press <kbd>N</kbd>.') + '</span>' +
@@ -22911,7 +22909,7 @@ const StyleDesigner = (function () {
                 var html = '';
                 if (!items.length) {
                     html = '<div class="sd-shared-tab-empty">' +
-                        '<span class="bi bi-puzzle d-block mb-2" style="font-size:1.5rem;color:#22c55e;opacity:.6"></span>' +
+                        '<span class="bi bi-puzzle d-block mb-3" style="font-size:1.5rem;color:#22c55e;opacity:.6"></span>' +
                         '<span>' + esc(_sdT('There is no shared component yet.')) + '</span><br>' +
                         '<span style="font-size:.75rem;opacity:.6">' + _sdT('Right-click an element and pick<br>"Convert to Shared Component".') + '</span>' +
                         '</div>';
@@ -23571,19 +23569,17 @@ const StyleDesigner = (function () {
                     resolve(opts.need ? (window.prompt(opts.text, '') || '').trim() === opts.need : window.confirm(opts.text));
                     return;
                 }
-                var el = document.createElement('div');
-                el.className = 'modal fade';
+                var el = document.createElement('dialog');
+                el.className = 'dialog pg-dialog-centered dialog-scrollable';
                 el.tabIndex = -1;
                 el.innerHTML =
-                    '<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">' +
-                        '<div class="modal-header py-2"><h6 class="modal-title mb-0"><span class="bi bi-trash text-danger me-2"></span>' + esc(opts.title) + '</h6>' +
-                            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' + esc(_sdT('Close')) + '"></button></div>' +
-                        '<div class="modal-body small">' + opts.html + '</div>' +
-                        '<div class="modal-footer py-2">' +
-                            '<button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">' + esc(_sdT('Cancel')) + '</button>' +
-                            '<button type="button" class="btn btn-sm btn-danger" data-bulk-ok' + (opts.need ? ' disabled' : '') + '>' + esc(opts.okLabel) + '</button>' +
-                        '</div>' +
-                    '</div></div>';
+                    '<div class="dialog-header py-3"><h6 class="dialog-title mb-0"><span class="bi bi-trash fg-danger me-3"></span>' + esc(opts.title) + '</h6>' +
+                            '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + esc(_sdT('Close')) + '"></button></div>' +
+                        '<div class="dialog-body small">' + opts.html + '</div>' +
+                        '<div class="dialog-footer py-3">' +
+                            '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-dismiss="dialog">' + esc(_sdT('Cancel')) + '</button>' +
+                            '<button type="button" class="btn btn-sm btn-solid theme-danger" data-bulk-ok' + (opts.need ? ' disabled' : '') + '>' + esc(opts.okLabel) + '</button>' +
+                        '</div>';
                 document.body.appendChild(el);
                 var ok = false;
                 var okBtn = el.querySelector('[data-bulk-ok]');
@@ -23620,23 +23616,23 @@ const StyleDesigner = (function () {
             var items = picks.map(function (p) {
                 if (p.lines.length) used++;
                 return '<li><span class="fw-semibold">' + esc(names[p.sid] || ('#' + p.sid)) + '</span>' +
-                       (p.lines.length ? '<div class="text-danger">' + esc(_sdT('Used on: ') + p.lines.join(', ')) + '</div>' : '') +
+                       (p.lines.length ? '<div class="fg-danger">' + esc(_sdT('Used on: ') + p.lines.join(', ')) + '</div>' : '') +
                        '</li>';
             }).join('');
             var need = used ? String(ids.length) : null;
             var html =
-                '<p class="mb-2">' + esc(kind === 'system'
+                '<p class="mb-3">' + esc(kind === 'system'
                     ? _sdT('{var} system widgets will be deleted for good:', ids.length)
                     : _sdT('{var} shared components will be deleted for good:', ids.length)) + '</p>' +
                 '<ul class="sd-bulk-confirm-list">' + items + '</ul>';
             if (used) {
-                html += '<div class="alert alert-danger py-2 px-3 mb-2">' +
+                html += '<div class="alert theme-danger py-3 px-5 mb-3">' +
                             esc(_sdT('{var} of them are still in use. They are taken off this design\'s pages; in other designs their places are left empty.', used)) +
                         '</div>' +
                         '<label class="form-label mb-1" for="sd-bulk-confirm-input">' + esc(_sdT('Type {var} to confirm.', ids.length)) + '</label>' +
                         '<input type="text" class="form-control form-control-sm sd-bulk-confirm-input" id="sd-bulk-confirm-input" inputmode="numeric" autocomplete="off">';
             }
-            html += '<p class="text-muted mt-2 mb-0">' + esc(_sdT('This cannot be undone.')) + '</p>';
+            html += '<p class="fg-secondary mt-3 mb-0">' + esc(_sdT('This cannot be undone.')) + '</p>';
 
             _bulkConfirm({
                 title:   kind === 'system' ? _sdT('Delete system widgets') : _sdT('Delete shared components'),
@@ -25306,7 +25302,7 @@ const StyleDesigner = (function () {
         }
 
         if (!selectedNode) {
-            panel.innerHTML = '<div class="sd-attrs-empty"><span class="bi bi-cursor d-block mb-2" style="font-size:1.1rem"></span>' + esc(_sdT('No element selected')) + '</div>';
+            panel.innerHTML = '<div class="sd-attrs-empty"><span class="bi bi-cursor d-block mb-3" style="font-size:1.1rem"></span>' + esc(_sdT('No element selected')) + '</div>';
             return;
         }
 
@@ -29264,7 +29260,7 @@ const StyleDesigner = (function () {
             count.textContent = q.search === '' ? '' : (hits.length ? _sdT('{var:1} results in {var:2} tabs', [hits.length + (truncated ? '+' : ''), tabs]) : _sdT('No results'));
             list.innerHTML = html;
         }
-        count.classList.toggle('text-danger', !!error);
+        count.classList.toggle('fg-danger', !!error);
     }
 
     // The hit's line, cut to the words around the match, the match marked.
@@ -30373,7 +30369,7 @@ const StyleDesigner = (function () {
         // Render helpers — data-mc-prop (n.props.*) or data-mc-stylegroup (cssClass mutation)
         function _mcSel(prop, opts, uVal) {
             var isMixed = uVal === null;
-            var h = '<select class="form-select form-select-sm" data-mc-prop="' + prop + '">';
+            var h = '<select class="form-control form-control-sm" data-mc-prop="' + prop + '">';
             h += '<option value="">' + (isMixed ? _sdT('— Multiple —') : _sdT('Default')) + '</option>';
             opts.forEach(function(o) {
                 h += '<option value="' + esc(o[0]) + '"' + (!isMixed && uVal === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
@@ -30382,7 +30378,7 @@ const StyleDesigner = (function () {
         }
         function _mcGroupSel(groupArr, opts, uVal) {
             var isMixed = uVal === null;
-            var h = '<select class="form-select form-select-sm" data-mc-stylegroup="' + groupArr.join(',') + '">';
+            var h = '<select class="form-control form-control-sm" data-mc-stylegroup="' + groupArr.join(',') + '">';
             h += '<option value="">' + (isMixed ? _sdT('— Multiple —') : _sdT('Default')) + '</option>';
             opts.forEach(function(o) {
                 h += '<option value="' + esc(o[0]) + '"' + (!isMixed && uVal === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
@@ -30860,7 +30856,7 @@ const StyleDesigner = (function () {
                     '<textarea class="form-control form-control-sm sd-tr-input' + (seg.format === 'inline' ? ' sd-tr-inline' : '') + '" rows="2" spellcheck="true" lang="' + esc(lang.code) + '"' + (seg.locked ? ' readonly' : '') + '>' + esc(t ? t.text : '') + '</textarea>' +
                     (seg.locked ? '' :
                     '<div class="sd-tr-actions">' +
-                        '<button type="button" class="btn btn-sm btn-primary sd-tr-save" disabled>' + esc(_sdT('Save')) + '</button>' +
+                        '<button type="button" class="btn btn-sm btn-solid theme-primary sd-tr-save" disabled>' + esc(_sdT('Save')) + '</button>' +
                         ((t && t.text && t.state !== 'reviewed') ? '<button type="button" class="btn btn-sm btn-link sd-tr-review">' + esc(_sdT('Approve')) + '</button>' : '') +
                     '</div>') +
                 '</div>';
@@ -30941,7 +30937,7 @@ const StyleDesigner = (function () {
                 if (seq === _sdTrSeq && now && now.getAttribute('data-node') === String(n._id || '')) _sdTrDraw(now, data);
             }).catch(function (err) {
                 var now = document.getElementById('sd-tr-box');
-                if (seq === _sdTrSeq && now) now.innerHTML = '<div class="sd-tr-note text-danger">' + esc(err.message) + '</div>';
+                if (seq === _sdTrSeq && now) now.innerHTML = '<div class="sd-tr-note fg-danger">' + esc(err.message) + '</div>';
             });
         }, 250);
     }
@@ -31029,15 +31025,15 @@ const StyleDesigner = (function () {
                 '<div style="display:flex;align-items:center;gap:4px;font-size:.75rem;font-weight:600;margin-bottom:4px">' +
                     '<span class="bi bi-link-45deg" aria-hidden="true"></span>' +
                     '<span style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(label) + '">' + esc(label) + '</span>' +
-                    '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" data-sd-il-act="out" title="' + esc(_sdT('Take it out of the text: it becomes a link element right after it')) + '"><span class="bi bi-box-arrow-down-right" aria-hidden="true"></span></button>' +
-                    '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" data-sd-il-act="unlink" title="' + esc(_sdT('Remove the link, keep the words')) + '"><span class="bi bi-eraser" aria-hidden="true"></span></button>' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-secondary py-0 px-1" data-sd-il-act="out" title="' + esc(_sdT('Take it out of the text: it becomes a link element right after it')) + '"><span class="bi bi-box-arrow-down-right" aria-hidden="true"></span></button>' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-secondary py-0 px-1" data-sd-il-act="unlink" title="' + esc(_sdT('Remove the link, keep the words')) + '"><span class="bi bi-eraser" aria-hidden="true"></span></button>' +
                 '</div>' +
                 row(_sdT('Link'),
                     '<div class="sd-pick-group">' +
                         '<input type="text" class="form-control form-control-sm" id="sd-il-href-' + i + '" data-sd-il="href" value="' + esc(a.getAttribute('href') || '') + '">' +
-                        '<button class="btn btn-sm btn-outline-secondary sd-pick-btn" type="button" data-sd-il-pick="sd-il-href-' + i + '">' + esc(_sdT('Select')) + '</button>' +
+                        '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" data-sd-il-pick="sd-il-href-' + i + '">' + esc(_sdT('Select')) + '</button>' +
                     '</div>') +
-                row(_sdT('Target'), '<select class="form-select form-select-sm" data-sd-il="target">' +
+                row(_sdT('Target'), '<select class="form-control form-control-sm" data-sd-il="target">' +
                     targets.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === target ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') +
                     '</select>') +
                 row(_sdT('Classes'), '<input type="text" class="form-control form-control-sm" data-sd-il="class" value="' + esc(a.getAttribute('class') || '') + '" spellcheck="false">') +
@@ -31045,7 +31041,7 @@ const StyleDesigner = (function () {
             '</div>';
         });
         if (_sdIlOnlyLinks(frag)) {
-            h += '<button type="button" class="btn btn-sm btn-outline-primary w-100 mt-2" data-sd-il-act="split"><span class="bi bi-distribute-horizontal me-1" aria-hidden="true"></span>' + esc(_sdT('Split into elements')) + '</button>' +
+            h += '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-3" data-sd-il-act="split"><span class="bi bi-distribute-horizontal me-1" aria-hidden="true"></span>' + esc(_sdT('Split into elements')) + '</button>' +
                 '<div style="font-size:.7rem;opacity:.75;margin-top:4px">' + esc(_sdT('This text is links only: each becomes an element of its own, to select, edit and move.')) + '</div>';
         }
         return sect('bi-link-45deg', _sdT('Links in the text'), '<div class="sd-il" data-sd-il-node="' + esc(n._id || '') + '">' + h + '</div>');
@@ -31499,7 +31495,7 @@ const StyleDesigner = (function () {
         if (!opaque && !isImg) {
             var tags = _SD_TEXT_INNER_TAGS.slice();
             if (tags.indexOf(tag) === -1) tags.unshift(tag);
-            h += row(esc(_sdT('Tag')), '<select class="form-select form-select-sm" data-sd-inner="tag"' + dis + '>' +
+            h += row(esc(_sdT('Tag')), '<select class="form-control form-control-sm" data-sd-inner="tag"' + dis + '>' +
                 tags.map(function (t) { return '<option value="' + esc(t) + '"' + (t === tag ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') +
                 '</select>');
             if (el.firstElementChild) {
@@ -31519,8 +31515,8 @@ const StyleDesigner = (function () {
             var targets = [['', _sdT('Default/Self')], ['_blank', _sdT('New Window (_blank)')]];
             if (target && target !== '_blank') targets.push([target, target]);
             h += row(esc(_sdT('Link')), '<div class="sd-pick-group">' + attrIn('href', '', 'sd-inner-href') +
-                '<button class="btn btn-sm btn-outline-secondary sd-pick-btn" type="button" data-sd-inner-act="pick"' + dis + '>' + esc(_sdT('Select')) + '</button></div>');
-            h += row(esc(_sdT('Target')), '<select class="form-select form-select-sm" data-sd-inner-attr="target"' + dis + '>' +
+                '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" data-sd-inner-act="pick"' + dis + '>' + esc(_sdT('Select')) + '</button></div>');
+            h += row(esc(_sdT('Target')), '<select class="form-control form-control-sm" data-sd-inner-attr="target"' + dis + '>' +
                 targets.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === target ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') +
                 '</select>');
             h += row('rel', attrIn('rel', 'noopener'));
@@ -31541,23 +31537,23 @@ const StyleDesigner = (function () {
             a += '<div class="sd-inner-attr">' +
                 '<input type="text" class="form-control form-control-sm" data-sd-inner-rename="' + esc(at.name) + '" value="' + esc(at.name) + '" spellcheck="false"' + dis + '>' +
                 '<input type="text" class="form-control form-control-sm" data-sd-inner-attr="' + esc(at.name) + '" value="' + esc(at.value) + '" spellcheck="false"' + dis + '>' +
-                '<button type="button" class="btn btn-sm btn-outline-secondary" data-sd-inner-act="del-attr" data-sd-inner-name="' + esc(at.name) + '" title="' + esc(_sdT('Delete')) + '"' + dis + '><span class="bi bi-x" aria-hidden="true"></span></button>' +
+                '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-sd-inner-act="del-attr" data-sd-inner-name="' + esc(at.name) + '" title="' + esc(_sdT('Delete')) + '"' + dis + '><span class="bi bi-x" aria-hidden="true"></span></button>' +
             '</div>';
         });
         if (editable) {
             a += '<div class="sd-inner-attr">' +
                 '<input type="text" class="form-control form-control-sm" data-sd-inner-new="name" placeholder="' + esc(_sdT('attribute')) + '" spellcheck="false">' +
                 '<input type="text" class="form-control form-control-sm" data-sd-inner-new="value" placeholder="' + esc(_sdT('value')) + '" spellcheck="false">' +
-                '<button type="button" class="btn btn-sm btn-outline-secondary" data-sd-inner-act="add-attr" title="' + esc(_sdT('Add an Attribute')) + '"><span class="bi bi-plus-lg" aria-hidden="true"></span></button>' +
+                '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-sd-inner-act="add-attr" title="' + esc(_sdT('Add an Attribute')) + '"><span class="bi bi-plus-lg" aria-hidden="true"></span></button>' +
             '</div>';
         }
 
         var acts = '';
         if (editable) {
             acts = '<div class="sd-inner-acts">' +
-                (!opaque && !isImg ? '<button type="button" class="btn btn-sm btn-outline-secondary" data-sd-inner-act="unwrap"><span class="bi bi-eraser me-1" aria-hidden="true"></span>' + esc(_sdT('Remove the element, keep the words')) + '</button>' : '') +
-                (tag === 'a' && _sdIlTextNode(s.node) ? '<button type="button" class="btn btn-sm btn-outline-secondary" data-sd-inner-act="out"><span class="bi bi-box-arrow-down-right me-1" aria-hidden="true"></span>' + esc(_sdT('Take it out of the text: it becomes a link element right after it')) + '</button>' : '') +
-                '<button type="button" class="btn btn-sm btn-outline-danger" data-sd-inner-act="delete"><span class="bi bi-trash me-1" aria-hidden="true"></span>' + esc(_sdT('Delete')) + '</button>' +
+                (!opaque && !isImg ? '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-sd-inner-act="unwrap"><span class="bi bi-eraser me-1" aria-hidden="true"></span>' + esc(_sdT('Remove the element, keep the words')) + '</button>' : '') +
+                (tag === 'a' && _sdIlTextNode(s.node) ? '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-sd-inner-act="out"><span class="bi bi-box-arrow-down-right me-1" aria-hidden="true"></span>' + esc(_sdT('Take it out of the text: it becomes a link element right after it')) + '</button>' : '') +
+                '<button type="button" class="btn btn-sm btn-outline theme-danger" data-sd-inner-act="delete"><span class="bi bi-trash me-1" aria-hidden="true"></span>' + esc(_sdT('Delete')) + '</button>' +
             '</div>';
         }
 
@@ -31688,7 +31684,7 @@ const StyleDesigner = (function () {
         var panel = document.getElementById('sd-properties');
         if (!panel) return;
         if (!selectedNode) {
-            panel.innerHTML = '<div class="sd-props-empty"><div><span class="bi bi-cursor d-block mb-2" style="font-size:1.5rem"></span>' + esc(_sdT('Select an element to edit its properties')) + '</div></div>';
+            panel.innerHTML = '<div class="sd-props-empty"><div><span class="bi bi-cursor d-block mb-3" style="font-size:1.5rem"></span>' + esc(_sdT('Select an element to edit its properties')) + '</div></div>';
             return;
         }
         // Content level: a block the operator does not own gets a panel that
@@ -31706,7 +31702,7 @@ const StyleDesigner = (function () {
                 (_roTr ? '<div class="sd-tab-content">' + _roTr + '</div>' : '') +
                 '<div class="sd-props-readonly">' +
                     '<div class="sd-props-readonly-head">' +
-                        '<span class="bi bi-lock-fill me-2"></span>' +
+                        '<span class="bi bi-lock-fill me-3"></span>' +
                         esc(_isInsideSystemWidget(selectedNode)
                             ? _sdT('System widget')
                             : (_sdInClosedShared(selectedNode) ? _sdT('Shared component') : _sdT('Read-only'))) +
@@ -31725,8 +31721,8 @@ const StyleDesigner = (function () {
                         ? '<div class="sd-prop-row"><label class="sd-prop-label">' + esc(_sdT('Image')) + '</label>' +
                           '<div class="sd-prop-control"><div class="input-group input-group-sm">' +
                             '<input type="text" class="form-control form-control-sm" id="sd-ro-img-src" value="' + esc(_roImage.url) + '" readonly>' +
-                            '<button class="btn btn-sm btn-outline-secondary" type="button" id="sd-ro-img-pick">' + esc(_sdT('Choose')) + '</button>' +
-                            '<button class="btn btn-sm btn-outline-secondary" type="button" id="sd-ro-img-edit" title="' + esc(_sdT('Edit image')) + '"><i class="bi bi-brush"></i></button>' +
+                            '<button class="btn btn-sm btn-outline theme-secondary" type="button" id="sd-ro-img-pick">' + esc(_sdT('Choose')) + '</button>' +
+                            '<button class="btn btn-sm btn-outline theme-secondary" type="button" id="sd-ro-img-edit" title="' + esc(_sdT('Edit image')) + '"><i class="bi bi-brush"></i></button>' +
                           '</div></div></div>'
                         : '') +
                 '</div>';
@@ -31764,10 +31760,10 @@ const StyleDesigner = (function () {
             if (_cellsForMerge.length >= 2) {
                 var _mc = canMergeCells(_cellsForMerge);
                 var _mergeBtn = _mc.ok
-                    ? '<button type="button" class="btn btn-sm btn-primary mt-2" id="sd-merge-cells-btn"><i class="bi bi-table me-1"></i>' + esc(_sdT('Merge')) + ' (' + _cellsForMerge.length + ')</button>'
-                    : '<button type="button" class="btn btn-sm btn-outline-secondary mt-2" disabled title="' + esc(_sdT('Select adjacent cells')) + '"><i class="bi bi-table me-1"></i>' + esc(_sdT('Merge')) + '</button>';
+                    ? '<button type="button" class="btn btn-sm btn-solid theme-primary mt-3" id="sd-merge-cells-btn"><i class="bi bi-table me-1"></i>' + esc(_sdT('Merge')) + ' (' + _cellsForMerge.length + ')</button>'
+                    : '<button type="button" class="btn btn-sm btn-outline theme-secondary mt-3" disabled title="' + esc(_sdT('Select adjacent cells')) + '"><i class="bi bi-table me-1"></i>' + esc(_sdT('Merge')) + '</button>';
                 panel.innerHTML = '<div class="sd-props-empty"><div>' +
-                    '<span class="bi bi-table d-block mb-2" style="font-size:1.5rem"></span>' +
+                    '<span class="bi bi-table d-block mb-3" style="font-size:1.5rem"></span>' +
                     '<strong>' + esc(_sdT('{var} cells selected', _cellsForMerge.length)) + '</strong>' +
                     _mergeBtn + '</div></div>';
                 var _mBtn = document.getElementById('sd-merge-cells-btn');
@@ -32011,7 +32007,7 @@ const StyleDesigner = (function () {
         var fx = _sdFxNormalize(n.props._fx) || { effect: '' };
         var spec = _sdFxSpec();
         var select = function (field, opts) {
-            return '<select class="form-select form-select-sm" data-fx="' + field + '">' + opts.map(function (o) {
+            return '<select class="form-control form-control-sm" data-fx="' + field + '">' + opts.map(function (o) {
                 return '<option value="' + esc(o[0]) + '"' + (o[0] === fx[field] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
             }).join('') + '</select>';
         };
@@ -32048,7 +32044,7 @@ const StyleDesigner = (function () {
         if (fx.effect === 'sticky') h += row(_sdT('Top offset'), number('offset', 'px'));
         if (fx.effect === 'parallax') h += row(_sdT('Speed'), number('speed', '%'));
         if (fx.trigger) {
-            h += row('', '<button type="button" class="btn btn-sm btn-outline-secondary" data-fx-play>' +
+            h += row('', '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-fx-play>' +
                 '<span class="bi bi-play-fill"></span> ' + esc(_sdT('Play on the canvas')) + '</button>');
         }
         if (fx.effect) {
@@ -32206,7 +32202,7 @@ const StyleDesigner = (function () {
         var hasBpW = !!(n.props.sm || n.props.md || n.props.lg || n.props.xl || n.props.xxl);
 
         function colSel(prop, opts, val) {
-            var h = '<select class="form-select form-select-sm" data-prop="' + prop + '">';
+            var h = '<select class="form-control form-control-sm" data-prop="' + prop + '">';
             opts.forEach(function(o) { h += '<option value="' + o[0] + '"' + (o[0] === val ? ' selected' : '') + '>' + o[1] + '</option>'; });
             return h + '</select>';
         }
@@ -32348,7 +32344,7 @@ const StyleDesigner = (function () {
             // the visitors watching the page. Its System region carries
             // the comment and a "View or Reply" button.
             row(_sdT('E-mail page'),
-                '<select class="form-select form-select-sm" data-cmt-page="pg_comments_email_page">' +
+                '<select class="form-control form-control-sm" data-cmt-page="pg_comments_email_page">' +
                     _swPageOptions(_getCmtVal('pg_comments_email_page'), _allPagesCache, { none: _sdT('— No e-mail —') }) +
                 '</select>' +
                 _cmtHint(_sdT('Sent when a comment is published: to the sender of the record shown (on a Form Item View page) and to the visitors watching the page. A System region on that page shows the comment and a "View or Reply" button.'))
@@ -32383,7 +32379,7 @@ const StyleDesigner = (function () {
         var perPage = String(parseInt(cfg.per_page, 10));
         if (['0', '10', '20', '50'].indexOf(perPage) === -1) perPage = '0';
         var choice = function (key, opts, current) {
-            return '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="choice" data-sw-cfg-choices="' +
+            return '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="choice" data-sw-cfg-choices="' +
                 opts.map(function (o) { return o[0]; }).join(',') + '">' +
                 opts.map(function (o) {
                     return '<option value="' + o[0] + '"' + (o[0] === current ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
@@ -32519,7 +32515,7 @@ const StyleDesigner = (function () {
         var limit = (typeof cfg.recent_limit === 'number' || /^\d+$/.test(String(cfg.recent_limit))) ? String(parseInt(cfg.recent_limit, 10)) : '';
         if (['5', '10', '20', '50'].indexOf(limit) === -1) limit = '5';
         var choice = function (key, opts, current) {
-            return '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="choice" data-sw-cfg-choices="' +
+            return '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="choice" data-sw-cfg-choices="' +
                 opts.map(function (o) { return o[0]; }).join(',') + '">' +
                 opts.map(function (o) {
                     return '<option value="' + o[0] + '"' + (o[0] === current ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
@@ -32545,11 +32541,11 @@ const StyleDesigner = (function () {
         var n = 0;
         var box = function (value, label, checked) {
             var id = 'sd-sw-rc-' + sid + '-' + (n++);
-            return '<div class="form-check">' +
-                '<input class="form-check-input" type="checkbox" id="' + id + '" value="' + esc(value) + '"' +
+            return '<div class="form-field">' +
+                '<input class="check" type="checkbox" id="' + id + '" value="' + esc(value) + '"' +
                 ' data-sw-id="' + sid + '" data-sw-cfg-list="recent_page_ids" data-sw-cfg-list-kind="page" data-sw-cfg-list-max="5"' +
                 (checked ? ' checked' : '') + ((!checked && full) ? ' disabled' : '') + '>' +
-                '<label class="form-check-label" for="' + id + '">' + esc(label) + '</label>' +
+                '<label class="" for="' + id + '">' + esc(label) + '</label>' +
                 '</div>';
         };
         var boxes = '';
@@ -32633,10 +32629,10 @@ const StyleDesigner = (function () {
             : _sdT('After the card you design, the canvas shows three sample comments: a reply, one awaiting approval, one with stars and a file. They cannot be selected and are not saved.');
         return sect('bi-collection', _sdT('Canvas Preview'),
             row(_sdT('Canvas shows'),
-                '<select class="form-select form-select-sm" id="sd-cmt-canvas-state" data-sw-id="' + sid + '">' + opts + '</select>'
+                '<select class="form-control form-control-sm" id="sd-cmt-canvas-state" data-sw-id="' + sid + '">' + opts + '</select>'
             ) +
             row(_sdT('Sample comments'),
-                '<div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" role="switch" id="sd-sw-ghosts"' + (_sdGhostsOn ? ' checked' : '') + '></div>' +
+                '<div class="form-field m-0"><div class="switch"><input class="" type="checkbox" role="switch" id="sd-sw-ghosts"' + (_sdGhostsOn ? ' checked' : '') + '></div></div>' +
                 '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(samplesText) + '</div>'
             )
         );
@@ -32666,7 +32662,7 @@ const StyleDesigner = (function () {
             if (_sdCommentsSwapOffered(n)) {
                 designableHtml =
                     '<div class="sd-prop-row">' +
-                        '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-cmt-make-designable">' +
+                        '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-cmt-make-designable">' +
                             '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Make designable')) +
                         '</button>' +
                     '</div>' +
@@ -32710,7 +32706,7 @@ const StyleDesigner = (function () {
             srcOpts += '<option value="' + esc(p.source) + '" selected>' + esc(p.source + ' ' + _sdT('(incompatible — choose again)')) + '</option>';
         }
         var html = row(esc(_sdT('What it lists')),
-            '<select class="form-select form-select-sm sd-list-source" aria-label="' + esc(_sdT('What it lists')) + '">' + srcOpts + '</select>' +
+            '<select class="form-control form-control-sm sd-list-source" aria-label="' + esc(_sdT('What it lists')) + '">' + srcOpts + '</select>' +
             note(_sdT('The row stays as it is: bind its elements to the new row values in Bind Data.'), false));
 
         var src = SW_LIST_SOURCES[p.source];
@@ -32741,7 +32737,7 @@ const StyleDesigner = (function () {
                     fOpts += '<option value="' + esc(String(ff.name)) + '"' + (on ? ' selected' : '') + '>' + esc(ff.label || ff.name) + '</option>';
                 });
                 if (!known) fOpts += '<option value="' + esc(cur) + '" selected>' + esc(cur + ' ' + _sdT('(incompatible — choose again)')) + '</option>';
-                fieldCtl = '<select class="form-select form-select-sm sd-list-arg" aria-label="' + esc(_sdT('Field')) + '">' + fOpts + '</select>';
+                fieldCtl = '<select class="form-control form-control-sm sd-list-arg" aria-label="' + esc(_sdT('Field')) + '">' + fOpts + '</select>';
             }
             if (src.arg) html += row(esc(_sdT('Field')), fieldCtl);
             var limit = parseInt(p.limit, 10);
@@ -32752,7 +32748,7 @@ const StyleDesigner = (function () {
             SW_LIST_ORDERS.forEach(function (o) {
                 oOpts += '<option value="' + o[0] + '"' + (o[0] === (p.order || '') ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
             });
-            html += row(esc(_sdT('Row order')), '<select class="form-select form-select-sm sd-list-order" aria-label="' + esc(_sdT('Row order')) + '">' + oOpts + '</select>');
+            html += row(esc(_sdT('Row order')), '<select class="form-control form-control-sm sd-list-order" aria-label="' + esc(_sdT('Row order')) + '">' + oOpts + '</select>');
         }
 
         var band = _sdListBand(n);
@@ -32984,7 +32980,7 @@ const StyleDesigner = (function () {
                 _regionTypeOpts += '<option value="' + t.type + '"' + (on ? ' selected' : '') + '>' + esc(t.label) + '</option>';
             });
             var _regionTypeSel =
-                '<select class="form-select form-select-sm" id="sd-sw-region-type" data-sw-id="' + sid + '" data-sw-current="' + esc(_typeUnset ? '' : _regionType) + '">' +
+                '<select class="form-control form-control-sm" id="sd-sw-region-type" data-sw-id="' + sid + '" data-sw-current="' + esc(_typeUnset ? '' : _regionType) + '">' +
                 _regionTypeOpts +
                 '</select>';
 
@@ -33067,7 +33063,7 @@ const StyleDesigner = (function () {
                         esc((_formTabPage && _formTabPage.page_name ? _formTabPage.page_name : _sdT('(closed tab)')) + ' (' + _sdT('unsaved') + ')') + '</option>';
                 }
                 var _formSel =
-                    '<select class="form-select form-select-sm" id="sd-sw-form-id" data-sw-id="' + sid + '">' +
+                    '<select class="form-control form-control-sm" id="sd-sw-form-id" data-sw-id="' + sid + '">' +
                     _formOptions +
                     '</select>';
                 _sourceRowsHtml = row(_sdT('Form'), _formSel);
@@ -33115,7 +33111,7 @@ const StyleDesigner = (function () {
                     _fetchProductGroups(function () { renderProperties(); });
                 }
                 var _pgSel =
-                    '<select class="form-select form-select-sm" id="sd-sw-product-group" data-sw-id="' + sid + '">' +
+                    '<select class="form-control form-control-sm" id="sd-sw-product-group" data-sw-id="' + sid + '">' +
                     _pgOptions +
                     '</select>';
                 _sourceRowsHtml = row(_sdT('Product group'), _pgSel);
@@ -33144,7 +33140,7 @@ const StyleDesigner = (function () {
                     _fetchProductGroups(function () { renderProperties(); });
                 }
                 var _civPgSel =
-                    '<select class="form-select form-select-sm" id="sd-sw-product-group" data-sw-id="' + sid + '">' +
+                    '<select class="form-control form-control-sm" id="sd-sw-product-group" data-sw-id="' + sid + '">' +
                     _civPgOptions +
                     '</select>';
                 _sourceRowsHtml = row(_sdT('Product group (security)'), _civPgSel);
@@ -33177,7 +33173,7 @@ const StyleDesigner = (function () {
             if (_isFormListView || _isCatalogListing) {
                 systemSection += sect('bi-collection', _sdT('Canvas Preview'),
                     row(_sdT('Real records'),
-                        '<div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" role="switch" id="sd-sw-ghosts"' + (_sdGhostsOn ? ' checked' : '') + '></div>' +
+                        '<div class="form-field m-0"><div class="switch"><input class="" type="checkbox" role="switch" id="sd-sw-ghosts"' + (_sdGhostsOn ? ' checked' : '') + '></div></div>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('After the card you design, the canvas shows up to ten real records drawn from it. They cannot be selected and are not saved.')) + '</div>'
                     )
                 );
@@ -33367,7 +33363,7 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Leave it empty to share page_number with the other lists on the page. A name of its own (letters, digits, underscores) lets this list turn its pages alone.')) + '</div>'
                     ) : '') +
                     row(_sdT('Detail page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-detail-page" data-sw-id="' + sid + '">' + _detailOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-detail-page" data-sw-id="' + sid + '">' + _detailOpts + '</select>' +
                         _detailHint
                     ) +
                     row(_sdT('Search box'),
@@ -33377,7 +33373,7 @@ const StyleDesigner = (function () {
                         '</label>'
                     ) +
                     (_searchOn ? row(_sdT('Search box width'),
-                        '<select class="form-select form-select-sm" id="sd-sw-search-width" data-sw-id="' + sid + '">' +
+                        '<select class="form-control form-control-sm" id="sd-sw-search-width" data-sw-id="' + sid + '">' +
                             '<option value="full"'    + (_searchWidth === 'full'    ? ' selected' : '') + '>' + esc(_sdT('Full (w-100)')) + '</option>' +
                             '<option value="half"'    + (_searchWidth === 'half'    ? ' selected' : '') + '>' + esc(_sdT('Half (w-50)')) + '</option>' +
                             '<option value="quarter"' + (_searchWidth === 'quarter' ? ' selected' : '') + '>' + esc(_sdT('Quarter (w-25)')) + '</option>' +
@@ -33392,20 +33388,20 @@ const StyleDesigner = (function () {
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-empty-msg" data-sw-id="' + sid + '" value="' + esc(_emptyMsg) + '" maxlength="255">'
                     ) +
                     row(_sdT('Sort field'),
-                        '<select class="form-select form-select-sm" id="sd-sw-orderby-field" data-sw-id="' + sid + '">' + _orderOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-orderby-field" data-sw-id="' + sid + '">' + _orderOpts + '</select>' +
                         (_orderNoDetail ? '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Views and comments are counted on the detail page. Without one the list keeps the date order.')) + '</div>' : '')
                     ) +
                     row(_sdT('Sort direction'),
-                        '<select class="form-select form-select-sm" id="sd-sw-orderby-dir" data-sw-id="' + sid + '">' +
+                        '<select class="form-control form-control-sm" id="sd-sw-orderby-dir" data-sw-id="' + sid + '">' +
                             '<option value="DESC"' + (_orderDir === 'DESC' ? ' selected' : '') + '>' + esc(_sdT('Descending (DESC)')) + '</option>' +
                             '<option value="ASC"'  + (_orderDir === 'ASC'  ? ' selected' : '') + '>' + esc(_sdT('Ascending (ASC)')) + '</option>' +
                         '</select>'
                     ) +
                     row(_sdT('Second sort field'),
-                        '<select class="form-select form-select-sm" id="sd-sw-orderby-2-field" data-sw-id="' + sid + '">' + _order2Opts + '</select>'
+                        '<select class="form-control form-control-sm" id="sd-sw-orderby-2-field" data-sw-id="' + sid + '">' + _order2Opts + '</select>'
                     ) +
                     (_order2Field ? row(_sdT('Second sort direction'),
-                        '<select class="form-select form-select-sm" id="sd-sw-orderby-2-dir" data-sw-id="' + sid + '">' +
+                        '<select class="form-control form-control-sm" id="sd-sw-orderby-2-dir" data-sw-id="' + sid + '">' +
                             '<option value="DESC"' + (_order2Dir === 'DESC' ? ' selected' : '') + '>' + esc(_sdT('Descending (DESC)')) + '</option>' +
                             '<option value="ASC"'  + (_order2Dir === 'ASC'  ? ' selected' : '') + '>' + esc(_sdT('Ascending (ASC)')) + '</option>' +
                         '</select>'
@@ -33483,7 +33479,7 @@ const StyleDesigner = (function () {
 
                     var _navSection =
                         row(_sdT('Group navigation'),
-                            '<select class="form-select form-select-sm" id="sd-sw-group-nav" data-sw-id="' + sid + '">' +
+                            '<select class="form-control form-control-sm" id="sd-sw-group-nav" data-sw-id="' + sid + '">' +
                                 '<option value="none"'       + (_groupNav === 'none'       ? ' selected' : '') + '>' + esc(_sdT('None (products only)')) + '</option>' +
                                 '<option value="drill_down"' + (_groupNav === 'drill_down' ? ' selected' : '') + '>' + esc(_sdT('Drill-down (same page with ?cat)')) + '</option>' +
                                 '<option value="page"'       + (_groupNav === 'page'       ? ' selected' : '') + '>' + esc(_sdT('Target page (a separate catalog page)')) + '</option>' +
@@ -33491,7 +33487,7 @@ const StyleDesigner = (function () {
                         ) +
                         (_groupNav === 'page'
                             ? row(_sdT('Target catalog page'),
-                                '<select class="form-select form-select-sm" id="sd-sw-group-nav-page" data-sw-id="' + sid + '">' +
+                                '<select class="form-control form-control-sm" id="sd-sw-group-nav-page" data-sw-id="' + sid + '">' +
                                     _catalogPageOpts +
                                 '</select>'
                             )
@@ -33577,7 +33573,7 @@ const StyleDesigner = (function () {
                             '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('A filter UI built from the product attributes (color, size, brand and so on), drawn in a container whose section is "{var}".', _sdT('Filter Offcanvas'))) + '</div>'
                         ) +
                         (_attrFilterOn ? row(_sdT('Filter style'),
-                            '<select class="form-select form-select-sm" id="sd-sw-attr-filter-style" data-sw-id="' + sid + '">' +
+                            '<select class="form-control form-control-sm" id="sd-sw-attr-filter-style" data-sw-id="' + sid + '">' +
                                 '<option value="checkboxes"' + (_attrFilterStyle === 'checkboxes' ? ' selected' : '') + '>' + esc(_sdT('Checkbox list')) + '</option>' +
                                 '<option value="buttons"'   + (_attrFilterStyle === 'buttons'    ? ' selected' : '') + '>' + esc(_sdT('Button group')) + '</option>' +
                             '</select>'
@@ -33598,7 +33594,7 @@ const StyleDesigner = (function () {
 
                     var _selectSection =
                         row(_sdT('Attribute display'),
-                            '<select class="form-select form-select-sm" id="sd-sw-attr-display" data-sw-id="' + sid + '">' +
+                            '<select class="form-control form-control-sm" id="sd-sw-attr-display" data-sw-id="' + sid + '">' +
                                 '<option value="buttons"'  + (_attrDisplay === 'buttons'  ? ' selected' : '') + '>' + esc(_sdT('Button group')) + '</option>' +
                                 '<option value="dropdown"' + (_attrDisplay === 'dropdown' ? ' selected' : '') + '>' + esc(_sdT('Dropdown')) + '</option>' +
                             '</select>'
@@ -33611,7 +33607,7 @@ const StyleDesigner = (function () {
                             '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Adds the data-pg-show-cart="1" data attribute to the container.')) + '</div>'
                         ) +
                         row(_sdT('Out of stock behaviour'),
-                            '<select class="form-select form-select-sm" id="sd-sw-oos-behavior" data-sw-id="' + sid + '">' +
+                            '<select class="form-control form-control-sm" id="sd-sw-oos-behavior" data-sw-id="' + sid + '">' +
                                 '<option value="disable"' + (_oosBehavior === 'disable' ? ' selected' : '') + '>' + esc(_sdT('Disable it (the button is disabled)')) + '</option>' +
                                 '<option value="hide"'    + (_oosBehavior === 'hide'    ? ' selected' : '') + '>' + esc(_sdT('Hide it (do not render the variant at all)')) + '</option>' +
                                 '<option value="show"'    + (_oosBehavior === 'show'    ? ' selected' : '') + '>' + esc(_sdT('Show it (ignore the stock status)')) + '</option>' +
@@ -33662,7 +33658,7 @@ const StyleDesigner = (function () {
                     // BOTH mechanisms, so they stay.
                     systemSection += sect('bi-cart-plus', _sdT('Add to Cart Button (per card)'),
                         row(_sdT('Cart page (redirect after shipping)'),
-                            '<select class="form-select form-select-sm" id="sd-sw-cl-atc-next-page" data-sw-id="' + sid + '"' + (_atcStay ? ' disabled' : '') + '>' + _atcPageOpts + '</select>' +
+                            '<select class="form-control form-control-sm" id="sd-sw-cl-atc-next-page" data-sw-id="' + sid + '"' + (_atcStay ? ' disabled' : '') + '>' + _atcPageOpts + '</select>' +
                             '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Only pages with a shopping cart are listed. Disabled while "Stay on the page" is on.')) + '</div>'
                         ) +
                         row(_sdT('Stay on the page (after adding)'),
@@ -33728,7 +33724,7 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When on, a visitor who is not signed in is sent to the chosen page.')) + '</div>'
                     ) +
                     (_maRedirect ? row(_sdT('Sign-in page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-ma-login-page" data-sw-id="' + sid + '">' + _loginPageOpts + '</select>'
+                        '<select class="form-control form-control-sm" id="sd-sw-ma-login-page" data-sw-id="' + sid + '">' + _loginPageOpts + '</select>'
                     ) : '') +
                     row(_sdT('List form submissions (loop_area)'),
                         '<label class="sd-prop-switch">' +
@@ -33738,15 +33734,15 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When on, the user\'s own form submissions are listed inside the loop_area.')) + '</div>'
                     ) +
                     (_maShowSubs ? row(_sdT('Form filter (optional)'),
-                        '<select class="form-select form-select-sm" id="sd-sw-ma-filter-form" data-sw-id="' + sid + '">' + _maFormOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-ma-filter-form" data-sw-id="' + sid + '">' + _maFormOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When nothing is chosen, all of the user\'s form submissions are listed.')) + '</div>'
                     ) : '') +
                     (_maShowSubs ? row(_sdT('Submission detail page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-ma-detail-page" data-sw-id="' + sid + '">' + _maDetailOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-ma-detail-page" data-sw-id="' + sid + '">' + _maDetailOpts + '</select>' +
                         _swDetailPageHint(_cfg.submissions_detail_page_id, _myAccountDetailPagesCache, ['form_item_view'], null, _sdT('Form Item View'), _sdT('Detail page address'))
                     ) : '') +
                     row(_sdT('Staff page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-ma-staff-page" data-sw-id="' + sid + '">' + _maStaffOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-ma-staff-page" data-sw-id="' + sid + '">' + _maStaffOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swStaffHint('my_account')) + '</div>'
                     )
                 );
@@ -33808,7 +33804,7 @@ const StyleDesigner = (function () {
                         // For now: vanilla select. If page count grows
                         // unmanageable later, a custom Bootstrap-dropdown
                         // picker can replace this without changing config.
-                        '<select class="form-select form-select-sm" id="sd-sw-civ-next-page" data-sw-id="' + sid + '">' + _civNextOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-civ-next-page" data-sw-id="' + sid + '">' + _civNextOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The page to go to after adding to the cart (the cart page, say). Empty means staying on the same product page.')) + '</div>'
                     ) +
                     row(_sdT('Quantity — minimum'),
@@ -33831,7 +33827,7 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When on, a "Frequently bought together" / "Similar products" row of cards appears under the product detail. When off, it is not rendered at all.')) + '</div>'
                     ) +
                     row(_sdT('Catalog page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-civ-cat-page" data-sw-id="' + sid + '">' + _civCatOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-civ-cat-page" data-sw-id="' + sid + '">' + _civCatOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('Choose the catalog list page to make the breadcrumb crumbs (Catalog → Group → …) clickable. The list holds the pages that carry a <code>catalog_listing</code> widget. Empty = the crumbs are plain text.') + '</div>'
                     ) +
                     row(_sdT('Variant attribute style'),
@@ -33849,7 +33845,7 @@ const StyleDesigner = (function () {
                                 ['button_group', _sdT('Button group (horizontal)')],
                                 ['button_list',  _sdT('Button list (vertical)')]
                             ];
-                            return '<select class="form-select form-select-sm" id="sd-sw-civ-variant-style" data-sw-id="' + sid + '">' +
+                            return '<select class="form-control form-control-sm" id="sd-sw-civ-variant-style" data-sw-id="' + sid + '">' +
                                 opts.map(function (o) {
                                     return '<option value="' + o[0] + '"' + (o[0] === cur ? ' selected' : '') + '>' + o[1] + '</option>';
                                 }).join('') +
@@ -33915,12 +33911,12 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('While on, a page with no record shows only what is meant for that case: the elements set to show when there is no record, and the not-found message. With none of those, the message stands in for the layout. Off: the layout is drawn with empty fields.')) + '</div>'
                     ) +
                     row(_sdT('Page title'),
-                        '<select class="form-select form-select-sm" id="sd-sw-fiv-title-field" data-sw-id="' + sid + '">' + _fivTitleOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-fiv-title-field" data-sw-id="' + sid + '">' + _fivTitleOpts + '</select>' +
                         '<input type="text" class="form-control form-control-sm mt-1" id="sd-sw-fiv-title-suffix" data-sw-id="' + sid + '" value="' + esc(_fivTitleSuffix) + '" maxlength="120" placeholder="' + esc(_sdT('Text after the title, e.g. | Inbox')) + '">' +
                         _fivTitleNote
                     ) +
                     row(_sdT('Access control'),
-                        '<select class="form-select form-select-sm" id="sd-sw-fiv-access" data-sw-id="' + sid + '">' +
+                        '<select class="form-control form-control-sm" id="sd-sw-fiv-access" data-sw-id="' + sid + '">' +
                             '<option value="public"'         + (_fivAccess === 'public'         ? ' selected' : '') + '>' + esc(_sdT('Open to everyone')) + '</option>' +
                             '<option value="submitter_only"' + (_fivAccess === 'submitter_only' ? ' selected' : '') + '>' + esc(_sdT('The submitter only')) + '</option>' +
                             '<option value="logged_in"'      + (_fivAccess === 'logged_in'      ? ' selected' : '') + '>' + esc(_sdT('Signed-in users')) + '</option>' +
@@ -33983,7 +33979,7 @@ const StyleDesigner = (function () {
 
                 systemSection += sect('bi-box-arrow-in-right', _sdT('Login Settings'),
                     row(_sdT('Redirect after a successful sign-in'),
-                        '<select class="form-select form-select-sm" id="sd-sw-lf-redirect-page" data-sw-id="' + sid + '">' + _lfPageOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-lf-redirect-page" data-sw-id="' + sid + '">' + _lfPageOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When empty, the ?send_to= or ?redirect= on the link is used, and failing that the user\'s home page.')) + '</div>'
                     ) +
                     row(_sdT('Remember Me option'),
@@ -33994,11 +33990,11 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('While off, the <code>remember_me</code> control and its label are not drawn. They are not drawn either when the site setting (Settings → Security → Remember Me) is off.') + '</div>'
                     ) +
                     row(_sdT('Forgot password page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-lf-forgot-page" data-sw-id="' + sid + '">' + _lfForgotOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-lf-forgot-page" data-sw-id="' + sid + '">' + _lfForgotOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The link is drawn only while the site setting (Forgot Password Link) is on.') + ' ' + _swLinkHint('login_form', '__forgot_password_url')) + '</div>'
                     ) +
                     row(_sdT('Registration page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-lf-register-page" data-sw-id="' + sid + '">' + _lfRegisterOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-lf-register-page" data-sw-id="' + sid + '">' + _lfRegisterOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('A page carrying a registration widget, or the legacy registration page.') + ' ' + _swLinkHint('login_form', '__register_url')) + '</div>'
                     )
                 );
@@ -34010,7 +34006,7 @@ const StyleDesigner = (function () {
                 if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
                 systemSection += sect('bi-bag', _sdT('Cart Link Settings'),
                     row(_sdT('Cart page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-cl-cart-page" data-sw-id="' + sid + '">' + _clCartOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-cl-cart-page" data-sw-id="' + sid + '">' + _clCartOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Automatic: the cart page the visitor last saw, else the site\'s cart page.') + ' ' + _swLinkHint('cart_link', '__cart_url')) + '</div>'
                     )
                 );
@@ -34057,13 +34053,13 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The products saved last come first.')) + '</div>'
                     ) +
                     row(_sdT('Sign-in page'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="login_page_id" data-sw-cfg-kind="page">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="login_page_id" data-sw-cfg-kind="page">' +
                             _swPageOptions(_cfg.login_page_id, _allPagesCache, { types: ['login_form'], none: _sdT('— Automatic —') }) +
                         '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Linked for a visitor who is not signed in; after signing in they come back here.') + ' ' + _swLinkHint('wishlist', '__login_url')) + '</div>'
                     ) +
                     row(_sdT('Shop page'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="shop_page_id" data-sw-cfg-kind="page">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="shop_page_id" data-sw-cfg-kind="page">' +
                             _swPageOptions(_cfg.shop_page_id, _allPagesCache, { types: ['catalog_listing'], none: _sdT('— Automatic —') }) +
                         '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Automatic: a page with a catalog widget, else the legacy catalog page.') + ' ' + _swLinkHint('wishlist', '__shop_url')) + '</div>'
@@ -34080,7 +34076,7 @@ const StyleDesigner = (function () {
                 var _saHint = function (t) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + t + '</div>'; };
                 systemSection += sect('bi-truck', _sdT('Shipping Address Settings'),
                     row(_sdT('Next page'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="next_page_id" data-sw-cfg-kind="page">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="next_page_id" data-sw-cfg-kind="page">' +
                             _swPageOptions(_cfg.next_page_id, _allPagesCache, { none: _sdT('— The page\'s own setting —') }) +
                         '</select>' +
                         _saHint(esc(_sdT('Where the visitor goes once the address is saved: the shipping method page.')))
@@ -34093,7 +34089,7 @@ const StyleDesigner = (function () {
                         _saHint(_sdT('While on, the residential / business radios (name: <code>address_type</code>) are drawn and required.'))
                     ) +
                     row(_sdT('Address type help page'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="address_type_page_id" data-sw-cfg-kind="page">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="address_type_page_id" data-sw-cfg-kind="page">' +
                             _swPageOptions(_cfg.address_type_page_id, _allPagesCache, { none: _sdT('— None —') }) +
                         '</select>' +
                         _saHint(esc(_swLinkHint('shipping_address_and_arrival', '__address_type_url')))
@@ -34119,12 +34115,12 @@ const StyleDesigner = (function () {
                 var _biField = function (n) {
                     return row(_sdT('Custom field {var}', String(n)),
                         '<input type="text" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="custom_field_' + n + '_label" maxlength="255" value="' + esc(_cfg['custom_field_' + n + '_label'] || '') + '" placeholder="' + esc(_sdT('Label (empty: no field)')) + '">' +
-                        '<div class="d-flex align-items-center gap-2 mt-1">' + _biSwitch('custom_field_' + n + '_required') + '<span style="font-size:.7rem">' + esc(_sdT('Required')) + '</span></div>' +
+                        '<div class="d-flex align-items-center gap-3 mt-1">' + _biSwitch('custom_field_' + n + '_required') + '<span style="font-size:.7rem">' + esc(_sdT('Required')) + '</span></div>' +
                         _biHint(esc(_sdT('Elements bound to "{var}" show this text.', _swBindLabel('billing_information', '__custom_field_' + n + '_label')))));
                 };
                 systemSection += sect('bi-receipt', _sdT('Billing Information Settings'),
                     row(_sdT('Next page'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="next_page_id" data-sw-cfg-kind="page">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="next_page_id" data-sw-cfg-kind="page">' +
                             _swPageOptions(_cfg.next_page_id, _allPagesCache, { none: _sdT('— The page\'s own setting —') }) +
                         '</select>' +
                         _biHint(esc(_sdT('Where the visitor goes once the billing details are saved: the order preview page.')))
@@ -34149,7 +34145,7 @@ const StyleDesigner = (function () {
                 }
                 systemSection += sect('bi-menu-button-wide', _sdT('Menu Settings'),
                     row(_sdT('Menu'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="menu_name">' + _mrOpts + '</select>' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="menu_name">' + _mrOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The items are added, ordered and linked under Menus; without a menu the widget draws no items.')) + '</div>'
                     )
                 );
@@ -34168,7 +34164,7 @@ const StyleDesigner = (function () {
                 }
                 systemSection += sect('bi-tags', _sdT('Tag Cloud Settings'),
                     row(_sdT('Search Results Page'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="search_page_name">' + _tcOpts + '</select>' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="search_page_name">' + _tcOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Each keyword links to this page searching for it; without a page the widget draws no keyword.')) + '</div>'
                     )
                 );
@@ -34187,7 +34183,7 @@ const StyleDesigner = (function () {
                 }
                 systemSection += sect('bi-badge-ad', _sdT('Ad Region Settings'),
                     row(_sdT('Ad Region'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="ad_region_name">' + _arOpts + '</select>' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="ad_region_name">' + _arOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The ads, their order and the slideshow are set under Ads; without a region the widget draws no ad.')) + '</div>'
                     )
                 );
@@ -34201,7 +34197,7 @@ const StyleDesigner = (function () {
                 if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
                 var _opHint = function (t) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + t + '</div>'; };
                 var _opPage = function (key, none, hint) {
-                    return '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="page">' +
+                    return '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="page">' +
                             _swPageOptions(_cfg[key], _allPagesCache, { none: none }) +
                         '</select>' + _opHint(esc(hint));
                 };
@@ -34232,7 +34228,7 @@ const StyleDesigner = (function () {
                 if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
                 systemSection += sect('bi-box-seam', _sdT('Shipping Method Settings'),
                     row(_sdT('Next page'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="next_page_id" data-sw-cfg-kind="page">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="next_page_id" data-sw-cfg-kind="page">' +
                             _swPageOptions(_cfg.next_page_id, _allPagesCache, { none: _sdT('— The page\'s own setting —') }) +
                         '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Where the visitor goes once a method is chosen: the billing information page.')) + '</div>'
@@ -34255,7 +34251,7 @@ const StyleDesigner = (function () {
                 if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
                 var _lrStateBtn = function (state, label) {
                     var on = (_sdSessionPreview === state);
-                    return '<button type="button" class="btn btn-sm ' + (on ? 'btn-primary' : 'btn-outline-secondary') + '" data-sd-session-preview="' + state + '" data-sw-id="' + sid + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(label) + '</button>';
+                    return '<button type="button" class="btn btn-sm ' + (on ? 'btn-solid theme-primary' : 'btn-outline theme-secondary') + '" data-sd-session-preview="' + state + '" data-sw-id="' + sid + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(label) + '</button>';
                 };
 
                 systemSection += sect('bi-person-badge', _sdT('Login Region Settings'),
@@ -34264,19 +34260,19 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Only on the canvas. Visitors see the part that fits them.')) + '</div>'
                     ) +
                     row(_sdT('Sign-in page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-lr-login-page" data-sw-id="' + sid + '">' + _lrLoginOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-lr-login-page" data-sw-id="' + sid + '">' + _lrLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('login_region', '__login_url')) + '</div>'
                     ) +
                     row(_sdT('Registration page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-lr-register-page" data-sw-id="' + sid + '">' + _lrRegisterOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-lr-register-page" data-sw-id="' + sid + '">' + _lrRegisterOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('login_region', '__register_url')) + '</div>'
                     ) +
                     row(_sdT('My account page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-lr-account-page" data-sw-id="' + sid + '">' + _lrAccountOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-lr-account-page" data-sw-id="' + sid + '">' + _lrAccountOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('login_region', '__my_account_url')) + '</div>'
                     ) +
                     row(_sdT('Staff page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-lr-staff-page" data-sw-id="' + sid + '">' + _lrStaffOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-lr-staff-page" data-sw-id="' + sid + '">' + _lrStaffOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swStaffHint('login_region')) + '</div>'
                     )
                 );
@@ -34290,11 +34286,11 @@ const StyleDesigner = (function () {
 
                 systemSection += sect('bi-key', _sdT('Forgot Password Settings'),
                     row(_sdT('Continue page (send_to)'),
-                        '<select class="form-select form-select-sm" id="sd-sw-fp-redirect-page" data-sw-id="' + sid + '">' + _fpPageOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-fp-redirect-page" data-sw-id="' + sid + '">' + _fpPageOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The page the visitor can go to after the confirmation screen; the result is shown there.')) + '</div>'
                     ) +
                     row(_sdT('Sign-in page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-fp-login-page" data-sw-id="' + sid + '">' + _fpLoginOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-fp-login-page" data-sw-id="' + sid + '">' + _fpLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('forgot_password', '__back_url')) + '</div>'
                     ) +
                     _swAccountEmailRow(sid, _cfg, 'reset')
@@ -34319,16 +34315,16 @@ const StyleDesigner = (function () {
 
                 systemSection += sect('bi-person-plus', _sdT('Registration Entrance Settings'),
                     row(_sdT('Redirect after registration'),
-                        '<select class="form-select form-select-sm" id="sd-sw-rg-redirect-page" data-sw-id="' + sid + '">' + _rgPageOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-rg-redirect-page" data-sw-id="' + sid + '">' + _rgPageOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When empty, the ?send_to= on the link is used; failing that the visitor stays on this page and sees the "your registration is complete" notice.')) + '</div>'
                     ) +
                     row(_sdT('Sign-in page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-rg-login-page" data-sw-id="' + sid + '">' + _rgLoginOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-rg-login-page" data-sw-id="' + sid + '">' + _rgLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('registration', '__login_url')) + '</div>'
                     ) +
                     _swAccountEmailRow(sid, _cfg, 'welcome') +
                     row(_sdT('Contact group'),
-                        '<select class="form-select form-select-sm" id="sd-sw-rg-contact-group" data-sw-id="' + sid + '">' + _rgGroupOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-rg-contact-group" data-sw-id="' + sid + '">' + _rgGroupOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The new member\'s contact record joins this group.')) + '</div>'
                     ) +
                     row(_sdT('Remember Me option'),
@@ -34354,7 +34350,7 @@ const StyleDesigner = (function () {
 
                 systemSection += sect('bi-search', _sdT('Search Results Settings'),
                     row(_sdT('Search scope'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="search_scope" data-sw-cfg-kind="choice" data-sw-cfg-choices="all,pages,products">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="search_scope" data-sw-cfg-kind="choice" data-sw-cfg-choices="all,pages,products">' +
                             '<option value="all"'      + (_srScope === 'all'      ? ' selected' : '') + '>' + esc(_sdT('Everything (pages + products)')) + '</option>' +
                             '<option value="pages"'    + (_srScope === 'pages'    ? ' selected' : '') + '>' + esc(_sdT('Pages only')) + '</option>' +
                             '<option value="products"' + (_srScope === 'products' ? ' selected' : '') + '>' + esc(_sdT('Products only (ECOMMERCE required)')) + '</option>' +
@@ -34376,11 +34372,11 @@ const StyleDesigner = (function () {
                     ) +
                     (_srScope !== 'pages'
                         ? row(_sdT('Product group searched'),
-                            '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="product_group_id" data-sw-cfg-kind="int" min="0">' +
+                            '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="product_group_id" data-sw-cfg-kind="int" min="0">' +
                                 _swProductGroupOptions(_cfg.product_group_id, _sdT('— Top-level group —')) +
                             '</select>') +
                           row(_sdT('Product detail page'),
-                            '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="catalog_detail_page_id" data-sw-cfg-kind="page">' +
+                            '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="catalog_detail_page_id" data-sw-cfg-kind="page">' +
                                 _swPageOptions(_cfg.catalog_detail_page_id, _catalogDetailPagesCache,
                                     { none: _sdT('— Automatic —'), types: ['catalog_item_view'] }) +
                             '</select>' +
@@ -34442,7 +34438,7 @@ const StyleDesigner = (function () {
                 // a custom express checkout page).
                 function _scBuildPagePicker(currentRaw, idAttr, dataAttr) {
                     if (!_allPagesCache) _fetchAllPages(function () { renderProperties(); });
-                    return '<select class="form-select form-select-sm" id="' + idAttr + '" data-sw-id="' + sid + '">' +
+                    return '<select class="form-control form-control-sm" id="' + idAttr + '" data-sw-id="' + sid + '">' +
                            _swPageOptions(currentRaw, _allPagesCache, { none: _sdT('— Not selected —') }) +
                            '</select>';
                 }
@@ -34457,7 +34453,7 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The heading text of the quick add block.') + ' ' + _swTextHint('shopping_cart', '__quick_add_label')) + '</div>'
                     ) +
                     row(_sdT('Quick Add Product Group'),
-                        '<select class="form-select form-select-sm" id="sd-sw-sc-qa-group" data-sw-id="' + sid + '">' + _scGroupOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-sc-qa-group" data-sw-id="' + sid + '">' + _scGroupOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The group the products in the Quick Add section come from. Empty means quick add is not shown.')) + '</div>'
                     ) +
                     row(_sdT('Special Offer Code Label'),
@@ -34485,7 +34481,7 @@ const StyleDesigner = (function () {
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When the cart holds only digital products, the Checkout button goes to this page (usually the billing/payment page).')) + '</div>'
                     ) +
                     row(_sdT('Catalog Detail Page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-sc-detail-page" data-sw-id="' + sid + '">' + _scDetailOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-sc-detail-page" data-sw-id="' + sid + '">' + _scDetailOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('Links bound to "{var}" on the cart rows go to this detail page. Format: <code>/&lt;detail-page&gt;/&lt;product-slug&gt;</code>. When empty, the first page carrying a Catalog Detail widget is used, or else the site\'s catalog detail page.', esc(_swBindLabel('shopping_cart', '__item_url'))) + '</div>'
                     ) +
                     row(_sdT('Empty cart message'),
@@ -34621,10 +34617,10 @@ const StyleDesigner = (function () {
                     var lbl = _eoSectionLabels[k] || k;
                     var isReq = _eoRequiredKeys.indexOf(k) !== -1;
                     var present = !!_eoPresent[k];
-                    var icon = present ? '<i class="bi bi-check-circle-fill text-success me-1"></i>'
-                                       : (isReq ? '<i class="bi bi-x-circle-fill text-danger me-1"></i>'
-                                                : '<i class="bi bi-circle text-muted me-1"></i>');
-                    var note = present ? '' : (isReq ? ' <span class="text-danger">— ' + esc(_sdT('MISSING')) + '</span>' : ' <span class="text-muted">— ' + esc(_sdT('optional')) + '</span>');
+                    var icon = present ? '<i class="bi bi-check-circle-fill fg-success me-1"></i>'
+                                       : (isReq ? '<i class="bi bi-x-circle-fill fg-danger me-1"></i>'
+                                                : '<i class="bi bi-circle fg-secondary me-1"></i>');
+                    var note = present ? '' : (isReq ? ' <span class="fg-danger">— ' + esc(_sdT('MISSING')) + '</span>' : ' <span class="fg-secondary">— ' + esc(_sdT('optional')) + '</span>');
                     _eoChecklistHtml += '<li>' + icon + esc(lbl) + note + '</li>';
                 });
                 _eoChecklistHtml += '</ul>';
@@ -34632,12 +34628,12 @@ const StyleDesigner = (function () {
                 var _eoLayoutWarn = '';
                 if (!_eoHasAnyBinding) {
                     _eoLayoutWarn = ''
-                        + '<div class="alert alert-warning py-2 mb-2" style="font-size:.7rem">'
+                        + '<div class="alert theme-warning py-3 mb-3" style="font-size:.7rem">'
                         +   _sdT('<strong>Designer mode is off.</strong> This widget is still using the automatic minimal layout. The button below loads the default designer layout, and from there you can move and customize the sections as you like.')
                         + '</div>';
                 } else if (_eoMissingReq.length) {
                     _eoLayoutWarn = ''
-                        + '<div class="alert alert-danger py-2 mb-2" style="font-size:.7rem">'
+                        + '<div class="alert theme-danger py-3 mb-3" style="font-size:.7rem">'
                         +   _sdT('<strong>Required sections are missing:</strong> {var}. Customers cannot complete an order without them, and your changes are <strong>not saved</strong> until you add them back.', esc(_eoMissingReq.map(function (k) { return _eoSectionLabels[k] || k; }).join(', ')))
                         + '</div>';
                 }
@@ -34656,14 +34652,14 @@ const StyleDesigner = (function () {
                 // element, so there's nothing to drag onto the canvas.
                 var _eoBody = ''
                     + '<div class="sd-prop-row"><label class="sd-prop-label">' + esc(_sdT('Next Page (once the order is complete)')) + '</label><div class="sd-prop-control">'
-                    +   '<select class="form-select form-select-sm" id="sd-sw-eo-next-page" data-sw-id="' + sid + '">' + _eoNextOpts + '</select>'
+                    +   '<select class="form-control form-control-sm" id="sd-sw-eo-next-page" data-sw-id="' + sid + '">' + _eoNextOpts + '</select>'
                     +   '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The user is sent here once the payment succeeds. A thank-you page holding an Order View (order_view) widget is the usual choice; <code>?order_id=N</code> is appended to the URL automatically.') + '</div>'
                     + '</div></div>'
                     // The order receipt e-mail: a page sent to the billing
                     // address when the order is placed; its Order View widget
                     // draws the order. Nothing chosen: no receipt e-mail.
                     + '<div class="sd-prop-row"><label class="sd-prop-label">' + esc(_sdT('Order receipt e-mail')) + '</label><div class="sd-prop-control">'
-                    +   '<select class="form-select form-select-sm" id="sd-sw-eo-receipt-page" data-sw-id="' + sid + '">'
+                    +   '<select class="form-control form-control-sm" id="sd-sw-eo-receipt-page" data-sw-id="' + sid + '">'
                     +     _swPageOptions(_cfg.order_receipt_email_page_id, _allPagesCache, { none: _sdT('— No receipt e-mail —') })
                     +   '</select>'
                     +   '<input type="text" class="form-control form-control-sm mt-1" id="sd-sw-eo-receipt-subject" data-sw-id="' + sid + '" maxlength="200"'
@@ -34696,7 +34692,7 @@ const StyleDesigner = (function () {
                 if (!_eoHasRlaScan) {
                     _eoRlaRowHtml = ''
                         + '<div class="sd-prop-row" style="border-top:1px solid #e5e7eb;margin-top:8px;padding-top:8px"><label class="sd-prop-label">' + esc(_sdT('Multi-Recipient Design')) + '</label><div class="sd-prop-control">'
-                        +   '<button type="button" class="btn btn-sm btn-outline-success" id="sd-sw-eo-add-recipient-loop" data-sw-id="' + sid + '">'
+                        +   '<button type="button" class="btn btn-sm btn-outline theme-success" id="sd-sw-eo-add-recipient-loop" data-sw-id="' + sid + '">'
                         +     '<i class="bi bi-people me-1"></i>' + esc(_sdT('Add a Recipient List Block'))
                         +   '</button>'
                         +   '<div style="font-size:.66rem;color:#888;margin-top:3px">'
@@ -34719,7 +34715,7 @@ const StyleDesigner = (function () {
                     +   _eoChecklistHtml
                     + '</div></div>'
                     + '<div class="sd-prop-row"><label class="sd-prop-label">' + esc(_sdT('Layout Template')) + '</label><div class="sd-prop-control">'
-                    +   '<button type="button" class="btn btn-sm btn-outline-primary" id="sd-sw-eo-load-default" data-sw-id="' + sid + '">'
+                    +   '<button type="button" class="btn btn-sm btn-outline theme-primary" id="sd-sw-eo-load-default" data-sw-id="' + sid + '">'
                     +     '<i class="bi bi-magic me-1"></i>' + esc(_sdT('Load the Default Layout'))
                     +   '</button>'
                     +   '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('<strong>Replaces</strong> the current tree with the standard layout that holds every section. This cannot be undone.') + '</div>'
@@ -34743,7 +34739,7 @@ const StyleDesigner = (function () {
 
                 systemSection += sect('bi-receipt', _sdT('View Order Settings'),
                     row(_sdT('Date format'),
-                        '<select class="form-select form-select-sm" id="sd-sw-ov-date-format" data-sw-id="' + sid + '">' +
+                        '<select class="form-control form-control-sm" id="sd-sw-ov-date-format" data-sw-id="' + sid + '">' +
                             '<option value=""' + (_ovDateFormat === '' ? ' selected' : '') + '>' + esc(_sdT('Site default') + ' (' + _sdDateSample(false) + ')') + '</option>' +
                             '<option value="d.m.Y"' + (_ovDateFormat === 'd.m.Y' ? ' selected' : '') + '>' + esc(_sdT('DD.MM.YYYY (29.01.2026)')) + '</option>' +
                             '<option value="Y-m-d"' + (_ovDateFormat === 'Y-m-d' ? ' selected' : '') + '>' + esc(_sdT('YYYY-MM-DD (2026-01-29)')) + '</option>' +
@@ -34776,16 +34772,16 @@ const StyleDesigner = (function () {
 
                 systemSection += sect('bi-patch-check', _sdT('Membership Entrance Settings'),
                     row(_sdT('Redirect after activation'),
-                        '<select class="form-select form-select-sm" id="sd-sw-mb-redirect-page" data-sw-id="' + sid + '">' + _mbPageOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-mb-redirect-page" data-sw-id="' + sid + '">' + _mbPageOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When empty, the ?send_to= on the link is used; failing that the visitor stays on this page and sees the "your membership is active" notice.')) + '</div>'
                     ) +
                     row(_sdT('Sign-in page'),
-                        '<select class="form-select form-select-sm" id="sd-sw-mb-login-page" data-sw-id="' + sid + '">' + _mbLoginOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-mb-login-page" data-sw-id="' + sid + '">' + _mbLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('membership', '__login_url')) + '</div>'
                     ) +
                     _swAccountEmailRow(sid, _cfg, 'welcome') +
                     row(_sdT('Contact group'),
-                        '<select class="form-select form-select-sm" id="sd-sw-mb-contact-group" data-sw-id="' + sid + '">' + _mbGroupOpts + '</select>' +
+                        '<select class="form-control form-control-sm" id="sd-sw-mb-contact-group" data-sw-id="' + sid + '">' + _mbGroupOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The activated member\'s contact record joins this group.')) + '</div>'
                     ) +
                     row(_sdT('Remember Me option'),
@@ -34817,7 +34813,7 @@ const StyleDesigner = (function () {
                 var _cfTree     = _sharedCache[sid] ? _sharedCache[sid].tree : null;
 
                 var _cfSourceRow = row(_sdT('Form'),
-                    '<select class="form-select form-select-sm" id="sd-sw-cf-source" data-sw-id="' + sid + '">' +
+                    '<select class="form-control form-control-sm" id="sd-sw-cf-source" data-sw-id="' + sid + '">' +
                         '<option value="page"'     + (_cfOwnsPage  ? ' selected' : '') + '>' + esc(_sdT('New form — this page\'s form')) + '</option>' +
                         '<option value="existing"' + (!_cfOwnsPage ? ' selected' : '') + '>' + esc(_sdT('An existing form')) + '</option>' +
                     '</select>' +
@@ -34866,7 +34862,7 @@ const StyleDesigner = (function () {
                     var _cfNoTitle = _cfFields.length && !_cfRoles.some(function (r) { return r.role === 'title' && r.field; });
                     _cfList += '<div style="font-size:.66rem;color:#888;line-height:1.5;margin-top:4px">' +
                         _cfRoles.map(function (r) {
-                            return '<span class="me-2">' + esc(r.label) + ': ' +
+                            return '<span class="me-3">' + esc(r.label) + ': ' +
                                    (r.field ? '<code>' + esc(r.field.name) + '</code>' : '—') + '</span>';
                         }).join('') +
                         '</div>' +
@@ -34899,9 +34895,9 @@ const StyleDesigner = (function () {
                         // made from the Title field (the server names the
                         // records already there when this is turned on).
                         row(_sdT('Record addresses'),
-                            '<div class="form-check form-switch">' +
-                                '<input class="form-check-input sd-cf-sb" data-s="pretty_urls" type="checkbox" id="sd-sw-cf-pretty"' + (_cfFS.pretty_urls ? ' checked' : '') + '>' +
-                                '<label class="form-check-label" for="sd-sw-cf-pretty" style="font-size:.72rem">' + esc(_sdT('Enable Pretty URLs')) + '</label>' +
+                            '<div class="form-field">' +
+                                '<div class="switch"><input class="sd-cf-sb" data-s="pretty_urls" type="checkbox" id="sd-sw-cf-pretty"' + (_cfFS.pretty_urls ? ' checked' : '') + '></div>' +
+                                '<label class="" for="sd-sw-cf-pretty" style="font-size:.72rem">' + esc(_sdT('Enable Pretty URLs')) + '</label>' +
                             '</div>' +
                             '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
                                 esc(_sdT('A record opens at the address of the page that shows it followed by its title (/blog-post/my-first-post), not by a reference code (?r=…). The name is made from the field with the Title role; turning this on names the records already submitted, and old links keep working.')) +
@@ -34931,18 +34927,18 @@ const StyleDesigner = (function () {
                         // list of fields; its Form Item View widget of this form
                         // shows the submission the e-mail is about.
                         row(_sdT('Notification page'),
-                            '<select class="form-select form-select-sm sd-cf-sn" data-s="notify_page_id">' +
+                            '<select class="form-control form-control-sm sd-cf-sn" data-s="notify_page_id">' +
                                 _swPageOptions(_cfFS.notify_page_id, _allPagesCache, { none: _sdT('— Plain text: the list of fields —') }) +
                             '</select>'
                         ) +
                         row(_sdT('Auto-reply to the sender'),
-                            '<div class="form-check form-switch">' +
-                                '<input class="form-check-input sd-cf-sb" data-s="confirm_email" type="checkbox" id="sd-sw-cf-confirm-email"' + (_cfFS.confirm_email ? ' checked' : '') + '>' +
-                                '<label class="form-check-label" for="sd-sw-cf-confirm-email" style="font-size:.72rem">' + esc(_sdT('Send a copy to the sender as well')) + '</label>' +
+                            '<div class="form-field">' +
+                                '<div class="switch"><input class="sd-cf-sb" data-s="confirm_email" type="checkbox" id="sd-sw-cf-confirm-email"' + (_cfFS.confirm_email ? ' checked' : '') + '></div>' +
+                                '<label class="" for="sd-sw-cf-confirm-email" style="font-size:.72rem">' + esc(_sdT('Send a copy to the sender as well')) + '</label>' +
                             '</div>' +
                             (_cfFS.confirm_email
                                 ? '<input type="text" class="form-control form-control-sm mt-1 sd-cf-s" data-s="confirm_subject" value="' + esc(_cfFS.confirm_subject || '') + '" maxlength="255" placeholder="' + esc(_sdT('We received your message')) + '">' +
-                                  '<select class="form-select form-select-sm mt-1 sd-cf-sn" data-s="confirm_page_id" title="' + esc(_sdT('Page sent as the e-mail')) + '">' +
+                                  '<select class="form-control form-control-sm mt-1 sd-cf-sn" data-s="confirm_page_id" title="' + esc(_sdT('Page sent as the e-mail')) + '">' +
                                       _swPageOptions(_cfFS.confirm_page_id, _allPagesCache, { none: _sdT('— Plain text: the list of fields —') }) +
                                   '</select>'
                                 : '') +
@@ -34950,7 +34946,7 @@ const StyleDesigner = (function () {
                                 esc(_sdT('An e-mail page is a page of this design with a Form Item View widget of this form: it is drawn for the submission and sent as it looks.')) + '</div>'
                         ) +
                         row(_sdT('Next page'),
-                            '<select class="form-select form-select-sm sd-cf-sn" data-s="confirmation_page_id">' + _cfPageOpts + '</select>' +
+                            '<select class="form-control form-control-sm sd-cf-sn" data-s="confirmation_page_id">' + _cfPageOpts + '</select>' +
                             '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The page the visitor goes to after submitting; when nothing is chosen the message below is shown.')) + ' ' +
                                 esc(_sdT('A page with a Form Item View widget of this form (access: submitter only) shows the visitor the answers they just sent.')) + '</div>'
                         ) +
@@ -34958,7 +34954,7 @@ const StyleDesigner = (function () {
                             '<input type="text" class="form-control form-control-sm sd-cf-s" data-s="confirmation_message" value="' + esc(_cfFS.confirmation_message || '') + '" maxlength="255" placeholder="' + esc(_sdT('Thank you. Your message reached us.')) + '">'
                         ) +
                         row(_sdT('Contact group'),
-                            '<select class="form-select form-select-sm sd-cf-sn" data-s="contact_group_id">' +
+                            '<select class="form-control form-control-sm sd-cf-sn" data-s="contact_group_id">' +
                                 '<option value="0"' + (!(parseInt(_cfFS.contact_group_id || 0, 10) > 0) ? ' selected' : '') + '>' + esc(_sdT('— No group —')) + '</option>' +
                                 (_cfMeta().contactGroups || []).map(function (g) {
                                     return '<option value="' + esc(String(g.id)) + '"' + (String(g.id) === String(parseInt(_cfFS.contact_group_id || 0, 10) || 0) ? ' selected' : '') + '>' + esc(g.name) + '</option>';
@@ -34970,9 +34966,9 @@ const StyleDesigner = (function () {
                             // once the server has the column; until then the
                             // save would drop the value.
                             (_cfMeta().doubleOptIn ? (
-                                '<div class="form-check form-switch mt-2">' +
-                                    '<input class="form-check-input sd-cf-sb" data-s="double_opt_in" type="checkbox" id="sd-sw-cf-double-opt-in"' + (_cfFS.double_opt_in ? ' checked' : '') + '>' +
-                                    '<label class="form-check-label" for="sd-sw-cf-double-opt-in" style="font-size:.72rem">' + esc(_sdT('Ask for confirmation by e-mail before adding to the group (double opt-in)')) + '</label>' +
+                                '<div class="form-field mt-3">' +
+                                    '<div class="switch"><input class="sd-cf-sb" data-s="double_opt_in" type="checkbox" id="sd-sw-cf-double-opt-in"' + (_cfFS.double_opt_in ? ' checked' : '') + '></div>' +
+                                    '<label class="" for="sd-sw-cf-double-opt-in" style="font-size:.72rem">' + esc(_sdT('Ask for confirmation by e-mail before adding to the group (double opt-in)')) + '</label>' +
                                 '</div>' +
                                 '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' + esc(_sdT('The sender gets a link at the address of their contact record and joins the group only after pressing the button behind it.')) + ' ' +
                                     esc(_sdT('Say in the message after submission that a confirmation e-mail is on its way: the form does not say it by itself.')) + '</div>'
@@ -34983,18 +34979,18 @@ const StyleDesigner = (function () {
                         // can follow the conversation, without making them a
                         // member of anything.
                         row(_sdT('Visitors without an account'),
-                            '<div class="form-check form-switch">' +
-                                '<input class="form-check-input sd-cf-sb" data-s="auto_registration" type="checkbox" id="sd-sw-cf-autoreg"' + (_cfFS.auto_registration ? ' checked' : '') + '>' +
-                                '<label class="form-check-label" for="sd-sw-cf-autoreg" style="font-size:.72rem">' + esc(_sdT('Open an account for a visitor who has none')) + '</label>' +
+                            '<div class="form-field">' +
+                                '<div class="switch"><input class="sd-cf-sb" data-s="auto_registration" type="checkbox" id="sd-sw-cf-autoreg"' + (_cfFS.auto_registration ? ' checked' : '') + '></div>' +
+                                '<label class="" for="sd-sw-cf-autoreg" style="font-size:.72rem">' + esc(_sdT('Open an account for a visitor who has none')) + '</label>' +
                             '</div>' +
                             '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
                                 esc(_sdT('The account is opened with the email the form asks for and the visitor is signed in. A next page with a Form Item View widget can show the sign-in details (the "the form just opened an account" condition).')) +
                             '</div>'
                         ) +
                         row(_sdT('Membership and quiz'),
-                            '<div class="form-check form-switch">' +
-                                '<input class="form-check-input sd-cf-sb" data-s="membership" type="checkbox" id="sd-sw-cf-membership"' + (_cfFS.membership ? ' checked' : '') + '>' +
-                                '<label class="form-check-label" for="sd-sw-cf-membership" style="font-size:.72rem">' + esc(_sdT('Give whoever submits this form a membership')) + '</label>' +
+                            '<div class="form-field">' +
+                                '<div class="switch"><input class="sd-cf-sb" data-s="membership" type="checkbox" id="sd-sw-cf-membership"' + (_cfFS.membership ? ' checked' : '') + '></div>' +
+                                '<label class="" for="sd-sw-cf-membership" style="font-size:.72rem">' + esc(_sdT('Give whoever submits this form a membership')) + '</label>' +
                             '</div>' +
                             (_cfFS.membership
                                 ? '<div class="d-flex gap-1 mt-1">' +
@@ -35005,9 +35001,9 @@ const StyleDesigner = (function () {
                                       esc(_sdT('While automatic registration is off, only a signed-in visitor can submit the form.')) +
                                   '</div>')
                                 : '') +
-                            '<div class="form-check form-switch mt-2">' +
-                                '<input class="form-check-input sd-cf-sb" data-s="quiz" type="checkbox" id="sd-sw-cf-quiz"' + (_cfFS.quiz ? ' checked' : '') + '>' +
-                                '<label class="form-check-label" for="sd-sw-cf-quiz" style="font-size:.72rem">' + esc(_sdT('A quiz form (so the fields can carry a correct answer)')) + '</label>' +
+                            '<div class="form-field mt-3">' +
+                                '<div class="switch"><input class="sd-cf-sb" data-s="quiz" type="checkbox" id="sd-sw-cf-quiz"' + (_cfFS.quiz ? ' checked' : '') + '></div>' +
+                                '<label class="" for="sd-sw-cf-quiz" style="font-size:.72rem">' + esc(_sdT('A quiz form (so the fields can carry a correct answer)')) + '</label>' +
                             '</div>'
                         );
                 }
@@ -35025,8 +35021,8 @@ const StyleDesigner = (function () {
                     }
                     _cfExistingRows = row(_sdT('Which form'),
                         '<div class="d-flex gap-1 align-items-center">' +
-                            '<select class="form-select form-select-sm" id="sd-sw-cf-form-id" data-sw-id="' + sid + '">' + _cfFormOpts + '</select>' +
-                            '<button type="button" id="sd-cf-new-form-btn" class="btn btn-sm btn-outline-secondary flex-shrink-0" title="' + esc(_sdT('Create a new form on the form screen')) + '" data-sw-id="' + sid + '">' +
+                            '<select class="form-control form-control-sm" id="sd-sw-cf-form-id" data-sw-id="' + sid + '">' + _cfFormOpts + '</select>' +
+                            '<button type="button" id="sd-cf-new-form-btn" class="btn btn-sm btn-outline theme-secondary flex-shrink-0" title="' + esc(_sdT('Create a new form on the form screen')) + '" data-sw-id="' + sid + '">' +
                                 '<i class="bi bi-plus-lg"></i>' +
                             '</button>' +
                         '</div>' +
@@ -35063,9 +35059,9 @@ const StyleDesigner = (function () {
                                 '</div>';
                             }
                             if (_cfF.settings && _cfF.settings.orphan) {
-                                _cfFL += '<div class="alert alert-warning py-2 px-2 mb-1" style="font-size:.68rem;line-height:1.45">' +
+                                _cfFL += '<div class="alert theme-warning py-3 px-3 mb-1" style="font-size:.68rem;line-height:1.45">' +
                                     _sdT('This form is <strong>orphaned</strong> — the page it belonged to is gone. Move it to this page and it becomes this page\'s form, edited from here.') +
-                                    '<button type="button" class="btn btn-sm btn-warning w-100 mt-1" id="sd-cf-adopt" data-sw-id="' + sid + '">' + esc(_sdT('Move it to this page')) + '</button></div>';
+                                    '<button type="button" class="btn btn-sm btn-solid theme-warning w-100 mt-1" id="sd-cf-adopt" data-sw-id="' + sid + '">' + esc(_sdT('Move it to this page')) + '</button></div>';
                             } else {
                                 _cfFL += '<div style="font-size:.66rem;color:#888;line-height:1.4">' + _sdT('The fields are <strong>read-only</strong>: they are edited on that form\'s own page.') + '</div>';
                             }
@@ -35106,7 +35102,7 @@ const StyleDesigner = (function () {
                 systemSection += sect('bi-calendar3', _sdT('Calendar View Settings'),
                     row(_sdT('Calendars'), _swCalendarChecks(sid, _cfg.calendar_ids)) +
                     row(_sdT('Default view'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="default_view" data-sw-cfg-kind="choice" data-sw-cfg-choices="monthly,weekly,upcoming">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="default_view" data-sw-cfg-kind="choice" data-sw-cfg-choices="monthly,weekly,upcoming">' +
                             '<option value="monthly"'  + (_cvView === 'monthly'  ? ' selected' : '') + '>' + esc(_sdT('Monthly')) + '</option>' +
                             '<option value="weekly"'   + (_cvView === 'weekly'   ? ' selected' : '') + '>' + esc(_sdT('Weekly')) + '</option>' +
                             '<option value="upcoming"' + (_cvView === 'upcoming' ? ' selected' : '') + '>' + esc(_sdT('Upcoming events')) + '</option>' +
@@ -35117,18 +35113,18 @@ const StyleDesigner = (function () {
                         ? row(_sdT('Number of upcoming events'),
                             '<input type="number" class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="number_of_upcoming_events" data-sw-cfg-kind="int" min="1" max="500" value="' + _cvUpcoming + '">')
                         : row(_sdT('Week starts on'),
-                            '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="week_start" data-sw-cfg-kind="choice" data-sw-cfg-choices="monday,sunday">' +
+                            '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="week_start" data-sw-cfg-kind="choice" data-sw-cfg-choices="monday,sunday">' +
                                 '<option value="monday"' + (_cvWeekStart === 'monday' ? ' selected' : '') + '>' + esc(_sdT('Monday')) + '</option>' +
                                 '<option value="sunday"' + (_cvWeekStart === 'sunday' ? ' selected' : '') + '>' + esc(_sdT('Sunday')) + '</option>' +
                             '</select>')) +
                     row(_sdT('Event page'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="event_page_id" data-sw-cfg-kind="page">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="event_page_id" data-sw-cfg-kind="page">' +
                             _swPageOptions(_cfg.event_page_id, _cvEventPages, { none: _sdT('— Automatic —'), types: ['calendar_event_view'] }) +
                         '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Where an event links to. Automatic: the first page with a calendar event widget, else the classic calendar event view page.')) + '</div>'
                     ) +
                     row(_sdT('Date format'),
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="date_format" data-sw-cfg-kind="choice" data-sw-cfg-choices=",d.m.Y,Y-m-d,d M Y">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="date_format" data-sw-cfg-kind="choice" data-sw-cfg-choices=",d.m.Y,Y-m-d,d M Y">' +
                             '<option value=""' + (_cvDateFormat === '' ? ' selected' : '') + '>' + esc(_sdT('Site default') + ' (' + _sdDateSample(false) + ')') + '</option>' +
                             '<option value="d.m.Y"' + (_cvDateFormat === 'd.m.Y' ? ' selected' : '') + '>' + esc(_sdT('DD.MM.YYYY')) + '</option>' +
                             '<option value="Y-m-d"' + (_cvDateFormat === 'Y-m-d' ? ' selected' : '') + '>' + esc(_sdT('YYYY-MM-DD')) + '</option>' +
@@ -35164,7 +35160,7 @@ const StyleDesigner = (function () {
                     var o = { none: none };
                     if (types) o.types = types;
                     return row(label,
-                        '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="page">' +
+                        '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="' + key + '" data-sw-cfg-kind="page">' +
                             _swPageOptions(_cfg[key], _allPagesCache, o) +
                         '</select>' + (hint ? _acHint(esc(hint)) : ''));
                 };
@@ -35257,14 +35253,14 @@ const StyleDesigner = (function () {
         if (!_cfg) {
             actionHtml =
                 '<div class="sd-prop-row">' +
-                    '<button type="button" class="btn btn-sm btn-outline-secondary w-100" id="sd-sc-detach-btn">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-secondary w-100" id="sd-sc-detach-btn">' +
                         '<span class="bi bi-scissors me-1"></span>' + esc(_sdT('Detach')) + '' +
                     '</button>' +
                 '</div>';
         } else {
             actionHtml =
                 '<div class="sd-prop-row">' +
-                    '<button type="button" class="btn btn-sm btn-outline-secondary w-100" id="sd-sw-remove-canvas" data-sw-id="' + sid + '">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-secondary w-100" id="sd-sw-remove-canvas" data-sw-id="' + sid + '">' +
                         '<span class="bi bi-x-lg me-1"></span>' + esc(_sdT('Remove This Placement')) + '' +
                     '</button>' +
                 '</div>' +
@@ -35274,7 +35270,7 @@ const StyleDesigner = (function () {
                     '</div>' +
                 '</div>' +
                 '<div class="sd-prop-row">' +
-                    '<button type="button" class="btn btn-sm btn-outline-danger w-100" id="sd-sw-delete-all" data-sw-id="' + sid + '" data-sw-name="' + esc(sname) + '">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-danger w-100" id="sd-sw-delete-all" data-sw-id="' + sid + '" data-sw-name="' + esc(sname) + '">' +
                         '<span class="bi bi-trash me-1"></span>' + esc(_sdT('Delete the Widget Entirely')) + '' +
                     '</button>' +
                 '</div>' +
@@ -35288,7 +35284,7 @@ const StyleDesigner = (function () {
             if (_swKindOf(_cfg) === 'comments' && _sdCommentsSwapOffered(n)) {
                 actionHtml =
                     '<div class="sd-prop-row">' +
-                        '<button type="button" class="btn btn-sm btn-outline-secondary w-100" id="sd-cmt-back-to-block" data-sw-id="' + sid + '">' +
+                        '<button type="button" class="btn btn-sm btn-outline theme-secondary w-100" id="sd-cmt-back-to-block" data-sw-id="' + sid + '">' +
                             '<span class="bi bi-arrow-counterclockwise me-1"></span>' + esc(_sdT('Back to the fixed block')) +
                         '</button>' +
                     '</div>' +
@@ -35320,7 +35316,7 @@ const StyleDesigner = (function () {
             if (_swForkOffer(n)) {
                 usageHtml +=
                     '<div class="sd-prop-row">' +
-                        '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-sw-fork-page" data-sw-id="' + sid + '">' +
+                        '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-sw-fork-page" data-sw-id="' + sid + '">' +
                             '<span class="bi bi-files me-1"></span>' + esc(_sdT('Make a copy for this page')) +
                         '</button>' +
                     '</div>' +
@@ -35417,11 +35413,11 @@ const StyleDesigner = (function () {
                 var cached = _sharedCache[offer.sid];
                 sdChoose({
                     title: _sdT('This widget is on other pages too'),
-                    html: '<p class="mb-2">' + _sdT('<strong>{var:1}</strong> is used in these places too: {var:2}.', [esc(cached ? cached.name : '#' + offer.sid), esc(offer.others.join(', '))]) + '</p>' +
+                    html: '<p class="mb-3">' + _sdT('<strong>{var:1}</strong> is used in these places too: {var:2}.', [esc(cached ? cached.name : '#' + offer.sid), esc(offer.others.join(', '))]) + '</p>' +
                           '<p class="mb-0">' + esc(_sdT('This page then shows its own copy, with the same layout and settings; the other places keep this widget.')) + ' ' +
                               esc(_sdT('A later change to one of them stays in that one.')) + '</p>' +
                           (offer.unsaved
-                              ? '<p class="mb-0 mt-2">' + esc(_sdT('Its layout has unsaved changes, and the copy takes them. The other places can keep the widget as it was last saved, or get the changes too when you save.')) + '</p>'
+                              ? '<p class="mb-0 mt-3">' + esc(_sdT('Its layout has unsaved changes, and the copy takes them. The other places can keep the widget as it was last saved, or get the changes too when you save.')) + '</p>'
                               : ''),
                     choices: offer.unsaved
                         ? [
@@ -35566,7 +35562,7 @@ const StyleDesigner = (function () {
             var cached = _sharedCache[sid];
             sdChoose({
                 title: _sdT('This widget is on other pages too'),
-                html: '<p class="mb-2">' + _sdT('<strong>{var:1}</strong> is used in these places too: {var:2}.', [esc(cached ? cached.name : '#' + sid), esc(others.join(', '))]) + '</p>' +
+                html: '<p class="mb-3">' + _sdT('<strong>{var:1}</strong> is used in these places too: {var:2}.', [esc(cached ? cached.name : '#' + sid), esc(others.join(', '))]) + '</p>' +
                       '<p class="mb-0">' + _sdT('Changing its type here changes them as well, layouts included. A separate copy can be made for this page instead, and the other pages stay as they are.') + '</p>',
                 choices: [
                     { value: 'fork', label: _sdT('Make a copy for this page'), variant: 'primary', icon: 'bi-files' },
@@ -37660,7 +37656,7 @@ const StyleDesigner = (function () {
                     (r ? ' min="' + r.min + '" max="' + r.max + '" value="' + parsed.arg + '" aria-label="' + esc(label) + '"'
                        : ' style="display:none"') + '>';
         return row(esc(_sdT('Format')),
-            '<select class="form-select form-select-sm sd-sw-bindfilter">' + opts + '</select>' + arg + hint);
+            '<select class="form-control form-control-sm sd-sw-bindfilter">' + opts + '</select>' + arg + hint);
     }
 
     // The operators of the "Show only when a value…" row, in the server's
@@ -38105,13 +38101,13 @@ const StyleDesigner = (function () {
             tokOpts += '<option value="' + esc(o.token) + '"' + (o.token === cur ? ' selected' : '') + '>' + esc(o.label) + '</option>';
         });
         if (cur && !found) tokOpts += '<option value="' + esc(cur) + '" selected>' + esc(cur) + '</option>';
-        var html = '<select class="form-select form-select-sm sd-sw-cond-token" aria-label="' + esc(_sdT('Value to test')) + '">' + tokOpts + '</select>';
+        var html = '<select class="form-control form-control-sm sd-sw-cond-token" aria-label="' + esc(_sdT('Value to test')) + '">' + tokOpts + '</select>';
         if (cur) {
             var opOpts = '';
             SW_COND_OPS.forEach(function (o) {
                 opOpts += '<option value="' + o[0] + '"' + (entry && entry[0] === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
             });
-            html += '<select class="form-select form-select-sm mt-1 sd-sw-cond-op" aria-label="' + esc(_sdT('Condition')) + '">' + opOpts + '</select>' +
+            html += '<select class="form-control form-control-sm mt-1 sd-sw-cond-op" aria-label="' + esc(_sdT('Condition')) + '">' + opOpts + '</select>' +
                 '<input type="text" class="form-control form-control-sm mt-1 sd-sw-cond-value" value="' + esc(params.value == null ? '' : String(params.value)) + '"' +
                     ' aria-label="' + esc(_sdT('Compared with')) + '"' + ((entry && entry[2]) ? '' : ' style="display:none"') + '>';
         }
@@ -40849,7 +40845,7 @@ const StyleDesigner = (function () {
         var mkSelect = function (attr, current, opts, label, hint) {
             if (opts.length <= 1) return '';
             return row(label,
-                '<select class="form-select form-select-sm" ' + attr + '>' +
+                '<select class="form-control form-control-sm" ' + attr + '>' +
                 opts.map(function (o) {
                     return '<option value="' + esc(o[0]) + '"' +
                            (o[0] === current ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
@@ -41060,13 +41056,13 @@ const StyleDesigner = (function () {
             ? _sdT('The text has markup around several pieces of words. A bound value takes the place of the whole text, and the markup is lost. Put the words that should show the value in an element of their own and bind that.')
             : _sdT('The text has markup around it, such as a link or bold. A bound value goes in place of the words inside the markup, so the markup stays.');
         var split = _sdSoleTextLink(node.props.text)
-            ? '<button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-2" id="sd-bind-split-link">' +
+            ? '<button type="button" class="btn btn-sm btn-outline theme-secondary w-100 mt-3" id="sd-bind-split-link">' +
                   '<span class="bi bi-link-45deg me-1"></span>' + esc(_sdT('Make the link its own element')) +
               '</button>' +
               '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('The element keeps its look, and the link\'s address can be bound as well, for example to the detail page.')) + '</div>'
             : '';
         var warn = several && bound;
-        return '<div class="mt-2" style="font-size:.7rem;line-height:1.45;padding:6px 8px;border-radius:3px;' +
+        return '<div class="mt-3" style="font-size:.7rem;line-height:1.45;padding:6px 8px;border-radius:3px;' +
                    (warn ? 'color:#b45309;background:rgba(245,158,11,.08)' : 'color:#4b5563;background:rgba(99,102,241,.06)') + '">' +
                    '<span class="bi ' + (warn ? 'bi-exclamation-triangle' : 'bi-info-circle') + ' me-1"></span>' + esc(msg) +
                    split +
@@ -41195,7 +41191,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildCatalogOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -41262,7 +41258,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildCatalogItemOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -41304,7 +41300,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildMyAccountOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -41345,7 +41341,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildLoginFormOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -41386,7 +41382,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildForgotPasswordOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -41427,7 +41423,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildSearchResultsOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -41468,7 +41464,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildRegistrationOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -41509,7 +41505,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildShoppingCartOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -41551,7 +41547,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildOrderViewOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -41592,7 +41588,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildMembershipOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -41633,7 +41629,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildCustomFormOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -41680,7 +41676,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildCalendarViewOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -41719,7 +41715,7 @@ const StyleDesigner = (function () {
                 var isCustom = !!(current && epFlat.indexOf(current) === -1);
                 html += '<option value="__custom"' + (isCustom ? ' selected' : '') + '>' + esc(_sdT('Custom…')) + '</option>';
                 rowsHtmlEP += row(b.label,
-                    '<select class="form-select form-select-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' +
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
                     ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
@@ -41757,7 +41753,7 @@ const StyleDesigner = (function () {
                 var isCustom = !!(current && cmFlat.indexOf(current) === -1);
                 html += '<option value="__custom"' + (isCustom ? ' selected' : '') + '>' + esc(_sdT('Custom…')) + '</option>';
                 rowsHtmlCM += row(b.label,
-                    '<select class="form-select form-select-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' +
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
                     ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
@@ -41797,7 +41793,7 @@ const StyleDesigner = (function () {
                 var isCustom = !!(current && acFlat.indexOf(current) === -1);
                 html += '<option value="__custom"' + (isCustom ? ' selected' : '') + '>' + esc(_sdT('Custom…')) + '</option>';
                 rowsHtmlAC += row(b.label,
-                    '<select class="form-select form-select-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' +
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
                     ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
@@ -41831,7 +41827,7 @@ const StyleDesigner = (function () {
                 var isCustom = !!(current && SW_CALENDAR_EVENT_VIEW_FLAT_TOKENS.indexOf(current) === -1);
                 html += '<option value="__custom"' + (isCustom ? ' selected' : '') + '>' + esc(_sdT('Custom…')) + '</option>';
                 rowsHtmlCE += row(b.label,
-                    '<select class="form-select form-select-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>' +
                     '<input type="text" class="form-control form-control-sm mt-1 sd-sw-bind-custom"' +
                     ' data-bind-prop="' + esc(b.prop) + '"' +
                     ' placeholder="' + esc(_sdT('custom_token_name')) + '"' +
@@ -41871,7 +41867,7 @@ const StyleDesigner = (function () {
                 var current = bindings[b.prop] || '';
                 var built = _buildExpressOrderOpts(current);
                 var sel =
-                    '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                    '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                     ' data-bind-prop="' + esc(b.prop) + '">' +
                     built.html +
                     '</select>';
@@ -41916,7 +41912,7 @@ const StyleDesigner = (function () {
                         '<div class="sd-prop-row" style="border-top:1px solid #e5e7eb;padding-top:8px;margin-top:8px">' +
                             '<label class="sd-prop-label">' + esc(_sdT('Express Order Field (name)')) + '</label>' +
                             '<div class="sd-prop-control">' +
-                                '<select class="form-select form-select-sm sd-sw-eo-field-sel">' + _eoFieldOpts + '</select>' +
+                                '<select class="form-control form-control-sm sd-sw-eo-field-sel">' + _eoFieldOpts + '</select>' +
                                 '<input type="text" class="form-control form-control-sm mt-1 sd-sw-eo-field-custom"' +
                                     ' placeholder="custom_name_attr"' +
                                     ' value="' + esc(_eoFieldIsCustom ? _eoCurField : '') + '"' +
@@ -42061,9 +42057,9 @@ const StyleDesigner = (function () {
                            (warn ? '<span class="bi bi-exclamation-triangle me-1"></span>' : '') + esc(text) + '</div>';
             };
             var cur = spec.page_id ? String(spec.page_id) : '0';
-            var html = '<div class="sd-sw-plink mt-2">' +
+            var html = '<div class="sd-sw-plink mt-3">' +
                 '<div style="font-size:.7rem;font-weight:600;margin-bottom:2px">' + esc(_sdT('Page to open')) + '</div>' +
-                '<select class="form-select form-select-sm sd-sw-plink-page" aria-label="' + esc(_sdT('Page to open')) + '">' +
+                '<select class="form-control form-control-sm sd-sw-plink-page" aria-label="' + esc(_sdT('Page to open')) + '">' +
                     _swPageOptions(cur, _allPagesCache, { none: _sdT('— Choose a page —') }) +
                 '</select>';
             if (!spec.page_id) {
@@ -42105,13 +42101,13 @@ const StyleDesigner = (function () {
                 html +=
                     '<div class="d-flex gap-1 mt-1 align-items-center">' +
                         '<input type="text" class="form-control form-control-sm sd-sw-plink-name" data-plink-i="' + i + '" value="' + esc(p.name) + '" maxlength="32" placeholder="board" style="width:96px;flex:none" aria-label="' + esc(_sdT('Parameter name')) + '">' +
-                        '<select class="form-select form-select-sm sd-sw-plink-token" data-plink-i="' + i + '" aria-label="' + esc(_sdT('Value')) + '">' + tokenOptions(p.token) + '</select>' +
-                        '<button type="button" class="btn btn-sm btn-outline-danger sd-sw-plink-remove" data-plink-i="' + i + '" title="' + esc(_sdT('Remove')) + '" aria-label="' + esc(_sdT('Remove')) + '"><span class="bi bi-x-lg"></span></button>' +
+                        '<select class="form-control form-control-sm sd-sw-plink-token" data-plink-i="' + i + '" aria-label="' + esc(_sdT('Value')) + '">' + tokenOptions(p.token) + '</select>' +
+                        '<button type="button" class="btn btn-sm btn-outline theme-danger sd-sw-plink-remove" data-plink-i="' + i + '" title="' + esc(_sdT('Remove')) + '" aria-label="' + esc(_sdT('Remove')) + '"><span class="bi bi-x-lg"></span></button>' +
                     '</div>' +
                     '<div class="sd-sw-plink-warn" data-plink-i="' + i + '">' + _swPageLinkNameWarn(spec.params, i) + '</div>';
             });
             html +=
-                '<button type="button" class="btn btn-sm btn-outline-primary mt-1 sd-sw-plink-add"' + (spec.params.length >= _SW_PAGE_LINK_MAX ? ' disabled' : '') + '>' +
+                '<button type="button" class="btn btn-sm btn-outline theme-primary mt-1 sd-sw-plink-add"' + (spec.params.length >= _SW_PAGE_LINK_MAX ? ' disabled' : '') + '>' +
                     '<span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add a value')) + '</button>' +
                 note(_sdT('Each value goes into the address as the record stores it (?name=value). A value that is empty, longer than 100 characters or on several lines is left out.'), false) +
             '</div>';
@@ -42152,14 +42148,14 @@ const StyleDesigner = (function () {
                 pageOptions += '<option value="' + esc(spec.page_id) + '" selected>' + esc(_sdT('A page of this design (not published yet)')) + '</option>';
             }
             pageOptions += _swFormOptions(target);
-            var html = '<div class="sd-sw-ref mt-2">' +
+            var html = '<div class="sd-sw-ref mt-3">' +
                 label(_sdT('Field holding the reference')) +
-                '<select class="form-select form-select-sm sd-sw-ref-field" data-ref-prop="' + esc(prop) + '" aria-label="' + esc(_sdT('Field holding the reference')) + '">' + fieldOptions(fields, spec.field) + '</select>' +
+                '<select class="form-control form-control-sm sd-sw-ref-field" data-ref-prop="' + esc(prop) + '" aria-label="' + esc(_sdT('Field holding the reference')) + '">' + fieldOptions(fields, spec.field) + '</select>' +
                 label(_sdT('Form it points into')) +
-                '<select class="form-select form-select-sm sd-sw-ref-page" data-ref-prop="' + esc(prop) + '" aria-label="' + esc(_sdT('Form it points into')) + '">' + pageOptions + '</select>';
+                '<select class="form-control form-control-sm sd-sw-ref-page" data-ref-prop="' + esc(prop) + '" aria-label="' + esc(_sdT('Form it points into')) + '">' + pageOptions + '</select>';
             if (target) {
                 html += label(_sdT('Field to show')) +
-                    '<select class="form-select form-select-sm sd-sw-ref-show" data-ref-prop="' + esc(prop) + '" aria-label="' + esc(_sdT('Field to show')) + '">' +
+                    '<select class="form-control form-control-sm sd-sw-ref-show" data-ref-prop="' + esc(prop) + '" aria-label="' + esc(_sdT('Field to show')) + '">' +
                         fieldOptions(targetFields || [], spec.show, [['reference_code', _sdT('Reference code')], ['address_name', _sdT('Address name')]]) +
                     '</select>';
             }
@@ -42174,7 +42170,7 @@ const StyleDesigner = (function () {
             var current = bindings[b.prop] || '';
             var built = _buildOptionsHtml(current, b.prop);
             var sel =
-                '<select class="form-select form-select-sm sd-sw-bind-sel"' +
+                '<select class="form-control form-control-sm sd-sw-bind-sel"' +
                 ' data-bind-prop="' + esc(b.prop) + '">' +
                 built.html +
                 '</select>';
@@ -42618,12 +42614,12 @@ const StyleDesigner = (function () {
             if (has('btn-' + variants[vi]))          { currentVariant = variants[vi]; break; }
         }
         var currentSize = has('btn-sm') ? 'btn-sm' : has('btn-lg') ? 'btn-lg' : '';
-        return row(_sdT('Variant'), '<select class="form-select form-select-sm" data-btn-variant>' +
+        return row(_sdT('Variant'), '<select class="form-control form-control-sm" data-btn-variant>' +
                 [['',_sdT('None')],['primary',_sdT('Primary')],['secondary',_sdT('Secondary')],['success',_sdT('Success')],['danger',_sdT('Danger')],['warning',_sdT('Warning')],['info',_sdT('Info')],['light',_sdT('Light')],['dark',_sdT('Dark')]].map(function(o) {
                     return '<option value="' + o[0] + '"' + (o[0] === currentVariant ? ' selected' : '') + '>' + o[1] + '</option>';
                 }).join('') + '</select>') +
             row(_sdT('Outlined'), swAttr('data-btn-outlined', isOutlined)) +
-            row(_sdT('Size'), '<select class="form-select form-select-sm" data-stylegroup="btn-sm,btn-lg">' +
+            row(_sdT('Size'), '<select class="form-control form-control-sm" data-stylegroup="btn-sm,btn-lg">' +
                 [['',_sdT('Default')],['btn-sm',_sdT('Small')],['btn-lg',_sdT('Large')]].map(function(o) {
                     return '<option value="' + o[0] + '"' + (o[0] === currentSize ? ' selected' : '') + '>' + o[1] + '</option>';
                 }).join('') + '</select>');
@@ -42643,7 +42639,7 @@ const StyleDesigner = (function () {
         // "Default" and offered no way to change the colour or size.
         var lsVal = (cls.indexOf('btn') !== -1) ? (cls.indexOf('btn-link') !== -1 ? 'btn-link' : 'btn') :
                     (cls.indexOf('nav-link') !== -1) ? 'nav-link' : '';
-        var linkStyleSel = '<select class="form-select form-select-sm" data-link-style>' +
+        var linkStyleSel = '<select class="form-control form-control-sm" data-link-style>' +
             '<option value="">' + esc(_sdT('Default')) + '</option>' +
             '<option value="nav-link"' + (lsVal === 'nav-link' ? ' selected' : '') + '>' + esc(_sdT('Nav Link')) + '</option>' +
             '<option value="btn"'      + (lsVal === 'btn'      ? ' selected' : '') + '>' + esc(_sdT('Button')) + '</option>' +
@@ -42653,7 +42649,7 @@ const StyleDesigner = (function () {
         // Bound href → the URL box would be a decoy (server overwrites it).
         var urlRowLO = _sdHrefIsBound(n)
             ? _sdBoundHrefNotice(n)
-            : '<div class="input-group input-group-sm"><input type="text" id="sd-prop-lo-href" class="form-control" data-prop="href" value="' + esc(href) + '" placeholder="#"><button class="btn btn-outline-secondary" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-lo-href\',\'href\')" title="' + esc(_sdT('Choose a File')) + '"><i class="bi bi-folder2-open"></i></button></div>';
+            : '<div class="input-group input-group-sm"><input type="text" id="sd-prop-lo-href" class="form-control" data-prop="href" value="' + esc(href) + '" placeholder="#"><button class="btn btn-outline theme-secondary" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-lo-href\',\'href\')" title="' + esc(_sdT('Choose a File')) + '"><i class="bi bi-folder2-open"></i></button></div>';
 
         return sect('bi-link-45deg', _sdT('Link Options'),
             row(_sdT('URL'), urlRowLO) +
@@ -42802,7 +42798,7 @@ const StyleDesigner = (function () {
                  '</div>';
         }
         h += row(_sdT('Element'),
-            '<select class="form-select form-select-sm" data-btn-element>' +
+            '<select class="form-control form-control-sm" data-btn-element>' +
             '<option value="a"'        + (isLink     ? ' selected' : '') + '>Link (&lt;a&gt;)</option>' +
             '<option value="button"'   + (isButton   ? ' selected' : '') + '>Button (&lt;button&gt;)</option>' +
             '<option value="input"'    + (isInput    ? ' selected' : '') + '>Input (&lt;input&gt;)</option>' +
@@ -42830,7 +42826,7 @@ const StyleDesigner = (function () {
                 ? _sdBoundHrefNotice(n)
                 : '<div class="input-group input-group-sm">' +
                   '<input type="text" id="sd-prop-bl-href" class="form-control" data-prop="href" value="' + esc(n.props.href || '') + '" placeholder="#">' +
-                  '<button class="btn btn-outline-secondary" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-bl-href\',\'href\')" title="' + esc(_sdT('Select File')) + '"><i class="bi bi-folder2-open"></i></button>' +
+                  '<button class="btn btn-outline theme-secondary" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-bl-href\',\'href\')" title="' + esc(_sdT('Select File')) + '"><i class="bi bi-folder2-open"></i></button>' +
                   '</div>');
             h += row(_sdT('Target'), sel('target', [['',_sdT('Default')],['_blank',_sdT('New Tab')],['_self',_sdT('Same Window')]], n.props.target || ''));
             h += row(_sdT('Relationship'), sel('rel', relOpts, n.props.rel || ''));
@@ -42842,7 +42838,7 @@ const StyleDesigner = (function () {
                 if (hasCls(_linkColors[_lci])) { _currentLinkColor = _linkColors[_lci]; break; }
             }
             h += row(_sdT('Link Color'),
-                '<select class="form-select form-select-sm" data-stylegroup="' + _linkColors.join(',') + '">' +
+                '<select class="form-control form-control-sm" data-stylegroup="' + _linkColors.join(',') + '">' +
                 [['',_sdT('Default')],['link-primary',_sdT('Primary')],['link-secondary',_sdT('Secondary')],['link-success', _sdT('Success variant')],
                  ['link-danger',_sdT('Danger')],['link-warning',_sdT('Warning')],['link-info',_sdT('Info')],
                  ['link-light',_sdT('Light')],['link-dark',_sdT('Dark')],['link-body-emphasis',_sdT('Body Emphasis')]].map(function(o) {
@@ -42852,7 +42848,7 @@ const StyleDesigner = (function () {
         } else if (isButton) {
             var btnTypeVal = isSemantic ? (getAttr('type') || 'button') : (n.props.btnType || 'button');
             h += row(_sdT('Button Type'),
-                '<select class="form-select form-select-sm" data-btn-type>' +
+                '<select class="form-control form-control-sm" data-btn-type>' +
                 [['button',_sdT('Button')],['submit',_sdT('Submit')],['reset',_sdT('Reset')]].map(function(o) {
                     return '<option value="' + o[0] + '"' + (o[0] === btnTypeVal ? ' selected' : '') + '>' + o[1] + '</option>';
                 }).join('') + '</select>');
@@ -42873,7 +42869,7 @@ const StyleDesigner = (function () {
             var inputValueVal = isSemantic ? getAttr('value') : (n.props.text || '');
             var inputPlaceholder = isSemantic ? getAttr('placeholder') : '';
             h += row(_sdT('Type'),
-                '<select class="form-select form-select-sm" data-btn-type>' +
+                '<select class="form-control form-control-sm" data-btn-type>' +
                 _inputTypes.map(function(t) {
                     return '<option value="' + t + '"' + (t === inputTypeVal ? ' selected' : '') + '>' + t + '</option>';
                 }).join('') + '</select>');
@@ -42930,7 +42926,7 @@ const StyleDesigner = (function () {
         var displayStyle  = hasBtnLinkCls ? 'btn-link' : (hasBtnCls ? 'btn' : '');
 
         h += row(_sdT('Button Style'),
-            '<select class="form-select form-select-sm" data-btn-display>' +
+            '<select class="form-control form-control-sm" data-btn-display>' +
             [['',_sdT('No styling')],['btn',_sdT('Button')],['btn-link',_sdT('Link style')]].map(function(o) {
                 return '<option value="' + o[0] + '"' + (o[0] === displayStyle ? ' selected' : '') + '>' + o[1] + '</option>';
             }).join('') + '</select>'
@@ -42945,7 +42941,7 @@ const StyleDesigner = (function () {
                     if (hasCls('btn-outline-' + btnVariants[vi])) { currentVariant = btnVariants[vi]; isOutlined = true; break; }
                     if (hasCls('btn-' + btnVariants[vi]))          { currentVariant = btnVariants[vi]; break; }
                 }
-                h += row(_sdT('Variant'), '<select class="form-select form-select-sm" data-btn-variant>' +
+                h += row(_sdT('Variant'), '<select class="form-control form-control-sm" data-btn-variant>' +
                     [['',_sdT('None')],['primary',_sdT('Primary')],['secondary',_sdT('Secondary')],['success',_sdT('Success')],['danger',_sdT('Danger')],['warning',_sdT('Warning')],['info',_sdT('Info')],['light',_sdT('Light')],['dark',_sdT('Dark')]].map(function(o) {
                         return '<option value="' + o[0] + '"' + (o[0] === currentVariant ? ' selected' : '') + '>' + o[1] + '</option>';
                     }).join('') + '</select>');
@@ -42967,7 +42963,7 @@ const StyleDesigner = (function () {
             // the row is a control that changes nothing, so it is not drawn.
             if (displayStyle === 'btn') {
                 var currentSize = hasCls('btn-sm') ? 'btn-sm' : hasCls('btn-lg') ? 'btn-lg' : '';
-                h += row(_sdT('Size'), '<select class="form-select form-select-sm" data-stylegroup="btn-sm,btn-lg">' +
+                h += row(_sdT('Size'), '<select class="form-control form-control-sm" data-stylegroup="btn-sm,btn-lg">' +
                     [['',_sdT('Default')],['btn-sm',_sdT('Small')],['btn-lg',_sdT('Large')]].map(function(o) {
                         return '<option value="' + o[0] + '"' + (o[0] === currentSize ? ' selected' : '') + '>' + o[1] + '</option>';
                     }).join('') + '</select>');
@@ -42999,7 +42995,7 @@ const StyleDesigner = (function () {
         // Position: mutex sticky-top / fixed-top / fixed-bottom
         var posCls = ['sticky-top','fixed-top','fixed-bottom'];
         var posVal = posCls.filter(function(c) { return cls.indexOf(c) !== -1; })[0] || '';
-        var posH = '<select class="form-select form-select-sm" data-stylegroup="sticky-top,fixed-top,fixed-bottom">' +
+        var posH = '<select class="form-control form-control-sm" data-stylegroup="sticky-top,fixed-top,fixed-bottom">' +
             '<option value="">' + esc(_sdT('None')) + '</option>' +
             '<option value="sticky-top"' + (posVal === 'sticky-top' ? ' selected' : '') + '>' + esc(_sdT('Sticky top')) + '</option>' +
             '<option value="fixed-top"' + (posVal === 'fixed-top'   ? ' selected' : '') + '>' + esc(_sdT('Fixed top')) + '</option>' +
@@ -43008,7 +43004,7 @@ const StyleDesigner = (function () {
         // Theme: mutex navbar-dark / navbar-light
         var themeCls = ['navbar-dark','navbar-light'];
         var themeVal = themeCls.filter(function(c) { return cls.indexOf(c) !== -1; })[0] || '';
-        var themeH = '<select class="form-select form-select-sm" data-stylegroup="navbar-dark,navbar-light">' +
+        var themeH = '<select class="form-control form-control-sm" data-stylegroup="navbar-dark,navbar-light">' +
             '<option value="">' + esc(_sdT('Default')) + '</option>' +
             '<option value="navbar-dark"' + (themeVal === 'navbar-dark'  ? ' selected' : '') + '>' + esc(_sdT('Dark (dark)')) + '</option>' +
             '<option value="navbar-light"' + (themeVal === 'navbar-light' ? ' selected' : '') + '>' + esc(_sdT('Light')) + '</option>' +
@@ -43016,7 +43012,7 @@ const StyleDesigner = (function () {
         // Expand breakpoint: mutex navbar-expand-*
         var expCls = ['navbar-expand-sm','navbar-expand-md','navbar-expand-lg','navbar-expand-xl','navbar-expand-xxl'];
         var expVal = expCls.filter(function(c) { return cls.indexOf(c) !== -1; })[0] || '';
-        var expH = '<select class="form-select form-select-sm" data-stylegroup="navbar-expand-sm,navbar-expand-md,navbar-expand-lg,navbar-expand-xl,navbar-expand-xxl">' +
+        var expH = '<select class="form-control form-control-sm" data-stylegroup="navbar-expand-sm,navbar-expand-md,navbar-expand-lg,navbar-expand-xl,navbar-expand-xxl">' +
             '<option value="">' + esc(_sdT('None')) + '</option>' +
             '<option value="navbar-expand-sm"'  + (expVal === 'navbar-expand-sm'  ? ' selected' : '') + '>SM (576px+)</option>' +
             '<option value="navbar-expand-md"'  + (expVal === 'navbar-expand-md'  ? ' selected' : '') + '>MD (768px+)</option>' +
@@ -43147,7 +43143,7 @@ const StyleDesigner = (function () {
             // Bound href → read-only note instead of an input the server ignores.
             linkRows = row(_sdT('Href'), _sdHrefIsBound(n)
                 ? _sdBoundHrefNotice(n)
-                : '<div class="input-group input-group-sm"><input type="text" class="form-control" id="sd-prop-sem-href" data-prop="href" value="' + esc(n.props.href || '') + '" placeholder="#"><button class="btn btn-outline-secondary" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-sem-href\',\'href\')" title="' + esc(_sdT('Select File')) + '"><i class="bi bi-folder2-open"></i></button></div>') +
+                : '<div class="input-group input-group-sm"><input type="text" class="form-control" id="sd-prop-sem-href" data-prop="href" value="' + esc(n.props.href || '') + '" placeholder="#"><button class="btn btn-outline theme-secondary" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-sem-href\',\'href\')" title="' + esc(_sdT('Select File')) + '"><i class="bi bi-folder2-open"></i></button></div>') +
                 row(_sdT('Target'), sel('target', [['',_sdT('Default/Self')],['_blank',_sdT('New Window (_blank)')]], n.props.target || ''));
         }
 
@@ -43306,7 +43302,7 @@ const StyleDesigner = (function () {
             }
             if (_sectionOpts.length > 1) {
                 sectionBindRow = row(_sdT('Section binding (system widget)'),
-                    '<select class="form-select form-select-sm" data-bind-section>' +
+                    '<select class="form-control form-control-sm" data-bind-section>' +
                     _sectionOpts.map(function(o) {
                         return '<option value="' + o[0] + '"' + (o[0] === _curSection ? ' selected' : '') + '>' + o[1] + '</option>';
                     }).join('') + '</select>' +
@@ -43439,7 +43435,7 @@ const StyleDesigner = (function () {
         var _styleOpts = [['nav-tabs',_sdT('Tabs')],['nav-pills',_sdT('Pills')],['nav-underline',_sdT('Underline')]];
         var _curStyle = '';
         _styleOpts.forEach(function(o) { if (cls.indexOf(o[0]) !== -1) _curStyle = o[0]; });
-        var styleSel = '<select class="form-select form-select-sm" data-stylegroup="' +
+        var styleSel = '<select class="form-control form-control-sm" data-stylegroup="' +
             _styleOpts.map(function(o) { return o[0]; }).join(',') + '">' +
             '<option value="">' + esc(_sdT('Plain')) + '</option>';
         _styleOpts.forEach(function(o) {
@@ -43451,7 +43447,7 @@ const StyleDesigner = (function () {
         var _alignOpts = [['justify-content-center',_sdT('Center')],['justify-content-end',_sdT('End')]];
         var _curAlign = '';
         _alignOpts.forEach(function(o) { if (cls.indexOf(o[0]) !== -1) _curAlign = o[0]; });
-        var alignSel = '<select class="form-select form-select-sm" data-stylegroup="' +
+        var alignSel = '<select class="form-control form-control-sm" data-stylegroup="' +
             _alignOpts.map(function(o) { return o[0]; }).join(',') + '">' +
             '<option value="">' + esc(_sdT('Start')) + '</option>';
         _alignOpts.forEach(function(o) {
@@ -43463,7 +43459,7 @@ const StyleDesigner = (function () {
         var _fillOpts = [['nav-fill',_sdT('Fill')],['nav-justified',_sdT('Justified')]];
         var _curFill = '';
         _fillOpts.forEach(function(o) { if (cls.indexOf(o[0]) !== -1) _curFill = o[0]; });
-        var fillSel = '<select class="form-select form-select-sm" data-stylegroup="' +
+        var fillSel = '<select class="form-control form-control-sm" data-stylegroup="' +
             _fillOpts.map(function(o) { return o[0]; }).join(',') + '">' +
             '<option value="">' + esc(_sdT('None')) + '</option>';
         _fillOpts.forEach(function(o) {
@@ -43497,7 +43493,7 @@ const StyleDesigner = (function () {
             barGroup.push('text-bg-' + c[0], 'bg-' + c[0]);
             if (cls.indexOf('text-bg-' + c[0]) !== -1 || cls.indexOf('bg-' + c[0]) !== -1) barCurrent = c[0];
         });
-        var colorSel = '<select class="form-select form-select-sm" data-stylegroup="' + barGroup.join(',') + '">' +
+        var colorSel = '<select class="form-control form-control-sm" data-stylegroup="' + barGroup.join(',') + '">' +
             '<option value="">' + _sdT('Default') + '</option>' +
             barColors.map(function (c) {
                 return '<option value="text-bg-' + c[0] + '"' + (c[0] === barCurrent ? ' selected' : '') + '>' + c[1] + '</option>';
@@ -43511,7 +43507,7 @@ const StyleDesigner = (function () {
         var pct = pctMatch ? Math.round(parseFloat(pctMatch[1])) : 50;
 
         return sect('bi-bar-chart-steps', _sdT('Progress Bar'),
-            row(_sdT('Value'), '<div class="d-flex align-items-center gap-2">' +
+            row(_sdT('Value'), '<div class="d-flex align-items-center gap-3">' +
                 '<input type="range" class="form-range flex-grow-1" min="0" max="100" value="' + pct + '" data-pb-value>' +
                 '<span class="sd-pb-pct-lbl" style="min-width:2.5rem;font-size:.75rem;text-align:right">' + pct + '%</span>' +
                 '</div>') +
@@ -43525,7 +43521,7 @@ const StyleDesigner = (function () {
     function propsAlertOptions(n) {
         var cls = (n.props.cssClass || '').split(/\s+/).filter(Boolean);
         var variants = ['primary','secondary','success','danger','warning','info','light','dark'];
-        var variantSel = '<select class="form-select form-select-sm" data-stylegroup="' +
+        var variantSel = '<select class="form-control form-control-sm" data-stylegroup="' +
             variants.map(function(v){ return 'alert-' + v; }).join(',') + '">';
         variantSel += '<option value="">—</option>';
         variants.forEach(function(v) {
@@ -43557,7 +43553,7 @@ const StyleDesigner = (function () {
         function ha(nm) { return (n.props._attrs || []).some(function(a) { return a.name === nm; }); }
         var cls = (n.props.cssClass || '').split(/\s+/).filter(Boolean);
         function fOpt(attr, opts, cur) {
-            var h = '<select class="form-select form-select-sm" data-form-attr="' + attr + '">';
+            var h = '<select class="form-control form-control-sm" data-form-attr="' + attr + '">';
             opts.forEach(function(o) { h += '<option value="' + o[0] + '"' + (o[0] === cur ? ' selected' : '') + '>' + o[1] + '</option>'; });
             return h + '</select>';
         }
@@ -43623,7 +43619,7 @@ const StyleDesigner = (function () {
         // that is in fact pointing at nothing.
         if (cur && !seen[cur]) ids.unshift(cur);
 
-        var selHtml = '<select class="form-select form-select-sm" data-label-for>' +
+        var selHtml = '<select class="form-control form-control-sm" data-label-for>' +
                       '<option value="">' + esc(_sdT('(automatic)')) + '</option>';
         ids.forEach(function (id) {
             selHtml += '<option value="' + esc(id) + '"' + (id === cur ? ' selected' : '') + '>' + esc(id) + '</option>';
@@ -43649,7 +43645,7 @@ const StyleDesigner = (function () {
         function ga(nm) { var a = n.props._attrs || []; for (var i = 0; i < a.length; i++) if (a[i].name === nm) return a[i].value || ''; return ''; }
         function ha(nm) { return (n.props._attrs || []).some(function(a) { return a.name === nm; }); }
         function fOpt(dAttr, opts, cur) {
-            var h = '<select class="form-select form-select-sm" data-form-input-attr="' + dAttr + '">';
+            var h = '<select class="form-control form-control-sm" data-form-input-attr="' + dAttr + '">';
             opts.forEach(function(o) { h += '<option value="' + o[0] + '"' + (o[0] === cur ? ' selected' : '') + '>' + o[1] + '</option>'; });
             return h + '</select>';
         }
@@ -44175,19 +44171,19 @@ const StyleDesigner = (function () {
             '<div class="sd-prop-row"><div class="sd-prop-control">' +
                 '<div class="sd-choice-list">' + rows + '</div>' +
                 '<div class="d-flex gap-1 mt-1">' +
-                    '<button type="button" class="btn btn-sm btn-outline-primary flex-grow-1" id="sd-choice-add">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-primary flex-grow-1" id="sd-choice-add">' +
                         '<span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add an option')) + '</button>' +
                     (kind === 'select' && !list.some(function (c) { return c.value === ''; })
-                        ? '<button type="button" class="btn btn-sm btn-outline-secondary" id="sd-choice-prompt" title="' + esc(_sdT('Add an empty &quot;Please choose&quot; row')) + '">' +
+                        ? '<button type="button" class="btn btn-sm btn-outline theme-secondary" id="sd-choice-prompt" title="' + esc(_sdT('Add an empty &quot;Please choose&quot; row')) + '">' +
                           '<span class="bi bi-chevron-bar-down"></span></button>'
                         : '') +
-                    '<button type="button" class="btn btn-sm btn-outline-secondary" id="sd-choice-bulk-toggle" title="' + esc(_sdT('Bulk edit')) + '">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-secondary" id="sd-choice-bulk-toggle" title="' + esc(_sdT('Bulk edit')) + '">' +
                         '<span class="bi bi-textarea-t"></span></button>' +
                 '</div>' +
                 '<div id="sd-choice-bulk" style="display:none;margin-top:6px">' +
                     '<textarea class="form-control form-control-sm" id="sd-choice-bulk-text" rows="5" spellcheck="false">' + esc(bulk) + '</textarea>' +
                     '<div class="sd-choice-hint">' + _sdT('One option per line: <code>value</code> · <code>value|label</code> · <code>value|label|on</code> (selected by default).') + '</div>' +
-                    '<button type="button" class="btn btn-sm btn-primary w-100 mt-1" id="sd-choice-bulk-apply">' + esc(_sdT('Apply')) + '</button>' +
+                    '<button type="button" class="btn btn-sm btn-solid theme-primary w-100 mt-1" id="sd-choice-bulk-apply">' + esc(_sdT('Apply')) + '</button>' +
                 '</div>' +
             '</div></div>'
         );
@@ -44429,8 +44425,8 @@ const StyleDesigner = (function () {
         if (colspan > 1 || rowspan > 1) {
             var spanInfo = [colspan > 1 ? 'colspan=' + colspan : '', rowspan > 1 ? 'rowspan=' + rowspan : ''].filter(Boolean).join(', ');
             splitRow = row(_sdT('Merged'),
-                '<span class="me-2 small text-muted">' + spanInfo + '</span>' +
-                '<button type="button" class="btn btn-sm btn-outline-secondary" data-split-cell="' + n._id + '"><i class="bi bi-grid"></i> ' + esc(_sdT('Split')) + '</button>');
+                '<span class="me-3 small fg-secondary">' + spanInfo + '</span>' +
+                '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-split-cell="' + n._id + '"><i class="bi bi-grid"></i> ' + esc(_sdT('Split')) + '</button>');
         }
         return sect('bi-table', _sdT('Cell Options'), row(_sdT('Color'), variantSel) + splitRow);
     }
@@ -44461,9 +44457,9 @@ const StyleDesigner = (function () {
 
         var rows = '';
         if (hId) rows += row(_sdT('Header'), swAttr('data-card-section-vis="header" data-card-section-id="' + hId + '"', headerVisible));
-        else     rows += row(_sdT('Header'), '<button type="button" class="btn btn-sm btn-outline-secondary" data-card-add="header" data-card-node-id="' + n._id + '"><i class="bi bi-plus-lg"></i>' + esc(_sdT(' Add')) + '</button>');
+        else     rows += row(_sdT('Header'), '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-card-add="header" data-card-node-id="' + n._id + '"><i class="bi bi-plus-lg"></i>' + esc(_sdT(' Add')) + '</button>');
         if (fId) rows += row(_sdT('Footer'), swAttr('data-card-section-vis="footer" data-card-section-id="' + fId + '"', footerVisible));
-        else     rows += row(_sdT('Footer'), '<button type="button" class="btn btn-sm btn-outline-secondary" data-card-add="footer" data-card-node-id="' + n._id + '"><i class="bi bi-plus-lg"></i>' + esc(_sdT(' Add')) + '</button>');
+        else     rows += row(_sdT('Footer'), '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-card-add="footer" data-card-node-id="' + n._id + '"><i class="bi bi-plus-lg"></i>' + esc(_sdT(' Add')) + '</button>');
 
         // ── Card image (top / bottom / none) ──────────────────────────────
         // Image lives as a content/image child of the card with class
@@ -44480,7 +44476,7 @@ const StyleDesigner = (function () {
         var imgSrc = imgNode && imgNode.props ? (imgNode.props.src || '') : '';
         var imgAlt = imgNode && imgNode.props ? (imgNode.props.alt || '') : '';
         rows += row(_sdT('Image'),
-            '<select class="form-select form-select-sm" data-card-img-pos data-card-node-id="' + n._id + '">' +
+            '<select class="form-control form-control-sm" data-card-img-pos data-card-node-id="' + n._id + '">' +
                 '<option value=""'       + (imgPos === ''       ? ' selected' : '') + '>' + esc(_sdT('None')) + '</option>' +
                 '<option value="top"'    + (imgPos === 'top'    ? ' selected' : '') + '>' + esc(_sdT('On top (card-img-top)')) + '</option>' +
                 '<option value="bottom"' + (imgPos === 'bottom' ? ' selected' : '') + '>' + esc(_sdT('At the bottom (card-img-bottom)')) + '</option>' +
@@ -44514,7 +44510,7 @@ const StyleDesigner = (function () {
         if (bodyNode) {
             var bodyHasP0 = (bodyNode.props.cssClass || '').split(/\s+/).indexOf('p-0') !== -1;
             rows += row(_sdT('Body padding'),
-                '<select class="form-select form-select-sm" data-card-body-pad data-card-body-id="' + bodyNode._id + '">' +
+                '<select class="form-control form-control-sm" data-card-body-pad data-card-body-id="' + bodyNode._id + '">' +
                     '<option value=""'    + (bodyHasP0 ? '' : ' selected') + '>' + esc(_sdT('Standard')) + '</option>' +
                     '<option value="p-0"' + (bodyHasP0 ? ' selected' : '') + '>' + esc(_sdT('None (p-0)')) + '</option>' +
                 '</select>'
@@ -44565,7 +44561,7 @@ const StyleDesigner = (function () {
             _countOpts += '<option value="' + _ci + '"' + (_ci === _curCount ? ' selected' : '') + '>' + _ci + '</option>';
         }
         rows += row(_sdT('Number of cards'),
-            '<select class="form-select form-select-sm" data-cardgroup-count data-cardgroup-id="' + n._id + '">' + _countOpts + '</select>'
+            '<select class="form-control form-control-sm" data-cardgroup-count data-cardgroup-id="' + n._id + '">' + _countOpts + '</select>'
         );
 
         // Background / Text / Border / Shadow colour pickers — same lists
@@ -44620,14 +44616,14 @@ const StyleDesigner = (function () {
             row(_sdT('Title'),    '<input type="text" class="form-control form-control-sm" data-popover-prop="title" value="' + esc(titleVal) + '" placeholder="' + esc(_sdT('Popover title')) + '">') +
             row(_sdT('Content'),  '<textarea class="form-control form-control-sm" data-popover-prop="content" rows="2" placeholder="' + esc(_sdT('Popover content...')) + '">' + esc(contentVal) + '</textarea>') +
             row(_sdT('Placement'),
-                '<select class="form-select form-select-sm" data-popover-prop="placement">' +
+                '<select class="form-control form-control-sm" data-popover-prop="placement">' +
                 ['top','bottom','start','end'].map(function (pl) {
                     return '<option value="' + pl + '"' + (pl === placement ? ' selected' : '') + '>' + capFirst(pl) + '</option>';
                 }).join('') +
                 '</select>'
             ) +
             row(_sdT('Trigger'),
-                '<select class="form-select form-select-sm" data-popover-prop="trigger">' +
+                '<select class="form-control form-control-sm" data-popover-prop="trigger">' +
                 [['click',_sdT('Click')],['hover',_sdT('Hover')],['focus',_sdT('Focus')],['hover focus',_sdT('Hover + Focus')]].map(function (opt) {
                     return '<option value="' + opt[0] + '"' + (opt[0] === trigger ? ' selected' : '') + '>' + opt[1] + '</option>';
                 }).join('') +
@@ -44669,7 +44665,7 @@ const StyleDesigner = (function () {
                 optsHtml += '<option value="' + esc(target) + '" selected>' + esc(target) + ' ' + esc(_sdT('(custom)')) + '</option>';
             }
             targetField =
-                '<select class="form-select form-select-sm" data-dropdown-trigger-prop="target">' + optsHtml + '</select>';
+                '<select class="form-control form-control-sm" data-dropdown-trigger-prop="target">' + optsHtml + '</select>';
         } else {
             targetField =
                 '<input type="text" class="form-control form-control-sm" data-dropdown-trigger-prop="target" value="' + esc(target) + '" placeholder="' + esc(_sdT('Empty = the adjacent .dropdown-menu')) + '">';
@@ -44677,7 +44673,7 @@ const StyleDesigner = (function () {
 
         var rows =
             row(_sdT('Drop direction'),
-                '<select class="form-select form-select-sm" data-dropdown-trigger-prop="placement">' +
+                '<select class="form-control form-control-sm" data-dropdown-trigger-prop="placement">' +
                 [['',_sdT('Down (default)')],['dropup',_sdT('Up')],['dropend',_sdT('Right')],['dropstart',_sdT('Left')]].map(function (opt) {
                     var sel = (n.props.cssClass || '').split(/\s+/).indexOf(opt[0]) !== -1;
                     return '<option value="' + opt[0] + '"' + (sel ? ' selected' : '') + '>' + opt[1] + '</option>';
@@ -44685,14 +44681,14 @@ const StyleDesigner = (function () {
                 '</select>'
             ) +
             row(_sdT('Auto-close'),
-                '<select class="form-select form-select-sm" data-dropdown-trigger-prop="autoclose">' +
+                '<select class="form-control form-control-sm" data-dropdown-trigger-prop="autoclose">' +
                 [['true',_sdT('On every click (default)')],['inside',_sdT('On a click inside')],['outside',_sdT('On a click outside')],['false',_sdT('Close manually')]].map(function (opt) {
                     return '<option value="' + opt[0] + '"' + (opt[0] === autoClose ? ' selected' : '') + '>' + opt[1] + '</option>';
                 }).join('') +
                 '</select>'
             ) +
             row(_sdT('Reference'),
-                '<select class="form-select form-select-sm" data-dropdown-trigger-prop="reference">' +
+                '<select class="form-control form-control-sm" data-dropdown-trigger-prop="reference">' +
                 [['toggle',_sdT('Toggle (default)')],['parent',_sdT('Parent')],['#id…',_sdT('Element by id')]].map(function (opt) {
                     return '<option value="' + opt[0] + '"' + (opt[0] === reference ? ' selected' : '') + '>' + opt[1] + '</option>';
                 }).join('') +
@@ -44810,27 +44806,27 @@ const StyleDesigner = (function () {
         var h = '';
         h += row(_sdT('Slides'),
             '<div class="btn-group btn-group-sm w-100">' +
-            '<button type="button" class="btn btn-outline-secondary" data-cr-action="remove-slide" data-cr-node-id="' + n._id + '" title="' + esc(_sdT('Remove last slide')) + '"' + (slideCount <= 1 ? ' disabled' : '') + '><i class="bi bi-dash-lg"></i></button>' +
-            '<span class="btn btn-outline-secondary disabled" style="cursor:default">' + slideCount + '</span>' +
-            '<button type="button" class="btn btn-outline-secondary" data-cr-action="add-slide" data-cr-node-id="' + n._id + '" title="' + esc(_sdT('Add slide')) + '"' + (slideCount >= 8 ? ' disabled' : '') + '><i class="bi bi-plus-lg"></i></button>' +
+            '<button type="button" class="btn btn-outline theme-secondary" data-cr-action="remove-slide" data-cr-node-id="' + n._id + '" title="' + esc(_sdT('Remove last slide')) + '"' + (slideCount <= 1 ? ' disabled' : '') + '><i class="bi bi-dash-lg"></i></button>' +
+            '<span class="btn btn-outline theme-secondary disabled" style="cursor:default">' + slideCount + '</span>' +
+            '<button type="button" class="btn btn-outline theme-secondary" data-cr-action="add-slide" data-cr-node-id="' + n._id + '" title="' + esc(_sdT('Add slide')) + '"' + (slideCount >= 8 ? ' disabled' : '') + '><i class="bi bi-plus-lg"></i></button>' +
             '</div>');
         h += row(_sdT('Transition'),
             '<div class="btn-group btn-group-sm w-100">' +
-            '<button type="button" class="btn btn-outline-secondary' + (!isFade ? ' active' : '') + '" data-cr-toggle="slide" data-cr-node-id="' + n._id + '">' + esc(_sdT('Slide transition')) + '</button>' +
-            '<button type="button" class="btn btn-outline-secondary' + (isFade ? ' active' : '') + '" data-cr-toggle="fade" data-cr-node-id="' + n._id + '">' + esc(_sdT('Fade')) + '</button>' +
+            '<button type="button" class="btn btn-outline theme-secondary' + (!isFade ? ' active' : '') + '" data-cr-toggle="slide" data-cr-node-id="' + n._id + '">' + esc(_sdT('Slide transition')) + '</button>' +
+            '<button type="button" class="btn btn-outline theme-secondary' + (isFade ? ' active' : '') + '" data-cr-toggle="fade" data-cr-node-id="' + n._id + '">' + esc(_sdT('Fade')) + '</button>' +
             '</div>');
         h += row(_sdT('Dark'),       swAttr('data-cr-dark="1" data-cr-node-id="' + n._id + '"', isDark));
         h += row(_sdT('Indicators'), swAttr('data-cr-section-vis="indicators" data-cr-node-id="' + n._id + '"', indicatorsVisible));
         h += row(_sdT('Controls'),   swAttr('data-cr-section-vis="controls" data-cr-node-id="' + n._id + '"', controlsVisible));
         h += row(_sdT('Autoplay'),
-            '<select class="form-select form-select-sm" data-cr-attr="data-bs-ride" data-cr-node-id="' + n._id + '">' +
+            '<select class="form-control form-control-sm" data-cr-attr="data-bs-ride" data-cr-node-id="' + n._id + '">' +
             '<option value=""' + (!ride ? ' selected' : '') + '>' + esc(_sdT('Off')) + '</option>' +
             '<option value="carousel"' + (ride === 'carousel' ? ' selected' : '') + '>' + esc(_sdT('On (at load)')) + '</option>' +
             '<option value="true"' + (ride === 'true' ? ' selected' : '') + '>' + esc(_sdT('On (after first interaction)')) + '</option>' +
             '</select>');
         h += row(_sdT('Interval'),   '<input type="number" class="form-control form-control-sm" data-cr-attr="data-bs-interval" data-cr-node-id="' + n._id + '" value="' + esc(interval) + '" placeholder="5000" min="100" step="100">');
         h += row(_sdT('Pause'),
-            '<select class="form-select form-select-sm" data-cr-attr="data-bs-pause" data-cr-node-id="' + n._id + '">' +
+            '<select class="form-control form-control-sm" data-cr-attr="data-bs-pause" data-cr-node-id="' + n._id + '">' +
             '<option value="hover"' + (pause === 'hover' ? ' selected' : '') + '>' + esc(_sdT('Hover')) + '</option>' +
             '<option value="false"' + (pause === 'false' ? ' selected' : '') + '>' + esc(_sdT('Never')) + '</option>' +
             '</select>');
@@ -44906,11 +44902,11 @@ const StyleDesigner = (function () {
                 // Bound href → read-only note instead of an input the server ignores.
                 h += row(_sdT('Link'), _sdHrefIsBound(n)
                     ? _sdBoundHrefNotice(n)
-                    : '<div class="input-group input-group-sm"><input type="text" class="form-control" id="sd-prop-href" data-prop="href" value="' + esc(String(val)) + '"><button class="btn btn-outline-secondary" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-href\',\'href\')" title="' + esc(_sdT('Select File')) + '"><i class="bi bi-folder2-open"></i></button></div>');
+                    : '<div class="input-group input-group-sm"><input type="text" class="form-control" id="sd-prop-href" data-prop="href" value="' + esc(String(val)) + '"><button class="btn btn-outline theme-secondary" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-href\',\'href\')" title="' + esc(_sdT('Select File')) + '"><i class="bi bi-folder2-open"></i></button></div>');
             } else if (key === 'target') {
                 h += row(_sdT('Target'), sel(key, [['',_sdT('Default/Self')],['_blank',_sdT('New Window (_blank)')]], String(val)));
             } else if (key === 'iconName') {
-                h += row(_sdT('Icon'), '<div class="input-group input-group-sm"><input type="text" class="form-control" data-prop="' + key + '" value="' + esc(String(val)) + '" placeholder="bi-icon-name"><button class="btn btn-outline-secondary sd-icon-trigger" type="button" title="' + esc(_sdT('Browse icons')) + '"><i class="bi bi-grid-3x3-gap"></i></button></div>');
+                h += row(_sdT('Icon'), '<div class="input-group input-group-sm"><input type="text" class="form-control" data-prop="' + key + '" value="' + esc(String(val)) + '" placeholder="bi-icon-name"><button class="btn btn-outline theme-secondary sd-icon-trigger" type="button" title="' + esc(_sdT('Browse icons')) + '"><i class="bi bi-grid-3x3-gap"></i></button></div>');
             } else if (typeof val === 'number') {
                 h += row(capFirst(key), '<input type="number" class="form-control form-control-sm" data-prop="' + key + '" value="' + val + '" min="1" max="20">');
             } else if (typeof val === 'string' && val.indexOf('\n') !== -1) {
@@ -44957,7 +44953,7 @@ const StyleDesigner = (function () {
         if (!activated.length) {
             opts += '<option disabled>' + esc(_sdT('— Add a font from the Design panel first —')) + '</option>';
         }
-        return row(_sdT('Font'), '<select class="form-select form-select-sm" data-prop="fontFamily">' + opts + '</select>');
+        return row(_sdT('Font'), '<select class="form-control form-control-sm" data-prop="fontFamily">' + opts + '</select>');
     }
 
     // ── Image loading choice ─────────────────────────────────────────────────
@@ -45030,7 +45026,7 @@ const StyleDesigner = (function () {
             // Use Radio or Button group for single-pick semantics.
             var _vaStyle = n.props.renderStyle || 'select';
             h += row(_sdT('Render style'),
-                '<select class="form-select form-select-sm" data-prop="renderStyle">' +
+                '<select class="form-control form-control-sm" data-prop="renderStyle">' +
                 _vaStyleOpts.map(function(o) {
                     return '<option value="' + o[0] + '"' + (o[0] === _vaStyle ? ' selected' : '') + '>' + o[1] + '</option>';
                 }).join('') +
@@ -45074,7 +45070,7 @@ const StyleDesigner = (function () {
                 ['none',   _sdT('Hidden')]
             ];
             h += row(_sdT('Thumbnail position'),
-                '<select class="form-select form-select-sm" data-prop="thumbsPosition">' +
+                '<select class="form-control form-control-sm" data-prop="thumbsPosition">' +
                 _crPosOpts.map(function(o) {
                     return '<option value="' + o[0] + '"' + (o[0] === _crPos ? ' selected' : '') + '>' + o[1] + '</option>';
                 }).join('') +
@@ -45132,7 +45128,7 @@ const StyleDesigner = (function () {
                 ['bottom left',_sdT('Bottom Left')],['bottom right',_sdT('Bottom Right')]
             ];
             h += row(_sdT('Object Fit'), selStyleGroup(n.props, ['object-fit-contain','object-fit-cover','object-fit-fill','object-fit-scale-down','object-fit-none'], 'Default'));
-            h += row(_sdT('Object Pos'), '<select class="form-select form-select-sm" data-prop="objectPosition">' +
+            h += row(_sdT('Object Pos'), '<select class="form-control form-control-sm" data-prop="objectPosition">' +
                 objPosOpts.map(function(o) {
                     return '<option value="' + o[0] + '"' + ((n.props.objectPosition || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
                 }).join('') +
@@ -45141,7 +45137,7 @@ const StyleDesigner = (function () {
             // Bootstrap's .ratio class needs a wrapper div + direct-child absolute positioning;
             // applying .ratio directly to an <img> does nothing.
             var arOpts = [['',_sdT('None')],['1x1',_sdT('1:1 (Square)')],['4x3','4:3'],['16x9','16:9'],['21x9','21:9']];
-            h += row(_sdT('Aspect Ratio'), '<select class="form-select form-select-sm" data-prop="aspectRatio">' +
+            h += row(_sdT('Aspect Ratio'), '<select class="form-control form-control-sm" data-prop="aspectRatio">' +
                 arOpts.map(function(o) {
                     return '<option value="' + o[0] + '"' + ((n.props.aspectRatio || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
                 }).join('') +
@@ -45154,7 +45150,7 @@ const StyleDesigner = (function () {
             var _ldOpts = [['', _sdT('Default')], ['lazy', _sdT('Lazy')], ['eager', _sdT('Eager')]];
             if (_ldCur !== '' && _ldCur !== 'lazy' && _ldCur !== 'eager') _ldOpts.push([_ldCur, _ldCur]);
             h += row(_sdT('Loading attribute'),
-                '<select class="form-select form-select-sm" data-img-loading title="' + esc(_sdT('Default: the first image of the page loads first, the others as they come near the screen. Lazy: this image loads when it comes near the screen. Eager: it loads right away.')) + '">' +
+                '<select class="form-control form-control-sm" data-img-loading title="' + esc(_sdT('Default: the first image of the page loads first, the others as they come near the screen. Lazy: this image loads when it comes near the screen. Eager: it loads right away.')) + '">' +
                 _ldOpts.map(function(o) {
                     return '<option value="' + esc(o[0]) + '"' + (o[0] === _ldCur ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
                 }).join('') +
@@ -45222,7 +45218,7 @@ const StyleDesigner = (function () {
                     ? _sdBoundHrefNotice(n)
                     : '<div class="sd-pick-group">' +
                         '<input type="text" class="form-control form-control-sm" id="sd-prop-href2" data-prop="href" value="' + esc(String(val)) + '">' +
-                        '<button class="btn btn-sm btn-outline-secondary sd-pick-btn" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-href2\',\'href\')">' + esc(_sdT('Select')) + '</button>' +
+                        '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" onclick="window.sdOpenFilePicker(\'sd-prop-href2\',\'href\')">' + esc(_sdT('Select')) + '</button>' +
                     '</div>');
             } else if (key === 'target') {
                 h += row(_sdT('Target'), sel(key, [['',_sdT('Default/Self')],['_blank',_sdT('New Window (_blank)')]], String(val)));
@@ -45230,15 +45226,15 @@ const StyleDesigner = (function () {
                 h += row(_sdT('Icon'),
                     '<div class="sd-pick-group">' +
                         '<input type="text" class="form-control form-control-sm" data-prop="' + key + '" value="' + esc(String(val)) + '" placeholder="bi-icon-name">' +
-                        '<button class="btn btn-sm btn-outline-secondary sd-pick-btn sd-icon-trigger" type="button">' + esc(_sdT('Select')) + '</button>' +
+                        '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn sd-icon-trigger" type="button">' + esc(_sdT('Select')) + '</button>' +
                     '</div>');
             } else if (ct === 'image' && key === 'src') {
                 // Image src: normal input + separate pick button (Unsplash + library + quick upload)
                 h += row(capFirst(key),
                     '<div class="sd-pick-group">' +
                         '<input type="text" class="form-control form-control-sm" id="sd-prop-img-src" data-prop="src" value="' + esc(String(val)) + '" placeholder="' + esc(_sdT('Image URL')) + '">' +
-                        '<button class="btn btn-sm btn-outline-secondary sd-pick-btn" type="button" onclick="window.sdOpenImagePicker(\'sd-prop-img-src\')">' + esc(_sdT('Select')) + '</button>' +
-                        '<button class="btn btn-sm btn-outline-secondary sd-pick-btn" type="button" title="' + esc(_sdT('Edit the image')) + '" onclick="window.sdOpenImageEditor(\'sd-prop-img-src\')"><i class="bi bi-brush"></i></button>' +
+                        '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" onclick="window.sdOpenImagePicker(\'sd-prop-img-src\')">' + esc(_sdT('Select')) + '</button>' +
+                        '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" title="' + esc(_sdT('Edit the image')) + '" onclick="window.sdOpenImageEditor(\'sd-prop-img-src\')"><i class="bi bi-brush"></i></button>' +
                     '</div>');
             } else if (key === 'width' || key === 'height') {
                 h += row(capFirst(key), '<input type="text" class="form-control form-control-sm" data-prop="' + key + '" value="' + esc(String(val)) + '" placeholder="' + esc(_sdT('e.g. 100% or 50px')) + '">');
@@ -45251,7 +45247,7 @@ const StyleDesigner = (function () {
                 h += '<div class="sd-prop-row"><label class="sd-prop-label">' + (key === 'php' ? 'PHP' : 'HTML') + '</label>' +
                         '<div class="sd-prop-control sd-prop-control-edit">' +
                             '<textarea class="sd-hidden-prop" data-prop="' + key + '" hidden>' + esc(String(val)) + '</textarea>' +
-                            '<button class="btn btn-sm btn-outline-primary" type="button" data-sd-code-edit="' + key + '" title="' + esc(_sdT('Code Editor')) + '">' +
+                            '<button class="btn btn-sm btn-outline theme-primary" type="button" data-sd-code-edit="' + key + '" title="' + esc(_sdT('Code Editor')) + '">' +
                                 '<i class="bi bi-code-square me-1"></i>' + esc(_sdT('Edit')) + _hint +
                             '</button>' +
                         '</div>' +
@@ -45298,7 +45294,7 @@ const StyleDesigner = (function () {
             '</div></div>';
         if (_design && _design.dynamicRegionCode && n.props.regionName) {
             h += '<div class="sd-prop-row">' +
-                    '<button type="button" class="btn btn-sm btn-outline-secondary w-100" id="sd-dregion-code">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-secondary w-100" id="sd-dregion-code">' +
                         '<span class="bi bi-filetype-php me-1"></span>' + esc(_sdT('Edit PHP code')) +
                     '</button>' +
                 '</div>';
@@ -45312,7 +45308,7 @@ const StyleDesigner = (function () {
     function _sdDesignerRegionPropsHtml(n) {
         if (!_design || !_design.designerRegionConvert || !n.props.regionName) return '';
         return '<div class="sd-prop-row">' +
-                '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-designer-region-convert">' +
+                '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-designer-region-convert">' +
                     '<span class="bi bi-puzzle-fill me-1"></span>' + esc(_sdT('Make shared component')) +
                 '</button>' +
             '</div>' +
@@ -45380,7 +45376,7 @@ const StyleDesigner = (function () {
     function _sdRegionWidgetPropsHtml(n) {
         if (!SD_REGION_WIDGETS[n.props.regionType] || !n.props.regionName) return '';
         return '<div class="sd-prop-row">' +
-                '<button type="button" class="btn btn-sm btn-outline-primary w-100" id="sd-region-make-widget">' +
+                '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-region-make-widget">' +
                     '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Make designable')) +
                 '</button>' +
             '</div>' +
@@ -45432,13 +45428,13 @@ const StyleDesigner = (function () {
         if (!_design || !_design.layoutCode || !p || !(p.page_id > 0)) return '';
         if ((_design.layoutPages || []).indexOf(p.page_id) === -1) return '';
         var h = '<div class="sd-prop-row">' +
-                '<button type="button" class="btn btn-sm btn-outline-secondary w-100" id="sd-layout-code">' +
+                '<button type="button" class="btn btn-sm btn-outline theme-secondary w-100" id="sd-layout-code">' +
                     '<span class="bi bi-filetype-php me-1"></span>' + esc(_sdT('Edit layout (PHP)')) +
                 '</button>' +
             '</div>';
         if (!_design.layoutReadOnly) {
             h += '<div class="sd-prop-row">' +
-                    '<button type="button" class="btn btn-sm btn-outline-secondary w-100" id="sd-layout-regenerate">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-secondary w-100" id="sd-layout-regenerate">' +
                         '<span class="bi bi-arrow-counterclockwise me-1"></span>' + esc(_sdT('Regenerate layout')) +
                     '</button>' +
                 '</div>';
@@ -45499,7 +45495,7 @@ const StyleDesigner = (function () {
         var found = '';
         var clsArr = cls.split(' ');
         classes.forEach(function(c) { if (c !== '' && clsArr.indexOf(c) !== -1) found = c; });
-        var h = '<select class="form-select form-select-sm" data-stylegroup="' + classes.join(',') + '">';
+        var h = '<select class="form-control form-control-sm" data-stylegroup="' + classes.join(',') + '">';
         h += '<option value="">' + (placeholder || 'Default') + '</option>';
         classes.forEach(function(c) {
             if (!c) return;
@@ -45509,13 +45505,13 @@ const StyleDesigner = (function () {
         return h + '</select>';
     }
     function sel(prop, opts, val) {
-        var h = '<select class="form-select form-select-sm" data-prop="' + prop + '">';
+        var h = '<select class="form-control form-control-sm" data-prop="' + prop + '">';
         opts.forEach(function(o) { h += '<option value="' + o[0] + '"' + (o[0] === val ? ' selected' : '') + '>' + o[1] + '</option>'; });
         return h + '</select>';
     }
     // Dropdown-specific helpers — use data-dd-prop (handled separately in bindPropEvents)
     function selDD(ddProp, opts, val) {
-        var h = '<select class="form-select form-select-sm" data-dd-prop="' + ddProp + '">';
+        var h = '<select class="form-control form-control-sm" data-dd-prop="' + ddProp + '">';
         opts.forEach(function(o) { h += '<option value="' + o[0] + '"' + (o[0] === val ? ' selected' : '') + '>' + o[1] + '</option>'; });
         return h + '</select>';
     }
@@ -45584,12 +45580,12 @@ const StyleDesigner = (function () {
             sizeHtml = row(_sdT('Size'),
                 '<div class="btn-group btn-group-sm">' +
                 sizes.map(function(p) {
-                    return '<button type="button" class="btn btn-outline-secondary' + (curSize === p[0] ? ' active' : '') +
+                    return '<button type="button" class="btn btn-outline theme-secondary' + (curSize === p[0] ? ' active' : '') +
                         '" data-modal-size="' + esc(p[0]) + '" data-modal-dlg-id="' + dlgId + '">' + p[1] + '</button>';
                 }).join('') + '</div>');
             var fulls = [['',_sdT('Off')],['modal-fullscreen',_sdT('Always')],['modal-fullscreen-sm-down','<SM'],['modal-fullscreen-md-down','<MD'],['modal-fullscreen-lg-down','<LG'],['modal-fullscreen-xl-down','<XL'],['modal-fullscreen-xxl-down','<XXL']];
             sizeHtml += row(_sdT('Fullscreen'),
-                '<select class="form-select form-select-sm" data-modal-fullscreen="1" data-modal-dlg-id="' + dlgId + '">' +
+                '<select class="form-control form-control-sm" data-modal-fullscreen="1" data-modal-dlg-id="' + dlgId + '">' +
                 fulls.map(function(p) { return '<option value="' + esc(p[0]) + '"' + (p[0] === curFull ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('') +
                 '</select>');
             sizeHtml += row(_sdT('Centered'),   swAttr('data-modal-cls="modal-dialog-centered"   data-modal-dlg-id="' + dlgId + '"', isCentered)) +
@@ -45638,11 +45634,11 @@ const StyleDesigner = (function () {
 
         return sect('bi-layout-sidebar', _sdT('Offcanvas Options'),
             row(_sdT('Position'),
-                '<select class="form-select form-select-sm" data-oc-pos-sel="1" data-oc-node-id="' + n._id + '">' +
+                '<select class="form-control form-control-sm" data-oc-pos-sel="1" data-oc-node-id="' + n._id + '">' +
                 positions.map(function(p) { return '<option value="' + esc(p[0]) + '"' + (p[0] === curPos ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('') +
                 '</select>') +
             row(_sdT('Responsive'),
-                '<select class="form-select form-select-sm" data-oc-resp="1" data-oc-node-id="' + n._id + '">' +
+                '<select class="form-control form-control-sm" data-oc-resp="1" data-oc-node-id="' + n._id + '">' +
                 respOpts.map(function(p) { return '<option value="' + esc(p[0]) + '"' + (p[0] === curResp ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('') +
                 '</select>') +
             (hId ? row(_sdT('Header'), swAttr('data-oc-header-vis="1" data-oc-header-id="' + hId + '"', headerVisible)) : '')
@@ -45796,7 +45792,7 @@ const StyleDesigner = (function () {
         opts.forEach(function(o) {
             var active = (o[0] === val) ? ' active' : '';
             var title = o[2] ? ' title="' + esc(o[2]) + '"' : '';
-            h += '<button type="button" class="btn btn-outline-secondary btn-sm' + active + '" data-prop="' + prop + '" data-val="' + o[0] + '"' + title + '>' + o[1] + '</button>';
+            h += '<button type="button" class="btn btn-outline theme-secondary btn-sm' + active + '" data-prop="' + prop + '" data-val="' + o[0] + '"' + title + '>' + o[1] + '</button>';
         });
         h += '</div>';
         return h;
@@ -45889,7 +45885,7 @@ const StyleDesigner = (function () {
         h += '</select>';
 
         // Visible trigger — shows the current selection's dot + name.
-        h += '<button type="button" class="sd-cp-trigger form-select form-select-sm" aria-haspopup="listbox">';
+        h += '<button type="button" class="sd-cp-trigger form-control form-control-sm" aria-haspopup="listbox">';
         h += '<span class="sd-color-preview ' + dotCls(currentColor) + '"></span>';
         h += '<span class="sd-cp-label">' + currentLabel + '</span>';
         h += '</button>';
@@ -45990,7 +45986,7 @@ const StyleDesigner = (function () {
             classes.forEach(function (c) {
                 if (c !== '' && clsArr.indexOf(c) !== -1) found = c;
             });
-            var h = '<select class="form-select form-select-sm" data-stylegroup="' + classes.join(',') + '">';
+            var h = '<select class="form-control form-control-sm" data-stylegroup="' + classes.join(',') + '">';
             h += '<option value="">' + title + '</option>';
             classes.forEach(function (c) {
                 if (c === '') return;
@@ -46014,7 +46010,7 @@ const StyleDesigner = (function () {
                 if (allPresent) found = p[0];
             });
             var classes = pairs.map(function(p) { return p[0]; }).filter(Boolean);
-            var h = '<select class="form-select form-select-sm" data-stylegroup="' + classes.join(',') + '">';
+            var h = '<select class="form-control form-control-sm" data-stylegroup="' + classes.join(',') + '">';
             h += '<option value="">' + (placeholder || 'Default') + '</option>';
             pairs.forEach(function(p) {
                 if (!p[0]) return;
@@ -46035,7 +46031,7 @@ const StyleDesigner = (function () {
                 var words = c.split(/\s+/);
                 if (words.every(function(w) { return clsArr.indexOf(w) !== -1; })) found = c;
             });
-            var h = '<select class="form-select form-select-sm" data-stylegroup="' + classes.join(',') + '">';
+            var h = '<select class="form-control form-control-sm" data-stylegroup="' + classes.join(',') + '">';
             h += '<option value="">' + (placeholder || 'Default') + '</option>';
             valuePairs.forEach(function(p) {
                 var c = prefix + p[0];
@@ -46107,7 +46103,7 @@ const StyleDesigner = (function () {
         }
         function mkOverflowSel(propName, propVal) {
             var ovOpts = [['',_sdT('Default')],['visible',_sdT('Visible')],['hidden',_sdT('Hidden')],['auto',_sdT('Auto')],['scroll',_sdT('Scroll')],['clip',_sdT('Clip')]];
-            var h = '<select class="form-select form-select-sm" data-prop="' + propName + '">';
+            var h = '<select class="form-control form-control-sm" data-prop="' + propName + '">';
             ovOpts.forEach(function(o) { h += '<option value="' + o[0] + '"' + (o[0] === (propVal||'') ? ' selected' : '') + '>' + o[1] + '</option>'; });
             return h + '</select>';
         }
@@ -46171,7 +46167,7 @@ const StyleDesigner = (function () {
         var _arValue   = p.aspectRatio || '16x9';
         var _arHtml = '<div class="sd-sp-row"><span class="sd-sp-toggle-spacer"></span><span class="sd-sp-label">' + esc(_sdT('Aspect Ratio')) + '</span>' + sw('aspectRatioEnabled', _arEnabled) + '</div>';
         if (_arEnabled) {
-            var _arPresetSel = '<select class="form-select form-select-sm" data-prop="aspectRatio">';
+            var _arPresetSel = '<select class="form-control form-control-sm" data-prop="aspectRatio">';
             [['1x1','1:1'],['4x3','4:3'],['16x9','16:9'],['21x9','21:9'],['custom',_sdT('Custom')]].forEach(function(pair) {
                 _arPresetSel += '<option value="' + pair[0] + '"' + (pair[0] === _arValue ? ' selected' : '') + '>' + pair[1] + '</option>';
             });
@@ -46201,7 +46197,7 @@ const StyleDesigner = (function () {
             ['1080', '1080 (toast)']
         ];
         var _zCur = (p.zIndex == null) ? '' : String(p.zIndex);
-        var _zIdxSel = '<select class="form-select form-select-sm" data-prop="zIndex">' +
+        var _zIdxSel = '<select class="form-control form-control-sm" data-prop="zIndex">' +
             _zIndexOpts.map(function(o) {
                 return '<option value="' + o[0] + '"' + (o[0] === _zCur ? ' selected' : '') + '>' + o[1] + '</option>';
             }).join('') +
@@ -46294,7 +46290,7 @@ const StyleDesigner = (function () {
             var cur = spVal(pfx);
             // Bootstrap 5.3 ships spacing scale 0-5 by default (values 6-10 would require a Sass recompile
             // with a custom $spacers map). Stay within the shipped scale so the classes actually apply.
-            var h = '<select class="form-select form-select-sm" data-util="' + pfx + '">';
+            var h = '<select class="form-control form-control-sm" data-util="' + pfx + '">';
             h += '<option value="">' + esc(_sdT('Default')) + '</option>';
             [0,1,2,3,4,5].forEach(function(v) {
                 h += '<option value="' + pfx + v + '"' + (String(v) === cur ? ' selected' : '') + '>' + v + '</option>';
@@ -46333,7 +46329,7 @@ const StyleDesigner = (function () {
         var clsArr2 = cls.split(' ');
         var foundBorderSide = '';
         borderSides.forEach(function(s) { if (s && clsArr2.indexOf(s) !== -1) foundBorderSide = s; });
-        var borderSideSel = '<select class="form-select form-select-sm" data-stylegroup="' + borderSides.filter(Boolean).join(',') + '">';
+        var borderSideSel = '<select class="form-control form-control-sm" data-stylegroup="' + borderSides.filter(Boolean).join(',') + '">';
         borderSides.forEach(function(s) {
             borderSideSel += '<option value="' + s + '"' + (s === foundBorderSide ? ' selected' : '') + '>' + borderSideLabels[s] + '</option>';
         });
@@ -46466,13 +46462,13 @@ const StyleDesigner = (function () {
                     '<div class="sd-bcp-opt-row">' +
                         '<span class="sd-bcp-clabel">' + esc(_sdT('Shape')) + '</span>' +
                         '<div class="btn-group btn-group-sm">' +
-                            '<button type="button" class="btn btn-outline-secondary' + (_grad.shape === 'circle' ? ' active' : '') + '" data-bcp-radial-shape="circle">' + esc(_sdT('Circle')) + '</button>' +
-                            '<button type="button" class="btn btn-outline-secondary' + (_grad.shape === 'ellipse' ? ' active' : '') + '" data-bcp-radial-shape="ellipse">' + esc(_sdT('Ellipse')) + '</button>' +
+                            '<button type="button" class="btn btn-outline theme-secondary' + (_grad.shape === 'circle' ? ' active' : '') + '" data-bcp-radial-shape="circle">' + esc(_sdT('Circle')) + '</button>' +
+                            '<button type="button" class="btn btn-outline theme-secondary' + (_grad.shape === 'ellipse' ? ' active' : '') + '" data-bcp-radial-shape="ellipse">' + esc(_sdT('Ellipse')) + '</button>' +
                         '</div>' +
                     '</div>' +
                     '<div class="sd-bcp-opt-row mt-1">' +
                         '<span class="sd-bcp-clabel">' + esc(_sdT('Pos')) + '</span>' +
-                        '<select class="form-select form-select-sm" id="sd-bcp-rad-pos">' +
+                        '<select class="form-control form-control-sm" id="sd-bcp-rad-pos">' +
                             _posOpts.map(function(o){ return '<option value="' + o[0] + '"' + (_grad.pos === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') +
                         '</select>' +
                     '</div>' +
@@ -46518,17 +46514,17 @@ const StyleDesigner = (function () {
             row(_sdT('Bg Image'),
                 '<div class="sd-pick-group">' +
                     '<input type="text" class="form-control form-control-sm" id="sd-bg-img-inp" data-bg-prop="background-image" value="' + esc(_bgImgUrl) + '" placeholder="' + esc(_sdT('Image URL')) + '">' +
-                    '<button class="btn btn-sm btn-outline-secondary sd-pick-btn" type="button" onclick="window.sdOpenImagePicker(\'sd-bg-img-inp\')">' + esc(_sdT('Select')) + '</button>' +
-                    '<button class="btn btn-sm btn-outline-secondary sd-pick-btn" type="button" title="' + esc(_sdT('Edit the image')) + '" onclick="window.sdOpenImageEditor(\'sd-bg-img-inp\')"><i class="bi bi-brush"></i></button>' +
-                    (_bgImgUrl ? '<button class="btn btn-sm btn-outline-danger sd-pick-btn" type="button" data-bg-clear="background-image" title="' + esc(_sdT('Remove')) + '"><i class="bi bi-x-lg"></i></button>' : '') +
+                    '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" onclick="window.sdOpenImagePicker(\'sd-bg-img-inp\')">' + esc(_sdT('Select')) + '</button>' +
+                    '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" title="' + esc(_sdT('Edit the image')) + '" onclick="window.sdOpenImageEditor(\'sd-bg-img-inp\')"><i class="bi bi-brush"></i></button>' +
+                    (_bgImgUrl ? '<button class="btn btn-sm btn-outline theme-danger sd-pick-btn" type="button" data-bg-clear="background-image" title="' + esc(_sdT('Remove')) + '"><i class="bi bi-x-lg"></i></button>' : '') +
                 '</div>') +
-            row(_sdT('Bg Size'),   '<select class="form-select form-select-sm" data-bg-prop="background-size">' +
+            row(_sdT('Bg Size'),   '<select class="form-control form-control-sm" data-bg-prop="background-size">' +
                 [['',_sdT('Default')],['cover', _sdT('Cover (background)')],['contain',_sdT('Contain')],['auto',_sdT('Auto')],['100% 100%',_sdT('Stretch')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgSize===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>') +
-            row(_sdT('Bg Pos'),    '<select class="form-select form-select-sm" data-bg-prop="background-position">' +
+            row(_sdT('Bg Pos'),    '<select class="form-control form-control-sm" data-bg-prop="background-position">' +
                 [['',_sdT('Default')],['center',_sdT('Center')],['top','Top'],['bottom',_sdT('Bottom')],['left',_sdT('Left')],['right',_sdT('Right')],['top left',_sdT('Top Left')],['top right',_sdT('Top Right')],['bottom left',_sdT('Btm Left')],['bottom right',_sdT('Btm Right')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgPos===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>') +
-            row(_sdT('Bg Repeat'), '<select class="form-select form-select-sm" data-bg-prop="background-repeat">' +
+            row(_sdT('Bg Repeat'), '<select class="form-control form-control-sm" data-bg-prop="background-repeat">' +
                 [['',_sdT('Default')],['no-repeat',_sdT('No Repeat')],['repeat',_sdT('Repeat')],['repeat-x',_sdT('Repeat X')],['repeat-y',_sdT('Repeat Y')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgRep===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>') +
-            row(_sdT('Bg Attach'), '<select class="form-select form-select-sm" data-bg-prop="background-attachment">' +
+            row(_sdT('Bg Attach'), '<select class="form-control form-control-sm" data-bg-prop="background-attachment">' +
                 [['',_sdT('Default')],['scroll',_sdT('Scroll')],['fixed',_sdT('Fixed')],['local',_sdT('Local')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgAtt===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>');
 
         var bgSection =
@@ -47989,7 +47985,7 @@ const StyleDesigner = (function () {
                 // just-edited row/col prop into selectedNode.props.cssClass and
                 // strip the transient prop so cssClass remains the single source
                 // of truth. This is what makes the Row/Col Options panel work
-                // for hand-classed divs (`<div class="row g-3">`) — the standard
+                // for hand-classed divs (`<div class="row g-5">`) — the standard
                 // [data-prop] handler above wrote into props[gutter], we now
                 // translate that into a `g-3` class on the div.
                 var _ROW_CLASS_PROPS = ['gutter', 'justify', 'align'];
@@ -49520,7 +49516,7 @@ const StyleDesigner = (function () {
         gfModalEl.innerHTML =
             '<div class="sd-gf-modal-dialog">' +
                 '<div class="sd-gf-modal-hdr">' +
-                    '<span class="bi bi-fonts me-2"></span><span class="sd-gf-modal-title">Google Fonts</span>' +
+                    '<span class="bi bi-fonts me-3"></span><span class="sd-gf-modal-title">Google Fonts</span>' +
                     '<button id="sd-gf-modal-close" class="sd-gf-modal-close" type="button"><span class="bi bi-x-lg"></span></button>' +
                 '</div>' +
                 '<div class="sd-gf-modal-body">' +
@@ -49813,7 +49809,7 @@ const StyleDesigner = (function () {
             _coEl.innerHTML =
                 '<div class="sd-as-co-dialog">' +
                     '<div class="sd-as-co-hdr">' +
-                        '<span class="bi bi-file-earmark-plus me-2"></span>' +
+                        '<span class="bi bi-file-earmark-plus me-3"></span>' +
                         '<span class="sd-as-co-title">' + esc(_sdT('New File')) + '</span>' +
                         '<button type="button" class="sd-as-co-close" id="sd-as-co-close"><span class="bi bi-x-lg"></span></button>' +
                     '</div>' +
@@ -50058,7 +50054,7 @@ const StyleDesigner = (function () {
             _fpEl.innerHTML =
                 '<div class="sd-fp-dialog">' +
                     '<div class="sd-fp-hdr">' +
-                        '<span class="bi bi-folder2-open me-2"></span>' +
+                        '<span class="bi bi-folder2-open me-3"></span>' +
                         '<span class="sd-fp-title">' + esc(_sdT('Choose from a File')) + '</span>' +
                         '<button type="button" class="sd-fp-close" id="sd-fp-close"><span class="bi bi-x-lg"></span></button>' +
                     '</div>' +
@@ -51064,7 +51060,7 @@ const StyleDesigner = (function () {
             var _modeTabs = wrap.querySelector('.sd-theme-mode-tabs');
             if (_modeTabs) _modeTabs.style.display = _sdUsesBootstrap() ? '' : 'none';
             if (!_sdUsesBootstrap()) {
-                host.innerHTML = '<p class="form-text small px-2 mb-0">' +
+                host.innerHTML = '<p class="form-text small px-3 mb-0">' +
                     esc(_sdT('This design is built without Bootstrap, so the Bootstrap variables (colours, fonts, borders) are not offered here. Put your own variables in one of the design\'s stylesheets, or choose a theme file above.')) + '</p>';
                 return;
             }
@@ -51360,10 +51356,10 @@ const StyleDesigner = (function () {
                             '</label>';
                 }).join('') + '</div>' +
                 '<div class="sd-gf-det-actions">' +
-                    '<button class="sd-gf-det-add btn btn-primary btn-sm" type="button"><span class="bi bi-plus-circle me-1"></span>' +
+                    '<button class="sd-gf-det-add btn btn-solid theme-primary btn-sm" type="button"><span class="bi bi-plus-circle me-1"></span>' +
                         (existing ? _sdT('Update') : _sdT('Add')) +
                     '</button>' +
-                    (existing ? '<button class="sd-gf-det-remove btn btn-outline-danger btn-sm" type="button"><span class="bi bi-trash me-1"></span>' + esc(_sdT('Remove')) + '</button>' : '') +
+                    (existing ? '<button class="sd-gf-det-remove btn btn-outline theme-danger btn-sm" type="button"><span class="bi bi-trash me-1"></span>' + esc(_sdT('Remove')) + '</button>' : '') +
                 '</div>';
             // Active state on weight chips so the user sees their selection
             // without staring at the tiny native checkbox.
@@ -51736,7 +51732,7 @@ const StyleDesigner = (function () {
                 picker.innerHTML =
                     '<div class="sd-styles-extract-dialog">' +
                         '<div class="sd-styles-extract-hdr">' +
-                            '<span class="bi bi-box-arrow-up-right me-2"></span>' +
+                            '<span class="bi bi-box-arrow-up-right me-3"></span>' +
                             esc(_sdT('Which file should it go into?')) +
                         '</div>' +
                         '<div class="sd-styles-extract-body" id="sd-styles-extract-list"></div>' +
@@ -51759,7 +51755,7 @@ const StyleDesigner = (function () {
                     btn.type = 'button';
                     btn.className = 'sd-styles-extract-item';
                     btn.innerHTML =
-                        '<span class="bi bi-file-earmark-code me-2"></span>' +
+                        '<span class="bi bi-file-earmark-code me-3"></span>' +
                         '<span class="sd-styles-extract-item-name">' + esc(t.name) + '</span>' +
                         (t._file ? '<span class="sd-styles-extract-item-tag">disk</span>' : '<span class="sd-styles-extract-item-tag">inline</span>');
                     btn.addEventListener('click', function () {
@@ -52163,7 +52159,7 @@ const StyleDesigner = (function () {
                 ' placeholder="' + esc(_sdT('Name, e.g. theme-color or og:image')) + '" aria-label="' + esc(_sdT('Name')) + '" value="' + esc(m.name) + '">' +
             '<input type="text" class="form-control form-control-sm sd-meta-content" maxlength="1000" autocomplete="off"' +
                 ' placeholder="' + esc(_sdT('Content')) + '" aria-label="' + esc(_sdT('Content')) + '" value="' + esc(m.content) + '">' +
-            '<button type="button" class="btn btn-sm btn-outline-danger sd-meta-del px-2" title="' + esc(_sdT('Remove')) + '" aria-label="' + esc(_sdT('Remove')) + '">' +
+            '<button type="button" class="btn btn-sm btn-outline theme-danger sd-meta-del px-3" title="' + esc(_sdT('Remove')) + '" aria-label="' + esc(_sdT('Remove')) + '">' +
                 '<span class="bi bi-trash" aria-hidden="true"></span>' +
             '</button>';
         _sdMetaRowMark(row);
@@ -52411,11 +52407,11 @@ const StyleDesigner = (function () {
         var save = document.getElementById('sd-page-type-save');
         if (!box || !_sdPageTypeShown(p) || _sdPageType.pageId === p.page_id) return;
         _sdPageType.pageId = p.page_id;
-        box.innerHTML = '<div class="small text-muted">' + esc(_sdT('Loading...')) + '</div>';
+        box.innerHTML = '<div class="small fg-secondary">' + esc(_sdT('Loading...')) + '</div>';
         if (save) save.disabled = true;
         var failed = function (message) {
             if (_sdPageType.pageId !== p.page_id) return;
-            box.innerHTML = '<div class="alert alert-info py-2 px-3 small mb-0">' + esc(message || _sdT('Network error')) + '</div>';
+            box.innerHTML = '<div class="alert theme-info py-3 px-5 small mb-0">' + esc(message || _sdT('Network error')) + '</div>';
         };
         fetch(_sdPageTypeUrl(p.page_id), { credentials: 'same-origin',
                                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
@@ -54439,17 +54435,17 @@ const StyleDesigner = (function () {
             html +=
                 '<div class="sd-sw-filter" data-idx="' + i + '"' + keyAttr + (dynBad ? ' data-attr="' + esc(urlParam) + '"' : '') + ' style="display:flex;flex-direction:column;gap:4px;padding:6px;margin-bottom:6px;border:1px solid rgba(128,128,128,.25);border-radius:4px">' +
                     '<div style="display:flex;gap:4px">' +
-                        '<select class="form-select form-select-sm sd-sw-filter-field" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Field')) + '">' + fieldOpts + '</select>' +
-                        '<button type="button" class="btn btn-sm btn-outline-danger sd-sw-filter-del" data-sw-id="' + sid + '" title="' + esc(_sdT('Delete')) + '"><span class="bi bi-trash"></span></button>' +
+                        '<select class="form-control form-control-sm sd-sw-filter-field" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Field')) + '">' + fieldOpts + '</select>' +
+                        '<button type="button" class="btn btn-sm btn-outline theme-danger sd-sw-filter-del" data-sw-id="' + sid + '" title="' + esc(_sdT('Delete')) + '"><span class="bi bi-trash"></span></button>' +
                     '</div>' +
                     (rowWarn
                         ? '<div class="sd-sw-filter-warn" style="font-size:.66rem;color:#b45309;line-height:1.4"><span class="bi bi-exclamation-triangle me-1"></span>' + esc(rowWarn) + '</div>'
                         : '') +
-                    '<select class="form-select form-select-sm sd-sw-filter-op" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Operator')) + '">' + opOpts + '</select>' +
+                    '<select class="form-control form-control-sm sd-sw-filter-op" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Operator')) + '">' + opOpts + '</select>' +
                     '<input type="' + inputType + '" class="form-control form-control-sm sd-sw-filter-value" data-sw-id="' + sid + '" value="' + esc(val) + '" maxlength="255" placeholder="' + esc(_sdT('Value')) + '"' + (dyn ? ' disabled' : '') + '>' +
                     (dynOpts.length
                         ? '<div style="display:flex;gap:4px">' +
-                              '<select class="form-select form-select-sm sd-sw-filter-dyn" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Dynamic Value')) + '">' +
+                              '<select class="form-control form-control-sm sd-sw-filter-dyn" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Dynamic Value')) + '">' +
                                   '<option value="">— ' + esc(_sdT('Dynamic Value')) + ' —</option>' +
                                   dynOpts.map(function (d) { return '<option value="' + d[0] + '"' + (d[0] === dyn ? ' selected' : '') + '>' + esc(d[1]) + '</option>'; }).join('') +
                               '</select>' +
@@ -54472,7 +54468,7 @@ const StyleDesigner = (function () {
                 '</div>';
         });
         html +=
-            '<button type="button" class="btn btn-sm btn-outline-primary" id="sd-sw-filter-add" data-sw-id="' + sid + '"' + keyAttr + '><span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add Filter')) + '</button>' +
+            '<button type="button" class="btn btn-sm btn-outline theme-primary" id="sd-sw-filter-add" data-sw-id="' + sid + '"' + keyAttr + '><span class="bi bi-plus-lg me-1"></span>' + esc(_sdT('Add Filter')) + '</button>' +
             '<div style="font-size:.66rem;color:#888;margin-top:6px">' + esc(note || _sdT('A record is listed only when it matches every filter. Leave the value empty and pick a dynamic value (today, a number of days ago, the signed-in visitor) to have it worked out on every visit.')) + '</div>';
         return html;
     }
@@ -55710,7 +55706,7 @@ const StyleDesigner = (function () {
             hint = note(_sdT('Sent to the new member\'s address once they have signed up. Nothing chosen: no welcome e-mail.'), false);
         }
         return row(reset ? _sdT('Password reset e-mail') : _sdT('Welcome e-mail'),
-            '<select class="form-select form-select-sm" data-sw-id="' + sid + '" data-sw-cfg="' + pageKey + '" data-sw-cfg-kind="page" data-sw-cfg-repaint="1">' + opts + '</select>' +
+            '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="' + pageKey + '" data-sw-cfg-kind="page" data-sw-cfg-repaint="1">' + opts + '</select>' +
             '<input type="text" class="form-control form-control-sm mt-1" data-sw-id="' + sid + '" data-sw-cfg="' + subjKey + '" maxlength="200"' +
                 ' value="' + esc(cfg[subjKey] || '') + '" placeholder="' + esc(reset ? _sdT('Reset Password') : _sdT('Welcome to {var}', _sdT('Site name'))) + '">' +
             hint +
@@ -55914,21 +55910,19 @@ const StyleDesigner = (function () {
                 resolve(window.confirm(opts.message || '') && first ? first.value : null);
                 return;
             }
-            var el = document.createElement('div');
-            el.className = 'modal fade';
+            var el = document.createElement('dialog');
+            el.className = 'dialog pg-dialog-centered';
             el.tabIndex = -1;
             el.innerHTML =
-                '<div class="modal-dialog modal-dialog-centered"><div class="modal-content">' +
-                    '<div class="modal-header py-2"><h6 class="modal-title mb-0">' + esc(opts.title || '') + '</h6>' +
-                        '<button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>' +
-                    '<div class="modal-body small">' + (opts.html || esc(opts.message || '')) + '</div>' +
-                    '<div class="modal-footer py-2 flex-wrap">' +
+                '<div class="dialog-header py-3"><h6 class="dialog-title mb-0">' + esc(opts.title || '') + '</h6>' +
+                        '<button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>' +
+                    '<div class="dialog-body small">' + (opts.html || esc(opts.message || '')) + '</div>' +
+                    '<div class="dialog-footer py-3 flex-wrap">' +
                         (opts.choices || []).map(function (c) {
                             return '<button type="button" class="btn btn-sm btn-' + esc(c.variant || 'outline-secondary') + '" data-choice="' + esc(c.value) + '">' +
                                    (c.icon ? '<span class="bi ' + esc(c.icon) + ' me-1"></span>' : '') + esc(c.label) + '</button>';
                         }).join('') +
-                    '</div>' +
-                '</div></div>';
+                    '</div>';
             document.body.appendChild(el);
             var done = false, picked = null;
             el.addEventListener('click', function (e) {
@@ -60636,19 +60630,19 @@ const StyleDesigner = (function () {
         var trying = (_sdLgState && _sdLgState.sid === sid) ? _sdLgState.key : '';
         var rowHtml = function (key, name, icon) {
             var on = (trying === key);
-            return '<div class="d-flex align-items-center gap-2 py-1 border-bottom">' +
-                       '<span class="bi ' + icon + ' text-muted"></span>' +
+            return '<div class="d-flex align-items-center gap-3 py-1 border-bottom">' +
+                       '<span class="bi ' + icon + ' fg-secondary"></span>' +
                        '<span class="flex-grow-1 text-truncate" style="font-size:.78rem">' + esc(name) + '</span>' +
                        (on
-                           ? '<span class="badge text-bg-primary">' + esc(_sdT('On the canvas')) + '</span>'
-                           : '<button type="button" class="btn btn-sm btn-outline-primary py-0" data-lg-try="' + esc(key) + '" data-sw-id="' + sid + '">' + esc(_sdT('Try')) + '</button>') +
+                           ? '<span class="badge theme-primary">' + esc(_sdT('On the canvas')) + '</span>'
+                           : '<button type="button" class="btn btn-sm btn-outline theme-primary py-0" data-lg-try="' + esc(key) + '" data-sw-id="' + sid + '">' + esc(_sdT('Try')) + '</button>') +
                    '</div>';
         };
         var head = function (text) {
-            return '<div class="text-uppercase text-muted mt-2 mb-1" style="font-size:.62rem;letter-spacing:.04em">' + esc(text) + '</div>';
+            return '<div class="text-uppercase fg-secondary mt-3 mb-1" style="font-size:.62rem;letter-spacing:.04em">' + esc(text) + '</div>';
         };
         var muted = function (text) {
-            return '<div class="text-muted py-1" style="font-size:.72rem">' + esc(text) + '</div>';
+            return '<div class="fg-secondary py-1" style="font-size:.72rem">' + esc(text) + '</div>';
         };
         var h = head(_sdT('Default')) + rowHtml('default', _sdT('Default layout'), 'bi-stars');
         // Only the template this design was made from: its layouts carry
@@ -60669,10 +60663,10 @@ const StyleDesigner = (function () {
         h += head(_sdT('On this site'));
         var entry = _sdLgSite[sid];
         if (!entry || entry.loading) {
-            h += '<div class="text-muted py-1" style="font-size:.72rem">' + esc(_sdT('Loading…')) + '</div>';
+            h += '<div class="fg-secondary py-1" style="font-size:.72rem">' + esc(_sdT('Loading…')) + '</div>';
         } else {
             var items = _sdLgSiteItems(sid, kind);
-            if (!items.length) h += '<div class="text-muted py-1" style="font-size:.72rem">' + esc(_sdT('No other widget of this kind has a layout that fits this one.')) + '</div>';
+            if (!items.length) h += '<div class="fg-secondary py-1" style="font-size:.72rem">' + esc(_sdT('No other widget of this kind has a layout that fits this one.')) + '</div>';
             items.forEach(function (it) { h += rowHtml('site:' + it.id, it.name || ('#' + it.id), 'bi-window-stack'); });
         }
         h += '<div style="font-size:.66rem;color:#888;margin-top:6px">' +
@@ -60689,13 +60683,13 @@ const StyleDesigner = (function () {
             bar = document.createElement('div');
             bar.id = 'sd-lg-bar';
             bar.setAttribute('role', 'status');
-            bar.className = 'd-flex align-items-center gap-2 px-3 py-2 rounded shadow bg-dark text-white';
+            bar.className = 'd-flex align-items-center gap-3 px-5 py-3 rounded-4 shadow bg-black fg-white';
             bar.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:1080;max-width:calc(100vw - 32px);font-size:.82rem';
             document.body.appendChild(bar);
         }
         bar.innerHTML = '<span class="bi bi-eye"></span>' +
             '<span class="text-truncate">' + esc(_sdT('Trying the layout: {var}', _sdLgState.label)) + '</span>' +
-            '<button type="button" class="btn btn-sm btn-primary" data-lg-act="keep">' + esc(_sdT('Keep')) + '</button>' +
+            '<button type="button" class="btn btn-sm btn-solid theme-primary" data-lg-act="keep">' + esc(_sdT('Keep')) + '</button>' +
             '<button type="button" class="btn btn-sm btn-outline-light" data-lg-act="cancel">' + esc(_sdT('Cancel')) + '</button>';
     }
 
@@ -61912,7 +61906,7 @@ const StyleDesigner = (function () {
         var h = '<div class="sd-th-builder">' +
                     '<div class="sd-th-builder-title"><span class="bi bi-sliders me-1"></span>' + esc(_sdT('Your own look')) + '</div>' +
                     '<div class="sd-th-grid">' +
-                        '<label class="sd-th-field"><span>' + esc(_sdT('Start from')) + '</span><select class="form-select form-select-sm" data-th-lb="base">';
+                        '<label class="sd-th-field"><span>' + esc(_sdT('Start from')) + '</span><select class="form-control form-control-sm" data-th-lb="base">';
         (th.looks || []).forEach(function (l) {
             h += '<option value="' + _thAttr(l.key) + '"' + (st.base === l.key ? ' selected' : '') + '>' + esc(l.name) + '</option>';
         });
@@ -61920,7 +61914,7 @@ const StyleDesigner = (function () {
         var ctl = th.lookControls || {};
         Object.keys(ctl).forEach(function (k) {
             var def = ctl[k];
-            h += '<label class="sd-th-field"><span>' + esc(def.label) + '</span><select class="form-select form-select-sm" data-th-lb-ctl="' + _thAttr(k) + '">' +
+            h += '<label class="sd-th-field"><span>' + esc(def.label) + '</span><select class="form-control form-control-sm" data-th-lb-ctl="' + _thAttr(k) + '">' +
                      '<option value="">' + esc(_sdT('As in the look')) + '</option>';
             Object.keys(def.options || {}).forEach(function (o) {
                 h += '<option value="' + _thAttr(o) + '"' + (st.controls[k] === o ? ' selected' : '') + '>' + esc(def.options[o].label) + '</option>';
@@ -61933,7 +61927,7 @@ const StyleDesigner = (function () {
                     '<div class="sd-th-actions">' +
                         '<span class="sd-th-status" data-th-lb="status">' + esc(_sdT('The canvas shows the look as you change it.')) + '</span>' +
                         '<button type="button" class="btn btn-sm btn-outline-light" data-th-act="look-cancel">' + esc(_sdT('Cancel')) + '</button>' +
-                        '<button type="button" class="btn btn-sm btn-primary" data-th-act="look-save"><span class="bi bi-save me-1"></span>' + esc(_sdT('Save the look')) + '</button>' +
+                        '<button type="button" class="btn btn-sm btn-solid theme-primary" data-th-act="look-save"><span class="bi bi-save me-1"></span>' + esc(_sdT('Save the look')) + '</button>' +
                     '</div>' +
                 '</div>';
         return h;
@@ -61957,7 +61951,7 @@ const StyleDesigner = (function () {
                    '<div class="sd-th-actions">' +
                        '<span class="sd-th-status" data-th-pb="status"></span>' +
                        '<button type="button" class="btn btn-sm btn-outline-light" data-th-act="pal-cancel">' + esc(_sdT('Cancel')) + '</button>' +
-                       '<button type="button" class="btn btn-sm btn-primary" data-th-act="pal-save"><span class="bi bi-save me-1"></span>' + esc(_sdT('Save the palette')) + '</button>' +
+                       '<button type="button" class="btn btn-sm btn-solid theme-primary" data-th-act="pal-save"><span class="bi bi-save me-1"></span>' + esc(_sdT('Save the palette')) + '</button>' +
                    '</div>' +
                '</div>';
     }
@@ -62893,7 +62887,7 @@ const StyleDesigner = (function () {
         overlay.innerHTML =
             '<div class="sd-fr-modal" role="dialog" aria-label="' + esc(_sdT('Find and Replace')) + '">' +
                 '<div class="sd-fr-header">' +
-                    '<span class="bi bi-search me-2"></span>' + esc(_sdT('Find and Replace')) + '' +
+                    '<span class="bi bi-search me-3"></span>' + esc(_sdT('Find and Replace')) + '' +
                     '<button type="button" class="sd-fr-close" id="sd-fr-close" aria-label="' + esc(_sdT('Close')) + '"><span class="bi bi-x-lg"></span></button>' +
                 '</div>' +
                 '<div class="sd-fr-body">' +
@@ -62995,7 +62989,7 @@ const StyleDesigner = (function () {
         overlay.innerHTML =
             '<div class="sd-note-modal" role="dialog" aria-modal="true">' +
                 '<div class="sd-note-header">' +
-                    '<span class="bi bi-chat-left-text me-2"></span>' +
+                    '<span class="bi bi-chat-left-text me-3"></span>' +
                     '<span class="sd-note-title">' + esc(_sdT('Note')) + ' — <em>' + typeLabel + '</em></span>' +
                     '<button type="button" class="sd-note-close bi bi-x-lg" id="sd-note-close" title="' + esc(_sdT('Close')) + '"></button>' +
                 '</div>' +
@@ -63454,7 +63448,7 @@ const StyleDesigner = (function () {
         overlay.innerHTML =
             '<div class="sd-fr-modal sd-rev-modal" role="dialog" aria-label="' + esc(_sdT('Compare revision')) + '">' +
                 '<div class="sd-fr-header">' +
-                    '<span class="bi bi-arrow-left-right me-2"></span>' + esc(_sdT('Revision #{var}', rev.revision_no)) + ' <span class="sd-rev-who">' + who + '</span>' +
+                    '<span class="bi bi-arrow-left-right me-3"></span>' + esc(_sdT('Revision #{var}', rev.revision_no)) + ' <span class="sd-rev-who">' + who + '</span>' +
                     '<div class="sd-rev-tabs" role="tablist">' +
                         '<button type="button" class="sd-rev-tab is-active" data-view="preview">' + esc(_sdT('Preview')) + '</button>' +
                         '<button type="button" class="sd-rev-tab" data-view="code">' + esc(_sdT('Code')) + '</button>' +
@@ -64860,8 +64854,8 @@ const StyleDesigner = (function () {
             return '<button type="button" class="sd-tab-popmenu-item' + (opts.danger ? ' danger' : '') + '" data-act="' + act + '"' +
                    (opts.group ? ' data-group="' + esc(opts.group) + '"' : '') +
                    (opts.disabled ? ' disabled title="' + esc(opts.title || '') + '"' : '') + '>' +
-                   (opts.color ? '<span class="sd-tab-color-dot me-2" data-color="' + esc(opts.color) + '" aria-hidden="true"></span>'
-                               : '<span class="bi ' + icon + ' me-2"></span>') + esc(label) + '</button>';
+                   (opts.color ? '<span class="sd-tab-color-dot me-3" data-color="' + esc(opts.color) + '" aria-hidden="true"></span>'
+                               : '<span class="bi ' + icon + ' me-3"></span>') + esc(label) + '</button>';
         };
         var lastHint = _sdT('The last page cannot be removed from its design. Delete the design instead.');
         var viewUrl = _pgPageViewUrl(p);
@@ -65422,7 +65416,7 @@ const StyleDesigner = (function () {
         var folded = !!_pgTabGroupsCollapsed[gid];
         var item = function (act, icon, label) {
             return '<button type="button" class="sd-tab-popmenu-item" data-act="' + act + '">' +
-                   '<span class="bi ' + icon + ' me-2"></span>' + esc(label) + '</button>';
+                   '<span class="bi ' + icon + ' me-3"></span>' + esc(label) + '</button>';
         };
         var dots = _PG_TAB_GROUP_COLORS.map(function (c) {
             var name = _pgTabColorLabel(c);
@@ -66044,7 +66038,7 @@ const StyleDesigner = (function () {
                 '</span>' +
                 '<span class="sd-vm-actions">' +
                     (mine
-                        ? '<button type="button" class="btn btn-sm btn-warning py-0" id="sd-vm-takeover">' +
+                        ? '<button type="button" class="btn btn-sm btn-solid theme-warning py-0" id="sd-vm-takeover">' +
                               '<span class="bi bi-box-arrow-in-down me-1"></span>' + esc(_sdT('Take over the design')) +
                           '</button>'
                         : '') +
@@ -66299,8 +66293,8 @@ const StyleDesigner = (function () {
             if (locked) {
                 if (!note) {
                     note = document.createElement('div');
-                    note.className = 'alert alert-warning py-2 px-3 small mb-3 sd-page-locked-note';
-                    note.innerHTML = '<span class="bi bi-lock me-2"></span>' +
+                    note.className = 'alert theme-warning py-3 px-5 small mb-5 sd-page-locked-note';
+                    note.innerHTML = '<span class="bi bi-lock me-3"></span>' +
                         esc(_sdT('These settings belong to the page somebody else is editing right now, so they are locked until they move on.'));
                     pane.insertBefore(note, pane.firstChild);
                 }
@@ -66354,29 +66348,27 @@ const StyleDesigner = (function () {
         var id = 'sdLockedModal';
         var el = document.getElementById(id);
         if (!el) {
-            el = document.createElement('div');
+            el = document.createElement('dialog');
             el.id = id;
-            el.className = 'modal fade';
+            el.className = 'dialog pg-dialog-centered';
             el.tabIndex = -1;
             el.innerHTML =
-                '<div class="modal-dialog modal-dialog-centered"><div class="modal-content">' +
-                    '<div class="modal-header py-2">' +
-                        '<h6 class="modal-title mb-0"><span class="bi bi-eye me-2"></span>' +
+                '<div class="dialog-header py-3">' +
+                        '<h6 class="dialog-title mb-0"><span class="bi bi-eye me-3"></span>' +
                         esc(_sdT('View mode')) + '</h6>' +
-                        '<button type="button" class="btn-close" data-bs-dismiss="modal"></button>' +
+                        '<button type="button" class="btn-close" data-bs-dismiss="dialog"></button>' +
                     '</div>' +
-                    '<div class="modal-body small" id="sd-locked-body"></div>' +
-                    '<div class="modal-footer py-2">' +
-                        '<button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">' +
+                    '<div class="dialog-body small" id="sd-locked-body"></div>' +
+                    '<div class="dialog-footer py-3">' +
+                        '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-dismiss="dialog">' +
                             esc(_sdT('Understood')) + '</button>' +
-                        '<button type="button" class="btn btn-sm btn-warning" id="sd-locked-takeover" style="display:none">' +
+                        '<button type="button" class="btn btn-sm btn-solid theme-warning" id="sd-locked-takeover" style="display:none">' +
                             '<span class="bi bi-box-arrow-in-down me-1"></span>' + esc(_sdT('Take over the design')) +
                         '</button>' +
-                        '<button type="button" class="btn btn-sm btn-primary" id="sd-locked-comment">' +
+                        '<button type="button" class="btn btn-sm btn-solid theme-primary" id="sd-locked-comment">' +
                             '<span class="bi bi-chat-left-text me-1"></span>' + esc(_sdT('Add a note')) +
                         '</button>' +
-                    '</div>' +
-                '</div></div>';
+                    '</div>';
             document.body.appendChild(el);
             var btn = el.querySelector('#sd-locked-comment');
             if (btn) btn.addEventListener('click', function () {
@@ -66394,16 +66386,16 @@ const StyleDesigner = (function () {
         var body = el.querySelector('#sd-locked-body');
         if (body) {
             body.innerHTML = mine
-                ? '<p class="mb-2">' + esc(_sdT('This page is open for editing in another tab of yours.')) + '</p>' +
-                  '<p class="mb-2">' + esc(_sdT('Two tabs saving one page would overwrite each other, so this one is in view mode. You can take the page over here — then the other tab becomes the read-only one, and anything it has not saved stays there.')) + '</p>' +
-                  '<p class="mb-0 text-muted">' + esc(_sdT('Or simply continue in the other tab.')) + '</p>'
-                : '<p class="mb-2">' +
+                ? '<p class="mb-3">' + esc(_sdT('This page is open for editing in another tab of yours.')) + '</p>' +
+                  '<p class="mb-3">' + esc(_sdT('Two tabs saving one page would overwrite each other, so this one is in view mode. You can take the page over here — then the other tab becomes the read-only one, and anything it has not saved stays there.')) + '</p>' +
+                  '<p class="mb-0 fg-secondary">' + esc(_sdT('Or simply continue in the other tab.')) + '</p>'
+                : '<p class="mb-3">' +
                     esc(_sdT('This page is open for editing by ')) +
                     '<strong>' + esc(who) + '</strong>' +
                     esc(_sdT('.')) +
                   '</p>' +
-                  '<p class="mb-2">' + esc(_sdT('Two people saving one page would overwrite each other, so you are in view mode: the canvas is read-only and Publish is off for this page.')) + '</p>' +
-                  '<p class="mb-0 text-muted">' + esc(_sdT('You can still leave a note on any element — the same notes panel as always. When they move to another page, refresh and the page is yours.')) + '</p>';
+                  '<p class="mb-3">' + esc(_sdT('Two people saving one page would overwrite each other, so you are in view mode: the canvas is read-only and Publish is off for this page.')) + '</p>' +
+                  '<p class="mb-0 fg-secondary">' + esc(_sdT('You can still leave a note on any element — the same notes panel as always. When they move to another page, refresh and the page is yours.')) + '</p>';
         }
         try { pgUI.dialog.show(el); } catch (e) {}
     }
@@ -66413,7 +66405,7 @@ const StyleDesigner = (function () {
         var list    = document.getElementById('sd-pick-page-list');
         var filter  = document.getElementById('sd-pick-page-filter');
         if (!modalEl || !list) return;
-        list.innerHTML = '<div class="list-group-item bg-transparent text-muted small">' + esc(_sdT('Loading...')) + '</div>';
+        list.innerHTML = '<div class="list-group-item bg-transparent fg-secondary small">' + esc(_sdT('Loading...')) + '</div>';
         if (filter) filter.value = '';
         var modal = pgUI.dialog.get(modalEl);
         modal.show();
@@ -66428,15 +66420,15 @@ const StyleDesigner = (function () {
                     return !q || sp.page_name.toLowerCase().indexOf(q) !== -1 || (sp.page_title || '').toLowerCase().indexOf(q) !== -1;
                 });
                 if (!rows.length) {
-                    list.innerHTML = '<div class="list-group-item bg-transparent text-muted small">' + esc(_sdT('There is no other visual designer page to add.')) + '</div>';
+                    list.innerHTML = '<div class="list-group-item bg-transparent fg-secondary small">' + esc(_sdT('There is no other visual designer page to add.')) + '</div>';
                     return;
                 }
                 list.innerHTML = rows.map(function (sp) {
-                    return '<button type="button" class="list-group-item list-group-item-action bg-transparent text-body sd-pick-page-row" data-page-id="' + sp.page_id + '">' +
-                           '<div class="d-flex justify-content-between align-items-center gap-2">' +
+                    return '<button type="button" class="list-group-item list-group-item-action bg-transparent fg-body sd-pick-page-row" data-page-id="' + sp.page_id + '">' +
+                           '<div class="d-flex justify-content-between align-items-center gap-3">' +
                            '<span><span class="fw-semibold">' + esc(sp.page_name) + '</span>' +
-                           (sp.page_title ? '<span class="text-muted small ms-2">' + esc(sp.page_title) + '</span>' : '') + '</span>' +
-                           (sp.current_style_name ? '<span class="badge text-bg-secondary fw-normal">' + esc(sp.current_style_name) + '</span>' : '') +
+                           (sp.page_title ? '<span class="fg-secondary small ms-3">' + esc(sp.page_title) + '</span>' : '') + '</span>' +
+                           (sp.current_style_name ? '<span class="badge theme-secondary fw-normal">' + esc(sp.current_style_name) + '</span>' : '') +
                            '</div></button>';
                 }).join('');
             };
@@ -66462,7 +66454,7 @@ const StyleDesigner = (function () {
                 });
             };
         }).catch(function () {
-            list.innerHTML = '<div class="list-group-item bg-transparent text-danger small">' + esc(_sdT('The list could not be fetched.')) + '</div>';
+            list.innerHTML = '<div class="list-group-item bg-transparent fg-danger small">' + esc(_sdT('The list could not be fetched.')) + '</div>';
         });
     }
 
@@ -66552,7 +66544,7 @@ const StyleDesigner = (function () {
         fd.append('framework_bootstrap', _sdUsesBootstrap() ? '1' : '0');
 
         if (run) { run.disabled = true; }
-        if (status) { status.style.display = ''; status.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>' + esc(_sdT('Importing…')); }
+        if (status) { status.style.display = ''; status.innerHTML = '<span class="spinner-border spinner-border-sm me-3"></span>' + esc(_sdT('Importing…')); }
 
         var url = (window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/designer_import.php';
         fetch(url, { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
@@ -66561,14 +66553,14 @@ const StyleDesigner = (function () {
             if (run) run.disabled = false;
             if (!res.data || res.data.status !== 'success') {
                 var msg = (res.data && res.data.message) ? res.data.message : (_sdT('Import failed') + ' (' + res.status + ').');
-                if (status) status.innerHTML = '<span class="text-danger"><span class="bi bi-x-circle me-1"></span>' + esc(msg) + '</span>';
+                if (status) status.innerHTML = '<span class="fg-danger"><span class="bi bi-x-circle me-1"></span>' + esc(msg) + '</span>';
                 return;
             }
             _pgImportApply(res.data, projEl ? projEl.value : '');
         })
         .catch(function () {
             if (run) run.disabled = false;
-            if (status) status.innerHTML = '<span class="text-danger">' + esc(_sdT('Network error.')) + '</span>';
+            if (status) status.innerHTML = '<span class="fg-danger">' + esc(_sdT('Network error.')) + '</span>';
         });
     }
 
@@ -66700,38 +66692,34 @@ const StyleDesigner = (function () {
             var rows = groups.map(function (g, i) {
                 var preview = _pgImportText(g.nodes[0]).slice(0, 70);
                 var tag = (g.nodes[0].props && g.nodes[0].props.tag) || g.nodes[0].type;
-                return '<label class="list-group-item d-flex gap-2 align-items-start">' +
-                    '<input class="form-check-input flex-shrink-0 mt-1" type="checkbox" checked data-sd-imp-group="' + i + '">' +
+                return '<label class="list-group-item d-flex gap-3 align-items-start">' +
+                    '<input class="check flex-shrink-0 mt-1" type="checkbox" checked data-sd-imp-group="' + i + '">' +
                     '<span class="flex-grow-1 min-w-0">' +
                         '<span class="d-block fw-semibold">' + esc(_pgImportBlockName(g.nodes[0], '')) +
                             ' <code class="small">&lt;' + esc(tag) + '&gt;</code></span>' +
-                        '<span class="d-block small text-body-secondary">' + esc(_sdT('On {var} pages', Object.keys(g.pages).length)) +
+                        '<span class="d-block small fg-secondary">' + esc(_sdT('On {var} pages', Object.keys(g.pages).length)) +
                             (preview ? ' · ' + esc(preview) : '') + '</span>' +
                     '</span>' +
                 '</label>';
             }).join('');
-            var el = document.createElement('div');
-            el.className = 'modal fade';
+            var el = document.createElement('dialog');
+            el.className = 'dialog pg-dialog-centered dialog-scrollable';
             el.tabIndex = -1;
             el.setAttribute('role', 'dialog');
             el.setAttribute('aria-modal', 'true');
             el.setAttribute('aria-labelledby', 'sd-imp-shared-title');
             el.innerHTML =
-                '<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">' +
-                    '<div class="modal-content">' +
-                        '<div class="modal-header">' +
-                            '<h5 class="modal-title" id="sd-imp-shared-title"><span class="bi bi-puzzle me-2" aria-hidden="true"></span>' + esc(_sdT('Make the repeated parts shared?')) + '</h5>' +
+                '<div class="dialog-header">' +
+                            '<h5 class="dialog-title" id="sd-imp-shared-title"><span class="bi bi-puzzle me-3" aria-hidden="true"></span>' + esc(_sdT('Make the repeated parts shared?')) + '</h5>' +
                         '</div>' +
-                        '<div class="modal-body">' +
-                            '<p class="small mb-3">' + esc(_sdT('These blocks are the same on more than one imported page. As shared components they are edited once and change on every page; left as they are, each page keeps its own copy.')) + '</p>' +
+                        '<div class="dialog-body">' +
+                            '<p class="small mb-5">' + esc(_sdT('These blocks are the same on more than one imported page. As shared components they are edited once and change on every page; left as they are, each page keeps its own copy.')) + '</p>' +
                             '<div class="list-group">' + rows + '</div>' +
                         '</div>' +
-                        '<div class="modal-footer">' +
-                            '<button type="button" class="btn btn-secondary" data-sd-imp="keep">' + esc(_sdT('Keep them on each page')) + '</button>' +
-                            '<button type="button" class="btn btn-primary" data-sd-imp="share">' + esc(_sdT('Make shared')) + '</button>' +
-                        '</div>' +
-                    '</div>' +
-                '</div>';
+                        '<div class="dialog-footer">' +
+                            '<button type="button" class="btn btn-solid theme-secondary" data-sd-imp="keep">' + esc(_sdT('Keep them on each page')) + '</button>' +
+                            '<button type="button" class="btn btn-solid theme-primary" data-sd-imp="share">' + esc(_sdT('Make shared')) + '</button>' +
+                        '</div>';
             document.body.appendChild(el);
             var chosen = [];
             var modal = pgUI.dialog.get(el, { backdrop: 'static', keyboard: false });
@@ -66962,7 +66950,7 @@ const StyleDesigner = (function () {
                     '<p>' + esc(message || _sdT('The template could not be opened.')) + '</p>' +
                     '<div class="sd-tpl-prep-actions">' +
                         '<a class="btn btn-sm btn-outline-light" href="' + esc(back) + '">' + esc(_sdT('Back to the designs')) + '</a>' +
-                        '<button type="button" class="btn btn-sm btn-primary" data-sd-tpl-blank>' + esc(_sdT('Start with a blank page')) + '</button>' +
+                        '<button type="button" class="btn btn-sm btn-solid theme-primary" data-sd-tpl-blank>' + esc(_sdT('Start with a blank page')) + '</button>' +
                     '</div>';
                 box.hidden = false;
                 var blank = box.querySelector('[data-sd-tpl-blank]');
@@ -67195,7 +67183,7 @@ const StyleDesigner = (function () {
                 return;
             }
             _pgTabsPersistActive();
-            sdToast('<span class="spinner-border spinner-border-sm me-2"></span>' +
+            sdToast('<span class="spinner-border spinner-border-sm me-3"></span>' +
                     esc(_sdT('Reading the markup…')), 'info', 4000);
             _pgApiPost('import_paste', {
                 html: code,
@@ -67451,43 +67439,41 @@ const StyleDesigner = (function () {
             try { return new Date(unix * 1000).toLocaleString(_sdLocale(), { dateStyle: 'medium', timeStyle: 'short' }); }
             catch (e) { return new Date(unix * 1000).toLocaleString(); }
         };
-        var el = document.createElement('div');
-        el.className = 'modal fade';
+        var el = document.createElement('dialog');
+        el.className = 'dialog dialog-lg pg-dialog-centered dialog-scrollable';
         el.tabIndex = -1;
         el.setAttribute('aria-labelledby', 'ps-title');
         el.innerHTML =
-            '<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">' +
-                '<div class="modal-header py-2"><h6 class="modal-title mb-0" id="ps-title"><span class="bi bi-share me-2" aria-hidden="true"></span>' + esc(_sdT('Share prototype')) + '</h6>' +
-                    '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' + esc(_sdT('Close')) + '"></button></div>' +
-                '<div class="modal-body small">' +
-                    '<p class="text-body-secondary mb-2">' + esc(_sdT('A link opens the saved drafts of this design as a clickable prototype, always as they were saved last.')) + '</p>' +
-                    '<div class="alert alert-success d-none" data-ps-made role="status"></div>' +
-                    '<div data-ps-list><div class="text-body-secondary py-2">' + esc(_sdT('Loading…')) + '</div></div>' +
-                    '<hr class="my-3">' +
-                    '<h6 class="mb-2">' + esc(_sdT('New link')) + '</h6>' +
+            '<div class="dialog-header py-3"><h6 class="dialog-title mb-0" id="ps-title"><span class="bi bi-share me-3" aria-hidden="true"></span>' + esc(_sdT('Share prototype')) + '</h6>' +
+                    '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + esc(_sdT('Close')) + '"></button></div>' +
+                '<div class="dialog-body small">' +
+                    '<p class="fg-secondary mb-3">' + esc(_sdT('A link opens the saved drafts of this design as a clickable prototype, always as they were saved last.')) + '</p>' +
+                    '<div class="alert theme-success d-none" data-ps-made role="status"></div>' +
+                    '<div data-ps-list><div class="fg-secondary py-3">' + esc(_sdT('Loading…')) + '</div></div>' +
+                    '<hr class="my-5">' +
+                    '<h6 class="mb-3">' + esc(_sdT('New link')) + '</h6>' +
                     '<form data-ps-form novalidate>' +
-                        '<div class="mb-2" role="radiogroup" aria-labelledby="ps-audience-label">' +
+                        '<div class="mb-3" role="radiogroup" aria-labelledby="ps-audience-label">' +
                             '<div class="form-label mb-1" id="ps-audience-label">' + esc(_sdT('Who can open it')) + '</div>' +
-                            '<label class="form-check"><input class="form-check-input" type="radio" name="ps-audience" value="anyone" checked>' +
-                                '<span class="form-check-label">' + esc(_sdT('Anyone who has the link')) + '</span></label>' +
-                            '<label class="form-check"><input class="form-check-input" type="radio" name="ps-audience" value="team">' +
-                                '<span class="form-check-label">' + esc(_sdT('The team: signed-in administrators, designers and managers')) + '</span></label>' +
+                            '<label class="form-field"><input class="radio" type="radio" name="ps-audience" value="anyone" checked>' +
+                                '<span class="">' + esc(_sdT('Anyone who has the link')) + '</span></label>' +
+                            '<label class="form-field"><input class="radio" type="radio" name="ps-audience" value="team">' +
+                                '<span class="">' + esc(_sdT('The team: signed-in administrators, designers and managers')) + '</span></label>' +
                         '</div>' +
-                        '<div class="row g-2 mb-2">' +
-                            '<div class="col-sm-6"><label class="form-label mb-1" for="ps-start">' + esc(_sdT('Start page')) + '</label>' +
-                                '<select class="form-select form-select-sm" id="ps-start" data-ps-start></select></div>' +
-                            '<div class="col-sm-6"><label class="form-label mb-1" for="ps-duration">' + esc(_sdT('Expires')) + '</label>' +
-                                '<select class="form-select form-select-sm" id="ps-duration" data-ps-duration></select></div>' +
+                        '<div class="row g-3 mb-3">' +
+                            '<div class="sm:col-6"><label class="form-label mb-1" for="ps-start">' + esc(_sdT('Start page')) + '</label>' +
+                                '<select class="form-control form-control-sm" id="ps-start" data-ps-start></select></div>' +
+                            '<div class="sm:col-6"><label class="form-label mb-1" for="ps-duration">' + esc(_sdT('Expires')) + '</label>' +
+                                '<select class="form-control form-control-sm" id="ps-duration" data-ps-duration></select></div>' +
                         '</div>' +
-                        '<div class="mb-2"><label class="form-label mb-1" for="ps-password">' + esc(_sdT('Password (optional)')) + '</label>' +
+                        '<div class="mb-3"><label class="form-label mb-1" for="ps-password">' + esc(_sdT('Password (optional)')) + '</label>' +
                             '<input type="password" class="form-control form-control-sm" id="ps-password" data-ps-password autocomplete="new-password" maxlength="128">' +
                             '<div class="form-text">' + esc(_sdT('6 to 128 characters. Give it to the people you share the link with; it is not shown again.')) + '</div></div>' +
-                        '<div class="text-danger mb-2 d-none" data-ps-error role="alert"></div>' +
-                        '<button type="submit" class="btn btn-sm btn-primary" data-ps-create><span class="bi bi-link-45deg me-1" aria-hidden="true"></span>' + esc(_sdT('Create link')) + '</button>' +
+                        '<div class="fg-danger mb-3 d-none" data-ps-error role="alert"></div>' +
+                        '<button type="submit" class="btn btn-sm btn-solid theme-primary" data-ps-create><span class="bi bi-link-45deg me-1" aria-hidden="true"></span>' + esc(_sdT('Create link')) + '</button>' +
                     '</form>' +
                 '</div>' +
-                '<div class="modal-footer py-2"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">' + esc(_sdT('Close')) + '</button></div>' +
-            '</div></div>';
+                '<div class="dialog-footer py-3"><button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-dismiss="dialog">' + esc(_sdT('Close')) + '</button></div>';
         document.body.appendChild(el);
 
         var listEl = el.querySelector('[data-ps-list]');
@@ -67542,17 +67528,17 @@ const StyleDesigner = (function () {
             navigator.clipboard.writeText(text).then(copied, function () { copyFailed(text, field); });
         };
         var addressBox = function (url) {
-            return '<div class="input-group input-group-sm mt-2">' +
+            return '<div class="input-group input-group-sm mt-3">' +
                        '<input type="text" class="form-control" readonly value="' + esc(url) + '" aria-label="' + esc(_sdT('Address')) + '">' +
-                       '<button type="button" class="btn btn-outline-secondary" data-ps-copy-url="' + esc(url) + '"><span class="bi bi-clipboard me-1" aria-hidden="true"></span>' + esc(_sdT('Copy')) + '</button>' +
+                       '<button type="button" class="btn btn-outline theme-secondary" data-ps-copy-url="' + esc(url) + '"><span class="bi bi-clipboard me-1" aria-hidden="true"></span>' + esc(_sdT('Copy')) + '</button>' +
                    '</div>';
         };
         var row = function (l) {
-            var badges = '<span class="badge ' + (l.audience === 'anyone' ? 'text-bg-warning' : 'text-bg-info') + ' me-1">' +
+            var badges = '<span class="badge ' + (l.audience === 'anyone' ? 'theme-warning' : 'theme-info') + ' me-1">' +
                              esc(l.audience === 'anyone' ? _sdT('Anyone who has it') : _sdT('Team')) + '</span>' +
-                         (l.password ? '<span class="badge text-bg-secondary me-1"><span class="bi bi-lock me-1" aria-hidden="true"></span>' + esc(_sdT('Password')) + '</span>' : '') +
-                         (l.locked ? '<span class="badge text-bg-danger me-1">' + esc(_sdT('Password locked')) + '</span>' : '') +
-                         (l.state === 'expired' ? '<span class="badge text-bg-dark me-1">' + esc(_sdT('Expired')) + '</span>' : '');
+                         (l.password ? '<span class="badge theme-secondary me-1"><span class="bi bi-lock me-1" aria-hidden="true"></span>' + esc(_sdT('Password')) + '</span>' : '') +
+                         (l.locked ? '<span class="badge theme-danger me-1">' + esc(_sdT('Password locked')) + '</span>' : '') +
+                         (l.state === 'expired' ? '<span class="badge theme-inverse me-1">' + esc(_sdT('Expired')) + '</span>' : '');
             var facts = [
                 _sdT('Starts at: {var}', l.start_page ? l.start_page + (l.start_first ? ' (' + _sdT('the first draft') + ')' : '') : '-'),
                 l.expires_at > 0 ? (l.state === 'expired' ? _sdT('Expired: {var}', when(l.expires_at)) : _sdT('Expires: {var}', when(l.expires_at))) : _sdT('Expires: never'),
@@ -67560,23 +67546,23 @@ const StyleDesigner = (function () {
                 l.last_used_at > 0 ? _sdT('Last opened: {var}', when(l.last_used_at)) : _sdT('Not opened yet')
             ];
             var showable = state.canShow && l.can_show;
-            return '<li class="list-group-item px-2 py-2" data-ps-id="' + esc(String(l.id)) + '">' +
-                       '<div class="d-flex flex-wrap align-items-center gap-2">' +
-                           '<div class="me-auto">' + badges + '<code class="text-body-secondary">' + esc(l.hint) + '…</code></div>' +
+            return '<li class="list-group-item px-3 py-3" data-ps-id="' + esc(String(l.id)) + '">' +
+                       '<div class="d-flex flex-wrap align-items-center gap-3">' +
+                           '<div class="me-auto">' + badges + '<code class="fg-secondary">' + esc(l.hint) + '…</code></div>' +
                            '<div class="btn-group btn-group-sm" role="group">' +
-                               (showable ? '<button type="button" class="btn btn-outline-secondary" data-ps-copy><span class="bi bi-clipboard me-1" aria-hidden="true"></span>' + esc(_sdT('Copy address')) + '</button>' +
-                                           '<button type="button" class="btn btn-outline-secondary" data-ps-show><span class="bi bi-eye me-1" aria-hidden="true"></span>' + esc(_sdT('Show address')) + '</button>' : '') +
-                               '<button type="button" class="btn btn-outline-danger" data-ps-revoke><span class="bi bi-x-circle me-1" aria-hidden="true"></span>' + esc(_sdT('Revoke')) + '</button>' +
+                               (showable ? '<button type="button" class="btn btn-outline theme-secondary" data-ps-copy><span class="bi bi-clipboard me-1" aria-hidden="true"></span>' + esc(_sdT('Copy address')) + '</button>' +
+                                           '<button type="button" class="btn btn-outline theme-secondary" data-ps-show><span class="bi bi-eye me-1" aria-hidden="true"></span>' + esc(_sdT('Show address')) + '</button>' : '') +
+                               '<button type="button" class="btn btn-outline theme-danger" data-ps-revoke><span class="bi bi-x-circle me-1" aria-hidden="true"></span>' + esc(_sdT('Revoke')) + '</button>' +
                            '</div>' +
                        '</div>' +
-                       '<div class="text-body-secondary mt-1">' + facts.map(esc).join(' · ') +
+                       '<div class="fg-secondary mt-1">' + facts.map(esc).join(' · ') +
                            (l.created_by_name ? ' · ' + esc(_sdT('Made by {var}', l.created_by_name)) : '') + '</div>' +
                        '<div data-ps-address></div>' +
                    '</li>';
         };
         var render = function (links) {
             if (!links.length) {
-                listEl.innerHTML = '<div class="text-body-secondary py-2">' + esc(_sdT('No links yet. Make one below.')) + '</div>';
+                listEl.innerHTML = '<div class="fg-secondary py-3">' + esc(_sdT('No links yet. Make one below.')) + '</div>';
                 return;
             }
             listEl.innerHTML = '<ul class="list-group">' + links.map(row).join('') + '</ul>';
@@ -67584,7 +67570,7 @@ const StyleDesigner = (function () {
         var load = function () {
             return _pgApiPost('prototype_links', { style_id: styleId }).then(function (res) {
                 if (!res || res.status !== 'success') {
-                    listEl.innerHTML = '<div class="text-danger py-2">' + esc((res && res.message) || _sdT('Sorry, we could not accept your request.')) + '</div>';
+                    listEl.innerHTML = '<div class="fg-danger py-3">' + esc((res && res.message) || _sdT('Sorry, we could not accept your request.')) + '</div>';
                     return;
                 }
                 state.pages = res.pages || [];
@@ -67593,7 +67579,7 @@ const StyleDesigner = (function () {
                 if (!startEl.options.length) fillPages();
                 fillDurations();
                 render(res.links || []);
-            }).catch(function () { listEl.innerHTML = '<div class="text-danger py-2">' + esc(_sdT('Network error.')) + '</div>'; });
+            }).catch(function () { listEl.innerHTML = '<div class="fg-danger py-3">' + esc(_sdT('Network error.')) + '</div>'; });
         };
         // The address is asked for again on each use, never kept here.
         var fetchAddress = function (id) {
@@ -67944,7 +67930,7 @@ const StyleDesigner = (function () {
             text = _pgScheduleNote(p);
         }
         line.textContent = text;
-        line.classList.toggle('text-warning', warn);
+        line.classList.toggle('fg-warning', warn);
     }
 
     // The keys of the editor's save, as the panel writes a shortcut.
@@ -68466,22 +68452,20 @@ const StyleDesigner = (function () {
     function initIconModal() {
         // Header: title (left) | search (center) | close (right) via grid
         // Body: all categories stacked with sticky titles (no tabs, no zoom)
-        var modalHtml = '<div class="modal fade" id="sdIconModal" tabindex="-1" aria-hidden="true">' +
-            '<div class="modal-dialog modal-dialog-scrollable modal-xl">' +
-            '<div class="modal-content">' +
-            '<div class="modal-header py-2 sd-icon-header">' +
-                '<h5 class="modal-title mb-0"><i class="bi bi-grid-3x3-gap me-2"></i>' + esc(_sdT('Select an Icon')) + '</h5>' +
+        var modalHtml = '<dialog class="dialog dialog-scrollable dialog-xl" id="sdIconModal">' +
+            '<div class="dialog-header py-3 sd-icon-header">' +
+                '<h5 class="dialog-title mb-0"><i class="bi bi-grid-3x3-gap me-3"></i>' + esc(_sdT('Select an Icon')) + '</h5>' +
                 '<div class="sd-icon-search-wrap">' +
                     '<i class="bi bi-search sd-icon-search-icon"></i>' +
                     '<input type="text" class="form-control form-control-sm sd-icon-search" id="sdIconSearch" placeholder="' + esc(_sdT('Search icons...')) + '">' +
                 '</div>' +
-                '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="' + esc(_sdT('Close')) + '"></button>' +
+                '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + esc(_sdT('Close')) + '"></button>' +
             '</div>' +
-            '<div class="modal-body p-0">' +
+            '<div class="dialog-body p-0">' +
                 '<div class="sd-icon-sections" id="sdIconSections"></div>' +
                 '<div class="sd-icon-empty d-none" id="sdIconEmpty">' + esc(_sdT('No icons found')) + '</div>' +
             '</div>' +
-            '</div></div></div>';
+            '</dialog>';
 
         var d = document.createElement('div');
         d.innerHTML = modalHtml;
@@ -68738,24 +68722,20 @@ const StyleDesigner = (function () {
                     '</div>';
             }).join('');
 
-            _sdShortcutsModalEl = document.createElement('div');
-            _sdShortcutsModalEl.className = 'modal fade sd-settings-modal-dark';
+            _sdShortcutsModalEl = document.createElement('dialog');
+            _sdShortcutsModalEl.className = 'dialog sd-settings-modal-dark dialog-sm sd-modal-content';
             _sdShortcutsModalEl.tabIndex = -1;
             _sdShortcutsModalEl.setAttribute('aria-hidden', 'true');
             _sdShortcutsModalEl.innerHTML =
-                '<div class="modal-dialog modal-sm">' +
-                  '<div class="modal-content sd-modal-content">' +
-                    '<div class="modal-header sd-modal-header">' +
-                      '<span class="bi bi-keyboard me-2"></span>' +
-                      '<h5 class="modal-title" style="font-size:.8rem">' + esc(_sdT('Keyboard Shortcuts')) + '</h5>' +
-                      '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="' + esc(_sdT('Close')) + '"></button>' +
+                '<div class="dialog-header sd-modal-header">' +
+                      '<span class="bi bi-keyboard me-3"></span>' +
+                      '<h5 class="dialog-title" style="font-size:.8rem">' + esc(_sdT('Keyboard Shortcuts')) + '</h5>' +
+                      '<button type="button" class="btn-close fg-white" data-bs-dismiss="dialog" aria-label="' + esc(_sdT('Close')) + '"></button>' +
                     '</div>' +
-                    '<div class="modal-body sd-modal-body">' + _bodyHtml + '</div>' +
-                    '<div class="modal-footer sd-modal-footer">' +
-                      '<button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">' + esc(_sdT('Close')) + '</button>' +
-                    '</div>' +
-                  '</div>' +
-                '</div>';
+                    '<div class="dialog-body sd-modal-body">' + _bodyHtml + '</div>' +
+                    '<div class="dialog-footer sd-modal-footer">' +
+                      '<button type="button" class="btn btn-sm btn-solid theme-secondary" data-bs-dismiss="dialog">' + esc(_sdT('Close')) + '</button>' +
+                    '</div>';
             document.body.appendChild(_sdShortcutsModalEl);
         }
         if (window.pgUI) {
@@ -71032,7 +71012,7 @@ const StyleDesigner = (function () {
         if (!host) return;
         var draw = function (res) {
             if (!res || res.status !== 'success') {
-                host.innerHTML = '<div class="sd-val-empty text-warning"><span class="bi bi-exclamation-triangle me-1"></span>' + esc((res && res.message) || _sdT('The SEO check could not be run.')) + '</div>';
+                host.innerHTML = '<div class="sd-val-empty fg-warning"><span class="bi bi-exclamation-triangle me-1"></span>' + esc((res && res.message) || _sdT('The SEO check could not be run.')) + '</div>';
                 return;
             }
             var score = res.score == null ? null : parseInt(res.score, 10);
@@ -71052,7 +71032,7 @@ const StyleDesigner = (function () {
             if (bad.length) {
                 h += '<div class="sd-val-list">';
                 bad.forEach(function (c) {
-                    h += '<div class="sd-val-item"><div class="sd-val-rule"><span class="bi ' + (c.status === 'fail' ? 'bi-x-circle text-danger' : 'bi-exclamation-circle text-warning') + ' sd-val-icon"></span>' + esc(c.label) + '</div>' +
+                    h += '<div class="sd-val-item"><div class="sd-val-rule"><span class="bi ' + (c.status === 'fail' ? 'bi-x-circle fg-danger' : 'bi-exclamation-circle fg-warning') + ' sd-val-icon"></span>' + esc(c.label) + '</div>' +
                          '<div class="sd-val-node">' + esc(_sdT('Page settings')) + ' · ' + c.earned + '/' + c.weight + '</div></div>';
                 });
                 h += '</div>';

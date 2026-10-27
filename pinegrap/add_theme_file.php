@@ -53,8 +53,8 @@ if (!$_POST) {
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'overwrite')) . '
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Options') . '
                                 </div>
                                 <div class="card-body">
@@ -62,18 +62,18 @@ if (!$_POST) {
                                         <div class="col-12">
                                             <h5 class="form-label">' . lang('What type of Theme do you want to create?') . '</h5>
                                         </div>
-                                        <div class="col-12 my-3">
-                                            <fieldset class="form-check" disabled>
-                                                ' . $liveform->output_field(array('type'=>'radio', 'id'=>'system', 'name'=>'theme_type', 'value'=>'system', 'class'=>'form-check-input collapse-switcher disabled', 'data-bs-target'=>'#system_theme_row')) . '
-                                                <label class="form-check-label" for="system">' . lang('System') . '</label> 
-                                                <label class="form-text d-block text-muted" for="system">' . lang('use the Theme Designer; good for adaptive page design') . '</label> 
+                                        <div class="col-12 my-5">
+                                            <fieldset class="form-field" disabled>
+                                                ' . $liveform->output_field(array('type'=>'radio', 'id'=>'system', 'name'=>'theme_type', 'value'=>'system', 'class'=>'radio collapse-switcher disabled', 'data-bs-target'=>'#system_theme_row')) . '
+                                                <label class="" for="system">' . lang('System') . '</label> 
+                                                <label class="form-text d-block fg-secondary" for="system">' . lang('use the Theme Designer; good for adaptive page design') . '</label> 
                                             </fieldset>
-                                            <div class="form-check">
-                                                ' . $liveform->output_field(array('type'=>'radio', 'id'=>'custom', 'name'=>'theme_type', 'value'=>'custom', 'class'=>'form-check-input collapse-switcher', 'checked'=>'checked', 'data-bs-target'=>'#custom_theme_row')) . '
-                                                <label class="form-check-label" for="custom">' . lang('Custom') . '</label>
-                                                <label class="form-text d-block text-muted" for="custom">' . lang('upload your own CSS file; good for responsive page design') . '</label> 
+                                            <div class="form-field">
+                                                ' . $liveform->output_field(array('type'=>'radio', 'id'=>'custom', 'name'=>'theme_type', 'value'=>'custom', 'class'=>'radio collapse-switcher', 'checked'=>'checked', 'data-bs-target'=>'#custom_theme_row')) . '
+                                                <label class="" for="custom">' . lang('Custom') . '</label>
+                                                <label class="form-text d-block fg-secondary" for="custom">' . lang('upload your own CSS file; good for responsive page design') . '</label> 
                                             </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="system_theme_row">
+                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3" id="system_theme_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                                                 <div class="popover-body">
                                                     <div class="row">
@@ -81,15 +81,15 @@ if (!$_POST) {
                                                             <h5 class="form-label">' . lang('How would you like to create the System Theme?') . '</h5>
                                                         </div>
                                                         <div class="col-12 my-1">
-                                                            <div class="form-check">
-                                                                ' . $liveform->output_field(array('type'=>'radio', 'id'=>'new_theme', 'name'=>'create_system_theme_option', 'value'=>'new', 'class'=>'form-check-input collapse-switcher', 'checked'=>'checked', 'data-bs-target'=>'#system_theme_create_option_new_theme_row')) . '
-                                                                <label class="form-check-label" for="new_theme">' . lang('Create a new System Theme with the Theme Designer') . '</label>
+                                                            <div class="form-field">
+                                                                ' . $liveform->output_field(array('type'=>'radio', 'id'=>'new_theme', 'name'=>'create_system_theme_option', 'value'=>'new', 'class'=>'radio collapse-switcher', 'checked'=>'checked', 'data-bs-target'=>'#system_theme_create_option_new_theme_row')) . '
+                                                                <label class="" for="new_theme">' . lang('Create a new System Theme with the Theme Designer') . '</label>
                                                             </div>
                                                             <div>
-                                                                ' . $liveform->output_field(array('type'=>'radio', 'id'=>'import_theme', 'name'=>'create_system_theme_option', 'value'=>'import', 'class'=>'form-check-input collapse-switcher', 'data-bs-target'=>'#system_theme_create_option_import_theme_row')) . '
-                                                                <label class="form-check-label" for="import_theme">' . lang('Import a System Theme') . '</label>
+                                                                ' . $liveform->output_field(array('type'=>'radio', 'id'=>'import_theme', 'name'=>'create_system_theme_option', 'value'=>'import', 'class'=>'radio collapse-switcher', 'data-bs-target'=>'#system_theme_create_option_import_theme_row')) . '
+                                                                <label class="" for="import_theme">' . lang('Import a System Theme') . '</label>
                                                             </div>
-                                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="system_theme_create_option_new_theme_row">
+                                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3" id="system_theme_create_option_new_theme_row">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                                                                 <div class="popover-body">
                                                                     <div class="row">
@@ -100,7 +100,7 @@ if (!$_POST) {
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="system_theme_create_option_import_theme_row">
+                                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3" id="system_theme_create_option_import_theme_row">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                                                                 <div class="popover-body">
                                                                     <div class="row">
@@ -115,7 +115,7 @@ if (!$_POST) {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="custom_theme_row">
+                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3" id="custom_theme_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                                                 <div class="popover-body">
                                                     <div class="row">
@@ -133,26 +133,26 @@ if (!$_POST) {
                                 </div>         
                             </div>         
                         </div>            
-                        <div class="col-12 col-md-6">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Theme File Access Control') . '
                                 </div>
                                 <div class="card-body">
-                                    <div class="col-12 my-2">
+                                    <div class="col-12 my-3">
                                         <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                                        <select class="form-select" id="folder" name="folder">' . select_folder($folder_id, 0) . '</select>
+                                        <select class="form-control" id="folder" name="folder">' . select_folder($folder_id, 0) . '</select>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-6">
-                            <div class="card my-4 ">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6">
+                            <div class="card my-7 ">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Description') . '
                                 </div>
                                 <div class="card-body">
-                                    <div class="col-12 my-2">
+                                    <div class="col-12 my-3">
                                         <label for="description" class="form-label">' . lang('File Description') . '</label>
                                         ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'description', 'id'=>'description', 'rows'=>'3', 'class'=>'form-control')) . '
                                     </div>
@@ -160,17 +160,17 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
                 </form>
                 <script>
                 
-                    $("input.form-check-input").on("click", function() {
+                    $("input:is(.check, .radio)").on("click", function() {
                         if($("input#system").prop("checked") == true && $("input#new_theme").prop("checked") == true){
                            
                             $("#create_button").value= "Create & Continue";

@@ -1443,29 +1443,29 @@ function get_install_changelog_tag_class($tag) {
 
 	if (($tag == 'GÜVENLIK') || ($tag == 'GÜVENLİK') || ($tag == 'SECURITY')) {
 
-		return 'text-bg-danger';
+		return 'theme-danger';
 
 	}
 
 	if (($tag == 'ŞEMA') || ($tag == 'SCHEMA') || ($tag == 'SCHEME')) {
 
-		return 'text-bg-warning';
+		return 'theme-warning';
 
 	}
 
 	if (($tag == 'DÜZELTME') || ($tag == 'FIX')) {
 
-		return 'text-bg-primary';
+		return 'theme-primary';
 
 	}
 
 	if (($tag == 'HIZ') || ($tag == 'SPEED') || ($tag == 'PERFORMANCE')) {
 
-		return 'text-bg-info';
+		return 'theme-info';
 
 	}
 
-	return 'text-bg-success';
+	return 'theme-success';
 
 }
 
@@ -2106,7 +2106,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				if ($database_version_key === false) {
 
 					$output_version_warning = '
-					<div class="alert alert-danger d-flex gap-2 mt-3">
+					<div class="alert theme-danger d-flex gap-3 mt-5">
 						<i class="bi bi-exclamation-octagon-fill"></i>
 						<div>' . lang(array(
 							'string' => 'The version in the database ({var:1}) is not part of this package, so the upgrade is not offered. Correct the version in the config table, or install the site again.',
@@ -2165,7 +2165,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 						$upgrade_function_name = 'upgrade_to_' . str_replace('.', '_', $upgrade_version['number']);
 
-						$upgrade_version_icon = 'bi-check-lg text-success';
+						$upgrade_version_icon = 'bi-check-lg fg-success';
 
 						$upgrade_version_note = lang('no database change');
 
@@ -2173,7 +2173,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 							$upgrade_touches_database = true;
 
-							$upgrade_version_icon = 'bi-database text-warning';
+							$upgrade_version_icon = 'bi-database fg-warning';
 
 							$upgrade_version_note = lang('the database is updated');
 
@@ -2188,9 +2188,9 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 						}
 
 						$output_upgrade_versions .= '
-						<div class="d-flex gap-2 py-1 small align-items-start">
+						<div class="d-flex gap-3 py-1 small align-items-start">
 							<i class="bi ' . $upgrade_version_icon . '" style="margin-top:.2rem;"></i>
-							<div><b>' . h($upgrade_version['number']) . '</b> <span class="text-body-secondary">— ' . h($upgrade_version_note) . '</span></div>
+							<div><b>' . h($upgrade_version['number']) . '</b> <span class="fg-secondary">— ' . h($upgrade_version_note) . '</span></div>
 						</div>';
 
 					}
@@ -2205,19 +2205,19 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 					foreach ($upgrade_preflight['checks'] as $upgrade_check) {
 
-						$upgrade_check_icon = 'bi-check-lg text-success';
+						$upgrade_check_icon = 'bi-check-lg fg-success';
 
 						if ($upgrade_check['state'] == 'warning') {
 
-							$upgrade_check_icon = 'bi-exclamation-triangle text-warning';
+							$upgrade_check_icon = 'bi-exclamation-triangle fg-warning';
 
 						} elseif ($upgrade_check['state'] == 'error') {
 
-							$upgrade_check_icon = 'bi-x-lg text-danger';
+							$upgrade_check_icon = 'bi-x-lg fg-danger';
 
 						} elseif ($upgrade_check['state'] == 'info') {
 
-							$upgrade_check_icon = 'bi-info-circle text-body-secondary';
+							$upgrade_check_icon = 'bi-info-circle fg-secondary';
 
 						}
 
@@ -2225,15 +2225,15 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 						if ($upgrade_check['detail'] != '') {
 
-							$upgrade_check_detail = '<div class="small text-body-secondary" style="padding-left:1.6rem;line-height:1.4;">' . h($upgrade_check['detail']) . '</div>';
+							$upgrade_check_detail = '<div class="small fg-secondary" style="padding-left:1.6rem;line-height:1.4;">' . h($upgrade_check['detail']) . '</div>';
 
 						}
 
 						$output_upgrade_preflight_rows .= '
-						<div class="d-flex align-items-center gap-2 py-1 small">
+						<div class="d-flex align-items-center gap-3 py-1 small">
 							<i class="bi ' . $upgrade_check_icon . '"></i>
 							<span class="text-nowrap">' . h($upgrade_check['label']) . '</span>
-							<span class="ms-auto text-body-secondary font-monospace text-end">' . h($upgrade_check['value']) . '</span>
+							<span class="ms-auto fg-secondary font-monospace text-end">' . h($upgrade_check['value']) . '</span>
 						</div>' . $upgrade_check_detail;
 
 					}
@@ -2244,16 +2244,16 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					if ($upgrade_preflight['backup_available'] == true) {
 
 						$output_upgrade_backup = '
-						<div class="d-flex flex-wrap align-items-center gap-2 mt-2" id="pg_upgrade_backup_row">
-							<button type="button" class="btn btn-outline-primary btn-sm" id="pg_upgrade_backup"><i class="bi bi-download me-1"></i>' . lang('Back up the database now') . '</button>
-							<span class="small text-body-secondary" id="pg_upgrade_backup_result">' . lang('Writes sql.sql into a pre_upgrade folder under data/backups, which this screen can restore later.') . '</span>
+						<div class="d-flex flex-wrap align-items-center gap-3 mt-3" id="pg_upgrade_backup_row">
+							<button type="button" class="btn btn-outline theme-primary btn-sm" id="pg_upgrade_backup"><i class="bi bi-download me-1"></i>' . lang('Back up the database now') . '</button>
+							<span class="small fg-secondary" id="pg_upgrade_backup_result">' . lang('Writes sql.sql into a pre_upgrade folder under data/backups, which this screen can restore later.') . '</span>
 						</div>';
 
 					}
 
 					$output_upgrade_preflight = '
-					<div class="mt-3 pt-3 border-top" id="pg_upgrade_preflight">
-						<div class="small text-uppercase fw-bold text-body-secondary mb-1">' . lang('Before you start') . '</div>
+					<div class="mt-5 pt-5 border-top" id="pg_upgrade_preflight">
+						<div class="small text-uppercase fw-bold fg-secondary mb-1">' . lang('Before you start') . '</div>
 						' . $output_upgrade_preflight_rows . $output_upgrade_backup . '
 					</div>';
 
@@ -2364,8 +2364,8 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 						}
 
 						$output_upgrade_changelog_rows .= '
-						<div class="d-flex gap-2 py-2 border-bottom border-1">
-							<span class="badge text-bg-primary pg-tag">' . h($changelog_section['version']) . '</span>
+						<div class="d-flex gap-3 py-3 border-bottom border-1">
+							<span class="badge theme-primary pg-tag">' . h($changelog_section['version']) . '</span>
 							<div class="small">' . h($changelog_section_summary) . '</div>
 						</div>';
 
@@ -2374,9 +2374,9 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					if ($output_upgrade_changelog_rows != '') {
 
 						$output_upgrade_changelog = '
-						<div class="card mb-4">
-							<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-								<i class="bi bi-star me-2"></i>' . lang(array('string' => 'Added since {var:1}', 'vars' => $database_version)) . '
+						<div class="card mb-7">
+							<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+								<i class="bi bi-star me-3"></i>' . lang(array('string' => 'Added since {var:1}', 'vars' => $database_version)) . '
 							</div>
 							<div class="card-body pt-0">
 								<div class="pg-changelog">' . $output_upgrade_changelog_rows . '</div>
@@ -2386,7 +2386,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					}
 
 					$output_upgrade_warning = '
-					<div class="alert alert-primary d-flex gap-2 mt-3 mb-0">
+					<div class="alert theme-primary d-flex gap-3 mt-5 mb-0">
 						<i class="bi bi-info-circle"></i>
 						<div>' . lang('This upgrade does not change your database. Your pages, files and settings stay exactly as they are.') . '</div>
 					</div>';
@@ -2394,7 +2394,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					if ($upgrade_touches_database == true) {
 
 						$output_upgrade_warning = '
-					<div class="alert alert-warning d-flex gap-2 mt-3 mb-0">
+					<div class="alert theme-warning d-flex gap-3 mt-5 mb-0">
 						<i class="bi bi-exclamation-triangle"></i>
 						<div>' . lang('This version touches your database. It is recommended that you make a backup from the Backups area of the File Manager before you upgrade.') . '</div>
 					</div>';
@@ -2403,30 +2403,30 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 					$output_upgrade ='
 					<div class="col-12" id="pg_upgrade_panel">
-						<div class="d-flex flex-wrap align-items-center gap-3 pt-3 pb-2">
+						<div class="d-flex flex-wrap align-items-center gap-5 pt-5 pb-3">
 							<img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/logo.png" width="78" height="78" alt="Pinegrap" class="pg-install-logo">
 							<div class="flex-grow-1" style="min-width:16rem;">
 								<h1 class="h3 mb-1">' . lang('A new version is ready') . '</h1>
-								<p class="text-body-secondary mb-0">' . lang('The content of your site stays where it is. The upgrade only updates the database schema and the software files.') . '</p>
+								<p class="fg-secondary mb-0">' . lang('The content of your site stays where it is. The upgrade only updates the database schema and the software files.') . '</p>
 							</div>
 						</div>
 						<div class="pg-wizard-grid pg-upgrade-grid">
 							<div class="pg-panels">
-								<div class="card mb-4">
-									<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-										<i class="bi bi-arrow-up-circle me-2"></i>' . lang('Software upgrade') . '
+								<div class="card mb-7">
+									<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+										<i class="bi bi-arrow-up-circle me-3"></i>' . lang('Software upgrade') . '
 									</div>
 									<div class="card-body">
-										<p class="text-body-secondary">' . lang('Every step between the version on this server and the version of this package is applied in order.') . '</p>
-										<div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-											<span class="badge rounded-pill text-bg-secondary" style="font-size:.95rem;padding:.4rem .8rem;">' . h($database_version) . '</span>
-											<i class="bi bi-arrow-right text-body-secondary"></i>
-											<span class="badge rounded-pill text-bg-primary" style="font-size:.95rem;padding:.4rem .8rem;">' . h($software_version) . '</span>
-											<span class="small text-body-secondary ms-1">' . lang(array('string' => '{var:1} versions are applied', 'vars' => $upgrade_version_count)) . '</span>
+										<p class="fg-secondary">' . lang('Every step between the version on this server and the version of this package is applied in order.') . '</p>
+										<div class="d-flex align-items-center flex-wrap gap-3 mb-5">
+											<span class="badge rounded-pill theme-secondary" style="font-size:.95rem;padding:.4rem .8rem;">' . h($database_version) . '</span>
+											<i class="bi bi-arrow-right fg-secondary"></i>
+											<span class="badge rounded-pill theme-primary" style="font-size:.95rem;padding:.4rem .8rem;">' . h($software_version) . '</span>
+											<span class="small fg-secondary ms-1">' . lang(array('string' => '{var:1} versions are applied', 'vars' => $upgrade_version_count)) . '</span>
 										</div>
 										' . $output_upgrade_versions . $output_upgrade_preflight . $output_upgrade_warning . '
-										<div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3" id="pg_upgrade_actions">
-											<a class="btn btn-outline-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/"><i class="bi bi-arrow-left me-1"></i>' . lang('Give up') . '</a>
+										<div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mt-5" id="pg_upgrade_actions">
+											<a class="btn btn-outline theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/"><i class="bi bi-arrow-left me-1"></i>' . lang('Give up') . '</a>
 										</div>
 										<div id="pg_upgrade_run"></div>
 										' . $liveform->output_field(array(
@@ -2434,26 +2434,26 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 											'name' => 'install_type',
 											'id' => 'upgrade',
 											'value' => 'upgrade',
-											'class' => 'form-check-input d-none'
+											'class' => 'radio d-none'
 										)) . '
 									</div>
 								</div>
-								<div class="card mb-4">
-									<div class="card-header bg-reset border-0 text-uppercase h5 text-danger fw-bold">
-										<i class="bi bi-exclamation-triangle me-2"></i>' . lang('If you want to reinstall instead') . '
+								<div class="card mb-7">
+									<div class="card-header bg-reset border-0 text-uppercase h5 fg-danger fw-bold">
+										<i class="bi bi-exclamation-triangle me-3"></i>' . lang('If you want to reinstall instead') . '
 									</div>
 									<div class="card-body">
 										<div class="pg-source pg-mode-card mb-0" id="pg_install_mode_card">
 											<span class="pg-radio"></span>
 											<div class="flex-grow-1">
 												<div class="fw-semibold">' . lang(array('string'=>'Install version {var:1} and replace existing site','vars'=>$software_version)) . '</div>
-												<div class="small text-body-secondary">' . lang('All site data is permanently deleted. This option asks for a written confirmation.') . '</div>
+												<div class="small fg-secondary">' . lang('All site data is permanently deleted. This option asks for a written confirmation.') . '</div>
 												' . $liveform->output_field(array(
 													'type' => 'radio',
 													'name' => 'install_type',
 													'id' => 'install',
 													'value' => 'install',
-													'class' => 'radio form-check-input d-none'
+													'class' => 'radio radio d-none'
 												)) . '
 											</div>
 										</div>
@@ -2501,12 +2501,12 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	}
 
 	$reinstallation_verification ='
-		<div class="pg-danger-panel d-flex gap-2 align-items-start' . $reinstallation_verification_class . '" id="pg_reinstall_box">
-			<i class="bi bi-exclamation-octagon-fill text-danger"></i>
+		<div class="pg-danger-panel d-flex gap-3 align-items-start' . $reinstallation_verification_class . '" id="pg_reinstall_box">
+			<i class="bi bi-exclamation-octagon-fill fg-danger"></i>
 			<div class="flex-grow-1">
 				<div class="fw-semibold">' . lang('A site already exists in this database') . '</div>
-				<div class="small text-body-secondary">' . lang('The installation permanently deletes everything that belongs to it: pages, files, styles and products.') . '</div>
-				<div class="form-check form-switch mt-2">
+				<div class="small fg-secondary">' . lang('The installation permanently deletes everything that belongs to it: pages, files, styles and products.') . '</div>
+				<div class="form-field mt-3">
 					' . $liveform->output_field(array(
 						'type' => 'hidden',
 						'name' => 'reinstall_software'
@@ -2515,11 +2515,11 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 						'name' => 'reinstall_software',
 						'id' => 'reinstall_software',
 						'value' => '1',
-						'class' => 'form-check-input'
+						'class' => 'check'
 					)) . '
-					<label class="form-check-label small" for="reinstall_software">' . lang('Reinstall anyway and delete the data') . '</label>
+					<label class="small" for="reinstall_software">' . lang('Reinstall anyway and delete the data') . '</label>
 				</div>
-				<div class="small text-danger mt-1 d-none" id="pg_reinstall_message">' . lang('Please verify that you want to reinstall.') . '</div>
+				<div class="small fg-danger mt-1 d-none" id="pg_reinstall_message">' . lang('Please verify that you want to reinstall.') . '</div>
 			</div>
 		</div>';
 
@@ -2566,13 +2566,13 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		}
 
 		$output_restore_unfinished = '
-		<div class="alert alert-warning d-flex gap-2 align-items-start">
+		<div class="alert theme-warning d-flex gap-3 align-items-start">
 			<i class="bi bi-hourglass-split"></i>
 			<div class="flex-grow-1">
 				<b>' . lang('An unfinished restore') . '</b>
 				<div class="small">' . h(lang(array('string' => '{var:1} · {var:2} · last step {var:3}', 'vars' => array($install_unfinished_restore['folder'], pg_restore_progress_text($install_unfinished_restore), date('d.m.Y H:i', (int) $install_unfinished_restore['updated']))))) . '</div>
 				<div class="small mt-1">' . lang('The site still runs on its own tables. Choose the same backup and start the installation to continue where it stopped, or discard what was loaded.') . '</div>
-				<button type="submit" class="btn btn-sm btn-outline-danger mt-2" name="install_action" value="restore_discard" formnovalidate><i class="bi bi-trash me-1"></i>' . lang('Discard') . '</button>
+				<button type="submit" class="btn btn-sm btn-outline theme-danger mt-3" name="install_action" value="restore_discard" formnovalidate><i class="bi bi-trash me-1"></i>' . lang('Discard') . '</button>
 			</div>
 		</div>';
 
@@ -2603,8 +2603,8 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		<div class="pg-source' . $output_starter_site_selected . '" data-source="starter" data-folder="' . h($starter_site['folder']) . '" data-language="' . h($starter_site['language']) . '">
 			<span class="pg-radio"></span>
 			<div class="flex-grow-1">
-				<div class="fw-semibold"><i class="bi bi-star me-1 text-primary"></i>' . lang(array('string' => '{var:1} starter site', 'vars' => $starter_site['label'])) . '</div>
-				<div class="small text-body-secondary">' . lang('Sample pages, a ready made design and content are installed.') . ' <span class="font-monospace">' . h($starter_site['folder']) . '</span></div>
+				<div class="fw-semibold"><i class="bi bi-star me-1 fg-primary"></i>' . lang(array('string' => '{var:1} starter site', 'vars' => $starter_site['label'])) . '</div>
+				<div class="small fg-secondary">' . lang('Sample pages, a ready made design and content are installed.') . ' <span class="font-monospace">' . h($starter_site['folder']) . '</span></div>
 			</div>
 		</div>';
 
@@ -2649,9 +2649,9 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		<div class="pg-source' . (($install_source_type == 'backup') ? ' selected' : '') . '" data-source="backup">
 			<span class="pg-radio"></span>
 			<div class="flex-grow-1">
-				<div class="fw-semibold"><i class="bi bi-folder2-open me-1 text-primary"></i>' . lang('A backup on the server') . ' <span class="badge text-bg-secondary">' . count($install_backups) . '</span></div>
-				<div class="small text-body-secondary">' . lang('The site is restored exactly as it was when the backup was made.') . '</div>
-				<select class="form-select form-select-sm mt-2" id="pg_backup_select">' . $output_backup_options . '</select>
+				<div class="fw-semibold"><i class="bi bi-folder2-open me-1 fg-primary"></i>' . lang('A backup on the server') . ' <span class="badge theme-secondary">' . count($install_backups) . '</span></div>
+				<div class="small fg-secondary">' . lang('The site is restored exactly as it was when the backup was made.') . '</div>
+				<select class="form-control form-control-sm mt-3" id="pg_backup_select">' . $output_backup_options . '</select>
 			</div>
 		</div>';
 
@@ -2662,7 +2662,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	if ((count($install_starter_sites) == 0) && (count($install_backups) == 0)) {
 
 		$output_source_warning = '
-		<div class="alert alert-danger small d-flex gap-2">
+		<div class="alert theme-danger small d-flex gap-3">
 			<i class="bi bi-exclamation-triangle"></i>
 			<div>' . lang('There is nothing in the backups folder to install from. The starter sites are normally in the data/backups folder of the software.') . '</div>
 		</div>';
@@ -2677,18 +2677,18 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		<div class="pg-source" data-source="upload">
 			<span class="pg-radio"></span>
 			<div class="flex-grow-1">
-				<div class="fw-semibold"><i class="bi bi-cloud-arrow-up me-1 text-primary"></i>' . lang('Upload a backup from my computer') . '</div>
-				<div class="small text-body-secondary">' . lang('The archive is extracted into the backups folder and then appears in the list above.') . '</div>
+				<div class="fw-semibold"><i class="bi bi-cloud-arrow-up me-1 fg-primary"></i>' . lang('Upload a backup from my computer') . '</div>
+				<div class="small fg-secondary">' . lang('The archive is extracted into the backups folder and then appears in the list above.') . '</div>
 			</div>
 		</div>
 		<div class="pg-drop d-none" id="pg_zip_area">
-			<div class="mb-2"><i class="bi bi-file-earmark-zip fs-3 text-primary"></i></div>
+			<div class="mb-3"><i class="bi bi-file-earmark-zip fs-2xl fg-primary"></i></div>
 			<div class="fw-semibold">' . lang('Upload a backup archive') . '</div>
-			<div class="small text-body-secondary mb-2">' . lang(array('string' => 'Only .zip files, and the server accepts at most {var:1}.', 'vars' => get_install_size_label(get_install_upload_limit()))) . '</div>
-			<input type="file" name="backup_zip" id="backup_zip" accept=".zip,application/zip" class="form-control form-control-sm mb-2" data-limit="' . (int) get_install_upload_limit() . '">
-			<div class="alert alert-danger small text-start d-none mb-2" id="pg_zip_too_large"></div>
-			<button type="submit" class="btn btn-sm btn-outline-primary" name="submit_backup_zip" value="1"><i class="bi bi-upload me-1"></i>' . lang('Upload and Extract') . '</button>
-			<div class="alert alert-warning small text-start mt-3 mb-0 d-flex gap-2">
+			<div class="small fg-secondary mb-3">' . lang(array('string' => 'Only .zip files, and the server accepts at most {var:1}.', 'vars' => get_install_size_label(get_install_upload_limit()))) . '</div>
+			<input type="file" name="backup_zip" id="backup_zip" accept=".zip,application/zip" class="form-control form-control-sm mb-3" data-limit="' . (int) get_install_upload_limit() . '">
+			<div class="alert theme-danger small text-start d-none mb-3" id="pg_zip_too_large"></div>
+			<button type="submit" class="btn btn-sm btn-outline theme-primary" name="submit_backup_zip" value="1"><i class="bi bi-upload me-1"></i>' . lang('Upload and Extract') . '</button>
+			<div class="alert theme-warning small text-start mt-5 mb-0 d-flex gap-3">
 				<i class="bi bi-shield-check"></i>
 				<div>' . lang('The archive has to contain a folder with sql.sql inside it, otherwise nothing is extracted. Paths in the archive are trimmed, so a prepared file cannot write outside of the backups folder.') . '</div>
 			</div>
@@ -2698,7 +2698,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	else {
 
 		$output_upload_source = '
-		<div class="alert alert-secondary small d-flex gap-2 mt-3 mb-0">
+		<div class="alert theme-secondary small d-flex gap-3 mt-5 mb-0">
 			<i class="bi bi-info-circle"></i>
 			<div>' . lang('To restore a backup that is not on this server yet, copy the backup folder or its .zip archive into the backups folder with FTP, or place the backup archive next to the download assistant and run it again.') . '</div>
 		</div>';
@@ -2756,7 +2756,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 		foreach ($design_template_points as $design_template_point) {
 
-			$output_design_points .= '<li><i class="bi bi-check2 text-primary"></i>' . h($design_template_point) . '</li>';
+			$output_design_points .= '<li><i class="bi bi-check2 fg-primary"></i>' . h($design_template_point) . '</li>';
 
 		}
 
@@ -2777,19 +2777,19 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		}
 
 		$output_design_choices .= '
-		<div class="col-12 col-md-6">
+		<div class="col-12 md:col-6">
 			<div class="pg-source pg-design pg-design-template h-100 mb-0' . (($install_design_selected == $design_template['id']) ? ' selected' : '') . '" data-design="' . h($design_template['id']) . '" data-kinds="' . h(json_encode(pg_design_template_starter_kinds($design_template, true))) . '" data-preview-pages="' . h(json_encode($design_template_preview)) . '">
 				<span class="pg-radio"></span>
 				<div class="flex-grow-1">
 					<div class="d-flex flex-wrap align-items-center gap-1 mb-1">
-						' . (($design_template_number == 1) ? '<span class="badge text-bg-primary"><i class="bi bi-stars me-1"></i>' . lang('Recommended') . '</span>' : '') . '
-						<span class="badge text-bg-secondary">' . h($design_template_summary['framework_label']) . '</span>
-						<span class="badge text-bg-secondary">' . lang(array('string' => '{var:1} pages', 'vars' => count($design_template['pages']))) . '</span>
+						' . (($design_template_number == 1) ? '<span class="badge theme-primary"><i class="bi bi-stars me-1"></i>' . lang('Recommended') . '</span>' : '') . '
+						<span class="badge theme-secondary">' . h($design_template_summary['framework_label']) . '</span>
+						<span class="badge theme-secondary">' . lang(array('string' => '{var:1} pages', 'vars' => count($design_template['pages']))) . '</span>
 					</div>
-					<div class="fw-semibold pg-design-name"><i class="bi ' . h($design_template_summary['icon']) . ' me-1 text-primary"></i>' . h($design_template_summary['name']) . '</div>
-					<div class="small text-body-secondary">' . h($design_template_summary['description']) . '</div>
-					<div class="small fw-semibold text-primary mt-2"><i class="bi bi-magic me-1"></i>' . lang('Made to be edited in the Visual Page Editor') . '</div>
-					<ul class="pg-design-points list-unstyled small text-body-secondary mb-0 mt-1">' . $output_design_points . '</ul>
+					<div class="fw-semibold pg-design-name"><i class="bi ' . h($design_template_summary['icon']) . ' me-1 fg-primary"></i>' . h($design_template_summary['name']) . '</div>
+					<div class="small fg-secondary">' . h($design_template_summary['description']) . '</div>
+					<div class="small fw-semibold fg-primary mt-3"><i class="bi bi-magic me-1"></i>' . lang('Made to be edited in the Visual Page Editor') . '</div>
+					<ul class="pg-design-points list-unstyled small fg-secondary mb-0 mt-1">' . $output_design_points . '</ul>
 				</div>
 			</div>
 		</div>';
@@ -2797,13 +2797,13 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	}
 
 	$output_design_choices .= '
-		<div class="col-12 col-md-6">
+		<div class="col-12 md:col-6">
 			<div class="pg-source pg-design h-100 mb-0' . (($install_design_selected == 'standard') ? ' selected' : '') . '" id="pg_design_standard" data-design="standard">
 				<span class="pg-radio"></span>
 				<div class="flex-grow-1">
-					<div class="fw-semibold pg-design-name"><i class="bi bi-box-seam me-1 text-primary"></i>' . lang('Standard installation') . '</div>
-					<div class="small text-body-secondary">' . lang('The starter site is installed as it is, with its own pages and page styles.') . '</div>
-					<div class="small text-body-secondary mt-2"><i class="bi bi-info-circle me-1"></i>' . lang('Its pages are classic pages: they are not built with the Visual Page Editor.') . '</div>
+					<div class="fw-semibold pg-design-name"><i class="bi bi-box-seam me-1 fg-primary"></i>' . lang('Standard installation') . '</div>
+					<div class="small fg-secondary">' . lang('The starter site is installed as it is, with its own pages and page styles.') . '</div>
+					<div class="small fg-secondary mt-3"><i class="bi bi-info-circle me-1"></i>' . lang('Its pages are classic pages: they are not built with the Visual Page Editor.') . '</div>
 				</div>
 			</div>
 		</div>';
@@ -2840,7 +2840,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		$design_theme_number++;
 
 		$output_design_looks .= '<input type="radio" class="btn-check" name="design_template_look" id="pg_design_look_' . $design_theme_number . '" value="' . h($design_look_key) . '" data-name="' . h($design_look['name']) . '"' . (($design_look_key === $install_design_look) ? ' checked' : '') . ' autocomplete="off">'
-			. '<label class="btn btn-sm btn-outline-secondary rounded-pill" for="pg_design_look_' . $design_theme_number . '" title="' . h($design_look['description']) . '">' . h($design_look['name']) . '</label>';
+			. '<label class="btn btn-sm btn-outline theme-secondary rounded-pill" for="pg_design_look_' . $design_theme_number . '" title="' . h($design_look['description']) . '">' . h($design_look['name']) . '</label>';
 
 	}
 
@@ -2908,7 +2908,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 	if ($install_unlock_minutes > 0) {
 
-		$output_unlock_notice = '<span class="badge rounded-pill text-bg-secondary"><i class="bi bi-unlock-fill me-1"></i>' . lang(array('string' => 'Unlocked for {var:1} more minutes', 'vars' => $install_unlock_minutes)) . '</span>';
+		$output_unlock_notice = '<span class="badge rounded-pill theme-secondary"><i class="bi bi-unlock-fill me-1"></i>' . lang(array('string' => 'Unlocked for {var:1} more minutes', 'vars' => $install_unlock_minutes)) . '</span>';
 
 	}
 
@@ -2917,17 +2917,17 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 	foreach (get_install_system_checks() as $check) {
 
-		$output_check_icon = 'bi-check-lg text-success';
+		$output_check_icon = 'bi-check-lg fg-success';
 
 		if ($check['state'] == 'warning') {
 
-			$output_check_icon = 'bi-exclamation-triangle text-warning';
+			$output_check_icon = 'bi-exclamation-triangle fg-warning';
 
 		}
 
 		if ($check['state'] == 'error') {
 
-			$output_check_icon = 'bi-x-lg text-danger';
+			$output_check_icon = 'bi-x-lg fg-danger';
 
 		}
 
@@ -2935,15 +2935,15 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 		if ((isset($check['detail'])) && ($check['detail'] != '')) {
 
-			$output_check_detail = '<div class="small text-body-secondary" style="padding-left:1.6rem;line-height:1.4;">' . h($check['detail']) . '</div>';
+			$output_check_detail = '<div class="small fg-secondary" style="padding-left:1.6rem;line-height:1.4;">' . h($check['detail']) . '</div>';
 
 		}
 
 		$output_system_checks .= '
-		<div class="d-flex align-items-center gap-2 py-1 small">
+		<div class="d-flex align-items-center gap-3 py-1 small">
 			<i class="bi ' . $output_check_icon . '"></i>
 			<span>' . h($check['label']) . '</span>
-			<span class="ms-auto text-body-secondary font-monospace">' . h($check['value']) . '</span>
+			<span class="ms-auto fg-secondary font-monospace">' . h($check['value']) . '</span>
 		</div>' . $output_check_detail;
 
 	}
@@ -2972,7 +2972,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				if ($changelog_group != '') {
 
 					$output_changelog_entries .= '
-			<div class="small fw-bold text-uppercase text-body-secondary pt-3 pb-1">' . h($changelog_group) . '</div>';
+			<div class="small fw-bold text-uppercase fg-secondary pt-5 pb-1">' . h($changelog_group) . '</div>';
 
 				}
 
@@ -2982,7 +2982,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			$changelog_entry['text'] = get_install_short_text($changelog_entry['text'], 190);
 
 			$output_changelog_entries .= '
-			<div class="d-flex gap-2 py-2 border-bottom border-1">
+			<div class="d-flex gap-3 py-3 border-bottom border-1">
 				<span class="badge ' . get_install_changelog_tag_class($changelog_entry['tag']) . ' pg-tag">' . h($changelog_entry['tag']) . '</span>
 				<div class="small">' . h($changelog_entry['text']) . '</div>
 			</div>';
@@ -2990,12 +2990,12 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		}
 
 		$output_changelog = '
-		<div class="card mb-4">
-			<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-				<i class="bi bi-star me-2"></i>' . lang('What is new in this version') . '
+		<div class="card mb-7">
+			<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+				<i class="bi bi-star me-3"></i>' . lang('What is new in this version') . '
 			</div>
 			<div class="card-body pt-0">
-				<div class="mb-2"><span class="badge text-bg-primary">' . h($install_changelog['version']) . '</span></div>
+				<div class="mb-3"><span class="badge theme-primary">' . h($install_changelog['version']) . '</span></div>
 				<div class="pg-changelog">' . $output_changelog_entries . '</div>
 			</div>
 		</div>';
@@ -3005,7 +3005,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	print
 
 	get_header() . '
-	<style>
+	<style>@layer custom {
 		.pg-install-logo {
 			padding: 7px;
 			border-radius: 24px;
@@ -3101,16 +3101,16 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		@media (min-width: 768px) { .pg-review { grid-template-columns: 1fr 1fr; } }
 		main#content.pg-install { max-width: 1280px; }
 		.pg-wizard-grid { display: grid; gap: 1.15rem; grid-template-columns: minmax(0, 1fr); }
-		@media (min-width: 992px) {
+		@media (min-width: 1024px) {
 			.pg-wizard-grid { grid-template-columns: 240px minmax(0, 1fr); }
 			.pg-side { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 1.15rem; align-items: start; }
 		}
-		@media (min-width: 1200px) {
+		@media (min-width: 1280px) {
 			.pg-wizard-grid { grid-template-columns: 250px minmax(0, 1fr) 310px; }
 			.pg-side { grid-column: auto; display: block; position: sticky; top: 5rem; }
 		}
 		/* the upgrade screen has no step rail, so it only has the panel and the side column */
-		@media (min-width: 992px) {
+		@media (min-width: 1024px) {
 			.pg-upgrade-grid { grid-template-columns: minmax(0, 1fr) 310px; }
 			.pg-upgrade-grid .pg-side { grid-column: auto; display: block; }
 		}
@@ -3180,42 +3180,42 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		.pg-install-console .pg-error { color: #f87171; }
 		.pg-install-console .pg-detail { opacity: .6; }
 		#pg_run_bar { background: linear-gradient(90deg, var(--pg-logo-color-1), var(--pg-logo-color-2)); }
-	</style>
-	<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body d-print-none">
+	}</style>
+	<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body pg-print-none">
 	  	<ul class="navbar-nav me-auto">
 			<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
 	  	</ul>
 	  	<ul class="navbar-nav ms-auto">
-			<li class="nav-item dropdown no-popover"  title="' . lang('Software Theme') . '">
-				<button class="nav-link nav-link-sm position-relative dropdown-toggle dropdown-menu-right d-none" data-bs-toggle="dropdown" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
-				<ul aria-labelledby="bd-theme" class="dropdown-menu shadow dropdown-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-dropdown-min-width: 8rem;">
-					<li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-2"></i>' . lang('Light') . '</button></li>
-					<li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-2"></i>' . lang('Dark') . '</button></li>
-					<li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-2"></i>' . lang('Auto') . '</button></li>
+			<li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
+				<button class="nav-link nav-link-sm position-relative pg-menu-caret d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
+				<ul aria-labelledby="bd-theme" class="menu shadow pg-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-menu-min-width: 8rem;">
+					<li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i>' . lang('Light') . '</button></li>
+					<li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i>' . lang('Dark') . '</button></li>
+					<li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-3"></i>' . lang('Auto') . '</button></li>
 				</ul>
 			</li>
 	  	</ul>
 	</nav>
-  	<main id="content" class="container-xl pg-install">
+  	<main id="content" class="xl:container pg-install">
     	<div class="row">
     	  	<div class="col-12">
     	  	  	' . $liveform->output_errors() . '
     	  	  	' . $liveform->get_warnings() . '
     	  	  	' . $liveform->output_notices() . '
 					' . $output_version_warning . '
-				<div class="d-flex flex-wrap align-items-center gap-3 pt-3 pb-2" id="pg_install_hero">
+				<div class="d-flex flex-wrap align-items-center gap-5 pt-5 pb-3" id="pg_install_hero">
 					<img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/logo.png" width="78" height="78" alt="Pinegrap" class="pg-install-logo">
 					<div class="flex-grow-1" style="min-width:16rem;">
 						<h1 class="h3 mb-1" title="' . lang('Installation') . '">' . lang('Pinegrap installation') . '</h1>
-						<p class="text-body-secondary mb-0">' . lang('Your site will be online in six short steps. If you already have a backup, you can restore it from the same wizard.') . '</p>
+						<p class="fg-secondary mb-0">' . lang('Your site will be online in six short steps. If you already have a backup, you can restore it from the same wizard.') . '</p>
 					</div>
 					' . $output_unlock_notice . '
-					' . (($upgrade_option == true) ? '<button type="button" class="btn btn-sm btn-outline-secondary" id="pg_back_to_upgrade"><i class="bi bi-arrow-left me-1"></i>' . lang('Software upgrade') . '</button>' : '') . '
+					' . (($upgrade_option == true) ? '<button type="button" class="btn btn-sm btn-outline theme-secondary" id="pg_back_to_upgrade"><i class="bi bi-arrow-left me-1"></i>' . lang('Software upgrade') . '</button>' : '') . '
 				</div>
-				<div class="d-flex align-items-center gap-3 mb-3" id="pg_progress_row">
-					<span class="small text-body-secondary text-nowrap">' . lang('Step') . ' <b id="pg_step_number">1</b> / 6</span>
+				<div class="d-flex align-items-center gap-5 mb-5" id="pg_progress_row">
+					<span class="small fg-secondary text-nowrap">' . lang('Step') . ' <b id="pg_step_number">1</b> / 6</span>
 					<div class="progress flex-grow-1" style="height:7px;"><div class="progress-bar" id="pg_progress_bar" style="width:17%;"></div></div>
-					<span class="small text-body-secondary text-nowrap" id="pg_step_title">' . lang('Source') . '</span>
+					<span class="small fg-secondary text-nowrap" id="pg_step_title">' . lang('Source') . '</span>
 				</div>
 				<form method="post" enctype="multipart/form-data" id="install_form" style="margin: 0px">
     	  	  	  	' . get_token_field() . '
@@ -3233,90 +3233,90 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 							<nav class="pg-rail" id="pg_rail">
 								<button type="button" class="pg-step active" data-step="1">
 									<span class="pg-step-dot">1</span>
-									<span><span class="d-block fw-semibold">' . lang('Source') . '</span><span class="d-block small text-body-secondary">' . lang('Starter site, server backup or a zip file') . '</span></span>
+									<span><span class="d-block fw-semibold">' . lang('Source') . '</span><span class="d-block small fg-secondary">' . lang('Starter site, server backup or a zip file') . '</span></span>
 								</button>
 								<button type="button" class="pg-step" data-step="2">
 									<span class="pg-step-dot">2</span>
-									<span><span class="d-block fw-semibold">' . lang('Software Language') . '</span><span class="d-block small text-body-secondary">' . lang('Language of the control panel') . '</span></span>
+									<span><span class="d-block fw-semibold">' . lang('Software Language') . '</span><span class="d-block small fg-secondary">' . lang('Language of the control panel') . '</span></span>
 								</button>
 								<button type="button" class="pg-step" data-step="3">
 									<span class="pg-step-dot">3</span>
-									<span><span class="d-block fw-semibold">' . lang('Site Design') . '</span><span class="d-block small text-body-secondary">' . lang('Starter site or a design template') . '</span></span>
+									<span><span class="d-block fw-semibold">' . lang('Site Design') . '</span><span class="d-block small fg-secondary">' . lang('Starter site or a design template') . '</span></span>
 								</button>
 								<button type="button" class="pg-step" data-step="4">
 									<span class="pg-step-dot">4</span>
-									<span><span class="d-block fw-semibold">' . lang('Database') . '</span><span class="d-block small text-body-secondary">' . lang('MySQL connection information') . '</span></span>
+									<span><span class="d-block fw-semibold">' . lang('Database') . '</span><span class="d-block small fg-secondary">' . lang('MySQL connection information') . '</span></span>
 								</button>
 								<button type="button" class="pg-step" data-step="5">
 									<span class="pg-step-dot">5</span>
-									<span><span class="d-block fw-semibold">' . lang('Administrator') . '</span><span class="d-block small text-body-secondary">' . lang('The first administrator account') . '</span></span>
+									<span><span class="d-block fw-semibold">' . lang('Administrator') . '</span><span class="d-block small fg-secondary">' . lang('The first administrator account') . '</span></span>
 								</button>
 								<button type="button" class="pg-step" data-step="6">
 									<span class="pg-step-dot">6</span>
-									<span><span class="d-block fw-semibold">' . lang('Installation') . '</span><span class="d-block small text-body-secondary">' . lang('Summary and installation') . '</span></span>
+									<span><span class="d-block fw-semibold">' . lang('Installation') . '</span><span class="d-block small fg-secondary">' . lang('Summary and installation') . '</span></span>
 								</button>
 							</nav>
 
 							<div class="pg-panels">
 
 							<div class="pg-step-panel active" data-panel="1">
-								<div class="card mb-4">
-									<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-										<i class="bi bi-box-seam me-2"></i>' . lang('Installation Folder') . '
+								<div class="card mb-7">
+									<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+										<i class="bi bi-box-seam me-3"></i>' . lang('Installation Folder') . '
 									</div>
 									<div class="card-body">
-										<p class="text-body-secondary">' . lang('What should the site be built from? Choose one of the ready made starter sites for a new site.') . '</p>
+										<p class="fg-secondary">' . lang('What should the site be built from? Choose one of the ready made starter sites for a new site.') . '</p>
 										' . $liveform->output_field(array(
 										'type' => 'hidden',
 										'id' => 'install_from_folder',
 										'name' => 'install_from_folder'
 										)) . '
 										' . $output_restore_unfinished . $output_source_warning . $output_starter_sites . $output_backup_source . $output_upload_source . '
-										<div class="text-end mt-3"><button type="button" class="btn btn-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button></div>
+										<div class="text-end mt-5"><button type="button" class="btn btn-solid theme-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button></div>
 									</div>
 								</div>
 							</div>
 
 							<div class="pg-step-panel" data-panel="2">
-								<div class="card mb-4">
-									<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-										<i class="bi bi-globe2 me-2"></i>' . lang('Software Language') . '
+								<div class="card mb-7">
+									<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+										<i class="bi bi-globe2 me-3"></i>' . lang('Software Language') . '
 									</div>
 									<div class="card-body">
 										<div class="row">
-											<div class="col-12 col-md-8 my-2">
+											<div class="col-12 md:col-8 my-3">
 												<label for="default_software_language" class="form-label">' . lang('Default Software Language') . $output_enforcement . '</label>
 												' . $liveform->output_field(array(
 												'type' => 'select',
 												'id' => 'default_software_language',
 												'name' => 'default_software_language',
-												'class' => 'form-select',
+												'class' => 'form-control',
 												'options' => get_software_language_options()
 												)) . '
 											</div>
 											<div class="col-12">
-												<div class="alert alert-primary small d-flex gap-2 mb-0">
+												<div class="alert theme-primary small d-flex gap-3 mb-0">
 													<i class="bi bi-info-circle"></i>
 													<div>' . lang('This is the language of the control panel. It is separate from the language of the content that gets installed, so the two can be different.') . '</div>
 												</div>
 											</div>
 										</div>
-										<div class="d-flex justify-content-between mt-3">
-											<button type="button" class="btn btn-outline-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
-											<button type="button" class="btn btn-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
+										<div class="d-flex justify-content-between mt-5">
+											<button type="button" class="btn btn-outline theme-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
+											<button type="button" class="btn btn-solid theme-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
 										</div>
 									</div>
 								</div>
 							</div>
 
 							<div class="pg-step-panel" data-panel="3">
-								<div class="card mb-4">
-									<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-										<i class="bi bi-palette me-2"></i>' . lang('Site Design') . '
+								<div class="card mb-7">
+									<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+										<i class="bi bi-palette me-3"></i>' . lang('Site Design') . '
 									</div>
 									<div class="card-body">
-										<p class="text-body-secondary">' . lang('How should the site look after the installation?') . '</p>
-										<div class="alert alert-secondary small d-flex gap-2 d-none" id="pg_design_only_starter">
+										<p class="fg-secondary">' . lang('How should the site look after the installation?') . '</p>
+										<div class="alert theme-secondary small d-flex gap-3 d-none" id="pg_design_only_starter">
 											<i class="bi bi-info-circle"></i>
 											<div>' . lang('A design template can be used with a starter site only. A backup or a zip file is restored exactly as it was.') . '</div>
 										</div>
@@ -3326,56 +3326,56 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 										'name' => 'design_template'
 										)) . '
 										<input type="hidden" name="design_template_starters" id="design_template_starters" value="">
-										<div class="row g-3">' . $output_design_choices . '</div>
-										<div class="pg-design-custom mt-3 d-none" id="pg_design_custom">
-											<div class="mb-3">
-												<div class="small fw-semibold mb-1">' . lang('Look') . ' <span class="fw-normal text-body-secondary">— ' . lang('corners, shadows, type and buttons') . '</span></div>
+										<div class="row g-5">' . $output_design_choices . '</div>
+										<div class="pg-design-custom mt-5 d-none" id="pg_design_custom">
+											<div class="mb-5">
+												<div class="small fw-semibold mb-1">' . lang('Look') . ' <span class="fw-normal fg-secondary">— ' . lang('corners, shadows, type and buttons') . '</span></div>
 												<div class="d-flex flex-wrap gap-1" role="radiogroup" aria-label="' . h(lang('Look')) . '">' . $output_design_looks . '</div>
 											</div>
-											<div class="mb-3">
-												<div class="small fw-semibold mb-1">' . lang('Colour palette') . ' <span class="fw-normal text-body-secondary">— <span id="pg_design_palette_name"></span></span></div>
-												<div class="d-flex flex-wrap gap-2" role="radiogroup" aria-label="' . h(lang('Colour palette')) . '">' . $output_design_palettes . '</div>
+											<div class="mb-5">
+												<div class="small fw-semibold mb-1">' . lang('Colour palette') . ' <span class="fw-normal fg-secondary">— <span id="pg_design_palette_name"></span></span></div>
+												<div class="d-flex flex-wrap gap-3" role="radiogroup" aria-label="' . h(lang('Colour palette')) . '">' . $output_design_palettes . '</div>
 											</div>
-											<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+											<div class="d-flex flex-wrap align-items-center gap-3 mb-3">
 												<span class="small fw-semibold me-1"><i class="bi bi-eye me-1"></i>' . lang('Preview') . '</span>
 												<div class="d-flex flex-wrap gap-1" id="pg_design_pages"></div>
 											</div>
-											<div class="d-flex flex-wrap align-items-center gap-2 mb-2 d-none" id="pg_design_mails_row">
+											<div class="d-flex flex-wrap align-items-center gap-3 mb-3 d-none" id="pg_design_mails_row">
 												<span class="small fw-semibold me-1"><i class="bi bi-envelope me-1"></i>' . lang('E-mails') . '</span>
 												<div class="d-flex flex-wrap gap-1" id="pg_design_mails"></div>
 												<div class="btn-group btn-group-sm ms-auto" role="group" aria-label="' . h(lang('Preview')) . '">
-													<button type="button" class="btn btn-outline-secondary active" id="pg_design_desktop" title="' . lang('Desktop') . '"><i class="bi bi-display"></i><span class="visually-hidden">' . lang('Desktop') . '</span></button>
-													<button type="button" class="btn btn-outline-secondary" id="pg_design_mobile" title="' . lang('Mobile') . '"><i class="bi bi-phone"></i><span class="visually-hidden">' . lang('Mobile') . '</span></button>
+													<button type="button" class="btn btn-outline theme-secondary active" id="pg_design_desktop" title="' . lang('Desktop') . '"><i class="bi bi-display"></i><span class="visually-hidden">' . lang('Desktop') . '</span></button>
+													<button type="button" class="btn btn-outline theme-secondary" id="pg_design_mobile" title="' . lang('Mobile') . '"><i class="bi bi-phone"></i><span class="visually-hidden">' . lang('Mobile') . '</span></button>
 												</div>
-												<a class="btn btn-sm btn-outline-secondary" id="pg_design_open" href="#" target="_blank" rel="noopener" title="' . lang('Open in a new tab') . '"><i class="bi bi-box-arrow-up-right"></i><span class="visually-hidden">' . lang('Open in a new tab') . '</span></a>
+												<a class="btn btn-sm btn-outline theme-secondary" id="pg_design_open" href="#" target="_blank" rel="noopener" title="' . lang('Open in a new tab') . '"><i class="bi bi-box-arrow-up-right"></i><span class="visually-hidden">' . lang('Open in a new tab') . '</span></a>
 											</div>
 											<div class="pg-design-frame" id="pg_design_frame_box">
 												<iframe id="pg_design_frame" title="' . h(lang('Preview')) . '" sandbox="allow-scripts"></iframe>
-												<div class="pg-design-frame-wait"><span class="spinner-border spinner-border-sm me-2"></span>' . lang('Loading') . '</div>
+												<div class="pg-design-frame-wait"><span class="spinner-border spinner-border-sm me-3"></span>' . lang('Loading') . '</div>
 											</div>
 											<div class="form-text">' . lang('The pages are drawn with sample content, as a first-time visitor sees them.') . ' ' . lang('You can change both later in the editor, under Settings, Design, Theme.') . '</div>
 										</div>
-										<div class="alert alert-primary small d-flex gap-2 mt-3 mb-0">
+										<div class="alert theme-primary small d-flex gap-3 mt-5 mb-0">
 											<i class="bi bi-info-circle"></i>
 											<div>' . lang('With a design template the pages and page styles of the starter site are not installed. The template\'s pages are published as a new design of the visual editor and its home page becomes the home page of the site. Products, settings and the rest of the starter content are installed as usual.') . '</div>
 										</div>
-										<div class="d-flex justify-content-between mt-3">
-											<button type="button" class="btn btn-outline-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
-											<button type="button" class="btn btn-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
+										<div class="d-flex justify-content-between mt-5">
+											<button type="button" class="btn btn-outline theme-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
+											<button type="button" class="btn btn-solid theme-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
 										</div>
 									</div>
 								</div>
 							</div>
 
 							<div class="pg-step-panel" data-panel="4">
-								<div class="card mb-4">
-									<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-										<i class="bi bi-database me-2"></i>' . lang('MySQL Database') . '
+								<div class="card mb-7">
+									<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+										<i class="bi bi-database me-3"></i>' . lang('MySQL Database') . '
 									</div>
 									<div class="card-body">
-										<p class="text-body-secondary">' . lang('An empty database is enough. You can find this information in the databases section of your hosting panel.') . '</p>
+										<p class="fg-secondary">' . lang('An empty database is enough. You can find this information in the databases section of your hosting panel.') . '</p>
 										<div class="row">
-											<div class="col-12 col-md-6 my-2">
+											<div class="col-12 md:col-6 my-3">
 												<label for="db_host" class="form-label">' . lang('Database Hostname') . '</label>
 												<div class="input-group">
 													' . $liveform->output_field(array(
@@ -3388,7 +3388,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 													<div class="input-group-text" title="' . lang('e.g. localhost, mysql.example.com or 192.168.0.1') . '">(?)</div>
 												</div>
 											</div>
-											<div class="col-12 col-md-6 my-2">
+											<div class="col-12 md:col-6 my-3">
 												<label for="db_database" class="form-label">' . lang('Database Name') . '</label>
 												' . $liveform->output_field(array(
 												'type' => 'text',
@@ -3398,7 +3398,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 												'autocomplete' => 'database_name'
 												)) . '
 											</div>
-											<div class="col-12 col-md-6 my-2">
+											<div class="col-12 md:col-6 my-3">
 												<label for="db_username" class="form-label">' . lang('Database Username') . '</label>
 												' . $liveform->output_field(array(
 												'type' => 'text',
@@ -3408,7 +3408,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 												'autocomplete' => 'database_username'
 												)) . '
 											</div>
-											<div class="col-12 col-md-6 my-2">
+											<div class="col-12 md:col-6 my-3">
 												<label for="db_password" class="form-label">' . lang('Database Password') . '</label>
 												' . $liveform->output_field(array(
 												'type' => 'password',
@@ -3419,28 +3419,28 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 												)) . '
 											</div>
 										</div>
-										<div class="d-flex flex-wrap align-items-center gap-2 mt-2">
-											<button type="button" class="btn btn-sm btn-outline-primary" id="pg_test_database"><i class="bi bi-hdd-network me-1"></i>' . lang('Test the connection') . '</button>
-											<span class="small text-body-secondary" id="pg_test_hint">' . lang('You can verify the connection before you start the installation.') . '</span>
+										<div class="d-flex flex-wrap align-items-center gap-3 mt-3">
+											<button type="button" class="btn btn-sm btn-outline theme-primary" id="pg_test_database"><i class="bi bi-hdd-network me-1"></i>' . lang('Test the connection') . '</button>
+											<span class="small fg-secondary" id="pg_test_hint">' . lang('You can verify the connection before you start the installation.') . '</span>
 										</div>
-										<div class="alert small d-none mt-2 mb-0" id="pg_test_result"></div>
-										<div class="d-flex justify-content-between mt-3">
-											<button type="button" class="btn btn-outline-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
-											<button type="button" class="btn btn-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
+										<div class="alert small d-none mt-3 mb-0" id="pg_test_result"></div>
+										<div class="d-flex justify-content-between mt-5">
+											<button type="button" class="btn btn-outline theme-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
+											<button type="button" class="btn btn-solid theme-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
 										</div>
 									</div>
 								</div>
 							</div>
 
 							<div class="pg-step-panel" data-panel="5">
-								<div class="card mb-4">
-									<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-										<i class="bi bi-person me-2"></i>' . lang('Administrator User') . '
+								<div class="card mb-7">
+									<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+										<i class="bi bi-person me-3"></i>' . lang('Administrator User') . '
 									</div>
 									<div class="card-body">
-										<p class="text-body-secondary">' . lang('The first account that manages the site. Password reset e-mails go to this address.') . '</p>
+										<p class="fg-secondary">' . lang('The first account that manages the site. Password reset e-mails go to this address.') . '</p>
 										<div class="row">
-											<div class="col-12 col-md-4 my-2">
+											<div class="col-12 md:col-4 my-3">
 												<label for="admin_username" class="form-label">' . lang('Username') . '</label>
 												' . $liveform->output_field(array(
 												'type' => 'text',
@@ -3450,7 +3450,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 												'autocomplete' => 'username'
 												)) . '
 											</div>
-											<div class="col-12 col-md-4 my-2">
+											<div class="col-12 md:col-4 my-3">
 												<label for="admin_email_address" class="form-label">' . lang('E-mail Address') . '</label>
 												' . $liveform->output_field(array(
 												'type' => 'text',
@@ -3463,7 +3463,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 												'autocomplete' => 'off'
 												)) . '
 											</div>
-											<div class="col-12 col-md-4 my-2">
+											<div class="col-12 md:col-4 my-3">
 												<label for="admin_confirm_email_address" class="form-label">' . lang('Confirm E-mail Address') . '</label>
 												' . $liveform->output_field(array(
 												'type' => 'text',
@@ -3476,7 +3476,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 												'autocomplete' => 'off'
 												)) . '
 											</div>
-											<div class="col-12 col-md-4 my-2">
+											<div class="col-12 md:col-4 my-3">
 												<label for="admin_password" class="form-label">' . lang('Password') . '</label>
 												' . $liveform->output_field(array(
 												'type' => 'password',
@@ -3486,9 +3486,9 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 												'autocomplete' => 'off'
 												)) . '
 												<div class="pg-strength" id="pg_strength"><i></i><i></i><i></i><i></i></div>
-												<div class="small text-body-secondary" id="pg_strength_text">&nbsp;</div>
+												<div class="small fg-secondary" id="pg_strength_text">&nbsp;</div>
 											</div>
-											<div class="col-12 col-md-4 my-2">
+											<div class="col-12 md:col-4 my-3">
 												<label for="admin_confirm_password" class="form-label">' . lang('Confirm Password') . '</label>
 												' . $liveform->output_field(array(
 												'type' => 'password',
@@ -3509,19 +3509,19 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 							  'class' => 'btn-check collapse-switcher',
 							  'data-bs-target' => '#advanced_row'
 							  )) . '
-							  <label class="btn btn-outline-primary" for="show_advanced_settings"><span class="me-1 material-icons">tune</span>' . lang('Advanced Options') . '</label>
+							  <label class="btn btn-outline theme-primary" for="show_advanced_settings"><span class="me-1 material-icons">tune</span>' . lang('Advanced Options') . '</label>
 						  </div>
 						</div>
 						<div class="col-12" >
 						  <div class="row collapse" id="advanced_row">
 							  <div class="col-12" >
-								  <div class="card my-4">
-									  <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+								  <div class="card my-7">
+									  <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
 										  ' . lang('System SMTP Setup') . '
 									  </div>
 									  <div class="card-body">
 										  <div class="row">
-											  <div class="col-12 col-md-4 my-2">
+											  <div class="col-12 md:col-4 my-3">
 												  <label for="system_smtp_hostname" class="form-label">' . lang('Hostname') . '</label>
 												  ' . $liveform->output_field(array(
 												  'type' => 'text',
@@ -3530,7 +3530,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 												  'class' => 'form-control'
 												  )) . ' 
 											  </div>
-											  <div class="col-12 col-md-2 my-2">
+											  <div class="col-12 md:col-2 my-3">
 												  <label for="system_smtp_port" class="form-label">' . lang('Port') . '</label>
 												  ' . $liveform->output_field(array(
 												  'type' => 'number',
@@ -3540,7 +3540,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 												  'class' => 'form-control'
 												  )) . ' 
 											  </div>
-											  <div class="col-12 col-md-3 my-2">
+											  <div class="col-12 md:col-3 my-3">
 												  <label for="system_smtp_username" class="form-label">' . lang('Username') . '</label>
 												  ' . $liveform->output_field(array(
 												  'type' => 'text',
@@ -3549,7 +3549,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 												  'class' => 'form-control'
 												  )) . ' 
 											  </div>
-											  <div class="col-12 col-md-3 my-2">
+											  <div class="col-12 md:col-3 my-3">
 												  <label for="system_smtp_password" class="form-label">' . lang('Password') . '</label>
 												  ' . $liveform->output_field(array(
 												  'type' => 'password',
@@ -3563,29 +3563,29 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 								  </div>
 							  </div>
 							  <div class="col-12" >
-								  <div class="card my-4">
-									  <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+								  <div class="card my-7">
+									  <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
 										  ' . lang('Email Campaign Setup') . '
 									  </div>
 									  <div class="card-body">
 										  <div class="row">
-											  <div class="col-12 my-3">
-												  <div class="form-check form-switch">
-													  ' . $liveform->output_field(array(
+											  <div class="col-12 my-5">
+												  <div class="form-field">
+													  <div class="switch">' . $liveform->output_field(array(
 													  'type' => 'checkbox',
 													  'id' => 'email_campaign_job',
 													  'name' => 'email_campaign_job',
-													  'class' => 'form-check-input collapse-switcher',
+													  'class' => 'collapse-switcher',
 													  'value'=>'true',
 													  'data-bs-target' => '#email_campaign_job_row'
-													  )) . ' 
-													  <label class="form-check-label" for="email_campaign_job">' . lang('Enable Email Campaign Job') . '</label>
+													  )) . '</div> 
+													  <label class="" for="email_campaign_job">' . lang('Enable Email Campaign Job') . '</label>
 												  </div>
-												  <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="email_campaign_job_row">
+												  <div class="collapse popover fade bs-popover-bottom p-0 mb-3" id="email_campaign_job_row">
 													  <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(40px, 0px);"></div>
 													  <div class="popover-body">
 														  <div class="row">
-															  <div class="col-12 col-lg-6 my-2">
+															  <div class="col-12 lg:col-6 my-3">
 																  <label for="campaign_smtp_hostname" class="form-label">' . lang('Hostname') . '</label>
 																  ' . $liveform->output_field(array(
 																  'type' => 'text',
@@ -3594,7 +3594,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 																  'class' => 'form-control'
 																  )) . ' 
 															  </div>
-															  <div class="col-12 col-md-6 col-lg-3 my-2">
+															  <div class="col-12 md:col-6 lg:col-3 my-3">
 																  <label for="campaign_smtp_number_of_emails" class="form-label" title="' . lang('Maximum number of Emails each time.') . '">' . lang('Max.') . '(?)</label>
 																  ' . $liveform->output_field(array(
 																  'type' => 'number',
@@ -3604,7 +3604,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 																  'class' => 'form-control'
 																  )) . ' 
 															  </div>
-															  <div class="col-12 col-md-6 col-lg-3 my-2">
+															  <div class="col-12 md:col-6 lg:col-3 my-3">
 																  <label for="campaign_smtp_port" class="form-label">' . lang('Port') . '</label>
 																  ' . $liveform->output_field(array(
 																  'type' => 'number',
@@ -3614,7 +3614,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 																  'class' => 'form-control'
 																  )) . ' 
 															  </div>
-															  <div class="col-12 col-lg-6 my-2">
+															  <div class="col-12 lg:col-6 my-3">
 																  <label for="campaign_smtp_username" class="form-label">' . lang('Username') . '</label>
 																  ' . $liveform->output_field(array(
 																  'type' => 'text',
@@ -3623,7 +3623,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 																  'class' => 'form-control'
 																  )) . ' 
 															  </div>
-															  <div class="col-12 col-lg-6 my-2">
+															  <div class="col-12 lg:col-6 my-3">
 																  <label for="campaign_smtp_password" class="form-label">' . lang('Password') . '</label>
 																  ' . $liveform->output_field(array(
 																  'type' => 'password',
@@ -3643,44 +3643,44 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 						  </div>
 						</div>
 								</div>
-										<div class="d-flex justify-content-between mt-3">
-											<button type="button" class="btn btn-outline-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
-											<button type="button" class="btn btn-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
+										<div class="d-flex justify-content-between mt-5">
+											<button type="button" class="btn btn-outline theme-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
+											<button type="button" class="btn btn-solid theme-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
 										</div>
 									</div>
 								</div>
 							</div>
 
 							<div class="pg-step-panel" data-panel="6">
-								<div class="card mb-4">
-									<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-										<i class="bi bi-lightning-charge me-2"></i>' . lang('Summary and installation') . '
+								<div class="card mb-7">
+									<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+										<i class="bi bi-lightning-charge me-3"></i>' . lang('Summary and installation') . '
 									</div>
 									<div class="card-body">
-										<p class="text-body-secondary">' . lang('Everything is ready. Please do not close this window while the installation runs.') . '</p>
+										<p class="fg-secondary">' . lang('Everything is ready. Please do not close this window while the installation runs.') . '</p>
 										<div class="pg-review small">
-											<div><span class="text-body-secondary">' . lang('Installation Folder') . '</span><b id="pg_review_folder">-</b></div>
-											<div><span class="text-body-secondary">' . lang('Software Language') . '</span><b id="pg_review_language">-</b></div>
-											<div><span class="text-body-secondary">' . lang('Site Design') . '</span><b id="pg_review_design">-</b></div>
-											<div><span class="text-body-secondary">' . lang('MySQL Database') . '</span><b id="pg_review_database">-</b></div>
-											<div><span class="text-body-secondary">' . lang('Administrator User') . '</span><b id="pg_review_admin">-</b></div>
-											<div><span class="text-body-secondary">' . lang('Version') . '</span><b>' . h($software_version) . '</b></div>
+											<div><span class="fg-secondary">' . lang('Installation Folder') . '</span><b id="pg_review_folder">-</b></div>
+											<div><span class="fg-secondary">' . lang('Software Language') . '</span><b id="pg_review_language">-</b></div>
+											<div><span class="fg-secondary">' . lang('Site Design') . '</span><b id="pg_review_design">-</b></div>
+											<div><span class="fg-secondary">' . lang('MySQL Database') . '</span><b id="pg_review_database">-</b></div>
+											<div><span class="fg-secondary">' . lang('Administrator User') . '</span><b id="pg_review_admin">-</b></div>
+											<div><span class="fg-secondary">' . lang('Version') . '</span><b>' . h($software_version) . '</b></div>
 										</div>
-										<div class="alert alert-warning small d-flex gap-2 mt-3 mb-0">
+										<div class="alert theme-warning small d-flex gap-3 mt-5 mb-0">
 											<i class="bi bi-exclamation-triangle"></i>
 											<div>' . lang('The installation resets the Pinegrap tables in the database that you entered. If you are restoring an existing site, it is recommended that you make a backup first.') . '</div>
 										</div>
 										' . $reinstallation_verification . '
 										<div class="d-none" id="pg_design_prepare"></div>
-										<div class="d-flex flex-wrap align-items-center gap-2 mt-3" id="pg_install_actions">
-											<button type="button" class="btn btn-outline-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
+										<div class="d-flex flex-wrap align-items-center gap-3 mt-5" id="pg_install_actions">
+											<button type="button" class="btn btn-outline theme-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
 										</div>
 
 										<div class="d-none" id="pg_run_area">
-											<div class="d-flex align-items-center gap-3 mt-3 mb-2">
-												<span class="small text-body-secondary font-monospace" id="pg_run_percent">%0</span>
+											<div class="d-flex align-items-center gap-5 mt-5 mb-3">
+												<span class="small fg-secondary font-monospace" id="pg_run_percent">%0</span>
 												<div class="progress flex-grow-1" style="height:7px;"><div class="progress-bar" id="pg_run_bar" style="width:0;"></div></div>
-												<span class="small text-body-secondary text-truncate" style="max-width:14rem;" id="pg_run_now">' . lang('Please Wait') . '</span>
+												<span class="small fg-secondary text-truncate" style="max-width:14rem;" id="pg_run_now">' . lang('Please Wait') . '</span>
 											</div>
 											<div class="pg-install-console" id="pg_run_console"></div>
 											<div id="pg_run_result"></div>
@@ -3692,9 +3692,9 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 							</div>
 
 							<aside class="pg-side">
-								<div class="card mb-4">
-									<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-										<i class="bi bi-shield-check me-2"></i>' . lang('Server check') . '
+								<div class="card mb-7">
+									<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+										<i class="bi bi-shield-check me-3"></i>' . lang('Server check') . '
 									</div>
 									<div class="card-body pt-0">
 										' . $output_system_checks . '
@@ -3708,7 +3708,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					</div>
     	  	  	  	<div class="buttons navigation text-center" id="install_submit_nav" aria-label="data edit buttons ">
     	  	  	        	<div class=" btn-group flex-wrap justify-content-center">
-    	  	  	            	<button type="submit" id="submit" name="submit" value="' . $output_submit_button_value . '" class="btn my-1  btn-success "><i class="bi ' . $output_submit_button_icon . ' me-2"></i><span class="pg-btn-label" >' . $output_submit_button_label . '</span></button>
+    	  	  	            	<button type="submit" id="submit" name="submit" value="' . $output_submit_button_value . '" class="btn my-1  btn-solid theme-success "><i class="bi ' . $output_submit_button_icon . ' me-3"></i><span class="pg-btn-label" >' . $output_submit_button_label . '</span></button>
     	  	  	        	</div>
     	  	  	  	</div>
     	  	  	</form>
@@ -3721,11 +3721,11 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	  		if ($("input[name=\'install_type\']").length > 0) {
 				if(	$("#upgrade").is(":checked")) {
 					$("#submit").val("Upgrade");
-					$("#submit").html("<i class=\'bi bi-arrow-up-circle me-2\'></i><span class=\'pg-btn-label\'>' . escape_javascript($output_upgrade_button_label) . '</span>");
+					$("#submit").html("<i class=\'bi bi-arrow-up-circle me-3\'></i><span class=\'pg-btn-label\'>' . escape_javascript($output_upgrade_button_label) . '</span>");
 				}
 				if(	$("#install").is(":checked")) {
 					$("#submit").val("Install");
-					$("#submit").html("<i class=\'bi bi-play-fill me-2\'></i><span class=\'pg-btn-label\'>' . lang('Start the installation') . '</span>");
+					$("#submit").html("<i class=\'bi bi-play-fill me-3\'></i><span class=\'pg-btn-label\'>' . lang('Start the installation') . '</span>");
 				}
     		}
 		}
@@ -3829,7 +3829,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			var done = $("#pg_run_result .pg-install-done");
 			var working = "' . escape_javascript(lang('Installing the design template…')) . '";
 			done.addClass("d-none");
-			holder.removeClass("d-none").html("<div class=\"small text-body-secondary mt-3\"><span class=\"spinner-border spinner-border-sm me-2\"></span>" + working + "</div>");
+			holder.removeClass("d-none").html("<div class=\"small fg-secondary mt-5\"><span class=\"spinner-border spinner-border-sm me-3\"></span>" + working + "</div>");
 			document.getElementById("pg_run_now").textContent = working;
 			$.ajax({
 				url: window.location.pathname + "?install_action=design_template",
@@ -3870,11 +3870,11 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			safe.textContent = message;
 			pg_install_stream_step("design_error_" + new Date().getTime(), pg_install_seconds(), "' . escape_javascript(lang('The design template could not be installed.')) . '", message, "error", 100);
 			holder.html(
-				"<div class=\"alert alert-warning d-flex gap-2 align-items-start mt-3 mb-0\"><i class=\"bi bi-exclamation-triangle-fill\"></i><div class=\"flex-grow-1\">" +
+				"<div class=\"alert theme-warning d-flex gap-3 align-items-start mt-5 mb-0\"><i class=\"bi bi-exclamation-triangle-fill\"></i><div class=\"flex-grow-1\">" +
 				"<b>' . escape_javascript(lang('The design template could not be installed.')) . '</b>" +
 				"<div class=\"small mt-1\">" + safe.innerHTML + "</div>" +
 				"<div class=\"small mt-1\">' . escape_javascript(lang('The site is installed as the starter site, with its own pages and page styles.')) . '</div>" +
-				(retry ? "<div class=\"d-flex gap-2 flex-wrap mt-2\"><button type=\"button\" class=\"btn btn-primary\" onclick=\"pg_install_apply_design();\"><i class=\"bi bi-arrow-repeat me-1\"></i>' . escape_javascript(lang('Try again')) . '</button></div>" : "") +
+				(retry ? "<div class=\"d-flex gap-3 flex-wrap mt-3\"><button type=\"button\" class=\"btn btn-solid theme-primary\" onclick=\"pg_install_apply_design();\"><i class=\"bi bi-arrow-repeat me-1\"></i>' . escape_javascript(lang('Try again')) . '</button></div>" : "") +
 				"</div></div>");
 			$("#pg_run_result .pg-install-done").removeClass("d-none");
 			document.getElementById("pg_run_now").textContent = "";
@@ -3929,16 +3929,16 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			if ((error.version) && (pg_install_notes[error.version])) {
 				var safe_notes = document.createElement("div");
 				safe_notes.textContent = pg_install_notes[error.version].join("\n");
-				notes = "<pre class=\"small text-body-secondary mt-2 mb-0\" style=\"white-space:pre-wrap;max-height:10rem;overflow:auto;\">" + safe_notes.innerHTML + "</pre>";
+				notes = "<pre class=\"small fg-secondary mt-3 mb-0\" style=\"white-space:pre-wrap;max-height:10rem;overflow:auto;\">" + safe_notes.innerHTML + "</pre>";
 			}
 			$("#pg_run_result").html(
-				"<div class=\"alert alert-danger d-flex gap-2 align-items-start mt-3 mb-0\"><i class=\"bi bi-exclamation-triangle-fill\"></i><div class=\"flex-grow-1\">" +
+				"<div class=\"alert theme-danger d-flex gap-3 align-items-start mt-5 mb-0\"><i class=\"bi bi-exclamation-triangle-fill\"></i><div class=\"flex-grow-1\">" +
 				"<b>' . escape_javascript(lang('The upgrade stopped at version')) . ' " + safe_version.innerHTML + "</b>" +
 				"<div class=\"small mt-1\">" + safe.innerHTML + "</div>" +
-				(error.statement ? "<div class=\"small font-monospace text-body-secondary mt-1\">" + safe_statement.innerHTML + "</div>" : "") +
+				(error.statement ? "<div class=\"small font-monospace fg-secondary mt-1\">" + safe_statement.innerHTML + "</div>" : "") +
 				notes +
-				"<div class=\"small mt-2\">' . escape_javascript(lang('The versions before it are recorded, and every step can be run again: start the upgrade once more and it continues from here. If the same statement fails again, the message above says what the database objected to.')) . '</div>" +
-				"<div class=\"d-flex gap-2 flex-wrap mt-2\"><button type=\"button\" class=\"btn btn-primary\" onclick=\"pg_install_retry();\"><i class=\"bi bi-arrow-repeat me-1\"></i>' . escape_javascript(lang('Try again')) . '</button></div>" +
+				"<div class=\"small mt-3\">' . escape_javascript(lang('The versions before it are recorded, and every step can be run again: start the upgrade once more and it continues from here. If the same statement fails again, the message above says what the database objected to.')) . '</div>" +
+				"<div class=\"d-flex gap-3 flex-wrap mt-3\"><button type=\"button\" class=\"btn btn-solid theme-primary\" onclick=\"pg_install_retry();\"><i class=\"bi bi-arrow-repeat me-1\"></i>' . escape_javascript(lang('Try again')) . '</button></div>" +
 				"</div></div>");
 		}
 
@@ -3978,13 +3978,13 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		var pg_upgrade_timer = null;
 
 		var pg_upgrade_success_html = ' . json_encode('
-			<div class="alert alert-success d-flex gap-2 align-items-start mt-3 mb-0">
+			<div class="alert theme-success d-flex gap-3 align-items-start mt-5 mb-0">
 				<i class="bi bi-check-circle-fill"></i>
 				<div class="flex-grow-1">
-					<b>' . lang('The upgrade is complete') . '</b> <span class="text-body-secondary">{from} → {to} · {count}</span>
-					<div class="d-flex gap-2 flex-wrap mt-2">
-						<a class="btn btn-primary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/"><i class="bi bi-arrow-right me-1"></i>' . lang('Control Panel') . '</a>
-						<a class="btn btn-outline-secondary" href="' . OUTPUT_PATH . '" target="_blank"><i class="bi bi-eye me-1"></i>' . lang('View Site') . '</a>
+					<b>' . lang('The upgrade is complete') . '</b> <span class="fg-secondary">{from} → {to} · {count}</span>
+					<div class="d-flex gap-3 flex-wrap mt-3">
+						<a class="btn btn-solid theme-primary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/"><i class="bi bi-arrow-right me-1"></i>' . lang('Control Panel') . '</a>
+						<a class="btn btn-outline theme-secondary" href="' . OUTPUT_PATH . '" target="_blank"><i class="bi bi-eye me-1"></i>' . lang('View Site') . '</a>
 					</div>
 				</div>
 			</div>') . ';
@@ -4159,11 +4159,11 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			var safe = document.createElement("div");
 			safe.textContent = message;
 			$("#pg_run_result").html(
-				"<div class=\"alert alert-warning d-flex gap-2 align-items-start mt-3 mb-0\"><i class=\"bi bi-exclamation-triangle-fill\"></i><div class=\"flex-grow-1\">" +
+				"<div class=\"alert theme-warning d-flex gap-3 align-items-start mt-5 mb-0\"><i class=\"bi bi-exclamation-triangle-fill\"></i><div class=\"flex-grow-1\">" +
 				"<div class=\"small\">" + safe.innerHTML + "</div>" +
-				"<div class=\"d-flex gap-2 flex-wrap mt-2\">" +
-				(refresh_only ? "" : "<button type=\"button\" class=\"btn btn-primary\" onclick=\"pg_upgrade_resume();\"><i class=\"bi bi-arrow-repeat me-1\"></i>' . escape_javascript(lang('Continue')) . '</button>") +
-				"<a class=\"btn btn-outline-secondary\" href=\"" + window.location.pathname + "\"><i class=\"bi bi-arrow-clockwise me-1\"></i>' . escape_javascript(lang('Refresh')) . '</a>" +
+				"<div class=\"d-flex gap-3 flex-wrap mt-3\">" +
+				(refresh_only ? "" : "<button type=\"button\" class=\"btn btn-solid theme-primary\" onclick=\"pg_upgrade_resume();\"><i class=\"bi bi-arrow-repeat me-1\"></i>' . escape_javascript(lang('Continue')) . '</button>") +
+				"<a class=\"btn btn-outline theme-secondary\" href=\"" + window.location.pathname + "\"><i class=\"bi bi-arrow-clockwise me-1\"></i>' . escape_javascript(lang('Refresh')) . '</a>" +
 				"</div></div></div>");
 		}
 
@@ -4173,17 +4173,17 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			var safe = document.createElement("div");
 			safe.textContent = message || "";
 			$("#pg_run_result").html(
-				"<div class=\"alert alert-danger d-flex gap-2 align-items-start mt-3 mb-0\"><i class=\"bi bi-exclamation-triangle-fill\"></i><div class=\"flex-grow-1\">" +
+				"<div class=\"alert theme-danger d-flex gap-3 align-items-start mt-5 mb-0\"><i class=\"bi bi-exclamation-triangle-fill\"></i><div class=\"flex-grow-1\">" +
 				"<b>' . escape_javascript(lang('Your session expired')) . '</b>" +
 				"<div class=\"small mt-1\">" + safe.innerHTML + "</div>" +
 				"<div class=\"small mt-1\">' . escape_javascript(lang('The versions that were applied are recorded. Sign in again and open this screen; the upgrade continues from the version that was recorded last.')) . '</div>" +
-				"<div class=\"d-flex gap-2 flex-wrap mt-2\"><a class=\"btn btn-primary\" href=\"" + window.location.pathname + "\"><i class=\"bi bi-arrow-clockwise me-1\"></i>' . escape_javascript(lang('Refresh')) . '</a></div>" +
+				"<div class=\"d-flex gap-3 flex-wrap mt-3\"><a class=\"btn btn-solid theme-primary\" href=\"" + window.location.pathname + "\"><i class=\"bi bi-arrow-clockwise me-1\"></i>' . escape_javascript(lang('Refresh')) . '</a></div>" +
 				"</div></div>");
 		}
 
 		function pg_install_stream_failed(message) {
 			if (pg_install_poll_timer) { clearInterval(pg_install_poll_timer); }
-			$("#pg_run_result").html("<div class=\"alert alert-danger d-flex gap-2 mt-3 mb-0\"><i class=\"bi bi-exclamation-triangle-fill\"></i><div>" + message + "</div></div>");
+			$("#pg_run_result").html("<div class=\"alert theme-danger d-flex gap-3 mt-5 mb-0\"><i class=\"bi bi-exclamation-triangle-fill\"></i><div>" + message + "</div></div>");
 		}
 
 		// The install form is one long form, and the wizard only changes how it is presented.
@@ -4287,7 +4287,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			if (problems.length === 0) { return; }
 			var list = "";
 			$.each(problems, function(index, message) { list += "<div>" + message + "</div>"; });
-			panel.prepend("<div class=\"alert alert-danger small d-flex gap-2 pg-step-problem\"><i class=\"bi bi-exclamation-triangle\"></i><div>" + list + "</div></div>");
+			panel.prepend("<div class=\"alert theme-danger small d-flex gap-3 pg-step-problem\"><i class=\"bi bi-exclamation-triangle\"></i><div>" + list + "</div></div>");
 		}
 
 		function pg_install_set_step(step) {
@@ -4443,7 +4443,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			var buttons = $("#pg_design_pages").empty();
 			var mails = $("#pg_design_mails").empty();
 			$.each(pages, function(index, page) {
-				$("<button type=\"button\" class=\"btn btn-sm btn-outline-secondary rounded-pill\"></button>").attr("data-page", page.key).text(page.title).appendTo(page.email ? mails : buttons);
+				$("<button type=\"button\" class=\"btn btn-sm btn-outline theme-secondary rounded-pill\"></button>").attr("data-page", page.key).text(page.title).appendTo(page.email ? mails : buttons);
 			});
 			$("#pg_design_mails_row").toggleClass("d-none", mails.children().length === 0);
 			pg_install_mark_preview_page();
@@ -4478,7 +4478,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			var button = $("#submit");
 			var failed = function() {
 				button.prop("disabled", false);
-				status.attr("class", "alert alert-danger small d-flex gap-2 mt-3 mb-0").html("<i class=\"bi bi-exclamation-triangle\"></i><div>' . escape_javascript(lang('The design template could not be prepared in this browser. Choose the standard installation, or try again in another browser.')) . '</div>");
+				status.attr("class", "alert theme-danger small d-flex gap-3 mt-5 mb-0").html("<i class=\"bi bi-exclamation-triangle\"></i><div>' . escape_javascript(lang('The design template could not be prepared in this browser. Choose the standard installation, or try again in another browser.')) . '</div>");
 			};
 			var submit = function(starters) {
 				$("#design_template_starters").val(JSON.stringify(starters));
@@ -4488,7 +4488,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			};
 			if (kinds.length === 0) { submit({}); return; }
 			button.prop("disabled", true);
-			status.attr("class", "small text-body-secondary mt-3").html("<span class=\"spinner-border spinner-border-sm me-2\"></span>' . escape_javascript(lang('Preparing the design template…')) . '");
+			status.attr("class", "small fg-secondary mt-5").html("<span class=\"spinner-border spinner-border-sm me-3\"></span>' . escape_javascript(lang('Preparing the design template…')) . '");
 			$.get(window.location.pathname, { install_action: "designer_i18n", language: language }, null, "json").done(function(map) {
 				window.sdDesign = { i18n: ((map) && (typeof map === "object")) ? map : {} };
 				var build = function() {
@@ -4667,12 +4667,12 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					db_password: $("#db_password").val(),
 					db_database: $("#db_database").val()
 				}, null, "json").done(function(answer) {
-					var style = "alert-danger";
-					if (answer.state === "ok") { style = "alert-success"; }
-					if (answer.state === "warning") { style = "alert-warning"; }
+					var style = "theme-danger";
+					if (answer.state === "ok") { style = "theme-success"; }
+					if (answer.state === "warning") { style = "theme-warning"; }
 					result.attr("class", "alert small mt-2 mb-0 " + style).text(answer.message);
 				}).fail(function() {
-					result.attr("class", "alert small mt-2 mb-0 alert-danger").text("' . escape_javascript(lang('The connection could not be tested. Please try again.')) . '");
+					result.attr("class", "alert small mt-3 mb-0 theme-danger").text("' . escape_javascript(lang('The connection could not be tested. Please try again.')) . '");
 				}).always(function() {
 					button.prop("disabled", false);
 					$("#pg_test_hint").text("");
@@ -4685,7 +4685,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				var result = $("#pg_upgrade_backup_result");
 				button.prop("disabled", true);
 				$("#submit").prop("disabled", true);
-				result.attr("class", "small text-body-secondary").text("' . escape_javascript(lang('The backup is being written. Depending on the size of the database this takes between a few seconds and a few minutes.')) . '");
+				result.attr("class", "small fg-secondary").text("' . escape_javascript(lang('The backup is being written. Depending on the size of the database this takes between a few seconds and a few minutes.')) . '");
 				$.ajax({
 					url: window.location.pathname,
 					type: "POST",
@@ -4694,15 +4694,15 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					data: { install_action: "backup_database", token: $("input[name=token]").val() }
 				}).done(function(answer) {
 					if ((answer) && (answer.ok)) {
-						result.attr("class", "small text-success").text("' . escape_javascript(lang('The backup is ready')) . ': data/backups/" + answer.folder + "/sql.sql · " + answer.size + " · " + answer.seconds + " s");
+						result.attr("class", "small fg-success").text("' . escape_javascript(lang('The backup is ready')) . ': data/backups/" + answer.folder + "/sql.sql · " + answer.size + " · " + answer.seconds + " s");
 					} else {
-						result.attr("class", "small text-danger").text(((answer) && (answer.error)) ? answer.error : "' . escape_javascript(lang('The backup could not be written.')) . '");
+						result.attr("class", "small fg-danger").text(((answer) && (answer.error)) ? answer.error : "' . escape_javascript(lang('The backup could not be written.')) . '");
 						button.prop("disabled", false);
 					}
 				}).fail(function(xhr) {
 					var message = "' . escape_javascript(lang('The backup could not be written.')) . '";
 					if ((xhr) && (xhr.responseJSON) && (xhr.responseJSON.error)) { message = xhr.responseJSON.error; }
-					result.attr("class", "small text-danger").text(message + ((xhr && xhr.status) ? " (HTTP " + xhr.status + ")" : ""));
+					result.attr("class", "small fg-danger").text(message + ((xhr && xhr.status) ? " (HTTP " + xhr.status + ")" : ""));
 					button.prop("disabled", false);
 				}).always(function() {
 					$("#submit").prop("disabled", false);
@@ -4976,13 +4976,13 @@ else {
 
 			print '
 			<div id="pg_stream_result">
-				<div class="alert alert-success d-flex gap-2 align-items-start mt-3 mb-0">
+				<div class="alert theme-success d-flex gap-3 align-items-start mt-5 mb-0">
 					<i class="bi bi-check-circle-fill"></i>
 					<div class="flex-grow-1">
-						<b>' . lang('The upgrade is complete') . '</b> <span class="text-body-secondary">' . h($database_version) . ' → ' . h($software_version) . ' · ' . lang(array('string' => '{var:1} versions were applied', 'vars' => $upgrade_applied_count)) . '</span>
-						<div class="d-flex gap-2 flex-wrap mt-2">
-							<a class="btn btn-primary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/"><i class="bi bi-arrow-right me-1"></i>' . lang('Control Panel') . '</a>
-							<a class="btn btn-outline-secondary" href="' . OUTPUT_PATH . '" target="_blank"><i class="bi bi-eye me-1"></i>' . lang('View Site') . '</a>
+						<b>' . lang('The upgrade is complete') . '</b> <span class="fg-secondary">' . h($database_version) . ' → ' . h($software_version) . ' · ' . lang(array('string' => '{var:1} versions were applied', 'vars' => $upgrade_applied_count)) . '</span>
+						<div class="d-flex gap-3 flex-wrap mt-3">
+							<a class="btn btn-solid theme-primary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/"><i class="bi bi-arrow-right me-1"></i>' . lang('Control Panel') . '</a>
+							<a class="btn btn-outline theme-secondary" href="' . OUTPUT_PATH . '" target="_blank"><i class="bi bi-eye me-1"></i>' . lang('View Site') . '</a>
 						</div>
 					</div>
 				</div>
@@ -5021,17 +5021,17 @@ else {
 
 			print
 			get_header() . '
-			<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body d-print-none">
+			<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body pg-print-none">
 				  <ul class="navbar-nav me-auto">
 					<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
 				  </ul>
 				  <ul class="navbar-nav ms-auto">	
-					<li class="nav-item dropdown no-popover"  title="' . lang('Software Theme') . '">
-						<button class="nav-link nav-link-sm position-relative dropdown-toggle dropdown-menu-right d-none" data-bs-toggle="dropdown" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
-						<ul aria-labelledby="bd-theme" class="dropdown-menu shadow dropdown-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-dropdown-min-width: 8rem;">
-							<li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-2"></i>' . lang('Light') . '</button></li>
-							<li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-2"></i>' . lang('Dark') . '</button></li>
-							<li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-2"></i>' . lang('Auto') . '</button></li>
+					<li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
+						<button class="nav-link nav-link-sm position-relative pg-menu-caret d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
+						<ul aria-labelledby="bd-theme" class="menu shadow pg-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-menu-min-width: 8rem;">
+							<li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i>' . lang('Light') . '</button></li>
+							<li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i>' . lang('Dark') . '</button></li>
+							<li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-3"></i>' . lang('Auto') . '</button></li>
 						</ul>
 					</li>
 				  </ul>
@@ -5039,16 +5039,16 @@ else {
 			<main id="content" class="container">
 			    <div class="row">
 			      	<div class="col-12">
-			        	<div class="row mb-2  flex-wrap">
-			        	    <div class="col-12 col-sm-12 text-center text-md-start">
+			        	<div class="row mb-3  flex-wrap">
+			        	    <div class="col-12 sm:col-12 text-center md:text-start">
 			        	        <h2 class="d-inline-block ">' . lang('Installation') . '</h2>
 			        	    </div>
 			        	</div>
 			        </div>
-					<div class="col-12 col-md-8 offset-md-2">
-						<div class="card my-5 border-4">
+					<div class="col-12 md:col-8 md:offset-2">
+						<div class="card my-12 border-4">
 							<div class="card-body">
-								<h4 class="text-success text-center"><span class="material-icons" style="line-height:1em;font-size:4em;">check_circle</span><br/>' . lang(array('string'=>'Congratulations, the software has been upgraded successfully from version {var:1} to {var:2}.','vars'=>array($database_version,$software_version) )) . '</h4>
+								<h4 class="fg-success text-center"><span class="material-icons" style="line-height:1em;font-size:4em;">check_circle</span><br/>' . lang(array('string'=>'Congratulations, the software has been upgraded successfully from version {var:1} to {var:2}.','vars'=>array($database_version,$software_version) )) . '</h4>
 							</div>
 							<div class="card-footer">
 								<div class="text-center"><a class="btn" href="../" class="button_primary">' . lang('Continue') . '<span class="ms-1 material-icons">arrow_forward</span></a></div>
@@ -6569,17 +6569,17 @@ http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 			print '
 			<div id="pg_stream_result">
 				' . $output_install_design_apply . '
-				<div class="alert alert-success d-flex gap-2 align-items-start mt-3 mb-0 pg-install-done">
+				<div class="alert theme-success d-flex gap-3 align-items-start mt-5 mb-0 pg-install-done">
 					<i class="bi bi-check-circle-fill"></i>
 					<div class="flex-grow-1">
-						<b>' . lang('The installation is complete') . '</b> <span class="text-body-secondary">' . h($install_result_details) . '</span>
+						<b>' . lang('The installation is complete') . '</b> <span class="fg-secondary">' . h($install_result_details) . '</span>
 						' . (($install_admin_message != '') ? '<div class="small mt-1"><i class="bi bi-person-check me-1"></i>' . h($install_admin_message) . '</div>' : '') . '
-						<div class="d-flex gap-2 flex-wrap mt-2">
-							<a class="btn btn-primary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/"><i class="bi bi-arrow-right me-1"></i>' . lang('Control Panel') . '</a>
-							<a class="btn btn-outline-secondary" href="' . OUTPUT_PATH . '" target="_blank"><i class="bi bi-eye me-1"></i>' . lang('View Site') . '</a>
+						<div class="d-flex gap-3 flex-wrap mt-3">
+							<a class="btn btn-solid theme-primary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/"><i class="bi bi-arrow-right me-1"></i>' . lang('Control Panel') . '</a>
+							<a class="btn btn-outline theme-secondary" href="' . OUTPUT_PATH . '" target="_blank"><i class="bi bi-eye me-1"></i>' . lang('View Site') . '</a>
 						</div>
-						<div class="small text-body-secondary mt-2">' . $install_result_email . '</div>
-						<div class="small text-body-secondary mt-1">' . lang('Your database login information has been stored in the config.php file in the software directory. If you need to change the database login information in the future, you will need to update the config.php file.') . '</div>
+						<div class="small fg-secondary mt-3">' . $install_result_email . '</div>
+						<div class="small fg-secondary mt-1">' . lang('Your database login information has been stored in the config.php file in the software directory. If you need to change the database login information in the future, you will need to update the config.php file.') . '</div>
 					</div>
 				</div>
 			</div>
@@ -6609,16 +6609,16 @@ http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 
 			$output_install_page_start =
 			get_header() . '
-		<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body d-print-none">
+		<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body pg-print-none">
 			  <ul class="navbar-nav me-auto">
 				<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
 			  </ul>
 		</nav>';
 
 			$output_install_log_card = '
-					<div class="card mb-4">
-						<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-							<i class="bi bi-terminal me-2"></i>' . lang('Installation steps') . '
+					<div class="card mb-7">
+						<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+							<i class="bi bi-terminal me-3"></i>' . lang('Installation steps') . '
 						</div>
 						<div class="card-body">
 							<div class="pg-install-console">' . $output_install_log . '</div>
@@ -6628,7 +6628,7 @@ http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 		}
 
 		$output_install_email_notice = '
-					<div class="alert alert-secondary small d-flex gap-2">
+					<div class="alert theme-secondary small d-flex gap-3">
 						<i class="bi bi-envelope-exclamation"></i>
 						<div>' . lang('No mail server was entered, so no confirmation e-mail was sent. Features that rely on e-mail (password resets, form notifications and user invitations) work once you set up e-mail under the settings.') . '</div>
 					</div>';
@@ -6636,7 +6636,7 @@ http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 		if ($install_email_sent == true) {
 
 			$output_install_email_notice = '
-					<div class="alert alert-secondary small d-flex gap-2">
+					<div class="alert theme-secondary small d-flex gap-3">
 						<i class="bi bi-envelope-check"></i>
 						<div>' . lang('A confirmation e-mail has been sent to your e-mail address.  If you do not receive the confirmation e-mail, then e-mail is probably not configured correctly for your website.  There are features that rely on e-mail (i.e. e-mailing pages, creating users, and etc.), so it is important that you configure e-mail to work.') . '</div>
 					</div>';
@@ -6646,7 +6646,7 @@ http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 		// output confirmation
 		print
 		$output_install_page_start . '
-		<style class="d-none">
+		<style class="d-none">@layer custom {
 			.pg-install-console {
 				background: #0f1115;
 				color: #d7dee8;
@@ -6667,24 +6667,24 @@ http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 				border: 1px solid var(--pg-border-color);
 				background: linear-gradient(135deg, color-mix(in srgb, var(--pg-primary) 12%, transparent), color-mix(in srgb, var(--pg-warning) 16%, transparent));
 			}
-		</style>
+		}</style>
 		<main id="content" class="container">
 		    <div class="row">
-				<div class="col-12 col-lg-8 offset-lg-2">
-					<div class="text-center my-4">
-						<img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/logo.png" width="96" height="96" alt="Pinegrap" class="pg-install-logo mb-3">
-						<h1 class="h3 text-success"><span class="material-icons align-middle" style="font-size:1.6em;line-height:1;">check_circle</span> ' . lang('Congratulations, the installation is complete!') . '</h1>
-						<p class="text-body-secondary mb-0">' . lang(array('string' => 'Pinegrap {var:1} is installed and your administrator account is ready.', 'vars' => $software_version)) . '</p>
+				<div class="col-12 lg:col-8 lg:offset-2">
+					<div class="text-center my-7">
+						<img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/logo.png" width="96" height="96" alt="Pinegrap" class="pg-install-logo mb-5">
+						<h1 class="h3 fg-success"><span class="material-icons align-middle" style="font-size:1.6em;line-height:1;">check_circle</span> ' . lang('Congratulations, the installation is complete!') . '</h1>
+						<p class="fg-secondary mb-0">' . lang(array('string' => 'Pinegrap {var:1} is installed and your administrator account is ready.', 'vars' => $software_version)) . '</p>
 					</div>
 
-					<div class="d-flex gap-2 justify-content-center flex-wrap mb-4">
-						<a class="btn btn-primary" href="../">' . lang('Control Panel') . '<span class="ms-1 material-icons">arrow_forward</span></a>
-						<a class="btn btn-outline-secondary" href="' . OUTPUT_PATH . '" target="_blank"><span class="me-1 material-icons">visibility</span>' . lang('View Site') . '</a>
+					<div class="d-flex gap-3 justify-content-center flex-wrap mb-7">
+						<a class="btn btn-solid theme-primary" href="../">' . lang('Control Panel') . '<span class="ms-1 material-icons">arrow_forward</span></a>
+						<a class="btn btn-outline theme-secondary" href="' . OUTPUT_PATH . '" target="_blank"><span class="me-1 material-icons">visibility</span>' . lang('View Site') . '</a>
 					</div>
 
 					' . $output_install_log_card . '
 
-					<div class="alert alert-primary small d-flex gap-2">
+					<div class="alert theme-primary small d-flex gap-3">
 						<i class="bi bi-info-circle"></i>
 						<div>' . lang('Your database login information has been stored in the config.php file in the software directory. If you need to change the database login information in the future, you will need to update the config.php file.') . '</div>
 					</div>
@@ -6748,7 +6748,7 @@ function start_install_stream() {
 	print
 
 	get_header() . '
-	<style>
+	<style>@layer custom {
 		.pg-install-console {
 			background: #0f1115;
 			color: #d7dee8;
@@ -6772,24 +6772,24 @@ function start_install_stream() {
 			background: linear-gradient(135deg, color-mix(in srgb, var(--pg-primary) 12%, transparent), color-mix(in srgb, var(--pg-warning) 16%, transparent));
 		}
 		#pg_stream_bar { background: linear-gradient(90deg, var(--pg-logo-color-1), var(--pg-logo-color-2)); }
-	</style>
-	<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body d-print-none">
+	}</style>
+	<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body pg-print-none">
 	  	<ul class="navbar-nav me-auto"></ul>
 	</nav>
-	<div class="container-xl" style="max-width:960px;" id="pg_stream_area">
-		<div class="d-flex flex-wrap align-items-center gap-3 pt-4 pb-2">
+	<div class="xl:container" style="max-width:960px;" id="pg_stream_area">
+		<div class="d-flex flex-wrap align-items-center gap-5 pt-7 pb-3">
 			<img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/logo.png" width="72" height="72" alt="Pinegrap" class="pg-install-logo">
 			<div class="flex-grow-1" style="min-width:16rem;">
 				<h1 class="h4 mb-1" id="pg_stream_title">' . lang('The installation is running') . '</h1>
-				<p class="text-body-secondary mb-0" id="pg_stream_text">' . lang('Please do not close this window. Depending on the server this takes between ten seconds and a minute, and the steps are listed when it is done.') . '</p>
+				<p class="fg-secondary mb-0" id="pg_stream_text">' . lang('Please do not close this window. Depending on the server this takes between ten seconds and a minute, and the steps are listed when it is done.') . '</p>
 			</div>
 		</div>
-		<div class="d-flex align-items-center gap-3 mb-3">
-			<span class="small text-body-secondary font-monospace" id="pg_stream_percent">%0</span>
+		<div class="d-flex align-items-center gap-5 mb-5">
+			<span class="small fg-secondary font-monospace" id="pg_stream_percent">%0</span>
 			<div class="progress flex-grow-1" style="height:7px;"><div class="progress-bar" id="pg_stream_bar" style="width:0;"></div></div>
-			<span class="small text-body-secondary text-truncate" style="max-width:16rem;" id="pg_stream_now">' . lang('Please Wait') . '</span>
+			<span class="small fg-secondary text-truncate" style="max-width:16rem;" id="pg_stream_now">' . lang('Please Wait') . '</span>
 		</div>
-		<div class="pg-install-console mb-4" id="pg_stream_console"></div>
+		<div class="pg-install-console mb-7" id="pg_stream_console"></div>
 	</div>
 	<script type="text/javascript">
 		// When the installation runs inside the wizard, every step is handed to that page so the
@@ -6911,13 +6911,13 @@ function output_install_upgrade_failure($upgrade_result, $database_version, $aut
 	if ($locked) {
 
 		$alert = '
-			<div class="alert alert-warning d-flex gap-2 align-items-start mt-3 mb-0">
+			<div class="alert theme-warning d-flex gap-3 align-items-start mt-5 mb-0">
 				<i class="bi bi-hourglass-split"></i>
 				<div class="flex-grow-1">
 					<b>' . lang('Another upgrade is running') . '</b>
 					<div class="small">' . h($message) . '</div>
-					<div class="d-flex gap-2 flex-wrap mt-2">
-						<a class="btn btn-outline-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/install/"><i class="bi bi-arrow-clockwise me-1"></i>' . lang('Refresh') . '</a>
+					<div class="d-flex gap-3 flex-wrap mt-3">
+						<a class="btn btn-outline theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/install/"><i class="bi bi-arrow-clockwise me-1"></i>' . lang('Refresh') . '</a>
 					</div>
 				</div>
 			</div>';
@@ -6925,16 +6925,16 @@ function output_install_upgrade_failure($upgrade_result, $database_version, $aut
 	} else {
 
 		$alert = '
-			<div class="alert alert-danger d-flex gap-2 align-items-start mt-3 mb-0">
+			<div class="alert theme-danger d-flex gap-3 align-items-start mt-5 mb-0">
 				<i class="bi bi-exclamation-triangle-fill"></i>
 				<div class="flex-grow-1">
 					<b>' . lang(array('string' => 'The upgrade stopped at version {var:1}', 'vars' => h($failed_version))) . '</b>
 					<div class="small mt-1">' . h($message) . '</div>
-					' . (($statement != '') ? '<div class="small font-monospace text-body-secondary mt-1">' . h($statement) . '</div>' : '') . '
-					<div class="small mt-2">' . lang('The versions before it are recorded, and every step can be run again: start the upgrade once more and it continues from here. If the same statement fails again, the message above says what the database objected to.') . '</div>
-					<div class="d-flex gap-2 flex-wrap mt-2">
-						<button type="button" class="btn btn-primary" onclick="pg_install_retry();"><i class="bi bi-arrow-repeat me-1"></i>' . lang('Try again') . '</button>
-						<a class="btn btn-outline-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/install/"><i class="bi bi-arrow-left me-1"></i>' . lang('Installation') . '</a>
+					' . (($statement != '') ? '<div class="small font-monospace fg-secondary mt-1">' . h($statement) . '</div>' : '') . '
+					<div class="small mt-3">' . lang('The versions before it are recorded, and every step can be run again: start the upgrade once more and it continues from here. If the same statement fails again, the message above says what the database objected to.') . '</div>
+					<div class="d-flex gap-3 flex-wrap mt-3">
+						<button type="button" class="btn btn-solid theme-primary" onclick="pg_install_retry();"><i class="bi bi-arrow-repeat me-1"></i>' . lang('Try again') . '</button>
+						<a class="btn btn-outline theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/install/"><i class="bi bi-arrow-left me-1"></i>' . lang('Installation') . '</a>
 					</div>
 				</div>
 			</div>';
@@ -6959,7 +6959,7 @@ function output_install_upgrade_failure($upgrade_result, $database_version, $aut
 
 	// no stream: a plain page with the same alert
 	print get_header() . '
-	<div class="container-xl" style="max-width:960px;">' . $alert . '</div>' . get_footer();
+	<div class="xl:container" style="max-width:960px;">' . $alert . '</div>' . get_footer();
 
 	exit();
 
@@ -7771,13 +7771,13 @@ function output_install_demo_notice() {
 
 	print
 	get_header() . '
-		<div class="container py-5" style="max-width: 40rem">
+		<div class="container py-12" style="max-width: 40rem">
 			<div class="card">
-				<div class="card-body p-4 text-center">
-					<i class="bi bi-info-circle display-5 text-primary"></i>
-					<h1 class="h4 mt-3">' . lang('This is a demonstration site') . '</h1>
-					<p class="text-body-secondary mb-4">' . lang('The installer can be walked through to its last step here, but it does not install anything. The demonstration site is restored every hour.') . '</p>
-					<a class="btn btn-primary rounded-pill" href="index.php">' . lang('Back to the installer') . '</a>
+				<div class="card-body p-7 text-center">
+					<i class="bi bi-info-circle pg-display-5 fg-primary"></i>
+					<h1 class="h4 mt-5">' . lang('This is a demonstration site') . '</h1>
+					<p class="fg-secondary mb-7">' . lang('The installer can be walked through to its last step here, but it does not install anything. The demonstration site is restored every hour.') . '</p>
+					<a class="btn btn-solid theme-primary rounded-pill" href="index.php">' . lang('Back to the installer') . '</a>
 				</div>
 			</div>
 		</div>' .
@@ -7903,7 +7903,7 @@ function output_install_lock_screen() {
 
 	if ($error_message != '') {
 
-		$output_error = '<div class="alert alert-danger d-flex gap-2 py-2 px-3"><i class="bi bi-exclamation-triangle-fill"></i><div>' . h($error_message) . '</div></div>';
+		$output_error = '<div class="alert theme-danger d-flex gap-3 py-3 px-5"><i class="bi bi-exclamation-triangle-fill"></i><div>' . h($error_message) . '</div></div>';
 
 	}
 
@@ -7913,7 +7913,7 @@ function output_install_lock_screen() {
 
 	if ($wait_seconds > 0) {
 
-		$output_wait = '<div class="alert alert-warning d-flex gap-2 py-2 px-3"><i class="bi bi-hourglass-split"></i><div>' . lang(array(
+		$output_wait = '<div class="alert theme-warning d-flex gap-3 py-3 px-5"><i class="bi bi-hourglass-split"></i><div>' . lang(array(
 			'string' => 'Too many failed attempts. Please try again in {var:1} minutes.',
 			'vars' => (int) ceil($wait_seconds / 60)
 		)) . '</div></div>';
@@ -7925,7 +7925,7 @@ function output_install_lock_screen() {
 	print
 
 	get_header() . '
-	<style>
+	<style>@layer custom {
 		.install-lock-logo {
 			padding: 10px;
 			border-radius: 32px;
@@ -7943,66 +7943,66 @@ function output_install_lock_screen() {
 			opacity: .5;
 			user-select: none;
 		}
-	</style>
-	<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body d-print-none">
+	}</style>
+	<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body pg-print-none">
 		<ul class="navbar-nav ms-auto">
-			<li class="nav-item dropdown no-popover" title="' . lang('Software Theme') . '">
-				<button class="nav-link nav-link-sm position-relative dropdown-toggle dropdown-menu-right d-none" data-bs-toggle="dropdown" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
-				<ul aria-labelledby="bd-theme" class="dropdown-menu shadow dropdown-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-dropdown-min-width: 8rem;">
-					<li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-2"></i>' . lang('Light') . '</button></li>
-					<li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-2"></i>' . lang('Dark') . '</button></li>
-					<li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-2"></i>' . lang('Auto') . '</button></li>
+			<li class="nav-item pg-menu-wrap no-popover" title="' . lang('Software Theme') . '">
+				<button class="nav-link nav-link-sm position-relative pg-menu-caret d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
+				<ul aria-labelledby="bd-theme" class="menu shadow pg-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-menu-min-width: 8rem;">
+					<li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i>' . lang('Light') . '</button></li>
+					<li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i>' . lang('Dark') . '</button></li>
+					<li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-3"></i>' . lang('Auto') . '</button></li>
 				</ul>
 			</li>
 		</ul>
 	</nav>
-	<main id="content" class="container py-4 py-md-5">
+	<main id="content" class="container py-7 md:py-12">
 		<div class="row justify-content-center">
 			<div class="col-12" style="max-width:540px;">
-				<div class="text-center mb-4">
-					<img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/logo.png" width="112" height="112" alt="Pinegrap" class="install-lock-logo mb-3">
-					<h1 class="h4 fw-bold mb-2">' . lang('A Pinegrap site is already installed on this server') . '</h1>
-					<p class="text-body-secondary mb-0">' . lang('Verify your identity with an administrator account of the existing site to see the installation and restore options.') . '</p>
+				<div class="text-center mb-7">
+					<img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/logo.png" width="112" height="112" alt="Pinegrap" class="install-lock-logo mb-5">
+					<h1 class="h4 fw-bold mb-3">' . lang('A Pinegrap site is already installed on this server') . '</h1>
+					<p class="fg-secondary mb-0">' . lang('Verify your identity with an administrator account of the existing site to see the installation and restore options.') . '</p>
 				</div>
 				<div class="card">
-					<div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
-						<i class="bi bi-lock-fill me-2"></i>' . lang('Authentication') . '
+					<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+						<i class="bi bi-lock-fill me-3"></i>' . lang('Authentication') . '
 					</div>
 					<div class="card-body">
 						' . $output_error . $output_wait . '
 						<form method="post" autocomplete="on">
 							' . get_token_field() . '
-							<div class="mb-3">
+							<div class="mb-5">
 								<label class="form-label" for="install_unlock_username">' . lang('Email') . '</label>
 								<input type="text" class="form-control" id="install_unlock_username" name="install_unlock_username" autocomplete="username"' . $output_disabled . '>
 							</div>
-							<div class="mb-3">
+							<div class="mb-5">
 								<label class="form-label" for="install_unlock_password">' . lang('Password') . '</label>
 								<input type="password" class="form-control" id="install_unlock_password" name="install_unlock_password" autocomplete="current-password"' . $output_disabled . '>
 							</div>
-							<button type="submit" class="btn btn-primary w-100" name="install_unlock" value="1"' . $output_disabled . '><i class="bi bi-unlock-fill me-2"></i>' . lang('Unlock') . '</button>
+							<button type="submit" class="btn btn-solid theme-primary w-100" name="install_unlock" value="1"' . $output_disabled . '><i class="bi bi-unlock-fill me-3"></i>' . lang('Unlock') . '</button>
 						</form>
-						<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 small">
-							<a class="link-secondary" href="../forgot_password.php" target="_blank">' . lang('forgot password') . '</a>
-							<span class="text-body-secondary">' . lang('Attempts remaining') . ': <b>' . get_install_attempts_remaining() . '</b></span>
+						<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-5 small">
+							<a class="pg-link-secondary" href="../forgot_password.php" target="_blank">' . lang('forgot password') . '</a>
+							<span class="fg-secondary">' . lang('Attempts remaining') . ': <b>' . get_install_attempts_remaining() . '</b></span>
 						</div>
 						<hr>
-						<div class="alert alert-primary d-flex gap-2 py-2 px-3 small mb-2">
+						<div class="alert theme-primary d-flex gap-3 py-3 px-5 small mb-3">
 							<i class="bi bi-shield-lock-fill"></i>
 							<div><b>' . lang('Why this screen?') . '</b> ' . lang('The install script is always public. The names of the backups on your server, the database fields and the restore button are not shown to anyone until an administrator has authenticated. The screen stays unlocked for 30 minutes.') . '</div>
 						</div>
-						<div class="alert alert-warning d-flex gap-2 py-2 px-3 small mb-0">
+						<div class="alert theme-warning d-flex gap-3 py-3 px-5 small mb-0">
 							<i class="bi bi-clock-history"></i>
 							<div>' . lang('If you can sign in to the control panel, this step is never asked, because your session is recognized automatically.') . '</div>
 						</div>
 					</div>
 				</div>
-				<div class="install-lock-ghosts mt-4" aria-hidden="true">
-					<div class="d-flex gap-3 mb-3"><div class="install-lock-ghost flex-grow-1"></div><div class="install-lock-ghost" style="width:35%;"></div></div>
-					<div class="d-flex gap-3 mb-3"><div class="install-lock-ghost flex-grow-1"></div></div>
-					<div class="d-flex gap-3 mb-3"><div class="install-lock-ghost" style="width:35%;"></div><div class="install-lock-ghost flex-grow-1"></div></div>
+				<div class="install-lock-ghosts mt-7" aria-hidden="true">
+					<div class="d-flex gap-5 mb-5"><div class="install-lock-ghost flex-grow-1"></div><div class="install-lock-ghost" style="width:35%;"></div></div>
+					<div class="d-flex gap-5 mb-5"><div class="install-lock-ghost flex-grow-1"></div></div>
+					<div class="d-flex gap-5 mb-5"><div class="install-lock-ghost" style="width:35%;"></div><div class="install-lock-ghost flex-grow-1"></div></div>
 				</div>
-				<p class="text-center small text-body-secondary"><i class="bi bi-lock me-1"></i>' . lang('Installation options appear after the screen is unlocked') . '</p>
+				<p class="text-center small fg-secondary"><i class="bi bi-lock me-1"></i>' . lang('Installation options appear after the screen is unlocked') . '</p>
 			</div>
 		</div>
 	</main>' .
@@ -8022,7 +8022,7 @@ function get_header() {
 
 function get_footer() {
 	global $software_version;
-	return '<div id="footer" class="footer p-3 d-flex flex-wrap justify-content-center justify-content-md-between text-muted d-print-none">
+	return '<div id="footer" class="footer p-5 d-flex flex-wrap justify-content-center md:justify-content-between fg-secondary pg-print-none">
                 <h6 class="mx-auto">' . lang(array(
 		'string' => 'Pinegrap Content Management System'
 	)) . '</h6>
@@ -8068,13 +8068,13 @@ function return_to_form()
 
 		print '
 		<div id="pg_stream_result">
-			<div class="container-xl px-0" style="max-width:960px;">
-				<div class="alert alert-danger d-flex gap-2 mt-3 mb-2">
+			<div class="xl:container px-0" style="max-width:960px;">
+				<div class="alert theme-danger d-flex gap-3 mt-5 mb-3">
 					<i class="bi bi-exclamation-triangle-fill"></i>
 					<div>' . lang('The installation was stopped. Please go back to the installation screen and check the information that you entered.') . '</div>
 				</div>
 				' . $output_errors . '
-				<a class="btn btn-primary mb-4" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/install/"><span class="me-1 material-icons">arrow_back</span>' . lang('Installation') . '</a>
+				<a class="btn btn-solid theme-primary mb-7" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/install/"><span class="me-1 material-icons">arrow_back</span>' . lang('Installation') . '</a>
 			</div>
 		</div>
 		<script>pg_install_stream_complete();</script>' . get_footer();

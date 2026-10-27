@@ -113,20 +113,20 @@ $tab_outgoing_active = ($tab === 'outgoing') ? ' active' : '';
 $tab_vkn_active      = ($tab === 'vkn')      ? ' active' : '';
 
 $output_tab_nav = '
-<ul class="nav nav-tabs mb-3" id="parasutTabs">
+<ul class="nav nav-tabs mb-5" id="parasutTabs">
     <li class="nav-item">
         <a class="nav-link' . $tab_incoming_active . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_parasut_inbox.php?tab=incoming">
-            <i class="bi bi-inbox me-2"></i>' . lang('Incoming Invoices') . '
+            <i class="bi bi-inbox me-3"></i>' . lang('Incoming Invoices') . '
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link' . $tab_outgoing_active . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_parasut_inbox.php?tab=outgoing">
-            <i class="bi bi-send me-2"></i>' . lang('Outgoing Invoices') . '
+            <i class="bi bi-send me-3"></i>' . lang('Outgoing Invoices') . '
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link' . $tab_vkn_active . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_parasut_inbox.php?tab=vkn">
-            <i class="bi bi-search me-2"></i>' . lang('VKN / TCKN Lookup') . '
+            <i class="bi bi-search me-3"></i>' . lang('VKN / TCKN Lookup') . '
         </a>
     </li>
 </ul>';
@@ -137,19 +137,19 @@ $output_tab_nav = '
 $output_date_filter = '';
 if (in_array($tab, ['incoming', 'outgoing'])) {
     $output_date_filter = '
-    <form method="get" class="row g-2 align-items-end mb-3">
+    <form method="get" class="row g-3 align-items-end mb-5">
         <input type="hidden" name="tab" value="' . h($tab) . '" />
         <div class="col-auto">
-            <label class="form-label small text-muted mb-1">' . lang('Start Date') . '</label>
+            <label class="form-label small fg-secondary mb-1">' . lang('Start Date') . '</label>
             <input type="date" class="form-control form-control-sm" name="start_date" value="' . $start_date_val . '" />
         </div>
         <div class="col-auto">
-            <label class="form-label small text-muted mb-1">' . lang('End Date') . '</label>
+            <label class="form-label small fg-secondary mb-1">' . lang('End Date') . '</label>
             <input type="date" class="form-control form-control-sm" name="end_date" value="' . $end_date_val . '" />
         </div>
         <div class="col-auto">
-            <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-funnel me-1"></i>' . lang('Filter') . '</button>
-            <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_parasut_inbox.php?tab=' . h($tab) . '" class="btn btn-sm btn-outline-secondary ms-1">' . lang('Clear') . '</a>
+            <button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-funnel me-1"></i>' . lang('Filter') . '</button>
+            <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_parasut_inbox.php?tab=' . h($tab) . '" class="btn btn-sm btn-outline theme-secondary ms-1">' . lang('Clear') . '</a>
         </div>
     </form>';
 }
@@ -163,7 +163,7 @@ function _parasut_pagination($current, $total, $tab, $extra_params = []) {
     foreach ($extra_params as $k => $v) {
         if ($v !== '') $base .= '&' . urlencode($k) . '=' . urlencode($v);
     }
-    $out = '<nav><ul class="pagination pagination-sm justify-content-center mt-3">';
+    $out = '<nav><ul class="pagination pagination-sm justify-content-center mt-5">';
     $out .= '<li class="page-item' . ($current <= 1 ? ' disabled' : '') . '">
         <a class="page-link" href="' . $base . '&pg=' . ($current - 1) . '">&laquo;</a></li>';
     $start = max(1, $current - 2);
@@ -185,12 +185,12 @@ function _parasut_pagination($current, $total, $tab, $extra_params = []) {
 // ------------------------------------------------------------------
 function _parasut_status_badge($status) {
     $map = [
-        'open'         => ['bg-warning text-dark', lang('Open')],
+        'open'         => ['bg-warning fg-black', lang('Open')],
         'overdue'      => ['bg-danger',             lang('Overdue')],
         'paid'         => ['bg-success',            lang('Paid')],
-        'partially_paid' => ['bg-info text-dark',   lang('Partially Paid')],
+        'partially_paid' => ['bg-info fg-black',   lang('Partially Paid')],
         'cancelled'    => ['bg-secondary',          lang('Cancelled')],
-        'deleted'      => ['bg-dark',               lang('Deleted')],
+        'deleted'      => ['bg-black',               lang('Deleted')],
     ];
     $info  = $map[$status] ?? ['bg-secondary', ucfirst(str_replace('_', ' ', $status))];
     return '<span class="badge ' . $info[0] . '">' . h($info[1]) . '</span>';
@@ -203,8 +203,8 @@ function _parasut_type_badge($type) {
     $map = [
         'invoice'       => ['bg-primary',           lang('Invoice')],
         'e_invoice'     => ['bg-success',           lang('E-Invoice')],
-        'e_archive'     => ['bg-info text-dark',    lang('E-Archive')],
-        'e_smm'         => ['bg-warning text-dark', lang('E-SMM')],
+        'e_archive'     => ['bg-info fg-black',    lang('E-Archive')],
+        'e_smm'         => ['bg-warning fg-black', lang('E-SMM')],
         'basic'         => ['bg-secondary',         lang('Basic')],
         'refund'        => ['bg-danger',             lang('Refund')],
     ];
@@ -226,7 +226,7 @@ function _parasut_total_notes($totals) {
     $out = '';
     foreach ($notes as $key => $label) {
         if ($totals[$key] > 0) {
-            $out .= '<div class="small text-muted">' . h($label) . ' ' . pg_format_number($totals[$key], 2) . '</div>';
+            $out .= '<div class="small fg-secondary">' . h($label) . ' ' . pg_format_number($totals[$key], 2) . '</div>';
         }
     }
     return $out;
@@ -271,8 +271,8 @@ if ($tab === 'incoming') {
                 <td class="align-middle text-end">' . $total . _parasut_total_notes($totals) . '</td>
                 <td class="align-middle">' . _parasut_status_badge($status) . '</td>
                 <td class="align-middle text-end">
-                    <button type="button" class="btn btn-sm btn-outline-secondary"
-                        data-bs-toggle="modal" data-bs-target="#detailModal"
+                    <button type="button" class="btn btn-sm btn-outline theme-secondary"
+                        data-bs-toggle="dialog" data-bs-target="#detailModal"
                         data-bill-id="' . h($bid) . '"
                         data-contact="' . h($contact_name) . '"
                         data-date="' . h($issue_date) . '"
@@ -291,16 +291,16 @@ if ($tab === 'incoming') {
             </tr>';
         }
     } elseif ($incoming_result && $incoming_result['success']) {
-        $rows = '<tr><td colspan="7" class="text-center text-muted py-4">' . lang('No records found.') . '</td></tr>';
+        $rows = '<tr><td colspan="7" class="text-center fg-secondary py-7">' . lang('No records found.') . '</td></tr>';
     } elseif (!$incoming_result) {
-        $rows = '<tr><td colspan="7" class="text-center text-muted py-4">—</td></tr>';
+        $rows = '<tr><td colspan="7" class="text-center fg-secondary py-7">—</td></tr>';
     }
 
     $output_tab_content = $output_date_filter . '
     <div class="card">
         <div class="card-body p-0">
             <table class="table table-hover table-sm mb-0">
-                <thead class="table-light">
+                <thead class="pg-table-light">
                     <tr>
                         <th>' . lang('Date') . '</th>
                         <th>' . lang('Supplier') . '</th>
@@ -355,8 +355,8 @@ if ($tab === 'outgoing') {
                 <td class="align-middle text-end">' . $total . _parasut_total_notes($totals) . '</td>
                 <td class="align-middle">' . _parasut_status_badge($status) . '</td>
                 <td class="align-middle text-end">
-                    <button type="button" class="btn btn-sm btn-outline-secondary"
-                        data-bs-toggle="modal" data-bs-target="#detailModal"
+                    <button type="button" class="btn btn-sm btn-outline theme-secondary"
+                        data-bs-toggle="dialog" data-bs-target="#detailModal"
                         data-bill-id="' . h($iid) . '"
                         data-contact="' . h($contact_name) . '"
                         data-date="' . h($issue_date) . '"
@@ -375,16 +375,16 @@ if ($tab === 'outgoing') {
             </tr>';
         }
     } elseif ($outgoing_result && $outgoing_result['success']) {
-        $rows = '<tr><td colspan="8" class="text-center text-muted py-4">' . lang('No records found.') . '</td></tr>';
+        $rows = '<tr><td colspan="8" class="text-center fg-secondary py-7">' . lang('No records found.') . '</td></tr>';
     } else {
-        $rows = '<tr><td colspan="8" class="text-center text-muted py-4">—</td></tr>';
+        $rows = '<tr><td colspan="8" class="text-center fg-secondary py-7">—</td></tr>';
     }
 
     $output_tab_content = $output_date_filter . '
     <div class="card">
         <div class="card-body p-0">
             <table class="table table-hover table-sm mb-0">
-                <thead class="table-light">
+                <thead class="pg-table-light">
                     <tr>
                         <th>' . lang('Date') . '</th>
                         <th>' . lang('Invoice No') . '</th>
@@ -411,14 +411,14 @@ if ($tab === 'vkn') {
 
     if ($vkn_result !== null && $vkn_result['success']) {
         if (!empty($vkn_result['data'])) {
-            $output_vkn_results = '<div class="mt-3">';
+            $output_vkn_results = '<div class="mt-5">';
             foreach ($vkn_result['data'] as $inbox) {
                 $attr    = $inbox['attributes'] ?? [];
                 $vkn_val = h($attr['vkn'] ?? '');
                 $addr    = h($attr['e_invoice_address'] ?? '');
                 $output_vkn_results .= '
-                <div class="alert alert-success d-flex align-items-start gap-3 mb-2">
-                    <i class="bi bi-check-circle-fill fs-4 text-success"></i>
+                <div class="alert theme-success d-flex align-items-start gap-5 mb-3">
+                    <i class="bi bi-check-circle-fill fs-xl fg-success"></i>
                     <div>
                         <div class="fw-semibold">' . lang('Registered for E-Invoice') . '</div>
                         <div class="small"><strong>VKN/TCKN:</strong> ' . $vkn_val . '</div>
@@ -429,8 +429,8 @@ if ($tab === 'vkn') {
             $output_vkn_results .= '</div>';
         } elseif (isset($_POST['vkn_query'])) {
             $output_vkn_results = '
-            <div class="alert alert-warning mt-3 d-flex align-items-start gap-3">
-                <i class="bi bi-exclamation-triangle-fill fs-4 text-warning"></i>
+            <div class="alert theme-warning mt-5 d-flex align-items-start gap-5">
+                <i class="bi bi-exclamation-triangle-fill fs-xl fg-warning"></i>
                 <div>
                     <div class="fw-semibold">' . lang('Not registered for E-Invoice') . '</div>
                     <div class="small">' . lang('This VKN/TCKN is not registered in the GIB e-invoice system. You should issue an e-archive invoice instead.') . '</div>
@@ -449,13 +449,13 @@ if ($tab === 'vkn') {
             <form method="post" action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_parasut_inbox.php?tab=vkn">
                 ' . get_token_field() . '
                 <input type="hidden" name="vkn_query" value="1" />
-                <div class="row g-2 align-items-end">
-                    <div class="col-12 col-sm-6 col-lg-4">
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 sm:col-6 lg:col-4">
                         <label class="form-label">' . lang('VKN / TCKN') . '</label>
                         ' . $liveform->output_field(['type' => 'text', 'id' => 'vkn', 'name' => 'vkn', 'class' => 'form-control', 'value' => $vkn_input_val, 'maxlength' => '11', 'inputmode' => 'numeric', 'placeholder' => '1234567890']) . '
                     </div>
                     <div class="col-auto">
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-solid theme-primary">
                             <i class="bi bi-search me-1"></i>' . lang('Query') . '
                         </button>
                     </div>
@@ -470,35 +470,31 @@ if ($tab === 'vkn') {
 // Detail modal (populated via JS from data attributes)
 // ------------------------------------------------------------------
 $output_detail_modal = '
-<div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="detailModalLabel"><i class="bi bi-file-earmark-text me-2"></i>' . lang('Invoice Detail') . '</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<dialog class="dialog" id="detailModal" aria-labelledby="detailModalLabel">
+            <div class="dialog-header">
+                <h5 class="dialog-title" id="detailModalLabel"><i class="bi bi-file-earmark-text me-3"></i>' . lang('Invoice Detail') . '</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="dialog"></button>
             </div>
-            <div class="modal-body">
+            <div class="dialog-body">
                 <table class="table table-sm table-borderless mb-0">
-                    <tr><td class="text-muted">' . lang('Contact') . '</td><td id="modal-contact" class="fw-semibold"></td></tr>
-                    <tr><td class="text-muted">' . lang('Date') . '</td><td id="modal-date"></td></tr>
-                    <tr><td class="text-muted">' . lang('Due Date') . '</td><td id="modal-due"></td></tr>
-                    <tr><td class="text-muted">' . lang('Type') . '</td><td id="modal-type"></td></tr>
-                    <tr><td class="text-muted">' . lang('Status') . '</td><td id="modal-status"></td></tr>
-                    <tr><td class="text-muted">' . lang('Total before VAT') . '</td><td id="modal-before-vat"></td></tr>
-                    <tr><td class="text-muted">' . lang('VAT') . '</td><td id="modal-vat"></td></tr>
-                    <tr id="modal-withheld-row"><td class="text-muted">' . lang('VAT withholding') . '</td><td id="modal-withheld"></td></tr>
-                    <tr id="modal-withholding-tax-row"><td class="text-muted">' . lang('Withholding tax') . '</td><td id="modal-withholding-tax"></td></tr>
-                    <tr><td class="text-muted">' . lang('Grand total (incl. VAT)') . '</td><td id="modal-total"></td></tr>
-                    <tr id="modal-desc-row"><td class="text-muted">' . lang('Description') . '</td><td id="modal-desc"></td></tr>
-                    <tr><td class="text-muted">' . lang('Parasut ID') . '</td><td id="modal-id" class="font-monospace small text-muted"></td></tr>
+                    <tr><td class="fg-secondary">' . lang('Contact') . '</td><td id="modal-contact" class="fw-semibold"></td></tr>
+                    <tr><td class="fg-secondary">' . lang('Date') . '</td><td id="modal-date"></td></tr>
+                    <tr><td class="fg-secondary">' . lang('Due Date') . '</td><td id="modal-due"></td></tr>
+                    <tr><td class="fg-secondary">' . lang('Type') . '</td><td id="modal-type"></td></tr>
+                    <tr><td class="fg-secondary">' . lang('Status') . '</td><td id="modal-status"></td></tr>
+                    <tr><td class="fg-secondary">' . lang('Total before VAT') . '</td><td id="modal-before-vat"></td></tr>
+                    <tr><td class="fg-secondary">' . lang('VAT') . '</td><td id="modal-vat"></td></tr>
+                    <tr id="modal-withheld-row"><td class="fg-secondary">' . lang('VAT withholding') . '</td><td id="modal-withheld"></td></tr>
+                    <tr id="modal-withholding-tax-row"><td class="fg-secondary">' . lang('Withholding tax') . '</td><td id="modal-withholding-tax"></td></tr>
+                    <tr><td class="fg-secondary">' . lang('Grand total (incl. VAT)') . '</td><td id="modal-total"></td></tr>
+                    <tr id="modal-desc-row"><td class="fg-secondary">' . lang('Description') . '</td><td id="modal-desc"></td></tr>
+                    <tr><td class="fg-secondary">' . lang('Parasut ID') . '</td><td id="modal-id" class="font-monospace small fg-secondary"></td></tr>
                 </table>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' . lang('Close') . '</button>
+            <div class="dialog-footer">
+                <button type="button" class="btn btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Close') . '</button>
             </div>
-        </div>
-    </div>
-</div>
+</dialog>
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -548,11 +544,11 @@ echo pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <div class="row mb-2 flex-wrap">
-                <div class="col-12 text-center text-md-start">
+            <div class="row mb-3 flex-wrap">
+                <div class="col-12 text-center md:text-start">
                     
                     <nav id="button_bar" class="navigation" aria-label="Button Bar">
-                        <a class="btn btn-sm btn-outline-secondary"
+                        <a class="btn btn-sm btn-outline theme-secondary"
                            href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_parasut_inbox.php?tab=' . h($tab) . '"
                            title="' . lang('Refresh') . '">
                             <i class="bi bi-arrow-clockwise"></i>

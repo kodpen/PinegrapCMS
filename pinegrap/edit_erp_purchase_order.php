@@ -163,16 +163,16 @@ $can_invoice = !$readonly && in_array($status_key, array('open', 'sent', 'partia
 $output_actions = '';
 if (!$readonly) {
     if ($can_invoice) {
-        $output_actions .= $action_button('invoice', lang('Make a purchase invoice draft'), 'bi-receipt', 'btn-primary', lang('Make a purchase invoice draft for what has not come yet, at the order\'s prices and dated today?'));
+        $output_actions .= $action_button('invoice', lang('Make a purchase invoice draft'), 'bi-receipt', 'btn-solid theme-primary', lang('Make a purchase invoice draft for what has not come yet, at the order\'s prices and dated today?'));
     }
     if ($status_key === 'open') {
-        $output_actions .= $action_button('sent', lang('Mark as sent'), 'bi-send-check', 'btn-outline-primary', lang('Mark this order as sent to the supplier (by phone, on paper)? Sending it by e-mail does this by itself.'));
+        $output_actions .= $action_button('sent', lang('Mark as sent'), 'bi-send-check', 'btn-outline theme-primary', lang('Mark this order as sent to the supplier (by phone, on paper)? Sending it by e-mail does this by itself.'));
     }
     if (in_array($status_key, array('open', 'sent', 'partial'), true)) {
-        $output_actions .= $action_button('cancelled', lang('Cancel'), 'bi-x-circle', 'btn-outline-secondary', lang('Cancel this purchase order? It stays on the list, marked cancelled; what has already come in stays on its purchase invoices.'));
+        $output_actions .= $action_button('cancelled', lang('Cancel'), 'bi-x-circle', 'btn-outline theme-secondary', lang('Cancel this purchase order? It stays on the list, marked cancelled; what has already come in stays on its purchase invoices.'));
     }
     if ($status_key === 'cancelled') {
-        $output_actions .= $action_button('open', lang('Open again'), 'bi-arrow-counterclockwise', 'btn-outline-secondary');
+        $output_actions .= $action_button('open', lang('Open again'), 'bi-arrow-counterclockwise', 'btn-outline theme-secondary');
     }
 }
 
@@ -200,9 +200,9 @@ if ($editable) {
                 <input type="hidden" name="id" value="' . $order_id . '" />
                 <input type="hidden" name="erp_action" value="save" />
                 ' . erp_invoice_form_cards($liveform, array('purchase_order' => true, 'lines' => erp_invoice_form_lines($liveform, erp_purchase_order_editor_rows($order)))) . '
-                <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
-                        <button type="submit" class="btn my-1 btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
+                        <button type="submit" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
                     </div>
                 </nav>
             </form>
@@ -214,7 +214,7 @@ if ($editable) {
         $rows .= '
             <tr>
                 <td>' . (int) $line['line_no'] . '</td>
-                <td>' . h((string) $line['description']) . ((trim((string) ($line['product_name'] ?? '')) !== '' && (trim((string) $line['product_name']) !== trim((string) $line['description']))) ? '<div class="small text-body-secondary">' . h((string) $line['product_name']) . '</div>' : '') . '</td>
+                <td>' . h((string) $line['description']) . ((trim((string) ($line['product_name'] ?? '')) !== '' && (trim((string) $line['product_name']) !== trim((string) $line['description']))) ? '<div class="small fg-secondary">' . h((string) $line['product_name']) . '</div>' : '') . '</td>
                 <td class="text-end">' . h(erp_quantity_text($line['quantity'])) . '</td>
                 <td class="text-end">' . $money($line['unit_price']) . '</td>
                 <td class="text-end">' . (((int) $line['discount_amount'] > 0) ? $money($line['discount_amount']) : '') . '</td>
@@ -224,7 +224,7 @@ if ($editable) {
     }
 
     $output_body = '
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead><tr><th>#</th><th>' . lang('Description') . '</th><th class="text-end">' . lang('Quantity') . '</th><th class="text-end">' . lang('Unit price') . '</th><th class="text-end">' . lang('Discount') . '</th><th class="text-end">' . h(erp_tax_label('percent')) . '</th><th class="text-end">' . lang('Line total') . '</th></tr></thead>
@@ -233,13 +233,13 @@ if ($editable) {
                 </div>
                 <div class="card-body border-top">
                     <div class="row">
-                        <div class="col-12 col-lg-7">' . ((trim((string) $order['notes']) !== '') ? '<div class="small text-body-secondary">' . lang('Notes') . '</div><div>' . nl2br(h((string) $order['notes'])) . '</div>' : '') . '</div>
-                        <div class="col-12 col-lg-5">
+                        <div class="col-12 lg:col-7">' . ((trim((string) $order['notes']) !== '') ? '<div class="small fg-secondary">' . lang('Notes') . '</div><div>' . nl2br(h((string) $order['notes'])) . '</div>' : '') . '</div>
+                        <div class="col-12 lg:col-5">
                             <div class="d-flex justify-content-between py-1"><span>' . lang('Subtotal') . '</span><b>' . $money($order['subtotal']) . '</b></div>
                             ' . (((int) $order['discount_total'] !== 0) ? '<div class="d-flex justify-content-between py-1"><span>' . lang('Discount') . '</span><b>&minus;' . $money($order['discount_total']) . '</b></div>' : '') . '
                             <div class="d-flex justify-content-between py-1"><span>' . h(erp_tax_label('tax')) . '</span><b>' . $money($order['tax_total']) . '</b></div>
                             ' . (((int) $order['withholding_total'] !== 0) ? '<div class="d-flex justify-content-between py-1"><span>' . lang('VAT withholding') . '</span><b>&minus;' . $money($order['withholding_total']) . '</b></div>' : '') . '
-                            <div class="d-flex justify-content-between py-2 border-top h5 mb-0"><span>' . lang('Total') . '</span><b>' . $money($order['grand_total']) . '</b></div>
+                            <div class="d-flex justify-content-between py-3 border-top h5 mb-0"><span>' . lang('Total') . '</span><b>' . $money($order['grand_total']) . '</b></div>
                         </div>
                     </div>
                 </div>
@@ -260,9 +260,9 @@ if (!empty($linked_invoices) || in_array($status_key, array('partial', 'received
                 <td>' . (int) $row['line_no'] . '</td>
                 <td>' . h($row['description']) . '</td>
                 <td class="text-end">' . h(erp_quantity_text($row['ordered'])) . '</td>
-                <td class="text-end' . ($full ? ' text-success fw-semibold' : '') . '">' . h(erp_quantity_text($row['received'])) . '</td>
-                <td class="text-end text-body-secondary">' . (((float) $row['drafted'] > 0) ? h(erp_quantity_text($row['drafted'])) : '—') . '</td>
-                <td class="text-end' . (((float) $row['open'] > 0) ? ' fw-semibold' : ' text-body-secondary') . '">' . h(erp_quantity_text($row['open'])) . '</td>
+                <td class="text-end' . ($full ? ' fg-success fw-semibold' : '') . '">' . h(erp_quantity_text($row['received'])) . '</td>
+                <td class="text-end fg-secondary">' . (((float) $row['drafted'] > 0) ? h(erp_quantity_text($row['drafted'])) : '—') . '</td>
+                <td class="text-end' . (((float) $row['open'] > 0) ? ' fw-semibold' : ' fg-secondary') . '">' . h(erp_quantity_text($row['open'])) . '</td>
             </tr>';
     }
 
@@ -279,25 +279,25 @@ if (!empty($linked_invoices) || in_array($status_key, array('partial', 'received
         $linked_status = $invoice_statuses[(string) $linked['status']] ?? array((string) $linked['status'], 'secondary');
         $invoice_rows .= '
             <tr' . (((string) $linked['status'] === 'cancelled') ? ' class="opacity-75"' : '') . '>
-                <td class="text-nowrap"><a class="link-body-emphasis fw-semibold" href="' . ($is_draft ? 'edit_erp_invoice_draft.php' : 'edit_erp_invoice.php') . '?id=' . (int) $linked['id'] . '">'
+                <td class="text-nowrap"><a class="pg-link-body-emphasis fw-semibold" href="' . ($is_draft ? 'edit_erp_invoice_draft.php' : 'edit_erp_invoice.php') . '?id=' . (int) $linked['id'] . '">'
                     . h($is_draft ? lang('Draft Invoice') : (string) $linked['full_number']) . '</a></td>
                 <td class="text-nowrap">' . h(prepare_form_data_for_output((string) $linked['issue_date'], 'date')) . '</td>
                 <td class="text-break">' . h((string) $linked['supplier_invoice_no']) . '</td>
                 <td class="text-end text-nowrap">' . h(erp_money_out_currency((int) $linked['grand_total'], (string) $linked['currency'])) . '</td>
-                <td><span class="badge text-bg-' . h($linked_status[1]) . '">' . h($linked_status[0]) . '</span></td>
+                <td><span class="badge theme-' . h($linked_status[1]) . '">' . h($linked_status[0]) . '</span></td>
             </tr>';
     }
 
     $output_goods = '
-            <div class="card my-4" id="erp-goods">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Goods received') . '</div>
+            <div class="card my-7" id="erp-goods">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Goods received') . '</div>
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-sm align-middle mb-0">
                         <thead><tr><th>#</th><th>' . lang('Description') . '</th><th class="text-end">' . lang('Ordered') . '</th><th class="text-end">' . lang('Received') . '</th><th class="text-end">' . lang('On drafts') . '</th><th class="text-end">' . lang('Still to come') . '</th></tr></thead>
                         <tbody>' . $goods_rows . '</tbody>
                     </table>
                 </div>
-                <div class="form-text px-3 pb-2">' . lang('Received is what the issued purchase invoices made from this order carry; a cancelled invoice counts for nothing. Drafts count once they are issued.') . '</div>'
+                <div class="form-text px-5 pb-3">' . lang('Received is what the issued purchase invoices made from this order carry; a cancelled invoice counts for nothing. Drafts count once they are issued.') . '</div>'
                 . (($invoice_rows !== '') ? '
                 <div class="card-body p-0 border-top table-responsive">
                     <table class="table table-sm table-hover align-middle mb-0">
@@ -330,9 +330,9 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
             <tr>
                 <td class="text-nowrap">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $mail['created_at']), 'date and time')) . '</td>
                 <td class="text-break">' . h((string) $mail['to_address'])
-                    . (((string) $mail['error'] !== '') ? '<div class="small text-danger">' . h((string) $mail['error']) . '</div>' : '') . '</td>
+                    . (((string) $mail['error'] !== '') ? '<div class="small fg-danger">' . h((string) $mail['error']) . '</div>' : '') . '</td>
                 <td>' . h(((string) $mail['created_by_name'] !== '') ? (string) $mail['created_by_name'] : '—') . '</td>
-                <td><span class="badge text-bg-' . h($mail_status[1]) . '">' . h($mail_status[0]) . '</span></td>
+                <td><span class="badge theme-' . h($mail_status[1]) . '">' . h($mail_status[0]) . '</span></td>
             </tr>';
     }
 
@@ -340,18 +340,18 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
     $output_mail_form = '';
 
     if ($can_mail) {
-        $output_mail_button = '<a class="btn btn-sm btn-outline-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
+        $output_mail_button = '<a class="btn btn-sm btn-outline theme-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
         $output_mail_form = '
-            <form name="mail_form" action="edit_erp_purchase_order.php" method="post" class="row g-2">
+            <form name="mail_form" action="edit_erp_purchase_order.php" method="post" class="row g-3">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $order_id . '" />
                 <input type="hidden" name="erp_action" value="mail" />
-                <div class="col-12 col-md-6">
+                <div class="col-12 md:col-6">
                     <label class="form-label" for="mail_to">' . lang('Recipient e-mail') . '</label>
                     <input type="text" class="form-control" id="mail_to" name="mail_to" value="' . h((string) $defaults['to']) . '" maxlength="500" autocomplete="off" required />
                     <div class="form-text">' . (((string) $defaults['to'] === '') ? lang('The account has no e-mail address. Type one, or add it to the account.') : lang('More than one address: separate them with commas.')) . '</div>
                 </div>
-                <div class="col-12 col-md-6">
+                <div class="col-12 md:col-6">
                     <label class="form-label" for="mail_subject">' . lang('Subject') . '</label>
                     <input type="text" class="form-control" id="mail_subject" name="mail_subject" value="' . h((string) $defaults['subject']) . '" maxlength="255" />
                 </div>
@@ -361,15 +361,15 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
                     <div class="form-text"><i class="bi bi-paperclip" aria-hidden="true"></i> ' . lang('The purchase order PDF is attached. Once it has gone, the order is marked as sent.') . '</div>
                 </div>
                 <div class="col-12">
-                    <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-envelope me-2" aria-hidden="true"></i>' . lang('Send the e-mail') . '</button>
+                    <button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-envelope me-3" aria-hidden="true"></i>' . lang('Send the e-mail') . '</button>
                 </div>
             </form>';
     }
 
     if (($output_mail_form !== '') || ($mail_rows !== '')) {
         $output_mail = '
-            <div class="card my-4" id="erp-mail">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('E-mail to the supplier') . '</div>
+            <div class="card my-7" id="erp-mail">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('E-mail to the supplier') . '</div>
                 <div class="card-body">' . $output_mail_form . '</div>'
                 . (($mail_rows !== '') ? '
                 <div class="card-body p-0 border-top table-responsive">
@@ -386,12 +386,12 @@ $status = $statuses[$status_key] ?? array($status_key, 'secondary');
 
 // A copy is always a new open order, whatever became of this one.
 $output_copy_button = (!$readonly && erp_purchase_orders_ready())
-    ? '<a class="btn btn-sm btn-outline-secondary" href="add_erp_purchase_order.php?copy=' . $order_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>'
+    ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_purchase_order.php?copy=' . $order_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>'
     : '';
 
 // The same gate as the audit trail screen: the ERP settings managers and the accountant.
 $output_audit_button = (function_exists('erp_audit_ready') && erp_audit_ready() && ((((int) $user['role'] < 3) || !empty($user['manage_erp_settings']) || $readonly)))
-    ? '<a class="btn btn-sm btn-outline-secondary" href="erp_audit.php?type=purchase_order&amp;id=' . $order_id . '"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>' . lang('Audit trail') . '</a>'
+    ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_audit.php?type=purchase_order&amp;id=' . $order_id . '"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>' . lang('Audit trail') . '</a>'
     : '';
 
 $heading_parts = array((string) $order['account_title']);
@@ -407,7 +407,7 @@ pg_page_shell([
     'title' => (string) $order['full_number'],
     'extra classes' => 'erp erp_invoices',
     'icon' => 'erp',
-    'heading' => h(lang(array('string' => 'Purchase order {var:1}', 'vars' => (string) $order['full_number']))) . ' <span class="badge text-bg-' . h($status[1]) . ' ms-1 align-middle fs-6">' . h($status[0]) . '</span>',
+    'heading' => h(lang(array('string' => 'Purchase order {var:1}', 'vars' => (string) $order['full_number']))) . ' <span class="badge theme-' . h($status[1]) . ' ms-1 align-middle fs-md">' . h($status[0]) . '</span>',
     'heading_description' => implode(' · ', array_filter($heading_parts, 'strlen')),
     'cancel' => array('enable' => 'true', 'url' => 'erp_purchase_orders.php'),
     'breadcrumb' => array(
@@ -423,16 +423,16 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation d-flex flex-wrap gap-1" aria-label="' . lang('Button Bar') . '">
-                <a class="btn btn-sm btn-outline-secondary" href="get_erp_purchase_order_pdf.php?id=' . $order_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>
-                <a class="btn btn-sm btn-outline-secondary" href="get_erp_purchase_order_pdf.php?id=' . $order_id . '&amp;download=1"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Download') . '</a>
+                <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_purchase_order_pdf.php?id=' . $order_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>
+                <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_purchase_order_pdf.php?id=' . $order_id . '&amp;download=1"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Download') . '</a>
                 ' . $output_mail_button . '
                 ' . $output_copy_button . '
                 ' . $output_audit_button . '
                 <span class="ms-auto d-flex flex-wrap gap-1">' . $output_actions . '</span>
             </nav>
 
-            ' . ((!$editable && !$readonly && in_array($status_key, array('partial', 'received'), true)) ? '<div class="form-text mb-2">' . lang('Goods have come in against this order, so its lines are no longer changed; a new order asks for more.') . '</div>' : '') . '
-            ' . ((!$editable && !$readonly && ($status_key === 'cancelled')) ? '<div class="form-text mb-2">' . lang('A cancelled order is not changed; "Open again" makes it editable.') . '</div>' : '') . '
+            ' . ((!$editable && !$readonly && in_array($status_key, array('partial', 'received'), true)) ? '<div class="form-text mb-3">' . lang('Goods have come in against this order, so its lines are no longer changed; a new order asks for more.') . '</div>' : '') . '
+            ' . ((!$editable && !$readonly && ($status_key === 'cancelled')) ? '<div class="form-text mb-3">' . lang('A cancelled order is not changed; "Open again" makes it editable.') . '</div>' : '') . '
             ' . $output_body . '
             ' . $output_goods . '
             ' . $output_mail . '

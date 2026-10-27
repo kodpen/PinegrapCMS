@@ -140,14 +140,14 @@ if (!$_POST) {
                 <form name="form" action="edit_zone.php" method="post">
                     ' . get_token_field() . '
                     <div class="row">
-                        <div class="col-12 col-md-6 mb-5">
-                            <div class="card my-4 h-100">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6 mb-12">
+                            <div class="card my-7 h-100">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Zone Name') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-lg-6 my-2">
+                                        <div class="col-12 lg:col-6 my-3">
                                             <label for="name" class="form-label">' . lang('Shipping Zone Name') . '</label>
                                             <input value="' . $name . '" type="text" name="name" placeholder="' . lang('Zone Name') . '" id="name" maxlength="50" class="form-control" />
                                         </div>
@@ -155,35 +155,35 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-6 mb-5">
-                            <div class="card my-4 h-100">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6 mb-12">
+                            <div class="card my-7 h-100">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Shipping Zone Fees') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-lg-6 my-2">
+                                        <div class="col-12 lg:col-6 my-3">
                                             <label for="base_rate" class="form-label">' . lang('Base Rate') . '</label>
                                             <div class="input-group">
                                                 <input value="' . $base_rate . '" type="text" name="base_rate" id="base_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
                                                 <label class="input-group-text" for="base_rate">' . BASE_CURRENCY_SYMBOL . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 col-lg-6 my-2">
+                                        <div class="col-12 lg:col-6 my-3">
                                             <label for="primary_weight_rate" class="form-label">' . lang('Primary Weight Rate') . '</label>
                                             <div class="input-group">
                                                 <input value="' . $primary_weight_rate . '" type="text" name="primary_weight_rate" id="primary_weight_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
                                                 <label class="input-group-text" for="primary_weight_rate">' . BASE_CURRENCY_SYMBOL . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 col-lg-6 my-2">
+                                        <div class="col-12 lg:col-6 my-3">
                                             <label for="secondary_weight_rate" class="form-label">' . lang('Secondary Weight Rate') . '</label>
                                             <div class="input-group">
                                                 <input value="' . $secondary_weight_rate . '" type="text" name="secondary_weight_rate" id="secondary_weight_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
                                                 <label class="input-group-text" for="secondary_weight_rate">' . BASE_CURRENCY_SYMBOL . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 col-lg-6 my-2">
+                                        <div class="col-12 lg:col-6 my-3">
                                             <label for="item_rate" class="form-label">' . lang('Item Rate') . '</label>
                                             <div class="input-group">
                                                 <input value="' . $item_rate . '" type="text" name="item_rate" id="item_rate" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
@@ -194,42 +194,42 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-6 mb-5">
-                            <div class="card my-4 h-100">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6 mb-12">
+                            <div class="card my-7 h-100">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Shipping Zone Countries') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-1">
                                             <label for="allowed_countries" class="form-label">' . lang('Allowed Countries') . '</label>
-                                            <select style="width:100%" data-pg-combobox class="form-select" data-placeholder="' . lang('Click to select country(s)') . '" id="allowed_countries" name="allowed_countries[]" multiple="multiple">' . $output_allowed_countries . '</select>' . pg_fields_script() . '
+                                            <select style="width:100%" data-pg-combobox class="form-control" data-placeholder="' . lang('Click to select country(s)') . '" id="allowed_countries" name="allowed_countries[]" multiple="multiple">' . $output_allowed_countries . '</select>' . pg_fields_script() . '
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-6 mb-5">
-                            <div class="card my-4 h-100">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6 mb-12">
+                            <div class="card my-7 h-100">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Shipping Zone States or Provinces') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-1">
                                             <label for="allowed_states" class="form-label">' . lang('Allowed States') . '</label>
-                                            <select style="width:100%" data-pg-combobox class="form-select" data-placeholder="' . lang('Click to select state(s)') . '" id="allowed_states" name="allowed_states[]" multiple="multiple">' . $output_allowed_states . '</select>' . pg_fields_script() . '
+                                            <select style="width:100%" data-pg-combobox class="form-control" data-placeholder="' . lang('Click to select state(s)') . '" id="allowed_states" name="allowed_states[]" multiple="multiple">' . $output_allowed_states . '</select>' . pg_fields_script() . '
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('zone')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('zone')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

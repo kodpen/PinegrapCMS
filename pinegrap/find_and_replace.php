@@ -188,11 +188,11 @@ function find_match_context($text, $find, $case_sensitive, $is_regex, $context_l
     $text_len  = mb_strlen($text);
     $match_len = mb_strlen($matched);
 
-    return ($start > 0 ? '<span class="text-secondary">…</span>' : '')
+    return ($start > 0 ? '<span class="fg-secondary">…</span>' : '')
         . h(mb_substr($text, $start, $pos - $start))
         . '<mark class="px-0">' . h($matched) . '</mark>'
         . h(mb_substr($text, $pos + $match_len, $context_len))
-        . ($pos + $match_len < $text_len ? '<span class="text-secondary">…</span>' : '');
+        . ($pos + $match_len < $text_len ? '<span class="fg-secondary">…</span>' : '');
 }
 
 // ── Edit URL builder ──────────────────────────────────────────────────────────
@@ -232,10 +232,10 @@ if (!$_POST) {
     $scope_html = '';
     foreach ($all_table_defs as $key => $def) {
         $scope_html .= '
-        <div class="form-check form-check-inline me-3 mb-2">
-            <input class="form-check-input" type="checkbox" id="scope_' . $key . '"
+        <div class="form-field d-inline-grid me-5 me-5 mb-3">
+            <input class="check" type="checkbox" id="scope_' . $key . '"
                 name="scope[]" value="' . $key . '" checked>
-            <label class="form-check-label" for="scope_' . $key . '">' . h($def['label']) . '</label>
+            <label class="" for="scope_' . $key . '">' . h($def['label']) . '</label>
         </div>';
     }
 
@@ -255,21 +255,21 @@ if (!$_POST) {
                 
                 <form method="post">
                     ' . get_token_field() . '
-                    <div class="alert alert-warning">
+                    <div class="alert theme-warning">
                         <h5>' . lang('Warning') . '</h5>
                         <p class="mb-0">' . lang('This feature can be dangerous. You can accidentally lose a large amount of content. Make sure to have someone create a backup of your database first. Use at your own risk.') . '</p>
                         <p class="mb-0">' . lang('Updates Page Styles, Page Regions, Common Regions, Designer Regions, Dynamic Regions, Products, Product Groups, Submitted Forms, Comments, and Ads.') . '</p>
                     </div>
                     <div class="row">
 
-                        <div class="col-12 col-lg-6">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 lg:col-6">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Find') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             ' . $liveform->output_field([
                                                 'type'  => 'textarea',
                                                 'name'  => 'find',
@@ -277,26 +277,26 @@ if (!$_POST) {
                                                 'class' => 'form-control font-monospace',
                                             ]) . '
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch mb-2">
-                                                ' . $liveform->output_field([
+                                        <div class="col-12 my-3">
+                                            <div class="form-field mb-3">
+                                                <div class="switch">' . $liveform->output_field([
                                                     'type'  => 'checkbox',
                                                     'id'    => 'case_sensitive',
                                                     'name'  => 'case_sensitive',
                                                     'value' => '1',
-                                                    'class' => 'form-check-input',
-                                                ]) . '
-                                                <label class="form-check-label" for="case_sensitive">' . lang('Case-sensitive') . '</label>
+                                                    'class' => '',
+                                                ]) . '</div>
+                                                <label class="" for="case_sensitive">' . lang('Case-sensitive') . '</label>
                                             </div>
-                                            <div class="form-check form-switch">
-                                                ' . $liveform->output_field([
+                                            <div class="form-field">
+                                                <div class="switch">' . $liveform->output_field([
                                                     'type'  => 'checkbox',
                                                     'id'    => 'use_regex',
                                                     'name'  => 'use_regex',
                                                     'value' => '1',
-                                                    'class' => 'form-check-input',
-                                                ]) . '
-                                                <label class="form-check-label" for="use_regex">' . lang('Use regular expression') . '</label>
+                                                    'class' => '',
+                                                ]) . '</div>
+                                                <label class="" for="use_regex">' . lang('Use regular expression') . '</label>
                                             </div>
                                         </div>
                                     </div>
@@ -304,14 +304,14 @@ if (!$_POST) {
                             </div>
                         </div>
 
-                        <div class="col-12 col-lg-6">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 lg:col-6">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Replace') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             ' . $liveform->output_field([
                                                 'type'  => 'textarea',
                                                 'name'  => 'replace',
@@ -319,8 +319,8 @@ if (!$_POST) {
                                                 'class' => 'form-control font-monospace',
                                             ]) . '
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <div class="form-text text-muted small">' . lang('Leave empty to delete found text. Regex back-references ($1, $2) are supported when regex is enabled.') . '</div>
+                                        <div class="col-12 my-3">
+                                            <div class="form-text fg-secondary small">' . lang('Leave empty to delete found text. Regex back-references ($1, $2) are supported when regex is enabled.') . '</div>
                                         </div>
                                     </div>
                                 </div>
@@ -328,22 +328,22 @@ if (!$_POST) {
                         </div>
 
                         <div class="col-12">
-                            <div class="card mb-4">
+                            <div class="card mb-7">
                                 <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center"
                                     style="cursor:pointer"
                                     data-bs-toggle="collapse" data-bs-target="#scope_panel" aria-expanded="true">
-                                    <span class="text-uppercase h6 text-primary fw-bold mb-0">' . lang('Scope') . '</span>
+                                    <span class="text-uppercase h6 fg-primary fw-bold mb-0">' . lang('Scope') . '</span>
                                     <span class="material-icons">expand_more</span>
                                 </div>
                                 <div class="collapse show" id="scope_panel">
                                     <div class="card-body">
-                                        <div class="mb-3">
+                                        <div class="mb-5">
                                             <button type="button"
                                                 onclick="document.querySelectorAll(\'#scope_checkboxes input\').forEach(c=>c.checked=true)"
-                                                class="btn btn-sm btn-outline-secondary me-1">' . lang('Select All') . '</button>
+                                                class="btn btn-sm btn-outline theme-secondary me-1">' . lang('Select All') . '</button>
                                             <button type="button"
                                                 onclick="document.querySelectorAll(\'#scope_checkboxes input\').forEach(c=>c.checked=false)"
-                                                class="btn btn-sm btn-outline-secondary">' . lang('Deselect All') . '</button>
+                                                class="btn btn-sm btn-outline theme-secondary">' . lang('Deselect All') . '</button>
                                         </div>
                                         <div id="scope_checkboxes">
                                             ' . $scope_html . '
@@ -355,17 +355,17 @@ if (!$_POST) {
 
                     </div>
 
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;">
                         <div class="container">
                             <div class="btn-group flex-wrap justify-content-center">
                                 <button type="submit" name="submit_button" value="Find"
-                                    class="btn my-1 btn-outline-primary">
-                                    <span class="material-icons me-2">search</span>
+                                    class="btn my-1 btn-outline theme-primary">
+                                    <span class="material-icons me-3">search</span>
                                     <span class="pg-btn-label">' . lang('Find') . '</span>
                                 </button>
                                 <button type="submit" name="submit_button" value="Find &amp; Replace"
-                                    class="btn my-1 btn-success">
-                                    <span class="material-icons me-2">find_replace</span>
+                                    class="btn my-1 btn-solid theme-success">
+                                    <span class="material-icons me-3">find_replace</span>
                                     <span class="pg-btn-label">' . lang(array('string'=>'Find & Replace')) . '</span>
                                 </button>
                             </div>
@@ -503,22 +503,22 @@ if (!$_POST) {
                     $rows .= '
                     <tr>
                         <td class="align-top">' . $name_cell . '</td>
-                        <td class="align-top text-muted small font-monospace">' . h($m['col']) . '</td>
-                        <td class="align-top text-center"><span class="badge bg-secondary">' . $m['count'] . '</span></td>
+                        <td class="align-top fg-secondary small font-monospace">' . h($m['col']) . '</td>
+                        <td class="align-top text-center"><span class="badge theme-secondary">' . $m['count'] . '</span></td>
                         <td class="align-top small font-monospace lh-lg">' . $m['snippet'] . '</td>
                     </tr>';
                 }
             }
 
             $results_html .= '
-            <div class="card mb-4">
-                <div class="card-header bg-reset border-0 text-uppercase h6 text-primary fw-bold d-flex align-items-center gap-2">
+            <div class="card mb-7">
+                <div class="card-header bg-reset border-0 text-uppercase h6 fg-primary fw-bold d-flex align-items-center gap-3">
                     ' . h($group['label']) . '
-                    <span class="badge bg-primary fw-normal">' . count($group['results']) . ' ' . lang('record') . '</span>
+                    <span class="badge theme-primary fw-normal">' . count($group['results']) . ' ' . lang('record') . '</span>
                 </div>
                 <div class="card-body p-0">
                     <table class="table table-hover table-sm mb-0">
-                        <thead class="table-light">
+                        <thead class="pg-table-light">
                             <tr>
                                 <th>' . lang('Name') . '</th>
                                 <th>' . lang('Field') . '</th>
@@ -548,11 +548,11 @@ if (!$_POST) {
         <main id="content" class="container-fluid">
             <div class="row">
                 <div class="col-12">
-                    <div class="row mb-2 flex-wrap">
-                        <div class="col-12 text-center text-md-start">
+                    <div class="row mb-3 flex-wrap">
+                        <div class="col-12 text-center md:text-start">
                             <h2>' . lang('Find Results') . '</h2>
-                            <p class="text-muted">' . h($summary) . '</p>
-                            <a href="find_and_replace.php" class="btn btn-outline-secondary btn-sm mb-4">
+                            <p class="fg-secondary">' . h($summary) . '</p>
+                            <a href="find_and_replace.php" class="btn btn-outline theme-secondary btn-sm mb-7">
                                 <span class="material-icons me-1" style="font-size:1rem">arrow_back</span>
                                 ' . lang('Back to Find & Replace') . '
                             </a>

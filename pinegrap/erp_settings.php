@@ -345,14 +345,14 @@ $output_placeholders = '';
 
 foreach ($placeholders as $group => $names) {
     $output_placeholders .= '
-                                <div class="col-12 col-md-6 col-xl-4 mb-3">
-                                    <div class="fw-bold text-uppercase small text-body-secondary mb-2">' . h($group) . '</div>
+                                <div class="col-12 md:col-6 xl:col-4 mb-5">
+                                    <div class="fw-bold text-uppercase small fg-secondary mb-3">' . h($group) . '</div>
                                     <dl class="row small mb-0">';
 
     foreach ($names as $name => $description) {
         $output_placeholders .= '
                                         <dt class="col-6 font-monospace fw-normal text-truncate">{{' . h($name) . '}}</dt>
-                                        <dd class="col-6 text-body-secondary mb-1">' . h($description) . '</dd>';
+                                        <dd class="col-6 fg-secondary mb-1">' . h($description) . '</dd>';
     }
 
     $output_placeholders .= '
@@ -368,19 +368,19 @@ $output_rules = '';
 
 if (erp_rules_ready() && $rules_turkish) {
     $output_rules .= '
-                        <fieldset class="mb-4">
-                            <legend class="form-label fs-6">' . lang('VAT withheld on sales, in the VAT report and the accountant\'s pack') . '</legend>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="vat_net_withholding" id="vat_net_withholding_0" value="0"' . ($rules['vat_net_withholding'] ? '' : ' checked') . ' />
-                                <label class="form-check-label" for="vat_net_withholding_0">' . lang('Shown beside the calculated VAT, which stays in full') . '</label>
+                        <fieldset class="mb-7">
+                            <legend class="form-label fs-md">' . lang('VAT withheld on sales, in the VAT report and the accountant\'s pack') . '</legend>
+                            <div class="form-field">
+                                <input class="radio" type="radio" name="vat_net_withholding" id="vat_net_withholding_0" value="0"' . ($rules['vat_net_withholding'] ? '' : ' checked') . ' />
+                                <label class="" for="vat_net_withholding_0">' . lang('Shown beside the calculated VAT, which stays in full') . '</label>
                             </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="vat_net_withholding" id="vat_net_withholding_1" value="1"' . ($rules['vat_net_withholding'] ? ' checked' : '') . ' />
-                                <label class="form-check-label" for="vat_net_withholding_1">' . lang('Taken off the calculated VAT, since the buyer declares that part') . '</label>
+                            <div class="form-field">
+                                <input class="radio" type="radio" name="vat_net_withholding" id="vat_net_withholding_1" value="1"' . ($rules['vat_net_withholding'] ? ' checked' : '') . ' />
+                                <label class="" for="vat_net_withholding_1">' . lang('Taken off the calculated VAT, since the buyer declares that part') . '</label>
                             </div>
                             <div class="form-text">' . lang('The invoices do not change: they carry the whole VAT and the withheld part either way. Only the difference the report works out does.') . '</div>
                         </fieldset>
-                        <div class="mb-4" style="max-width:36rem">
+                        <div class="mb-7" style="max-width:36rem">
                             <label class="form-label" for="vat_exemption_code">' . lang('Exemption code for zero-rated lines') . '</label>
                             <input type="text" class="form-control font-monospace" style="max-width:8rem" id="vat_exemption_code" name="vat_exemption_code" value="' . h($rules['vat_exemption_code']) . '" maxlength="3" inputmode="numeric" pattern="[0-9]{3}" placeholder="351" autocomplete="off" />
                             <div class="form-text">' . lang('A 0% line on an e-document has to say why it carries no VAT. A line takes its product\'s code when the product has one, otherwise this one; empty leaves the line without a code. Which code fits your sales is for your accountant to say.') . '</div>
@@ -406,23 +406,23 @@ if (erp_late_fee_ready()) {
             <form action="erp_settings.php" method="post" id="erp_late_fee">
                 ' . get_token_field() . '
                 <input type="hidden" name="late_fee" value="1">
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Late payment fee') . '</div>
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Late payment fee') . '</div>
                     <div class="card-body">
-                        <p class="text-body-secondary">' . lang('A monthly rate on what a customer owes past the due date, counted day by day until it is paid. The account screen and the reconciliation letter screen show what an account has run up and write it on a sales invoice draft for you to check and issue; nothing is charged by itself.') . '</p>
-                        <div class="row g-3" style="max-width:36rem">
-                            <div class="col-12 col-sm-6">
+                        <p class="fg-secondary">' . lang('A monthly rate on what a customer owes past the due date, counted day by day until it is paid. The account screen and the reconciliation letter screen show what an account has run up and write it on a sales invoice draft for you to check and issue; nothing is charged by itself.') . '</p>
+                        <div class="row g-5" style="max-width:36rem">
+                            <div class="col-12 sm:col-6">
                                 <label class="form-label" for="late_fee_rate">' . lang('Monthly rate (%)') . '</label>
                                 <input type="text" class="form-control text-end" id="late_fee_rate" name="late_fee_rate" value="' . (($late_fee['rate'] > 0) ? h($rate_out($late_fee['rate'])) : '') . '" inputmode="decimal" placeholder="0" autocomplete="off" />
                                 <div class="form-text">' . lang('Empty or 0 turns the fee off.') . '</div>
                             </div>
-                            <div class="col-12 col-sm-6">
+                            <div class="col-12 sm:col-6">
                                 <label class="form-label" for="late_fee_tax_rate">' . h(lang(array('string' => '{var:1} rate of the fee (%)', 'vars' => erp_tax_label('tax')))) . '</label>
                                 <input type="text" class="form-control text-end" id="late_fee_tax_rate" name="late_fee_tax_rate" value="' . (($late_fee['tax_rate'] !== null) ? h($rate_out($late_fee['tax_rate'])) : '') . '" inputmode="decimal" placeholder="—" autocomplete="off" />
                                 <div class="form-text">' . lang('Empty: the rate the account is sold at when a product names none.') . '</div>
                             </div>
                         </div>
-                        <div class="mt-3"><button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-check2 me-2" aria-hidden="true"></i>' . lang('Save') . '</button></div>
+                        <div class="mt-5"><button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-check2 me-3" aria-hidden="true"></i>' . lang('Save') . '</button></div>
                     </div>
                 </div>
             </form>';
@@ -440,23 +440,23 @@ if ($rules_turkish && erp_efatura_threshold_ready()) {
             <form action="erp_settings.php" method="post" id="erp_efatura_threshold">
                 ' . get_token_field() . '
                 <input type="hidden" name="efatura_threshold" value="1">
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('e-Fatura threshold') . '</div>
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('e-Fatura threshold') . '</div>
                     <div class="card-body">
-                        <p class="text-body-secondary">' . lang('A seller outside e-Fatura must join it from the seventh month of the year after its gross sales reached one of these amounts. System Status weighs this year\'s completed orders against them and warns from four fifths on. The tax authority changes the amounts; enter the ones in force. 0 switches a warning off.') . '</p>
-                        <div class="row g-3" style="max-width:36rem">
-                            <div class="col-12 col-sm-6">
+                        <p class="fg-secondary">' . lang('A seller outside e-Fatura must join it from the seventh month of the year after its gross sales reached one of these amounts. System Status weighs this year\'s completed orders against them and warns from four fifths on. The tax authority changes the amounts; enter the ones in force. 0 switches a warning off.') . '</p>
+                        <div class="row g-5" style="max-width:36rem">
+                            <div class="col-12 sm:col-6">
                                 <label class="form-label" for="erp_efatura_web_threshold">' . h(lang(array('string' => 'Sales over the internet ({var:1})', 'vars' => $efatura_currency))) . '</label>
                                 <input type="text" class="form-control text-end" id="erp_efatura_web_threshold" name="erp_efatura_web_threshold" value="' . (int) floor($efatura_limits['web'] / 100) . '" inputmode="numeric" pattern="[0-9]*" autocomplete="off" />
                                 <div class="form-text">' . lang('Web and marketplace orders; counter sales are left out.') . '</div>
                             </div>
-                            <div class="col-12 col-sm-6">
+                            <div class="col-12 sm:col-6">
                                 <label class="form-label" for="erp_efatura_general_threshold">' . h(lang(array('string' => 'All sales ({var:1})', 'vars' => $efatura_currency))) . '</label>
                                 <input type="text" class="form-control text-end" id="erp_efatura_general_threshold" name="erp_efatura_general_threshold" value="' . (int) floor($efatura_limits['general'] / 100) . '" inputmode="numeric" pattern="[0-9]*" autocomplete="off" />
                                 <div class="form-text">' . lang('Every completed order, counter sales included. Invoices written in the ERP without an order are not counted.') . '</div>
                             </div>
                         </div>
-                        <div class="mt-3"><button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-check2 me-2" aria-hidden="true"></i>' . lang('Save') . '</button></div>
+                        <div class="mt-5"><button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-check2 me-3" aria-hidden="true"></i>' . lang('Save') . '</button></div>
                     </div>
                 </div>
             </form>';
@@ -465,7 +465,7 @@ if ($rules_turkish && erp_efatura_threshold_ready()) {
 $output_document_pills = '';
 foreach ($documents as $key => $item) {
     $output_document_pills .= '
-                            <li class="nav-item"><a class="nav-link py-1 px-2' . (($key === $doc) ? ' active' : '') . '" href="' . h($self_url . (($key === 'invoice') ? '' : '?doc=' . $key)) . '">' . h($item['label']) . '</a></li>';
+                            <li class="nav-item"><a class="nav-link py-1 px-3' . (($key === $doc) ? ' active' : '') . '" href="' . h($self_url . (($key === 'invoice') ? '' : '?doc=' . $key)) . '">' . h($item['label']) . '</a></li>';
 }
 
 echo pg_page_shell(array(
@@ -483,14 +483,14 @@ echo pg_page_shell(array(
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Seller Information') . '
                 </div>
                 <div class="card-body">
-                    <p class="mb-2">' . lang('The seller title, address and logo printed on the invoice come from the organization settings.') . '
+                    <p class="mb-3">' . lang('The seller title, address and logo printed on the invoice come from the organization settings.') . '
                         <a href="' . h($contact_url) . '">' . lang('Site Settings') . ' &rsaquo; ' . lang('Contact') . '</a></p>
-                    <p class="mb-2">' . lang('The seller tax number, tax office and the address the sale was made at are on the ERP card of the commerce settings.') . '
+                    <p class="mb-3">' . lang('The seller tax number, tax office and the address the sale was made at are on the ERP card of the commerce settings.') . '
                         <a href="' . h($settings_url) . '">' . lang('Site Settings') . ' &rsaquo; ' . lang('Commerce') . ' &rsaquo; ' . lang('ERP') . '</a></p>
                     <p class="mb-0">' . lang('The e-document provider (Paraşüt, Logo İşbaşı) and its credentials are on the E-Invoice card of the commerce settings.') . '
                         <a href="' . h($edoc_url) . '">' . lang('Site Settings') . ' &rsaquo; ' . lang('Commerce') . ' &rsaquo; ' . lang('E-Invoice') . '</a></p>
@@ -500,12 +500,12 @@ echo pg_page_shell(array(
             <form action="erp_settings.php" method="post" id="erp_rules">
                 ' . get_token_field() . '
                 <input type="hidden" name="rules" value="1">
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Accounting rules') . '</div>
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Accounting rules') . '</div>
                     <div class="card-body">
-                        <p class="text-body-secondary">' . lang('Choices your accountant settles for the store; until then the ERP works as it always has.') . '</p>
+                        <p class="fg-secondary">' . lang('Choices your accountant settles for the store; until then the ERP works as it always has.') . '</p>
                         ' . $output_rules . '
-                        ' . ((erp_rules_ready() && $rules_turkish) ? '<div class="mt-3"><button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-check2 me-2" aria-hidden="true"></i>' . lang('Save') . '</button></div>' : '') . '
+                        ' . ((erp_rules_ready() && $rules_turkish) ? '<div class="mt-5"><button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-check2 me-3" aria-hidden="true"></i>' . lang('Save') . '</button></div>' : '') . '
                     </div>
                 </div>
             </form>
@@ -515,23 +515,23 @@ echo pg_page_shell(array(
             <form name="form" action="erp_settings.php" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="doc" value="' . h($doc) . '">
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center justify-content-between gap-2">
-                        <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h($document['label']) . '</span>
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center justify-content-between gap-3">
+                        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h($document['label']) . '</span>
                         <ul class="nav nav-pills nav-sm mb-0">' . $output_document_pills . '
                         </ul>
                     </div>
                     <div class="card-body">
-                        <nav id="button_bar" class="navigation mb-3" aria-label="' . lang('Button Bar') . '">
-                            <button type="submit" name="submit" value="Save" class="btn btn-sm btn-primary"><i class="bi bi-check2 me-2"></i><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                            <button type="submit" class="btn btn-sm btn-outline-secondary" formaction="' . h($document['preview']) . '" formmethod="post" formtarget="_blank"><i class="bi bi-eye me-2"></i>' . lang('Preview') . '</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#placeholder_reference" aria-expanded="false" aria-controls="placeholder_reference"><i class="bi bi-braces me-2"></i>' . lang('Placeholder Reference') . '</button>
-                            <button type="submit" name="reset" value="1" class="btn btn-sm btn-outline-warning" onclick="return confirm(' . h(json_encode(lang('The saved template will be replaced by the built-in one. Continue?'))) . ');"><i class="bi bi-arrow-counterclockwise me-2"></i>' . lang('Reset to Default') . '</button>
+                        <nav id="button_bar" class="navigation mb-5" aria-label="' . lang('Button Bar') . '">
+                            <button type="submit" name="submit" value="Save" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-check2 me-3"></i><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                            <button type="submit" class="btn btn-sm btn-outline theme-secondary" formaction="' . h($document['preview']) . '" formmethod="post" formtarget="_blank"><i class="bi bi-eye me-3"></i>' . lang('Preview') . '</button>
+                            <button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-toggle="collapse" data-bs-target="#placeholder_reference" aria-expanded="false" aria-controls="placeholder_reference"><i class="bi bi-braces me-3"></i>' . lang('Placeholder Reference') . '</button>
+                            <button type="submit" name="reset" value="1" class="btn btn-sm btn-outline theme-warning" onclick="return confirm(' . h(json_encode(lang('The saved template will be replaced by the built-in one. Continue?'))) . ');"><i class="bi bi-arrow-counterclockwise me-3"></i>' . lang('Reset to Default') . '</button>
                         </nav>
 
-                        <div class="collapse mb-3" id="placeholder_reference">
-                            <div class="border rounded p-3">
-                                <p class="small text-body-secondary">' . lang('Write a name in double braces to print it: {{seller.title}}. Triple braces print it without escaping. A block between {{#name}} and {{/name}} is shown when the value is set, and repeated for every line when the value is a list; a block between {{^name}} and {{/name}} is shown when it is empty.') . '</p>
+                        <div class="collapse mb-5" id="placeholder_reference">
+                            <div class="border rounded-4 p-5">
+                                <p class="small fg-secondary">' . lang('Write a name in double braces to print it: {{seller.title}}. Triple braces print it without escaping. A block between {{#name}} and {{/name}} is shown when the value is set, and repeated for every line when the value is a list; a block between {{^name}} and {{/name}} is shown when it is empty.') . '</p>
                                 <div class="row">' . $output_placeholders . '
                                 </div>
                             </div>

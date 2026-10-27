@@ -112,11 +112,11 @@ if (!$_POST) {
             <form name="form" action="add_erp_manual_invoice.php" method="post" autocomplete="off">
                 ' . get_token_field() . '
                 ' . erp_invoice_form_cards($liveform, $card_options) . '
-                <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="erp_action" value="draft" class="btn my-1 btn-outline-secondary"><i class="bi bi-save me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save Draft') . '</span></button>
-                            <button type="submit" name="erp_action" value="issue" class="btn my-1 btn-success"><i class="bi bi-receipt me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Issue the Invoice') . '</span></button>
+                            <button type="submit" name="erp_action" value="draft" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save Draft') . '</span></button>
+                            <button type="submit" name="erp_action" value="issue" class="btn my-1 btn-solid theme-success"><i class="bi bi-receipt me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Issue the Invoice') . '</span></button>
                         </div>
                     </div>
                 </nav>

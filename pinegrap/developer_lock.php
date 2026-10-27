@@ -46,11 +46,11 @@ if (!$_POST) {
     $pin_inputs = '';
     for ($i = 1; $i <= $pin_length; $i++) {
         if (($i - 1) % 4 === 0) {
-            $pin_inputs .= '<div class="d-flex justify-content-center gap-2 mb-2">';
+            $pin_inputs .= '<div class="d-flex justify-content-center gap-3 mb-3">';
         }
 
         $pin_inputs .= '<input type="password"
-                            class="text-center pin-input border border-primary rounded"
+                            class="text-center pin-input border border-primary rounded-4"
                             id="pin' . $i . '"
                             maxlength="1"
                             size="1"
@@ -89,8 +89,8 @@ if (!$_POST) {
                 <form name="form" action="developer_lock.php" method="post" autocomplete="off">
                     ' . get_token_field() . '
                     <div class="row">
-                        <div class="col-12 col-md-6 mx-auto">
-                            <div class="card my-4">
+                        <div class="col-12 md:col-6 mx-auto">
+                            <div class="card my-7">
                                 <div class="card-header bg-transparent border-0  text-center">
                                     <label for="pin1" class="form-label">' . lang('PIN CODE') . '</label>
                                 </div>

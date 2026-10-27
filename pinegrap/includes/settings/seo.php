@@ -23,11 +23,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 $pg_settings_cards[] = '
                         <div id="pgset-seo" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Search Engine Optimization') . '
                                 </div>
                                 <div class="card-body">
-                                   <div class="row gy-3">
+                                   <div class="row gy-5">
                                         <div class="pg-f-lg">
                                             <label for="title" class="form-label">' . lang('Web Browser Title') . '</label>
                                             <input type="text" name="title" id="title" class="form-control" maxlength="255" value="' . h($title) . '"/>
@@ -38,7 +38,7 @@ $pg_settings_cards[] = '
                                             <textarea name="meta_description" id="meta_description" class="form-control" maxlength="255" >' . h($meta_description) . '</textarea>
                                             <div id="seo_c_meta_description"></div>
                                         </div>
-                                        <div id="pgsub-sitemap" class="col-12  mb-0"><h6 class="text-muted text-uppercase">' . lang('Site Map and Crawling') . '</h6></div>
+                                        <div id="pgsub-sitemap" class="col-12  mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Site Map and Crawling') . '</h6></div>
                                         <div class="pg-f-lg">
                                             <label for="additional_sitemap_content" class="form-label">' . lang('Additional sitemap.xml Content') . '</label>
                                             <textarea name="additional_sitemap_content" id="additional_sitemap_content" class="form-control" >' . h($additional_sitemap_content) . '</textarea>
@@ -49,8 +49,8 @@ $pg_settings_cards[] = '
                                             <textarea name="additional_robots_content" id="additional_robots_content" class="form-control" >' . h($additional_robots_content) . '</textarea>
                                             ' . pg_code_editor_attach(array('id' => 'additional_robots_content', 'code_type' => 'plain')) . '
                                             <div class="">
-                                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="pgRobotsNoIndex()" title="' . lang('Adds the rule that closes the entire site to search engines.') . '"><i class="bi bi-slash-circle me-1"></i>' . lang('Block All Search Engines') . '</button>
-                                                <div class="form-text text-warning d-none" id="robots_noindex_hint"></div>
+                                                <button type="button" class="btn btn-sm btn-outline theme-secondary" onclick="pgRobotsNoIndex()" title="' . lang('Adds the rule that closes the entire site to search engines.') . '"><i class="bi bi-slash-circle me-1"></i>' . lang('Block All Search Engines') . '</button>
+                                                <div class="form-text fg-warning d-none" id="robots_noindex_hint"></div>
                                             </div>
                                         </div>
 
@@ -58,10 +58,10 @@ $pg_settings_cards[] = '
                                             <label for="indexnow_key" class="form-label">' . lang('IndexNow Key') . '</label>
                                             <div class="input-group">
                                                 <input type="text" name="indexnow_key" id="indexnow_key" class="form-control" value="' . h($indexnow_key) . '"/>
-                                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="generateIndexNowKey()"><i class="bi bi-key-fill me-1"></i>' . lang('Generate') . '</button>
+                                                <button type="button" class="btn btn-sm btn-outline theme-secondary" onclick="generateIndexNowKey()"><i class="bi bi-key-fill me-1"></i>' . lang('Generate') . '</button>
                                             </div>
                                             <div class="form-text">' . lang('If you provide an IndexNow Key, search engines that support IndexNow will be automatically notified when your sitemap.xml file is updated.') . ' 
-                                                <a class="link-secondary" href="https://www.indexnow.org/" target="_blank">' . lang('Learn more about IndexNow') . '</a>
+                                                <a class="pg-link-secondary" href="https://www.indexnow.org/" target="_blank">' . lang('Learn more about IndexNow') . '</a>
                                             </div>
                                         </div>
                                         ' . $output_app_icon_picker . '
@@ -146,39 +146,39 @@ $ai_crawlers_search_text = $ai_crawlers['search']
 $pg_settings_cards[] = '
                         <div id="pgset-ai" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('AI Crawlers') . '
                                 </div>
                                 <div class="card-body">
-                                   <div class="row gy-3">
+                                   <div class="row gy-5">
                                         <div class="col-12">
                                             <div class="form-text">' . lang('What the site tells AI tools: in robots.txt, how they may use its pages and which of their crawlers should stay away; in llms.txt, where to start reading. Both are requests that well-behaved crawlers follow; the firewall is what turns a crawler away.') . '</div>' . (!$ai_crawlers['ready'] ? '
-                                            <div class="form-text text-warning">' . h(lang('These settings become available once the database upgrade has run.')) . '</div>' : '') . '
+                                            <div class="form-text fg-warning">' . h(lang('These settings become available once the database upgrade has run.')) . '</div>' : '') . '
                                         </div>
                                         <div class="col-12">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . ($ai_crawlers['rules'] ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="robots_ai_rules" name="robots_ai_rules"/>
-                                                <label class="form-check-label" for="robots_ai_rules">' . lang('Write AI crawler rules into robots.txt') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . ($ai_crawlers['rules'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="robots_ai_rules" name="robots_ai_rules"/></div>
+                                                <label class="" for="robots_ai_rules">' . lang('Write AI crawler rules into robots.txt') . '</label>
                                                 <div class="form-text">' . lang('Adds a Content-Signal line that says how AI tools may use the pages, and a group that asks each AI crawler not allowed here to stay away. A crawler the Additional robots.txt Content field already has a group for is left to that field.') . '</div>
                                             </div>
                                         </div>
                                         <div class="col-12">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . ($ai_crawlers['training'] ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="robots_ai_training" name="robots_ai_training"/>
-                                                <label class="form-check-label" for="robots_ai_training">' . lang('Allow AI training') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . ($ai_crawlers['training'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="robots_ai_training" name="robots_ai_training"/></div>
+                                                <label class="" for="robots_ai_training">' . lang('Allow AI training') . '</label>
                                                 <div class="form-text">' . h(lang(array('string' => 'Lets {var:1} use the pages to train AI models. Turned off, robots.txt asks them to stay away and says ai-train=no. The firewall turns GPTBot, ClaudeBot and CCBot away either way, unless they are listed under Allowed Bots.', 'vars' => array(implode(', ', $ai_crawlers_catalog['train']))))) . '</div>
                                             </div>
                                         </div>
                                         <div class="col-12">
                                             <div class="form-text">' . h($ai_crawlers_agents_text) . '</div>
                                             <div class="form-text">' . h($ai_crawlers_search_text) . '</div>
-                                            <div class="form-text">' . lang('robots.txt says the same for them.') . ' <a class="link-secondary" href="' . h(pg_settings_link('firewall', 'pgset-waf')) . '">' . lang('Change under Firewall') . '</a></div>
+                                            <div class="form-text">' . lang('robots.txt says the same for them.') . ' <a class="pg-link-secondary" href="' . h(pg_settings_link('firewall', 'pgset-waf')) . '">' . lang('Change under Firewall') . '</a></div>
                                         </div>
-                                        <div class="col-12 mb-0"><h6 class="text-muted text-uppercase">llms.txt</h6></div>
+                                        <div class="col-12 mb-0"><h6 class="fg-secondary text-uppercase">llms.txt</h6></div>
                                         <div class="col-12">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . ($ai_crawlers['llms'] ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="llms_txt" name="llms_txt"/>
-                                                <label class="form-check-label" for="llms_txt">' . lang('Publish llms.txt') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . ($ai_crawlers['llms'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="llms_txt" name="llms_txt"/></div>
+                                                <label class="" for="llms_txt">' . lang('Publish llms.txt') . '</label>
                                                 <div class="form-text">' . lang('A short guide to the site for AI tools at /llms.txt: the organization name and the web browser description, then up to 50 of the pages the site map lists, the home page and the most visited first. Google does not read it; some AI tools do. Turned on, it is answered instead of a file of that name in the file manager.') . '</div>
                                             </div>
                                         </div>
@@ -189,8 +189,8 @@ $pg_settings_cards[] = '
                                             <div class="form-text">' . lang('Markdown, written after the description. A part that starts with a ## heading gives AI tools a list of links of your own.') . '</div>
                                         </div>
                                         <div class="col-12">
-                                            <a class="btn btn-sm btn-outline-secondary" href="' . h(PATH . 'robots.txt') . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>robots.txt</a>' . ($ai_crawlers['llms'] ? '
-                                            <a class="btn btn-sm btn-outline-secondary" href="' . h(PATH . 'llms.txt') . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>llms.txt</a>' : '') . '
+                                            <a class="btn btn-sm btn-outline theme-secondary" href="' . h(PATH . 'robots.txt') . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>robots.txt</a>' . ($ai_crawlers['llms'] ? '
+                                            <a class="btn btn-sm btn-outline theme-secondary" href="' . h(PATH . 'llms.txt') . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>llms.txt</a>' : '') . '
                                         </div>
                                    </div>
                                 </div>
@@ -214,18 +214,18 @@ foreach (pg_product_feed_format_texts() as $product_feeds_format => $product_fee
         $product_feeds_token = pg_product_feed_token($product_feeds_entry);
 
         $product_feeds_address = '
-                                            <div class="input-group input-group-sm mt-2 pg-f-lg">
+                                            <div class="input-group input-group-sm mt-3 pg-f-lg">
                                                 ' . (($product_feeds_token !== '')
                                                     ? '<input type="text" class="form-control" readonly value="' . h(pg_product_feed_url($product_feeds_token)) . '" aria-label="' . h(lang('Feed address')) . '" onfocus="this.select()" />'
-                                                    : '<span class="form-control text-muted">' . h(lang('This address cannot be shown again on this site. Make a new address to see it.')) . '</span>') . '
-                                                <button type="submit" name="product_feed_new_address" value="' . h($product_feeds_format) . '" class="btn btn-sm btn-outline-warning" onclick="return confirm(' . h(json_encode(lang('Make a new address? The current address stops working at once, so the platforms that read it must be given the new one.'))) . ')"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('New address') . '</button>
+                                                    : '<span class="form-control fg-secondary">' . h(lang('This address cannot be shown again on this site. Make a new address to see it.')) . '</span>') . '
+                                                <button type="submit" name="product_feed_new_address" value="' . h($product_feeds_format) . '" class="btn btn-sm btn-outline theme-warning" onclick="return confirm(' . h(json_encode(lang('Make a new address? The current address stops working at once, so the platforms that read it must be given the new one.'))) . ')"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('New address') . '</button>
                                             </div>';
     }
 
     $product_feeds_status = pg_product_feed_status_text($product_feeds_entry);
 
     if ($product_feeds_entry['error'] !== '') {
-        $product_feeds_status = '<span class="text-danger">' . h(lang(array('string' => 'The last build failed: {var:1} The file built before is still served.', 'vars' => array(pg_product_feed_error_text($product_feeds_entry['error']))))) . '</span>'
+        $product_feeds_status = '<span class="fg-danger">' . h(lang(array('string' => 'The last build failed: {var:1} The file built before is still served.', 'vars' => array(pg_product_feed_error_text($product_feeds_entry['error']))))) . '</span>'
             . (($product_feeds_status !== '') ? ' ' . h($product_feeds_status) : '');
     } elseif ($product_feeds_entry['enabled'] && ((int) $product_feeds_entry['built_at'] === 0)) {
         $product_feeds_status = h(lang('Not built yet.'));
@@ -235,9 +235,9 @@ foreach (pg_product_feed_format_texts() as $product_feeds_format => $product_fee
 
     $product_feeds_rows .= '
                                         <div class="col-12">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . ($product_feeds_entry['enabled'] ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="product_feed_' . h($product_feeds_format) . '" name="product_feed_' . h($product_feeds_format) . '"/>
-                                                <label class="form-check-label" for="product_feed_' . h($product_feeds_format) . '">' . h($product_feeds_text['label']) . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . ($product_feeds_entry['enabled'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="product_feed_' . h($product_feeds_format) . '" name="product_feed_' . h($product_feeds_format) . '"/></div>
+                                                <label class="" for="product_feed_' . h($product_feeds_format) . '">' . h($product_feeds_text['label']) . '</label>
                                                 <div class="form-text">' . h($product_feeds_text['help']) . '</div>
                                             </div>' . $product_feeds_address . (($product_feeds_status !== '') ? '
                                             <div class="form-text">' . $product_feeds_status . '</div>' : '') . '
@@ -261,17 +261,17 @@ if (!$product_feeds_ready) {
 $pg_settings_cards[] = '
                         <div id="pgset-feeds" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Product Feeds') . '
                                 </div>
                                 <div class="card-body">
-                                   <div class="row gy-3">
+                                   <div class="row gy-5">
                                         <div class="col-12">
                                             <div class="form-text">' . lang('Publishes the products of your catalog as files that shopping platforms and AI shopping assistants read. Each feed has its own private address and is built again every day.') . '</div>' . (($product_feeds_notice !== '') ? '
-                                            <div class="form-text text-warning">' . h($product_feeds_notice) . '</div>' : '') . '
+                                            <div class="form-text fg-warning">' . h($product_feeds_notice) . '</div>' : '') . '
                                         </div>
                                         ' . $product_feeds_rows . '
-                                        <div class="col-12 mb-0"><h6 class="text-muted text-uppercase">' . lang('Seller') . '</h6></div>
+                                        <div class="col-12 mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Seller') . '</h6></div>
                                         <div class="pg-f-md">
                                             <label for="product_feed_seller_name" class="form-label">' . lang('Seller name') . '</label>
                                             <input type="text" name="product_feed_seller_name" id="product_feed_seller_name" class="form-control" maxlength="255" value="' . h(($product_feeds_settings['seller_name'] !== '') ? $product_feeds_settings['seller_name'] : (defined('ORGANIZATION_NAME') ? ORGANIZATION_NAME : '')) . '"/>
@@ -298,13 +298,13 @@ $pg_settings_cards[] = '
                                         <div class="pg-f-lg">
                                             <label for="product_feed_excluded_groups" class="form-label">' . lang('Leave out these product groups') . '</label>
                                             ' . (($product_feeds_group_options !== '')
-                                                ? '<select multiple size="6" name="product_feed_excluded_groups[]" id="product_feed_excluded_groups" class="form-select">' . $product_feeds_group_options . '</select>
+                                                ? '<select multiple size="6" name="product_feed_excluded_groups[]" id="product_feed_excluded_groups" class="form-control">' . $product_feeds_group_options . '</select>
                                             <div class="form-text">' . lang('A product in a chosen group, or in a group under it, is in no feed. Hold Ctrl (or ⌘) to choose several.') . '</div>'
                                                 : '<div class="form-text">' . lang('No catalog shows a product group yet.') . '</div>') . '
                                         </div>
                                         <div class="col-12">
-                                            <div class="form-text mb-2">' . lang('Changes reach the feeds at the next daily build. A feed you switch on is built when you save.') . '</div>
-                                            <button type="submit" name="product_feed_build" value="1" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Save and build now') . '</button>
+                                            <div class="form-text mb-3">' . lang('Changes reach the feeds at the next daily build. A feed you switch on is built when you save.') . '</div>
+                                            <button type="submit" name="product_feed_build" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Save and build now') . '</button>
                                         </div>
                                    </div>
                                 </div>
@@ -315,20 +315,20 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
                         <div id="pgset-analytics" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Visitor Tracking') . '
                                 </div>
                                 <div class="card-body">
-                                   <div class="row gy-3">
+                                   <div class="row gy-5">
                                         <div class="col-12 ">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . $visitor_tracking_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="visitor_tracking" name="visitor_tracking" data-bs-target="#visitor_tracking_row"/>
-                                                <label class="form-check-label" for="visitor_tracking">' . lang('Enable Visitor Tracking') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . $visitor_tracking_checked . ' class="collapse-switcher" type="checkbox" id="visitor_tracking" name="visitor_tracking" data-bs-target="#visitor_tracking_row"/></div>
+                                                <label class="" for="visitor_tracking">' . lang('Enable Visitor Tracking') . '</label>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="visitor_tracking_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
                                                 <div class="popover-body">
-                                                   <div class="row gy-3">
+                                                   <div class="row gy-5">
                                                         <div class="pg-f-xs">
                                                             <label for="statracking_code_durationrt" class="form-label">*' . lang('Tracking Code Duration') . '</label>
                                                             <div class="input-group">
@@ -341,15 +341,15 @@ $pg_settings_cards[] = '
                                                             <input type="text" name="pay_per_click_flag" id="pay_per_click_flag" class="form-control" value="' . h($pay_per_click_flag) . '" />
                                                         </div>
                                                         <div class="col-12 ">
-                                                            <div class="form-check form-switch">
-                                                                <input value="1"' . $google_analytics_checked . ' class="form-check-input collapse-switcher" type="checkbox" id="google_analytics" name="google_analytics" data-bs-target="#google_analytics_row"/>
-                                                                <label class="form-check-label" for="google_analytics">' . lang('Enable Google Analytics') . '</label>
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . $google_analytics_checked . ' class="collapse-switcher" type="checkbox" id="google_analytics" name="google_analytics" data-bs-target="#google_analytics_row"/></div>
+                                                                <label class="" for="google_analytics">' . lang('Enable Google Analytics') . '</label>
                                                             </div>
                                                         </div>
                                                         <div class="collapse popover fade bs-popover-bottom p-0 " id="google_analytics_row">
                                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>
                                                             <div class="popover-body">
-                                                               <div class="row gy-3">
+                                                               <div class="row gy-5">
                                                                     <div class="col-12 ">
                                                                         <label for="stats_url" class="form-label">' . lang('Website Analytics URL') . '</label>
                                                                         <input type="text" name="stats_url" id="stats_url" class="form-control" value="' . h($stats_url) . '" />
@@ -386,9 +386,9 @@ $pg_settings_cards[] = '
                                             <div class="form-text">' . h(lang(array('string' => 'The IP address of a visit is taken out of its record after this many days; the record, its source and its figures stay. 0 keeps it as long as the record; otherwise at least {var:1} and at most {var:2} days.', 'vars' => array(PG_VISITOR_IP_MIN_DAYS, PG_VISITOR_IP_MAX_DAYS)))) . '</div>
                                         </div>
                                         ' : '') . '<div class="col-12">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . ($visitor_summary ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="visitor_summary" name="visitor_summary"/>
-                                                <label class="form-check-label" for="visitor_summary">' . lang('Keep a daily summary before records are removed') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . ($visitor_summary ? ' checked="checked"' : '') . ' class="" type="checkbox" id="visitor_summary" name="visitor_summary"/></div>
+                                                <label class="" for="visitor_summary">' . lang('Keep a daily summary before records are removed') . '</label>
                                                 <div class="form-text">' . lang('Each day is added up by source, landing page, campaign, place and device first, so the visitor report and the API still count it. Turned off, those days are gone from the visitor report; the dashboard charts keep them either way.') . '</div>
                                                 <div class="form-text"><a href="database_engine.php#visitor-records">' . lang('The size of the table, and a cleanup you can start yourself, are on the Database Engine screen.') . '</a></div>
                                             </div>
@@ -403,15 +403,15 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
                         <div id="pgset-cookies" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Cookie Consent') . '
                                 </div>
                                 <div class="card-body">
-                                   <div class="row gy-3">
+                                   <div class="row gy-5">
                                         <div class="col-12">
-                                            <div class="form-check form-switch">
-                                                <input value="1"' . ($cookie_consent ? ' checked="checked"' : '') . ' class="form-check-input" type="checkbox" id="cookie_consent" name="cookie_consent"/>
-                                                <label class="form-check-label" for="cookie_consent">' . lang('Ask visitors for cookie consent') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . ($cookie_consent ? ' checked="checked"' : '') . ' class="" type="checkbox" id="cookie_consent" name="cookie_consent"/></div>
+                                                <label class="" for="cookie_consent">' . lang('Ask visitors for cookie consent') . '</label>
                                                 <div class="form-text">' . lang('A small notice in the bottom-left corner lists the cookies the site uses. Necessary cookies are always on; Google Analytics, the visitor statistics cookies and the referral cookie start only after the visitor allows them. Turned off, every cookie is set as before.') . '</div>
                                             </div>
                                         </div>
@@ -421,8 +421,8 @@ $pg_settings_cards[] = '
                                             <div class="form-text">' . lang('A page that explains the cookies in detail, shown as a link in the notice. Start it with / or https://; leave it empty for no link.') . '</div>
                                         </div>
                                         <div class="col-12">
-                                            <div class="form-text mb-2">' . lang(array('string' => 'After a choice the notice folds into a cookie button in the bottom-left corner, so the visitor can change it later. Put a link to {var:1} on the site (in the footer, for example) and the link reopens the notice; the button is then hidden.', 'vars' => '<code>#cookie-settings</code>')) . '</div>
-                                            <div class="form-text mb-2">' . lang(array('string' => 'To hold a script of your own until the visitor agrees, write its tag as {var:1} (or {var:2}). The notice lists it under that category with the name you give it.', 'vars' => array('<code>' . h('<script type="text/plain" data-pg-consent="analytics" data-pg-consent-name="Hotjar">') . '</code>', '<code>data-pg-consent="marketing"</code>'))) . '</div>
+                                            <div class="form-text mb-3">' . lang(array('string' => 'After a choice the notice folds into a cookie button in the bottom-left corner, so the visitor can change it later. Put a link to {var:1} on the site (in the footer, for example) and the link reopens the notice; the button is then hidden.', 'vars' => '<code>#cookie-settings</code>')) . '</div>
+                                            <div class="form-text mb-3">' . lang(array('string' => 'To hold a script of your own until the visitor agrees, write its tag as {var:1} (or {var:2}). The notice lists it under that category with the name you give it.', 'vars' => array('<code>' . h('<script type="text/plain" data-pg-consent="analytics" data-pg-consent-name="Hotjar">') . '</code>', '<code>data-pg-consent="marketing"</code>'))) . '</div>
                                             <div class="form-text">' . lang(array('string' => 'Google tags you add yourself (Tag Manager, Google Ads) are told the answer through Google Consent Mode v2: they set no cookies until the visitor allows statistics or marketing. Such a tag can stay as it is; for the notice to ask about its category, add an empty held tag such as {var:1}.', 'vars' => '<code>' . h('<script type="text/plain" data-pg-consent="marketing" data-pg-consent-name="Google Ads"></script>') . '</code>')) . '</div>
                                         </div>
                                    </div>

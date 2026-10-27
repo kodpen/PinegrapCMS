@@ -142,7 +142,7 @@ $output_organize_selected_button = '';
 
 // if this is not the all duplicates view and if the user has selected to show contact groups, then output the organize selected button
 if (($filter != 'all_duplicate_contacts') && (($_SESSION['software']['view_contacts']['show_contact_groups'] ?? '') == true)) {
-    $output_organize_selected_button = '<button type="button" value="Organize Selected" class=" btn mb-1 mt-1 btn-primary disabled" onclick="window.open(\'organize_contacts.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'organize\',\'contact\')"><span class="material-icons me-2">edit</span>' . lang(array('string'=>'Organize Selected') ) . '</button>';
+    $output_organize_selected_button = '<button type="button" value="Organize Selected" class=" btn mb-1 mt-1 btn-solid theme-primary disabled" onclick="window.open(\'organize_contacts.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'organize\',\'contact\')"><span class="material-icons me-3">edit</span>' . lang(array('string'=>'Organize Selected') ) . '</button>';
 }
 
 // Switch between the subnav filters
@@ -1405,7 +1405,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     if ($number_of_screens > 1) {
 
         $output_screen_links .= '
-            <nav class="mt-3 navigation " aria-label="data pagination"> 
+            <nav class="mt-5 navigation " aria-label="data pagination"> 
                 <ul class="pagination pagination-sm flex-wrap justify-content-center">';
         // build Previous button if necessary
         $previous = $screen - 1;
@@ -1565,7 +1565,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
             if ($contact['user_id']) {
                 // if the editor user is an administrator or the editor user has access to edit this user, then prepare username with link
                 if (($user['role'] == 0) || ($user['role'] < $contact['user_role'])) {
-                    $user_display = '<a class="link-secondary" href="edit_user.php?id=' . $contact['user_id'] . '">' . h($contact['user_username']) . '</a>';
+                    $user_display = '<a class="pg-link-secondary" href="edit_user.php?id=' . $contact['user_id'] . '">' . h($contact['user_username']) . '</a>';
 
                 // else the editor user does not have access to edit this user, so prepare username without link
                 } else {
@@ -1611,7 +1611,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
             $output_phone_row  = '<td class="align-middle">' . $output_phone_numbers . '</td>';
             
             // output email address row
-            $output_email_address_row  = '<td class="align-middle"><a class="link-secondary" href="mailto:' . h($contact['email_address']) . '">' . h($contact['email_address']) . '</a></td>';
+            $output_email_address_row  = '<td class="align-middle"><a class="pg-link-secondary" href="mailto:' . h($contact['email_address']) . '">' . h($contact['email_address']) . '</a></td>';
         }
         
         $output_contact_groups = '';
@@ -1794,10 +1794,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
             
             $output_rows .=
                 '<tr id="' . $contact['id'] . '">
-                    <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="contacts[]" value="' . $contact['id'] . '" class="checkbox" /></td>
+                    <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="contacts[]" value="' . $contact['id'] . '" class="checkbox" /></td>
                     <td class="align-middle text-start col-reorder-none action-buttons">
-                        <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                        <!--<button type="button" class="btn-data-control m-1 btn btn-outline-danger border-2" title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                        <button type="button" class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                        <!--<button type="button" class="btn-data-control m-1 btn btn-outline theme-danger border-2" title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                     </td>
                     ' . $output_image_column . '
                     ' . $output_email_address_row . '
@@ -1815,10 +1815,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         } else {
             $output_rows .=
                 '<tr id="' . $contact['id'] . '">
-                    <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="contacts[]" value="' . $contact['id'] . '" class="checkbox" /></td>
+                    <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="contacts[]" value="' . $contact['id'] . '" class="checkbox" /></td>
                     <td class="align-middle text-start col-reorder-none action-buttons">
-                        <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                        <!--<button type="button" class="btn-data-control m-1 btn btn-outline-danger border-2" title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                        <button type="button" class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                        <!--<button type="button" class="btn-data-control m-1 btn btn-outline theme-danger border-2" title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                     </td>
                     ' . $output_image_column . '
                     <td class="align-middle">' . h($contact['first_name']) . '</td>
@@ -1841,7 +1841,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $output_contact_group_selection = '
         <div class="input-group input-group-sm w-auto'. $show_hide_contact_group_select .'">
             <label class="input-group-text material-icons" title="' . lang('Group') . '" for="contact_group">groups</label>
-            <select id="contact_group" name="contact_group" class="form-select" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . $output_contact_group_options . '</select>
+            <select id="contact_group" name="contact_group" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . $output_contact_group_options . '</select>
         </div>';
         $output_advanced_filters_value = 'true';
         $output_advanced_filters_label = lang('Add Advanced Filters');
@@ -1878,7 +1878,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 $checked = '';
             }
 
-            $output_contact_groups .= '<div class="form-check"><input type="checkbox" name="contact_groups[]" id="contact_group_[' . lang('None') . ']" value="[' . lang('None') . ']"' . $checked . ' class="form-check-input multiselect-checkbox" /><label class="form-check-label" for="contact_group_[' . lang('None') . ']"> [' . lang('None') . '] (' . get_number_of_contacts('[' . lang('None') . ']', $require_email = false) . ')</label></div>';
+            $output_contact_groups .= '<div class="form-field"><input type="checkbox" name="contact_groups[]" id="contact_group_[' . lang('None') . ']" value="[' . lang('None') . ']"' . $checked . ' class="check multiselect-checkbox" /><label class="" for="contact_group_[' . lang('None') . ']"> [' . lang('None') . '] (' . get_number_of_contacts('[' . lang('None') . ']', $require_email = false) . ')</label></div>';
         }
 
         foreach ($contact_groups as $contact_group) {
@@ -1892,7 +1892,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 $checked = '';
             }
 
-            $output_contact_groups .= '<div class="form-check"><input type="checkbox" name="contact_groups[]" id="contact_group_' . $contact_group['id'] . '" value="' . $contact_group['id'] . '"' . $checked . ' class="form-check-input multiselect-checkbox" /><label class="form-check-label" for="contact_group_' . $contact_group['id'] . '"> ' . h($contact_group['name']) . ' (' . $number_of_contacts . ')</label></div>';
+            $output_contact_groups .= '<div class="form-field"><input type="checkbox" name="contact_groups[]" id="contact_group_' . $contact_group['id'] . '" value="' . $contact_group['id'] . '"' . $checked . ' class="check multiselect-checkbox" /><label class="" for="contact_group_' . $contact_group['id'] . '"> ' . h($contact_group['name']) . ' (' . $number_of_contacts . ')</label></div>';
         }
 
         // If the Opt in status is not on display the opt in select box.
@@ -1912,7 +1912,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
 
             // Output select box.
             $output_opt_status = '
-                <select class="form-select" id="opt_in_status" name="opt_in_status"><option value="any"' . $opt_in_status_any_selected . '>' . lang('Any') . '</option><option value="opt_in"' . $opt_in_status_opt_in_selected . '>Opt-In</option><option value="opt_out"' . $opt_in_status_opt_out_selected . '>Opt-Out</option></select>';
+                <select class="form-control" id="opt_in_status" name="opt_in_status"><option value="any"' . $opt_in_status_any_selected . '>' . lang('Any') . '</option><option value="opt_in"' . $opt_in_status_opt_in_selected . '>Opt-In</option><option value="opt_out"' . $opt_in_status_opt_out_selected . '>Opt-Out</option></select>';
         } else {
             $output_opt_status = 'Opt-In';
         }
@@ -1947,9 +1947,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
             }
 
             $output_membership_status = '
-                <div class="col-12 col-sm-6 col-md-12 my-1">
+                <div class="col-12 sm:col-6 md:col-12 my-1">
                     <label for="membership_status" class="form-label">' . lang('Status') . '</label>
-                    <select class="form-select" id="membership_status" name="membership_status">
+                    <select class="form-control" id="membership_status" name="membership_status">
                         <option value="any"' . $membership_status_any_selected . '>' . lang('Any') . '</option>
                         <option value="member"' . $membership_status_member_or_expired_member_selected . '>' . lang('Member') . '</option>
                         <option value="active_member"' . $membership_status_member_selected . '>' . lang('Active Member') . '</option>
@@ -1960,7 +1960,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 </div>';
         } else {
             $output_membership_status = '
-                <div class="col-12 col-sm-6 col-md-12 my-1">
+                <div class="col-12 sm:col-6 md:col-12 my-1">
                     <label for="membership_status" class="form-label">' . lang('Status') . '</label>
                     <input value="' . $membership_status_label . '" type="text" class="form-control disabled" disabled="disabled" id="membership_status" name="fake_membership_status" />
                 </div>';
@@ -1968,12 +1968,12 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
 
         if (AFFILIATE_PROGRAM == true) {
             $output_affiliate =
-                '<div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Affiliate') . '</h5></div>
-                <div class="col-12 col-sm-6 col-md-12 my-1">
+                '<div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Affiliate') . '</h5></div>
+                <div class="col-12 sm:col-6 md:col-12 my-1">
                     <label for="affiliate_name" class="form-label">' . lang('Affiliate Name') . '</label>
                     <input type="text" id="affiliate_name" name="affiliate_name" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['affiliate_name'] ?? '')) . '"/>
                 </div>
-                <div class="col-12 col-sm-6 col-md-12 my-1">
+                <div class="col-12 sm:col-6 md:col-12 my-1">
                     <label for="affiliate_code" class="form-label">' . lang('Affiliate Code') . '</label>
                     <input type="text" id="affiliate_code" name="affiliate_code" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['affiliate_code'] ?? '')) . '"/>
                 </div>';
@@ -1984,19 +1984,19 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
 
         $output_advanced_filters =
             '<div class="advanced_filters advanced-filter-bar  position-fixed-md"  id="advanced_filters" >
-                <div class="p-2 border justify-content-between d-flex flex-wrap header">
+                <div class="p-3 border justify-content-between d-flex flex-wrap header">
                     <p class="m-0"><span class="material-icons pe-1">filter_list</span>' . lang('Filters') . '</p>
                     <a class="btn btn-close " title="' . $output_advanced_filters_label . '" href="view_contacts.php?advanced_filters=' . $output_advanced_filters_value . '" ></a>
                 </div>
-                <form class="advanced-filter-body p-2 pt-0 disable_shortcut" id="search_advanced" action="view_contacts.php" method="get">
+                <form class="advanced-filter-body p-3 pt-0 disable_shortcut" id="search_advanced" action="view_contacts.php" method="get">
                     <div class="row">
-                        <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Contact Groups') . '</h5></div>
-                        <div class="col-12 col-md-12 my-1">
+                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Contact Groups') . '</h5></div>
+                        <div class="col-12 md:col-12 my-1">
                             <div class="card multiselect-checkbox-container rounded-0">
                                 <div class="card-header border-0 bg-reset">
-                                    <div class="form-check form-switch">
-                                        <input id="multiselect-checkbox-checker-0" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                                        <label for="multiselect-checkbox-checker-0" class="form-check-label">' . lang('Select All') . '</label>
+                                    <div class="form-field">
+                                        <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox"></div>
+                                        <label for="multiselect-checkbox-checker-0" class="">' . lang('Select All') . '</label>
                                     </div>
                                 </div>
                                 <div class="card-body overflow-auto" style="max-height:200px">
@@ -2006,147 +2006,147 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                             </div>
                         </div>
 
-                        <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('General') . '</h5></div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('General') . '</h5></div>
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="salutation" class="form-label">' . lang('Salutation') . '</label>
                             <input type="text" id="salutation" name="salutation" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['salutation'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="first_name" class="form-label">' . lang('First Name') . '</label>
                             <input type="text" id="first_name" name="first_name" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['first_name'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="last_name" class="form-label">' . lang('Last Name') . '</label>
                             <input type="text" id="last_name" name="last_name" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['last_name'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="suffix" class="form-label">' . lang('Suffix') . '</label>
                             <input type="text" id="suffix" name="suffix" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['suffix'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="nickname" class="form-label">' . lang('Nickname') . '</label>
                             <input type="text" id="nickname" name="nickname" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['nickname'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="company" class="form-label">' . lang('Company') . '</label>
                             <input type="text" id="company" name="company" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['company'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="title" class="form-label">' . lang('Title') . '</label>
                             <input type="text" id="title" name="title" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['title'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="department" class="form-label">' . lang('Department') . '</label>
                             <input type="text" id="department" name="department" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['department'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="office_location" class="form-label">' . lang('Office Location') . '</label>
                             <input type="text" id="office_location" name="office_location" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['office_location'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="business_phone" class="form-label">' . lang('Business Phone') . '</label>
                             <input type="text" id="business_phone" name="business_phone" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_phone'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="home_phone" class="form-label">' . lang('Home Phone') . '</label>
                             <input type="text" id="home_phone" name="home_phone" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_phone'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="mobile_phone" class="form-label">' . lang('Mobile Phone') . '</label>
                             <input type="text" id="mobile_phone" name="mobile_phone" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['mobile_phone'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="business_fax" class="form-label">' . lang('Business Fax') . '</label>
                             <input type="text" id="business_fax" name="business_fax" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_fax'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="home_fax" class="form-label">' . lang('Home Fax') . '</label>
                             <input type="text" id="home_fax" name="home_fax" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_fax'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="email_address" class="form-label">' . lang('Email') . '</label>
                             <input type="text" id="email_address" name="email_address" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['email_address'] ?? '')) . '" maxlength="100" inputmode="email" data-inputmask-alias="email" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="opt_in_status" class="form-label">' . lang('Opt-In Status') . '</label>
                             ' . $output_opt_status . '
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="website" class="form-label">' . lang('Website') . '</label>
                             <input type="text" id="website" name="website" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['website'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="website" class="form-label">' . lang('Website') . '</label>
                             <input type="text" id="website" name="website" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['website'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="lead_source" class="form-label">' . lang('Lead Source') . '</label>
                             <input type="text" id="lead_source" name="lead_source" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['lead_source'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="description" class="form-label">' . lang('Description') . '</label>
                             <input type="text" id="description" name="description" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['description'] ?? '')) . '"/>
                         </div>
 
-                        <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Business') . '</h5></div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Business') . '</h5></div>
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="business_address_1" class="form-label">' . lang('Address') . ' 1</label>
                             <input type="text" id="business_address_1" name="business_address_1" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_address_1'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="business_address_2" class="form-label">' . lang('Address') . ' 2</label>
                             <input type="text" id="business_address_2" name="business_address_2" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_address_2'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="business_city" class="form-label">' . lang('City') . '</label>
                             <input type="text" id="business_city" name="business_city" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_city'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="business_state" class="form-label">' . lang('State') . '</label>
                             <input type="text" id="business_state" name="business_state" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_state'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="business_zip_code" class="form-label">' . lang('Zip Code') . '</label>
                             <input type="text" id="business_zip_code" name="business_zip_code" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_zip_code'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="business_country" class="form-label">' . lang('Country') . '</label>
                             <input type="text" id="business_country" name="business_country" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['business_country'] ?? '')) . '"/>
                         </div>
 
-                        <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Home') . '</h5></div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Home') . '</h5></div>
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="home_address_1" class="form-label">' . lang('Address') . ' 1</label>
                             <input type="text" id="home_address_1" name="home_address_1" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_address_1'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="home_address_2" class="form-label">' . lang('Address') . ' 2</label>
                             <input type="text" id="home_address_2" name="home_address_2" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_address_2'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="home_city" class="form-label">' . lang('City') . '</label>
                             <input type="text" id="home_city" name="home_city" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_city'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="home_state" class="form-label">' . lang('State') . '</label>
                             <input type="text" id="home_state" name="home_state" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_state'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="home_zip_code" class="form-label">' . lang('Zip Code') . '</label>
                             <input type="text" id="home_zip_code" name="home_zip_code" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_zip_code'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="home_country" class="form-label">' . lang('Country') . '</label>
                             <input type="text" id="home_country" name="home_country" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['home_country'] ?? '')) . '"/>
                         </div>
 
-                        <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Membership') . '</h5></div>
+                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Membership') . '</h5></div>
                         ' . $output_membership_status . '
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="member_id" class="form-label">' . h(MEMBER_ID_LABEL) . '</label>
                             <input type="text" id="member_id" name="member_id" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['member_id'] ?? '')) . '"/>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="member_id" class="form-label">' . lang('Expiration Date') . '</label>
                             <input type="text" id="expiration_date" name="expiration_date" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['expiration_date'] ?? '')) . '" data-pg-date />
                             ' . get_date_picker_format() . pg_fields_script() . '
@@ -2154,25 +2154,25 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                         
                         ' . $output_affiliate . '
                         
-                        <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Date Range') . '</h5></div>
+                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Date Range') . '</h5></div>
                         <div class="col-12">
                             <label class="form-label">' . lang('From') . '</label>
-                            <select class="form-select my-1" name="start_month">' . select_month(($_SESSION['software']['view_contacts']['start_month'] ?? '')) . '</select>
+                            <select class="form-control my-1" name="start_month">' . select_month(($_SESSION['software']['view_contacts']['start_month'] ?? '')) . '</select>
                             <div class="input-group input-group-sm">
-                                <select class="form-select my-1" name="start_day">' . select_day(($_SESSION['software']['view_contacts']['start_day'] ?? '')) . '</select>
-                                <select class="form-select my-1" name="start_year">' . select_year($years, ($_SESSION['software']['view_contacts']['start_year'] ?? '')) . '</select>
+                                <select class="form-control my-1" name="start_day">' . select_day(($_SESSION['software']['view_contacts']['start_day'] ?? '')) . '</select>
+                                <select class="form-control my-1" name="start_year">' . select_year($years, ($_SESSION['software']['view_contacts']['start_year'] ?? '')) . '</select>
                             </div>
                         </div>
                         <div class="col-12">
                             <label class="form-label">' . lang('To') . '</label>
-                            <select class="form-select my-1" name="stop_month">' . select_month(($_SESSION['software']['view_contacts']['stop_month'] ?? '')) . '</select>
+                            <select class="form-control my-1" name="stop_month">' . select_month(($_SESSION['software']['view_contacts']['stop_month'] ?? '')) . '</select>
                             <div class="input-group input-group-sm">
-                                <select class="form-select my-1" name="stop_day">' . select_day(($_SESSION['software']['view_contacts']['stop_day'] ?? '')) . '</select>
-                                <select class="form-select my-1" name="stop_year">' . select_year($years, ($_SESSION['software']['view_contacts']['stop_year'] ?? '')) . '</select>
+                                <select class="form-control my-1" name="stop_day">' . select_day(($_SESSION['software']['view_contacts']['stop_day'] ?? '')) . '</select>
+                                <select class="form-control my-1" name="stop_year">' . select_year($years, ($_SESSION['software']['view_contacts']['stop_year'] ?? '')) . '</select>
                             </div>
                         </div>
-                        <div class="col-12 text-center position-sticky my-2" style="bottom:.5rem;">
-                            <button type="submit" name="submit_data" value="Update" class="btn btn-primary my-1"><i class="material-icons me-2">sync</i>' . lang('Update') . '</button>
+                        <div class="col-12 text-center position-sticky my-3" style="bottom:.5rem;">
+                            <button type="submit" name="submit_data" value="Update" class="btn btn-solid theme-primary my-1"><i class="material-icons me-3">sync</i>' . lang('Update') . '</button>
                         </div>
                     </div>
                 </form>
@@ -2189,7 +2189,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     if (MASS_DELETION == true) {
         $output_delete_contacts_button = '
         <div class=" btn-group btn-group-sm flex-wrap">
-            <button type="submit" name="submit_data" value="Delete Contacts" class="btn btn-link link-danger py-0 m-1" data-confirm-content="' . lang('WARNING: All contacts that match the filters will be permanently deleted. This includes contacts from all result pages that might exist. Please make sure that you perform an update to the filters before you attempt to delete. An update will allow you to see which contacts will be deleted before you actually delete them. If you would like to continue with the deletion, please click OK. Otherwise, please click Cancel.') . '"><span class="bi bi-trash3-fill me-1"></span>' . lang(array('string'=>'Delete All Contacts') ) . '</button>
+            <button type="submit" name="submit_data" value="Delete Contacts" class="btn btn-link pg-link-danger py-0 m-1" data-confirm-content="' . lang('WARNING: All contacts that match the filters will be permanently deleted. This includes contacts from all result pages that might exist. Please make sure that you perform an update to the filters before you attempt to delete. An update will allow you to see which contacts will be deleted before you actually delete them. If you would like to continue with the deletion, please click OK. Otherwise, please click Cancel.') . '"><span class="bi bi-trash3-fill me-1"></span>' . lang(array('string'=>'Delete All Contacts') ) . '</button>
         </div>';
     }
     
@@ -2241,8 +2241,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     if ($filter == 'all_duplicate_contacts') {
         $output_table_headings = 
             '<th class="noVis">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all">
+                <div class="form-field">
+                    <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
                 </div>
             </th>
             <th class="noVis">' . lang('Action') . '</th>
@@ -2259,18 +2259,18 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         
         $output_merge_contacts_button = '
          <div class=" btn-group btn-group-sm flex-wrap">
-             <button type="submit" name="submit_data" value="Merge Contacts" class="btn btn-link link-warning py-0 m-1" data-confirm-content="' . lang('WARNING: All contacts that match the filters will be permanently merged together. This includes contacts from all result pages that might exist. Please make sure that you perform an update to the filters before you attempt to merge. An update will allow you to see which contacts will be merged before you actually merge them. If you would like to continue with the merge, please click OK. Otherwise, please click Cancel.') . '"><span class="material-icons me-1">healing</span>' . lang(array('string'=>'Merge') ) . '</button>
+             <button type="submit" name="submit_data" value="Merge Contacts" class="btn btn-link pg-link-warning py-0 m-1" data-confirm-content="' . lang('WARNING: All contacts that match the filters will be permanently merged together. This includes contacts from all result pages that might exist. Please make sure that you perform an update to the filters before you attempt to merge. An update will allow you to see which contacts will be merged before you actually merge them. If you would like to continue with the merge, please click OK. Otherwise, please click Cancel.') . '"><span class="material-icons me-1">healing</span>' . lang(array('string'=>'Merge') ) . '</button>
          </div>';
         
         // output the merge selected button
-        $output_modify_selected_buttons = '<button type="button" value="Merge Selected" class="btn mb-1 mt-1 btn-warning disabled" data-confirm-content="' . lang(array('string'=>'WARNING: The selected duplicate {var:1} will be merged together.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-2">healing</span>' . lang(array('string'=>'Merge Selected') ) . '</button>';
+        $output_modify_selected_buttons = '<button type="button" value="Merge Selected" class="btn mb-1 mt-1 btn-solid theme-warning disabled" data-confirm-content="' . lang(array('string'=>'WARNING: The selected duplicate {var:1} will be merged together.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-3">healing</span>' . lang(array('string'=>'Merge Selected') ) . '</button>';
     
     // else output the default table headings
     } else {
         $output_table_headings = 
             '<th class="noVis">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all">
+                <div class="form-field">
+                    <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
                 </div>
             </th>
             <th class="noVis">' . lang('Action') . '</th> 
@@ -2288,8 +2288,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         
         // output the opt in and opt out buttons
         $output_modify_selected_buttons = '
-        <button type="button" value="Opt-In Selected" class="btn mb-1 mt-1 btn-secondary disabled" data-confirm-content="' . lang(array('string'=>'WARNING: The selected {var:1} will be opted-in.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-2">radio_button_checked</span>' . lang(array('string'=>'Opt-In Selected') ) . '</button>
-        <button type="button" value="Opt-Out Selected" class="btn mb-1 mt-1 btn-secondary disabled" data-confirm-content="' . lang(array('string'=>'WARNING: The selected {var:1} will be opted-out.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-2">radio_button_unchecked</span>' . lang(array('string'=>'Opt-Out Selected') ) . '</button>';
+        <button type="button" value="Opt-In Selected" class="btn mb-1 mt-1 btn-solid theme-secondary disabled" data-confirm-content="' . lang(array('string'=>'WARNING: The selected {var:1} will be opted-in.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-3">radio_button_checked</span>' . lang(array('string'=>'Opt-In Selected') ) . '</button>
+        <button type="button" value="Opt-Out Selected" class="btn mb-1 mt-1 btn-solid theme-secondary disabled" data-confirm-content="' . lang(array('string'=>'WARNING: The selected {var:1} will be opted-out.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-3">radio_button_unchecked</span>' . lang(array('string'=>'Opt-Out Selected') ) . '</button>';
     
     }
     
@@ -2314,10 +2314,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 <nav id="button_bar" class="pg-toolbar navigation" aria-label="Button Bar">
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                                 ' . get_token_field() . '
-                                <a class="btn btn-sm btn-primary m-1 " href="add_contact.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                                <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_contact.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                                 <div class=" btn-group btn-group-sm flex-wrap">
-                                    <a class="btn btn-link link-secondary py-0 m-1" href="import_contacts.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
-                                    <button type="submit" name="submit_data" value="Export Contacts" class="btn btn-link link-secondary py-0 m-1"><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang(array('string'=>'Export') ) . '</button>
+                                    <a class="btn btn-link pg-link-secondary py-0 m-1" href="import_contacts.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
+                                    <button type="submit" name="submit_data" value="Export Contacts" class="btn btn-link pg-link-secondary py-0 m-1"><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang(array('string'=>'Export') ) . '</button>
                                 </div>
                                 ' . $output_merge_contacts_button . $output_delete_contacts_button . '
                             </form>
@@ -2327,7 +2327,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                                 <input type="hidden" name="filter" value="' . h($filter) . '">
                                 <div class="input-group input-group-sm w-auto">
                                     <label class="input-group-text material-icons" title="' . lang('Content that viewed') . '" for="filter">visibility</label>
-                                    <select id="filter" name="filter" class="form-select" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
+                                    <select id="filter" name="filter" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
                                 </div>
                                 ' . $output_contact_group_selection . '
                             </form>
@@ -2339,7 +2339,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                                 'year'  => array($decrease_year, $current_year, $increase_year),
                             ), $output_date_range_time) : '') . '
                 </nav>
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <form name="form"  action="edit_contacts.php" method="post" class="view_orders"> 
                             ' . get_token_field() . ' 
@@ -2359,7 +2359,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                                 <div class="container">
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                                         ' . $output_organize_selected_button . $output_modify_selected_buttons . '
-                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                     </div>
                                 </div>
                             </nav>
