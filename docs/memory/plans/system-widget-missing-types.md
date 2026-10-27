@@ -15,7 +15,7 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 | membership confirmation | `get_membership_confirmation_screen_content.php` | after the membership entrance |
 | affiliate sign up form / confirmation / welcome | `get_affiliate_*` | affiliate programme pages |
 | order form | `get_order_form.php` | a product group with quantity boxes, many products to the cart at once |
-- Region-level gaps (menu, ad region, tag cloud…): done as widgets (`designer/region-node-to-widget.md`).
+- Region-level gaps (menu, ad region, tag cloud…): done (`designer/region-node-to-widget.md`).
 
 ## Which are covered?
 - Form confirmation and item view, order receipt and view, login, logout, password screens, registration and membership entrance, My Account and its sub-pages, catalog and detail, cart, express order, the multi-step checkout, calendar view and event, form list, search results, error.
@@ -42,4 +42,4 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 ## Which steps are there?
 1-4. Done: shipping address (#1746; verified box left), method (#1759), billing (#1777), order preview (#1789); [[shipping-address-widget]] and siblings, [[order-preview-widget]].
 - Left from 4: what [[order-preview-widget]] lists under "What is left out?". 4b, card fields and surcharge rows switching with the method: done (#1918).
-5. The owner's order (above): 5a order form done (#2367, [[order-form-widget]]), 5b folder view, 5c photo gallery, 5d confirmations, 5e affiliate sign-up form.
+5. The owner's order (above): 5a order form done (#2367, [[order-form-widget]]), 5b folder view ([[folder-view-widget]]), 5c photo gallery, 5d confirmations, 5e affiliate sign-up form.
