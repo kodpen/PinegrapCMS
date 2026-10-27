@@ -17,4 +17,4 @@ description: The user create and edit screens share includes/forms/user_form.php
 - Create: account card, validation, the user INSERT, notify mail, password notice. Edit: profile layout, sessions, sign-in and contact cards, the user UPDATE, audit.
 
 ## Why this pair?
-- Measured among the remaining add/edit pairs: add 743 and edit 1,884 lines, about 432 shared, the largest one no open PR touched. Tests: `tests/user_form_test.php`.
+- PR #2507. Measured: add 743 and edit 1,884 lines, about 432 shared, the largest one no open PR touched. Tests: `tests/user_form_test.php`.
