@@ -17,7 +17,7 @@ description: KVKK notice link and optional explicit consent box at checkout and 
 
 ## What does a sign-up form get?
 - The same lines (PR #2397): `pg_legal_kvkk_signup_inject()` wraps the registration and membership entrance screens (`get_page_content.php`, the fallback screens in `forms.php`) and their designer widgets (`designer.php`), in front of `submit_register` (the legacy page also holds a login form), else a widget's first submit control. Values read before drawing.
-- `registration_entrance.php` / `membership_entrance.php` pass `kvkk_consent` (`pg_legal_kvkk_consent_given()`) to `pg_member_register()` / `pg_member_activate()`, which write a granted `contract:kvkk` answer through `pg_consent_log_answers()` (source `signup`): no order, so no `order_documents` row; no refusal row; a person who granted it before adds nothing. Where the answer is kept waits on decision #2403.
+- `registration_entrance.php` / `membership_entrance.php` pass `kvkk_consent` (`pg_legal_kvkk_consent_given()`) to `pg_member_register()` / `pg_member_activate()`, which write a granted `contract:kvkk` answer through `pg_consent_log_answers()` (source `signup`): no order, so no `order_documents` row; no refusal row; a person who granted it before adds nothing. Decided in #2403.
 
 ## What is left?
 - plans/checkout-legal-documents.md: a designer node/token for the lines, the order view link to the kvkk copy.
