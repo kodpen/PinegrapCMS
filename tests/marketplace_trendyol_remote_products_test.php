@@ -27,6 +27,7 @@ if (!defined('PG_INIT_LOADED')) {
 	define('PG_INIT_LOADED', true);
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/connectors/base.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/connectors/trendyol.php');
 
 function trendyol_remote_test_account()

@@ -14,7 +14,7 @@ description: Bulk matching of marketplace products to the shop's (marketplace_pr
 
 ## How is it read?
 - On the operator's button, never by the job: the script asks `read` for a stretch of about 12 s of pages (`mp_remote_products_read()`), shows the progress and asks again from `next` with the same `run` (the read's start). Rows are upserted with `fetched_timestamp = run`; the read that reaches the last page deletes the rows it did not see and works out the suggestions (`mp_remote_products_finish()`). A failed page keeps what was stored; "Continue reading" goes on from it.
-- n11: `GET /ms/product-query?page=N&size=100` (`n11-api-facts.md`).
+- n11: `GET /ms/product-query?page=N&size=100` (`n11-api-facts.md`); Trendyol: `trendyol-remote-products.md`.
 
 ## How are suggestions scored? (`includes/api/outbound/matching.php`, pure, `tests/marketplace_matching_test.php`)
 - Same barcode 100, same code once case and separators are dropped 98, one code inside the other or the code as a word of the other title 88-90, else the title: weighted words (rare words weigh more, words with a digit 1.6x), 65% how much of the shop name is in theirs plus 35% overall likeness; a number on each side the other lacks (H4 / H7) x0.7; the price only nudges (+4 close, -8 far). Below 50 nothing is offered.
@@ -25,6 +25,6 @@ description: Bulk matching of marketplace products to the shop's (marketplace_pr
 
 ## What does a match write?
 - A `marketplace_product_map` row (`INSERT IGNORE`), refused when the product or the code is already matched on the account. Nothing is queued or sent; other rows offered the same product lose that suggestion.
-- 10,000 x 10,000 products: about 4 s, 60 MB.
+- 10,000 x 10,000: about 4 s, 60 MB.
 
 Related: docs/memory/commerce/marketplace-outbound-layer.md, docs/memory/plans/marketplace-product-matching.md
