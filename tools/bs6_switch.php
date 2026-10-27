@@ -12,8 +12,8 @@
  * Fixes:
  *   head     the panel head loads Bootstrap 6: the stylesheet, the bridge
  *            module (assets/js/pg_bs6_bridge.js) in place of the classic
- *            bundle, the layer order and the third-party sheets in the
- *            vendor layer
+ *            bundle, the layer order and the third-party sheets (icon fonts
+ *            included) in the vendor layer
  *   sheet    other panel heads load the Bootstrap 6 stylesheet
  *   layer    panel stylesheets go into @layer custom
  *   style    inline <style> blocks of panel screens go into @layer custom
@@ -32,10 +32,16 @@
  *   dialogs  modal markup to <dialog class="dialog"> (bs6_switch_shell.php)
  *   drawers  offcanvas markup to <dialog class="drawer">
  *   menus    dropdown menus to .menu, alignment to the toggle's placement
+ *   accordions  accordion items to <details>/<summary>
+ *   stems    classes built in code from a v5 stem, where the values are
+ *            known (bs6_switch_stems.php)
  *   names    the renamed components' class names, data attributes and
  *            open-state selectors in code
  *   variables  component variables in panel stylesheets (--bs-dropdown-*
  *            to --bs-menu-*, offcanvas to drawer, modal to dialog)
+ *   tokens   tokens and rules that read v5 variables (bs6_switch_tokens.php)
+ *   bridge   v6's theme, neutral and radius variables from the panel's
+ *            palette (bs6_switch_tokens.php)
  *   shell    the v5 look the panel keeps: flush drawers, the menu caret, the
  *            menu wrapper's positioning (bs6_switch_shell_rules())
  *   own      v5 link colour helpers and print utilities to the panel's own
@@ -52,10 +58,12 @@
 
 require_once(__DIR__ . '/bs6_rules.php');
 require_once(__DIR__ . '/bs6_switch_shell.php');
+require_once(__DIR__ . '/bs6_switch_tokens.php');
+require_once(__DIR__ . '/bs6_switch_stems.php');
 
 // Bootstrap 6's own layer order with `vendor` before `custom`. jQuery UI,
-// DataTables and select2 go into `vendor`: an unlayered sheet would beat
-// every layer, and the panel's overrides of them sit in `custom`.
+// DataTables, select2 and the icon fonts go into `vendor`: an unlayered sheet
+// would beat every layer, and the panel's overrides of them sit in `custom`.
 const BS6_SWITCH_LAYER_ORDER = 'colors, config, root, reboot, layout, content, forms, components, vendor, custom, helpers, utilities';
 
 // The comment a layered panel stylesheet starts with; its presence marks a
@@ -107,6 +115,11 @@ function bs6_switch_plan($root)
 		$plan[] = array($path, 'variables', 'bs6_switch_component_variables');
 	}
 
+	foreach (bs6_switch_token_files($root) as $path) {
+		$plan[] = array($path, 'tokens', 'bs6_switch_tokens');
+	}
+
+	$plan[] = array('assets/css/backend.src.css', 'bridge', 'bs6_switch_token_bridge');
 	$plan[] = array('assets/css/backend.src.css', 'shell', 'bs6_switch_shell_rules');
 
 	foreach (bs6_switch_own_class_files($root) as $path) {
@@ -136,6 +149,11 @@ function bs6_switch_plan($root)
 		$plan[] = array($path, 'drawers', 'bs6_switch_drawers');
 		$plan[] = array($path, 'menus', 'bs6_switch_menus');
 		$plan[] = array($path, 'names', 'bs6_switch_component_names');
+		$plan[] = array($path, 'accordions', 'bs6_switch_accordions');
+	}
+
+	foreach (bs6_switch_stem_files($root) as $path) {
+		$plan[] = array($path, 'stems', 'bs6_switch_stems');
 	}
 
 	$plan[] = array('assets/js/style_designer.js', 'dialogs', 'bs6_switch_editor_dialogs');
@@ -203,7 +221,7 @@ function bs6_switch_shell_files($root)
 			continue;
 		}
 
-		if (preg_match('/modal|offcanvas|dropdown|dropup|dropend|dropstart/', (string) file_get_contents(rtrim($root, '/') . '/' . $path))) {
+		if (preg_match('/modal|offcanvas|dropdown|dropup|dropend|dropstart|accordion/', (string) file_get_contents(rtrim($root, '/') . '/' . $path))) {
 			$paths[] = $path;
 		}
 	}
@@ -290,7 +308,7 @@ function bs6_switch_head($source)
 {
 	$v5_sheet = '/assets/lib/bootstrap-5.3.8/css/bootstrap.min.css';
 	$bundle = '#[ \t]*<script type="text/javascript" src="\' \. OUTPUT_PATH \. OUTPUT_SOFTWARE_DIRECTORY \. \'/assets/lib/bootstrap-5\.3\.8/js/bootstrap\.bundle\.min\.js"></script>\n#';
-	$vendor = '#<link rel="stylesheet" type="text/css" href="(\' \. OUTPUT_PATH \. OUTPUT_SOFTWARE_DIRECTORY \. \'/assets/lib/(?:Jquery/ui|DataTables|select2)/[^"]*)"\s*/?>#';
+	$vendor = '#<link rel="stylesheet" type="text/css" href="(\' \. OUTPUT_PATH \. OUTPUT_SOFTWARE_DIRECTORY \. \'/assets/(?:lib/(?:Jquery/ui|DataTables|select2)|fonts/(?:bootstrap-icons|material-icons))/[^"]*)"\s*/?>#';
 	$first_link = '#\n([ \t]*)(<link rel="stylesheet" type="text/css" href="\' \. OUTPUT_PATH \. OUTPUT_SOFTWARE_DIRECTORY \. \'/assets/lib/Jquery/ui/jquery-ui\.min\.css)#';
 
 	if (strpos($source, 'pg_bs6_bridge.js') !== false) {
@@ -769,6 +787,9 @@ function bs6_switch_test_pins()
 		'tests/ai_write_test.php' => array(
 			array('column-gap-2', 'column-gap-3'),
 		),
+		'tests/pg_ui_test.php' => array(
+			array("'root' => 'DIALOG.dialog dialog-xl dialog-scrollable',", "'root' => 'DIALOG.dialog dialog-xl pg-dialog-centered dialog-scrollable',"),
+		),
 		'tests/catalog_bin_test.php' => array(
 			array('btn my-1 btn-secondary', 'btn my-1 btn-solid theme-secondary'),
 		),
@@ -841,7 +862,8 @@ const BS6_SWITCH_SHELL_NOTE = '/* Bootstrap 6 shell: what the panel keeps of Boo
 
 // Rules at the top of backend.src.css's custom layer that keep the v5 look
 // of the converted components: drawers flush with the screen edge and
-// square (v6 floats them with an inset and a radius), the caret v6 no
+// square (v6 floats them with an inset and a radius), v5's badge metrics,
+// the caret v6 no
 // longer draws on a menu toggle, the wrapper a menu used to position
 // against, the scrim of a dialog printed open (bs6_shell_open_sheet()), and
 // v5's link-body-emphasis and print display utilities as the panel's
@@ -861,9 +883,60 @@ function bs6_switch_shell_rules($source)
 	$rules = BS6_SWITCH_SHELL_NOTE . "\n"
 		. ".drawer {\n  --bs-drawer-inset: 0;\n  --bs-drawer-border-radius: 0;\n}\n"
 		. ".pg-menu-wrap {\n  position: relative;\n}\n"
+		. "/* v5's navbar has no minimum height; a button with no variant is clear. */\n"
+		. ".navbar {\n  --bs-navbar-min-height: 0;\n  --bs-navbar-nav-link-padding-x: 0.5rem;\n}\n"
+		. ":where(.btn:not(.btn-solid, .btn-outline, .btn-subtle, .btn-text, .btn-link)) {\n  --bs-btn-bg: transparent;\n  --bs-btn-hover-bg: transparent;\n  --bs-btn-active-bg: transparent;\n  --bs-btn-disabled-bg: transparent;\n}\n"
+		. "/* v5's card: block body and header, v5 paddings and cap tint, children\n"
+		. "   keep their own margins (v6 zeroes them and spaces them with a gap). */\n"
+		. ".card {\n  --bs-card-spacer-y: 1rem;\n  --bs-card-spacer-x: 1rem;\n  --bs-card-cap-padding-y: 0.5rem;\n  --bs-card-cap-padding-x: 1rem;\n"
+		. "  --bs-card-cap-bg: color-mix(in srgb, var(--pg-fg-body) 3%, transparent);\n  --bs-card-border-color: var(--pg-border-color-translucent);\n}\n"
+		. ".card-body,\n.card-header {\n  display: block;\n  flex-direction: row;\n}\n"
+		. ":where(.card-body) > :where(p, ul, ol, dl, pre, blockquote, figure) {\n  margin-top: 0;\n  margin-bottom: 1rem;\n}\n"
+		. ":where(.card-body) > :where(h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6, .card-title) {\n  margin-top: 0;\n  margin-bottom: 0.5rem;\n}\n"
+		. ":where(.card-body) > :where(hr) {\n  margin: 1rem 0;\n}\n"
+		. ":where(.card-body) > :where(.card-text:last-child) {\n  margin-bottom: 0;\n}\n"
+		. "/* v5's accordion colours, radius and chevron size. */\n"
+		. ".accordion {\n  --bs-accordion-btn-color: var(--pg-fg-body);\n  --bs-accordion-border-radius: var(--pg-radius);\n  --bs-accordion-btn-icon-width: 1.25rem;\n}\n"
+		. "/* v5's breadcrumb draws its divider before every item but the first;\n   v6 wants a .breadcrumb-divider element between them. */\n"
+		. ".breadcrumb-item + .breadcrumb-item {\n  padding-left: var(--bs-breadcrumb-item-padding-x, 0.5rem);\n}\n"
+		. ".breadcrumb-item + .breadcrumb-item::before {\n  padding-right: var(--bs-breadcrumb-item-padding-x, 0.5rem);\n  color: var(--pg-fg-2);\n  content: var(--bs-breadcrumb-divider, \"/\");\n}\n"
+		. ".breadcrumb-item.active {\n  color: var(--pg-fg-2);\n}\n"
+		. "/* v5's nav: no gap between items, v5 link padding. */\n"
+		. ".nav,\n.navbar-nav {\n  --bs-nav-gap: 0;\n  --bs-nav-link-gap: 0;\n}\n"
+		. ".navbar-nav {\n  --bs-nav-link-border-width: 0;\n}\n"
+		. ".navbar-nav .nav-link {\n  padding-top: 0.5rem;\n  padding-bottom: 0.5rem;\n}\n"
+		. ".nav {\n  --bs-nav-link-padding-x: 1rem;\n  --bs-nav-link-padding-y: 0.5rem;\n}\n"
+		. "/* v5's check, radio and switch sizes (1em, the switch twice as wide). */\n"
+		. ".check {\n  --bs-check-size: 1em;\n  --bs-check-border-radius: 0.25em;\n}\n"
+		. ".radio {\n  --bs-radio-size: 1em;\n}\n"
+		. ".switch {\n  --bs-switch-height: 1em;\n  --bs-switch-width: 2em;\n}\n"
+		. "/* v5's input.btn-check before its label: hidden, the label is the control\n   (v6 wraps the input in a label.btn-check). */\n"
+		. "input.btn-check {\n  position: absolute;\n  clip: rect(0, 0, 0, 0);\n  pointer-events: none;\n}\n"
+		. "/* v5's headings: its sizes (min() is v5's responsive size, fixed from\n   1200 px), weight and line height. */\n"
+		. ":where(h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6) {\n  font-weight: 500;\n  line-height: 1.2;\n}\n"
+		. ":where(h1, .h1) {\n  font-size: min(calc(1.375rem + 1.5vw), 2.5rem);\n}\n"
+		. ":where(h2, .h2) {\n  font-size: min(calc(1.325rem + 0.9vw), 2rem);\n}\n"
+		. ":where(h3, .h3) {\n  font-size: min(calc(1.3rem + 0.6vw), 1.75rem);\n}\n"
+		. ":where(h4, .h4) {\n  font-size: min(calc(1.275rem + 0.3vw), 1.5rem);\n}\n"
+		. ":where(h5, .h5) {\n  font-size: 1.25rem;\n}\n"
+		. ":where(h6, .h6) {\n  font-size: 1rem;\n}\n"
+		. "/* An icon font class on an input group's add-on keeps the add-on's size,\n   as the more specific v5 rule did. */\n"
+		. ".input-group > .input-group-text.material-icons {\n  font-size: var(--bs-input-group-addon-font-size);\n  line-height: var(--bs-input-group-addon-line-height);\n}\n"
+		. ".input-group-sm > .input-group-text.material-icons {\n  font-size: var(--bs-btn-input-sm-font-size);\n}\n"
+		. ".input-group-lg > .input-group-text.material-icons {\n  font-size: var(--bs-btn-input-lg-font-size);\n}\n"
+		. "/* v5's field: a label in the text's own colour and weight (.small\n   shrinks it), no inset shadow. */\n"
+		. ".form-label,\n.col-form-label {\n  --bs-label-font-weight: 400;\n  --bs-label-color: currentcolor;\n}\n"
+		. ":where(.form-label, .col-form-label):is(.small, small) {\n  font-size: 0.875em;\n}\n"
+		. ".form-control {\n  --bs-control-box-shadow: none;\n}\n"
+		. "/* v5's badge: no minimum height or border, its padding, size, weight and\n   radius. */\n"
+		. ".badge {\n  --bs-badge-padding-x: 0.65em;\n  --bs-badge-padding-y: 0.35em;\n  --bs-badge-font-size: 0.75em;\n  --bs-badge-font-weight: 700;\n  --bs-badge-border-radius: var(--pg-radius);\n  min-height: 0;\n}\n"
+		. ".badge:not(.badge-outline) {\n  --bs-badge-border-width: 0;\n}\n"
 		. ".pg-menu-caret::after {\n  display: inline-block;\n  margin-left: 0.255em;\n  vertical-align: 0.255em;\n  content: \"\";\n"
 		. "  border-top: 0.3em solid;\n  border-right: 0.3em solid transparent;\n  border-bottom: 0;\n  border-left: 0.3em solid transparent;\n}\n"
 		. ".pg-menu-caret:empty::after {\n  margin-left: 0;\n}\n"
+		. "/* v5's dialog: its radius, an unblurred backdrop, under the top of the\n   screen; .pg-dialog-centered (v5's modal-dialog-centered) is centred. */\n"
+		. ".dialog {\n  --bs-dialog-border-radius: var(--pg-radius-lg);\n  --bs-dialog-backdrop-blur: 0px;\n  margin-top: var(--bs-dialog-margin);\n}\n"
+		. ".dialog.pg-dialog-centered,\n.dialog.dialog-fullscreen {\n  margin-top: auto;\n}\n"
 		. "/* A closed .dialog keeps display: flex (Bootstrap 6 hides it with visibility),\n   so the UA's absolute position would let a tall one stretch the page. */\n"
 		. ".dialog:not(:modal) {\n  position: fixed;\n}\n"
 		. ".pg-open-sheet {\n  position: fixed;\n  inset: 0;\n  z-index: 1055;\n  overflow-y: auto;\n  padding: 1.75rem 0;\n}\n"
