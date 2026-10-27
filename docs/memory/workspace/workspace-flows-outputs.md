@@ -19,7 +19,7 @@ description: Values a flow box gives later boxes (data-passing D1-D3): outputs p
 - No (D2, PR #2121): `ws_step_fill_value()` puts a word joiner (U+2060) after every `{` of a value, so `ws_scheduled_fill()` (one `strtr()`, counts read from the text as written) cannot match it. Before, a typed `{{customer}}` or `{{node.…}}` was expanded by the next filler.
 
 ## How is a value escaped for where it lands?
-- D3: `ws_step_fill_target($kind, $action)` names the destination, `ws_step_fill_value()` fills by it. Tests `tests/workspace_flow_fill_test.php`.
+- D3 (PR #2293): `ws_step_fill_target($kind, $action)` names the destination, `ws_step_fill_value()` fills by it. Tests `tests/workspace_flow_fill_test.php`.
 - message (post, task_open, the waiting task's try, report, checkin, approval): a `<` gets a word joiner, so `<@user:N>`/`<#order:N>` in a value is text; before it mentioned people and tagged records. The builder's own tags stay. `ws_render_body()` escapes the HTML.
 - chat (webhook format text: Slack, Teams, Google Chat): `<` too (`<!channel>`, `<url|label>`); discord: `<` and `@everyone`/`@here`.
 - text (e-mail box, plain text; task e-mail; notify; generic webhook): as given. The task e-mail escapes subject and intro where it writes its HTML (`h()`, `nl2br(h())`); `json_encode()` makes the text one JSON string (values come from `json_decode()`, valid UTF-8). Escaping in the fill would show `&amp;lt;`.
