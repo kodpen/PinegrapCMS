@@ -7,6 +7,7 @@ description: Plan (owner request 2026-10-27, draft being refined): the Flows can
 - Control arrows leave a box on the right; data threads leave on the bottom: a thin line (1 px), hanging like a thread (no corners, a slight sag that grows a little with the distance, never overlapping another thread: a small gap stays), coloured by type, each thread a few tones apart from the others, even from the same dot (number, text, yes/no, person, date), no arrowhead. A thread ends on the chip of the field that uses the value, not on the box. Every box shows its kind's icon; every output dot shows its type's icon.
 - Threads are drawn from the references kept in the fields (`{{node.<id>.<key>}}`, workspace-flows-data-passing.md); nothing else stores them. Removing a chip removes its thread; the value picker, the API and an AI draft give the same picture.
 - A value may skip boxes: a field reads any upstream output, however many boxes back.
+- The look in numbers (widths, colours, sag, icons): workspace-flows-visual-spec.md.
 
 ## What is the fork?
 - Double-clicking an output dot starts one more thread from that dot, never from the middle of another thread; the field chips whose type fits light up; dropping on one binds it. The threads of one output fan out from its dot.

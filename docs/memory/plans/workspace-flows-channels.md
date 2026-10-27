@@ -4,7 +4,7 @@ description: Plan (owner request 2026-10-27, draft): flows started from a channe
 ---
 
 ## What is asked?
-- A run that ends gets a Completed flag (Waiting, Running or Failed until then) holding its result; a long result folds behind a down arrow. The flag shows on the canvas (last run), in the flow list and on the run's card in a channel.
+- A run that ends gets a Completed flag (Waiting, Running or Failed until then) holding its result; a long result folds behind a down arrow. The flag shows on the canvas (last run), in the flow list and on the run's card in a channel; its colours: workspace-flows-visual-spec.md.
 - The composer's Add menu (workspace.js, the `sa_new` entry today) gets "Start a flow" (the flows the member may run, each with its last flag) and "Scheduled flow" in place of "Scheduled action": a two-box flow (time start, message) in a mini flow window, published there or opened on the canvas.
 - Scheduled work has no menu or form of its own: a scheduled job is a flow with a time start. Scheduled messages ("Send later") stay a composer feature (answer 1 of workspace-flows-scheduled-merge.md).
 

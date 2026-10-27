@@ -98,6 +98,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-flows-scheduled-merge.md: Plan (2026-10-24): scheduled actions move into Flows, no feature lost; one screen, read-only graph, boxes, all converted
 - workspace-flows-scheduled-parity.md: Parity rows of plans/workspace-flows-scheduled-merge.md: every scheduled-action key and rule and the slice that keeps it; the test that maps them is in workspace/workspace-flows-parity-test.md
 - workspace-flows-templates.md: Plan (owner request 2026-10-27, draft): a flow template gallery that takes over the scheduled-action templates; cards with a box preview, animated placement on the canvas, a short setup
+- workspace-flows-visual-spec.md: Plan (owner request 2026-10-27, draft): the Flows canvas look in numbers; line widths, type colours and tones, thread sag and gaps, icons, run flags, the mini window, template motion
 - workspace-flows.md: Plan (2026-10-24): one Flows system: process templates, "when X do Y" rules, an n8n-like canvas; canvas first, one engine
 - workspace-friendly-ui.md: Plan (2026-10-19) for a friendlier Workspace look: token scale, channel colour in the header, empty-state art, motion (avatar moved to bootstrap-6-panel); no schema; slices U1-U6 and open questions
 - workspace-growth-2026-10.md: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MCP, quotes, catalogue, Workspace canvas, text tools, commands, voice, icons, MCP connectors, assistant keys): index, waves, rules

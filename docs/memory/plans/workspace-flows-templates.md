@@ -7,7 +7,7 @@ description: Plan (owner request 2026-10-27, draft): a flow template gallery tha
 - Flows get templates like the scheduled actions' ready ones (`saTemplates()` in workspace.js, the `sa_tpl_*` texts in scheduled.php), shown as a gallery: each card has a row of its box icons, a title, one line, its start (time, by hand, event), box and thread counts, and Use.
 - "New flow" offers three starts: empty canvas, describe it to AI, from a template. The editor's box list has "Start from a template" too.
 - Use places the template with motion: boxes appear one after another, arrows grow, threads draw, then a setup panel asks only the template's few settings (address, channel, time, person); "Open on canvas" or "Publish now".
-- Motion respects prefers-reduced-motion (placed at once).
+- Motion respects prefers-reduced-motion (placed at once). Timings: workspace-flows-visual-spec.md.
 
 ## What comes over from scheduled actions?
 - Each `sa_tpl_*` becomes a flow template with the same texts, so no new translation for the same sentence (slice 4 of workspace-flows-scheduled-merge.md: templates become starters).
