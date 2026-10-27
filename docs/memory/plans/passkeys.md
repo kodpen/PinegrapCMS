@@ -13,7 +13,7 @@ description: Plan (approved 2026-10-19): WebAuthn passkeys as a second factor an
 - Where: Account Security widget for members and the panel account page for staff (`account_security` widget already lists sessions and connected sign-ins); the `edit_user.php` two-step reset removes passkeys too. Recovery codes stay the fallback.
 - Owner (2026-10-26): a password reset or change leaves the passkeys working; the member takes them back under My Account › Security (step 4e), the administrator with the two-step reset.
 - Owner (2026-10-27, «4c önerin kabul»): an account without TOTP adds a passkey with its password **and** a one-time code e-mailed to the account's address, so a stolen password alone cannot add the thief's passkey; removing one needs the password only.
-- Owner (2026-10-27, «4e ekle»): the column `auth_tokens.passkey_id` is approved (2026.11.0 migration step with the `install_add_column()` family).
+- Owner (2026-10-27, «4e ekle»): the column `auth_tokens.passkey_id` is approved (built in 11.0.46).
 - API `/auth/login` is unchanged (team devices keep password + TOTP); OAuth consent screen signs in with whatever the site offers.
 - Password sign-in and TOTP remain; nothing is removed or forced.
 
@@ -22,9 +22,9 @@ description: Plan (approved 2026-10-19): WebAuthn passkeys as a second factor an
 
 - 4c done (#2226, core/passkey-account-section.md): the classic account page adds a passkey without TOTP (password + e-mailed code); the first passkey of such an account gives it recovery codes, which `mfa.php` takes.
 
-- 4c2 The designed `account_security` widget: the same add form without TOTP (new flag for the e-mailed code; saved trees keep `passkey_needs_mfa` until they carry an `email_code` field), and new recovery codes for a passkey-only account (classic page and widget). (S)
+- 4e done (#2250, core/passkey-sessions.md): `auth_tokens.passkey_id` (11.0.46), the session row names its passkey, removing a passkey ends its sessions.
 
-- 4e Sessions and passkeys: a sign-in with a passkey records it on its session (`auth_tokens`); My Account › Security names the passkey beside the session and offers "Sign out and remove the passkey", and removing a passkey ends the sessions it opened. A synced passkey (iCloud, Google) is one credential on many devices: removing it stops them all. Column `auth_tokens.passkey_id` approved (owner, 2026-10-27). (S)
+- 4c2 The designed `account_security` widget: the same add form without TOTP (new flag for the e-mailed code; saved trees keep `passkey_needs_mfa` until they carry an `email_code` field), a device row token for the session's passkey, and new recovery codes for a passkey-only account (classic page and widget). (S)
 
 - 5 Memory: update `core/passkey-ceremonies.md` and `two-step-sign-in.md` with each step.
 
@@ -32,5 +32,4 @@ description: Plan (approved 2026-10-19): WebAuthn passkeys as a second factor an
 - `rpId` on sites served from a sub-folder or several hosts: use the host only; the language prefix does not matter.
 
 ## Where to start?
-- Step 4e: `core/passkey-passwordless.md` (where a passkey sign-in completes), `two-step-sign-in.md` (remember-me tokens), `release/README.md` for the column step.
 - Step 4c2: `designer/passkey-widget-list.md`, `core/passkey-account-section.md`.

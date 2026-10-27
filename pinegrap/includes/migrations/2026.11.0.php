@@ -76,6 +76,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_delivered_campaigns();    // 11.0.42
 	upgrade_2026_11_0_marketplace_map_code_bin(); // 11.0.44
 	upgrade_2026_11_0_shipment_lookup();        // 11.0.45
+	upgrade_2026_11_0_session_passkey();        // 11.0.46
 
 }
 
@@ -2424,6 +2425,20 @@ function upgrade_2026_11_0_marketplace_remote_products() {
 // passkey" button on the sign-in screens (PASSKEY_SIGNIN). Off by default: an
 // upgraded site keeps its sign-in screen as it is until a manager turns the
 // button on.
+// A session opened with a passkey names it (auth_tokens.passkey_id, 0 for any
+// other sign-in), so the account page can show it beside the session and
+// removing the passkey ends the sessions it opened. No foreign key: a token
+// row outlives nothing it points at, and a removed passkey takes its rows
+// along itself (pg_passkey_remove()).
+function upgrade_2026_11_0_session_passkey() {
+
+	install_add_column('auth_tokens', 'passkey_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('auth_tokens', 'idx_passkey', "INDEX idx_passkey (passkey_id)");
+
+	install_note('My Account › Security names the passkey a session was opened with; removing a passkey signs out the sessions it opened.');
+
+}
+
 function upgrade_2026_11_0_passkey_signin() {
 
 	install_add_column('config', 'passkey_signin', "TINYINT NOT NULL DEFAULT 0");

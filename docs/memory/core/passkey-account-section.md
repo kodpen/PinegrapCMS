@@ -20,7 +20,7 @@ description: Passkeys on the account page (pg_passkey_account_section(), PR #138
 ## How are rename and remove done?
 - `account_security.php` actions `passkey_rename` (session only) and `passkey_remove`: form POSTs with the token and `passkey_id`, back to `pg_mfa_account_url()` (or a widget's return_to); refused proofs go to the `my_account_profile` form messages.
 - Only a passkey of the signed-in account (`WHERE id AND user_id`); another id goes back silently before any proof is counted.
-- Remove asks for the proofs the account has (`pg_passkey_reauth_fields()`): the password unless algo 3, a code while TOTP is on; no e-mailed code (owner). An account with neither (Google-only, TOTP off) removes with its session.
+- Remove (`pg_passkey_remove_form()`, also beside each session it opened: [[passkey-sessions]]) asks for the proofs the account has (`pg_passkey_reauth_fields()`): the password unless algo 3, a code while TOTP is on; no e-mailed code (owner). An account with neither (Google-only, TOTP off) removes with its session.
 - Log lines `user renamed a passkey (…)`, `user removed a passkey (…)`. The credential stays on the device; the form says to delete it there too.
 
 ## What was not verified?

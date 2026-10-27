@@ -1103,9 +1103,26 @@ function pg_account_security_section()
     $rows_html = '';
     $count = 0;
     $pin_column = pg_auth_tokens_have_pin();
+
+    // The passkey a session was opened with is named on its row, with a form
+    // that removes it, which signs out every session it opened.
+    $passkey_column = function_exists('pg_auth_tokens_have_passkey') && pg_auth_tokens_have_passkey();
+    $passkey_names = array();
+    $passkey_proofs = null;
+
+    if ($passkey_column) {
+        foreach (pg_passkeys_of_user($user_id) as $passkey) {
+            $passkey_names[(int) $passkey['id']] = ($passkey['name'] !== '') ? $passkey['name'] : lang('Passkey');
+        }
+
+        if (empty($_SESSION['software']['logged_in_as_different_user'])) {
+            $passkey_proofs = pg_passkey_reauth_fields($algo, pg_mfa_table_exists() && pg_mfa_enabled($user_id));
+        }
+    }
+
     $result = mysqli_query(db::$con,
         "SELECT selector, user_agent, ip_address, created_at, last_used_at, expires_at"
-         . ($pin_column ? ", pinned" : "") . "
+         . ($pin_column ? ", pinned" : "") . ($passkey_column ? ", passkey_id" : "") . "
          FROM auth_tokens WHERE user_id = '" . $user_id . "'
          ORDER BY (last_used_at = 0) ASC, last_used_at DESC, created_at DESC");
     if ($result) {
@@ -1125,9 +1142,26 @@ function pg_account_security_section()
             $device_title = (($device_title !== '') ? ($device_title . "\n") : '')
                 . lang('First seen') . ': ' . date('Y-m-d H:i', (int) $r['created_at']);
 
+            $passkey_id = $passkey_column ? (int) $r['passkey_id'] : 0;
+            $passkey_html = '';
+
+            if (isset($passkey_names[$passkey_id])) {
+                $passkey_html = '<div style="margin-top:.25em">' . h(lang(array(
+                    'string' => 'Signed in with the passkey {var:1}',
+                    'vars'   => $passkey_names[$passkey_id]))) . '</div>';
+
+                if ($passkey_proofs !== null) {
+                    $passkey_html .= '<details style="margin-top:.25em"><summary style="cursor:pointer">' . h(lang('Sign out and remove the passkey')) . '</summary>'
+                        . pg_passkey_remove_form($passkey_id, $passkey_proofs, $action_url, $token,
+                            'pg_session_passkey_' . $count . '_', lang('Sign out and remove the passkey'))
+                        . '</details>';
+                }
+            }
+
             $rows_html .=
-                '<tr><td style="padding:.4em .6em" title="' . h($device_title) . '">' . h(pg_user_agent_label($r['user_agent']))
+                '<tr><td style="padding:.4em .6em"><span title="' . h($device_title) . '">' . h(pg_user_agent_label($r['user_agent'])) . '</span>'
                 . ($is_current ? ' <span class="badge bg-success fw-light">' . h(lang('This device')) . '</span>' : '')
+                . $passkey_html
                 . '</td><td style="padding:.4em .6em">' . h((string) $r['ip_address'])
                 . '</td><td style="padding:.4em .6em">' . $last
                 . '</td><td style="padding:.4em .6em;text-align:right">'
@@ -1439,6 +1473,17 @@ function pg_login_set_device_cookie($user_id, $remember)
     }
 
     $auth_cookie = pg_auth_token_create($user_id, $lifetime);
+
+    // A sign-in with a passkey names it on its token, so the account page
+    // shows it and removing the passkey ends this session.
+    if (function_exists('pg_passkey_signin_marked') && isset($_SESSION['software'])) {
+        $passkey_id = pg_passkey_signin_marked($_SESSION['software']['signin_passkey'], $user_id, time());
+
+        if (($passkey_id > 0) && pg_auth_tokens_have_passkey()) {
+            db("UPDATE auth_tokens SET passkey_id = '" . $passkey_id . "'
+                WHERE selector = '" . escape(strtok($auth_cookie, ':')) . "'");
+        }
+    }
 
     if (version_compare(PHP_VERSION, '5.2.0', '>=') == TRUE) {
         setcookie('software[auth]', $auth_cookie, $cookie_expiry, '/', '', $secure, true);
