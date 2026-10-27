@@ -39,6 +39,20 @@ function test_bs6_switch_tokens_declarations_and_rules()
 	pg_assert_same(array('source' => $out, 'status' => 'done'), bs6_switch_tokens($out), 'second run');
 }
 
+function test_bs6_switch_rgb_variables()
+{
+	$in = ":root { --bs-body-bg-rgb: 255, 255, 255; --pg-x: rgb(var(--bs-navbar-bg-rgb)); }\n"
+		. ".a { background: rgba(var(--bs-success-rgb),.3); box-shadow: 0 2px 8px rgba(var(--bs-primary-rgb), 0.18); }\n"
+		. ".b { background-color: rgba(var(--bs-body-bg-rgb),60%); color: rgb(var(--bs-danger-rgb)); }\n";
+	$result = bs6_switch_rgb_variables($in);
+
+	pg_assert_same('applied', $result['status']);
+	pg_assert_same(":root { --pg-body-bg-rgb: 255, 255, 255; --pg-x: rgb(var(--pg-navbar-bg-rgb)); }\n"
+		. ".a { background: color-mix(in srgb, var(--pg-success) 30%, transparent); box-shadow: 0 2px 8px color-mix(in srgb, var(--pg-primary) 18%, transparent); }\n"
+		. ".b { background-color: rgba(var(--pg-body-bg-rgb),60%); color: var(--pg-danger); }\n", $result['source']);
+	pg_assert_same('done', bs6_switch_rgb_variables($result['source'])['status'], 'second run');
+}
+
 function test_bs6_switch_token_bridge()
 {
 	$sheet = BS6_SWITCH_LAYER_NOTE . "\n@layer custom {\n\n.x {}\n\n}\n";
@@ -49,7 +63,7 @@ function test_bs6_switch_token_bridge()
 	pg_assert_true(strpos($out, BS6_SWITCH_BRIDGE_NOTE) > strpos($out, "\n}\n"), 'after the layer, unlayered');
 	pg_assert_contains('  --bs-primary-bg: var(--pg-primary);', $out);
 	pg_assert_contains('  --bs-danger-contrast: var(--pg-on-accent);', $out);
-	pg_assert_contains('  --bs-bg-body: rgb(var(--bs-body-bg-rgb));', $out);
+	pg_assert_contains('  --bs-bg-body: rgb(var(--pg-body-bg-rgb));', $out);
 	pg_assert_same(array('source' => $out, 'status' => 'done'), bs6_switch_token_bridge($out), 'second run');
 	pg_assert_same('missing', bs6_switch_token_bridge('.x {}')['status']);
 }
