@@ -23,7 +23,7 @@ description: Plan (2026-10-21, step 1 done, answers open): each askable agent ge
 3. Model assistants with the site's own key: OpenAI-compatible chat APIs (OpenAI, Gemini, Mistral, DeepSeek, OpenRouter with PKCE sign-in (plans/reverse-oauth-leftovers.md), Azure OpenAI, a custom address such as Ollama) answered by the Pinegrap AI engine (`ws_ai_step()` with that address, key and model): the same tools, proposals and approvals. A card each: handle (`@chatgpt`), name, avatar, sealed key, model, test. `ws_ai_requests.agent` `model:<id>`.
 4. Application membership endpoints (item 1 of plans/workspace-phase3-leftovers.md): add or remove an application in a channel; only a member adds one to a private channel.
 5. MCP agents get an avatar and their name in tags. Each slice writes its memory.
-   - 5a done (#PR, workspace-mcp-agent-identity.md): one avatar and icon per `mcp:<id>`, server.
+   - 5a done (#2112, workspace-mcp-agent-identity.md): one avatar and icon per `mcp:<id>`, server.
    - 5b: the @ picker (workspace.js ~13601) and the delegate tag (workspace_task_delegate.js ~630) use the icon/avatar from `ws_mcp_boot()`/delegate; both in workspace.min.js.
 
 ## Open questions (recommendation)
