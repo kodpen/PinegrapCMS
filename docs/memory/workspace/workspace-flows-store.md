@@ -9,9 +9,9 @@ description: Workspace flows store (graph check, API; runs: workspace-flows-runn
 
 ## What does a graph look like?
 - `{"v":1, "nodes":[{id, kind, label, x, y, config}], "edges":[{from, to, on}], "notes":[{id, text, x, y, w, h}]}`. Ids `^[a-z][a-z0-9_]{0,31}$`.
-- Kinds (`ws_flow_kinds()`): `manual` (outcome next; config subject), `task` (done, cancelled; title, description, assignees or an assign rule of `ws_template_assign_valid()`, due_in, priority), `end`.
+- Kinds: `ws_flow_kinds()`; `task` (title, description, assignees or an assign rule of `ws_template_assign_valid()`, due_in, priority).
 - `ws_flow_graph_normalize()` (pure): casts, drops unknown keys, cuts texts by characters, valid UTF-8 everywhere (a byte cut once broke `json_encode()`), a missing `on` is the box's first outcome.
-- `ws_flow_graph_check()` (pure) codes: too_many, bad_id, duplicate_id, unknown_kind, bad_config, no_trigger, two_triggers, bad_edge, arrow_into_trigger, bad_outcome, duplicate_edge, cycle (Kahn, boxes on the loop only), unreachable. Notes are not checked. `ws_flow_problems()` adds the subject against `ws_scheduled_record_types()`.
+- `ws_flow_graph_check()` (pure) codes: too_many, bad_id, duplicate_id, unknown_kind, bad_config, no_trigger, two_triggers, bad_edge, arrow_into_trigger, bad_outcome, duplicate_edge, cycle (Kahn, boxes on the loop only), unreachable, bad_reference (`workspace-flows-references.md`). Notes are not checked. `ws_flow_problems()` adds the subject against `ws_scheduled_record_types()`.
 - bad_id, bad_config beyond the plan: an id becomes `run_steps.node_id`; a task box needs a title.
 
 ## Who may do what?
