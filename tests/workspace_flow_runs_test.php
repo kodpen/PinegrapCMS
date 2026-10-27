@@ -713,7 +713,7 @@ function test_workspace_flow_runs_adopted_task_is_looked_at_at_once()
 {
 	$task = ws_flow_runs_test_source('ws_flow_step_task');
 
-	pg_assert_contains('$adopted ? $now : $now + WS_FLOW_RECHECK', $task);
+	pg_assert_contains('$adopted ? $now : ws_flow_timeout_next_look($now, $timeout_at)', $task);
 
 	$find = ws_flow_runs_test_source('ws_flow_step_task_find');
 

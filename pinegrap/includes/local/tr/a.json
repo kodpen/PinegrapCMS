@@ -2015,6 +2015,7 @@
     "An arrow joins a box that is not there.": "Bir ok, olmayan bir kutuya bağlanıyor.",
     "An arrow joins the box {var:1} to itself.": "Bir ok {var:1} kutusunu kendisine bağlıyor.",
     "An arrow leaves the box {var:1} on {var:2}, which is not one of its outcomes.": "Bir ok {var:1} kutusundan {var:2} sonucunda çıkıyor, ama bu o kutunun sonuçlarından biri değil.",
+    "An arrow leaves the task box {var:1} on timeout, but the box has no timeout.": "{var:1} görev kutusundan zaman aşımında bir ok çıkıyor, ancak kutunun zaman aşımı yok.",
     "An arrow on Yes is taken when it holds, one on No when it does not. Without an arrow on No the flow stops there, and the run keeps the reason.": "Koşul sağlanınca Evet okuna, sağlanmayınca Hayır okuna gidilir. Hayır oku yoksa akış orada durur ve çalıştırma nedenini saklar.",
     "An article from the newsroom.": "Haber merkezimizden bir haber.",
     "An article is listed once, with its products as options. Pick its category and answer what the category asks.": "Bir ürün grubu tek ilan olarak açılır, ürünleri seçenekleri olur. Kategorisini seçin ve kategorinin istediklerini yanıtlayın.",
