@@ -163,3 +163,12 @@ function test_bs6_codemod_lone_strings_printed_into_markup()
 	pg_assert_contains("b.classList.toggle('btn-warning', x);", $js['source'], 'a class API argument takes one class');
 	pg_assert_contains("var k = 'btn-danger';", $js['source']);
 }
+
+function test_bs6_switch_tokens_leave_theme_declarations()
+{
+	$css = ".alert[class~=\"alert-secondary\"] {\n  --bs-theme-bg: var(--bs-secondary-bg);\n}\n.x { background: var(--bs-secondary-bg); }\n";
+	$result = bs6_switch_tokens($css);
+
+	pg_assert_contains("--bs-theme-bg: var(--bs-secondary-bg);", $result['source']);
+	pg_assert_contains(".x { background: var(--pg-bg-2); }", $result['source']);
+}
