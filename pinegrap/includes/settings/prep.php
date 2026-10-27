@@ -1921,24 +1921,24 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                                         </div>
                                                         <div class="pg-f-sm">
                                                             <label for="login_throttle_minutes" class="form-label">' . lang('Counted Over') . '</label>
-                                                            <div class="input-group">
-                                                                <input type="text" name="login_throttle_minutes" id="login_throttle_minutes" class="form-control" value="' . (int) $login_throttle_minutes . '" size="5" maxlength="4" inputmode="numeric" style="text-align: right;"/>
-                                                                <span class="input-group-text">' . lang('minutes') . '</span>
-                                                            </div>
+                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('minutes') . '</span>
+                                                                <input type="text" name="login_throttle_minutes" id="login_throttle_minutes" class="form-ghost" value="' . (int) $login_throttle_minutes . '" size="5" maxlength="4" inputmode="numeric" style="text-align: right;"/>
+                                                            </label>
                                                         </div>
                                                         <div class="pg-f-sm">
                                                             <label for="login_throttle_lockout" class="form-label">' . lang('Locked Out For') . '</label>
-                                                            <div class="input-group">
-                                                                <input type="text" name="login_throttle_lockout" id="login_throttle_lockout" class="form-control" value="' . (int) $login_throttle_lockout . '" size="5" maxlength="5" inputmode="numeric" style="text-align: right;"/>
-                                                                <span class="input-group-text">' . lang('minutes') . '</span>
-                                                            </div>
+                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('minutes') . '</span>
+                                                                <input type="text" name="login_throttle_lockout" id="login_throttle_lockout" class="form-ghost" value="' . (int) $login_throttle_lockout . '" size="5" maxlength="5" inputmode="numeric" style="text-align: right;"/>
+                                                            </label>
                                                         </div>
                                                         ' . ($security_ready ? '<div class="pg-f-xs">
                                                             <label for="login_throttle_captcha_after" class="form-label">' . lang('Ask a Question After') . '</label>
-                                                            <div class="input-group">
-                                                                <input type="text" name="login_throttle_captcha_after" id="login_throttle_captcha_after" class="form-control" value="' . (int) $login_throttle_captcha_after . '" size="4" maxlength="3" inputmode="numeric" style="text-align: right;"/>
-                                                                <span class="input-group-text">' . lang('failures') . '</span>
-                                                            </div>
+                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('failures') . '</span>
+                                                                <input type="text" name="login_throttle_captcha_after" id="login_throttle_captcha_after" class="form-ghost" value="' . (int) $login_throttle_captcha_after . '" size="4" maxlength="3" inputmode="numeric" style="text-align: right;"/>
+                                                            </label>
                                                             <div class="form-text">' . lang('From this many failures on, a sign-in attempt must also answer a simple arithmetic question before the password is checked. A person answers it in a second; a password list cannot. 0 turns it off.') . '</div>
                                                         </div>' : '') . '
                                                         <div class="col-12">
