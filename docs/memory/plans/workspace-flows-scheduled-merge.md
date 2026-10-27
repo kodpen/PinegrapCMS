@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-scheduled-merge
-description: Plan (2026-10-24, slice 0 #1590, slice 1 #1707, date fix #1798, slice 2 #1810, answers 1-3): scheduled actions move into Flows, no feature lost; one screen, read-only graph, boxes, opt-in convert
+description: Plan (2026-10-24): scheduled actions move into Flows, no feature lost; one screen, read-only graph, boxes, all converted
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -14,7 +14,7 @@ description: Plan (2026-10-24, slice 0 #1590, slice 1 #1707, date fix #1798, sli
 - Flows: manual, task, end boxes; the owner edits, staff and home-channel readers run a live one (`ws_flow_access()`); no loops; runs swept after 30 days, start at depth 0; `flow_id` unread.
 
 ## What is proposed? (not approved yet)
-- Actions run on `ws_scheduled_execute()` until converted; nothing retires before the parity test says a box covers it; no route is removed, driver names stay.
+- Actions run on `ws_scheduled_execute()` until converted; nothing retires before the parity test says a box covers it; driver names stay. The `/workspace/scheduled-actions` routes go before 2026.11.0 (owner, 2026-10-27: workspace-flows-channels.md).
 - Two anchors: hidden (a flow's trigger box; lists, `ws_scheduled_action()` and S1 skip it, `ws_scheduled_report()` silent) and converted (slice 5; still an action to all of them). The new filter is not `ws_scheduled_actions_only()`, which feeds event and join starts.
 
 ## Slices (one PR each)
@@ -23,11 +23,11 @@ description: Plan (2026-10-24, slice 0 #1590, slice 1 #1707, date fix #1798, sli
 2. Done (#1810). "Show on canvas": pure `ws_scheduled_graph()` from the staff card, `ws_scheduled_get` answers it, `showAction()` draws it read-only; edits stay in the form.
 3. Parity boxes (F4, F5), one per parity row: schedule, by hand or chain only, join, event triggers on the anchor; condition (no = skipped, reason kept); steps from steps.php (engine plan), every option; task without waiting; approval; outcomes; delay; retry; start a flow; depth.
 4. New rules on the canvas; the form stays for keys still `form`; templates become starters, AI drafts (F8).
-5. "Convert to flow" (answer 2): the row becomes a converted anchor, its id and every parity row kept. Schema (a mark for the two anchors): ask first.
+5. Conversion (answer 2): in the 2026.11.0 upgrade every row becomes a converted anchor, its id and every parity row kept. Schema (a mark for the two anchors): ask first.
 
 ## Which questions are answered? (owner, 2026-10-24: 1 no, 2 c, 3 a; 4-6 open)
 1. Scheduled messages too? → no, staff's actions only; messages stay in the composer and their list.
-2. End: (a) old rows forever, (b) all converted, form retired, (c) opt-in "Convert to flow" per action once every part maps, the form until boxes cover all (parity test) → c; Flows the one entry.
+2. End: (a) old rows forever, (b) all converted, form retired, (c) opt-in "Convert to flow" per action once every part maps, the form until boxes cover all (parity test) → b (owner, 2026-10-27, was c): every part a box, all converted in the 2026.11.0 upgrade, form retired; Flows the one entry.
 3. Who edits and runs a moved action: (a) any staff, as today (F7 shares first), (b) owner only → a.
 4. Card, note strip, decision reply → kept where written.
 5. History of a converted action: (a) kept: a flow run writes its outcome to the anchor's `ws_scheduled_runs` row, boxes go at 30 days, (b) `ws_flow_runs_sweep()` skips converted flows, (c) 30 days → a.
