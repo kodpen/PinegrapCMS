@@ -2088,9 +2088,10 @@
         }, true);
     }
 
-    // Tags inside a message: open the record, see where else it came up.
+    // Tags inside a message, and the head of a lone tag's card: open the
+    // record, see where else it came up.
     function chipMenus(container) {
-        Array.prototype.forEach.call(container.querySelectorAll('.ws-chip[data-ws-ref]'), function (chip) {
+        Array.prototype.forEach.call(container.querySelectorAll('.ws-chip[data-ws-ref], .ws-tag-card-head[data-ws-ref]'), function (chip) {
             onContext(chip, function () {
                 var parts = chip.getAttribute('data-ws-ref').split(':');
                 var type = parts[0];

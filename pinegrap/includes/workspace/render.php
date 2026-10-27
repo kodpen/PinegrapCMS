@@ -51,6 +51,46 @@ function ws_chip_html($ref)
 }
 
 /**
+ * A message that is one record tag and nothing else, drawn as a card: the
+ * record's icon and name (a link where the tag has one), its status and the
+ * line the chip shows on hover. Built only from the tag as ws_refs_resolve()
+ * gave it to this reader, so it shows nothing the chip does not; a tag the
+ * reader may not see, a record that is gone and a form (its own card,
+ * ws_form_cards_html()) stay chips in the text.
+ *
+ * @param string $body the message as stored
+ * @param array  $refs ws_refs_resolve() output covering the body's tokens
+ * @return string HTML, '' when the body is not a lone tag drawn as a card
+ */
+function ws_tag_card_html($body, $refs)
+{
+    if (!preg_match('/^\s*<#(' . ws_token_types_pattern() . '):([0-9]{1,10})>\s*$/', (string) $body, $match) || ($match[1] === 'form')) {
+        return '';
+    }
+
+    $ref = $refs[$match[1] . ':' . (int) $match[2]] ?? null;
+
+    if (!is_array($ref) || empty($ref['known']) || !empty($ref['gone'])) {
+        return '';
+    }
+
+    $type = preg_replace('/[^a-z_]/', '', $ref['type']);
+    $icon = ($ref['icon'] !== '') ? ws_icon_badged_html($ref['icon'], (string) ($ref['badge'] ?? '')) : '';
+    $data = ' data-ws-ref="' . h($ref['type'] . ':' . $ref['id']) . '"';
+    // The head holds only the icon and the name: the tag menu reads its
+    // words as the record's name (chipMenus() in workspace.js).
+    $head = $icon . '<span>' . h($ref['label']) . '</span>';
+    $head = ($ref['url'] !== '')
+        ? '<a class="ws-tag-card-head" href="' . h($ref['url']) . '"' . $data . '>' . $head . '</a>'
+        : '<span class="ws-tag-card-head"' . $data . '>' . $head . '</span>';
+
+    return '<div class="ws-tag-card ws-tag-card-' . str_replace('_', '-', $type) . '"><div class="ws-tag-card-top">' . $head
+        . (($ref['status'] !== '') ? '<span class="ws-tag-card-status">' . h($ref['status']) . '</span>' : '') . '</div>'
+        . (($ref['meta'] !== '') ? '<div class="ws-tag-card-meta">' . h($ref['meta']) . '</div>' : '')
+        . '</div>';
+}
+
+/**
  * The author's own text, escaped and lightly formatted.
  *
  * @param string $text
