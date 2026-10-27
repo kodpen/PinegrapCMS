@@ -32,5 +32,5 @@ module: widgets_conditions
 - A plain list: `tools/check_bindings.php` reads quoted `'__token' =>` keys in `includes/fn/widgets*.php` as filled tokens.
 
 ## What happens when a condition is invalid?
-- Fail closed: unknown op, missing operand, empty or refused token: the node draws nothing inside a widget. Outside a widget scope it draws as before, unmarked.
+- Fail closed: unknown op, missing operand, empty or refused token: the node draws nothing inside a widget. Outside a widget it draws as before (visit facts: [[page-conditions]]).
 - `root`, `loop_area` and `recipient_loop_area` take no condition.
