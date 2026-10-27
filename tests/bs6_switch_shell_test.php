@@ -36,6 +36,9 @@ function test_bs6_shell_dialog_markup()
 	pg_assert_contains("<div class=\"modal-body\"><div><p>x</p></div></div>\n</dialog>';", $out);
 	pg_assert_false(strpos($out, 'modal-dialog') !== false || strpos($out, 'modal-content') !== false, 'both boxes gone');
 	pg_assert_same(array('source' => $out, 'status' => 'done', 'left' => 0), bs6_switch_dialogs($out), 'second run');
+
+	$root_size = "<div class=\"modal modal-lg fade\" id=\"r\"><div class=\"modal-dialog\"><div class=\"modal-content\"><div class=\"modal-body\"></div></div></div></div>";
+	pg_assert_contains('<dialog class="dialog dialog-lg" id="r">', bs6_switch_dialogs($root_size)['source'], 'a size class on the root');
 }
 
 function test_bs6_shell_dialog_form_content()
@@ -126,6 +129,8 @@ function test_bs6_shell_rules_and_selectors()
 	pg_assert_true(strpos($result['source'], '.pg-menu-caret::after') < strpos($result['source'], '.a { color: red; }'), 'at the top of the layer');
 	pg_assert_same('done', bs6_switch_shell_rules($result['source'])['status'], 'second run');
 	pg_assert_same('missing', bs6_switch_shell_rules('.a {}')['status'], 'needs the layered sheet');
+	pg_assert_contains(".pg-mt-n2 {\n  margin-top: -0.5rem !important;\n}", $result['source']);
+	pg_assert_contains(".pg-display-6 {\n  font-size: min(calc(1.375rem + 1.5vw), 2.5rem);", $result['source']);
 
 	$css = ".x .dropdown .dropdown-menu.dropdown-menu-end, .y .offcanvas.offcanvas-end .modal-title { color: red; }";
 	pg_assert_same(".x .pg-menu-wrap .menu.pg-menu-end, .y .drawer.drawer-end .dialog-title { color: red; }", bs6_switch_selectors($css)['source']);
