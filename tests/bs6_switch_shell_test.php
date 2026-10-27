@@ -187,13 +187,15 @@ function test_bs6_shell_script_checks()
 	$in = "var wrap = el('div', 'form-check form-switch mb-3');\nvar input = el('input', 'form-check-input');\nvar label = el('label', 'form-check-label small', x);\n"
 		. "input.type = 'checkbox';\nwrap.appendChild(input);\nwrap.appendChild(label);\n"
 		. "var row = el('div', 'form-check');\nvar radio = el('input', 'form-check-input');\nradio.type = 'radio';\n"
-		. "var box = el('input', 'form-check-input');\nbox.type = 'checkbox';\nvar odd = el('input', 'form-check-input');\nodd.type = kind;\n";
+		. "var box = el('input', 'form-check-input');\nbox.type = 'checkbox';\nvar odd = el('input', 'form-check-input');\nodd.type = kind;\n"
+		. "var pick = el('input', 'form-check-input m-0');\n\npick.type = 'checkbox';\n";
 	$result = bs6_switch_script_checks($in);
 
 	pg_assert_same("var wrap = el('div', 'form-field mb-3');\nvar input = el('input', '');\nvar label = el('label', 'small', x);\n"
 		. "input.type = 'checkbox';\nwrap.appendChild(el('div', 'switch')).appendChild(input);\nwrap.appendChild(label);\n"
 		. "var row = el('div', 'form-field');\nvar radio = el('input', 'radio');\nradio.type = 'radio';\n"
-		. "var box = el('input', 'check');\nbox.type = 'checkbox';\nvar odd = el('input', 'form-check-input');\nodd.type = kind;\n", $result['source']);
+		. "var box = el('input', 'check');\nbox.type = 'checkbox';\nvar odd = el('input', 'form-check-input');\nodd.type = kind;\n"
+		. "var pick = el('input', 'check m-0');\n\npick.type = 'checkbox';\n", $result['source']);
 	pg_assert_same(1, $result['left'], 'a type set by code');
 	pg_assert_same('done', bs6_switch_script_checks($result['source'])['status'], 'second run');
 }
