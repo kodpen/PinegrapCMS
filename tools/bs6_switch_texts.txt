@@ -372,3 +372,85 @@ jQuery Collapse call (v6 has no jQuery plugins).
             });
         });
 >>>
+
+DataTables' Bootstrap 5 integration writes v5 classes into the controls it
+builds (the length select, the layout grid): the panel's lists get the v6
+names before the first table is built.
+
+@@ assets/js/backend.src.js
+<<<
+    var options = {};
+    options["language"] = {
+===
+    // DataTables' Bootstrap 5 integration names v5 classes for the controls
+    // it builds; the panel runs Bootstrap 6.
+    if ($.fn.dataTable) {
+        $.extend(true, $.fn.dataTable.ext.classes, {
+            length: { select: 'form-control form-control-sm' },
+            layout: {
+                row: 'row mt-3 justify-content-between',
+                cell: 'md:d-flex justify-content-between align-items-center',
+                start: 'dt-layout-start md:col-auto me-auto',
+                end: 'dt-layout-end md:col-auto ms-auto',
+                full: 'dt-layout-full md:col'
+            }
+        });
+    }
+
+    var options = {};
+    options["language"] = {
+>>>
+
+The product builder's switch helper builds its input class in code.
+
+@@ product_builder.php
+<<<
+    $classes = 'form-check-input';
+===
+    $classes = '';
+>>>
+
+@@ product_builder.php
+<<<
+            <input class="' . $classes . '" type="checkbox" role="switch" id="' . h($id) . '"' . $output_name . ' value="1"' . $checked . $target . ' />
+===
+            <div class="switch"><input class="' . $classes . '" type="checkbox" role="switch" id="' . h($id) . '"' . $output_name . ' value="1"' . $checked . $target . ' /></div>
+>>>
+
+A class glued to a PHP block is left by the codemod (it could be a stem).
+
+@@ includes/templates/view_offers.php
+<<<
+d-inline-flex align-items-center gap-2<?php if ($f['key'] == 'all'): ?> active<?php endif ?>
+===
+d-inline-flex align-items-center gap-3<?php if ($f['key'] == 'all'): ?> active<?php endif ?>
+>>>
+
+pgUI builds a v6 dialog: a centred one takes the panel's centring class,
+the others sit under the top of the screen like v5's.
+
+@@ assets/js/pg_ui.js
+<<<
+            parts.root = make('dialog', ['dialog', size, o.scrollable ? 'dialog-scrollable' : '', o.className || ''].join(' ').replace(/\s+/g, ' ').trim());
+===
+            parts.root = make('dialog', ['dialog', size, o.centered ? 'pg-dialog-centered' : '', o.scrollable ? 'dialog-scrollable' : '', o.className || ''].join(' ').replace(/\s+/g, ' ').trim());
+>>>
+
+Class API calls that switch one v5 button variant for another: in v6 the
+theme class stays on the button and only the variant (or the theme) changes.
+
+@@ assets/js/backend.src.js
+<<<
+    $('#push_toggle').toggleClass('btn-outline-secondary', !$subscribed).toggleClass('btn-secondary', $subscribed);
+===
+    $('#push_toggle').toggleClass('btn-outline', !$subscribed).toggleClass('btn-solid', $subscribed);
+>>>
+
+@@ assets/js/offer_editor.js
+<<<
+        btn.classList.toggle('btn-warning', n > 0);
+        btn.classList.toggle('btn-success', n === 0);
+===
+        btn.classList.toggle('theme-warning', n > 0);
+        btn.classList.toggle('theme-success', n === 0);
+>>>

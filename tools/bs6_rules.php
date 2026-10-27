@@ -861,6 +861,49 @@ function bs6_in_ranges($offset, array $ranges)
 	return false;
 }
 
+// The PHP code of a .php file as array(start, end) byte ranges: from each
+// PHP open tag to its close tag, or to the end of the file.
+function bs6_php_code_ranges($source)
+{
+	$ranges = array();
+	$offset = 0;
+
+	while (preg_match('/<\?(?:php\b|=)/', $source, $m, PREG_OFFSET_CAPTURE, $offset)) {
+		$start = $m[0][1];
+		$end = strpos($source, '?>', $start);
+		$end = ($end === false) ? strlen($source) : $end;
+		$ranges[] = array($start, $end);
+		$offset = $end + 2;
+	}
+
+	return $ranges;
+}
+
+// True when a lone class string is printed into a class list rather than
+// handed to a class API: in PHP code (`$x ? 'btn-success' : 'btn-danger'`,
+// a helper's argument; PHP has no class API), or in a parenthesised choice
+// joined to a class string (`'btn btn-sm ' + (on ? 'btn-primary' :
+// 'btn-outline-secondary')`). Such a string takes the whole v6 class list.
+// The argument of a class API call (`classList.add(`, `addClass(`) still
+// takes one class.
+function bs6_is_markup_string($source, $offset, array $php_code)
+{
+	$before = substr($source, max(0, $offset - 40), min(40, $offset));
+
+	if (preg_match('/(?:classList\.\w+|[Cc]lass)\(\s*\\?[\'"]$/', $before)) {
+		return false;
+	}
+
+	if ($php_code && bs6_in_ranges($offset, $php_code)) {
+		return true;
+	}
+
+	$line_start = strrpos(substr($source, 0, $offset), "\n");
+	$line = substr($source, $line_start === false ? 0 : $line_start + 1, $offset - ($line_start === false ? 0 : $line_start + 1));
+
+	return (bool) preg_match('/[\'"]\s*\+\s*\([^()]*$/', $line);
+}
+
 /**
  * Converts the class lists in a source file. With $lines (a set of 1-based
  * line numbers as array keys) only the lists starting on those lines change:
@@ -880,6 +923,8 @@ function bs6_convert_source($source, $lines = null, $strings = false)
 	$kept = 0;
 	$reviews = array();
 	$site_output = bs6_site_output_ranges($source);
+	$path = bs6_current_path();
+	$php_code = ($path !== null && substr($path, -4) === '.php') ? bs6_php_code_ranges($source) : array();
 
 	foreach (bs6_find_class_lists($source, $strings) as $list) {
 		$line = bs6_line_of($source, $list['offset']);
@@ -893,7 +938,8 @@ function bs6_convert_source($source, $lines = null, $strings = false)
 			continue;
 		}
 
-		$one_each = in_array($list['kind'], array('class-list', 'jquery'), true) || ($list['kind'] === 'string' && strpos(trim($list['value']), ' ') === false);
+		$one_each = in_array($list['kind'], array('class-list', 'jquery'), true)
+			|| ($list['kind'] === 'string' && strpos(trim($list['value']), ' ') === false && !bs6_is_markup_string($source, $list['offset'], $php_code));
 
 		// A lone `text-bg-<colour>` string is a status badge's colour (code
 		// adds it after 'badge '): the badge's theme class.
