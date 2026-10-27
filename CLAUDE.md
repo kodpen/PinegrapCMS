@@ -127,9 +127,10 @@ decision questions.
    merging session can take holds a place; each coordinator's workers hold
    at most 4 of the 15.
    `gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '[.[]|select(.draft|not)|select(.head.ref|startswith("merge-train")|not)]|length'`
-9. **Coordinators.** One coordinator per account starts its cloud workers;
-   it writes no code and merges nothing. It tells the owner when the merging
-   session seems stopped (`coordinator.md`).
+9. **Coordinators.** One coordinator per account starts its cloud workers within
+   the account's quota and worker cap (`coordinator-limits.md`); it writes
+   no code and merges nothing. It tells the owner when the merging session
+   seems stopped (`coordinator.md`).
 10. **Decisions go to the architect.** A question only the owner can
    decide (product behaviour, a schema change, an entry of the decisions
    list), an architecture question, a large migration or a logic clash
@@ -137,11 +138,11 @@ decision questions.
    issue labelled `architect` (template in `workflow/architect.md`; if its
    permission check refuses that, the text goes in the PR body under
    `## Decision question` and the architect opens it), links it from its
-   PR, turns the PR back to draft and waits; what memory
-   already answers is not a question. The architect session analyses it,
-   brings it to the owner with the `erdal` label, decides with the owner,
-   records the decision and brings it to the PR as a comment. It never
-   decides alone. The issue is the only way to ask: no question to the
+   PR, turns the PR back to draft and ends the session
+   (`workflow/session-lifecycle.md`): a later session continues the branch
+   from the decision; what memory already answers is not a question. The architect session analyses and decides it, asks the owner only a
+   big architectural change (label `erdal`, in Turkish), records the
+   decision and brings it to the PR as a comment. The issue is the only way to ask: no question to the
    owner in a session's reply or PR body, and no `erdal` label but the
    architect's. Everything else is a session's own call, never asked:
    implementation choices inside its step, naming, structure within its
