@@ -31,8 +31,8 @@ if ($_GET['r']) {
             email_campaign_id,
             contact_id
         FROM email_recipients
-        WHERE reference_code = '" . escape($_GET['r']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE reference_code = ?";
+    $result = db_q($query, array((string) $_GET['r'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     // An unknown reference code leaves these empty and ends on the "could not
@@ -55,7 +55,8 @@ if ($_GET['r']) {
         output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
     }
 
-    $email_campaign_id = escape($_GET['id']);
+    // The id checked above, so the campaign read below is the one found.
+    $email_campaign_id = (string) $id;
 }
 
 // if there is not an email campaign id, then output error
@@ -75,8 +76,8 @@ $query =
         created_user_id,
         created_timestamp
     FROM email_campaigns
-    WHERE id = '" . $email_campaign_id . "'";
-$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    WHERE id = ?";
+$result = db_q($query, array((string) $email_campaign_id)) or output_error(lang('Query failed.'));
 $row = mysqli_fetch_assoc($result);
 
 $type = $row['type'];
@@ -120,8 +121,8 @@ if ($_GET['r']) {
             salutation,
             suffix
          FROM contacts
-         WHERE id = '" . $contact_id . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+         WHERE id = ?";
+    $result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
 
     // A recipient whose contact was deleted since the send has no name to merge.
     $row = mysqli_fetch_assoc($result) ?: array('first_name' => '', 'last_name' => '', 'nickname' => '', 'salutation' => '', 'suffix' => '');

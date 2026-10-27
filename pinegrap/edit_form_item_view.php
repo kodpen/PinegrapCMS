@@ -53,9 +53,9 @@ $query = "SELECT
          LEFT JOIN page ON form_item_view_pages.custom_form_page_id = page.page_id
          LEFT JOIN custom_form_pages ON custom_form_pages.page_id = form_item_view_pages.custom_form_page_id
          WHERE
-            (form_item_view_pages.page_id = '" . e($_REQUEST['page_id']) . "')
+            (form_item_view_pages.page_id = ?)
             AND (form_item_view_pages.collection = 'a')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = db_q($query, array((string) $_REQUEST['page_id'])) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 $custom_form_folder_id = $row['page_folder'];
@@ -126,9 +126,9 @@ if (!$_POST) {
             layout
         FROM form_item_view_pages
         WHERE
-            (page_id = '" . e($page['id']) . "')
+            (page_id = ?)
             AND (collection = 'a')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $page['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     $custom_form_page_id = $row['custom_form_page_id'];
@@ -360,9 +360,9 @@ if (!$_POST) {
     $query = "UPDATE page
              SET
                 page_timestamp = UNIX_TIMESTAMP(),
-                page_user = '" . $user['id'] . "'
-             WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                page_user = ?
+             WHERE page_id = ?";
+    $result = db_q($query, array((string) $user['id'], (string) ($_POST['page_id'] ?? ''))) or output_error('Query failed.');
 
     log_activity(lang(array('string'=>'page ({var:1}) was modified','vars'=>$page['name'])), $_SESSION['sessionusername']);
 

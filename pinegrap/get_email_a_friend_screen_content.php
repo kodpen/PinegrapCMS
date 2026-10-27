@@ -58,16 +58,16 @@ function get_email_a_friend_screen_content($properties)
                 $page_name = mb_substr($http_referer_parsed_url['path'], $page_name_position);
                 
                 // get page type of the refering page to see if it has a shopping cart or express order page type
-                $query = "SELECT page_type FROM page WHERE page_name = '" . escape($page_name) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT page_type FROM page WHERE page_name = ?";
+                $result = db_q($query, array((string) $page_name)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $page_type = $row['page_type'];
                 
                 // if the page type is shopping cart or express order
                 if (($page_type == 'shopping cart') || ($page_type == 'express order')) {
                     // get order reference code that we will use to build a query string
-                    $query = "SELECT reference_code FROM orders WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $query = "SELECT reference_code FROM orders WHERE id = ?";
+                    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
                     $reference_code = $row['reference_code'];
                     
@@ -99,8 +99,8 @@ function get_email_a_friend_screen_content($properties)
         // if the user is logged in, then prefill e-mail address
         if (isset($_SESSION['sessionusername']) == true) {
             // get email address for user
-            $query = "SELECT user_email FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+            $query = "SELECT user_email FROM user WHERE user_username = ?";
+            $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed');
             $row = mysqli_fetch_assoc($result);
             
             // prefill field
