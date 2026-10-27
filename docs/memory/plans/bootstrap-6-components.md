@@ -9,7 +9,7 @@ description: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped fo
 - B9c Datepicker and time fields: done (#2262), how it works in `ui/pg-datepicker.md`.
 - B9d OTP: done (#2210, `ui/otp-fields.md`).
 - B9e Range with value bubble: done (#2207): editor inspector (3), label editor, image quality % and disk alert % (`ui/range-value-bubble.md`). Never the palette's site Range.
-- B9f form-adorn (150 sites): groups with buttons or selects (79), several inputs (12) or a hint on the add-on (9) stay input-groups. The add-on moves inside the border: pilot 3 places with screenshots first (pilot #2219, part 2 #2280, `ui/form-adorn.md`). Left: settings cards (with their CSS), toolbar search fields, and single groups on contact, order, barcode, region, ERP and workspace screens.
+- B9f form-adorn (150 sites): groups with buttons or selects (79), several inputs (12) or a hint on the add-on (9) stay input-groups. The add-on moves inside the border: pilot 3 places with screenshots first (pilot #2219, part 2 #2280, part 3 ERP, order refund and barcode #2342, `ui/form-adorn.md`). Left: settings cards (with their CSS), toolbar search fields, and single groups on contact, region and workspace screens and the rest of the order screens.
 - B9g Stepper: done (#2206); how it works is in `ui/step-rail.md`.
 - B9h `.hover-lift` with tokens at today's 1-2 px, done: `.mpp-pick`, explorer `.item-card`, `.esi-tile` (#2217), dashboard `.pg-brief-ws-item` and `.pg-next` (#2237).
 - B9i Strength on the installer meter (`.pg-strength`): with `STRONG_PASSWORD` on, the B5 port of `validate_password_strength()` scores; off (the column default, so always at install) the default scoring only advises. Messages from `lang()`.
