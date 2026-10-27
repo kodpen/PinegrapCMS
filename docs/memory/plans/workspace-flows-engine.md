@@ -32,10 +32,10 @@ description: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: ta
 - `WS_FLOW_*`: 100 boxes, 200 box runs a run, 60 starts a flow an hour, 500 open runs, result 16 KB, finished runs kept 30 days.
 
 ## Shared steps and idempotency?
-- Built (F4a): steps.php, workspace/workspace-flows-steps.md. Left: change, row save `effect` at once; a stale begun step fails and its owner retries or skips it (F5a). Webhook: `Idempotency-Key` from run, node, pass.
+- Built (F4a): steps.php, workspace/workspace-flows-steps.md; webhook `Idempotency-Key` from run, node, pass (`ws_step_idempotency_key()`). Left: change, row save `effect` at once; a stale begun step fails and its owner retries or skips it (F5a).
 
 ## API and MCP?
-- /workspace/flows, /{id}, /publish, /resume (`ws_api_own_words_only()`, `'mcp' => false`), /pause, /runs; /workspace/flow-runs/{id}, /cancel, /steps/{node}/retry, /skip; `dry_run`; `workspace:read`, `:write`.
+- Built: /workspace/flows, /{id}, /publish, /pause, /runs; /workspace/flow-runs/{id}, /cancel, /steps/{node}/retry, /skip (workspace-flows-runner.md); /resume and /versions, /versions/{n}, /restore (PR #PRNUM, workspace-flows-versions.md). Further routes: plans/workspace-flows-api.md.
 
 ## Where to start?
 - Built: F1 #1503, F3a #1551 (workspace-flows-runner.md).
