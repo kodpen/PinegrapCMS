@@ -126,7 +126,7 @@ function db_q_contacts_forms_test_files()
 	return array(
 		'edit_contact.php' => 18,
 		'view_contacts.php' => 7,
-		'edit_submitted_form.php' => 18,
+		'edit_submitted_form.php' => 13,
 		'view_submitted_forms.php' => 11,
 		'edit_field.php' => 14,
 		'edit_contact_group.php' => 10,
@@ -135,7 +135,7 @@ function db_q_contacts_forms_test_files()
 		'import_contacts.php' => 4,
 		'add_field.php' => 7,
 		'delete_fields.php' => 8,
-		'add_submitted_form.php' => 6,
+		'add_submitted_form.php' => 1,
 		'import_submitted_forms.php' => 7,
 		'edit_theme_file.php' => 9,
 		'add_theme_file.php' => 5,
@@ -143,6 +143,7 @@ function db_q_contacts_forms_test_files()
 		'edit_custom_style.php' => 6,
 		'includes/panel/explorer.php' => 9,
 		'includes/forms/page_form.php' => 3,
+		'includes/forms/submitted_form_form.php' => 4,
 		'view_waf_log.php' => 5,
 	);
 }
