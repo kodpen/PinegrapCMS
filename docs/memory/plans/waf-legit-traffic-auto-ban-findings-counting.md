@@ -1,0 +1,18 @@
+---
+name: waf-legit-traffic-auto-ban-findings-counting
+description: Review findings of 2026-10-26 for plans/waf-legit-traffic-auto-ban.md step 2: refusals that become offences, the ladder, shared addresses, endpoints without an allowance
+---
+
+## Where do these come from?
+- A code sweep of 2026-10-26 (four lenses, every finding checked against the code by a second reader); line numbers as of #2011's head. None is on the decisions list. Step 3's findings: `waf-legit-traffic-auto-ban-findings-writes.md`; steps 4 and 5: `…-findings-lockout.md`.
+
+## What feeds the ban (step 2)?
+- Every rate-limit refusal is a full offence: `waf_handle_rate_sensitive()`, `waf_handle_rate_api()` and `waf_handle_inflight()` call `waf_register_offence()` per refused request (waf.php ~4725, 4786, 4834), so limit + 6 requests inside one clock minute ban a shared address (an office, a school, a carrier's NAT; the chat widget polls `api.php` every 4 s per open conversation). The fold (one offence per subject per minute window) also belongs in `pg_password_reset_deny()` (includes/fn/auth.php ~4596, a reset wave from one company) and may cover `api_offence()` and `mp_webhook_offence()`.
+- Release leaves the offence bucket full: `view_waf_log.php` (~60-78) deletes the row and refreshes the mirror but nothing clears the subject's `o` bucket, so the released address is banned again on its next refusal until the 10-minute slot ends. Clear `waf_rate_clear(waf_ip_subject($ip), 'o')` (and the stored subject string) on Release and on Allow.
+- `waf_handle_rate_api()` exempts any session (`waf_user_is_authenticated()`, ~4771) while its comment says staff; a form's auto-registration gives a visitor a session and so an unlimited, offence-free `api.php`. Ask `waf_user_is_staff()` like the two siblings (members then count; owner's call).
+- The ladder climbs for a rate ban as for a signature ban (`waf_auto_ban()` ~1006, expired rows kept 14-30 days): two campaign days with the chat open make 60 then 240 minutes. Climb only when the triggering offence is not of category `rate` (Q2).
+- The in-flight cap (3 open per subject, `waf_handle_inflight()` ~4802-4838) refuses the fourth simultaneous POST behind one address and counts an offence. No offence for a `concurrent` refusal; narrow the cap to scripts that hold a connection on an external service (forgot_password, custom_form, submit_order) or raise the default (owner).
+- A private or reserved `REMOTE_ADDR` (a reverse proxy, a Docker bridge, a panel's proxy not listed in Trusted Proxies) is one subject for the whole site: `waf_is_ip()` (~350) accepts it and `waf_ip_is_infrastructure()` (~413) exempts only loopback and listed proxies, so everybody shares the allowances and six refusals ban the proxy. Treat such an address as infrastructure (as `pg_cf_visitor_address_counted()` does) and warn on the Firewall screen when the operator's own request resolves to one.
+- `workspace_guest.php` (a `state` POST every 4 s per visible room, 14/min) and `shipworks.php` (a POST per action, the password already throttled) count on the 30/min sensitive allowance and the in-flight cap: give both the credential-endpoint exemption (`waf_is_api_request()`) and count them on the `api.php` allowance.
+- Verify first: the web root's `index.php` requires `router.php`, so a home-page request served by DirectoryIndex arrives with `SCRIPT_NAME=/index.php` and `waf_script_name()` answers `index.php`, the panel sign-in: the home page may count on the sensitive allowance and the in-flight cap.
+- Unverified bot names skip every limit (`IS_BOT` from an unverifiable Googlebot, curl, an empty agent): already item 4 of `plans/security-findings-2026-10-waf.md`, waiting on the owner.

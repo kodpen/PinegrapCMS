@@ -1,0 +1,28 @@
+---
+name: waf-legit-traffic-auto-ban
+description: Plan (2026-10-26, issue #1989): legitimate traffic must not end in an auto-ban: sub-resource fetches, refusals feeding the ban, staff lockout, the shield's page, visibility, self-rescue
+---
+
+## Why?
+- Issue #1989 (a live site on 2026.4.10 behind Cloudflare): every submitted-form image on a page was sent by `get_file.php` to the sign-in screen; one page view made 36 GETs of it in a second, the sensitive limit (30/min) answered 429 with an offence per refusal, and the fifth banned the reader's address for an hour. The shield answered plain text `Forbidden`, the banned operator could not reach the panel, deleting the ban row left the `B` line in `data/temp/ban_shield.txt`, and the operator's address changed mid-session so the allow list did not help.
+- The owner's review points (issue comment 3) and the code sweep of 2026-10-26: `waf-legit-traffic-auto-ban-findings-counting.md`, `…-findings-writes.md`, `…-findings-lockout.md`. Questions: `…-questions.md`.
+
+## What is decided?
+- Target branch `development` (issue header; owner, 2026-10-26).
+- A sub-resource fetch of a protected file answers 403, never the sign-in redirect; such a fetch of a sign-in screen is not counted as sensitive (`waf/waf-subresource-sign-in-fetches.md`).
+
+## What are the steps (one PR each)?
+1. `get_file.php` sends a visitor to a sign-in screen only through `get_file_sign_in_redirect()`, which answers a sub-resource fetch with 403; `waf_fetch_is_subresource()`, `waf_sign_in_screens()` and `waf_sensitive_request_counts()` in `waf.php` keep such a fetch off the sensitive allowance and the in-flight cap. Claimed by #2011.
+
+2. Refusals and the ban (findings-counting, "What feeds the ban"): a rate-limit refusal (`rate-sensitive`, `rate-api`, `concurrent`, the password-reset ceiling) registers at most one offence per subject per minute window; Release and Allow clear the offence bucket; the `api.php` allowance exempts staff, not any session; no offence for a `concurrent` refusal; a private or reserved visitor address is infrastructure; `workspace_guest.php` and `shipworks.php` get the credential-endpoint allowance; the web root's `index.php` is told from the panel sign-in. An address with a staff session or a staff sign-in in `auth_tokens` within the last day is never auto-banned (a `would-ban` row instead). Tests for the counting rule; thresholds and the ladder go to the owner (Q2); two PRs if over size.
+
+3. What a ban writes (findings-writes): the shield answers the HTML page `waf_deny()` draws, as a twin in `includes/db_guard.php`, naming the firewall and the ban's end (`B <ip> <expires>` lines, expired lines skipped, a refresh from the general job), with a reference stored through `waf_shield_drain()`; the ban note and the `ban` row name the rule (`waf_last_rule()`); `path=` on every DENY and BAN line of `data/firewall.log`, `status=` on the four rule-only callers.
+
+4. The operator learns of a ban (findings-lockout): an e-mail on each auto-ban (rule, address, sample requests, log link) queued by `waf_register_offence()` in a `data/temp/` pending file and sent by the next request that has `functions.php` or by the general job; a link from a ban row to the log filtered by its address; a notice when several addresses were banned by one rule within an hour.
+
+5. Self-rescue and self-lockout guards (findings-lockout): a CLI root script `waf_unban.php` (cron-gated); Settings › Firewall refuses a block entry that covers the operator's own address; the sign-in throttle's address lock honours the allow list (owner); a signed single-use unban link in step 4's e-mail (Q3 first).
+
+6. Scenario tests: `tests/waf_scenarios_test.php` playing the decision functions through "a page with N protected images", "staff whose address changes mid-session" and "a refresh after the ban"; a sandbox run only with a reason in the PR.
+
+## Where to start?
+- Step 2 after step 1 lands; 3 and 4 are independent of 2 and of each other; 5 waits for Q3 and step 4; 6 last. Claim as `[plan:waf-legit-traffic-auto-ban] <step> — <topic>`.
