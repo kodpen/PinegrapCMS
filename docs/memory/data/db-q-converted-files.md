@@ -14,7 +14,7 @@ description: Content files converted to db_q() (get_page_content, content, seo, 
 - Sign-in, access checks, contact merge and designer asset sync (`includes/fn/auth.php`, `contacts.php`, `designer.php`, the `forms.php` clauses): `db-q-converted-access.md`.
 - User and page screens (`edit_user.php`, `add_user.php`, `import_users.php`, `edit_pages.php`, `edit_page.php`): `db-q-converted-panel.md`.
 - Users list, account profile, comments, search, sitemap: `db-q-converted-comments-search.md`.
-- Front-end files (cart view, form item view, order screens, preferences, watchers, affiliate sign-up): `db-q-converted-front.md`; order preview, receipts and order history: `db-q-converted-order-front.md`.
+- Front-end files (cart, form item view, order screens, preferences, watchers, affiliate): `db-q-converted-front.md`; order preview, receipts and order history: `db-q-converted-order-front.md`; address book, form views, small front files: `db-q-converted-small-front.md`.
 
 ## What is the rule for a query that stays raw?
 - A query without values, or one completed by a clause built elsewhere with escaped values (it may hold a `?`, which `db_q()` would take as a placeholder), stays `mysqli_query()`. An integer-only IN list may stay too. Each file's test lists those clause variables by name.
