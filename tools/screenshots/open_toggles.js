@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Opens every dialog, drawer and menu toggle of the screens in screens.json
- * (signed in, light and dark, 1440 px) on a sandbox instance and writes
+ * (signed in, light and dark, 1440 px or --width) on a sandbox instance and writes
  * results.json (what opened, its box and background, script errors) and a
  * picture of each open state. Reads Bootstrap 5 (modal, offcanvas,
  * dropdown) and Bootstrap 6 (dialog, drawer, menu) toggles alike, so a run
@@ -11,6 +11,11 @@
  * screen, kind, target and label.
  *
  * Usage:  node tools/screenshots/open_toggles.js <out dir> [base URL] [screen,screen]
+ *             [--width=834|390] [--theme=light|dark]
+ *
+ * --width   the viewport width (1440 by default; 834 and 390 are the tablet
+ *           and phone sizes of shoot.js, with their heights)
+ * --theme   one colour mode instead of both
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -24,9 +29,14 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const { chromium } = require('playwright');
 const ROOT = path.resolve(__dirname, '..', '..');
-const OUT = process.argv[2];
-const BASE = (process.argv[3] || 'http://127.0.0.1:8000').replace(/\/+$/, '');
-const ONLY = process.argv[4] ? process.argv[4].split(',') : null;
+const ARGS = process.argv.slice(2).filter(a => !a.startsWith('--'));
+const OPTION = name => { const a = process.argv.find(x => x.startsWith('--' + name + '=')); return a ? a.slice(name.length + 3) : null; };
+const OUT = ARGS[0];
+const BASE = (ARGS[1] || 'http://127.0.0.1:8000').replace(/\/+$/, '');
+const ONLY = ARGS[2] ? ARGS[2].split(',') : null;
+const WIDTH = parseInt(OPTION('width') || '1440', 10);
+const HEIGHT = { 390: 844, 834: 1112 }[WIDTH] || 900;
+const THEMES = OPTION('theme') ? [OPTION('theme')] : ['light', 'dark'];
 if (!OUT || path.resolve(OUT).startsWith(ROOT + path.sep)) {
     console.error('Usage: node tools/screenshots/open_toggles.js <out dir outside the repository> [base] [screen,screen]');
     process.exit(2);
@@ -41,8 +51,8 @@ const fill = p => p.replace(/\{([a-z_]+)\}/g, (a, k) => encodeURIComponent(Strin
 (async () => {
     const browser = await chromium.launch();
     const results = [];
-    for (const theme of ['light', 'dark']) {
-        const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    for (const theme of THEMES) {
+        const context = await browser.newContext({ viewport: { width: WIDTH, height: HEIGHT } });
         await context.addInitScript(`try{localStorage.setItem('pinegrap backend color scheme', ${JSON.stringify(theme)});}catch(e){}
             (()=>{let e;Object.defineProperty(window,'PgTour',{configurable:true,get(){return e},set(v){if(v&&typeof v==='object'){v.autoStart=function(){}}e=v}})})();`);
         const login = await context.newPage();
@@ -111,7 +121,7 @@ const fill = p => p.replace(/\{([a-z_]+)\}/g, (a, k) => encodeURIComponent(Strin
                 await page.waitForTimeout(300);
                 await page.evaluate(() => { document.querySelectorAll('dialog[open]').forEach(d => { try { d.close(); } catch (e) {} }); document.documentElement.classList.remove('dialog-open');
                     if (window.bootstrap && bootstrap.Modal) { document.querySelectorAll('.modal.show').forEach(m => { try { bootstrap.Modal.getOrCreateInstance(m).hide(); } catch (e) {} }); document.querySelectorAll('.offcanvas.show').forEach(m => { try { bootstrap.Offcanvas.getOrCreateInstance(m).hide(); } catch (e) {} }); } });
-                await page.mouse.click(5, 895).catch(() => {});
+                await page.mouse.click(5, HEIGHT - 5).catch(() => {});
                 await page.waitForTimeout(200);
             }
             results.push({ theme, screen: screen.name, kind: 'page', toggles: count, errors });
