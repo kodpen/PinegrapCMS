@@ -6,7 +6,9 @@
  * waf.php): a rate refusal counts once per subject and minute
  * (waf_offence_is_repeat()), which callers pass the burst flag, an address
  * with a staff sign-in is spared after the threshold, and the firewall log
- * screen forgets the offences of a ban it releases (waf_offence_clear()).
+ * screen forgets the offences of a ban it releases (waf_offence_clear()),
+ * a concurrent refusal is no offence and a rate ban stays off the ladder
+ * (waf_auto_ban_climbs(), waf_auto_ban_sql()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -55,7 +57,7 @@ function test_waf_offence_rate_refusals_are_folded()
 {
 	$waf = (string) file_get_contents(PG_FUNCTIONS_DIR . '/waf.php');
 
-	foreach (array('waf_handle_rate_sensitive', 'waf_handle_rate_api', 'waf_handle_inflight') as $handler) {
+	foreach (array('waf_handle_rate_sensitive', 'waf_handle_rate_api') as $handler) {
 		pg_assert_contains('waf_register_offence($ip, 5, $blocking, true);', waf_offence_test_function_source($waf, $handler), $handler);
 	}
 
@@ -168,4 +170,46 @@ function test_waf_offence_would_ban_has_a_badge()
 	pg_assert_contains("'would-ban'   => array('warning text-dark', lang('Would ban')),", $widget);
 	pg_assert_contains("action IN ('would-block','would-rate','would-ban')", $widget);
 	pg_assert_contains("action IN ('would-block','would-rate','would-ban')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets/widget_22.php'));
+}
+
+// The fourth simultaneous request is refused and logged, but is no offence:
+// an office behind one address opens that many forms at once.
+function test_waf_offence_concurrent_refusal_is_no_offence()
+{
+	$waf = (string) file_get_contents(PG_FUNCTIONS_DIR . '/waf.php');
+	$body = waf_offence_test_function_source($waf, 'waf_handle_inflight');
+
+	pg_assert_same(false, strpos($body, 'waf_register_offence('), 'no offence for a concurrent refusal');
+	pg_assert_contains("waf_log_event(\$blocking ? 'rate' : 'would-rate', 'concurrent', 'rate'", $body, 'still logged');
+	pg_assert_contains('waf_deny(429, waf_reference());', $body, 'still refused');
+}
+
+// Only a ban brought by an offence that is not a rate refusal climbs the x4
+// ladder; a rate ban is the base length however often it came before.
+function test_waf_offence_rate_ban_stays_off_the_ladder()
+{
+	pg_assert_false(waf_auto_ban_climbs('rate'), 'a rate ban');
+	pg_assert_true(waf_auto_ban_climbs('sqli'), 'a signature ban');
+	pg_assert_true(waf_auto_ban_climbs('bot'), 'an attack tool');
+	pg_assert_true(waf_auto_ban_climbs(''), 'an offence without a logged category');
+
+	$rate = waf_auto_ban_sql('203.0.113.7', 'Automatic: rate-sensitive', 1000, 3600, 604800, false);
+	pg_assert_same(false, strpos($rate, 'POW('), 'no ladder for a rate ban');
+	pg_assert_same(false, strpos($rate, 'hit_count + 1'), 'nor a rung');
+	pg_assert_contains('hit_count = hit_count,', $rate);
+	pg_assert_contains('expires_at = GREATEST(expires_at, 4600)', $rate, 'an expired ban comes back at the base length');
+	pg_assert_contains("'203.0.113.7', 'block', 'auto'", $rate);
+
+	$signature = waf_auto_ban_sql('203.0.113.7', 'Automatic: sqli', 1000, 3600, 604800, true);
+	pg_assert_contains('hit_count = IF(expires_at < 1000, hit_count + 1, hit_count),', $signature, 'a signature ban climbs');
+	pg_assert_contains('POW(4, LEAST(GREATEST(hit_count, 1) - 1, 8))', $signature);
+	pg_assert_contains('GREATEST(expires_at, 4600)', $signature, 'a running ban keeps at least the base');
+
+	$waf = (string) file_get_contents(PG_FUNCTIONS_DIR . '/waf.php');
+	pg_assert_contains('waf_last_category($category);', waf_offence_test_function_source($waf, 'waf_log_event'));
+	$body = waf_offence_test_function_source($waf, 'waf_register_offence');
+	$read = strpos($body, '$climb = waf_auto_ban_climbs(waf_last_category());');
+	$would = strpos($body, "waf_log_event('would-ban'");
+	pg_assert_true($read !== false && $would !== false && $read < $would, 'the category is read before the log rows overwrite it');
+	pg_assert_contains('waf_auto_ban($subject, $minutes, waf_ban_note($rule, $threshold), $climb);', $body);
 }

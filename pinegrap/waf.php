@@ -984,6 +984,11 @@ function waf_subject_contains_allowed($subject)
  * later calls find the ban still running and only make sure it lasts at least
  * the base period from now.
  *
+ * A ban brought by rate refusals ($climb false, see waf_auto_ban_climbs())
+ * is always the base period and leaves the rung where it is: a legitimate
+ * address busy on two campaign days would otherwise sit out four hours on
+ * the second.
+ *
  * The ladder has memory only because waf_sweep() keeps expired automatic rows
  * for as long as the firewall log is kept instead of deleting them on expiry.
  * waf_ip_lists() already ignores an expired row, so keeping it changes
@@ -993,7 +998,7 @@ function waf_subject_contains_allowed($subject)
  * waf_ip_subject()). Returns the length of the ban now in force, in minutes,
  * or 0 when nothing could be written.
  */
-function waf_auto_ban($subject, $minutes, $note)
+function waf_auto_ban($subject, $minutes, $note, $climb = true)
 {
     if (!waf_table_has_column('banned_ip_addresses', 'list_type')) {
         return 0;
@@ -1012,38 +1017,7 @@ function waf_auto_ban($subject, $minutes, $note)
         $ceiling = $base;
     }
 
-    // Single atomic statement against the (ip_address, list_type, source)
-    // unique key added in 2026.2.7.
-    //
-    // The previous SELECT-then-INSERT was wrong twice over. It raced - two
-    // simultaneous requests from the same attacker could both see "no
-    // existing row" and both insert - and it silently failed outright while
-    // ip_address was too narrow to hold an IPv6 address, because the lookup
-    // used the full address and the stored value was a truncated stub. That
-    // produced a fresh ban row on every single offence.
-    //
-    // Insert-or-update through the key cannot do either. The note is not
-    // rewritten on repeats: the first reason is the useful one.
-    //
-    // Assignment order matters, and MySQL evaluates the list left to right:
-    // the hit_count assignment sees the OLD expires_at, and the expires_at
-    // assignment sees the NEW hit_count. An engine that handed it the old
-    // hit_count instead would land the ban one rung lower - shorter, never
-    // longer - so the reliance fails in the safe direction.
-    $written = @mysqli_query(
-        db::$con,
-        "INSERT INTO banned_ip_addresses
-            (ip_address, list_type, source, note, expires_at, created_at, hit_count)
-         VALUES
-            ('" . waf_escape($subject) . "', 'block', 'auto',
-             '" . waf_escape(mb_substr($note, 0, 250)) . "',
-             " . ($now + $base) . ", " . $now . ", 1)
-         ON DUPLICATE KEY UPDATE
-            hit_count = IF(expires_at < " . $now . ", hit_count + 1, hit_count),
-            expires_at = IF(expires_at < " . $now . ",
-                " . $now . " + CAST(LEAST(FLOOR(" . $base . " * POW(4, LEAST(GREATEST(hit_count, 1) - 1, 8))), " . $ceiling . ") AS UNSIGNED),
-                GREATEST(expires_at, " . ($now + $base) . "))"
-    );
+    $written = @mysqli_query(db::$con, waf_auto_ban_sql(waf_escape($subject), waf_escape(mb_substr($note, 0, 250)), $now, $base, $ceiling, $climb));
 
     // Push the new ban into the pre-database mirror now rather than waiting
     // for the sampled sweep. An address is auto-banned during an attack, which
@@ -1075,6 +1049,75 @@ function waf_auto_ban($subject, $minutes, $note)
     }
 
     return (int) ($base / 60);
+}
+
+/**
+ * The statement waf_auto_ban() writes a ban with.
+ *
+ * @param string $subject the address or range banned, escaped
+ * @param string $note    the reason, kept from the first ban, escaped
+ * @param int    $now     the time of the ban
+ * @param int    $base    the base length, in seconds
+ * @param int    $ceiling the longest ban, in seconds
+ * @param bool   $climb   whether a repeat after expiry climbs the x4 ladder
+ * @return string
+ */
+function waf_auto_ban_sql($subject, $note, $now, $base, $ceiling, $climb)
+{
+    // Single atomic statement against the (ip_address, list_type, source)
+    // unique key added in 2026.2.7.
+    //
+    // The previous SELECT-then-INSERT was wrong twice over. It raced - two
+    // simultaneous requests from the same attacker could both see "no
+    // existing row" and both insert - and it silently failed outright while
+    // ip_address was too narrow to hold an IPv6 address, because the lookup
+    // used the full address and the stored value was a truncated stub. That
+    // produced a fresh ban row on every single offence.
+    //
+    // Insert-or-update through the key cannot do either. The note is not
+    // rewritten on repeats: the first reason is the useful one.
+    //
+    // Assignment order matters, and MySQL evaluates the list left to right:
+    // the hit_count assignment sees the OLD expires_at, and the expires_at
+    // assignment sees the NEW hit_count. An engine that handed it the old
+    // hit_count instead would land the ban one rung lower - shorter, never
+    // longer - so the reliance fails in the safe direction.
+    //
+    // Without the climb the rung stays and an expired ban comes back at the
+    // base length: GREATEST() of an expired end and now + base is the latter.
+    $now = (int) $now;
+    $base = (int) $base;
+
+    if ($climb) {
+        $update = "hit_count = IF(expires_at < " . $now . ", hit_count + 1, hit_count),
+            expires_at = IF(expires_at < " . $now . ",
+                " . $now . " + CAST(LEAST(FLOOR(" . $base . " * POW(4, LEAST(GREATEST(hit_count, 1) - 1, 8))), " . (int) $ceiling . ") AS UNSIGNED),
+                GREATEST(expires_at, " . ($now + $base) . "))";
+    } else {
+        $update = "hit_count = hit_count,
+            expires_at = GREATEST(expires_at, " . ($now + $base) . ")";
+    }
+
+    return "INSERT INTO banned_ip_addresses
+            (ip_address, list_type, source, note, expires_at, created_at, hit_count)
+         VALUES
+            ('" . $subject . "', 'block', 'auto', '" . $note . "',
+             " . ($now + $base) . ", " . $now . ", 1)
+         ON DUPLICATE KEY UPDATE
+            " . $update;
+}
+
+/**
+ * Whether a ban climbs the x4 ladder, by the category of the offence that
+ * brought it: a rate refusal is a busy visitor as often as a script, so a
+ * rate ban is always the base length; everything else climbs.
+ *
+ * @param string $category waf_last_category() when the ban is placed
+ * @return bool
+ */
+function waf_auto_ban_climbs($category)
+{
+    return (string) $category !== 'rate';
 }
 
 
@@ -2604,6 +2647,25 @@ function waf_last_rule($rule_id = null)
     return $last;
 }
 
+/**
+ * The category of the last logged event, kept beside waf_last_rule(): it
+ * tells waf_register_offence() whether the offence that brought a ban was a
+ * rate refusal.
+ *
+ * @param string|null $category the category to remember, or null to read
+ * @return string
+ */
+function waf_last_category($category = null)
+{
+    static $last = '';
+
+    if ($category !== null) {
+        $last = (string) $category;
+    }
+
+    return $last;
+}
+
 
 /* ─────────────────────────────────────────────────────────────────────────
    RESPONSE HEADERS
@@ -3504,6 +3566,7 @@ function waf_escape($value)
 function waf_log_event($action, $rule_id, $category, $score, $target, $matched)
 {
     waf_last_rule($rule_id);
+    waf_last_category($category);
 
     // Pre-upgrade installs still run the legacy bot filter, but have no
     // waf_log table to write to. Skip rather than fire a failing query on
@@ -5217,8 +5280,9 @@ function waf_handle_inflight($ip, $blocking)
         return;
     }
 
+    // Refused, but no offence: the open requests are not a rate, and an
+    // office behind one address sends four forms at once without trying.
     waf_log_event($blocking ? 'rate' : 'would-rate', 'concurrent', 'rate', 7, waf_script_name(), $limit . ' open');
-    waf_register_offence($ip, 5, $blocking, true);
 
     if ($blocking) {
         waf_deny(429, waf_reference());
@@ -5346,6 +5410,7 @@ function waf_register_offence($ip, $score, $blocking, $burst = false)
     // The rule of the refusal that brought the subject past the threshold,
     // read before the log rows below overwrite it.
     $rule = waf_last_rule();
+    $climb = waf_auto_ban_climbs(waf_last_category());
 
     if ($rule === '') {
         $rule = 'auto-ban';
@@ -5370,7 +5435,7 @@ function waf_register_offence($ip, $score, $blocking, $burst = false)
         $minutes = 60;
     }
 
-    $applied = waf_auto_ban($subject, $minutes, waf_ban_note($rule, $threshold));
+    $applied = waf_auto_ban($subject, $minutes, waf_ban_note($rule, $threshold), $climb);
 
     // The line names what was banned, for how long it actually is (after a
     // repeat longer than the configured base period) and the rule that
