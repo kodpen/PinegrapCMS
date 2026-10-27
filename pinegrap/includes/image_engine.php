@@ -1205,7 +1205,7 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
         // A GD built against a libavif that can decode but not encode has
         // the function and fails with a warning; that is a failed write here.
         } else {
-            $written = function_exists('imageavif') ? @imageavif($image, null, $quality) : false;
+            $written = function_exists('imageavif') ? @imageavif($image, null, $quality) : false; // phpcs:ignore PHPCompatibility.FunctionUse.NewFunctions.imageavifFound -- guarded by function_exists()
         }
 
         $data = ob_get_clean();
@@ -1250,7 +1250,7 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
             break;
 
         case IMAGETYPE_BMP:
-            $written = function_exists('imagebmp') ? imagebmp($image) : false;
+            $written = function_exists('imagebmp') ? imagebmp($image) : false; // phpcs:ignore PHPCompatibility.FunctionUse.NewFunctions.imagebmpFound -- guarded by function_exists()
             break;
 
         default:
@@ -1291,7 +1291,7 @@ function pg_image_gd_read($file_path, $type)
             return function_exists('imagecreatefromgif') ? @imagecreatefromgif($file_path) : false;
 
         case IMAGETYPE_BMP:
-            return function_exists('imagecreatefrombmp') ? @imagecreatefrombmp($file_path) : false;
+            return function_exists('imagecreatefrombmp') ? @imagecreatefrombmp($file_path) : false; // phpcs:ignore PHPCompatibility.FunctionUse.NewFunctions.imagecreatefrombmpFound -- guarded by function_exists()
     }
 
     if (defined('IMAGETYPE_WEBP') && ($type == IMAGETYPE_WEBP) && function_exists('imagecreatefromwebp')) {

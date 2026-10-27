@@ -242,7 +242,7 @@ function pg_mcp_client_headers($conn, $method, $params, $version) {
 // case name), body, error, errno (curl's error number, 0 for none).
 function pg_mcp_client_post($conn, $message, $method, $version) {
 
-	$flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0);
+	$flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0); // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined()
 
 	$body = json_encode($message, $flags);
 

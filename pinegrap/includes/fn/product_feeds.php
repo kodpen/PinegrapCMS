@@ -720,7 +720,7 @@ function pg_product_feed_jsonl_line($row)
     $flags = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
 
     if (defined('JSON_INVALID_UTF8_SUBSTITUTE')) {
-        $flags |= JSON_INVALID_UTF8_SUBSTITUTE;
+        $flags |= JSON_INVALID_UTF8_SUBSTITUTE; // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined() above
     }
 
     return json_encode($row, $flags);

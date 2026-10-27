@@ -18,6 +18,7 @@ description: Open items of the 2026-10-19 static analysis: undefined variables, 
 - Done (#1831, #1852): `curl_close()` in `submit_order.php` (17) and `includes/fn/output.php` (1); none is left in the product tree.
 - Dead remnants to remove once the owner agrees: `mysql_*` behind `DB_LEGACY` (`core.php` 168-180, `router.php` 160-170; gone since PHP 7.0), `pfpro_process()` (`submit_order.php` 2325/5079, extension removed in PHP 5.1), `get_magic_quotes_gpc()` (`init.php:847`, `install/index.php:357`). `mcrypt` (`ecommerce.php` 727-739) is a guarded PHP <= 7.1 path: keep while 7.1 is supported.
 - PHP 7.2+ APIs (`JSON_INVALID_UTF8_SUBSTITUTE`, `PHP_OS_FAMILY`, `imagebmp`, `imagecreatefrombmp`, `imageavif`, the `idn_to_ascii()` variant) are guarded everywhere. `custom_form.php:1793` "break outside loop" is a false positive (a brace-less `foreach`).
+- Done (#2090): those guarded lines carry `phpcs:ignore` markers naming the guard and left `tools/phpcs-baseline.json`, so a guard removed later fails CI.
 
 ## How does CI keep this clean?
 - `bash tools/static_analysis.sh` runs PHPStan level 0 and PHPCompatibility (`testVersion 7.1-`) in `php-checks.yml` (PR #673) against baselines that hold every item above, so new code cannot add one: docs/memory/workflow/static-analysis.md. The PR that fixes an item regenerates the baselines in the same change, so they shrink.
