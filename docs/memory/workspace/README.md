@@ -107,6 +107,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-notes-sources.md: Where an imported note came from (ws_note_sources, schema 11.0.86): the id per provider, how the import plan turns a known file into "same" or "update", when rows are written and dropped
 - workspace-notes.md: Workspace notes (ws_notes): tables, limits, body format, versions, an assistant's answer under the line that asked, the paged list, what the API offers and lacks
 - workspace-office-edits.md: The cells of an Excel file or the paragraphs of a Word file posted in a channel, changed in its preview window (ws_file_office, ws_file_office_save, PR #656, #702): who may, replace or copy
+- workspace-polls-api.md: A poll over the Workspace API: closed_at, can_vote false past closes_at and in an earlier version (ws_poll_vote_state()), and the field a vote, change or close refusal names
 - workspace-quick-create.md: A product or group made by a person in the Workspace (ws_quick_create_*): drawer new mode, palette line, /product (/ürün), off sale unless ticked, applied ws_ai_changes row, decision
 - workspace-quick-edit-drawer.md: The "Fields" section of the record drawer (openRecord, quickEditSection in workspace.js): glance line, short list, inputs from saValueInput(), what a save sends, stale line, decision tick
 - workspace-quick-edit.md: A record's fields edited by a person from the record drawer with no assistant (quick_edit.php): kinds offered, the two actions, checks reused from changes.php, stale check, history row, log, decision

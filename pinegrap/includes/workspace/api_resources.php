@@ -904,6 +904,7 @@ function ws_api_poll_present($poll)
         'anonymous'         => !empty($poll['anonymous']),
         'closed'            => !empty($poll['closed']),
         'closes_at'         => api_time($poll['closes_at']),
+        'closed_at'         => api_time($poll['closed_at'] ?? 0),
         'voters'            => (int) $poll['voters'],
         'voted'             => !empty($poll['voted']),
         'can_vote'          => !empty($poll['can_vote']),
@@ -947,6 +948,7 @@ function ws_api_poll_schema()
         'anonymous'         => 'boolean',
         'closed'            => 'boolean',
         'closes_at'         => 'string?',
+        'closed_at'         => 'string?',
         'voters'            => 'integer',
         'voted'             => 'boolean',
         'can_vote'          => 'boolean',
@@ -2684,16 +2686,13 @@ function ws_api_polls_vote($params)
 
     if (!$checked['ok']) {
         // A vote after the poll's time closes it, as in the panel; a dry run
-        // leaves that to the next vote or the hourly job.
+        // leaves that to the next vote or the next read of the channel
+        // (ws_polls_autoclose()).
         if ($checked['expired'] && !api_dry_run_requested()) {
             ws_poll_close(null, $poll);
         }
 
-        if ($checked['error'] === lang('You cannot post in that channel.')) {
-            api_fail(403, 'forbidden', $checked['error']);
-        }
-
-        api_fail_validation($checked['error']);
+        ws_api_poll_refused($checked['error'], $checked['field']);
     }
 
     $options = array_map('intval', (array) db_values("SELECT id FROM ws_poll_options WHERE poll_id = '" . (int) $poll['id'] . "'"));
@@ -2720,7 +2719,7 @@ function ws_api_polls_vote($params)
     $result = ws_poll_vote($viewer, $poll, $chosen);
 
     if (!$result['ok']) {
-        api_fail_validation($result['error']);
+        ws_api_poll_refused($result['error']);
     }
 
     ws_api_poll_message_ok($viewer, $poll);
@@ -2749,7 +2748,7 @@ function ws_api_poll_or_404($viewer, $id)
 
     // An earlier version of a conversation is kept as it was (eras.php).
     if (function_exists('ws_message_in_past') && ws_message_in_past($message)) {
-        api_fail_validation(lang('This message is in an earlier version of the conversation, which is kept as it was.'));
+        ws_api_poll_refused(lang('This message is in an earlier version of the conversation, which is kept as it was.'), 'message_id');
     }
 
     return $poll;
@@ -2770,7 +2769,7 @@ function ws_api_poll_message_ok($viewer, $poll, $status = 200)
 }
 
 /**
- * A refusal of ws_poll_edit() or ws_poll_close() as the API answers it.
+ * A refusal of a vote, ws_poll_edit() or ws_poll_close() as the API answers it.
  *
  * @param string $error
  * @param string $field
@@ -2789,6 +2788,11 @@ function ws_api_poll_refused($error, $field = '')
 
     if ($error === lang('That poll could not be found.')) {
         api_fail_not_found(lang('Poll'));
+    }
+
+    // A closed poll, or one whose time ran out, is refused on its closing time.
+    if (($field === '') && ($error === lang('The poll is closed.'))) {
+        $field = 'closes_at';
     }
 
     api_fail_validation($error, ($field !== '') ? $field : null);
