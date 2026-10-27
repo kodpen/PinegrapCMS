@@ -236,7 +236,7 @@ function test_workspace_flow_templates_reach_the_canvas()
 	$config = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php');
 	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
 
-	pg_assert_true(strpos($config, "'templates'") !== false && strpos($config, 'ws_flow_templates(') !== false, 'config hands the templates');
+	pg_assert_true(strpos($config, "'templates'") !== false && strpos($config, 'ws_flow_templates_for(') !== false, 'config hands the templates');
 	pg_assert_true(strpos($script, 'FL.templates') !== false, 'the script reads them');
 	pg_assert_true(strpos($script, 'function showGallery(') !== false, 'the gallery');
 	pg_assert_true(strpos($script, "'fl_tpl_from_template'") !== false, 'the box list offers a template');

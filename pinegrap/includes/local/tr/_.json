@@ -743,6 +743,7 @@
     "{var:1} is not valid base64.": "{var:1} geçerli bir base64 değil.",
     "{var:1} is not writeable so a short link cannot be added.": "{var:1} yazılabilir olmadığından kısa bağlantı eklenemedi.",
     "{var:1} is not writeable so your request could not be completed.": "{var:1} yazılabilir olmadığından isteğiniz tamamlanamadı.",
+    "{var:1} is on the canvas. Only these are left to choose; the rest can be changed on the canvas.": "{var:1} tuvalde. Yalnızca bunları seçmeniz kaldı; geri kalanı tuvalde değiştirilebilir.",
     "{var:1} is on the list, but it is the server or a proxy every visitor arrives through, so everyone sees the site during maintenance. Add it to Trusted Proxies on the Firewall card and list your own address instead.": "{var:1} listede, ama bu her ziyaretçinin üzerinden geldiği sunucu ya da vekil sunucu; bakım sırasında siteyi herkes görür. Onu Güvenlik Duvarı kartında Güvenilen Vekil Sunucular'a ekleyin ve listeye kendi adresinizi yazın.",
     "{var:1} is on with the HTML format, but no page is selected. Select the page to send, or choose Plain Text and write a body.": "{var:1} açık ve biçimi HTML, ancak sayfa seçilmemiş. Gönderilecek sayfayı seçin ya da Düz Metin'i seçip gövdeyi yazın.",
     "{var:1} is on with the Plain Text format, but its Body is empty. Write the body of the e-mail, or choose HTML and select a page.": "{var:1} açık ve biçimi Düz Metin, ancak Gövde boş. E-postanın gövdesini yazın ya da HTML'i seçip bir sayfa seçin.",

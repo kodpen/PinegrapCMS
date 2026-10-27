@@ -1961,6 +1961,17 @@ function ws_flow_js_strings()
         'fl_tpl_use'          => lang('Use'),
         'fl_tpl_boxes'        => ws_js_template('{var:1} boxes', 1),
         'fl_tpl_threads'      => ws_js_template('{var:1} data threads', 1),
+        'fl_tpl_setup'        => lang('Set it up'),
+        'fl_tpl_setup_help'   => ws_js_template('{var:1} is on the canvas. Only these are left to choose; the rest can be changed on the canvas.', 1),
+        'fl_tpl_open'         => lang('Open on canvas'),
+        'fl_tpl_publish'      => lang('Publish now'),
+        'fl_tpl_published'    => lang('The flow is published.'),
+        'fl_tpl_close'        => lang('Close'),
+        'fl_tpl_set_channel'  => lang('Channel'),
+        'fl_tpl_set_person'   => lang('Who'),
+        'fl_tpl_set_time'     => lang('Time'),
+        'fl_tpl_set_url'      => lang('Web address'),
+        'fl_tpl_set_address'  => lang('E-mail addresses'),
         'fl_too_many_boxes'   => ws_js_template('A flow can hold at most {var:1} boxes.', 1),
         'fl_flow_settings'    => lang('The flow'),
         'fl_flow_help'        => lang('Select a box to change it. Nothing runs until the flow is published.'),
@@ -2131,16 +2142,8 @@ function ws_flow_js_config($viewer, $mode)
     // (flow_templates.php), filled for the person: their texts go to them.
     $templates = array();
 
-    if ($build && is_array($scheduled ?? null) && function_exists('ws_flow_templates')) {
-        $templates = ws_flow_templates(array(
-            'me'       => (int) $viewer['id'],
-            'channel'  => 0,
-            'site'     => (string) $scheduled['site'],
-            'email'    => (string) $scheduled['email'],
-            'today'    => date('Y-m-d'),
-            'metrics'  => array_keys((array) $scheduled['metrics']),
-            'recap_ai' => !empty($scheduled['recap_ai']),
-        ));
+    if ($build && is_array($scheduled ?? null) && function_exists('ws_flow_templates_for')) {
+        $templates = ws_flow_templates_for($viewer, $scheduled);
     }
 
     return $config + array(
