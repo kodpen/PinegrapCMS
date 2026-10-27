@@ -41283,9 +41283,14 @@ const StyleDesigner = (function () {
             link(_sdT('Distance Sales Contract'), '__legal_contract_url', 'has_legal_contract')
         ])];
         if (!_sdPartPlaced(tree, ['__withdrawal_deadline', '__withdrawal_text'])) {
-            body.push(_sdPartEl('p', 'small text-muted mt-2 mb-0', _sdT('Right of Withdrawal'), {
-                text: '', _bindings: { text: '__withdrawal_text', eo_visible_if: 'has_withdrawal_deadline' }
-            }));
+            var line = function (name, text, flag) {
+                return _sdPartSentence('p', 'small text-muted mt-2 mb-0', name, text, '__withdrawal_deadline', { _bindings: { eo_visible_if: flag } });
+            };
+            body.push(
+                line(_sdT('Right of Withdrawal'), _sdT('Last day of the right of withdrawal: {var:1}'), 'withdrawal_deadline_firm'),
+                line(_sdT('Estimated Right of Withdrawal'), _sdT('Last day of the right of withdrawal: {var:1} (estimated; the 14 days run from delivery).'), 'withdrawal_deadline_estimated'),
+                line(_sdT('Ended Right of Withdrawal'), _sdT('The right of withdrawal ended on {var:1}.'), 'withdrawal_ended')
+            );
         }
         return [_sdPartOrderCard('pg-ov-legal-documents', _sdT('Legal Documents'), 'has_legal_documents', _sdT('Legal Documents'), body)];
     }
@@ -41452,6 +41457,7 @@ const StyleDesigner = (function () {
             ['has_legal_preinfo',       _sdT('The pre-information form is kept with the order')],
             ['has_legal_contract',      _sdT('The distance sales contract is kept with the order')],
             ['has_withdrawal_deadline', _sdT('The last day of the right of withdrawal is known')],
+            ['withdrawal_deadline_firm', _sdT('The withdrawal deadline is firm and still ahead')],
             ['withdrawal_deadline_estimated', _sdT('The withdrawal deadline is an estimate')],
             ['withdrawal_ended',        _sdT('The right of withdrawal has ended')],
             ['can_cancel',              _sdT('The order can be cancelled')],
@@ -59993,22 +59999,21 @@ const StyleDesigner = (function () {
                                                 _bindings: { href: '__legal_contract_url' } })
                                         ]),
                                         // Last day of the right of withdrawal: 14 days
-                                        // from the last delivery. One note says the
-                                        // date rests on planned dates, the other that
-                                        // the day has passed.
+                                        // from the last delivery. One sentence per
+                                        // state (firm, resting on planned dates, or
+                                        // passed), the day a value of its own.
                                         createNode('semantic', { tag: 'div', cssClass: 'small text-muted mt-2',
                                             customName: _sdT('Right of Withdrawal'),
                                             _bindings: { eo_visible_if: 'has_withdrawal_deadline' } }, [
-                                            createNode('content', { contentType: 'paragraph', cssClass: 'mb-0',
-                                                text: _sdT('Last day of the right of withdrawal:') }),
-                                            createNode('content', { contentType: 'paragraph', cssClass: 'fw-semibold mb-0',
-                                                text: '—', _bindings: { text: '__withdrawal_deadline' } }),
-                                            createNode('content', { contentType: 'paragraph', cssClass: 'mb-0',
-                                                text: _sdT('Estimated; the 14 days run from delivery.'),
-                                                _bindings: { eo_visible_if: 'withdrawal_deadline_estimated' } }),
-                                            createNode('content', { contentType: 'paragraph', cssClass: 'mb-0',
-                                                text: _sdT('The right of withdrawal has ended.'),
-                                                _bindings: { eo_visible_if: 'withdrawal_ended' } })
+                                            _sdPartSentence('p', 'mb-0', _sdT('Last Day'),
+                                                _sdT('Last day of the right of withdrawal: {var:1}'), '__withdrawal_deadline',
+                                                { _bindings: { eo_visible_if: 'withdrawal_deadline_firm' } }),
+                                            _sdPartSentence('p', 'mb-0', _sdT('Estimated Last Day'),
+                                                _sdT('Last day of the right of withdrawal: {var:1} (estimated; the 14 days run from delivery).'), '__withdrawal_deadline',
+                                                { _bindings: { eo_visible_if: 'withdrawal_deadline_estimated' } }),
+                                            _sdPartSentence('p', 'mb-0', _sdT('Ended'),
+                                                _sdT('The right of withdrawal ended on {var:1}.'), '__withdrawal_deadline',
+                                                { _bindings: { eo_visible_if: 'withdrawal_ended' } })
                                         ])
                                     ])
                                 ]),
