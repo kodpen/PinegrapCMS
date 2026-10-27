@@ -196,6 +196,22 @@ function test_mfa_recovery_normalize_and_hash()
 	pg_assert_same(hash('sha256', 'ABCDEFGH'), pg_mfa_recovery_hash('ABCD EFGH'));
 }
 
+// Six digits are a TOTP code, eight code characters in any case or spacing
+// a recovery code; anything else is neither.
+function test_mfa_code_kind()
+{
+	pg_assert_same('totp', pg_mfa_code_kind('123456'));
+	pg_assert_same('totp', pg_mfa_code_kind(' 123 456 '));
+	pg_assert_same('recovery', pg_mfa_code_kind('ABCD-EFGH'));
+	pg_assert_same('recovery', pg_mfa_code_kind('abcdefgh'));
+	pg_assert_same('recovery', pg_mfa_code_kind('2345 6789'));
+	pg_assert_same('recovery', pg_mfa_code_kind('12345678'));
+	pg_assert_same('', pg_mfa_code_kind('12345'));
+	pg_assert_same('', pg_mfa_code_kind('1234567'));
+	pg_assert_same('', pg_mfa_code_kind('ABCD-EFG'));
+	pg_assert_same('', pg_mfa_code_kind(''));
+}
+
 // The key URI: issuer and account percent-encoded, unpadded secret, the
 // defaults spelled out.
 function test_mfa_totp_uri()

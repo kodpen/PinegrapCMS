@@ -42,6 +42,11 @@ const StyleDesigner = (function () {
         return out;
     }
 
+    // The text of a percent slider's value bubble (pgUI.range.bubble()).
+    function _sdPercent(value) {
+        return value + '%';
+    }
+
     // Locale for Date#toLocaleString: the panel's <html lang>, or the
     // browser default when the page does not declare one.
     function _sdLocale() {
@@ -12010,6 +12015,83 @@ const StyleDesigner = (function () {
         return current;
     }
 
+    // ── Canvas state of "Hide when empty" (pg-hide-if-empty) ─────────────
+    // The page drops a marked element that came out empty, in every kind
+    // (pg_sw_hide_empty_fields(), the finish pass): judged by its first
+    // element marked pg-field-value ("label: value" rows, a heading over a
+    // list), else by everything inside it. The canvas draws it so in the
+    // state the band chose: every value empty, or the sample values.
+    var SD_HIDE_EMPTY = 'pg-hide-if-empty';
+    var SD_FIELD_VALUE = 'pg-field-value';
+
+    function _sdNodeClassHas(node, cls) {
+        var c = node && node.props && node.props.cssClass;
+        return !!c && (' ' + String(c) + ' ').indexOf(' ' + cls + ' ') !== -1;
+    }
+
+    // Whether `tree` holds an element marked "Hide when empty".
+    function _sdTreeHasHideEmpty(tree) {
+        var found = false;
+        (function walk(n) {
+            if (found || !n || typeof n !== 'object') return;
+            if (_sdNodeClassHas(n, SD_HIDE_EMPTY)) { found = true; return; }
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        })(tree);
+        return found;
+    }
+
+    // The element a marked `node` is judged by: its first descendant marked
+    // pg-field-value, else itself.
+    function _sdHideEmptyValueNode(node) {
+        var found = null;
+        (function walk(n) {
+            if (found || !n || !Array.isArray(n.children)) return;
+            n.children.forEach(function (c) {
+                if (found) return;
+                if (_sdNodeClassHas(c, SD_FIELD_VALUE)) { found = c; return; }
+                walk(c);
+            });
+        })(node);
+        return found || node;
+    }
+
+    // Whether what `node` holds shows anything on the page in `state`, as
+    // pg_sw_has_content() reads it: words, a picture with an address, a
+    // link, a button, a form control, a frame; a bound value by its sample
+    // (none in the empty state); a list by its sample rows.
+    function _sdHideEmptyContentShows(node, state) {
+        var p = (node && node.props) || {};
+        if (node.type === 'loop_area' && p.source) return state !== 'empty';
+        var b = p._bindings || {};
+        var bound = b.html || b.text;
+        if (b.src) return state !== 'empty';
+        if (bound) return state !== 'empty' && _sdCondCanvasValue(bound, node, state) !== '';
+        if (node.type === 'component') return true;
+        var ct = p.contentType || '';
+        if (ct === 'link' || ct === 'custom_html' || ct === 'carousel' || ct === 'variant_attr') return true;
+        if (ct === 'image') return !!(p.src || p.url);
+        var tag = String(p.tag || '').toLowerCase();
+        if (/^(a|button|input|select|textarea|video|audio|iframe|object|embed|svg|canvas)$/.test(tag)) return true;
+        if (tag === 'img') return !!(p.src || p.url);
+        if (p.text && _sdCondText(String(p.text)) !== '') return true;
+        return Array.isArray(node.children) && node.children.some(function (c) { return _sdHideEmptyShows(c, state); });
+    }
+
+    // Whether the canvas draws `node` in `state` and it shows anything.
+    function _sdHideEmptyShows(node, state) {
+        if (!node || !_sdCondCanvasShows(node, state)) return false;
+        if (_sdHideEmptyCanvasOff(node, state)) return false;
+        return _sdHideEmptyContentShows(node, state);
+    }
+
+    // Whether `node` is marked "Hide when empty" and the page would drop it
+    // in `state`. Every element is drawn in "All elements".
+    function _sdHideEmptyCanvasOff(node, state) {
+        if (state === 'all' || !_sdNodeClassHas(node, SD_HIDE_EMPTY)) return false;
+        var value = _sdHideEmptyValueNode(node);
+        return (value === node) ? !_sdHideEmptyContentShows(node, state) : !_sdHideEmptyShows(value, state);
+    }
+
     // Switch the state the canvas draws. A selection the new state hides
     // moves up to the widget (refNode), or the next render would switch back.
     function _sdSetCommentsCanvasState(state, refNode) {
@@ -12252,6 +12334,9 @@ const StyleDesigner = (function () {
         'catalog.crumbs': [
             { __crumb_label: _sdT('Example group'), __crumb_url: '#', __crumb_kind: 'link' },
             { __crumb_label: _sdT('Example product'), __crumb_url: '', __crumb_kind: 'active' }
+        ],
+        'catalog.active_filters': [
+            { __filter_chip_label: _sdT('Colour: Red'), __filter_chip_url: '#' }
         ],
         'security.passkeys': [
             { __passkey_id: '2', __passkey_name: _sdT('My laptop'), __passkey_last_used: _sdT('Never'), __passkey_is_synced: '' }
@@ -12600,6 +12685,10 @@ const StyleDesigner = (function () {
             wrapper.classList.add('sd-cond');
             wrapper.setAttribute('data-sd-cond', _sdCondSentence(node));
             if (!_sdCondCanvasShows(node, _sdCondStateOf(_sysWidgetRenderTreeRoot))) wrapper.classList.add('sd-state-off');
+        }
+        // "Hide when empty": left out in the state that empties it.
+        if (_sysWidgetRenderCfg && _sdHideEmptyCanvasOff(node, _sdCondStateOf(_sysWidgetRenderTreeRoot))) {
+            wrapper.classList.add('sd-state-off');
         }
 
         // Login region: the canvas draws one session state at a time; an
@@ -13064,9 +13153,7 @@ const StyleDesigner = (function () {
                 && node.props && node.props._bindings && node.props._bindings.section) {
                 var _sectionLabels = {
                     group_tree:        _sdT('Category Tree (nested list — filled by the backend)'),
-                    filter_chips:      _sdT('Active Filter Chips (filled in by the backend)'),
                     filters_offcanvas: _sdT('Filter Offcanvas (filled in by the backend — Bootstrap offcanvas)'),
-                    active_filters:    _sdT('Active Attribute Filters (filled in by the backend)'),
                     attribute_filters: _sdT('Attribute Filter UI (filled in by the backend)'),
                     applied_offers:    _sdT('Applied Offers (filled in by the backend)'),
                     recipient_picker:  _sdT('Recipient Picker (filled by the backend)'),
@@ -14109,7 +14196,8 @@ const StyleDesigner = (function () {
         '__has_low_stock': 1, '__has_tax': 1, '__has_shipping': 1,
         '__has_offers': 1, '__has_terms': 1, '__is_cancelled': 1,
         '__can_cancel': 1, '__has_timeline': 1, '__has_notes': 1,
-        '__has_tracking_link': 1, '__has_related': 1
+        '__has_tracking_link': 1, '__has_related': 1,
+        '__has_active_filters': 1, '__has_active_attr_filters': 1
     };
     // A date the way the server prints one when no format suffix is given:
     // day/month/year and a 12-hour clock. Today's date, so the canvas never
@@ -22507,6 +22595,7 @@ const StyleDesigner = (function () {
                 { label: _sdT('Attributes of the product'), type: 'loop_area', icon: 'bi-card-list', extra: { listSource: 'product.attributes' } },
                 { label: _sdT('Products bought together'), type: 'loop_area', icon: 'bi-bag', extra: { listSource: 'product.related' } },
                 { label: _sdT('Crumbs of the catalog path'), type: 'loop_area', icon: 'bi-signpost-split', extra: { listSource: 'catalog.crumbs' } },
+                { label: _sdT('Active attribute filters'), type: 'loop_area', icon: 'bi-funnel', extra: { listSource: 'catalog.active_filters' } },
                 { label: _sdT('Month grid'), type: 'loop_area', icon: 'bi-calendar3', extra: { listSource: 'calendar.weeks' } },
                 { label: _sdT('Days of the week'), type: 'loop_area', icon: 'bi-calendar-week', extra: { listSource: 'calendar.weekdays' } },
                 { label: _sdT('Days of the calendar'), type: 'loop_area', icon: 'bi-calendar-day', extra: { listSource: 'calendar.days' } },
@@ -32754,6 +32843,7 @@ const StyleDesigner = (function () {
             'product.attributes': _sdT('One row for every attribute the product has a value for, such as its colour or size. Bind the row\'s elements to "Attribute" and "Attribute value" in Bind Data.'),
             'product.related':    _sdT('One row for every product ordered together with this one, else for the products of its groups, at most 12. With this list on the page the automatic "Frequently bought together" block is not added.'),
             'catalog.crumbs':     _sdT('One row for every crumb of the path to what the page shows: the catalog, its groups, then the group or product itself. A condition on "Kind of crumb" draws a link, words, or where the visitor is.'),
+            'catalog.active_filters': _sdT('One row for every attribute filter the visitor applied, such as "Colour: Red". Bind a link to "Address without the filter": it opens the listing without that filter. With this list on the page the automatic chip row above the products is not added.'),
             'calendar.weekdays':  _sdT('One row for every day of the week, in the widget\'s week order: the heads of a month grid. Bind the row\'s elements to "Day name" or "Short day name" in Bind Data.'),
             'calendar.weeks':     _sdT('One row for every week the monthly or weekly view shows. Put a list of the days of the calendar inside the row: it lists that week\'s days.'),
             'calendar.days':      _sdT('One row for every day: inside a list of weeks that week\'s days, else every day the view shows. Days of the next or previous month hold no events; a condition on "Day of another month" or "Today" styles them.'),
@@ -37679,7 +37769,6 @@ const StyleDesigner = (function () {
     // __page_link_N / __link_label_N go too (_sdCondTokenAllowed()).
     var SW_COND_DENY = [
         '__variant_picker',
-        '__filter_chips',
         '__filters_button',
         '__filters_offcanvas',
         '__clear_filters_button',
@@ -37928,7 +38017,6 @@ const StyleDesigner = (function () {
         '__description', '__details', '__out_of_stock_message', '__price_formatted', '__price_block_html',
         '__price_range', '__variant_picker',
         '__group_tree_html', '__group_tree_inner_html', '__attribute_filters_html', '__attribute_filters_inner_html',
-        '__active_filters_html', '__active_filters_inner_html', '__filter_chips', '__filter_chips_inner_html',
         '__filters_button', '__filters_offcanvas', '__filters_offcanvas_inner_html', '__clear_filters_button',
         '__comment_message_html', '__comment_seller_reply_html',
         '__field_value_html', '__field_info_html', '__gift_card_message_html',
@@ -38058,7 +38146,9 @@ const StyleDesigner = (function () {
     // element (as before W19). A code token's values are states of their own:
     // the order view's status stages, so one status badge shows. The canvas
     // tests each condition with _sdCondEval(), as the page does. Editor only.
-    var _sdCondCanvasState = 'sample';
+    // Empty draws each widget's first state ("Completed" in the order view);
+    // a page opened in a tab starts there again.
+    var _sdCondCanvasState = '';
 
     // Tokens whose value is a code the canvas offers one state per value of
     // (pg_sw_cond_code_tokens() that are a widget's, not a list row's).
@@ -38088,7 +38178,7 @@ const StyleDesigner = (function () {
     // the sample values; then every value empty and every element.
     function _sdCondCanvasStates(tree) {
         var tokens = _sdCondTreeTokens(tree);
-        if (!tokens.length) return [];
+        if (!tokens.length && !_sdTreeHasHideEmpty(tree)) return [];
         var states = [];
         tokens.forEach(function (t) {
             (_sdCondCodeStates(t) || []).forEach(function (s) { states.push(['code:' + t + ':' + s[0], s[1]]); });
@@ -38150,7 +38240,7 @@ const StyleDesigner = (function () {
             if (Array.isArray(n.children)) n.children.forEach(function (c) { walk(c, here); });
         })(root, []);
         if (!path) return current;
-        var shows = function (state) { return path.every(function (n) { return _sdCondCanvasShows(n, state); }); };
+        var shows = function (state) { return path.every(function (n) { return _sdCondCanvasShows(n, state) && !_sdHideEmptyCanvasOff(n, state); }); };
         if (shows(current)) return current;
         var states = _sdCondCanvasStates(root);
         for (var i = 0; i < states.length; i++) {
@@ -38172,6 +38262,54 @@ const StyleDesigner = (function () {
             }
         }
         render();
+    }
+
+    // The "Hide when empty" row of Bind Data, on any element of a system
+    // widget but its root and its loops (the class pg-hide-if-empty), and on
+    // an element inside a marked one, "Value of the box around it" (the class
+    // pg-field-value): the box is judged by that element alone, so its
+    // heading and words go with it.
+    function _sdHideEmptyRows(node) {
+        if (!node || !node.props || !_isInsideSystemWidget(node)) return '';
+        if (node.type === 'root' || node.type === 'loop_area' || node.type === 'recipient_loop_area') return '';
+        var note = function (text) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(text) + '</div>'; };
+        var html = row(esc(_sdT('Hide when empty')), swAttr('data-sd-hide-empty="1"', _sdNodeClassHas(node, SD_HIDE_EMPTY)) +
+            note(_sdT('The page leaves the element out, with its frame and its words, when what it shows is empty. The canvas leaves it out in the Empty values state.')));
+        var boxed = false;
+        for (var up = _sdAnyParent(node); up && up.parent; up = _sdAnyParent(up.parent)) {
+            if (_sdNodeClassHas(up.parent, SD_HIDE_EMPTY)) { boxed = true; break; }
+            if (up.parent.type === 'root') break;
+        }
+        if (boxed || _sdNodeClassHas(node, SD_FIELD_VALUE)) {
+            html += row(esc(_sdT('Value of the box around it')), swAttr('data-sd-field-value="1"', _sdNodeClassHas(node, SD_FIELD_VALUE)) +
+                note(_sdT('The box marked Hide when empty is judged by this element alone: when it is empty, the heading and the words beside it go too.')));
+        }
+        return html;
+    }
+
+    // Puts `cls` on `node` or takes it off.
+    function _sdNodeToggleClass(node, cls, on) {
+        var arr = String(node.props.cssClass || '').split(/\s+/).filter(function (c) { return c && c !== cls; });
+        if (on) arr.push(cls);
+        node.props.cssClass = arr.join(' ');
+    }
+
+    // When "Hide when empty" is turned on for a box that holds one list
+    // (a heading over related products) and names no value element, the
+    // element the list's rows are drawn in becomes its value, so the heading
+    // goes with an empty list. A list drawn straight into the box changes
+    // nothing: an empty list leaves the box empty anyway.
+    function _sdHideEmptyPickValue(node) {
+        if (_sdHideEmptyValueNode(node) !== node) return;
+        var holders = [];
+        (function walk(n) {
+            if (!n || !Array.isArray(n.children)) return;
+            n.children.forEach(function (c) {
+                if (c && c.type === 'loop_area' && c.props && c.props.source) holders.push(n);
+                else walk(c);
+            });
+        })(node);
+        if (holders.length === 1 && holders[0] !== node && holders[0].props) _sdNodeToggleClass(holders[0], SD_FIELD_VALUE, true);
     }
 
     // The node an "Add a condition" click opened one empty row on; the row
@@ -38439,7 +38577,6 @@ const StyleDesigner = (function () {
             ['__group_tree_html',        _sdT('Category tree HTML (old — use a section binding)')],
             ['__filters_button',         _sdT('Filters button (old — use the open_filters action)')],
             ['__filters_offcanvas',      _sdT('Filter offcanvas (legacy — use the section binding)')],
-            ['__filter_chips',           _sdT('Active filter chips (legacy — use the section binding)')],
             ['__clear_filters_button',   _sdT('Clear Filters button (old — use the clear_filters action)')]
         ]},
         { label: _sdT('More product details'), tokens: SW_PRODUCT_ENTITY_TOKENS },
@@ -38461,8 +38598,9 @@ const StyleDesigner = (function () {
         ]},
         { label: _sdT('Filter State'), tokens: [
             ['__attribute_filters_html', _sdT('Attribute filter UI HTML (legacy)')],
-            ['__active_filters_html',    _sdT('Active attribute filter chips HTML (legacy)')],
-            ['__has_active_filters',     _sdT('Whether a filter is active (1/0)')]
+            ['__has_active_filters',     _sdT('Whether a filter is active (1/0)')],
+            ['__has_active_attr_filters', _sdT('Whether an attribute filter is active (1/0)')],
+            ['__clear_filters_url',      _sdT('Address without the filters')]
         ]},
         // pg_sw_list_paging(), as in a form list.
         { label: _sdT('Pages'), tokens: [
@@ -39898,7 +40036,13 @@ const StyleDesigner = (function () {
             '__breadcrumb_html':       function (cfg) { return _sdPartCatalogBreadcrumb('pg-sw-breadcrumb mb-3'); },
             '__breadcrumb_inner_html': function (cfg) { return _sdPartCatalogCrumbs(true); },
             'section:breadcrumb':      function (cfg) { return _sdPartCatalogCrumbs(true); },
-            'content:breadcrumb':      function (cfg) { return _sdPartCatalogBreadcrumb('pg-sw-breadcrumb mb-3'); }
+            'content:breadcrumb':      function (cfg) { return _sdPartCatalogBreadcrumb('pg-sw-breadcrumb mb-3'); },
+            '__filter_chips':              function (cfg) { return _sdPartCatalogFilterChips(); },
+            '__filter_chips_inner_html':   function (cfg) { return _sdPartCatalogFilterChipsInner(); },
+            'section:filter_chips':        function (cfg) { return _sdPartCatalogFilterChipsInner(); },
+            '__active_filters_html':       function (cfg) { return _sdPartCatalogActiveFilters(); },
+            '__active_filters_inner_html': function (cfg) { return _sdPartCatalogActiveFilters(); },
+            'section:active_filters':      function (cfg) { return _sdPartCatalogActiveFilters(); }
         },
         catalog_item_view: {
             '__breadcrumb_html':       function (cfg) { return _sdPartCatalogBreadcrumb('pg-civ-breadcrumb mb-3'); },
@@ -40127,6 +40271,48 @@ const StyleDesigner = (function () {
         var p = _sdPartWhen('__has_breadcrumb', 'not_empty');
         p._attrs = [{ name: 'aria-label', value: 'breadcrumb' }];
         return [_sdPartEl('nav', cls, _sdT('Breadcrumb'), p, _sdPartCatalogCrumbs(false))];
+    }
+
+    // A listing's active attribute filters
+    // (pg_sw_part_catalog_active_filters()): a box drawn when there are any,
+    // one badge per filter (catalog.active_filters) linking to the listing
+    // without it, its words, then a cross.
+    /* @pg-site-output */
+    function _sdPartCatalogActiveFilters() {
+        return [_sdPartEl('div', 'pg-sw-attr-active-filters mb-3', _sdT('Active attribute filters'), _sdPartWhen('__has_active_attr_filters', 'eq', '1'), [
+            createNode('loop_area', { source: 'catalog.active_filters' }, [
+                _sdPartEl('a', 'badge text-bg-secondary text-decoration-none me-2 mb-1 d-inline-flex align-items-center', _sdT('Filter chip'), {
+                    href: '#', text: '', textPosition: 'start',
+                    _bindings: { text: '__filter_chip_label', href: '__filter_chip_url' }
+                }, [
+                    _sdPartEl('span', 'bi bi-x-lg ms-2', _sdT('Remove icon'))
+                ])
+            ])
+        ])];
+    }
+
+    // What the filter chip strip held (pg_sw_part_catalog_filter_chips_inner()):
+    // the active attribute filters, then, while any filter is active, the
+    // button that clears them all.
+    /* @pg-site-output */
+    function _sdPartCatalogFilterChipsInner() {
+        return _sdPartCatalogActiveFilters().concat([
+            _sdPartEl('span', 'ms-auto', _sdT('Clear Filters'), _sdPartWhen('__has_active_filters', 'eq', '1'), [
+                _sdPartEl('a', 'btn btn-sm btn-outline-danger', _sdT('Clear Filters button'), {
+                    href: '#', text: _sdT('Clear Filters'), _bindings: { href: '__clear_filters_url' }
+                }, [
+                    _sdPartEl('i', 'bi bi-x-circle me-1', _sdT('Icon'))
+                ])
+            ])
+        ]);
+    }
+
+    // The filter chip strip (pg_sw_part_catalog_filter_chips()), drawn while
+    // any filter is active.
+    /* @pg-site-output */
+    function _sdPartCatalogFilterChips() {
+        return [_sdPartEl('div', 'pg-sw-filter-chips d-flex align-items-center gap-2 flex-wrap py-2', _sdT('Filter Chips'),
+            _sdPartWhen('__has_active_filters', 'eq', '1'), _sdPartCatalogFilterChipsInner())];
     }
 
     // The blocks the server put before the main loop of a widget whose
@@ -41186,7 +41372,7 @@ const StyleDesigner = (function () {
     // `sect(...)` returns inside the core keeps the two concerns separate.
     function propsDataBinding(node) {
         var html  = _propsDataBindingCore(node);
-        var extra = _sdBindingActionRows(node) + _sdFormatRows(node) + _sdConditionRows(node);
+        var extra = _sdBindingActionRows(node) + _sdFormatRows(node) + _sdConditionRows(node) + _sdHideEmptyRows(node);
         if (html) {
             var note = _sdBindingTextNote(node);
             if (note) extra = note + (extra || '');
@@ -42760,6 +42946,19 @@ const StyleDesigner = (function () {
             });
         }
 
+        // "Hide when empty" and "Value of the box around it"
+        // (_sdHideEmptyRows()): one undo step each.
+        document.querySelectorAll('#sd-properties input[data-sd-hide-empty], #sd-properties input[data-sd-field-value]').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                if (!selectedNode || !selectedNode.props) return;
+                saveState();
+                var hide = this.hasAttribute('data-sd-hide-empty');
+                _sdNodeToggleClass(selectedNode, hide ? SD_HIDE_EMPTY : SD_FIELD_VALUE, this.checked);
+                if (hide && this.checked) _sdHideEmptyPickValue(selectedNode);
+                render();
+            });
+        });
+
         // EO field binding dropdown — express_order specific. Sets
         // node.props._bindings.eo_field which the PHP walker
         // _eo_apply_field_bindings() reads to inject name/id + pre-fill value.
@@ -43436,9 +43635,7 @@ const StyleDesigner = (function () {
             var _sectionOpts = [['', _sdT('None')]];
             if (_semSwRegion === 'catalog_listing') {
                 _sectionOpts.push(['group_tree',        _sdT('Category Tree (nested list)')]);
-                _sectionOpts.push(['filter_chips',      _sdT('Active Filter Chips')]);
                 _sectionOpts.push(['filters_offcanvas', _sdT('Filter Offcanvas')]);
-                _sectionOpts.push(['active_filters',    _sdT('Active Attribute Filters')]);
                 _sectionOpts.push(['attribute_filters', _sdT('Attribute Filter UI (legacy)')]);
             } else if (_semSwRegion === 'shopping_cart') {
                 _sectionOpts.push(['applied_offers',    _sdT('Applied Offers Info Box')]);
@@ -43710,9 +43907,8 @@ const StyleDesigner = (function () {
         var pct = pctMatch ? Math.round(parseFloat(pctMatch[1])) : 50;
 
         return sect('bi-bar-chart-steps', _sdT('Progress Bar'),
-            row(_sdT('Value'), '<div class="d-flex align-items-center gap-3">' +
-                '<input type="range" class="form-range flex-grow-1" min="0" max="100" value="' + pct + '" data-pb-value>' +
-                '<span class="sd-pb-pct-lbl" style="min-width:2.5rem;font-size:.75rem;text-align:right">' + pct + '%</span>' +
+            row(_sdT('Value'), '<div class="form-range pg-range-bubble">' +
+                '<input type="range" class="form-range-input" min="0" max="100" value="' + pct + '" data-pb-value aria-label="' + esc(_sdT('Value')) + '">' +
                 '</div>') +
             row(_sdT('Color'), colorSel) +
             row(_sdT('Striped'),   swAttr('data-util-toggle="progress-bar-striped"',  isStriped)) +
@@ -46655,8 +46851,9 @@ const StyleDesigner = (function () {
                     '</div>' +
                     '<div class="sd-bcp-mid-row">' +
                         '<span class="sd-bcp-clabel">' + esc(_sdT('Mid')) + '</span>' +
-                        '<input type="range" class="form-range" id="sd-bcp-lin-mid" min="0" max="100" value="' + _grad.mid + '" style="flex:1">' +
-                        '<span class="sd-bcp-mid-val" id="sd-bcp-lin-mid-val">' + _grad.mid + '%</span>' +
+                        '<div class="form-range pg-range-bubble">' +
+                            '<input type="range" class="form-range-input" id="sd-bcp-lin-mid" min="0" max="100" value="' + _grad.mid + '" aria-label="' + esc(_sdT('Mid')) + '">' +
+                        '</div>' +
                     '</div>' +
                     '<div class="sd-bcp-preview" id="sd-bcp-lin-prev" style="background:' + buildGradientStr(Object.assign({}, _grad, {type:'linear'})) + '"></div>' +
                 '</div>' +
@@ -46683,8 +46880,9 @@ const StyleDesigner = (function () {
                     '</div>' +
                     '<div class="sd-bcp-mid-row">' +
                         '<span class="sd-bcp-clabel">' + esc(_sdT('Mid')) + '</span>' +
-                        '<input type="range" class="form-range" id="sd-bcp-rad-mid" min="0" max="100" value="' + _grad.mid + '" style="flex:1">' +
-                        '<span class="sd-bcp-mid-val" id="sd-bcp-rad-mid-val">' + _grad.mid + '%</span>' +
+                        '<div class="form-range pg-range-bubble">' +
+                            '<input type="range" class="form-range-input" id="sd-bcp-rad-mid" min="0" max="100" value="' + _grad.mid + '" aria-label="' + esc(_sdT('Mid')) + '">' +
+                        '</div>' +
                     '</div>' +
                     '<div class="sd-bcp-preview" id="sd-bcp-rad-prev" style="background:' + buildGradientStr(Object.assign({}, _grad, {type:'radial'})) + '"></div>' +
                 '</div>' +
@@ -47133,14 +47331,13 @@ const StyleDesigner = (function () {
                 });
             });
             var linMid = document.getElementById('sd-bcp-lin-mid');
-            var linMidVal = document.getElementById('sd-bcp-lin-mid-val');
             if (linMid) {
+                pgUI.range.bubble(linMid.parentNode, _sdPercent);
                 linMid.addEventListener('input', function() {
                     if (!selectedNode) return;
                     saveState(_sdEditRun('grad:lin-mid'));
                     var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'linear'};
                     g.mid = Number(this.value);
-                    if (linMidVal) linMidVal.textContent = this.value + '%';
                     applyGrad();
                 });
             }
@@ -47190,14 +47387,13 @@ const StyleDesigner = (function () {
                 });
             });
             var radMid = document.getElementById('sd-bcp-rad-mid');
-            var radMidVal = document.getElementById('sd-bcp-rad-mid-val');
             if (radMid) {
+                pgUI.range.bubble(radMid.parentNode, _sdPercent);
                 radMid.addEventListener('input', function() {
                     if (!selectedNode) return;
                     saveState(_sdEditRun('grad:rad-mid'));
                     var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'radial'};
                     g.mid = Number(this.value);
-                    if (radMidVal) radMidVal.textContent = this.value + '%';
                     applyGrad();
                 });
             }
@@ -47481,12 +47677,8 @@ const StyleDesigner = (function () {
 
         // Progress bar: value range slider
         document.querySelectorAll('#sd-properties [data-pb-value]').forEach(function(el) {
-            var lbl = el.parentElement ? el.parentElement.querySelector('.sd-pb-pct-lbl') : null;
-            // Live preview while dragging
-            el.addEventListener('input', function() {
-                if (lbl) lbl.textContent = this.value + '%';
-            });
-            // Commit on release
+            // The bubble follows the thumb while dragging; commit on release.
+            pgUI.range.bubble(el.parentNode, _sdPercent);
             el.addEventListener('change', function() {
                 if (!selectedNode) return;
                 saveState();
@@ -47498,7 +47690,6 @@ const StyleDesigner = (function () {
                     if (attrs[i].name === 'aria-valuenow') { attrs[i].value = String(val); }
                 }
                 if (!hasStyle) attrs.push({ name: 'style', value: 'width:' + val + '%' });
-                if (lbl) lbl.textContent = val + '%';
                 renderCanvas();
                 renderAttrsPanel();
                 renderHtmlTree();
@@ -54804,6 +54995,18 @@ const StyleDesigner = (function () {
                 ['__crumb_kind',  _sdT('Kind of crumb (link, text, active)')]
             ]
         },
+        // The listing's active attribute filters
+        // (pg_sw_list_active_filter_sources()): the page's, so a list of
+        // them stands anywhere in the listing.
+        'catalog.active_filters': {
+            label: _sdT('Active attribute filters'),
+            arg: '', argRequired: false,
+            kinds: ['catalog_listing'],
+            rows: [
+                ['__filter_chip_label', _sdT('Filter (attribute: option)')],
+                ['__filter_chip_url',   _sdT('Address without the filter')]
+            ]
+        },
         // The calendar grid sources (pg_sw_list_calendar_sources()): the
         // monthly and weekly views' heads, weeks, days and a day's events;
         // none takes a field.
@@ -55247,6 +55450,7 @@ const StyleDesigner = (function () {
         var bs = _sdUsesBootstrap();
         if (source.indexOf('product.') === 0) return _sdProductListStarter(source, bs);
         if (source === 'catalog.crumbs') return _sdPartCatalogCrumbs(false)[0];
+        if (source === 'catalog.active_filters') return _sdPartCatalogActiveFilters()[0];
         if (source.indexOf('calendar.') === 0) return _sdCalendarListStarter(source, bs);
         if (source.indexOf('order.') === 0 || source.indexOf('account.') === 0 || source === 'cart.items') return _sdOrderListStarter(source, bs);
         if (source === 'menu.children') {
@@ -55597,9 +55801,10 @@ const StyleDesigner = (function () {
 
     // Whether a list of `source` in a widget of `kind` must sit in the main
     // loop: in a list of records only the record template fills it. The
-    // crumbs and the page links are the page's, filled anywhere.
+    // crumbs, the active filters and the page links are the page's, filled
+    // anywhere.
     function _sdListNeedsMainLoop(kind, source) {
-        if (source === 'catalog.crumbs' || source === 'paging.pages') return false;
+        if (source === 'catalog.crumbs' || source === 'catalog.active_filters' || source === 'paging.pages') return false;
         return kind === 'form_list_view' || kind === 'catalog_listing';
     }
 
@@ -57264,14 +57469,12 @@ const StyleDesigner = (function () {
                                     _bindings: { action: 'submit_search' } })
                             ])
                         ]),
-                        // Active filter chips — semantic <div> bound to
-                        // section=filter_chips. Backend fills with active
-                        // filter pinleri (chips) when any filter is active;
-                        // empty otherwise (designer can hide via CSS :empty).
+                        // Active filter chips: the active attribute
+                        // filters (catalog.active_filters) and the clear
+                        // button, each drawn only while a filter is active.
                         createNode('semantic', { tag: 'div',
                             cssClass: 'pg-sw-filter-chips mb-3',
-                            customName: _sdT('Filter Chips'),
-                            _bindings: { section: 'filter_chips' } }),
+                            customName: _sdT('Filter Chips') }, _sdPartCatalogFilterChipsInner()),
                         createNode('row', { gutter: '', justify: '', align: '', cssClass: '' }, [loopArea]),
                         // Filters offcanvas — semantic <div> bound to
                         // section=filters_offcanvas. Backend stamps the
@@ -64803,6 +65006,7 @@ const StyleDesigner = (function () {
         nodeIdCounter = next.nodeIdCounter || reindex(tree);
         selectedNode  = null;
         selectedNodes = [];
+        _sdCondCanvasState = '';
 
         _pgLoadPageIntoFields(next);
         _pgTabsRender();

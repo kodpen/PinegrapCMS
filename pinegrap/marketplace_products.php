@@ -324,7 +324,9 @@ function mp_products_status_label($status) {
 		'InCatalogApproval' => lang('In catalogue approval'),
 		'CatalogRejected'   => lang('Rejected from the catalogue'),
 		'Prohibited'        => lang('Prohibited'),
-		'Unlisted'          => lang('Over the listing limit')
+		'Unlisted'          => lang('Over the listing limit'),
+		// n11 ships it from its own warehouse and keeps its stock.
+		'N11_Warehouse'     => lang('Shipped from the n11 warehouse')
 	);
 
 	$words = array();
@@ -1594,9 +1596,9 @@ a.mpp-title:hover { text-decoration: underline; }
 .mpp-pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; margin-top: 12px; }
 .mpp-pick { display: flex; flex-direction: column; gap: 6px; padding: 10px; text-align: left; color: inherit; cursor: pointer;
 	background: var(--pg-card-bg); border: 1px solid var(--pg-border-color); border-radius: var(--pg-radius-lg);
-	transition: border-color .15s, box-shadow .15s, transform .15s; }
-.mpp-pick:hover, .mpp-pick:focus-visible { border-color: var(--pg-primary); box-shadow: var(--pg-shadow); transform: translateY(-1px); }
-.mpp-pick:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+	--pg-lift-shadow: var(--pg-shadow); --pg-lift-also: border-color .15s; }
+.mpp-pick:hover, .mpp-pick:focus-visible { border-color: var(--pg-primary); }
+.mpp-pick:disabled { opacity: .5; cursor: not-allowed; --pg-lift-y: 0px; --pg-lift-shadow: none; }
 .mpp-pick .mpp-img { width: 100%; height: auto; aspect-ratio: 1; flex: none; }
 .mpp-pick .mpp-title { font-size: 12.5px; }
 .mpp-pick .mpp-meta { font-size: 11.5px; margin-top: 0; }

@@ -2838,7 +2838,8 @@ function get_time_picker_format()
 // The <script> tag of assets/js/pg_fields.js, which draws the panel's
 // data-pg-chips, data-pg-combobox, data-pg-date, data-pg-datetime and
 // data-pg-time fields; empty after the first call of a request, so every
-// part of a screen can ask for it.
+// part of a screen can ask for it. The tag carries the translated label of
+// a chip's remove button.
 function pg_fields_script()
 {
     static $printed = false;
@@ -2849,7 +2850,7 @@ function pg_fields_script()
 
     $printed = true;
 
-    return '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_fields.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_fields.js') . '"></script>';
+    return '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_fields.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_fields.js') . '" data-pg-remove-label="' . h(lang('Remove')) . '"></script>';
 }
 
 

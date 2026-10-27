@@ -587,7 +587,11 @@ function pg_sw_default_date_format($type)
 // With $mark (the finish pass's cut point, widgets_finish.php) only the
 // elements that hold $mark are judged, and one that goes leaves $mark in
 // its place, so the element around it is judged in turn.
-function pg_sw_hide_empty_fields($html, $mark = null)
+// With $wait (a product page whose variant picker redraws the values bound
+// to data-pg-bind), an empty element holding such a value stays, marked
+// hidden and data-pg-empty-wait, for the picker to show when it fills it;
+// an element already so marked is left as it is.
+function pg_sw_hide_empty_fields($html, $mark = null, $wait = false)
 {
     if (!is_string($html) || strpos($html, 'pg-hide-if-empty') === false) return $html;
     $mark = ($mark === null) ? '' : (string)$mark;
@@ -603,8 +607,13 @@ function pg_sw_hide_empty_fields($html, $mark = null)
         $start = $opens[$i][0][1];
         $tag   = strtolower($opens[$i][1][0]);
 
+        if (strpos($open, ' data-pg-empty-wait') !== false) continue;
+
         if (pg_sw_is_void_tag($tag)) {
-            if ($mark === '' && !pg_sw_has_content($open)) $html = substr($html, 0, $start) . substr($html, $start + strlen($open));
+            if ($mark !== '' || pg_sw_has_content($open)) continue;
+            $html = ($wait && strpos($open, 'data-pg-bind=') !== false)
+                ? substr($html, 0, $start) . pg_sw_empty_wait_tag($open) . substr($html, $start + strlen($open))
+                : substr($html, 0, $start) . substr($html, $start + strlen($open));
             continue;
         }
 
@@ -613,10 +622,22 @@ function pg_sw_hide_empty_fields($html, $mark = null)
         $inner = substr($html, $start + strlen($open), $close[0] - $start - strlen($open));
         if ($mark !== '' && strpos($inner, $mark) === false) continue;
         if (pg_sw_has_content(pg_sw_field_value($inner))) continue;
+        if ($wait && strpos($open . $inner, 'data-pg-bind=') !== false) {
+            $html = substr($html, 0, $start) . pg_sw_empty_wait_tag($open) . substr($html, $start + strlen($open));
+            continue;
+        }
         $html = substr($html, 0, $start) . $mark . substr($html, $close[1]);
     }
 
     return $html;
+}
+
+// An opening tag marked as an empty element waiting for a variant to fill
+// it: hidden, and data-pg-empty-wait for the variant picker to find it.
+function pg_sw_empty_wait_tag($open)
+{
+    $end = (substr($open, -2) === '/>') ? -2 : -1;
+    return rtrim(substr($open, 0, $end)) . ' hidden data-pg-empty-wait' . substr($open, $end);
 }
 
 // The elements that have no closing tag.
@@ -788,10 +809,6 @@ function pg_sw_raw_token_keys()
         '__group_tree_inner_html',
         '__attribute_filters_html',
         '__attribute_filters_inner_html',
-        '__active_filters_html',
-        '__active_filters_inner_html',
-        '__filter_chips',
-        '__filter_chips_inner_html',
         '__filters_button',
         '__filters_offcanvas',
         '__filters_offcanvas_inner_html',
