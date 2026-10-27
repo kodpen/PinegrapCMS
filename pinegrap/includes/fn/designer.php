@@ -1202,6 +1202,41 @@ function pg_expand_nested_components($html, $mode = 'preview', $email = false)
     return $html;
 }
 
+// Returns a name that does not yet exist in shared_components (the panel's
+// create and rename, the region conversions).
+// If $desired is already taken, appends " [1]", " [2]", ... until a free slot is found.
+function _sc_unique_name($desired)
+{
+    $base = $desired;
+    $name = $base;
+    $i    = 1;
+    while (db_value("SELECT COUNT(*) FROM shared_components WHERE name = '" . e($name) . "'") > 0) {
+        $name = $base . ' [' . $i . ']';
+        $i++;
+    }
+    return $name;
+}
+
+/**
+ * The HTML of a shared component drawn where a classic <cregion> tag of a
+ * converted common region stands. The page's own passes for components,
+ * widgets and custom PHP have run by the time the common regions are
+ * replaced, so the component goes through them here.
+ *
+ * @param int    $sid    shared component id
+ * @param string $mode   page render mode
+ * @param bool   $email  drawn for an e-mail
+ * @return string
+ */
+function pg_common_region_component_html($sid, $mode = 'preview', $email = false)
+{
+    $html = pg_expand_nested_components('<!--pg-shared-ref:' . (int)$sid . '-->', $mode, $email);
+    if (strpos($html, '<!--pg-custom-php:') !== false) {
+        $html = _expand_custom_php($html);
+    }
+    return $html;
+}
+
 // Walk a widget tree (deep clone) and locate the FIRST loop_area node without
 // props.source, the main loop. A loop_area with props.source is a list inside
 // a record (widgets_lists.php): it is skipped with everything in it, so a

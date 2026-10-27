@@ -32668,7 +32668,7 @@ const StyleDesigner = (function () {
             '<div id="sd-rn" style="' + (show ? '' : 'display:none') + '">' + row(_sdT('Name'), sel('regionName', nameOpts, n.props.regionName)) + '</div>' +
             (n.props.regionType === 'dynamic' ? _sdDregionPropsHtml(n) : '') +
             (n.props.regionType === 'system' ? _sdLayoutPropsHtml() : '') +
-            (n.props.regionType === 'designer' ? _sdDesignerRegionPropsHtml(n) : '') +
+            (n.props.regionType === 'designer' || n.props.regionType === 'common' ? _sdDesignerRegionPropsHtml(n) : '') +
             _sdRegionWidgetPropsHtml(n) +
             designableHtml
         ) + commentsInfo;
@@ -45354,16 +45354,22 @@ const StyleDesigner = (function () {
 
     // A designer region becomes a designer-only shared component on this
     // page (_sdDesignerRegionConvert()), for the roles that edit designer
-    // regions today.
+    // regions today. A common region becomes a component opened to content
+    // editors that its tag draws on every page; it needs the schema that
+    // opens components (the people who edit the region keep it).
     function _sdDesignerRegionPropsHtml(n) {
         if (!_design || !_design.designerRegionConvert || !n.props.regionName) return '';
+        var common = n.props.regionType === 'common';
+        if (common && !_design.sharedContentReady) return '';
         return '<div class="sd-prop-row">' +
                 '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-designer-region-convert">' +
                     '<span class="bi bi-puzzle-fill me-1"></span>' + esc(_sdT('Make shared component')) +
                 '</button>' +
             '</div>' +
             '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
-                esc(_sdT('Puts a shared component with the region\'s content in its place on this page, edited here. Other pages keep the region until they are converted.')) +
+                esc(common
+                    ? _sdT('Makes the region a shared component its content editors edit in the designer; its tag draws the component on every page, and front-end inline editing of the region ends. This page places the component.')
+                    : _sdT('Puts a shared component with the region\'s content in its place on this page, edited here. Other pages keep the region until they are converted.')) +
             '</div></div>';
     }
 
@@ -45372,13 +45378,14 @@ const StyleDesigner = (function () {
     // its shared_ref takes the region node's place.
     function _sdDesignerRegionConvert(regionNode) {
         if (!regionNode || regionNode.type !== 'region' || !regionNode.props ||
-            regionNode.props.regionType !== 'designer' || !regionNode.props.regionName) return;
+            (regionNode.props.regionType !== 'designer' && regionNode.props.regionType !== 'common') || !regionNode.props.regionName) return;
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
         var regionName = regionNode.props.regionName;
+        var common = regionNode.props.regionType === 'common';
         var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
         fetch(url, { method: 'POST', credentials: 'same-origin',
                      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                     body: JSON.stringify({ action: 'shared_component', sub_action: 'from_designer_region', name: regionName, token: _pgToken() }) })
+                     body: JSON.stringify({ action: 'shared_component', sub_action: common ? 'from_common_region' : 'from_designer_region', name: regionName, token: _pgToken() }) })
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (!data || data.status !== 'success') {
@@ -45405,7 +45412,9 @@ const StyleDesigner = (function () {
                 if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
                 if (!_sharedCache[sid] || !_sharedCache[sid].tree) prefetchShared([sid], render);
                 render();
-                sdToast(esc(data.created
+                sdToast(esc(common
+                    ? _sdT('The common region "{var}" is now a shared component; every page draws it, and its content editors edit it in the designer.', regionName)
+                    : data.created
                     ? _sdT('The designer region "{var}" is now a shared component on this page. Other pages keep the region until they are converted.', regionName)
                     : _sdT('This page now shows "{var}", the shared component made from this designer region before.', data.name || regionName)), 'success', 7000);
                 (Array.isArray(data.warnings) ? data.warnings : []).forEach(function (w) { sdToast(esc(String(w)), 'warning', 12000); });
