@@ -38937,7 +38937,8 @@ const StyleDesigner = (function () {
             ['__device_ip',                   _sdT('IP address')],
             ['__device_last_used',            _sdT('Last used (relative time)')],
             ['__device_first_seen',           _sdT('First seen (date and time)')],
-            ['__device_selector',             _sdT('Device identifier (the Sign out button carries it)')]
+            ['__device_selector',             _sdT('Device identifier (the Sign out button carries it)')],
+            ['__device_passkey',              _sdT('Passkey the session was signed in with (a Remove button in the row removes it)')]
         ]},
         { label: _sdT('Two-step verification'), tokens: [
             ['__mfa_status_text',             _sdT('Status sentence ("on since …, n recovery codes left")')],
@@ -40977,6 +40978,7 @@ const StyleDesigner = (function () {
             ['device_offline',      _sdT('Row: not used in the last five minutes')],
             ['device_is_locked',    _sdT('Row: locked by the site owner')],
             ['device_can_sign_out', _sdT('Row: can be signed out here')],
+            ['device_by_passkey',   _sdT('Row: signed in with a passkey the account still has')],
             ['mfa_ready',           _sdT('Two-step verification is installed on the site')],
             ['mfa_off',             _sdT('Two-step verification is off')],
             ['mfa_no_key',          _sdT('It is off and cannot be turned on (no encryption key)')],
@@ -40995,7 +40997,8 @@ const StyleDesigner = (function () {
             ['passkey_limit',         _sdT('The account keeps as many passkeys as it may')],
             ['passkey_unavailable',   _sdT('Passkeys cannot be used on this site or at this address')],
             ['passkey_asks_password', _sdT('Adding or removing a passkey asks for the password')],
-            ['passkey_asks_code',     _sdT('Removing a passkey asks for a code')]
+            ['passkey_asks_code',     _sdT('Adding or removing a passkey asks for a code from the authenticator app')],
+            ['passkey_asks_email_code', _sdT('Adding a passkey asks for a code sent by e-mail (two-step verification is off)')]
         ],
         account_invoices: [
             ['has_documents',      _sdT('There are documents to list')],
@@ -41294,6 +41297,7 @@ const StyleDesigner = (function () {
                 aOpts.push(['mfa_disable',             _sdT('Turn off two-step verification')]);
                 aOpts.push(['passkey_rename',          _sdT('Rename the passkey (passkey list)')]);
                 aOpts.push(['passkey_remove',          _sdT('Remove the passkey (passkey list)')]);
+                aOpts.push(['passkey_send_code',       _sdT('Send the code by e-mail (add a passkey form)')]);
             }
             // Only a button can post a list action's form; a link bound to
             // one is dropped on the page (_pg_wishlist_wire_actions()), so a
@@ -59500,6 +59504,18 @@ const StyleDesigner = (function () {
                     return _swAcctField(label, asId + suffix, 'text', 'code', { required: true, autocomplete: 'one-time-code',
                         attrs: [{ name: 'inputmode', value: 'numeric' }, { name: 'maxlength', value: '20' }, { name: 'spellcheck', value: 'false' }] });
                 };
+                var asPassword = function (suffix) {
+                    return createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Password'),
+                        _bindings: { eo_visible_if: 'passkey_asks_password' } }, [
+                        _swAcctField(_sdT('Current password'), asId + suffix, 'password', 'current_password',
+                            { required: true, autocomplete: 'current-password' })
+                    ]);
+                };
+                var asDetails = function (summary, kids) {
+                    return createNode('semantic', { tag: 'details', cssClass: '', customName: summary }, [
+                        createNode('semantic', { tag: 'summary', cssClass: 'small', text: summary, customName: _sdT('Summary') })
+                    ].concat(kids));
+                };
                 var asDevice = createNode('loop_area', {}, [
                     createNode('semantic', { tag: 'div', cssClass: 'list-group-item d-flex justify-content-between align-items-center gap-3', customName: _sdT('Device') }, [
                         createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Device Info') }, [
@@ -59516,6 +59532,29 @@ const StyleDesigner = (function () {
                                     _bindings: { eo_visible_if: 'device_online' } }),
                                 createNode('semantic', { tag: 'span', cssClass: '', text: _sdT('2 days ago'), customName: _sdT('Last Used'),
                                     _bindings: { text: '__device_last_used', eo_visible_if: 'device_offline' } })
+                            ]),
+                            // A session opened with a passkey names it and
+                            // can end with it (pg_account_security_section()).
+                            createNode('semantic', { tag: 'div', cssClass: 'small', customName: _sdT('Signed In With Passkey'),
+                                _bindings: { eo_visible_if: 'device_by_passkey' } }, [
+                                createNode('semantic', { tag: 'span', cssClass: 'me-1', text: _sdT('Signed in with the passkey'), customName: _sdT('Label') }),
+                                createNode('semantic', { tag: 'span', cssClass: 'fw-semibold', text: _sdT('My phone'), customName: _sdT('Value'),
+                                    _bindings: { text: '__device_passkey' } }),
+                                createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Remove Passkey'),
+                                    _bindings: { eo_visible_if: 'passkey_can_change' } }, [
+                                    asDetails(_sdT('Sign out and remove the passkey'), [
+                                        asForm(_sdT('Remove Form'), '', 'mt-2', [
+                                            createNode('content', { contentType: 'paragraph', cssClass: 'small mb-2',
+                                                text: _sdT('Removing it also signs out the sessions it opened. Delete it from your device or password manager as well.') }),
+                                            asPassword('_dev_pk_password'),
+                                            createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Code'),
+                                                _bindings: { eo_visible_if: 'passkey_asks_code' } }, [
+                                                asCode(_sdT('Code from your authenticator app or a recovery code'), '_dev_pk_code')
+                                            ]),
+                                            asButton(_sdT('Sign out and remove the passkey'), 'passkey_remove', 'btn btn-sm btn-outline-danger', _sdT('Remove Button'))
+                                        ])
+                                    ])
+                                ])
                             ])
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'flex-shrink-0', customName: _sdT('Device Action') }, [
@@ -59531,18 +59570,6 @@ const StyleDesigner = (function () {
                 // pg_passkey_add_form_script() keeps hidden until the
                 // browser can make passkeys. Mirrors
                 // pg_passkey_account_section().
-                var asPassword = function (suffix) {
-                    return createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Password'),
-                        _bindings: { eo_visible_if: 'passkey_asks_password' } }, [
-                        _swAcctField(_sdT('Current password'), asId + suffix, 'password', 'current_password',
-                            { required: true, autocomplete: 'current-password' })
-                    ]);
-                };
-                var asDetails = function (summary, kids) {
-                    return createNode('semantic', { tag: 'details', cssClass: '', customName: summary }, [
-                        createNode('semantic', { tag: 'summary', cssClass: 'small', text: summary, customName: _sdT('Summary') })
-                    ].concat(kids));
-                };
                 var asPasskey = createNode('loop_area', { source: 'security.passkeys' }, [
                     createNode('semantic', { tag: 'div', cssClass: 'list-group-item', customName: _sdT('Passkey') }, [
                         createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center gap-2', customName: _sdT('Passkey name') }, [
@@ -59592,7 +59619,11 @@ const StyleDesigner = (function () {
                     _bindings: { eo_visible_if: 'passkeys_shown' } }, [
                     createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('Passkeys'), cssClass: 'mb-2' }),
                     createNode('content', { contentType: 'paragraph', cssClass: 'mb-3',
-                        text: _sdT('A passkey lets your fingerprint, face or screen lock, or a security key, stand in for the code from your authenticator app when you sign in.') }),
+                        text: _sdT('A passkey lets your fingerprint, face or screen lock, or a security key, stand in for the code from your authenticator app when you sign in.'),
+                        _bindings: { eo_visible_if: 'passkey_asks_code' } }),
+                    createNode('content', { contentType: 'paragraph', cssClass: 'mb-3',
+                        text: _sdT('A passkey lets your fingerprint, face or screen lock, or a security key, sign you in. Once the account has one, signing in with the password asks for it too.'),
+                        _bindings: { eo_visible_if: 'passkey_asks_email_code' } }),
                     createNode('semantic', { tag: 'p', cssClass: 'mb-0', customName: _sdT('Passkey Count'),
                         _bindings: { eo_visible_if: 'is_impersonated' } }, [
                         createNode('semantic', { tag: 'span', cssClass: 'me-1', text: _sdT('Passkeys of this account:'), customName: _sdT('Label') }),
@@ -59615,7 +59646,30 @@ const StyleDesigner = (function () {
                         _swAcctField(_sdT('Name'), asId + '_pk_add_name', 'text', 'name', {
                             attrs: [{ name: 'maxlength', value: '100' }, { name: 'placeholder', value: _sdT('My phone') }] }),
                         asPassword('_pk_add_password'),
-                        asCode(_sdT('Code from your authenticator app or a recovery code'), '_pk_add_code'),
+                        createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Code'),
+                            _bindings: { eo_visible_if: 'passkey_asks_code' } }, [
+                            asCode(_sdT('Code from your authenticator app or a recovery code'), '_pk_add_code')
+                        ]),
+                        // Without two-step verification: a code e-mailed to
+                        // the account. The field's name (email_code) is what
+                        // lets such an account add a passkey here.
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-3', customName: _sdT('E-mailed Code'),
+                            _bindings: { eo_visible_if: 'passkey_asks_email_code' } }, [
+                            createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdT('Code we e-mail you'), customName: _sdT('Label'),
+                                _attrs: [{ name: 'for', value: asId + '_pk_add_email_code' }] }),
+                            createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap gap-2', customName: _sdT('Code and Button') }, [
+                                createNode('semantic', { tag: 'input', cssClass: 'form-control w-auto', customName: _sdT('Code Field'),
+                                    _attrs: [{ name: 'type', value: 'text' }, { name: 'id', value: asId + '_pk_add_email_code' }, { name: 'name', value: 'email_code' },
+                                        { name: 'required', value: '' }, { name: 'inputmode', value: 'numeric' }, { name: 'autocomplete', value: 'one-time-code' },
+                                        { name: 'maxlength', value: '12' }, { name: 'spellcheck', value: 'false' }] }),
+                                createNode('semantic', { tag: 'button', cssClass: 'btn btn-outline-secondary', text: _sdT('Send the code'), customName: _sdT('Send Button'),
+                                    _attrs: [{ name: 'type', value: 'button' }], _bindings: { action: 'passkey_send_code' } })
+                            ]),
+                            createNode('semantic', { tag: 'div', cssClass: 'form-text', customName: _sdT('Sent'),
+                                _attrs: [{ name: 'role', value: 'status' }, { name: 'data-pg-passkey-sent', value: '' }] }),
+                            createNode('content', { contentType: 'paragraph', cssClass: 'small text-muted mt-2 mb-0',
+                                text: _sdT('Once you add a passkey, signing in with your password also asks for it. You get recovery codes for when the passkey is lost.') })
+                        ]),
                         createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary', text: _sdT('Add a passkey'), customName: _sdT('Add Button'),
                             _attrs: [{ name: 'type', value: 'submit' }] }),
                         createNode('semantic', { tag: 'div', cssClass: 'text-danger small mt-2', customName: _sdT('Message'),

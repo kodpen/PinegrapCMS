@@ -158,3 +158,16 @@ function test_widget_passkeys_tree_has_email_code()
 	$tree['children'][1]['children'][] = $field;
 	pg_assert_true(_pg_sec_tree_has_email_code($tree), 'a field named email_code');
 }
+
+// The Send the code button is a plain button the script finds by its mark,
+// whatever the node carried; the code field travels as email_code.
+function test_widget_passkeys_send_code_button()
+{
+	$tree = _widget_pk_tree();
+	$tree['children'][1]['children'][] = _widget_pk_box('button', 'send', array(), array('text' => 'Send',
+		'_attrs' => array(array('name' => 'type', 'value' => 'submit'), array('name' => 'name', 'value' => 'x')),
+		'_bindings' => array('action' => 'passkey_send_code')));
+	$out = _widget_pk_finished($tree, array('passkey_asks_password' => true), 7, 7);
+	pg_assert_true(preg_match('#<button class="send" type="button" data-pg-passkey-send(="")?>#', $out) === 1, 'a plain marked button: ' . $out);
+	pg_assert_true(strpos($out, 'name="x"') === false, 'its own name is dropped');
+}

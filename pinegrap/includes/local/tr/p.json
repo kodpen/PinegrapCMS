@@ -328,6 +328,7 @@
     "Passkey List": "Geçiş Anahtarı Listesi",
     "Passkey identifier (the Rename and Remove buttons carry it)": "Geçiş anahtarı kimliği (Yeniden Adlandır ve Kaldır düğmeleri taşır)",
     "Passkey name": "Geçiş anahtarı adı",
+    "Passkey the session was signed in with (a Remove button in the row removes it)": "Oturumun açıldığı geçiş anahtarı (satırdaki Kaldır düğmesi onu kaldırır)",
     "Passkeys": "Geçiş anahtarları",
     "Passkeys can be renamed and removed here (not while signed in as the member)": "Geçiş anahtarları burada yeniden adlandırılabilir ve kaldırılabilir (üye olarak oturum açılmışken değil)",
     "Passkeys cannot be added yet.": "Geçiş anahtarı henüz eklenemiyor.",

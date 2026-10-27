@@ -67,6 +67,7 @@
     "E-mail waiting for the general job, sent in the last week and given up on in the last month.": "Genel işi bekleyen, son bir haftada gönderilen ve son bir ayda bırakılan e-postalar.",
     "E-mail watchers when a comment is published": "Bir yorum yayınlandığında izleyicilere e-posta gönder",
     "E-mail “{var:1}” to {var:2}": "“{var:1}” e-postasını {var:2} adresine gönder",
+    "E-mailed Code": "E-postayla Gelen Kod",
     "E-mails": "E-postalar",
     "E-mails are not being sent": "E-postalar gönderilemiyor",
     "E-mails could not be sent": "E-postalar gönderilemedi",
