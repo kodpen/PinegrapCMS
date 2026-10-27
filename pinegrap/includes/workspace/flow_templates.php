@@ -91,12 +91,22 @@ function ws_flow_templates($fill)
         return in_array($key, $metrics, true);
     };
 
+    // The scheduler reads a start date as a day of the site's calendar, so
+    // the days are counted on the date alone, in UTC: in PHP's default
+    // timezone "next monday" is a local midnight, which east of UTC is
+    // still the Sunday before in UTC.
+    $utc = new DateTimeZone('UTC');
     $today = (string) ($fill['today'] ?? '');
-    $day = (preg_match('/^\d{4}-\d{2}-\d{2}$/', $today) === 1) ? strtotime($today . ' 12:00:00 UTC') : time();
-    $tomorrow = gmdate('Y-m-d', $day + 86400);
-    $monday = gmdate('Y-m-d', strtotime('next monday', $day));
-    $first_of_month = gmdate('Y-m-01', strtotime('first day of next month', $day));
-    $today = gmdate('Y-m-d', $day);
+    $day = (preg_match('/^\d{4}-\d{2}-\d{2}$/', $today) === 1) ? date_create_immutable($today . ' 12:00:00', $utc) : false;
+
+    if (!$day) {
+        $day = date_create_immutable(date('Y-m-d') . ' 12:00:00', $utc);
+    }
+
+    $tomorrow = $day->modify('+1 day')->format('Y-m-d');
+    $monday = $day->modify('next monday')->format('Y-m-d');
+    $first_of_month = $day->modify('first day of next month')->format('Y-m-d');
+    $today = $day->format('Y-m-d');
 
     // A box's sentence: a follow-up's {{result}} is what the box it follows
     // said, which a flow reads from that box.
