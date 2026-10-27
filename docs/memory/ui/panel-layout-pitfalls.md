@@ -22,7 +22,7 @@ description: Panel CSS and JS traps that fail silently, with their files: hiding
 
 ## What about forms, panels and pickers?
 - Drawers (`<dialog class="drawer">`) stay inside the `<form>`: the top layer moves nothing in the DOM, so their fields submit; anything with a form of its own stays outside the main form (`user-permission-rows.md`).
-- Open dialogs and drawers are in the browser's top layer, where no z-index reaches. A floating layer for something inside one is appended to `pgUI.overlayHost(el)`: select2's dropdown and the jQuery UI date, date-time and time pickers do (`inOverlayHost()` in `pg_fields.js` moves the picker's box on each open); one hung off `<body>` stays behind the dialog whatever its z-index.
+- Open dialogs and drawers are in the browser's top layer, where no z-index reaches. A floating layer for something inside one is appended to `pgUI.overlayHost(el)`: select2's dropdown and the Datepicker's calendar do (`placeInOverlayHost()` in `pg_fields.js` moves the calendar box on each open, `pg-datepicker.md`); one hung off `<body>` stays behind the dialog whatever its z-index.
 - `multiselectCheckbox` fires no event per box: bind behaviour to state and re-sync on every change (`user-permission-rows.md`).
 
 ## Which JS traps have files of their own?
