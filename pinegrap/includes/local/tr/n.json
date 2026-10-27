@@ -478,7 +478,7 @@
     "No <main> region": "<main> bölgesi yok",
     "No API scope reads user accounts, so an application cannot propose a change to one.": "Hiçbir API kapsamı kullanıcı hesaplarını okumaz; bu yüzden bir uygulama bir kullanıcı hesabında değişiklik öneremez.",
     "No Attributes were found for Products in this Product Group.  Once you assign Attributes to Products and include those Products in this Product Group, then you may manage those Attributes here.": "Bu Ürün Grubundaki Ürünler için Özellik bulunamadı. Ürünlere Özellikler atadığınızda ve bu Ürünleri bu Ürün Grubuna dahil ettiğinizde, bu Özellikleri buradan yönetebilirsiniz.",
-    "No DKIM key generated yet.": "No DKIM key generated yet.",
+    "No DKIM key generated yet.": "Henüz DKIM anahtarı oluşturulmadı.",
     "No Description": "Açıklama yok",
     "No ERP account carries this number.": "Bu numarayı taşıyan bir ERP carisi yok.",
     "No Entries": "İçerik Yok",

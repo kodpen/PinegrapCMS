@@ -549,7 +549,7 @@ foreach ($candidates as $person) {
 
     foreach (ws_user_department_ids($person_id) as $department_id) {
         if (isset($departments[$department_id]) && !$departments[$department_id]['archived']) {
-            $own_departments[] = '<span class="badge rounded-pill" style="background:' . h($departments[$department_id]['color']) . '">' . h($departments[$department_id]['name']) . '</span>';
+            $own_departments[] = '<span class="badge rounded-pill" style="background:' . h($departments[$department_id]['color']) . ';color:' . pg_readable_ink_on($departments[$department_id]['color']) . '">' . h($departments[$department_id]['name']) . '</span>';
         }
     }
 

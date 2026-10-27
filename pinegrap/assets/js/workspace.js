@@ -529,6 +529,21 @@
     // What a message says as it reads on the screen: its lines, list items and
     // table rows each on a line of their own. innerText follows the layout,
     // so the markup is laid out off screen for a moment.
+    // White or near-black, whichever reads at 4.5:1 on a #rrggbb background;
+    // white for anything else (pg_readable_ink_on() in PHP).
+    function readableInk(hex) {
+        var m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex || '').trim());
+        if (!m) {
+            return '#fff';
+        }
+        var lum = 0, weights = [0.2126, 0.7152, 0.0722];
+        for (var i = 0; i < 3; i++) {
+            var c = parseInt(m[i + 1], 16) / 255;
+            lum += weights[i] * (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+        }
+        return (1.05 / (lum + 0.05) >= 4.5) ? '#fff' : '#18181b';
+    }
+
     function readableText(markup) {
         var box = el('div');
 
@@ -8002,7 +8017,9 @@
             }
 
             if (channel.department) {
-                topic.appendChild(el('span', 'badge me-1', channel.department.name)).style.background = channel.department.color;
+                var departmentBadge = topic.appendChild(el('span', 'badge me-1', channel.department.name));
+                departmentBadge.style.background = channel.department.color;
+                departmentBadge.style.color = readableInk(channel.department.color);
             }
 
             topic.appendChild(document.createTextNode(channel.topic || ''));
@@ -14483,6 +14500,7 @@
             var bar = el('div', 'pg-toolbar mb-3');
             var status = select([['open', t('open_tasks')], ['closed', t('closed_tasks')], ['all', t('all_tasks')]], self.taskStatus || 'open');
             status.classList.add('w-auto');
+            status.setAttribute('aria-label', t('task_status_filter'));
             status.addEventListener('change', function () {
                 self.taskStatus = status.value;
                 self.drawCenter();
@@ -17915,6 +17933,7 @@
 
         var status = select([['open', t('open_tasks')], ['closed', t('closed_tasks')], ['all', t('all_tasks')]], state.status);
         status.classList.add('w-auto');
+        status.setAttribute('aria-label', t('task_status_filter'));
         status.addEventListener('change', function () {
             state.status = status.value;
             load();
@@ -18523,6 +18542,7 @@
 
         var statusFilter = select([['all', t('all_tasks')], ['open', t('open_tasks')], ['closed', t('closed_tasks')]], 'all');
         statusFilter.classList.add('w-auto');
+        statusFilter.setAttribute('aria-label', t('task_status_filter'));
         statusFilter.addEventListener('change', function () {
             state.status = statusFilter.value;
             draw();

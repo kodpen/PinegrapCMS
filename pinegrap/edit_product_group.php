@@ -666,7 +666,7 @@ if (!$_POST) {
                                             <dialog class="dialog dialog-lg" id="image_code" aria-labelledby="image_code">
                                                         <div class="dialog-header">
                                                             <h5 class="dialog-title">' . lang('Code') . '</h5>
-                                                            <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+                                                            <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                                                         </div>
                                                         <div class="dialog-body "> 
                                                             <div class="row">

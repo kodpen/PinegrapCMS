@@ -1054,7 +1054,7 @@ class liveform {
                 
                 $output =
                     '<div class="software_error alert alert-danger alert-dismissible show " role="alert">
-                        <button type="button" style="display:none;" class="btn-close no-popover" title="' . lang('Close') . '" data-bs-dismiss="alert" aria-label="Close"></button>
+                        <button type="button" style="display:none;" class="btn-close no-popover" title="' . lang('Close') . '" data-bs-dismiss="alert" aria-label="' . h(lang('Close')) . '"></button>
                         ' . $output_error_messages . '
                     </div>';
 
@@ -1238,7 +1238,7 @@ class liveform {
             
             $output =
                 '<div class="software_notice alert alert-success alert-dismissible show" role="alert">
-                    <button type="button" style="display:none;" class="btn-close no-popover" title="' . lang('Close') . '" data-bs-dismiss="alert" aria-label="Close"></button>
+                    <button type="button" style="display:none;" class="btn-close no-popover" title="' . lang('Close') . '" data-bs-dismiss="alert" aria-label="' . h(lang('Close')) . '"></button>
                     ' . $output_notices . '
                 </div>';
         }
@@ -1277,7 +1277,7 @@ class liveform {
             
             $output =
                 '<div class="software_warning alert alert-warning alert-dismissible show" role="alert">
-                    <button type="button" style="display:none;" class="btn-close no-popover" title="' . lang('Close') . '" data-bs-dismiss="alert" aria-label="Close"></button>
+                    <button type="button" style="display:none;" class="btn-close no-popover" title="' . lang('Close') . '" data-bs-dismiss="alert" aria-label="' . h(lang('Close')) . '"></button>
                     ' . $output_warnings . '
                 </div>';
         }

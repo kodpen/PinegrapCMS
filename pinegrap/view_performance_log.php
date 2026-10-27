@@ -546,7 +546,7 @@ echo '
                             <input type="hidden" name="mem_dir"   value="' . h($mem_dir)   . '">
                             <div class="dialog-header">
                                 <h5 class="dialog-title" id="perf-log-clear-title"><i class="bi bi-exclamation-triangle fg-danger me-3"></i>' . lang('Clear Performance Log') . '</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+                                <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                             </div>
                             <div class="dialog-body">
                                 <p>' . lang('Are you sure you want to delete ALL performance log records? This action cannot be undone.') . '</p>
