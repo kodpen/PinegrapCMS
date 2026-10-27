@@ -40,6 +40,18 @@ function pg_legal_document_types()
 }
 
 /**
+ * Every type order_documents keeps, with its name: the two documents of
+ * pg_legal_document_types() and the KVKK notice with its explicit consent,
+ * which is kept with the order but never required.
+ *
+ * @return array  type => label
+ */
+function pg_legal_document_labels()
+{
+    return pg_legal_document_types() + array('kvkk' => lang('Personal Data Notice'));
+}
+
+/**
  * The placeholders a template may use, with a short description each for the
  * settings card.
  *
@@ -646,6 +658,97 @@ function pg_legal_documents_insert_before_purchase($html, $block)
 }
 
 /**
+ * The KVKK lines of a checkout: a sentence linking the store's notice page
+ * and, when the store has written a consent sentence, a box the customer may
+ * leave unticked (explicit consent is never a condition of the order).
+ *
+ * @param array  $checked      field => value from the visitor's last submit
+ * @param string $notice_url   the notice page's address ('' for no link), unescaped
+ * @param string $consent      the consent sentence ('' for no box), plain text
+ * @return string  '' when there is neither
+ */
+function pg_legal_kvkk_html(array $checked, $notice_url, $consent)
+{
+    $notice_url = (string) $notice_url;
+    $consent = trim((string) $consent);
+    $rows = '';
+
+    if ($notice_url !== '') {
+        $link = '<a href="' . h($notice_url) . '" target="_blank" rel="noopener">' . h(lang('the Personal Data Notice')) . '</a>';
+        $rows .= '<p class="pg-legal-kvkk-notice small mb-2">' . lang(array('string' => 'How your personal data is processed is explained in {var:1}.', 'vars' => array($link))) . '</p>';
+    }
+
+    if ($consent !== '') {
+        $rows .= '<div class="form-check">'
+            . '<input class="form-check-input software_input_checkbox" type="checkbox" name="legal_kvkk" id="legal_kvkk" value="1"'
+            . (((string) ($checked['legal_kvkk'] ?? '') === '1') ? ' checked' : '') . '>'
+            . ' <label class="form-check-label" for="legal_kvkk">' . nl2br(h($consent), false) . '</label>'
+            . '</div>';
+    }
+
+    return ($rows !== '') ? '<div class="pg-legal-kvkk mb-3">' . $rows . '</div>' : '';
+}
+
+/**
+ * The KVKK copy kept with an order: which notice page the checkout linked
+ * and the consent sentence as the customer read it. Whether consent was
+ * given is the row's accepted_at.
+ *
+ * @param string $notice_url  the notice page's full address ('' for none), unescaped
+ * @param string $consent     the consent sentence ('' for none)
+ * @return string  '' when the checkout showed neither
+ */
+function pg_legal_kvkk_copy_html($notice_url, $consent)
+{
+    $notice_url = (string) $notice_url;
+    $consent = trim((string) $consent);
+
+    if (($notice_url === '') && ($consent === '')) {
+        return '';
+    }
+
+    $html = '<h2>' . h(lang('Personal Data Notice')) . '</h2>';
+
+    if ($notice_url !== '') {
+        $html .= '<p>' . lang(array('string' => 'The checkout linked the notice at {var:1}.', 'vars' => array('<a href="' . h($notice_url) . '">' . h($notice_url) . '</a>'))) . '</p>';
+    }
+
+    if ($consent !== '') {
+        $html .= '<h3>' . h(lang('Explicit consent')) . '</h3><p>' . nl2br(h($consent), false) . '</p>';
+    }
+
+    return $html;
+}
+
+/**
+ * The store's KVKK settings while the checkout documents are on: the notice
+ * page's address (relative and full) and the consent sentence. A page that
+ * no longer exists gives no link.
+ *
+ * @return array  url, full_url, consent; all '' when off or not set
+ */
+function pg_legal_kvkk_settings()
+{
+    $settings = array('url' => '', 'full_url' => '', 'consent' => '');
+
+    if (!pg_legal_documents_enabled()) {
+        return $settings;
+    }
+
+    $page_id = defined('ECOMMERCE_KVKK_PAGE_ID') ? (int) ECOMMERCE_KVKK_PAGE_ID : 0;
+    $page_name = ($page_id > 0) ? (string) get_page_name($page_id) : '';
+
+    if ($page_name !== '') {
+        $settings['url'] = PATH . encode_url_path($page_name);
+        $settings['full_url'] = URL_SCHEME . HOSTNAME . $settings['url'];
+    }
+
+    $settings['consent'] = trim(pg_config_text('ecommerce_kvkk_consent_text'));
+
+    return $settings;
+}
+
+/**
  * The built-in template for a type in a language: the language's own file
  * when one ships, the English one otherwise.
  *
@@ -964,6 +1067,9 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
  * not, so the order shows what was in front of the customer; accepted_at is
  * set only for the types the customer ticked. A second call for the same
  * order stores nothing (the copy is the one from the moment of the order).
+ * The KVKK copy (pg_legal_kvkk_copy_html()) is kept beside them when the
+ * store links a notice page or asks for explicit consent; it counts as
+ * accepted only when the consent box was there and ticked.
  * Each stored and accepted type also writes a granted contract row to the
  * consent log (pg_legal_documents_consent_events()).
  *
@@ -990,7 +1096,19 @@ function pg_legal_documents_store($order_id, array $accepted_types)
     $agent = mb_substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255);
     $stored = array();
 
-    foreach (pg_legal_documents_for_order($order_id) as $type => $html) {
+    $documents = pg_legal_documents_for_order($order_id);
+    $kvkk = pg_legal_kvkk_settings();
+
+    // Explicit consent is accepted only where the checkout asked for it.
+    if ($kvkk['consent'] === '') {
+        $accepted_types = array_values(array_diff($accepted_types, array('kvkk')));
+    }
+
+    if ($documents) {
+        $documents['kvkk'] = pg_legal_kvkk_copy_html($kvkk['full_url'], $kvkk['consent']);
+    }
+
+    foreach ($documents as $type => $html) {
         if (trim($html) === '') {
             continue;
         }
@@ -1138,7 +1256,8 @@ function pg_legal_document_cart_url($type = '', $language = null, $page_url = nu
  * total and billing values are kept for the document page the checkboxes
  * link to, so the documents show what the visitor is looking at. A page that
  * already carries the fields (a designer tree that binds them) gets none
- * added; a page without a purchase button needs none. Either way a page with
+ * added; a page without a purchase button needs none. The KVKK lines
+ * (pg_legal_kvkk_html()) follow the same rule on their own. Either way a page with
  * the documents gets the script that makes their links post what the visitor
  * has typed since the page was drawn.
  *
@@ -1156,11 +1275,16 @@ function pg_legal_documents_inject($html, array $values = array())
 
     $_SESSION['ecommerce']['legal_documents_seen'] = array('order_id' => (int) ($_SESSION['ecommerce']['order_id'] ?? 0)) + pg_legal_document_form_snapshot($html);
 
-    if (strpos($html, 'name="legal_preinfo"') !== false) {
-        return $html . pg_legal_documents_script();
+    $block = (strpos($html, 'name="legal_preinfo"') === false)
+        ? pg_legal_documents_checkboxes_html($values, pg_legal_document_cart_url())
+        : '';
+
+    if (strpos($html, 'pg-legal-kvkk') === false) {
+        $kvkk = pg_legal_kvkk_settings();
+        $block .= pg_legal_kvkk_html($values, $kvkk['url'], $kvkk['consent']);
     }
 
-    return pg_legal_documents_insert_before_purchase($html, pg_legal_documents_checkboxes_html($values, pg_legal_document_cart_url())) . pg_legal_documents_script();
+    return (($block !== '') ? pg_legal_documents_insert_before_purchase($html, $block) : $html) . pg_legal_documents_script();
 }
 
 /**
@@ -1302,6 +1426,12 @@ function pg_legal_document_acceptance_note(array $row)
 {
     $accepted = (int) ($row['accepted_at'] ?? 0);
 
+    if (($row['type'] ?? '') === 'kvkk') {
+        return ($accepted > 0)
+            ? lang(array('string' => 'Explicit consent given by the customer on {var:1}.', 'vars' => array(pg_legal_document_time_text($accepted))))
+            : lang('The customer gave no explicit consent.');
+    }
+
     if ($accepted <= 0) {
         return lang('This copy was kept with the order without being accepted.');
     }
@@ -1368,7 +1498,7 @@ function pg_legal_document_may_view(array $order)
  */
 function pg_legal_documents_attachments($order_id, $order_number)
 {
-    $types = pg_legal_document_types();
+    $types = pg_legal_document_labels();
     $attachments = array();
 
     foreach (pg_legal_documents_of_order($order_id) as $type => $row) {
@@ -1556,7 +1686,7 @@ function pg_legal_withdrawal_text($withdrawal, $date_text)
  */
 function pg_legal_documents_panel_card($order_id)
 {
-    $types = pg_legal_document_types();
+    $types = pg_legal_document_labels();
     $rows = '';
 
     foreach (pg_legal_documents_of_order($order_id) as $type => $row) {
@@ -1565,9 +1695,12 @@ function pg_legal_documents_panel_card($order_id)
         }
 
         $accepted = (int) $row['accepted_at'];
+        // Explicit consent is optional: none given is no fault of the order.
         $status = ($accepted > 0)
             ? h(pg_legal_document_time_text($accepted))
-            : '<span class="fg-danger">' . h(lang('Not accepted')) . '</span>';
+            : (($type === 'kvkk')
+                ? '<span class="fg-secondary">' . h(lang('No consent')) . '</span>'
+                : '<span class="fg-danger">' . h(lang('Not accepted')) . '</span>');
 
         $rows .= '<div class="row">
                         <span class="col fg-secondary"><a class="pg-link-secondary" href="' . h(pg_legal_document_copy_url($order_id, $type)) . '" target="_blank" rel="noopener">' . h($types[$type]) . '</a>:</span>

@@ -12,6 +12,7 @@ description: Generated from the module field of the memory files: each includes/
 - `backup`: [[fn-module-errors-mail-backup-consent]]
 - `collections`: [[collection-references]]
 - `comments`: [[comment-replies]], [[comment-thread-rules]], [[comment-thread-verify]], [[comments-moderation-counters]], [[comments-widget-pages]], [[designed-page-comment-names]]
+- `config_text`: [[config-table-no-varchar]]
 - `consent`: [[fn-module-errors-mail-backup-consent]]
 - `contacts`: [[panel-avatar]], [[panel-avatar-sites]]
 - `designer_fx`: [[designer-interactions]]

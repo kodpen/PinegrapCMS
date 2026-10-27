@@ -1166,6 +1166,27 @@ if ($legal_documents_ready) {
                                                         </div>';
     }
 
+    // The KVKK lines of the checkout: a link to the store's own notice page
+    // and an optional explicit consent box.
+    $legal_kvkk_fields = '';
+
+    if ($legal_kvkk_ready) {
+        $legal_kvkk_fields = '
+                                    <div class="col-12 md:col-6">
+                                        <label class="form-label" for="ecommerce_kvkk_page_id">' . lang('KVKK Notice Page') . '</label>
+                                        <select class="form-control" id="ecommerce_kvkk_page_id" name="ecommerce_kvkk_page_id">
+                                            <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Page')))) . '-</option>
+                                            ' . select_page($ecommerce_kvkk_page_id ?: '') . '
+                                        </select>
+                                        <div class="form-text">' . lang('The checkout links this page where it explains how personal data is processed.') . '</div>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label" for="ecommerce_kvkk_consent_text">' . lang('Explicit Consent Sentence') . '</label>
+                                        <textarea class="form-control" id="ecommerce_kvkk_consent_text" name="ecommerce_kvkk_consent_text" rows="3">' . h($ecommerce_kvkk_consent_text) . '</textarea>
+                                        <div class="form-text">' . lang('Shown beside a box the customer may leave unticked; the answer is kept with the order. Leave it empty for no box.') . '</div>
+                                    </div>';
+    }
+
     $pg_settings_cards[] = '
     <div id="pgset-legal" class="pg-set-card">
         <div class="card">
@@ -1186,7 +1207,7 @@ if ($legal_documents_ready) {
                                 <div class="row gy-5">
                                     <div class="col-12">
                                         <div class="form-text">' . lang('The templates are a starting point. Have them reviewed for your business before switching this on, and add what only you know, such as your MERSİS number and your return carrier. Clear a template to go back to the built-in one.') . '</div>
-                                    </div>' . $legal_template_fields . '
+                                    </div>' . $legal_template_fields . $legal_kvkk_fields . '
                                     <div class="col-12">
                                         <details>
                                             <summary class="form-text">' . lang('Fields you can use in a template') . '</summary>

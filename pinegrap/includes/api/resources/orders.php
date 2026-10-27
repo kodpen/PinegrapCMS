@@ -1021,8 +1021,8 @@ function api_orders_ship_recipient($recipient, $params, $numbers) {
 }
 
 // The legal documents kept with an order: the pre-information form and the
-// distance sales contract the customer accepted at checkout (and, once written,
-// the KVKK consent), each as the HTML the customer saw. The copy is the row's
+// distance sales contract the customer accepted at checkout and the KVKK
+// notice with its explicit consent, each as the HTML the customer saw. The copy is the row's
 // own: a template edited afterwards changes nothing here, which is the point
 // of keeping it - what an integration archives is what was agreed to.
 //
@@ -1033,7 +1033,7 @@ function api_order_document_present($row, $types = null) {
 
 	if ($types === null) {
 
-		$types = pg_legal_document_types();
+		$types = pg_legal_document_labels();
 
 	}
 
@@ -1078,7 +1078,7 @@ function api_orders_documents($params) {
 
 	if (pg_schema_has('order_documents')) {
 
-		$types = pg_legal_document_types();
+		$types = pg_legal_document_labels();
 
 		foreach (api_rows("SELECT id, type, html, accepted_at, ip, user_agent, created_at
 			FROM order_documents

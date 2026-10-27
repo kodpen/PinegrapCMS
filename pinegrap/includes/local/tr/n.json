@@ -592,6 +592,7 @@
     "No conditions — the offer applies to every order. Add a condition on the right to narrow it down.": "Koşul yok — teklif her siparişte geçerli. Sınırlamak için sağdan koşul ekleyin.",
     "No confirmation e-mail was sent for contact group {var:1}: the request could not be recorded in the consent log, which limits these e-mails to one a day.": "{var:1} numaralı kişi grubu için onay e-postası gönderilmedi: istek, bu e-postaları günde bire sınırlayan izin kaydına yazılamadı.",
     "No connected accounts.": "Bağlı hesap yok.",
+    "No consent": "Rıza yok",
     "No contact is linked to this account.": "Bu cariye bağlı kişi yok.",
     "No contact is linked to this order. Please ensure billing information is complete.": "Bu siparişe bağlı bir cari kaydı bulunmuyor. Lütfen fatura bilgilerinin tamamlandığından emin olun.",
     "No contact record": "Rehber kaydı yok",
