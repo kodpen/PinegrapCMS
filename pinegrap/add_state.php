@@ -91,12 +91,12 @@ if (!$_POST) {
                 user,
                 timestamp)
             VALUES (
-                '" . escape($_POST['name'] ?? '') . "',
-                '" . escape($_POST['code'] ?? '') . "',
-                '" . escape($_POST['country_id'] ?? '') . "',
-                " . $user['id'] . ",
+                ?,
+                ?,
+                ?,
+                ?,
                 UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) ($_POST['code'] ?? ''), (string) ($_POST['country_id'] ?? ''), (int) $user['id'])) or output_error('Query failed.');
     log_activity(lang(array('string'=>'{var:1} ({var:2}) was created','vars'=>array(lang('state'),$_POST['name']))), $_SESSION['sessionusername']);
 
     // forward user to view states page

@@ -61,15 +61,15 @@ function pg_dashboard_widget_21($request, $user)
         // SUM(hit_count), never COUNT(*): identical events are
         // folded into five-minute buckets, so counting rows would
         // report a flood of ten thousand requests as one event.
-        $waf_totals = mysqli_fetch_assoc(mysqli_query(
-            db::$con,
+        $waf_totals = mysqli_fetch_assoc(db_q(
             "SELECT
                 COALESCE(SUM(hit_count), 0) AS requests,
                 COALESCE(SUM(CASE WHEN action IN ('block','rate','ban') THEN hit_count ELSE 0 END), 0) AS blocked,
                 COALESCE(SUM(CASE WHEN action IN ('would-block','would-rate','would-ban') THEN hit_count ELSE 0 END), 0) AS would_block,
                 COUNT(DISTINCT ip_address) AS addresses
              FROM waf_log
-             WHERE log_timestamp >= " . (int) $waf_day_ago
+             WHERE log_timestamp >= ?",
+            array((int) $waf_day_ago)
         ));
 
         $waf_requests    = (int) $waf_totals['requests'];
@@ -149,14 +149,14 @@ function pg_dashboard_widget_21($request, $user)
 
         $waf_rows = '';
 
-        $waf_event_result = mysqli_query(
-            db::$con,
+        $waf_event_result = db_q(
             "SELECT ip_address, action, rule_id, score, hit_count, last_seen,
                     target, matched
              FROM waf_log
-             WHERE log_timestamp >= " . (int) $waf_day_ago . "
+             WHERE log_timestamp >= ?
              ORDER BY last_seen DESC, id DESC
-             LIMIT 8"
+             LIMIT 8",
+            array((int) $waf_day_ago)
         );
 
         if ($waf_event_result) {
