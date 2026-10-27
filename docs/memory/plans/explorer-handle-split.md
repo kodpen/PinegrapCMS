@@ -11,9 +11,9 @@ description: Cutting pg_explorer_handle() (view_folder_and_files_f.php, ~7k line
 ## What is done?
 - Slice 1, short links (556 lines, #2109): `handle_short_links.php`, seven handlers and `pg_explorer_short_link_destination_columns()` (tests `explorer_handle_short_links_test.php`, `short_link_requests_test.php`).
 - Slice 2, backups (625 lines, #2118): `handle_backups.php`, six handlers (rename, copy and delete share one, as they shared one case), `pg_explorer_backup_breadcrumb()` and `pg_explorer_backup_entry_segments()` (test `explorer_handle_backups_test.php`).
+- Slice 3, zip, Office preview and rotate (451 lines, #2132): `handle_zip.php` (zip_create, zip_extract, `pg_explorer_zip_archive_name()`, `pg_explorer_zip_entry_file_name()`) and `handle_files_media.php` (office_preview, rotate, `pg_explorer_rotatable()`) (test `explorer_handle_zip_test.php`).
 
 ## In which order are the rest cut? (lines in the switch)
-3. zip_create + zip_extract (313), office_preview (44), rotate (94).
 4. upload (211), optimize (123), webp (136).
 5. catalog_list (204), catalog_tree (37), catalog_create_group (85), catalog_rename (62), catalog_membership_remove (41), catalog_pages (30).
 6. catalog_paste (174), catalog_recycle (127), catalog_restore (111), catalog_purge (90), catalog_enable (87).
