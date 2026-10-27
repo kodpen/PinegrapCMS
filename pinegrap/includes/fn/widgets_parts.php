@@ -68,6 +68,12 @@ function pg_sw_default_part_tokens()
             array('__breadcrumb_inner_html', 'pg_sw_part_catalog_crumbs'),
             array('section:breadcrumb', 'pg_sw_part_catalog_crumbs'),
             array('content:breadcrumb', 'pg_sw_part_catalog_breadcrumb_listing'),
+            array('__filter_chips', 'pg_sw_part_catalog_filter_chips'),
+            array('__filter_chips_inner_html', 'pg_sw_part_catalog_filter_chips_inner'),
+            array('section:filter_chips', 'pg_sw_part_catalog_filter_chips_inner'),
+            array('__active_filters_html', 'pg_sw_part_catalog_active_filters'),
+            array('__active_filters_inner_html', 'pg_sw_part_catalog_active_filters'),
+            array('section:active_filters', 'pg_sw_part_catalog_active_filters'),
         ),
         'catalog_item_view' => array(
             array('__breadcrumb_html', 'pg_sw_part_catalog_breadcrumb_item'),
@@ -742,6 +748,50 @@ function pg_sw_part_catalog_breadcrumb_listing($cfg = array())
 function pg_sw_part_catalog_breadcrumb_item($cfg = array())
 {
     return pg_sw_part_catalog_breadcrumb('pg-civ-breadcrumb mb-3');
+}
+
+// The attribute filters a catalog listing applies, as it drew them: a box
+// (pg-sw-attr-active-filters) drawn when there are any
+// (__has_active_attr_filters), one badge per filter (catalog.active_filters)
+// linking to the listing without it, its words and a cross after them. The
+// badges' weight, the cross's size and the box's flex row (no gap from the
+// white space between the badges) are in pg_carousel_layout.css.
+function pg_sw_part_catalog_active_filters($cfg = array())
+{
+    return array(pg_sw_part_el('div', 'pg-sw-attr-active-filters mb-3', 'Active attribute filters', pg_sw_part_when('__has_active_attr_filters', 'eq', '1'), array(
+        array('type' => 'loop_area', 'props' => array('source' => 'catalog.active_filters'), 'children' => array(
+            pg_sw_part_el('a', 'badge text-bg-secondary text-decoration-none me-2 mb-1 d-inline-flex align-items-center', 'Filter chip', array(
+                'href' => '#', 'text' => '', 'textPosition' => 'start',
+                '_bindings' => array('text' => '__filter_chip_label', 'href' => '__filter_chip_url'),
+            ), array(
+                pg_sw_part_el('span', 'bi bi-x-lg ms-2', 'Remove icon'),
+            )),
+        )),
+    )));
+}
+
+// What the listing's filter chip strip held: the active attribute filters,
+// then, while any filter is active (__has_active_filters), the button that
+// clears them all, pushed to the row's end.
+function pg_sw_part_catalog_filter_chips_inner($cfg = array())
+{
+    return array_merge(pg_sw_part_catalog_active_filters($cfg), array(
+        pg_sw_part_el('span', 'ms-auto', 'Clear Filters', pg_sw_part_when('__has_active_filters', 'eq', '1'), array(
+            pg_sw_part_el('a', 'btn btn-sm btn-outline-danger', 'Clear Filters button', array(
+                'href' => '#', 'text' => lang('Clear Filters'), '_bindings' => array('href' => '__clear_filters_url'),
+            ), array(
+                pg_sw_part_el('i', 'bi bi-x-circle me-1', 'Icon'),
+            )),
+        )),
+    ));
+}
+
+// The filter chip strip (pg-sw-filter-chips), a flex row drawn while any
+// filter is active.
+function pg_sw_part_catalog_filter_chips($cfg = array())
+{
+    return array(pg_sw_part_el('div', 'pg-sw-filter-chips d-flex align-items-center gap-2 flex-wrap py-2', 'Filter Chips',
+        pg_sw_part_when('__has_active_filters', 'eq', '1'), pg_sw_part_catalog_filter_chips_inner($cfg)));
 }
 
 // The products bought together with the one a catalog detail view shows,

@@ -629,6 +629,7 @@
     "Whether a filter is active (1/0)": "Aktif filtre var mı (1/0)",
     "Whether a new recipient group starts (1 / empty)": "Yeni alıcı grubu başlıyor mu (1 / boş)",
     "Whether a recurring group starts (1 / empty)": "Yinelenen grup başlıyor mu (1 / boş)",
+    "Whether an attribute filter is active (1/0)": "Bir özellik filtresi etkin mi (1/0)",
     "Whether an expense category takes its VAT back is set with the categories.": "Bir gider kategorisinin KDV'sinin indirilip indirilmediği kategorilerde ayarlanır.",
     "Whether backorder is allowed": "Ön sipariş açık mı",
     "Whether it answers": "Yanıt verip vermediği",

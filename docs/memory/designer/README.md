@@ -270,6 +270,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-default-parts-breadcrumb.md: The catalog breadcrumb default part (W16, #1945): the catalog.crumbs list, its rows and key, the four placements it replaces, the listing's lead part, what changed for running sites
 - widget-default-parts-comments.md: The comment stars default part (W16, #1908): what replaced __comment_stars_html, its conditions and tokens, the flex rule, the e-mail characters, starters, canvas
 - widget-default-parts-cross-sell.md: The catalog detail view's cross-sell default part (W16, #1973): the product.related cards that replaced __cross_sell_html, __has_related, where it is added, the variant script's server redraw
+- widget-default-parts-filter-chips.md: The catalog listing's filter chip parts (W16, #2218): the catalog.active_filters list, the six placements replaced, the clear button, the pushed chip row by pg_sw_placed()
 - widget-default-parts-order-items.md: The order view's item form and gift card parts (W16, #1863): the three item lists, their keys and tokens, the loop tail, the boxes' flags, raw tokens, what the cart keeps
 - widget-default-parts-order.md: The order view's default parts (W16): timeline, status badge, the returns and legal documents cards added after it, their flags and tokens, e-mail look
 - widget-default-parts-returns.md: The order view's returns list part (W16, #2067): order.returns and order.return_lines lists replacing __returns, tokens, badges, the customer's moves kept as server forms
