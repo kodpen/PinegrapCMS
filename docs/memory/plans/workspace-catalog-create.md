@@ -33,4 +33,4 @@ None needs schema.
 4. Answered (same answer): (a) `product.created` per row, as AI bulk updates.
 
 ## Where to start?
-- Slice 3c after #2278 merges.
+- Slice 3c (open PR).
