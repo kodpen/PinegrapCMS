@@ -32,6 +32,19 @@ function test_layout_retirement_tab_param()
 	pg_assert_same('', pg_layout_tab_param(0, array(0), 0, false), 'no page');
 }
 
+// "Edit Layout" on the form screen: a page whose own style is a visual
+// design opens the designer on that page, on its layout tab where the role
+// and site allow it; a page on a classic style keeps the page designer.
+function test_layout_retirement_edit_layout_url()
+{
+	pg_assert_same('edit_system_style.php?id=4&page=7&layout=1', pg_layout_edit_url(7, '/about', 4, true, 1, false));
+	pg_assert_same('edit_system_style.php?id=4&page=7&layout=1', pg_layout_edit_url('7', '/about', '4', true, 0, false), 'ids as strings');
+	pg_assert_same('edit_system_style.php?id=4&page=7', pg_layout_edit_url(7, '/about', 4, true, 1, true), 'hosted: the canvas');
+	pg_assert_same('edit_system_style.php?id=4&page=7', pg_layout_edit_url(7, '/about', 4, true, 2, false), 'a manager: the canvas');
+	pg_assert_same('page_designer.php?url=%2Fabout&type=layout&id=7', pg_layout_edit_url(7, '/about', 4, false, 1, false), 'classic style');
+	pg_assert_same('page_designer.php?url=%2Fabout&type=layout&id=7', pg_layout_edit_url(7, '/about', 0, true, 1, false), 'no own style');
+}
+
 // The designer opens the tab only for the page it lands on.
 function test_layout_retirement_open_page_id()
 {
@@ -48,6 +61,10 @@ function test_layout_retirement_wiring()
 {
 	$output = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php');
 	pg_assert_true(strpos($output, 'pg_layout_tab_param(') !== false, 'the Ctrl+G button asks for the tab');
+
+	$fields = file_get_contents(PG_FUNCTIONS_DIR . '/view_fields.php');
+	pg_assert_true(strpos($fields, 'pg_layout_edit_url(') !== false, 'Edit Layout asks for its target');
+	pg_assert_true(strpos($fields, 'pg_page_is_visual_design(') !== false, 'Edit Layout checks the page style');
 
 	$screen = file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
 	pg_assert_true(strpos($screen, "'openLayout'") !== false, 'the screen passes the page');
