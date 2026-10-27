@@ -142,8 +142,14 @@ function bs6_shell_dialog_box_classes($tokens)
 	$out = array();
 
 	foreach ($tokens as $token) {
-		if (in_array($token, array('modal-dialog', 'modal-dialog-centered'), true)) {
-			// A v6 dialog is centred by its margin: auto.
+		if ($token === 'modal-dialog') {
+			continue;
+		}
+
+		// A v6 dialog is centred by its margin: auto; the panel keeps v5's
+		// top-aligned dialog and centres only the ones that asked for it.
+		if ($token === 'modal-dialog-centered') {
+			$out[] = 'pg-dialog-centered';
 			continue;
 		}
 
@@ -1163,6 +1169,64 @@ function bs6_switch_script_checks($source)
 
 	if (!$edits) {
 		return array('source' => $source, 'status' => 'done', 'left' => $left);
+	}
+
+	return array('source' => bs6_shell_apply($source, $edits), 'status' => 'applied', 'left' => $left);
+}
+
+// The chevron Bootstrap 6 draws at the end of an accordion's <summary>.
+const BS6_SHELL_ACCORDION_ICON = '<svg class="accordion-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m2 5 6 6 6-6"/></svg>';
+
+/**
+ * v5 accordion items (a header button driving a .collapse box) to v6's
+ * <details class="accordion-item"> with a <summary class="accordion-header">.
+ * The box's `show` becomes `open`, also when PHP prints it
+ * (`' . ($x ? ' show' : '') . '`); `data-bs-parent="#id"` becomes the
+ * group's `name`. An item whose button and box are not next to each other,
+ * or whose closing tags cannot be matched, is left for a hand.
+ */
+function bs6_switch_accordions($source)
+{
+	$pattern = '#<div class="accordion-item">\s*<h2 class="accordion-header">\s*<button class="accordion-button(?:\s+collapsed|\'[^"]*?\')?" type="button" data-bs-toggle="collapse" data-bs-target="\#([\w-]+)"[^>]*>(.*?)</button>\s*</h2>(\s*)<div id="\1" class="accordion-collapse collapse((?:\s+show)?|\'[^"]*?\')"([^>]*)>(\s*)<div class="accordion-body">#s';
+	$edits = array();
+	$left = 0;
+
+	if (!preg_match_all($pattern, $source, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+		return array('source' => $source, 'status' => strpos($source, 'accordion-button') === false ? 'done' : 'missing');
+	}
+
+	foreach ($matches as $m) {
+		$start = $m[0][1];
+		$head_end = $start + strlen($m[0][0]);
+		$body_close = bs6_shell_close_of($source, $head_end);
+
+		if ($body_close === null || !preg_match('#\G(\s*)</div>(\s*)</div>#', $source, $tail, 0, $body_close[1])) {
+			$left++;
+			continue;
+		}
+
+		$show = $m[4][0];
+
+		if (trim($show) === 'show') {
+			$open = ' open';
+		} elseif (trim($show) === '') {
+			$open = '';
+		} else {
+			$open = str_replace("' show'", "' open'", $show);
+		}
+
+		$name = preg_match('/\sdata-bs-parent="#([\w-]+)"/', $m[5][0], $parent) ? ' name="' . $parent[1] . '"' : '';
+		$label = rtrim($m[2][0]);
+		$line = substr($source, 0, $start);
+		$indent = preg_match('/[ \t]*$/', $line, $space) ? $space[0] : '';
+		$head = '<details class="accordion-item"' . $name . $open . '>' . "\n" . $indent . '    <summary class="accordion-header">' . trim($label) . ' ' . BS6_SHELL_ACCORDION_ICON . '</summary>' . $m[6][0] . '<div class="accordion-body">';
+
+		$edits[] = array($start, $head_end, $head);
+		$edits[] = array($body_close[1], $body_close[1] + strlen($tail[0]), $tail[2] . '</details>');
+	}
+
+	if (!$edits) {
+		return array('source' => $source, 'status' => 'missing', 'left' => $left);
 	}
 
 	return array('source' => bs6_shell_apply($source, $edits), 'status' => 'applied', 'left' => $left);
