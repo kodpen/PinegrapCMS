@@ -987,6 +987,7 @@
     "The box {var:1} needs the title of the request.": "{var:1} kutusu için isteğin başlığı gerekiyor.",
     "The box {var:1} needs what happens.": "{var:1} kutusu ne olacağını istiyor.",
     "The box {var:1} needs what they are to be told.": "{var:1} kutusu için onlara ne bildirileceği gerekir.",
+    "The box {var:1} writes in the channel joined, but the flow does not start when somebody joins a channel.": "{var:1} kutusu katılınan kanala yazıyor, ama akış biri bir kanala katıldığında başlamıyor.",
     "The box {var:1}: {var:2}": "{var:1} kutusu: {var:2}",
     "The boxes after it start when the time is up: at least a minute, at most a week.": "Süre dolunca sonraki kutular başlar: en az bir dakika, en çok bir hafta.",
     "The boxes in the order of their arrows, each with its settings. Everything the canvas does can be done here too.": "Kutular oklarının sırasıyla, her biri kendi ayarlarıyla. Tuvalde yapılan her şey burada da yapılabilir.",

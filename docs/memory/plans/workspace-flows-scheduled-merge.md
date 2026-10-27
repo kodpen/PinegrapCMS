@@ -11,7 +11,7 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 - Scheduled messages (kind `message`, any member) share the table and ?view=scheduled; staff's actions are listed in Flows (slice 1, `ws_flows_scheduled()`).
 - `ws_scheduled_run()` / `ws_scheduled_due()` also drive approval expiry, read receipts, watch lines and the flow runner (#1551).
 - No API route (canvas plan S1, S2).
-- Flows: manual, task, end boxes; the owner edits, staff and home-channel readers run a live one (`ws_flow_access()`); no loops; runs swept after 30 days, start at depth 0; `flow_id` unread.
+- Flows: the owner edits, staff and home-channel readers run a live one (`ws_flow_access()`); no loops; runs swept after 30 days.
 
 ## What is proposed? (not approved yet)
 - Actions run on `ws_scheduled_execute()` until converted; nothing retires before the parity test says a box covers it; driver names stay. The `/workspace/scheduled-actions` routes were removed before 2026.11.0 (owner, 2026-10-27; #2107).
@@ -19,9 +19,13 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 
 ## Slices (one PR each)
 0. #1590: tests/workspace_flows_parity_test.php maps each parity key to its slice and box, or `form` and why; tests/workspace_scheduled_test.php pins `ws_scheduled_next_run()`, `ws_scheduled_hours_hold()` (past midnight, the site's zone).
-1. Done (#1707). One screen, no schema: a Scheduled actions section in Flows (today's list, `scheduledCard()`, `scheduledForm()` via `shareKit()`); staff get one Flows rail entry; ?view=scheduled keeps their Messages tab (the scheduled_message line opens it); other links, the tour step land in Flows; composer, note, @ai draft open the form; without 11.0.80 the old entry stays.
-2. Done (#1810). "Show on canvas": pure `ws_scheduled_graph()` from the staff card, `ws_scheduled_get` answers it, `showAction()` draws it read-only; edits stay in the form.
-3. Parity boxes (F4, F5), one per parity row: schedule, by hand or chain only, join, event triggers on the anchor; condition (no = skipped, reason kept); steps from steps.php (engine plan), every option; task without waiting; approval; outcomes; delay; retry; start a flow; depth.
+1. Done (#1707). One screen, no schema: a Scheduled actions section in Flows (list, `scheduledCard()`, `scheduledForm()`); one Flows rail entry for staff; ?view=scheduled keeps their Messages tab; composer, note, @ai draft open the form.
+2. Done (#1810). "Show on canvas": `ws_scheduled_graph()`, `showAction()` draws it read-only.
+3. Parity boxes (F4, F5), one per parity row. Built: start boxes on the anchor, condition, step boxes, approval, delay, retry by hand (F4, F5). Parts:
+   - 3a. Done (#2205). Trigger values in every box; post in the channel joined.
+   - 3b. Start a flow box: another flow ("by hand or chain only" row), depth refused at 8, 60 starts an hour; `{{source}}`, `{{source_result}}`.
+   - 3c. Arrows on skipped and always, at most 5 per box in order, one failing fails a good run.
+   - 3d. Self-retry: a failed box tried again on its own after a delay, within depth 8.
 4. New rules on the canvas; the form stays for keys still `form`; templates become starters, AI drafts (F8).
 5. Conversion (answer 2): in the 2026.11.0 upgrade every row becomes a converted anchor, its id and every parity row kept. Schema (a mark for the two anchors): ask first.
 
@@ -34,4 +38,4 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 6. Slice 1 before F4 → yes (#1555 is in).
 
 ## Where to start?
-- Date fix (#1798) and slice 2 (#1810) done. Next: slice 3; read workspace/README.md.
+- Date fix (#1798), slice 2 (#1810) and 3a (#2205) done. Next: 3b; read workspace/README.md.

@@ -181,8 +181,8 @@ function test_workspace_flow_steps_never_twice()
 // action's step is, and a box runs only while its owner is on the staff.
 function test_workspace_flow_steps_owner_rights()
 {
-	pg_assert_contains('ws_scheduled_action_input($viewer, ws_step_action($kind, $config))', ws_flow_steps_test_source('ws_step_check'));
-	pg_assert_contains('ws_step_check($viewer, $node[\'kind\'], $node[\'config\'])', ws_flow_steps_test_source('ws_flow_publish_check'));
+	pg_assert_contains('ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined)', ws_flow_steps_test_source('ws_step_check'));
+	pg_assert_contains('ws_step_check($viewer, $node[\'kind\'], $node[\'config\'], ws_flow_starts_on_join($graph))', ws_flow_steps_test_source('ws_flow_publish_check'));
 
 	$step = ws_flow_steps_test_source('ws_flow_step_run');
 
