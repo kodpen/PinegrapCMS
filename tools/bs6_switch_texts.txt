@@ -774,3 +774,35 @@ holds a PHP block, which the check fix does not read.
                     <div class="form-field<?php echo (($user['role'] <= 1) ? '' : ' d-none'); ?>">
                         <div class="switch"><input class="" type="checkbox" id="upload_design" /></div>
 >>>
+
+The SEO score's colour class built from pg_seo_score_color() (success,
+warning or danger) in the panel's list bar and checklist.
+
+@@ seo.php
+<<<
+? ' text-' . $color['class'] : '';
+===
+? ' fg-' . $color['class'] : '';
+>>>
+
+The auto dialog list's status cell: its class attribute holds PHP blocks.
+
+@@ includes/templates/view_auto_dialogs.php
+<<<
+<?php if ($auto_dialog['enabled']): ?>text-success status_enabled<?php else: ?>text-danger status_disabled<?php endif ?>
+===
+<?php if ($auto_dialog['enabled']): ?>fg-success status_enabled<?php else: ?>fg-danger status_disabled<?php endif ?>
+>>>
+
+liveform adds Bootstrap 5's default class to a field that names none; the
+panel's fields name Bootstrap 6's check and radio (bs6_switch_fields.php),
+which count as named. No site form passes those two classes.
+
+@@ liveform.class.php
+<<<
+            foreach (array('form-control', 'form-select', 'form-check-input',
+                           'btn', 'no-bs') as $marker) {
+===
+            foreach (array('form-control', 'form-select', 'form-check-input',
+                           'check', 'radio', 'btn', 'no-bs') as $marker) {
+>>>

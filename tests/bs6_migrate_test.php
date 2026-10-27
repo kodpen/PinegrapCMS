@@ -436,4 +436,8 @@ function test_bs6_class_strings()
 
 	$ids = "echo '<td id=\"modal-date\"></td>'; document.getElementById(\"modal-date\"); var s = 'lead';\n";
 	pg_assert_same(array(), bs6_find_class_strings($ids), 'an id, an element lookup and a lone word name no class');
+
+	$added = "var c = 'ws-row-sub' + (late ? ' text-danger' : '');\nvar s = on ? 'status_enabled text-success' : 'status_disabled';\nvar k = 'some_key';\n";
+	pg_assert_same("var c = 'ws-row-sub' + (late ? ' fg-danger' : '');\nvar s = on ? 'status_enabled fg-success' : 'status_disabled';\nvar k = 'some_key';\n",
+		bs6_convert_source($added, null, true)['source'], 'a leading space, an own snake_case class');
 }
