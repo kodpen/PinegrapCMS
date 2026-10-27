@@ -105,6 +105,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-view-tracking-link.md: How a parcel's carrier, name and tracking link are found (pg_shipping_carrier: method code, site default, number shape; Turkish capitals), the order view tokens, and how to add a carrier
 - order-withdrawal-deadline.md: Last day of an order's right of withdrawal: latest delivery's window with parcel arrivals, estimate rules, none for a dateless delivery, order view token, fallback card, panel row
 - orders-table-columns.md: Real column names of orders and order_items (tax, shipping, user_id, order_date, no SKU column), optional columns, status enum, and the shape the external API returns for an order.
+- payment-callback.md: payment_callback.php?driver=<key> (PR #2143): what reaches notify(), how the order is found, what each answer does (alert only, never the order), status codes, firewall entry
 - payment-driver-iyzico.md: iyzico drivers (Iyzipay card, Pay With Iyzico redirect), their submit_order.php branch, the 3-D Secure return in the card's complete() (PR #1710), no card refund under a protected currency, tests
 - payment-driver-stripe.md: Stripe on PaymentIntents (gateway 'Stripe PaymentIntents', 11.0.24, PR #937): Payment Element and ConfirmationToken, 3-D Secure return, refund, cancel, CSP; classic 'Stripe' untouched
 - payment-drivers.md: Payment driver layer (2026.11.0, PR #740; iyzico on it since step 2): pg_payment_<key>_ contract, pg_payment_call() answers, card vs redirect, add-ons, settings in connect_apps or config

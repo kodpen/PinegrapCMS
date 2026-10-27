@@ -74,7 +74,11 @@
  *   card_exp_month    string  the card's expiry month (1-12), '' when not given
  *   card_exp_year     string  the card's expiry year (four digits), ''
  *   refund_reference  string  the service's id of a refund
- *   order_reference   string  notify(): which order the message is about
+ *   order_reference   string  notify(): which order the message is about: its
+ *                             id, or the payment id the order keeps as its
+ *                             transaction_id (includes/payments/callback.php);
+ *                             a message the store does not use is a failure
+ *                             with raw.ignored set, acknowledged with a 200
  *   reply             string  notify(): the body the service expects back
  *   unclear           bool    a failure that does not say whether the service
  *                             did it: no answer in time, a body that is not
