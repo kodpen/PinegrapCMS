@@ -4,7 +4,7 @@ description: Form-adorn on the Site Settings cards (B9f part 6, #2501): which fi
 ---
 
 ## Which settings fields are form-adorn?
-- Every single add-on field in `includes/settings/` api, appearance, contact, features, firewall, prep, security and seo (27 fields, #2501), with `form-adorn-end` and the unit in the add-on. Each keeps its `<label for>` above the wrapper; the tracking code duration label pointed at a wrong id and now names its input.
+- Every single add-on field in `includes/settings/` api, appearance, contact, features, firewall, prep, security and seo (30 fields, #2501), with `form-adorn-end` and the unit in the add-on. Each keeps its `<label for>` above the wrapper; the tracking code duration label pointed at a wrong id and now names its input.
 - The toolbar search of `screen.php` (`#pg_settings_filter`): a small `rounded-pill` wrapper with `pg-toolbar-search`, the input named by `aria-label`, as on the other toolbar searches (#2478).
 - `commerce.php` is not converted yet.
 
