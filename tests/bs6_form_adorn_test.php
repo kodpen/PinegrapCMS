@@ -131,7 +131,7 @@ function test_bs6_form_adorn_toolbar_search_keeps_its_toolbar_class()
 	foreach ($files as $file => $id) {
 		$source = (string) file_get_contents($root . $file);
 		$at = (int) strpos($source, $id);
-		$before = substr($source, max(0, $at - 600), 600);
+		$before = substr($source, max(0, $at - 900), 900);
 
 		// The .pg-toolbar-search width and narrow-screen order stay on the field.
 		pg_assert_contains('pg-toolbar-search', $before, $file);

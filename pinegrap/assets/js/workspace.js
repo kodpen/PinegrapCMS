@@ -17962,8 +17962,12 @@
         var grow = el('div', 'pg-toolbar-grow');
         bar.appendChild(grow);
 
-        var searchGroup = el('div', 'input-group input-group-sm rounded-pill pg-toolbar-search');
-        var search = el('input', 'form-control');
+        var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
+        var searchIcon = el('span', 'form-adorn-text');
+        searchIcon.setAttribute('aria-hidden', 'true');
+        searchIcon.appendChild(icon('bi-search'));
+        searchGroup.appendChild(searchIcon);
+        var search = el('input', 'form-ghost');
         search.type = 'search';
         search.placeholder = t('search_tasks');
         search.setAttribute('aria-label', search.placeholder);
@@ -20067,8 +20071,12 @@
         });
         bar.appendChild(notesToggle);
 
-        var searchGroup = el('div', 'input-group input-group-sm rounded-pill pg-toolbar-search');
-        var search = el('input', 'form-control');
+        var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
+        var searchIcon = el('span', 'form-adorn-text');
+        searchIcon.setAttribute('aria-hidden', 'true');
+        searchIcon.appendChild(icon('bi-search'));
+        searchGroup.appendChild(searchIcon);
+        var search = el('input', 'form-ghost');
         search.type = 'search';
         search.value = state.search;
         search.placeholder = t('tl_search');
@@ -20729,8 +20737,12 @@
 
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
-        var searchGroup = el('div', 'input-group input-group-sm rounded-pill pg-toolbar-search');
-        var searchInput = el('input', 'form-control');
+        var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
+        var searchIcon = el('span', 'form-adorn-text');
+        searchIcon.setAttribute('aria-hidden', 'true');
+        searchIcon.appendChild(icon('bi-search'));
+        searchGroup.appendChild(searchIcon);
+        var searchInput = el('input', 'form-ghost');
         searchInput.type = 'search';
         searchInput.placeholder = t('notes_search');
         searchInput.setAttribute('aria-label', searchInput.placeholder);

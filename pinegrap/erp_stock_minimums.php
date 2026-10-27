@@ -118,10 +118,12 @@ pg_page_shell([
                     <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5" disabled data-erp-order-submit><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang('Purchase order for the ticked') . '</button>
                 </form>' : '') . '
                 <div class="pg-toolbar-grow"></div>
-                <form method="get" action="erp_stock_minimums.php" class="input-group input-group-sm rounded-pill pg-toolbar-search disable_shortcut" role="search">
+                <form method="get" action="erp_stock_minimums.php" class="pg-toolbar-search disable_shortcut" role="search">
                     ' . (($show !== 'all') ? '<input type="hidden" name="show" value="' . h($show) . '" />' : '') . '
-                    <span class="input-group-text bg-transparent border-end-0 rounded-start-pill"><i class="bi bi-search" aria-hidden="true"></i></span>
-                    <input type="search" class="form-control border-start-0 rounded-end-pill" name="search" value="' . h($search) . '" placeholder="' . h(lang('Product or code')) . '" aria-label="' . h(lang('Search')) . '" autocomplete="off" />
+                    <label class="form-control form-control-sm form-adorn rounded-pill">
+                        <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                        <input type="search" class="form-ghost" name="search" value="' . h($search) . '" placeholder="' . h(lang('Product or code')) . '" aria-label="' . h(lang('Search')) . '" autocomplete="off" />
+                    </label>
                 </form>
                 ' . $output_show_filter . '
             </nav>
