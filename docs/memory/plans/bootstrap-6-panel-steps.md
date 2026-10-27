@@ -9,6 +9,7 @@ description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and st
 ## What happens after the switch?
 - B8, the switch, is done (#1866, `bootstrap-6-panel-done.md`); B9 can start.
 - B9 Component swaps on v6, one claim each (`bootstrap-6-components.md`): B9a Chips, B9b Combobox, B9c Datepicker and time, B9d OTP, B9e Range, B9f form-adorn, B9g Stepper, B9h hover-lift, B9i Strength, B9j Avatar, B9k research proposals.
+- B9j Avatar: slice 1 (server fields, Workspace screens) on branch feature/bs6-b9j-avatar-workspace (no PR; #2216 holds B9j) (`workspace/workspace-avatars.md`). Left: slice 2 chat (`chat.php`, `chat_backend.src.js`, the guest page `workspace_guest.js`, the @ picker rows), slice 3 the other panel sites (`grep -n avatar` in `includes/fn/output.php`, `widgets_account.php`, `view_contacts.php`, `edit_contact.php`, `view_order.php`; `print_order.php` keeps the data: picture).
 - B10 Token tuning, B11 redesign, B12 jQuery UI out of the panel: `bootstrap-6-redesign.md`.
 
 ## Where do I start?

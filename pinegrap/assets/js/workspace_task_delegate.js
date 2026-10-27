@@ -57,7 +57,7 @@
 
     function face(h, src, className) {
         var img = h.avatar({ avatar: src }, '');
-        img.className = className;
+        img.classList.add(className);
         return img;
     }
 

@@ -294,7 +294,7 @@ function ws_mcp_catalogue_entry_for_url($url, $catalogue = null)
  * @param array|null $server    a ws_mcp_servers row (id, alias, url), null when deleted
  * @param int        $server_id the id when the row is gone
  * @param array|null $catalogue the entries to look in, ws_mcp_catalogue() when null
- * @return array avatar, icon, initials, seed, catalogue (the entry's key or '')
+ * @return array avatar, icon, initials, seed, tone, catalogue (the entry's key or '')
  */
 function ws_mcp_agent_identity($server, $server_id = 0, $catalogue = null)
 {
@@ -319,6 +319,7 @@ function ws_mcp_agent_identity($server, $server_id = 0, $catalogue = null)
         'icon'      => $icon,
         'initials'  => $initials,
         'seed'      => $seed,
+        'tone'      => function_exists('pg_avatar_tone') ? pg_avatar_tone($seed) : -1,
         'catalogue' => $entry_key,
     );
 }

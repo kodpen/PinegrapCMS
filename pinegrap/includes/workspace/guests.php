@@ -200,6 +200,8 @@ function ws_guest_sender($guest_id)
             'title'    => lang('Guest'),
             'avatar'   => function_exists('pg_initials_avatar_url') ? pg_initials_avatar_url(pg_initials($name, ''), 'contact', 'guest' . $guest_id) : '',
             'avatar_kind' => 'contact',
+            'initials' => function_exists('pg_initials') ? pg_initials($name, '') : '?',
+            'tone'     => function_exists('pg_avatar_tone') ? pg_avatar_tone('guest' . $guest_id) : -1,
             'presence' => 'offline',
             'guest'    => true,
         );

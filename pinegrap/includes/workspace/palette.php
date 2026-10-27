@@ -566,11 +566,9 @@ function ws_palette_people($viewer, $query, $channel_id, $limit)
             'sub'     => implode(' · ', $sub),
             'date'    => '',
             'icon'    => 'bi-person',
-            'avatar'  => (string) $person['avatar'],
-            'avatar_kind' => (string) $person['avatar_kind'],
             'me'      => ((int) $person['id'] === (int) $viewer['id']),
             'url'     => ws_person_edit_url($viewer, $person),
-        );
+        ) + ws_avatar_fields($person);
     }
 
     return $out;

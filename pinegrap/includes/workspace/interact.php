@@ -786,10 +786,10 @@ function ws_polls_map($message_ids, $viewer)
 
             if (!$anonymous && ($voter_guest > 0) && function_exists('ws_guest_sender')) {
                 $voter = ws_guest_sender($voter_guest);
-                $voters[$option_id][] = array('id' => 0, 'name' => (string) $voter['name'], 'avatar' => (string) $voter['avatar'], 'guest' => true);
+                $voters[$option_id][] = array('id' => 0, 'name' => (string) $voter['name'], 'guest' => true) + ws_avatar_fields($voter);
             } elseif (!$anonymous) {
-                $voters[$option_id][] = array('id' => (int) $vote['user_id'], 'name' => $people[(int) $vote['user_id']]['name'] ?? ws_person_name($vote['user_id']),
-                    'avatar' => $people[(int) $vote['user_id']]['avatar'] ?? '');
+                $voters[$option_id][] = array('id' => (int) $vote['user_id'], 'name' => $people[(int) $vote['user_id']]['name'] ?? ws_person_name($vote['user_id']))
+                    + ws_avatar_fields($people[(int) $vote['user_id']] ?? array());
             }
 
             if (($guest_reader > 0) ? ($voter_guest === $guest_reader) : (($voter_guest === 0) && ((int) $vote['user_id'] === (int) $viewer['id']))) {

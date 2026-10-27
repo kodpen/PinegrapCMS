@@ -480,6 +480,9 @@ function ws_app_sender($app_id)
             'avatar'   => function_exists('pg_initials_avatar_url')
                 ? pg_initials_avatar_url(pg_initials(($name !== '') ? $name : 'App', ''), 'contact', 'app' . (int) $app_id)
                 : PATH . SOFTWARE_DIRECTORY . '/assets/images/person1.png',
+            'avatar_kind' => 'contact',
+            'initials' => function_exists('pg_initials') ? pg_initials(($name !== '') ? $name : 'App', '') : '?',
+            'tone'     => function_exists('pg_avatar_tone') ? pg_avatar_tone('app' . (int) $app_id) : -1,
             'presence' => 'offline',
             'app'      => true,
         );

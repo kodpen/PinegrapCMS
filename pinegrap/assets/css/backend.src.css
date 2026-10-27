@@ -10929,9 +10929,8 @@ button.ws-thread-bar:hover {
   font-weight: 600;
   white-space: nowrap;
 }
-.ws-thread-faces img {
-  width: 1.35rem;
-  height: 1.35rem;
+.ws-thread-faces > .avatar {
+  --bs-avatar-size: 1.35rem;
 }
 .ws-thread-ai {
   margin-top: .2rem;
@@ -11546,10 +11545,6 @@ html[data-bs-theme="dark"] .ws-group-icon {
   font-size: .82rem;
   margin-bottom: .15rem;
 }
-.ws-fwd-who img {
-  border-radius: 50%;
-  object-fit: cover;
-}
 .ws-fwd-body {
   font-size: .9rem;
 }
@@ -11817,19 +11812,14 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   flex-shrink: 0;
   align-items: center;
 }
-.ws-avatars {
-  display: inline-flex;
+/* .ws-avatars sits on .avatar-stack (avatarStack() in workspace.js), which
+   lays the faces out and overlaps them; only the size is the Workspace's. */
+.ws-avatars > .avatar {
+  --bs-avatar-size: var(--ws-avatar-sm);
 }
-.ws-avatars img {
-  width: var(--ws-avatar-sm);
-  height: var(--ws-avatar-sm);
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid var(--pg-bg-body);
-  margin-left: -.45rem;
-}
-.ws-avatars img:first-child {
-  margin-left: 0;
+/* A login without a name: a square of letters, so the missing name shows. */
+.avatar.ws-avatar-square {
+  --bs-avatar-border-radius: 28%;
 }
 .ws-tabs {
   display: flex;
@@ -11963,11 +11953,8 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 .ws-msg.ws-msg-highlight {
   background: color-mix(in srgb, var(--pg-warning) 18%, transparent);
 }
-.ws-msg-avatar img {
-  width: var(--ws-avatar);
-  height: var(--ws-avatar);
-  border-radius: 50%;
-  object-fit: cover;
+.ws-msg-avatar .avatar {
+  --bs-avatar-size: var(--ws-avatar);
 }
 .ws-msg-meta {
   font-size: .8rem;
@@ -12158,10 +12145,8 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   border-top: 0;
 }
 .ws-checkin-face {
-  flex: 0 0 1.6rem;
-  width: 1.6rem;
-  height: 1.6rem;
-  border-radius: 50%;
+  --bs-avatar-size: 1.6rem;
+  flex: none;
 }
 .ws-checkin-text {
   min-width: 0;
@@ -12794,10 +12779,8 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   gap: .5rem;
 }
 .ws-task-note-avatar {
-  width: var(--ws-avatar-sm);
-  height: var(--ws-avatar-sm);
-  border-radius: 50%;
-  object-fit: cover;
+  --bs-avatar-size: var(--ws-avatar-sm);
+  flex: none;
 }
 .ws-task-note-meta {
   display: flex;
@@ -13338,7 +13321,7 @@ a.ws-person-link:hover span,
 a.ws-person-link:focus-visible b {
   text-decoration: underline;
 }
-a.ws-person-link:hover img {
+a.ws-person-link:hover .avatar {
   box-shadow: 0 0 0 2px var(--pg-primary);
 }
 .ws-seen-row a.ws-person-link {
@@ -13349,12 +13332,8 @@ a.ws-person-link:hover img {
   display: block;
   line-height: 0;
 }
-.ws-seen-row img {
+.ws-seen-row .avatar {
   flex: none;
-  width: 1.6rem;
-  height: 1.6rem;
-  border-radius: 50%;
-  object-fit: cover;
 }
 .ws-seen-row span {
   min-width: 0;
@@ -13519,11 +13498,8 @@ a.ws-chip:hover {
   align-items: center;
   gap: .25rem;
 }
-.ws-task-person img {
-  width: 1.2rem;
-  height: 1.2rem;
-  border-radius: 50%;
-  object-fit: cover;
+.ws-task-person .avatar {
+  --bs-avatar-size: 1.2rem;
 }
 .ws-task-card-actions {
   display: flex;
@@ -14699,11 +14675,8 @@ a.ws-chip:hover {
   font-size: .82rem;
   color: var(--pg-fg-body);
 }
-.ws-person-toggle img {
-  width: 1.4rem;
-  height: 1.4rem;
-  border-radius: 50%;
-  object-fit: cover;
+.ws-person-toggle .avatar {
+  --bs-avatar-size: 1.4rem;
 }
 .ws-person-toggle.active {
   border-color: var(--ws-accent);
@@ -14791,11 +14764,9 @@ a.ws-chip:hover {
   padding: .45rem .6rem;
   font-size: .85rem;
 }
-.ws-board-person img {
-  width: 1.9rem;
-  height: 1.9rem;
-  border-radius: 50%;
-  object-fit: cover;
+.ws-board-person .avatar {
+  --bs-avatar-size: 1.9rem;
+  flex: none;
 }
 .ws-board-person .ws-grow {
   min-width: 0;
@@ -16022,11 +15993,9 @@ a.ws-chip:hover {
   margin-top: .5rem;
   font-size: .8rem;
 }
-.ws-avatars-sm img {
-  width: var(--ws-avatar-xs);
-  height: var(--ws-avatar-xs);
-  border-width: 1px;
-  margin-left: -.3rem;
+.ws-avatars-sm > .avatar {
+  --bs-avatar-size: var(--ws-avatar-xs);
+  --bs-avatar-border-width: 1px;
 }
 .ws-cal-event {
   background: color-mix(in srgb, var(--pg-info) 14%, transparent);
@@ -16122,11 +16091,9 @@ a.ws-chip:hover {
 .ws-extreme:hover {
   background: var(--ws-soft);
 }
-.ws-extreme img {
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
-  object-fit: cover;
+.ws-extreme .avatar {
+  --bs-avatar-size: 2rem;
+  flex: none;
 }
 .ws-extreme small {
   display: block;
@@ -16173,11 +16140,9 @@ a.ws-chip:hover {
 .ws-person-row.active {
   box-shadow: inset 3px 0 0 var(--ws-accent);
 }
-.ws-person-row img {
-  width: 1.8rem;
-  height: 1.8rem;
-  border-radius: 50%;
-  object-fit: cover;
+.ws-person-row .avatar {
+  --bs-avatar-size: 1.8rem;
+  flex: none;
 }
 .ws-meter {
   display: flex;
@@ -16360,9 +16325,8 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     padding: .35rem .4rem;
     font-size: .78rem;
   }
-  .ws-board-person img {
-    width: 1.5rem;
-    height: 1.5rem;
+  .ws-board-person .avatar {
+    --bs-avatar-size: 1.5rem;
   }
   .ws-board-person small {
     display: none;
@@ -16898,11 +16862,8 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   gap: .35rem;
   color: var(--pg-fg-body);
 }
-.ws-tl-who img {
-  width: 1.25rem;
-  height: 1.25rem;
-  border-radius: 50%;
-  object-fit: cover;
+.ws-tl-who .avatar {
+  --bs-avatar-size: 1.25rem;
 }
 .ws-tl-more {
   text-align: center;
@@ -17154,11 +17115,8 @@ button.ws-home-row:hover,
   background: var(--pg-danger);
   vertical-align: middle;
 }
-.ws-home-face img {
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 50%;
-  object-fit: cover;
+.ws-home-face .avatar {
+  --bs-avatar-size: 1.75rem;
 }
 .ws-home-about {
   margin-top: 1rem;
@@ -17677,11 +17635,8 @@ button.ws-home-row:hover,
     border-radius: 50%;
     line-height: 0;
 }
-.ws-nb-face img,
-.ws-nb-face .ws-avatar {
-    width: var(--ws-avatar-sm);
-    height: var(--ws-avatar-sm);
-    border-radius: 50%;
+.ws-nb-face .avatar {
+    --bs-avatar-size: var(--ws-avatar-sm);
 }
 .ws-nb-face-edit::after {
     content: "\F4CB";
@@ -17824,11 +17779,9 @@ button.ws-home-row:hover,
     gap: .5rem;
     padding: .25rem 0;
 }
-.ws-nb-share-row img,
-.ws-nb-share-row .ws-avatar {
-    width: var(--ws-avatar-sm);
-    height: var(--ws-avatar-sm);
-    border-radius: 50%;
+.ws-nb-share-row .avatar {
+    --bs-avatar-size: var(--ws-avatar-sm);
+    flex: none;
 }
 @media (max-width: 1023.98px) {
     .ws-nb-open .ws-nb-list-col,
@@ -18114,7 +18067,6 @@ button.ws-home-row:hover,
 }
 .ws-palette-face {
     flex: 0 0 auto;
-    border-radius: 50%;
 }
 .ws-palette-main {
     flex: 1 1 auto;
@@ -18212,9 +18164,6 @@ button.ws-home-row:hover,
     color: var(--pg-fg-2);
     font-size: .75rem;
     font-weight: 400;
-}
-.ws-cb-face {
-    border-radius: 50%;
 }
 .ws-cb-add {
     --bs-btn-padding-y: 0;
@@ -18324,11 +18273,12 @@ button.ws-home-row:hover,
     font-size: .72rem;
 }
 .ws-cb-faces {
+    display: inline-flex;
+    align-items: center;
     margin-left: auto;
 }
-.ws-cb-faces img {
-    width: 1.35rem;
-    height: 1.35rem;
+.ws-cb-faces .avatar {
+    --bs-avatar-size: 1.35rem;
 }
 .ws-cb-more-faces {
     margin-left: .2rem;
@@ -18611,10 +18561,8 @@ a.ws-tag-card-head:hover span {
     gap: .5rem;
     font-size: .85rem;
 }
-.ws-task-time-row img {
-    width: 1.5rem;
-    height: 1.5rem;
-    border-radius: 50%;
+.ws-task-time-row .avatar {
+    --bs-avatar-size: 1.5rem;
     flex: 0 0 auto;
 }
 .ws-task-time-row-head {
@@ -18705,9 +18653,7 @@ a.ws-tag-card-head:hover span {
     font-size: .85rem;
 }
 .ws-task-delegate-face {
-    width: 2rem;
-    height: 2rem;
-    border-radius: 50%;
+    --bs-avatar-size: 2rem;
     flex: 0 0 auto;
 }
 .ws-task-delegate-ask {
@@ -18839,10 +18785,8 @@ a.ws-tag-card-head:hover span {
   font-size: .85rem;
 }
 .ws-approval-face {
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 50%;
-  object-fit: cover;
+  --bs-avatar-size: 1.5rem;
+  flex: none;
 }
 .ws-approval-name {
   font-weight: 600;
@@ -19493,11 +19437,9 @@ html[data-bs-theme="dark"] .wsf-node-end { --wsf-kind: #b3ab9b; }
 .wsf-person:hover {
   background: var(--pg-bg-2);
 }
-.wsf-person img {
-  width: var(--ws-avatar-xs);
-  height: var(--ws-avatar-xs);
-  border-radius: 50%;
-  object-fit: cover;
+.wsf-person .avatar {
+  --bs-avatar-size: var(--ws-avatar-xs);
+  flex: none;
 }
 .wsf-link {
   display: flex;

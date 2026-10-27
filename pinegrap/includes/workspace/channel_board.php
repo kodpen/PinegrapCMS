@@ -207,9 +207,7 @@ function ws_channel_board_face($person)
     return array(
         'id'          => (int) $person['id'],
         'name'        => (string) $person['name'],
-        'avatar'      => (string) $person['avatar'],
-        'avatar_kind' => (string) ($person['avatar_kind'] ?? ''),
-    );
+    ) + ws_avatar_fields($person);
 }
 
 /**

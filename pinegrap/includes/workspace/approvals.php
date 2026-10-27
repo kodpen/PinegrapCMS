@@ -512,12 +512,10 @@ function ws_approvals_map($message_ids, $viewer)
             $list[] = array(
                 'id'       => $user_id,
                 'name'     => (string) ($person['name'] ?? ws_person_name($user_id)),
-                'avatar'   => (string) ($person['avatar'] ?? ''),
-                'avatar_kind' => (string) ($person['avatar_kind'] ?? ''),
                 'decision' => $decision,
                 'note'     => (string) $answer['note'],
                 'time'     => ((int) $answer['decided_at'] > 0) ? ws_time_label($answer['decided_at']) : '',
-            );
+            ) + ws_avatar_fields((array) $person);
         }
 
         // Their address and where an answer came from are for staff alone.
@@ -539,6 +537,8 @@ function ws_approvals_map($message_ids, $viewer)
                 'name'        => (string) $answer['name'],
                 'avatar'      => function_exists('pg_initials_avatar_url') ? pg_initials_avatar_url(pg_initials((string) $answer['name'], ''), 'contact', 'approval-guest' . (int) $answer['id']) : '',
                 'avatar_kind' => 'contact',
+                'initials'    => function_exists('pg_initials') ? pg_initials((string) $answer['name'], '') : '?',
+                'tone'        => function_exists('pg_avatar_tone') ? pg_avatar_tone('approval-guest' . (int) $answer['id']) : -1,
                 'email'       => $staff ? (string) $answer['email'] : '',
                 'audit'       => $audit,
                 'decision'    => $decision,
@@ -573,7 +573,7 @@ function ws_approvals_map($message_ids, $viewer)
             'closes'      => ((int) $row['closes_at'] > 0) ? date('d.m.Y H:i', (int) $row['closes_at']) : '',
             'closed_on'   => $open ? '' : ws_time_label($row['closed_at']),
             'closed_by'   => ((int) $row['closed_by'] > 0) ? ws_person_name($row['closed_by']) : '',
-            'asker'       => $asker ? array('id' => (int) $asker['id'], 'name' => (string) $asker['name'], 'avatar' => (string) $asker['avatar']) : null,
+            'asker'       => $asker ? array('id' => (int) $asker['id'], 'name' => (string) $asker['name']) + ws_avatar_fields($asker) : null,
             'record'      => $record,
             'people'      => $list,
             'counts'      => $counts,

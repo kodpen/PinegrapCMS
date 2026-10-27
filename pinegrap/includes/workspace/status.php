@@ -545,12 +545,10 @@ function ws_status_cards_map($viewer, $message_ids)
             $list[] = array(
                 'id'     => $user_id,
                 'name'   => (string) $person['name'],
-                'avatar' => (string) ($person['avatar'] ?? ''),
-                'avatar_kind' => (string) ($person['avatar_kind'] ?? ''),
                 'text'   => (string) $row['body'],
                 'time'   => ws_time_label((int) $row['updated_at']),
                 'mine'   => ($user_id === (int) $viewer['id']),
-            );
+            ) + ws_avatar_fields($person);
         }
 
         $waiting = array();

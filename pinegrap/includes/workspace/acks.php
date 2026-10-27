@@ -307,7 +307,7 @@ function ws_ack_people($viewer, $message)
 
     foreach ($counted as $user_id) {
         $person = $people[$user_id] ?? array('id' => $user_id, 'name' => ws_person_name($user_id), 'avatar' => '');
-        $entry = array('id' => $user_id, 'name' => (string) $person['name'], 'avatar' => (string) ($person['avatar'] ?? ''), 'avatar_kind' => (string) ($person['avatar_kind'] ?? ''));
+        $entry = array('id' => $user_id, 'name' => (string) $person['name']) + ws_avatar_fields($person);
 
         if (isset($when[$user_id])) {
             $entry['time'] = ws_time_label($when[$user_id]);

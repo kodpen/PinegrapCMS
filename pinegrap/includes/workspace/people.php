@@ -83,6 +83,75 @@ function ws_avatar_kind($row)
 }
 
 /**
+ * The letters the panel draws for a person in place of a picture, and
+ * behind a picture that fails to load.
+ *
+ * @param array $row first_name, last_name, username
+ * @return string
+ */
+function ws_avatar_initials($row)
+{
+    return function_exists('pg_initials') ? pg_initials($row['first_name'] ?? '', $row['last_name'] ?? '', $row['username'] ?? '') : '?';
+}
+
+/**
+ * The theme tone (0-7) a person's letters are drawn in, kept by their id;
+ * -1 for a login without a name, drawn neutral so the missing name shows.
+ *
+ * @param array $row id and the ws_avatar_kind() columns
+ * @return int
+ */
+function ws_avatar_tone($row)
+{
+    if (!function_exists('pg_avatar_tone') || (ws_avatar_kind($row) === 'user')) {
+        return -1;
+    }
+
+    return pg_avatar_tone((int) ($row['id'] ?? 0) ?: '');
+}
+
+/**
+ * The fields a screen draws a person's avatar from, copied out of a brief
+ * (ws_person_brief(), ws_guest_sender(), ws_app_sender()): the picture, its
+ * kind, the letters and their tone.
+ *
+ * @param array $person
+ * @return array avatar, avatar_kind, initials, tone
+ */
+function ws_avatar_fields($person)
+{
+    return array(
+        'avatar'      => (string) ($person['avatar'] ?? ''),
+        'avatar_kind' => (string) ($person['avatar_kind'] ?? ''),
+        'initials'    => (string) ($person['initials'] ?? ''),
+        'tone'        => isset($person['tone']) ? (int) $person['tone'] : -1,
+    );
+}
+
+/**
+ * A person as a Bootstrap Avatar in panel markup: their picture, else their
+ * letters in their tone (avatar() in assets/js/workspace.js draws the same).
+ *
+ * @param array  $person a brief, or ws_avatar_fields() of one
+ * @param string $class  more classes on the wrapper
+ * @return string HTML
+ */
+function ws_avatar_html($person, $class = '')
+{
+    $fields = ws_avatar_fields($person);
+    $letters = ($fields['avatar_kind'] !== 'photo') && ($fields['initials'] !== '');
+    $classes = trim('avatar ws-avatar ' . (($fields['avatar_kind'] === 'user') ? 'ws-avatar-square ' : '') . $class);
+
+    if ($letters || ($fields['avatar'] === '')) {
+        $theme = function_exists('pg_avatar_theme') ? pg_avatar_theme($fields['tone']) : '';
+
+        return '<span class="' . h(trim($classes . ' ' . $theme)) . '" aria-hidden="true">' . h(($fields['initials'] !== '') ? $fields['initials'] : '?') . '</span>';
+    }
+
+    return '<span class="' . h($classes) . '"><img class="avatar-img" src="' . h($fields['avatar']) . '" alt="" loading="lazy" /></span>';
+}
+
+/**
  * Online, away or offline, from the panel's heartbeat (the same thresholds
  * the chat uses).
  *
@@ -148,6 +217,8 @@ function ws_person_brief($row)
         'title'    => (string) ($row['title'] ?? ''),
         'avatar'   => ws_avatar_url($row),
         'avatar_kind' => ws_avatar_kind($row),
+        'initials' => ws_avatar_initials($row),
+        'tone'     => ws_avatar_tone($row),
         'presence' => ws_presence($row['online_timestamp'] ?? 0),
     );
 }
@@ -263,6 +334,8 @@ function ws_people($user_ids)
                     'title'    => '',
                     'avatar'   => function_exists('pg_initials_avatar_url') ? pg_initials_avatar_url('?', 'user') : PATH . SOFTWARE_DIRECTORY . '/assets/images/person1.png',
                     'avatar_kind' => 'user',
+                    'initials' => '?',
+                    'tone'     => -1,
                     'presence' => 'offline',
                     // No account behind it any more: nothing to open.
                     'gone'     => true,

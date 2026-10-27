@@ -554,6 +554,36 @@ function pg_initials($first_name, $last_name, $username = '')
 }
 
 /**
+ * Which of the eight avatar tones a person keeps: the panel draws tone N
+ * with the N-th theme colour, the picture of letters with the N-th of its
+ * own colours, so both show the same person in the same colour.
+ *
+ * @param string|int $seed what keeps a person's colour (a user id, "guest7")
+ * @return int 0-7, or -1 for no seed (the neutral avatar)
+ */
+function pg_avatar_tone($seed)
+{
+    $seed = (string) $seed;
+
+    return ($seed !== '') ? (int) (abs(crc32($seed)) % 8) : -1;
+}
+
+/**
+ * The Bootstrap theme class a tone is drawn with in the panel; the same list
+ * as AVATAR_TONES in assets/js/workspace.js.
+ *
+ * @param int $tone pg_avatar_tone()
+ * @return string theme-… class, '' for the neutral avatar
+ */
+function pg_avatar_theme($tone)
+{
+    $themes = array('primary', 'info', 'warning', 'accent', 'danger', 'secondary', 'success', 'inverse');
+    $tone = (int) $tone;
+
+    return isset($themes[$tone]) ? 'theme-' . $themes[$tone] : '';
+}
+
+/**
  * The picture of letters, as a data: address an <img> can show.
  *
  * @param string $initials
@@ -580,7 +610,7 @@ function pg_initials_avatar_url($initials, $kind = 'contact', $seed = '')
         $shape = "<rect x='1' y='1' width='62' height='62' rx='16' fill='#e9ecef' stroke='#adb5bd' stroke-width='2'/>";
         $ink = '#495057';
     } else {
-        $tone = $tones[abs(crc32((string) (($seed !== '') ? $seed : $initials))) % count($tones)];
+        $tone = $tones[max(0, pg_avatar_tone(((string) $seed !== '') ? $seed : (string) $initials))];
         $shape = "<circle cx='32' cy='32' r='32' fill='" . $tone . "'/>";
         $ink = '#ffffff';
     }

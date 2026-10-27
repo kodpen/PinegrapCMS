@@ -443,13 +443,9 @@
         }
 
         if (item.assignees.length) {
-            var faces = k.el('span', 'ws-avatars ws-cb-faces');
+            var faces = k.el('span', 'ws-cb-faces');
 
-            item.assignees.slice(0, 4).forEach(function (person) {
-                var face = k.avatar(person);
-                face.title = person.name;
-                faces.appendChild(face);
-            });
+            faces.appendChild(k.avatarStack(item.assignees, 4));
 
             if (item.assignees.length > 4) {
                 faces.appendChild(k.el('span', 'ws-cb-more-faces', '+' + (item.assignees.length - 4)));

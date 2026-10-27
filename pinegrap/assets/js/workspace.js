@@ -2351,24 +2351,89 @@
         return null;
     }
 
-    function avatar(personData, size) {
-        var img = el('img');
-        img.src = (personData && personData.avatar) ? personData.avatar : '';
-        img.alt = '';
-        img.loading = 'lazy';
+    // The theme colours a person's letters are drawn in, by the tone index
+    // the server gives (pg_avatar_tone() in includes/fn/contacts.php); -1 is
+    // the neutral avatar of a login without a name.
+    var AVATAR_TONES = ['primary', 'info', 'warning', 'accent', 'danger', 'secondary', 'success', 'inverse'];
+
+    function avatarLetters(face, data) {
+        var tone = parseInt(data.tone, 10);
+
+        face.insertBefore(document.createTextNode(String(data.initials || '?')), face.firstChild);
+
+        if (tone >= 0 && tone < AVATAR_TONES.length) {
+            face.classList.add('theme-' + AVATAR_TONES[tone]);
+        }
+    }
+
+    // A person as a Bootstrap Avatar: their picture, else the letters of
+    // their name in their tone. opts.presence adds the online/away/offline
+    // dot. Never an <img> without a source.
+    function avatar(personData, size, opts) {
+        var data = personData || {};
+        var face = el('span', 'avatar ws-avatar');
+        var letters = (data.avatar_kind !== 'photo') && (String(data.initials || '') !== '');
 
         if (size) {
-            img.style.width = size;
-            img.style.height = size;
+            face.style.setProperty('--bs-avatar-size', size);
         }
 
         // A login without a name has a square of letters, not a circle
         // (includes/workspace/people.php).
-        if (personData && personData.avatar_kind === 'user') {
-            img.style.borderRadius = '28%';
+        if (data.avatar_kind === 'user') {
+            face.classList.add('ws-avatar-square');
         }
 
-        return img;
+        if (letters || !data.avatar) {
+            avatarLetters(face, data);
+        } else {
+            var img = el('img', 'avatar-img');
+            img.src = data.avatar;
+            img.alt = '';
+            img.loading = 'lazy';
+
+            // A picture that does not load gives way to the letters.
+            img.addEventListener('error', function () {
+                if (img.parentNode === face) {
+                    face.removeChild(img);
+                    avatarLetters(face, data);
+                }
+            });
+
+            face.appendChild(img);
+        }
+
+        // The face stands beside the name it shows; only the presence dot
+        // has something to say to a screen reader.
+        if (opts && opts.presence && data.presence) {
+            var dot = el('span', 'avatar-status status-' + data.presence);
+            dot.setAttribute('role', 'img');
+            dot.setAttribute('aria-label', t('presence_' + data.presence));
+            dot.title = t('presence_' + data.presence);
+            face.appendChild(dot);
+        } else {
+            face.setAttribute('aria-hidden', 'true');
+        }
+
+        return face;
+    }
+
+    // Faces of a few people overlapping. .avatar-stack lays them out
+    // right to left, so they go in backwards to read first-to-last.
+    function avatarStack(people, max, className) {
+        var stack = el('span', 'avatar-stack ws-avatars' + (className ? ' ' + className : ''));
+
+        (people || []).slice(0, max).reverse().forEach(function (personData) {
+            var face = avatar(personData);
+
+            if (personData && personData.name) {
+                face.title = personData.name;
+            }
+
+            stack.appendChild(face);
+        });
+
+        return stack;
     }
 
     function params() {
@@ -3253,7 +3318,7 @@
     function partHelpers() {
         return {
             api: api, ask: ask, toast: toast, fail: fail, t: t, el: el, icon: icon, button: button,
-            clear: clear, select: select, avatar: avatar, nextId: nextId, debounce: debounce,
+            clear: clear, select: select, avatar: avatar, avatarStack: avatarStack, nextId: nextId, debounce: debounce,
             mcpConnect: mcpConnect,
             boot: function () { return BOOT; },
             openTask: function (taskId, onSaved) { taskDrawer.open(taskId, null, onSaved || taskDrawer.onSaved); }
@@ -3983,7 +4048,7 @@
             var text = el('div', 'ws-msg-body');
 
             row.setAttribute('data-ws-note', note.id);
-            face.className = 'ws-task-note-avatar';
+            face.classList.add('ws-task-note-avatar');
             row.appendChild(face);
 
             meta.appendChild(el('b', '', note.sender ? note.sender.name : ''));
@@ -5205,7 +5270,7 @@
     // their parts look like the rest of it.
     function featureHelpers() {
         return {
-            api: api, t: t, el: el, icon: icon, button: button, avatar: avatar, clear: clear,
+            api: api, t: t, el: el, icon: icon, button: button, avatar: avatar, avatarStack: avatarStack, clear: clear,
             offcanvas: offcanvas, showOffcanvas: showOffcanvas, hideOffcanvas: hideOffcanvas,
             formRow: formRow, select: select, nextId: nextId, ask: ask, fail: fail, toast: toast,
             richField: richField, peoplePicker: peoplePicker, homeCard: homeCard, touchScreen: touchScreen,
@@ -7551,9 +7616,7 @@
                 });
             }
 
-            var faces = el('span', 'ws-avatars ws-thread-faces');
-            (thread.people || []).slice(0, 4).forEach(function (person) { faces.appendChild(avatar(person)); });
-            bar.appendChild(faces);
+            bar.appendChild(avatarStack(thread.people, 4, 'ws-thread-faces'));
 
             var text = el('span', 'ws-thread-bar-text');
             text.appendChild(el('b', '', t('th_bar', thread.title)));
@@ -7948,10 +8011,7 @@
 
             var actions = el('div', 'ws-head-actions');
             var faces = button('btn btn-sm btn-ghost d-inline-flex align-items-center gap-1', '', '', t('members'));
-            var stack = el('span', 'ws-avatars');
-
-            channel.members.slice(0, 4).forEach(function (member) { stack.appendChild(avatar(member)); });
-            faces.appendChild(stack);
+            faces.appendChild(avatarStack(channel.members, 4));
             faces.appendChild(el('span', 'small', channel.members.length));
             faces.addEventListener('click', function () { self.showMembers(); });
             actions.appendChild(faces);
@@ -8323,7 +8383,6 @@
                 var claudeRow = el('div', 'd-flex align-items-center gap-3 py-3 border-bottom');
                 var claudeFace = avatar({ avatar: BOOT.claude.avatar }, '2rem');
 
-                claudeFace.style.borderRadius = '50%';
                 claudeRow.appendChild(claudeFace);
 
                 var claudeText = el('div', 'flex-grow-1');
@@ -8337,7 +8396,6 @@
                 var aiRow = el('div', 'd-flex align-items-center gap-3 py-3 border-bottom');
                 var aiFace = avatar({ avatar: BOOT.ai.avatar }, '2rem');
 
-                aiFace.style.borderRadius = '50%';
                 aiRow.appendChild(aiFace);
 
                 var aiText = el('div', 'flex-grow-1');
@@ -8350,14 +8408,12 @@
             channel.members.forEach(function (member) {
                 var row = el('div', 'd-flex align-items-center gap-3 py-3 border-bottom');
                 onContext(row, function () { return personMenu(member); });
-                var memberFace = avatar(member, '2rem');
-                memberFace.style.borderRadius = '50%';
+                var memberFace = avatar(member, '2rem', { presence: true });
                 row.appendChild(personLink(memberFace, member));
                 var text = el('div', 'flex-grow-1');
                 text.appendChild(personLink(el('div', 'fw-semibold', member.name), member));
                 text.appendChild(el('small', 'fg-secondary', (member.id === channel.owner_id ? t('owner') + ' · ' : '') + (member.title || '')));
                 row.appendChild(text);
-                row.appendChild(el('span', 'badge rounded-pill ' + (member.presence === 'online' ? 'theme-success' : 'theme-secondary'), t('presence_' + member.presence)));
 
                 if (channel.can_manage && member.id !== channel.owner_id && member.id !== BOOT.me.id) {
                     var remove = button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('remove'));
@@ -10626,11 +10682,7 @@
                 row.appendChild(el('span', 'ws-poll-label', option.label));
 
                 if (option.voters && option.voters.length) {
-                    var faces = el('span', 'ws-avatars ws-avatars-sm');
-
-                    option.voters.slice(0, 4).forEach(function (voter) {
-                        faces.appendChild(avatar(voter));
-                    });
+                    var faces = avatarStack(option.voters, 4, 'ws-avatars-sm');
 
                     row.title = option.voters.map(function (voter) { return voter.name; }).join(', ');
                     row.appendChild(faces);
@@ -15090,10 +15142,7 @@
 
             var actions = el('div', 'ws-head-actions');
             var faces = button('btn btn-sm btn-ghost d-inline-flex align-items-center gap-1', '', '', t('th_people'));
-            var stack = el('span', 'ws-avatars');
-
-            (channel.members || []).slice(0, 4).forEach(function (member) { stack.appendChild(avatar(member)); });
-            faces.appendChild(stack);
+            faces.appendChild(avatarStack(channel.members, 4));
             faces.appendChild(el('span', 'small', (channel.members || []).length));
             faces.addEventListener('click', function () { self.showPeople(); });
             actions.appendChild(faces);
@@ -15256,10 +15305,7 @@
 
             (channel.members || []).forEach(function (member) {
                 var row = el('div', 'd-flex align-items-center gap-3 py-3 border-bottom');
-                var face = avatar(member, '2rem');
-
-                face.style.borderRadius = '50%';
-                row.appendChild(face);
+                row.appendChild(avatar(member, '2rem', { presence: true }));
                 row.appendChild(el('div', 'flex-grow-1 fw-semibold', member.name));
                 body.appendChild(row);
             });
@@ -17680,15 +17726,7 @@
                 row.appendChild(el('span', 'badge theme-danger', BOOT.priorities[task.priority]));
             }
 
-            var faces = el('span', 'ws-avatars');
-
-            task.assignees.slice(0, 4).forEach(function (member) {
-                var img = avatar(member);
-                img.title = member.name;
-                faces.appendChild(img);
-            });
-
-            row.appendChild(faces);
+            row.appendChild(avatarStack(task.assignees, 4));
 
             if (task.can_edit && task.open) {
                 var done = button('btn btn-sm btn-ghost', '', 'bi-check2-circle', t('mark_done'));
@@ -18479,17 +18517,7 @@
                 chip.appendChild(task.upcoming ? icon('bi-arrow-repeat') : el('span', 'ws-status-dot ws-s-' + task.status));
                 chip.appendChild(el('span', 'ws-cal-task-title', task.title));
 
-                var faces = el('span', 'ws-avatars ws-avatars-sm');
-
-                (task.people || []).slice(0, 3).forEach(function (id) {
-                    var member = person(id);
-
-                    if (member) {
-                        faces.appendChild(avatar(member));
-                    }
-                });
-
-                chip.appendChild(faces);
+                chip.appendChild(avatarStack((task.people || []).map(person).filter(Boolean), 3, 'ws-avatars-sm'));
             }
 
             chip.title = task.upcoming
@@ -23122,6 +23150,7 @@
             button: button,
             select: select,
             avatar: avatar,
+            avatarStack: avatarStack,
             peoplePicker: peoplePicker,
             api: api,
             toast: toast,
