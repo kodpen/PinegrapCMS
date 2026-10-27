@@ -4641,6 +4641,14 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
         return '<!--pg-active:begin-->' . _render_tree_node($node, $indent, $depth) . '<!--pg-active:end-->';
     }
 
+    // A widget flag naming a value of the list row it is drawn in is a
+    // value condition on that value (pg_sw_list_flag_alias()).
+    $flag_alias = pg_sw_finish_active() ? pg_sw_list_flag_alias(isset($node['props']) ? $node['props'] : null) : null;
+    if ($flag_alias !== null && !in_array($node['type'], array('root', 'loop_area', 'recipient_loop_area'), true)) {
+        unset($node['props']['_bindings']['eo_visible_if']);
+        return pg_sw_finish_wrap(_render_tree_node($node, $indent, $depth), $flag_alias);
+    }
+
     // Value conditions (_bindings.show_if and show_if_2, show_if_3, with
     // their _bindParams) are wiring, never props. Inside a widget render the
     // node is drawn between the markers the finish pass keeps or cuts

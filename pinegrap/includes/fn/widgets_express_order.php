@@ -616,19 +616,23 @@ function _eo_apply_action_bindings(&$tree)
 //   has_offers    → at least one offer is applied
 //   has_upsell    → at least one upsell offer is available
 //   has_terms     → terms modal is configured to render
-function _eo_apply_visibility_bindings(&$tree, $context)
+// A flag inside a list's row that names a value of the row ($row: the flag
+// names of the lists around it, pg_sw_list_row_flags()) is the row's to
+// decide and is left for the render (pg_sw_list_flag_alias()).
+function _eo_apply_visibility_bindings(&$tree, $context, $row = array())
 {
     if (!is_array($tree) || empty($tree['children'])) return;
+    if (pg_sw_list_is_sourced($tree)) $row += pg_sw_list_row_flags($tree['props']['source']);
     $kept = array();
     foreach ($tree['children'] as $child) {
         if (is_array($child) && !empty($child['props']['_bindings']['eo_visible_if'])) {
             $cond = (string)$child['props']['_bindings']['eo_visible_if'];
-            if (empty($context[$cond])) {
+            if (empty($context[$cond]) && !isset($row[$cond])) {
                 // Condition false → drop this node entirely.
                 continue;
             }
         }
-        if (is_array($child)) _eo_apply_visibility_bindings($child, $context);
+        if (is_array($child)) _eo_apply_visibility_bindings($child, $context, $row);
         $kept[] = $child;
     }
     $tree['children'] = $kept;
