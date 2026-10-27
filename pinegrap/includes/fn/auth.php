@@ -3063,7 +3063,7 @@ function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders 
 // find if there is an entry for the user in the access control list to edit any folder
 function no_acl_check($user_id)
 {
-    $result = mysqli_query(db::$con, "SELECT aclfolder_user FROM aclfolder WHERE aclfolder_user = '" . escape($user_id) . "' AND aclfolder_rights = '2'") or output_error(lang('Query failed'));
+    $result = db_q("SELECT aclfolder_user FROM aclfolder WHERE aclfolder_user = ? AND aclfolder_rights = '2'", array((string) $user_id)) or output_error(lang('Query failed'));
     if (mysqli_num_rows($result)) {
         return true;
     } else {
