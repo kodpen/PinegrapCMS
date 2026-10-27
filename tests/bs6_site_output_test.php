@@ -251,3 +251,29 @@ function test_bs6_shared_panel_functions_exist()
 		pg_assert_same(count($names), count(bs6_function_ranges($source, $names)), $path);
 	}
 }
+
+function test_bs6_shared_panel_blocks_exist()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+	foreach (bs6_shared_panel_blocks() as $path => $blocks) {
+		pg_assert_same('shared', bs6_scope_kind($path), $path);
+		$source = (string) file_get_contents($root . $path);
+		foreach ($blocks as $function => $anchor) {
+			pg_assert_true(count(bs6_block_ranges($source, $function, $anchor)) > 0, "$path $function");
+		}
+	}
+}
+
+function test_bs6_site_output_shared_function_panel_block()
+{
+	$source = "<?php\nfunction get_calendar(\$user) {\n    if (\$user) {\n        \$a = '<a class=\"btn btn-outline-primary\">{';\n        if (\$x) { \$y = 1; }\n    } else {\n        \$a = '<a class=\"btn btn-outline-primary\">';\n    }\n    if (\$user) {\n        \$b = '<select class=\"form-select\">';\n    }\n}\nfunction other() {\n    if (\$user) {\n        return '<p class=\"mb-2\">';\n    }\n}\n";
+	bs6_current_path('includes/fn/calendar.php');
+	$r = bs6_convert_source($source);
+	bs6_current_path(false);
+
+	pg_assert_same(2, count(bs6_block_ranges($source, 'get_calendar', 'if ($user) {')));
+	pg_assert_contains("if (\$user) {\n        \$a = '<a class=\"btn btn-outline theme-primary\">{';", $r['source']);
+	pg_assert_contains("} else {\n        \$a = '<a class=\"btn btn-outline-primary\">';", $r['source']);
+	pg_assert_contains("\$b = '<select class=\"form-control\">';", $r['source']);
+	pg_assert_contains("return '<p class=\"mb-2\">';", $r['source']);
+}
