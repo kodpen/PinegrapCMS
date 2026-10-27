@@ -1670,6 +1670,34 @@
         }
     }
 
+    // ── How near the composer's text is to the server's limit ──
+    // WS_MESSAGE_MAX (CFG.message_max) counts the posted body after trim()
+    // in characters as mb_strlen() does: code points, so a surrogate pair is
+    // one. The count shows from METER_FROM of the limit.
+    var METER_FROM = 0.9;
+
+    // { count, max, state: none | near | over, block } for the text as it is
+    // posted. block: past the limit and no command reads the text first
+    // (commands is false where none runs, as when a message is changed; a
+    // single leading / is one, "//" posts the text).
+    function messageMeter(text, max, commands) {
+        var body = String(text || '').replace(/^[ \t\n\r\0\x0B]+|[ \t\n\r\0\x0B]+$/g, '');
+        var count = body.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '.').length;
+        var limit = parseInt(max, 10) || 0;
+        var state = 'none';
+
+        if (limit > 0) {
+            state = (count > limit) ? 'over' : ((count >= Math.ceil(limit * METER_FROM)) ? 'near' : 'none');
+        }
+
+        return {
+            count: count,
+            max: limit,
+            state: state,
+            block: (state === 'over') && !(commands && /^\/(?!\/)/.test(body))
+        };
+    }
+
     // ── The composer's unsent text, kept on this browser ──
     // One slot per site, viewer, channel and discussion, so two people on one
     // browser or two sites on one host never read each other's text. Only
@@ -11298,6 +11326,7 @@
             // The box this one replaces writes its waiting draft first.
             self.flushDraft();
             self.composerWrap = wrap;
+            self.meter = null;
 
             if (!self.channel.can_post) {
                 wrap.appendChild(el('div', 'small text-body-secondary text-center py-2', self.era ? t('era_readonly') : (self.channel.audit ? t('audit_readonly') : (self.channel.archived ? t('archived_readonly') : t('cannot_post')))));
@@ -11463,6 +11492,15 @@
 
             parts.push(el('span', 'ws-grow ws-composer-hint d-none d-lg-inline', t('composer_hint')));
 
+            // The count near the message limit (drawMeter()), empty while
+            // the text is short; the hidden region beside it speaks only when
+            // the count appears or crosses the limit.
+            self.meter = el('span', 'ws-composer-meter');
+            self.meterLive = el('span', 'visually-hidden');
+            self.meterLive.setAttribute('aria-live', 'polite');
+            self.meterState = 'none';
+            parts.push(self.meter, self.meterLive);
+
             var send = button('btn btn-sm btn-primary rounded-pill px-3', t('send'), 'bi-send');
             send.addEventListener('click', function () { self.send(); });
 
@@ -11586,7 +11624,7 @@
             var self = this;
             var raw = self.inputText();
 
-            if (self.busy || (raw.trim() === '')) {
+            if (self.busy || (raw.trim() === '') || self.meterRefuses()) {
                 return;
             }
 
@@ -11714,7 +11752,41 @@
             }
 
             this.voiceSwap();
+            this.drawMeter();
             this.fit();
+        },
+
+        // The text as it is posted against the server's limit
+        // (messageMeter()): "n / max" from 90 %, the warning colour past it.
+        drawMeter: function () {
+            var meter = messageMeter(this.tokens(this.inputText()), CFG.message_max, !this.editing && !this.editingScheduled);
+
+            if (!this.meter) {
+                return meter;
+            }
+
+            this.meter.textContent = (meter.state === 'none') ? '' : (meter.count + ' / ' + meter.max);
+            this.meter.classList.toggle('is-over', meter.state === 'over');
+
+            if (meter.state !== this.meterState) {
+                this.meterState = meter.state;
+                this.meterLive.textContent = (meter.state === 'over') ? t('meter_over', meter.count - meter.max, meter.max)
+                    : ((meter.state === 'near') ? t('meter_near', meter.max - meter.count) : '');
+            }
+
+            return meter;
+        },
+
+        // Past the limit the server would refuse the text: its own words,
+        // without the round trip. true when refused.
+        meterRefuses: function () {
+            if (!this.drawMeter().block) {
+                return false;
+            }
+
+            toast(t('msg_too_long', CFG.message_max), 'danger');
+
+            return true;
         },
 
         // What is in the box, as the markup a message is stored in.
@@ -12194,6 +12266,11 @@
             }
 
             if (raw.trim() === '' && !options) {
+                return;
+            }
+
+            // A card's button sends its own text, which the box does not hold.
+            if (!options && self.meterRefuses()) {
                 return;
             }
 
@@ -14511,6 +14588,7 @@
             editing: null,
             editingScheduled: null,
             labels: [],
+            meter: null,
             pending: null,
             timer: null,
             busy: false,

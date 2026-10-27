@@ -1,6 +1,6 @@
 ---
 name: workspace-composer-tools
-description: Plan (2026-10-23; 1, 2, 6, 7 done, 4 but autoformat, 8 draft done; answers open): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
+description: Plan (2026-10-23; 1, 2, 6, 7 done, 4 but autoformat, 8a-b done; answers open): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -25,7 +25,7 @@ description: Plan (2026-10-23; 1, 2, 6, 7 done, 4 but autoformat, 8 draft done; 
 5. Link Text field, Ctrl+/ shortcut sheet, "Aa" expanded composer after question 2, no schema.
 6. Slash inserts in notes, done: #2009 (workspace/workspace-notes-slash-inserts.md).
 7. Smart paste, no schema, done: #2018 (workspace/workspace-editor-smart-paste.md).
-8. Small aids, no schema, a PR each: unsent draft per person and channel (localStorage), done: #2034 (workspace/workspace-unsent-draft.md); meter near `WS_MESSAGE_MAX`; `:` emoji.
+8. Small aids, no schema, a PR each: unsent draft per person and channel (localStorage), done: #2034 (workspace/workspace-unsent-draft.md); meter near `WS_MESSAGE_MAX`, done: #2073 (workspace/workspace-message-meter.md); `:` emoji.
 9. Objects, no schema: a lone tag as a card per reader (like `ws_form_cards_html()`); checklist item to task (`ws_command_parse_task()`).
 10. Saved replies with `{customer}`, `{order}`, schema, ask first: `;` picker, API with dry run; team ones need a right column (five ladder files, `pg_user_has_ws_columns()`).
 11. Rewrite with AI, no schema: a `pg_ai_write_targets()` target (proposed), plans/ai-write-buttons.md.
@@ -39,5 +39,5 @@ description: Plan (2026-10-23; 1, 2, 6, 7 done, 4 but autoformat, 8 draft done; 
 5. Dictation (Chrome sends audio to Google): (a) offer, privacy line, (b) not now → owner.
 
 ## Where to start?
-- Step 8 needs no answer: next its meter near `WS_MESSAGE_MAX` (8b), then `:` emoji; 3 waits for question 1, the "Aa" box of 5 for question 2.
+- Step 8 needs no answer: next its `:` emoji (8c); 3 waits for question 1, the "Aa" box of 5 for question 2.
 - Step 4 left: autoformat (`==x==`, also "- " at a line's start) after question 3.
