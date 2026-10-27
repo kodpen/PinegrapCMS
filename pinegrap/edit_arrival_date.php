@@ -34,8 +34,8 @@ $liveform = new liveform('edit_arrival_date');
 
 if (!$_POST) {
     // get arrival date data
-    $query = "SELECT * FROM arrival_dates WHERE id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT * FROM arrival_dates WHERE id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     $name = h($row['name']);
@@ -90,9 +90,9 @@ if (!$_POST) {
             shipping_method_id,
             date_and_time
         FROM shipping_cutoffs
-        WHERE arrival_date_id = '" . escape($_GET['id']) . "'
+        WHERE arrival_date_id = ?
         ORDER BY id ASC";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 
     $shipping_cutoffs = array();
 
@@ -341,8 +341,8 @@ if (!$_POST) {
     validate_token_field();
     
     // delete shipping cut-offs (we do this regardless of whether the arrival date is being deleted or edited)
-    $query = "DELETE FROM shipping_cutoffs WHERE arrival_date_id = '" . escape($_POST['id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "DELETE FROM shipping_cutoffs WHERE arrival_date_id = ?";
+    $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
     
     // assume that there is not an error for a shipping cut-off until we find out otherwise
     $shipping_cutoff_error = FALSE;
@@ -357,35 +357,35 @@ if (!$_POST) {
     // if arrival date was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // delete arrival date
-        $query = "DELETE FROM arrival_dates WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM arrival_dates WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('arrival date'), $_POST['name']) )), $_SESSION['sessionusername']);
     // else arrival date was not selected for delete
     } else {
         // update arrival date
         $query =
             "UPDATE arrival_dates SET
-                name = '" . escape($_POST['name'] ?? '') . "',
-                description = '" . escape($_POST['description'] ?? '') . "',
-                code = '" . escape($_POST['code'] ?? '') . "',
-                arrival_date = '" . escape(prepare_form_data_for_input($_POST['arrival_date'], 'date')) . "',
-                status = '" . escape($status) . "',
-                start_date = '" . escape(prepare_form_data_for_input($_POST['start_date'], 'date')) . "',
-                end_date = '" . escape(prepare_form_data_for_input($_POST['end_date'], 'date')) . "',
-                default_selected = '" . escape($_POST['default_selected'] ?? '') . "',
-                sort_order = '" . escape($_POST['sort_order'] ?? '') . "',
-                custom = '" . escape($_POST['custom'] ?? '') . "',
-                custom_maximum_arrival_date = '" . escape(prepare_form_data_for_input($_POST['custom_maximum_arrival_date'], 'date')) . "',
-                user = '" . $user['id'] . "',
+                name = ?,
+                description = ?,
+                code = ?,
+                arrival_date = ?,
+                status = ?,
+                start_date = ?,
+                end_date = ?,
+                default_selected = ?,
+                sort_order = ?,
+                custom = ?,
+                custom_maximum_arrival_date = ?,
+                user = ?,
                 timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) ($_POST['description'] ?? ''), (string) ($_POST['code'] ?? ''), (string) prepare_form_data_for_input($_POST['arrival_date'], 'date'), (string) $status, (string) prepare_form_data_for_input($_POST['start_date'], 'date'), (string) prepare_form_data_for_input($_POST['end_date'], 'date'), (string) ($_POST['default_selected'] ?? ''), (string) ($_POST['sort_order'] ?? ''), (string) ($_POST['custom'] ?? ''), (string) prepare_form_data_for_input($_POST['custom_maximum_arrival_date'], 'date'), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         // if default selected was checked, then turn value off for all other arrival dates
         if (($_POST['default_selected'] ?? '') == 1) {
             // update arrival date
-            $query = "UPDATE arrival_dates SET default_selected = 0 WHERE id != '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "UPDATE arrival_dates SET default_selected = 0 WHERE id != ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         }
         
         // create array for storing shipping methods that have a shipping cut-off, so that we do not create multiple cut-offs for the same shipping method
@@ -413,10 +413,10 @@ if (!$_POST) {
                         shipping_method_id,
                         date_and_time)
                     VALUES (
-                        '" . escape($_POST['id'] ?? '') . "',
-                        '" . escape($_POST['shipping_cutoff_' . $i . '_shipping_method_id']) . "',
-                        '" . escape(prepare_form_data_for_input($_POST['shipping_cutoff_' . $i . '_date_and_time'], 'date and time')) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        ?,
+                        ?,
+                        ?)";
+                $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $_POST['shipping_cutoff_' . $i . '_shipping_method_id'], (string) prepare_form_data_for_input($_POST['shipping_cutoff_' . $i . '_date_and_time'], 'date and time'))) or output_error('Query failed.');
                 
                 // remember that the shipping method has been used in a shipping cut-off
                 $shipping_cutoff_shipping_methods[] = $_POST['shipping_cutoff_' . $i . '_shipping_method_id'];
