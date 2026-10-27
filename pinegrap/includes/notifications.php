@@ -94,6 +94,15 @@ function pg_notification_visible($notification, $rights)
 	// A customer's return request, or their word that the goods are on their
 	// way back: for whoever manages the orders (includes/fn/returns.php).
 	if (($action == 'new_order') || ($action == 'out_stock') || ($action == 'order_return')) {
+
+		// An API caller's rights also say whether its scopes hold
+		// orders:read (api_notifications_rights()); the panel's and the
+		// push sender's carry no such key.
+		if ((($action == 'new_order') || ($action == 'order_return'))
+			&& isset($rights['orders_read']) && !$rights['orders_read']) {
+			return false;
+		}
+
 		return ((ECOMMERCE === true) && $rights['manage_ecommerce']);
 	}
 

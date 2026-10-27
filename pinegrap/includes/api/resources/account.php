@@ -516,9 +516,20 @@ function api_notifications_load() {
 
 // The rights the visibility ladder asks about, from the caller's account. The
 // owner row already holds the flags as booleans (api_load_owner()).
-function api_notifications_rights($owner) {
+//
+// orders_read is the caller's scopes on top of the person's right: a device or
+// key whose ceiling leaves out Orders would list order notices whose subject
+// GET /orders/{id} refuses with 403. Only the API sets the key, so the panel
+// and the push sender answer as before. $scopes defaults to the current call's.
+function api_notifications_rights($owner, $scopes = null) {
 
 	$role = (int)$owner['role'];
+
+	if ($scopes === null) {
+
+		$scopes = api_current_scopes();
+
+	}
 
 	return array(
 		'id'               => (int)$owner['id'],
@@ -526,20 +537,18 @@ function api_notifications_rights($owner) {
 		'manage_ecommerce' => (($role < 3) || !empty($owner['manage_ecommerce'])),
 		'manage_forms'     => (($role < 3) || !empty($owner['manage_forms'])),
 		'manage_erp'       => (($role < 3) || !empty($owner['manage_erp'])),
-		'manage_erp_cash'  => (($role < 3) || !empty($owner['manage_erp_cash']))
+		'manage_erp_cash'  => (($role < 3) || !empty($owner['manage_erp_cash'])),
+		'orders_read'      => api_has_scope($scopes, 'orders:read')
 	);
 
 }
 
-function api_notifications_unread_count($owner) {
-
-	api_notifications_load();
-
-	$rights = api_notifications_rights($owner);
+// How many of these rows the rights let through.
+function api_notifications_visible_count($rows, $rights) {
 
 	$count = 0;
 
-	foreach (pg_notification_unread_rows($rights['id']) as $notification) {
+	foreach ($rows as $notification) {
 
 		if (pg_notification_visible($notification, $rights)) {
 
@@ -550,6 +559,16 @@ function api_notifications_unread_count($owner) {
 	}
 
 	return $count;
+
+}
+
+function api_notifications_unread_count($owner) {
+
+	api_notifications_load();
+
+	$rights = api_notifications_rights($owner);
+
+	return api_notifications_visible_count(pg_notification_unread_rows($rights['id']), $rights);
 
 }
 
