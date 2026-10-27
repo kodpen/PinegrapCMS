@@ -14,5 +14,6 @@ description: Content files converted to db_q() (get_page_content, content, seo, 
 ## What is the rule for a query that stays raw?
 - A query without values, or one completed by a clause built elsewhere with escaped values (it may hold a `?`, which `db_q()` would take as a placeholder), stays `mysqli_query()`. An integer-only IN list may stay too. Each file's test lists those clause variables by name.
 - Values are passed `(string)` where the old SQL quoted them and `(int)` where it wrote a bare number, so the SQL text sent stays the same. A value that arrived already escaped (`escape()`, `e()`, `mysqli_real_escape_string()`) goes in unwrapped, or it would be escaped twice.
+- `router.php` runs before `functions.php` is loaded, so `db_q()` does not exist there; it keeps its raw queries, as `get_file.php` keeps its own db copies.
 
 Related: docs/memory/data/db-q-placeholder-helper.md, docs/memory/plans/refactor-candidates.md
