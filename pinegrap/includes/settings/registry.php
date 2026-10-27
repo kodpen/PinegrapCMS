@@ -223,6 +223,7 @@ function pg_settings_categories()
                 'pgset-captcha'    => lang('Spam Protection'),
                 'pgset-device'     => lang('Device'),
                 'pgset-mfa'        => lang('Two-Step Verification'),
+                'pgset-audit'      => lang('Audit Trail'),
                 'pgset-signin'     => lang('Sign in with Google, Microsoft and Apple'),
                 'pgset-membership' => lang('Registration & Membership'),
             ),
@@ -231,6 +232,7 @@ function pg_settings_categories()
                 'pgset-captcha'    => pg_settings_keywords(lang('captcha, spam, robot, bot, turnstile, cloudflare, hcaptcha, site key, secret key, stopforumspam, form limits')),
                 'pgset-device'     => pg_settings_keywords(lang('device, remember me, remember, limit')),
                 'pgset-mfa'        => pg_settings_keywords(lang('two-step, two factor, 2fa, totp, authenticator, mfa, verification code')),
+                'pgset-audit'      => pg_settings_keywords(lang('audit, audit trail, changes, history, retention, kvkk, gdpr, who changed')),
                 'pgset-signin'     => pg_settings_keywords(lang('google, oauth, sign in with google, sso, client id, client secret')
                     . ', ' . lang('microsoft, entra, azure, outlook, office 365, sign in with microsoft, sso')
                     . ', ' . lang('apple, icloud, sign in with apple, services id, team id, key id, p8')),

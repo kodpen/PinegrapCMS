@@ -33050,6 +33050,107 @@ const StyleDesigner = (function () {
         );
     }
 
+    // The settings a placement of a widget kind may narrow: the twin of
+    // pg_sw_placement_keys() (widgets_placement.php). The look and texts
+    // stay the widget's; a placement only narrows its content.
+    function _swPlacementKeys(kind) {
+        if (['form_list_view', 'submitted_forms_list', 'form_list', 'blog_list'].indexOf(kind) !== -1) {
+            return ['max_results', 'order_by_field', 'order_by_direction'];
+        }
+        var keys = {
+            catalog_listing: ['product_group_id', 'max_results', 'order_by_field', 'order_by_direction'],
+            calendar_view:   ['calendar_ids', 'number_of_upcoming_events'],
+            menu_region:     ['menu_name'],
+            ad_region:       ['ad_region_name']
+        };
+        return keys[kind] || [];
+    }
+
+    // Sets one placement value on a shared_ref node; an empty value goes
+    // back to the widget's own, and a placement left with no value loses
+    // its props.placement, so the page is stored as before.
+    function _swPlacementSet(n, key, value) {
+        if (!n || n.type !== 'shared_ref') return;
+        if (!n.props || Array.isArray(n.props)) n.props = {};
+        var pl = (n.props.placement && typeof n.props.placement === 'object' && !Array.isArray(n.props.placement)) ? n.props.placement : {};
+        var empty = (value === '' || value === null || value === 0 || (Array.isArray(value) && !value.length));
+        if (empty) delete pl[key]; else pl[key] = value;
+        if (Object.keys(pl).length) n.props.placement = pl; else delete n.props.placement;
+    }
+
+    // The "This placement" section of a widget's panel: the values this
+    // placement narrows, each empty for "as the widget". `orderOpts`
+    // gives the order <option>s of a list widget, or null.
+    function _swPlacementSection(n, sid, cfg, orderOpts) {
+        if (_sdIsContentLevel()) return '';
+        var kind = (typeof cfg.regionType !== 'string') ? 'form_list_view' : _swKindOf(cfg);
+        var keys = _swPlacementKeys(kind);
+        if (!keys.length) return '';
+        var pl = (n.props && n.props.placement && typeof n.props.placement === 'object') ? n.props.placement : {};
+        var asWidget = '<option value="">' + esc(_sdT('— As the widget —')) + '</option>';
+        var hint = function (t) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(t) + '</div>'; };
+        var names = function (list, cur) {
+            var o = asWidget;
+            (list || []).forEach(function (nm) {
+                o += '<option value="' + esc(nm) + '"' + (nm === cur ? ' selected' : '') + '>' + esc(nm) + '</option>';
+            });
+            if (cur && (list || []).indexOf(cur) === -1) o += '<option value="' + esc(cur) + '" selected>' + esc(_sdT('{var} (not found)', cur)) + '</option>';
+            return o;
+        };
+        var body = '';
+        keys.forEach(function (k) {
+            if (k === 'product_group_id') {
+                var g = _swProductGroupOptions(pl.product_group_id, _sdT('— As the widget —'));
+                body += row(esc(_sdT('Product Group')),
+                    '<select class="form-control form-control-sm" data-sw-place="product_group_id" data-sw-place-kind="int">' + g + '</select>' +
+                    hint(_sdT('A group the widget shows, or one under it.')));
+            } else if (k === 'max_results' || k === 'number_of_upcoming_events') {
+                var v = parseInt(pl[k], 10) > 0 ? parseInt(pl[k], 10) : '';
+                body += row(esc(k === 'max_results' ? _sdT('Number of records') : _sdT('Number of events')),
+                    '<input type="number" class="form-control form-control-sm" data-sw-place="' + k + '" data-sw-place-kind="int" min="1" max="100000" value="' + v + '" placeholder="' + esc(_sdT('As the widget')) + '">' +
+                    hint(_sdT('Never more than the widget shows.')));
+            } else if (k === 'order_by_field' && orderOpts) {
+                var cur = typeof pl.order_by_field === 'string' ? pl.order_by_field : '';
+                var opts = asWidget + orderOpts(cur, false).replace(/ selected/g, '');
+                if (cur) opts = opts.replace('value="' + esc(cur) + '"', 'value="' + esc(cur) + '" selected');
+                body += row(esc(_sdT('Sort field')), '<select class="form-control form-control-sm" data-sw-place="order_by_field">' + opts + '</select>');
+            } else if (k === 'order_by_direction' && orderOpts) {
+                var d = pl.order_by_direction === 'ASC' || pl.order_by_direction === 'DESC' ? pl.order_by_direction : '';
+                body += row(esc(_sdT('Sort direction')),
+                    '<select class="form-control form-control-sm" data-sw-place="order_by_direction">' + asWidget +
+                        '<option value="ASC"' + (d === 'ASC' ? ' selected' : '') + '>' + esc(_sdT('Ascending (ASC)')) + '</option>' +
+                        '<option value="DESC"' + (d === 'DESC' ? ' selected' : '') + '>' + esc(_sdT('Descending (DESC)')) + '</option>' +
+                    '</select>');
+            } else if (k === 'calendar_ids') {
+                var list = _swListCache.list_calendars;
+                if (!list) { _swFetchList('list_calendars', 'calendars', function () { renderProperties(); }); }
+                var own = {};
+                (Array.isArray(cfg.calendar_ids) ? cfg.calendar_ids : []).forEach(function (id) { if (parseInt(id, 10) > 0) own[parseInt(id, 10)] = true; });
+                var chosen = {};
+                (Array.isArray(pl.calendar_ids) ? pl.calendar_ids : []).forEach(function (id) { chosen[parseInt(id, 10)] = true; });
+                var checks = (list || []).filter(function (c) { return !Object.keys(own).length || own[parseInt(c.id, 10)]; }).map(function (c) {
+                    var id = parseInt(c.id, 10);
+                    return '<div class="form-field">' +
+                        '<input class="check" type="checkbox" id="sd-sw-place-cal-' + id + '" value="' + id + '" data-sw-place-list="calendar_ids"' + (chosen[id] ? ' checked' : '') + '>' +
+                        '<label for="sd-sw-place-cal-' + id + '">' + esc(c.name || ('#' + id)) + '</label>' +
+                        '</div>';
+                }).join('');
+                body += row(esc(_sdT('Calendars')), (list ? checks : '<div class="small fg-secondary">' + esc(_sdT('Loading...')) + '</div>') +
+                    hint(_sdT('None ticked means the widget\'s calendars.')));
+            } else if (k === 'menu_name') {
+                body += row(esc(_sdT('Menu')), '<select class="form-control form-control-sm" data-sw-place="menu_name">' +
+                    names(regionData && regionData.menu_regions, typeof pl.menu_name === 'string' ? pl.menu_name : '') + '</select>');
+            } else if (k === 'ad_region_name') {
+                body += row(esc(_sdT('Ad Region')), '<select class="form-control form-control-sm" data-sw-place="ad_region_name">' +
+                    names(regionData && regionData.ad_regions, typeof pl.ad_region_name === 'string' ? pl.ad_region_name : '') + '</select>');
+            }
+        });
+        if (!body) return '';
+        return sect('bi-pin-map', esc(_sdT('This placement')),
+            '<div class="sd-prop-row">' + hint(_sdT('Only here: what this place shows of the widget. The look and the texts stay the widget\'s, on every page that places it.')) + '</div>' +
+            body);
+    }
+
     function propsSharedRef(n) {
         var sid   = (n.props && n.props.sharedId)   ? parseInt(n.props.sharedId, 10) : 0;
         var sname = (n.props && n.props.sharedName) ? n.props.sharedName : '?';
@@ -33064,6 +33165,8 @@ const StyleDesigner = (function () {
         if (_cfgRaw) { try { _cfg = JSON.parse(_cfgRaw); } catch(e) {} }
 
         var systemSection = '';
+        // The list widgets' order <option>s, kept for the placement section.
+        var _placeOrderOpts = null;
         if (_cfg) {
             // regionType is the widget's content kind. A row from before the
             // field existed (no key at all) is a form list view — that is what
@@ -33444,6 +33547,7 @@ const StyleDesigner = (function () {
                 }
                 var _orderOpts  = _buildOrderOpts(_orderField, false);
                 var _order2Opts = _buildOrderOpts(_order2Field, true);
+                _placeOrderOpts = _buildOrderOpts;
                 // Record statistic orders: the counters and the newest comment
                 // are kept per detail page, so without one the list keeps the
                 // date order (say so), and the recent-views window gets its
@@ -35495,6 +35599,7 @@ const StyleDesigner = (function () {
             : '';
 
         return systemSection +
+            (_cfg && sid > 0 ? _swPlacementSection(n, sid, _cfg, _placeOrderOpts) : '') +
             sect('bi-puzzle-fill', _cfg ? _sdT('System Widget Record') : _sdT('Shared Component'),
                 nameHtml +
                 row('ID', '<span class="sd-prop-static">' + (sid || '—') + '</span>') +
@@ -35513,6 +35618,29 @@ const StyleDesigner = (function () {
     var _patchSysCfgChain = {};
 
     function _wireSystemWidgetProps() {
+        // ── This placement's own values (_swPlacementSection) ───────────────
+        // Written on the selected shared_ref node: the page changes, the
+        // widget's row does not.
+        document.querySelectorAll('[data-sw-place], [data-sw-place-list]').forEach(function (el) {
+            el.addEventListener('change', function () {
+                if (!selectedNode || selectedNode.type !== 'shared_ref') return;
+                if (!_collab.mayEdit) { _sdReadOnlyNudge(); renderProperties(); return; }
+                var key, value;
+                if (el.dataset.swPlaceList) {
+                    key = el.dataset.swPlaceList;
+                    value = [];
+                    document.querySelectorAll('[data-sw-place-list="' + key + '"]').forEach(function (c) {
+                        if (c.checked) value.push(parseInt(c.value, 10));
+                    });
+                } else {
+                    key = el.dataset.swPlace;
+                    value = el.dataset.swPlaceKind === 'int' ? (parseInt(el.value, 10) > 0 ? parseInt(el.value, 10) : 0) : el.value;
+                }
+                saveState();
+                _swPlacementSet(selectedNode, key, value);
+                render();
+            });
+        });
         // ── Remove this canvas placement only (keep widget definition in DB) ────
         var rmCanvasBtn = document.getElementById('sd-sw-remove-canvas');
         if (rmCanvasBtn) {
