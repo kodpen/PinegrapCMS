@@ -7,6 +7,7 @@ Table structures and SQL pitfalls.
 ## Key rules
 
 <!-- key-rules:start -->
+- New code runs a query with values through `db_q($sql, array($v, …))` (`?` placeholders), not `mysqli_query()`; it returns `false` on failure like `mysqli_query()`, so keep the caller's check (`db-q-placeholder-helper.md`).
 - Escape every value with `e()`; in LIKE write `e(escape_like($v))`: `escape_like()` alone escapes no quote and is an SQL injection (`db-helpers-and-error-contract.md`).
 - Never compare an INT column with `''` (every row that belongs to nothing matches) or a DATE column with `''` (use `'0000-00-00'`); check a LEFT JOIN id first (`sql-silent-wrong-results.md`).
 - Read with a one-shape helper (`db_value`, `db_values`, `db_item`, `db_items`): `db()`'s answer changes with the row count, so a loop over it breaks on one row (`db-helpers-and-error-contract.md`).
@@ -26,7 +27,8 @@ Table structures and SQL pitfalls.
 - config-table-no-varchar.md: Rule that the config table gets no new VARCHAR columns (TEXT only), with the InnoDB row-size reasons and the test that enforces it.
 - content-tables.md: Columns, joins and edit-screen URLs for page, pregion, cregion, dregion, forms/form_data, style, ads and comments; the form_data.id vs forms.id trap.
 - date-column-empty-comparison.md: Why DATE columns (ship_date, expiration_date, arrival_date) must be compared to '0000-00-00' and never to '', and what happens under strict mode and PHP 8.1.
-- db-helpers-and-error-contract.md: The db helpers (db, db_value, db_values, db_item, db_items, e, escape_like) and what a failed query does: helpers end the request, raw mysqli_query() returns false (mysqli_report OFF).
+- db-helpers-and-error-contract.md: The db helpers (db, db_value, db_values, db_item, db_items, e, escape_like) and what a failed query does: helpers end the request, raw mysqli_query() and db_q() return false.
+- db-q-placeholder-helper.md: db_q($sql, $params) and its binder pg_db_bind(): how each ? is filled, what is refused, why it returns false like mysqli_query() instead of ending the request, the new-code rule.
 - files-type-column-width.md: files.type is four characters wide, so long extensions are stored cut (webmanifest as webm); the file manager reads the kind from the name instead; which views still read the column
 - menu-tree-queries.md: Classic menus (get_menu_content(), get_menu_sequence()) read a menu once per request through pg_menu_tree(): two queries, printing order, children counted across menus, what the output must keep
 - orders-table-write-traps.md: Three traps when INSERTing into orders (reference_code, payment_method ENUM, order_date), the next_order_number table lock and where it is taken, and the orders.type values and list filter.

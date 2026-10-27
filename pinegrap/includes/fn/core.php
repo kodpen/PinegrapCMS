@@ -294,6 +294,100 @@ function pg_db_run($query)
     return $result;
 }
 
+/**
+ * Fills each ? of $sql with the next value of $params, in order (keys are
+ * ignored): a string is quoted and passed through $escape, an int or a
+ * finite float is written bare, a bool as 1 or 0, null as NULL. Every ? in
+ * the template is a placeholder, also one inside a quoted literal; a ? inside
+ * a bound value is never expanded again. This is text building, not a
+ * prepared statement.
+ *
+ * Returns null when the number of placeholders and values differ, or when a
+ * value is an array, an object, INF or NAN.
+ *
+ * @param string $sql
+ * @param array $params
+ * @param callable $escape escapes a string for a single-quoted SQL literal
+ * @return string|null
+ */
+function pg_db_bind($sql, array $params, $escape)
+{
+    $pieces = explode('?', $sql);
+    $params = array_values($params);
+
+    if (count($pieces) - 1 !== count($params)) {
+        return null;
+    }
+
+    $bound = $pieces[0];
+
+    foreach ($params as $index => $value) {
+        if ($value === null) {
+            $literal = 'NULL';
+        } elseif (is_bool($value)) {
+            $literal = $value ? '1' : '0';
+        } elseif (is_int($value)) {
+            $literal = (string) $value;
+        } elseif (is_float($value)) {
+            if (!is_finite($value)) {
+                return null;
+            }
+            // var_export() ignores the locale, which a string cast follows
+            // before PHP 8 (a comma as the decimal point).
+            $literal = var_export($value, true);
+        } elseif (is_string($value)) {
+            $literal = "'" . call_user_func($escape, $value) . "'";
+        } else {
+            return null;
+        }
+
+        $bound .= $literal . $pieces[$index + 1];
+    }
+
+    return $bound;
+}
+
+/**
+ * Runs a query whose values are given as ? placeholders:
+ * db_q("SELECT id FROM page WHERE name = ? AND folder = ?", array($name, $folder_id)).
+ * See pg_db_bind() for how each value is written.
+ *
+ * A drop-in for a raw mysqli_query(): it returns the mysqli result (a result
+ * set, or true for a statement) and false when the query fails, when there is
+ * no connection, or when the values do not fit the template (logged). It does
+ * not end the request, so the caller keeps its own check
+ * (`or output_error(...)`, `if (!$result)`). It is counted with the helpers in
+ * pg_db_stats().
+ *
+ * @param string $sql
+ * @param array $params
+ * @return mysqli_result|bool
+ */
+function db_q($sql, array $params = array())
+{
+    $query = pg_db_bind($sql, $params, 'escape');
+
+    if ($query === null) {
+        error_log('Pinegrap: db_q() values do not fit the placeholders of: ' . $sql);
+        return false;
+    }
+
+    if (!isset(db::$con) || !db::$con) {
+        return false;
+    }
+
+    $counters = &pg_db_counters();
+
+    $started = microtime(true);
+
+    $result = @mysqli_query(db::$con, $query);
+
+    $counters['count']++;
+    $counters['ms'] += (microtime(true) - $started) * 1000;
+
+    return $result;
+}
+
 // Use this to run any type of general db query (e.g. select, insert, update, etc.).
 function db($query)
 {
