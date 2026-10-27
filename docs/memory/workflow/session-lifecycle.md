@@ -22,7 +22,7 @@ description: A session from green CI to its next step: the ready label, staying 
 - A larger one gets one comment naming it, and the PR stays out of the train: push the fix and mark it ready again. If you have ended, a new session does it (nobody else is on the branch).
 
 ## What if I need a decision?
-- Open an issue labelled `architect` (template in `architect.md`) and name it in the PR body (`Decision: #<issue>`). Then turn the PR back to draft (`gh pr ready <n> --undo`; in a cloud session `mcp__github__update_pull_request` with `draft: true`) and take its `ready` label off (`gh api -X DELETE repos/kodpen/pinegrapcms/issues/<n>/labels/ready`). A PR waiting on the owner cannot go into a train, so it gives its place in the queue to work that can.
+- Never ask the owner in your reply or the PR body. Open an issue labelled `architect` (template in `architect.md`) and name it in the PR body (`Decision: #<issue>`). Then turn the PR back to draft (`gh pr ready <n> --undo`; in a cloud session `mcp__github__update_pull_request` with `draft: true`) and take its `ready` label off (`gh api -X DELETE repos/kodpen/pinegrapcms/issues/<n>/labels/ready`). A PR waiting on the owner cannot go into a train, so it gives its place in the queue to work that can.
 - The architect decides it with the owner and brings the decision to the PR as a comment, which wakes you: follow it, note "decided in #<issue>" in the PR body, mark the PR ready again and label it once CI is green. The architect records the decision in memory; you do not.
 
 Related: docs/memory/workflow/working-mode.md, docs/memory/workflow/merge-review.md, docs/memory/workflow/architect.md

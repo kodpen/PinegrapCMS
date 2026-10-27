@@ -121,8 +121,8 @@ decision questions.
    the `module:` field of its memory file (`core/fn-modules.md` is generated).
 8. **Queue limit.** While more than 15 PRs are open, drafts and
    `merge-train/*` not counted, nobody starts a new task (checked before the
-   claim); finished work is still marked ready. A PR waiting on the owner's
-   answer goes back to draft until the answer comes, so only work the
+   claim); finished work is still marked ready. A PR waiting on a decision
+   (Working mode 10) goes back to draft until it comes, so only work the
    merging session can take holds a place; each coordinator's workers hold
    at most 4 of the 15.
    `gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '[.[]|select(.draft|not)|select(.head.ref|startswith("merge-train")|not)]|length'`
@@ -138,7 +138,9 @@ decision questions.
    already answers is not a question. The architect session analyses it,
    brings it to the owner with the `erdal` label, decides with the owner,
    records the decision and brings it to the PR as a comment. It never
-   decides alone.
+   decides alone. The issue is the only way to ask: no question to the
+   owner in a session's reply or PR body, and no `erdal` label but the
+   architect's.
 
 ## Fixed rules
 

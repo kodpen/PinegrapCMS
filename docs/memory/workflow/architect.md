@@ -28,7 +28,7 @@ description: Decision questions (2026-10-27): an issue labelled architect; the a
 - The merging session keeps landing the rest of a train while a clash waits.
 
 ## Labels
-- `architect`: every decision question, open until the decision is recorded. `erdal`: analysed, waiting for the owner; the owner's list on GitHub is `label:erdal`.
+- `architect`: every decision question, open until the decision is recorded. `erdal`: analysed, waiting for the owner, set only by the architect; the owner's list on GitHub is `label:erdal`.
 
 ## How is it started?
 - A new session told: "You are the architect: read `CLAUDE.md` and `docs/memory/workflow/architect.md`, then keep the 15-minute check."
