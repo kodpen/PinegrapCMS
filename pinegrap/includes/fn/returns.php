@@ -1881,6 +1881,64 @@ function pg_return_action_fields($form, $action, $return_id)
 }
 
 /**
+ * How an approved return's goods go back: the sentence the customer reads
+ * and the return code given after it ('' for none).
+ *
+ * @param array $return pg_return_present() row
+ * @return array text, code
+ */
+function pg_return_how($return)
+{
+    $carrier = (string) $return['carrier'];
+    $code = (string) $return['carrier_code'];
+
+    if (($carrier !== '') && ($code !== '')) {
+        $text = lang(array('string' => 'Send the parcel with {var:1} and give them this return code:', 'vars' => array($carrier)));
+    } elseif ($carrier !== '') {
+        $text = lang(array('string' => 'Send the parcel with {var:1}.', 'vars' => array($carrier)));
+    } elseif ($code !== '') {
+        $text = lang('Give the carrier this return code:');
+    } else {
+        $text = lang('Your return was approved. You can send the goods back now.');
+    }
+
+    return array('text' => $text, 'code' => $code);
+}
+
+/**
+ * The customer's own moves on one return: say the parcel is on its way,
+ * withdraw the request. '' when neither is open.
+ *
+ * @param array $return pg_return_present() row
+ * @param array $form   action, send_to, token, order_id
+ * @return string HTML
+ */
+function pg_return_actions_html($return, $form)
+{
+    $id = (int) $return['id'];
+    $html = '';
+
+    if (!empty($return['can_mark_sent'])) {
+        $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="mt-2">'
+            . pg_return_action_fields($form, 'shipped', $id)
+            . '<label for="pg-ov-return-tracking-' . $id . '" class="form-label small fw-semibold">' . h(lang('Tracking number of the parcel (optional)')) . '</label>'
+            . '<div class="input-group input-group-sm">'
+            . '<input type="text" class="form-control" id="pg-ov-return-tracking-' . $id . '" name="tracking_number" maxlength="100" autocomplete="off">'
+            . '<button type="submit" class="btn btn-primary">' . h(lang('I have sent it')) . '</button>'
+            . '</div></form>';
+    }
+
+    if (!empty($return['can_withdraw'])) {
+        $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="mt-2">'
+            . pg_return_action_fields($form, 'withdraw', $id)
+            . '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Withdraw the request')) . '</button>'
+            . '</form>';
+    }
+
+    return $html;
+}
+
+/**
  * The returns of an order as the customer follows them: where each stands,
  * its lines, what the shop wrote, how to send the goods once it is approved,
  * when the refund is due, and the customer's own moves (withdraw a request,
@@ -1933,20 +1991,9 @@ function pg_returns_list_html($returns, $form)
 
         // How the goods go back, once the shop has said yes.
         if ((string) $return['status'] === 'approved') {
-            $carrier = (string) $return['carrier'];
-            $code = (string) $return['carrier_code'];
-
-            if (($carrier !== '') && ($code !== '')) {
-                $how = h(lang(array('string' => 'Send the parcel with {var:1} and give them this return code:', 'vars' => array($carrier)))) . ' <strong>' . h($code) . '</strong>';
-            } elseif ($carrier !== '') {
-                $how = h(lang(array('string' => 'Send the parcel with {var:1}.', 'vars' => array($carrier))));
-            } elseif ($code !== '') {
-                $how = h(lang('Give the carrier this return code:')) . ' <strong>' . h($code) . '</strong>';
-            } else {
-                $how = h(lang('Your return was approved. You can send the goods back now.'));
-            }
-
-            $html .= '<div class="alert alert-info small py-2 my-2" role="status">' . $how . '</div>';
+            $how = pg_return_how($return);
+            $html .= '<div class="alert alert-info small py-2 my-2" role="status">' . h($how['text'])
+                . (($how['code'] !== '') ? ' <strong>' . h($how['code']) . '</strong>' : '') . '</div>';
         }
 
         if ((string) $return['tracking_number'] !== '') {
@@ -1957,22 +2004,7 @@ function pg_returns_list_html($returns, $form)
             $html .= $detail(lang('Refund due by'), h((string) $return['refund_deadline']));
         }
 
-        if (!empty($return['can_mark_sent'])) {
-            $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="mt-2">'
-                . pg_return_action_fields($form, 'shipped', $id)
-                . '<label for="pg-ov-return-tracking-' . $id . '" class="form-label small fw-semibold">' . h(lang('Tracking number of the parcel (optional)')) . '</label>'
-                . '<div class="input-group input-group-sm">'
-                . '<input type="text" class="form-control" id="pg-ov-return-tracking-' . $id . '" name="tracking_number" maxlength="100" autocomplete="off">'
-                . '<button type="submit" class="btn btn-primary">' . h(lang('I have sent it')) . '</button>'
-                . '</div></form>';
-        }
-
-        if (!empty($return['can_withdraw'])) {
-            $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="mt-2">'
-                . pg_return_action_fields($form, 'withdraw', $id)
-                . '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Withdraw the request')) . '</button>'
-                . '</form>';
-        }
+        $html .= pg_return_actions_html($return, $form);
 
         $html .= '</div>';
     }

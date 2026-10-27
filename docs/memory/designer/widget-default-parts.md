@@ -1,12 +1,12 @@
 ---
 name: widget-default-parts
-description: W16 placed beats pushed: the one placement rule (pg_sw_placed()), default parts that draw old HTML tokens with real design elements, tail and lead parts, slices left
+description: W16 placed beats pushed: the one placement rule (pg_sw_placed()), default parts drawing old HTML tokens with design elements, tail and lead parts, slices left
 module: widgets_parts
 ---
 
 ## What is the rule?
 - A part the designer placed always wins; a renderer adds its own copy of a block only when the saved tree places none of its tokens: `pg_sw_placed($tree, $tokens)` (`includes/fn/widgets_parts.php`). A binding, a literal `^^token^^` or an attribute `{{token}}` places; a condition never does (`pg_sw_cond_tree_json()`); the name is matched whole.
-- Uses: the cart's item form and gift card rows (the item template's nodes). The order view's parts and cards: [[widget-default-parts-order]], its item blocks [[widget-default-parts-order-items]]. Comment stars: [[widget-default-parts-comments]]. Catalog breadcrumb: [[widget-default-parts-breadcrumb]]. Cross-sell: [[widget-default-parts-cross-sell]].
+- Uses: the cart's item form and gift card rows (the item template's nodes). The order view's parts and cards: [[widget-default-parts-order]], its item blocks [[widget-default-parts-order-items]]. Comment stars: [[widget-default-parts-comments]]. Catalog breadcrumb: [[widget-default-parts-breadcrumb]]. Cross-sell: [[widget-default-parts-cross-sell]]. Returns list: [[widget-default-parts-returns]].
 
 ## What is a default part?
 - An old token that stood for server-built markup is drawn by real design elements the designer can select and change. `pg_sw_default_part_tokens()`: kind => (token, builder) pairs (pairs, so `check_bindings.php` does not read them as filled).
@@ -20,9 +20,9 @@ module: widgets_parts
 ## How does the owner's "not byte-identical" read? (2026-10-26, option B)
 - Same words in the site's language, same classes in the same order, forms keep names, ids and markers; hidden details may change. The test compares the old block with the new output by visible text and class order, and checks the e-mail output.
 
-## What is left after #1808, #1824, #1863, #1908, #1945 and #1973?
-- Form blocks: the cart rows' editable `__item_form_data_html`, `__item_gift_card_html` (placed by `pg_sw_placed()` since #1863; parts with controls are an open owner question), `__returns`/`__return_form` (still server-built inside the returns card), `__cancel_form`. The order view's item blocks: [[widget-default-parts-order-items]].
-- Express order offers; cart row form data; catalog listing body; variant picker auto-inject; filters (`__filter_chips` …). Each check moves to `pg_sw_placed()`; a token freed from a rendered-template `strpos()` leaves `pg_sw_cond_denied_tokens()`. Then the raw keys in `pg_sw_raw_token_keys()` shrink.
+## What is left after #1808, #1824, #1863, #1908, #1945, #1973 and #2067?
+- Form blocks: the cart rows' editable `__item_form_data_html`, `__item_gift_card_html` (parts with controls: open owner question), `__return_form` (still server-built inside the returns card), each return's moves (`__return_actions_html`), `__cancel_form`. The order view's item blocks: [[widget-default-parts-order-items]].
+- Express order offers; cart row form data; catalog listing body; variant picker; filters (`__filter_chips` …; pushed chips as a lead part land before the pushed toolbar: take both). Each check moves to `pg_sw_placed()`; a token freed from a rendered-template `strpos()` leaves `pg_sw_cond_denied_tokens()`. Then the raw keys in `pg_sw_raw_token_keys()` shrink.
 - Canvas: the band's state chips draw one status badge at a time ([[widget-condition-canvas]]); the timeline's card draws `created`, its sample rows paid, shipped and delivered.
 - A literal token inside a longer text is not given a part (prints empty); a condition on `__timeline` or `__order_status_badge` reads empty.
 - Owed: a browser round (editor load, Preview, a receipt e-mail).
