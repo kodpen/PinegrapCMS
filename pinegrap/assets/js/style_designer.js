@@ -65695,7 +65695,7 @@ const StyleDesigner = (function () {
         'pg_comments_attachments', 'pg_comments_select_name', 'pg_comments_message',
         'pg_comments_closed_message', 'pg_comments_watchers_managed',
         'page_meta_tags', 'page_custom_jsonld',
-        'page_canonical_url', 'page_noarchive', 'page_max_snippet'
+        'page_canonical_url', 'page_noarchive', 'page_max_snippet', 'ai_fields'
     ];
     // The page's comment settings: the hidden pg_comments* inputs of the
     // editor screen, which the comments panel writes. The keys and their
@@ -65819,6 +65819,7 @@ const StyleDesigner = (function () {
             if (!el) return;
             p[k] = _PG_BOOL_FIELDS[k] ? ((el.value === '1') ? 1 : 0) : el.value;
         });
+        _pgAiMarksRead(p);
     }
 
     function _pgLoadPageIntoFields(p) {
@@ -65869,7 +65870,78 @@ const StyleDesigner = (function () {
         _sdSettingsPageLabel(p.page_name);
         _sdPageTypeSync(p);
         _sdSettingsRefresh();
+        _pgAiMarksShow(p);
     }
+
+    // ── Texts written with AI ─────────────────────────────────────────────
+    // The page's Page Title and Meta Description carry a mark while their
+    // text is the "Write with AI" draft used on them (page.ai_fields,
+    // pg_ai_fields_page_save()). `p.aiText` keeps, by column, the text each
+    // mark was put on; `p.ai_fields`, sent with the page's settings, lists
+    // the columns whose text is still that one. Editing the text by hand
+    // takes the mark off, bringing the same text back puts it on again, and
+    // the marker's button drops it until another draft is used. The draft
+    // panel (assets/js/pg_ai_write.js) sends pg:ai-write-used from the field.
+    var _PG_AI_COLUMNS = { pg_page_title: 'page_title', pg_page_meta_description: 'page_meta_description' };
+
+    // Runs of white space are one space and the ends do not count, as in
+    // the fingerprint the server keeps (pg_ai_fields_fingerprint()).
+    function _pgAiSameText(a, b) {
+        var norm = function (v) { return String(v == null ? '' : v).replace(/[\t\n\v\f\r ]+/g, ' ').replace(/^ | $/g, ''); };
+        return norm(a) !== '' && norm(a) === norm(b);
+    }
+
+    function _pgAiMarksRead(p) {
+        if (!p) return;
+        var texts = p.aiText || {};
+        p.ai_fields = Object.keys(_PG_AI_COLUMNS).map(function (id) { return _PG_AI_COLUMNS[id]; }).filter(function (col) {
+            return Object.prototype.hasOwnProperty.call(texts, col) && _pgAiSameText(p[col], texts[col]);
+        });
+    }
+
+    function _pgAiMarksShow(p) {
+        var marked = (p && Array.isArray(p.ai_fields)) ? p.ai_fields : [];
+        document.querySelectorAll('[data-pg-ai-mark]').forEach(function (el) {
+            if (!_PG_AI_COLUMNS[el.getAttribute('data-pg-ai-field')]) return;
+            el.classList.toggle('d-none', marked.indexOf(el.getAttribute('data-pg-ai-mark')) === -1);
+        });
+    }
+
+    // The marks of a page as the server sends them: each one on the text the
+    // page holds now.
+    function _pgAiMarksInit(p, list) {
+        p.aiText = {};
+        (Array.isArray(list) ? list : []).forEach(function (col) {
+            if (typeof p[col] === 'string') p.aiText[col] = p[col];
+        });
+        _pgAiMarksRead(p);
+    }
+
+    function _pgAiMarksFollow(el, used) {
+        var col = el && el.id ? _PG_AI_COLUMNS[el.id] : '';
+        var p = col ? _pgActivePage() : null;
+        if (!p) return;
+        if (used) {
+            p.aiText = p.aiText || {};
+            p.aiText[col] = el.value;
+        }
+        _pgReadFieldsIntoPage(p);
+        _pgAiMarksShow(p);
+        if (used) _pgTabsRefreshDirty();
+    }
+
+    document.addEventListener('pg:ai-write-used', function (e) { _pgAiMarksFollow(e.target, true); });
+    document.addEventListener('input', function (e) { _pgAiMarksFollow(e.target, false); });
+    document.addEventListener('click', function (e) {
+        var btn = (e.target && e.target.closest) ? e.target.closest('.pg-ai-mark-remove') : null;
+        var mark = btn ? btn.closest('[data-pg-ai-mark]') : null;
+        var p = (mark && _PG_AI_COLUMNS[mark.getAttribute('data-pg-ai-field')]) ? _pgActivePage() : null;
+        if (!p) return;
+        if (p.aiText) delete p.aiText[mark.getAttribute('data-pg-ai-mark')];
+        _pgAiMarksRead(p);
+        _pgAiMarksShow(p);
+        _pgTabsRefreshDirty();
+    });
 
     // ── Tab bar ───────────────────────────────────────────────────────────
     function _pgTabsRender() {
@@ -66426,8 +66498,11 @@ const StyleDesigner = (function () {
             // The form settings come along. The fields do not need to: they
             // are the widget's controls, and the copy is a different page —
             // its rows are created under its own id on the first save.
-            formSettings: JSON.parse(JSON.stringify(src.formSettings || {}))
+            formSettings: JSON.parse(JSON.stringify(src.formSettings || {})),
+            // The copied texts keep their marks while they stay as they are.
+            aiText: JSON.parse(JSON.stringify(src.aiText || {}))
         };
+        _pgAiMarksRead(p);
         // Fresh ids: the canvas keys DOM ↔ node by _id, and two tabs sharing
         // ids would confuse selection the moment both have been rendered.
         (function reId(nd) { nd._id = gid(); if (Array.isArray(nd.children)) nd.children.forEach(reId); })(p.tree);
@@ -68255,8 +68330,10 @@ const StyleDesigner = (function () {
             treeLoadWarning: false,
             // The page keeps its own form settings — it is the same page,
             // only opened from another design.
-            formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {}
+            formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {},
+            ai_fields: sp.ai_fields || []
         };
+        _pgAiMarksInit(p, p.ai_fields);
         if (p.tree) { _sdTreeObjects(p.tree); _normalizeToggleableShowState(p.tree); p.nodeIdCounter = reindex(p.tree); }
         // Where it still lives. Until this design is saved the page's
         // page_style is unchanged, so on the server it is somebody else's
@@ -69858,8 +69935,12 @@ const StyleDesigner = (function () {
                 baseline: null, treeLoadWarning: !!sp.treeLoadWarning,
                 // The page's form-level settings, as stored; written back
                 // with the page. The fields are the widget's controls.
-                formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {}
+                formSettings: (sp.formSettings && typeof sp.formSettings === 'object') ? sp.formSettings : {},
+                // The columns marked as written with AI; _pgAiMarksInit()
+                // remembers the text of each.
+                ai_fields: sp.ai_fields || []
             };
+            _pgAiMarksInit(p, p.ai_fields);
             if (p.tree) { _sdTreeObjects(p.tree); _normalizeToggleableShowState(p.tree); p.nodeIdCounter = reindex(p.tree); }
             else p.tree = createDefaultTree();
             // The address the page is reachable at NOW — a rename in the

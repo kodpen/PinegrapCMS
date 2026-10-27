@@ -2831,6 +2831,7 @@ function pg_designer_load_pages($style_id, $style_name = '', $classic = false)
     $jsonld_ready  = pg_page_custom_jsonld_ready();
     $extras_ready  = pg_page_seo_extras_ready();
     $sched_ready   = function_exists('pg_page_schedule_ready') && pg_page_schedule_ready();
+    $ai_ready      = pg_ai_fields_ready('page');
 
     $cols = "page.page_id, page.page_name, page.page_type, page.page_folder, page.page_title,
              page.page_meta_description, page.page_search, page.page_search_keywords,
@@ -2849,6 +2850,7 @@ function pg_designer_load_pages($style_id, $style_name = '', $classic = false)
              " . ($jsonld_ready ? "page.custom_jsonld," : "'' AS custom_jsonld,") . "
              " . ($extras_ready ? "page.canonical_url, page.noarchive, page.max_snippet," : "'' AS canonical_url, 0 AS noarchive, NULL AS max_snippet,") . "
              " . ($sched_ready ? "page.publish_at, page.unpublish_at," : "0 AS publish_at, 0 AS unpublish_at,") . "
+             " . ($ai_ready ? "page.ai_fields," : "NULL AS ai_fields,") . "
              " . pg_page_tree_sql_expr() . " AS tree_json";
 
     $rows = db_items(
@@ -2892,6 +2894,8 @@ function pg_designer_load_pages($style_id, $style_name = '', $classic = false)
             'page_draft'            => $draft ? 1 : 0,
             'page_title'            => (string)$r['page_title'],
             'page_meta_description' => (string)$r['page_meta_description'],
+            // The columns whose text is still the AI draft used on it.
+            'ai_fields'             => pg_ai_fields_marked('page', $r['ai_fields'], pg_ai_fields_values('page', $r)),
             'page_search'           => !empty($r['page_search']) ? 1 : 0,
             'page_search_keywords'  => (string)$r['page_search_keywords'],
             'page_sitemap'          => !empty($r['sitemap']) ? 1 : 0,
@@ -3723,6 +3727,16 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         $page_id = (int)mysqli_insert_id(db::$con);
         update_tag_cloud_keywords_for_page($page_id, $search, $keywords, 0, '');
         log_activity(lang(array('string' => 'page ({var:1}) was created', 'vars' => array($name))), $_SESSION['sessionusername']);
+    }
+
+    // The texts written with AI (page.ai_fields): the columns the editor
+    // lists are marked on the text written now, and without a list the
+    // stored marks stay only on a text left as it was.
+    if ($page_id > 0 && pg_ai_fields_ready('page')) {
+        $ai_fields = pg_ai_fields_page_save($page,
+            db_value("SELECT ai_fields FROM page WHERE page_id = '$page_id' LIMIT 1"),
+            array('page_title' => $title, 'page_meta_description' => $meta_desc));
+        db("UPDATE page SET ai_fields = " . (($ai_fields === null) ? 'NULL' : "'" . e($ai_fields) . "'") . " WHERE page_id = '$page_id'");
     }
 
     // Every save that changed the page is kept as a revision
