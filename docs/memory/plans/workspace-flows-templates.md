@@ -18,7 +18,7 @@ description: Plan (owner request 2026-10-27, draft): a flow template gallery tha
 
 - G2 animated placement and the setup panel. Done (#2173): `workspace/workspace-flows-template-setup.md`.
 
-- G3 flow-only templates. Done (#PR): new customer, quote approval, text review (`workspace/workspace-flows-template-format.md`).
+- G3 flow-only templates. Done (#2196): new customer, quote approval, text review (`workspace/workspace-flows-template-format.md`).
 
 ## Where to start?
 - All steps done; the plan closes once open question 1 is answered (its decision goes to `workspace/workspace-flows-template-format.md`).
