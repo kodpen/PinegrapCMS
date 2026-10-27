@@ -3358,6 +3358,7 @@
     "The username you entered could not be found. You might try entering an email address instead, or register if you have not already done so.": "Girdiğiniz kullanıcı adı bulunamadı. Bunun yerine bir e-posta adresi girmeyi deneyebilir veya henüz yapmadıysanız kaydolabilirsiniz.",
     "The username you entered could not be found. You might try entering an email address instead.": "Girdiğiniz kullanıcı adı bulunamadı. Bunun yerine bir e-posta adresi girmeyi deneyebilirsiniz.",
     "The username you entered is already in use. Please enter a different username.": "Girdiğiniz kullanıcı adı zaten kullanımda. Lütfen farklı bir kullanıcı adı girin.",
+    "The value becomes an element inside the words, styled on its own; the words stay one translatable sentence.": "Değer, sözcüklerin içinde kendi biçimi olan bir öğe olur; sözcükler tek bir çevrilebilir cümle olarak kalır.",
     "The value could not be read.": "Değer okunamadı.",
     "The value without its sign": "Değerin işaretsiz hâli",
     "The variables below live in User Styles.": "Aşağıdaki değişkenler User Styles içinde durur.",

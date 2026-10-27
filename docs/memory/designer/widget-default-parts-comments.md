@@ -4,7 +4,7 @@ description: The comment stars default part (W16, #1908): what replaced __commen
 ---
 
 ## What does the part draw?
-- `pg_sw_part_comment_stars()` (`includes/fn/widgets_parts.php`): `span.pg-comment-stars` with `role="img"` and `aria-label="{{__comment_rating_label}}"` ("Rated N out of 5", `pg_comments_rating_label()`), shown by `__comment_rating not_empty`; inside, for each place 1-5, an SVG drawing node (`contentType svg`, the `_pg_comments_star_svg()` markup) filled when `__comment_rating gte <place>` and one empty when `lt <place>`.
+- `pg_sw_part_comment_stars()` (`includes/fn/widgets_parts.php`): `span.pg-comment-stars` with `role="img"` and `aria-label` "Rated {{__comment_rating}} out of 5" (the words of `lang('Rated {var:1} out of 5')` around the value, [[sentence-with-values]]), shown by `__comment_rating not_empty`; inside, for each place 1-5, an SVG drawing node (`contentType svg`, the `_pg_comments_star_svg()` markup) filled when `__comment_rating gte <place>` and one empty when `lt <place>`.
 - Kinds `comments` (both modes: the server reads `regionType`; the editor lists `comments` and `comments_recent`). A node bound to `__comment_stars_html`, or a text that is the token alone, becomes the host; the starters and the forum template build the part directly.
 - `pg_comments_stars_html()` and `pg_comments_stars_text_html()` are gone; the renderer no longer fills `__comment_stars_html`, and it left `pg_sw_raw_token_keys()` and `SW_ATTR_MARKUP`.
 
@@ -15,7 +15,7 @@ description: The comment stars default part (W16, #1908): what replaced __commen
 - `pg_sw_default_parts_apply(..., $email = true)` runs `pg_sw_parts_mail_stars()`: inside each `.pg-comment-stars`, the star drawings (an SVG node whose markup has `bi-star` or `bi-star-fill`) become one `^^__comment_stars_text^^` (★ for each point, ☆ to five, `pg_comments_stars_text()`); other children stay. Visible text equals the old `&#9733;` span.
 
 ## New tokens?
-- `__comment_rating_label` and `__comment_stars_text` are row values (`pg_comments_widget_row_values()`), offered as "Rating (words)" and "Stars (characters)". The label is one sentence because "words beside a value" is still open.
+- `__comment_rating_label` and `__comment_stars_text` are row values (`pg_comments_widget_row_values()`), offered as "Rating (words)" and "Stars (characters)". The part no longer uses the label (its words and the rating are in the aria-label); the token stays filled for saved trees.
 
 ## What does the canvas show?
 - All ten drawings (filled and empty) until W19's state preview; the aria-label shows the token.
