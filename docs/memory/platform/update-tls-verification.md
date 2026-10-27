@@ -18,7 +18,7 @@ description: TLS on outgoing cURL: pg_curl_tls() / da_curl_tls(), no silent down
 - Stripe and iyzico (the card form and the Pay With Iyzico driver `includes/payments/iyzico.php`) run inside their bundled libraries (`includes/stripe/`, `includes/iyzipay-php/`; their HTTP clients are not edited): verification is on with the library's own CA file (iyzipay's `cacert.pem`; Stripe retries with its `ca-certificates.crt` after a certificate error), and the two config settings do not reach them.
 
 ## Which other calls go through pg_curl_tls()?
-- Through `pg_curl_run()` (`curl-run-wrapper.md`): the vendor-host calls, StopForumSpam, currency rates, AI bot ranges, SMS and İYS, Paraşüt, e-documents, the licence checks (`output.php`, widget 14), CAPTCHA. Directly: the importers (`import_design.php`, `migration.php`), the location database, S3 backups, signature time stamps. New calls use one.
+- Through `pg_curl_run()`: the vendor-host calls, StopForumSpam, currency rates, AI bot ranges, SMS and İYS, Paraşüt, e-documents, licence checks, CAPTCHA, `migration.php` (`curl-run-callers.md`). `api_http_request()`: `import_design.php`. Directly: the location database, S3 backups, time stamps. New calls use one.
 - https only: an İşbaşı API address typed as `http://` fails since #1921 (`curl-run-wrapper.md`).
 
 ## Which calls do not?
@@ -27,4 +27,4 @@ description: TLS on outgoing cURL: pg_curl_tls() / da_curl_tls(), no silent down
 - The CA store probe (`pg_ca_bundle_config_state()`): it tests the default store, which the flag would hide.
 - Calls that set nothing (Mailchimp, the IndexNow ping) get libcurl's default verification only. `url_exists()` (`core.php`, no caller) turns it off.
 
-Related: docs/memory/platform/ca-bundle-panel-update.md, docs/memory/platform/curl-run-wrapper.md
+Related: docs/memory/platform/ca-bundle-panel-update.md, docs/memory/platform/curl-run-callers.md

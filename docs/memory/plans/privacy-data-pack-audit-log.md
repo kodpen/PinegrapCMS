@@ -1,6 +1,6 @@
 ---
 name: privacy-data-pack-audit-log
-description: Plan (approved 2026-10-19; steps 1-5b and 5d done, last #1844 and #1919; next 5c): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
+description: Plan (approved 2026-10-19; steps 1-5b, 5d and 5e done, last #1919 and #2000; next 5c): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 ---
 
 ## Why?
@@ -22,11 +22,11 @@ description: Plan (approved 2026-10-19; steps 1-5b and 5d done, last #1844 and #
 5a. Done (#1821): `view_audit_log.php`, filters, CSV export; `core/audit-trail-screen.md`.
 5b. Done (#1844): `GET /audit-log`, scope `system:read`; `core/audit-trail-screen.md`.
 5d. Done (#1919): the cookie notice's answers into `consent_log`, `consent_answer.php`; `core/consent-log-cookie-notice.md`.
+5e. Done (#2000): `contract` consent rows from `pg_legal_documents_store()`; `core/consent-log-writers.md`.
 5c. Retention: a setting (default 2 years) and the general job trimming `audit_log` past it; the consent log's 3 years from the same job. A new config column is a schema step: ask the owner first.
 
 ## Open questions?
 - The export leaves out the site log, `audit_log` rows about the person and `visitors` (`core/personal-data-export.md`): add them later?
-- Which step writes `contract` consent rows (next to `order_documents`)? Not assigned; e-mail writers came with #1581, cookie with 5d.
 - Tie an anonymous visitor's cookie rows by an id in `pg_consent` (cookie format change)? Asked in 5d's PR.
 
 ## Where to start?

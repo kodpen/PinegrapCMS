@@ -405,9 +405,10 @@ function test_erp_edoc_parasut_legacy_invoiced_send_refuses_the_unsure_mark_firs
 
 // The send reads the order's own Paraşüt invoice with its number, day and
 // shipment document, asks about it through the driver's request before the
-// invoice's own checks and the buyer's card, refuses on the check's
-// refusal, clears a deleted record's id only while the order holds it, and
-// says so with every outcome.
+// invoice's own checks and the buyer's card, and refuses on the check's
+// refusal. A deleted record's id is cleared (only while the order holds it)
+// once every local refusal has passed and the body is built; from then on
+// every outcome says so.
 function test_erp_edoc_parasut_legacy_invoiced_send_asks_before_the_buyer_card()
 {
 	$source = erp_edoc_parasut_legacy_invoiced_test_send_source();
@@ -424,15 +425,54 @@ function test_erp_edoc_parasut_legacy_invoiced_send_asks_before_the_buyer_card()
 		"if (\$legacy['refusal'] !== '') {",
 		"return \$fail(\$legacy['refusal']);",
 		"if (\$legacy['state'] === 'gone') {",
-		"_parasut_order_forget_record((int) \$invoice['order_id'], 'parasut_invoice_id', \$legacy['id']);",
-		"\$legacy_notice = \$legacy['notice'];",
-		"\$fail = function (\$error) use (\$fail, \$legacy_notice) {",
 		"\$rate_refusal = erp_edoc_parasut_vat_rate_refusal(\$lines);",
+		"\$negative_refusal = erp_edoc_parasut_negative_line_refusal(\$lines);",
+		"\$total_refusal = erp_edoc_parasut_total_refusal(\$lines, (string) (\$invoice['currency'] ?? ''));",
 		"\$product_refusal = erp_edoc_parasut_product_refusal(\$lines);",
 		"\$missing = erp_edoc_parasut_party_missing(\$party, \$invoice);",
 		"\$document_missing = erp_edoc_parasut_document_missing(\$invoice);",
 		"\$contact = erp_edoc_parasut_contact_for(\$party, \$tax_number, \$context);",
+		"\$payload = erp_edoc_parasut_invoice_payload(\$invoice, \$lines, \$contact['id']);",
+		"if (isset(\$payload['error'])) {",
+		"_parasut_order_forget_record((int) \$invoice['order_id'], 'parasut_invoice_id', \$legacy_gone);",
+		"\$legacy_notice = \$legacy['notice'];",
+		"\$fail = function (\$error) use (\$fail, \$legacy_notice) {",
+		"\$unsure = erp_edoc_parasut_unsure_read(\$invoice['parasut_invoice_id'] ?? '');",
 		"\$told = trim(\$legacy_notice . ' ' . \$told);",
 		"'message' => \$told,",
 	), 'legacy invoice read before the invoice\'s own checks and the buyer card');
+}
+
+// A send that a local refusal stops (a VAT rate, a line below zero, a total,
+// a product, the account card, the document, the buyer's card or the body)
+// keeps the order's legacy id, and its words do not say the id was removed:
+// the next send reads the record again. One clear, no notice before it.
+function test_erp_edoc_parasut_legacy_invoiced_refused_send_keeps_the_id()
+{
+	$source = erp_edoc_parasut_legacy_invoiced_test_send_source();
+	$forget = strpos($source, '_parasut_order_forget_record(');
+
+	pg_assert_same(1, substr_count($source, '_parasut_order_forget_record('), 'the legacy id is cleared in one place');
+	pg_assert_same(1, substr_count($source, '$legacy_notice = $legacy[\'notice\'];'), 'the notice is taken in one place');
+
+	if (!pg_assert_true($forget !== false, 'the legacy id is cleared')) {
+		return;
+	}
+
+	$before = substr($source, 0, $forget);
+
+	foreach (array(
+		'return $fail($rate_refusal);',
+		'return $fail($negative_refusal);',
+		'return $fail($total_refusal);',
+		'return $fail($product_refusal);',
+		'return $fail($contact[\'error\']);',
+		'return $fail($payload[\'error\']);',
+	) as $refusal) {
+		pg_assert_true(strpos($before, $refusal) !== false, $refusal . ' before the clear');
+	}
+
+	pg_assert_true(strpos($before, '$fail = function ($error) use ($fail, $legacy_notice)') === false, 'no refusal before the clear names it');
+	pg_assert_true(strpos($before, '$legacy_notice = $legacy[\'notice\'];') === false, 'no notice before the clear');
+	pg_assert_true(strpos($before, "erp_edoc_parasut_request('POST'") === false, 'cleared before the invoice is written');
 }

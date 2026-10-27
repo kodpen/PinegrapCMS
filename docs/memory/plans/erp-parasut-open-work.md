@@ -11,7 +11,7 @@ description: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#16
 - One live round of what never ran against Paraşüt:
   - #1627: the last commit of the stale-id resend;
   - #1600: purchase-bill totals (no purchase bill was ever read live);
-  - #1626: a driver poll's 404 frees the row;
+  - #1626: a driver poll's 404 frees the row; #2025: only when the company answers for the row's contact or product card (404 wording of `contacts/{id}`, `products/{id}`; a job read per company);
   - #1628 and #1660: the order gates and the ERP badge;
   - #1629: the ERP send of a legacy-invoiced order;
   - #1630: the opening stock and the per-product seed;
@@ -26,9 +26,9 @@ description: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#16
 
 ## Which small fixes are left? (one PR each, unit tests)
 - #1628: an ERP record deleted on Paraşüt's screen keeps Create Invoice refused until the ERP invoice is cancelled. Orders from before 2026.4.4 can show "Sent" after a failed e-document, because the flag was set then. Record both in `erp-parasut-legacy-order-gates.md`.
-- #1629: the ERP send clears a legacy id that answered 404 before its own local refusals (VAT, lines, card). A send that is then refused has lost the id. Clear it only when the send goes on.
+- #1629: done in #2001 (the 404 legacy id is cleared only once the send goes on).
 - #1630: a press that opens a card and then fails leaves the card higher by the order's units until the document is sent. Record it in `erp-parasut-product-card-opening-stock.md`.
-- #1626: after a company switch, a freed `created` or `error` row may stand for an e-document issued on Paraşüt's screen. Add a guard or a warning.
+- #1626: done in #2025 (a deleted-record 404 frees a row only when the company holds another record it names).
 - Bigger, kept elsewhere: the `erp_edoc_queue` worker (`erp-parasut-driver-design.md`); incoming e-invoices through `GET e_invoices`, which needs a company with an e-document integration.
 
 ## Where to start?

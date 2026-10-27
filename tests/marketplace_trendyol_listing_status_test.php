@@ -500,16 +500,16 @@ function test_marketplace_trendyol_listing_status_runs_last_and_keeps_the_deadli
 // leaves it to be read again.
 function test_marketplace_trendyol_listing_status_matching_again_forgets_the_content_id()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/marketplace_settings.php');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/outbound/product_matches.php');
 
-	pg_assert_contains('SET remote_code = \'" . e($remote_code) . "\', remote_id = \'\', status = \'active\', last_error = \'\'', $source);
+	pg_assert_contains('SET remote_code = \'" . e($code) . "\', remote_id = \'\', status = \'active\', last_error = \'\'', $source);
 }
 
 /* ---------------------------------------------------------- screen */
 
 function test_marketplace_trendyol_listing_status_screen_shows_the_state()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/marketplace_settings.php');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/marketplace_products.php');
 
 	pg_assert_contains("'string' => 'On {var:1}'", $source);
 	pg_assert_contains("lang('Awaiting approval')", $source);

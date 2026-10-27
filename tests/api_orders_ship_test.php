@@ -81,3 +81,18 @@ function test_api_orders_ship_sent_list_is_passed_with_notify()
 	pg_assert_same(array('1234567890123', '9876543210987'), $request['tracking_numbers']);
 	pg_assert_true($request['shipped']);
 }
+
+function test_api_orders_ship_known_carrier_goes_on_each_number()
+{
+	$request = api_orders_ship_recipient(api_orders_ship_test_address(),
+		array('tracking_numbers' => array('1234567890123'), 'carrier' => 'Aras Kargo'),
+		array('1234567890123'));
+
+	pg_assert_same(array(array('number' => '1234567890123', 'carrier' => 'aras')), $request['tracking_numbers']);
+
+	$free = api_orders_ship_recipient(api_orders_ship_test_address(),
+		array('tracking_numbers' => array('1234567890123'), 'carrier' => 'Our own van'),
+		array('1234567890123'));
+
+	pg_assert_same(array('1234567890123'), $free['tracking_numbers'], 'free text names no carrier for the parcel');
+}

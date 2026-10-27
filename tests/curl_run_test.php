@@ -206,3 +206,18 @@ function test_curl_run_license_request_options()
 	pg_assert_same(5, $options['CURLOPT_MAXREDIRS']);
 	pg_assert_same('CURLPROTO_HTTPS', $options['CURLOPT_REDIR_PROTOCOLS']);
 }
+
+// An address an operator types (migration's source site) may be plain http
+// on the same host or the LAN; 'allow_http' admits http for that request
+// only, never for a redirect.
+function test_curl_run_allow_http_widens_the_request_only()
+{
+	pg_assert_same('CURLPROTO_HTTPS', pg_curl_run_options('POST', 'http://192.168.1.5/api.php', array('body' => '{}'), curl_run_test_env())['CURLOPT_PROTOCOLS']);
+
+	$options = pg_curl_run_options('POST', 'http://192.168.1.5/api.php', array('body' => '{}', 'allow_http' => true, 'follow' => 2), curl_run_test_env());
+
+	pg_assert_same('CURLPROTO_HTTP|CURLPROTO_HTTPS', $options['CURLOPT_PROTOCOLS']);
+	pg_assert_same('CURLPROTO_HTTPS', $options['CURLOPT_REDIR_PROTOCOLS']);
+
+	pg_assert_same('CURLPROTO_HTTPS', pg_curl_run_options('GET', 'https://example.com/', array('allow_http' => false), curl_run_test_env())['CURLOPT_PROTOCOLS']);
+}

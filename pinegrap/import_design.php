@@ -1431,20 +1431,63 @@ function import_design_redirect_target($location, $from)
     return is_string($location) ? $location : '';
 }
 
+// The importer reads pages the way a browser asks for them.
+function import_design_user_agent()
+{
+    return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+}
+
+// The api_http_request() options of one hop: plain http allowed, HEAD asked
+// again with GET on a 405, compressed answers undone, the whole body kept,
+// and the answer's headers back for Content-Type and Location. Redirects are
+// walked by import_design_fetch(), one checked hop at a time.
+function import_design_fetch_options()
+{
+    return array(
+        'allow_http' => true,
+        'head_get_on_405' => true,
+        'user_agent' => import_design_user_agent(),
+        'decode' => true,
+        'timeout' => 30,
+        'max_body' => 0,
+        'response_headers' => true,
+    );
+}
+
+// An api_http_request() answer in the importer's shape, or false when nothing
+// answered (an address refused or a cURL error).
+function import_design_http_answer($result)
+{
+    if ((int) $result['status'] === 0) {
+        return false;
+    }
+
+    $headers = isset($result['headers']) ? $result['headers'] : array();
+
+    return array(
+        'status' => (int) $result['status'],
+        'content' => (string) $result['body'],
+        'content_type' => isset($headers['content-type']) ? (string) $headers['content-type'] : '',
+        'location' => isset($headers['location']) ? (string) $headers['location'] : '',
+    );
+}
+
 // One request without redirects. Answers
 // array('status' => int, 'content' => string, 'content_type' => string,
 // 'location' => string) or false when nothing answered.
 function import_design_fetch_once($url, $head_only)
 {
-    $check = import_design_check_url($url);
-
-    if (!$check['ok']) {
-        return false;
+    if (!function_exists('api_http_request')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
     }
 
-    $user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-
     if (!function_exists('curl_init')) {
+        $check = import_design_check_url($url);
+
+        if (!$check['ok']) {
+            return false;
+        }
+
         $context = get_http_stream_context($head_only ? 'HEAD' : 'GET');
 
         // The response headers are taken from the stream on every PHP version.
@@ -1491,50 +1534,8 @@ function import_design_fetch_once($url, $head_only)
         );
     }
 
-    $parts = parse_url($url);
-    $port = isset($parts['port'])
-        ? (int) $parts['port']
-        : ((strtolower($parts['scheme']) === 'https') ? 443 : 80);
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-    curl_setopt($ch, CURLOPT_USERAGENT, $user_agent);
-    curl_setopt($ch, CURLOPT_ENCODING, ''); // Accept all encodings (gzip, deflate) and auto-decompress
-    // The address that was checked is the address that is called.
-    curl_setopt($ch, CURLOPT_RESOLVE, array($parts['host'] . ':' . $port . ':' . $check['ip']));
-    if ($head_only) {
-        curl_setopt($ch, CURLOPT_NOBODY, true);
-    }
-    pg_curl_tls($ch);
-
-    $content = curl_exec($ch);
-    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-    // If HEAD is not supported, retry with GET
-    if ($head_only && ($status == 405)) {
-        curl_setopt($ch, CURLOPT_NOBODY, false);
-        curl_setopt($ch, CURLOPT_HTTPGET, true);
-        $content = curl_exec($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    }
-
-    $content_type = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-    $location = curl_getinfo($ch, CURLINFO_REDIRECT_URL);
-    unset($ch);
-
-    if (($content === false) && !$head_only) {
-        return false;
-    }
-
-    return array(
-        'status' => $status,
-        'content' => is_string($content) ? $content : '',
-        'content_type' => ($content_type !== null) ? (string) $content_type : '',
-        'location' => ($location !== null) ? (string) $location : '',
-    );
+    // api_http_request() checks the address and pins cURL to it.
+    return import_design_http_answer(api_http_request($head_only ? 'HEAD' : 'GET', $url, import_design_fetch_options()));
 }
 
 // The request with its redirects walked, at most five hops.
@@ -1601,7 +1602,7 @@ function get_http_stream_context($method = 'GET')
     return stream_context_create(array(
         'http' => array(
             'method' => $method,
-            'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'user_agent' => import_design_user_agent(),
             'follow_location' => 0,
             'ignore_errors' => true,
             'timeout' => 30,

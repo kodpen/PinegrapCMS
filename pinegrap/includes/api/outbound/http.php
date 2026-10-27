@@ -39,9 +39,63 @@ function api_http_address_is_allowed($ip) {
 
 	}
 
+	if (api_http_ipv4_in_blocked_range($ip)) {
+
+		return false;
+
+	}
+
 	// Loopback, private ranges and the reserved blocks - which is where link
 	// local, and with it the cloud metadata address, lives.
 	return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
+
+}
+
+// Whether an IPv4 address lies in a block no outgoing request is sent to.
+//
+// FILTER_FLAG_NO_RES_RANGE refuses only 0/8, 127/8, 169.254/16 and 240/4 on
+// every PHP from 7.1 to 8.5, so the blocks below that it misses are spelled
+// out, and the ones it covers are repeated so the answer never rests on the
+// flag. The private ranges stay with FILTER_FLAG_NO_PRIV_RANGE. Anything that
+// is not an IPv4 address answers false and is left to the flags.
+function api_http_ipv4_in_blocked_range($ip) {
+
+	if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) === false) {
+
+		return false;
+
+	}
+
+	$blocks = array(
+		'0.0.0.0/8',      // "this network"; 0.0.0.0 itself reaches this server
+		'100.64.0.0/10',  // shared address space (carrier NAT), where Alibaba Cloud's metadata service answers at 100.100.100.200
+		'127.0.0.0/8',    // loopback
+		'169.254.0.0/16', // link local, with the cloud metadata address 169.254.169.254
+		'192.0.0.0/24',   // IETF protocol assignments (DS-Lite, NAT64 discovery), never a public server
+		'198.18.0.0/15',  // benchmarking, which some networks use internally
+		'224.0.0.0/4',    // multicast, which is no single server
+		'240.0.0.0/4'     // reserved, up to the broadcast address 255.255.255.255
+	);
+
+	$address = ip2long($ip);
+
+	foreach ($blocks as $block) {
+
+		list($network, $bits) = explode('/', $block);
+
+		// The same mask on both sides, so the comparison also holds where
+		// ip2long() answers a negative number (32-bit PHP).
+		$mask = -1 << (32 - (int)$bits);
+
+		if (($address & $mask) === (ip2long($network) & $mask)) {
+
+			return true;
+
+		}
+
+	}
+
+	return false;
 
 }
 
@@ -143,6 +197,17 @@ function api_http_post($url, $body, $headers = array(), $timeout = 10) {
 //             curl reports the stop as error 23 (a write refused), which is
 //             not passed on. Without it the body is read as before.
 //
+// Options for a caller that reads public pages rather than sending anything
+// (the design importer), all off by default:
+//
+//   allow_http       true to accept a plain http address (api_http_check_url()'s
+//                    $allow_http); the address check is the same
+//   user_agent       the whole user agent, in place of the Pinegrap one
+//   decode           true to accept any compression curl can undo
+//   head_get_on_405  true to ask again with GET when a HEAD is answered 405
+//
+// max_body 0 keeps the whole body.
+//
 // Answers array('ok', 'status', 'body', 'error', 'errno', 'duration_ms'), and
 // 'headers' with response_headers. errno is curl's error number when the
 // request failed in curl (28 is a timeout), 0 otherwise - also for an address
@@ -162,14 +227,14 @@ function api_http_request($method, $url, $options = array()) {
 
 	}
 
-	$method   = strtoupper((string)$method);
-	$body     = isset($options['body'])     ? $options['body']     : null;
-	$headers  = isset($options['headers'])  ? $options['headers']  : array();
-	$timeout  = isset($options['timeout'])  ? (int)$options['timeout']  : 10;
-	$max_body = isset($options['max_body']) ? (int)$options['max_body'] : 1000;
-	$agent    = isset($options['agent'])    ? (string)$options['agent']  : 'outbound';
+	$settings = api_http_request_settings($method, $options);
 
-	$check = api_http_check_url($url);
+	$method   = $settings['method'];
+	$body     = $settings['body'];
+	$headers  = $settings['headers'];
+	$max_body = $settings['max_body'];
+
+	$check = api_http_check_url($url, $settings['allow_http']);
 
 	if (!$check['ok']) {
 
@@ -197,6 +262,13 @@ function api_http_request($method, $url, $options = array()) {
 
 	curl_setopt($handle, CURLOPT_CUSTOMREQUEST, $method);
 
+	// A HEAD answer has no body; without this curl waits for one.
+	if ($method === 'HEAD') {
+
+		curl_setopt($handle, CURLOPT_NOBODY, true);
+
+	}
+
 	if ($body !== null && $method !== 'GET' && $method !== 'HEAD') {
 
 		curl_setopt($handle, CURLOPT_POSTFIELDS, $body);
@@ -205,9 +277,15 @@ function api_http_request($method, $url, $options = array()) {
 
 	curl_setopt($handle, CURLOPT_HTTPHEADER, $headers);
 	curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($handle, CURLOPT_TIMEOUT, $timeout);
-	curl_setopt($handle, CURLOPT_CONNECTTIMEOUT, 5);
+	curl_setopt($handle, CURLOPT_TIMEOUT, $settings['timeout']);
+	curl_setopt($handle, CURLOPT_CONNECTTIMEOUT, $settings['connect_timeout']);
 	curl_setopt($handle, CURLOPT_FOLLOWLOCATION, false);
+
+	if ($settings['decode']) {
+
+		curl_setopt($handle, CURLOPT_ENCODING, '');
+
+	}
 
 	// The certificate is verified, and a server whose CA store is not on the
 	// default search path says where one is in data/config.php - the same
@@ -222,8 +300,7 @@ function api_http_request($method, $url, $options = array()) {
 		curl_setopt($handle, CURLOPT_CAINFO, CURL_CA_BUNDLE);
 	}
 
-	curl_setopt($handle, CURLOPT_USERAGENT,
-		'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (+' . $agent . ')');
+	curl_setopt($handle, CURLOPT_USERAGENT, $settings['user_agent']);
 
 	// The address that was checked is the address that is called.
 	curl_setopt($handle, CURLOPT_RESOLVE, array($parts['host'] . ':' . $port . ':' . $check['ip']));
@@ -262,6 +339,18 @@ function api_http_request($method, $url, $options = array()) {
 	}
 
 	$response = curl_exec($handle);
+
+	// A server that refuses HEAD is asked the same with GET; the headers
+	// start over at the new status line.
+	if (($response !== false) && api_http_retry_as_get($method, (int)curl_getinfo($handle, CURLINFO_HTTP_CODE), $settings)) {
+
+		curl_setopt($handle, CURLOPT_CUSTOMREQUEST, 'GET');
+		curl_setopt($handle, CURLOPT_NOBODY, false);
+		curl_setopt($handle, CURLOPT_HTTPGET, true);
+
+		$response = curl_exec($handle);
+
+	}
 
 	// Read to the end, or stopped on purpose: either way the body is what the
 	// write function kept, and the status is the one already received.
@@ -302,6 +391,39 @@ function api_http_request($method, $url, $options = array()) {
 	$result['duration_ms'] = (int)round((microtime(true) - $started) * 1000);
 
 	return $result;
+
+}
+
+// The settings api_http_request() works with, from its method and options.
+// Without the opt-in options a request is what it always was: the Pinegrap
+// user agent, https only, no decoding, 10 seconds, 1000 bytes of body kept,
+// 5 seconds to connect.
+function api_http_request_settings($method, $options) {
+
+	$agent = isset($options['agent']) ? (string)$options['agent'] : 'outbound';
+
+	return array(
+		'method'          => strtoupper((string)$method),
+		'body'            => isset($options['body'])     ? $options['body']          : null,
+		'headers'         => isset($options['headers'])  ? $options['headers']       : array(),
+		'timeout'         => isset($options['timeout'])  ? (int)$options['timeout']  : 10,
+		'connect_timeout' => 5,
+		'max_body'        => isset($options['max_body']) ? (int)$options['max_body'] : 1000,
+		'user_agent'      => (isset($options['user_agent']) && ((string)$options['user_agent'] !== ''))
+			? (string)$options['user_agent']
+			: 'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (+' . $agent . ')',
+		'allow_http'      => !empty($options['allow_http']),
+		'decode'          => !empty($options['decode']),
+		'head_get_on_405' => !empty($options['head_get_on_405'])
+	);
+
+}
+
+// Whether a HEAD answered with $status is asked again with GET: only a 405
+// (method not allowed), and only when the caller asked for it.
+function api_http_retry_as_get($method, $status, $settings) {
+
+	return ($method === 'HEAD') && ((int)$status === 405) && !empty($settings['head_get_on_405']);
 
 }
 
