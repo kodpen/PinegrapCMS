@@ -26,8 +26,11 @@ description: Mark on texts written with AI (products.ai_fields, page.ai_fields, 
 ## What if the column is missing?
 - A database that recorded 2026.11.0 before the step: `pg_ai_fields_ready()` (`pg_schema_has()`) says no, the screens draw and write nothing; rerun the version (docs/memory/release/rerun-upgrade-steps.md). An UPDATE naming a missing column fails whole.
 
+## And a copy?
+- `duplicate_style.php` takes `page.ai_fields` with the texts; the product and page copies write it with `pg_ai_fields_copy()`: the marks of the texts copied unchanged. A text the copy changes (letters replaced, find and replace) loses it (#2123).
+
 ## What does not mark yet?
-- Copies with explicit columns (`duplicate_products.php`, `duplicate_page_f.php`: no mark; `duplicate_style.php` takes `page.ai_fields` with the texts, so they stay true), the designer's page settings, the API, imports, Workspace proposals; the token `__ai_generated`. See docs/memory/plans/ai-write-buttons.md.
+- The designer's page settings, the API, imports, Workspace proposals; the token `__ai_generated`. See docs/memory/plans/ai-write-buttons.md.
 
 ## How was it checked?
-- Sandbox (MariaDB 10.11): the step twice (added, then already there); both saves over HTTP (marked, kept, hand edit with and without the list, changed elsewhere, emptied, x); Playwright with a stand-in Prompt API (typing off and back on, the editor, the submit look, the x).
+- Sandbox (MariaDB 10.11): the step twice; both saves over HTTP (marked, kept, hand edit with and without the list, changed elsewhere, emptied, x); Playwright with a stand-in Prompt API (typing, the editor, submit, the x).

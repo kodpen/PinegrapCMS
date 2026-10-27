@@ -112,6 +112,12 @@ function ws_flow_kinds()
         $kinds['condition'] = array('label' => lang('Condition'), 'trigger' => false, 'outcomes' => ws_flow_condition_outcomes(), 'step' => false, 'outputs' => array());
     }
 
+    // A wait before the boxes after it (flow_runs.php).
+    if (function_exists('ws_flow_delay_normalize')) {
+        $kinds['delay'] = array('label' => lang('Wait'), 'trigger' => false, 'outcomes' => array('done'), 'step' => false,
+            'outputs' => array(array('key' => 'waited_until', 'type' => 'text', 'label' => lang('Waited until'))));
+    }
+
     // The steps of a scheduled action, each a box of its own (steps.php).
     foreach ((function_exists('ws_step_kinds') ? ws_step_kinds() : array()) as $kind => $info) {
         $kinds[$kind] = array('label' => $info['label'], 'trigger' => false, 'outcomes' => ws_step_outcomes(), 'step' => true, 'outputs' => $info['outputs']);
@@ -229,6 +235,7 @@ function ws_flow_lines($value, $length)
  *         rule of ws_template_assign_valid(), 'creator' being whoever starts
  *         the run), due_in ('' or 0-3650 days), priority
  * condition: ws_flow_condition_normalize()
+ * delay: ws_flow_delay_normalize()
  * schedule, event, join: ws_flow_anchor_normalize()
  * a step: ws_step_config_normalize()
  *
@@ -269,6 +276,9 @@ function ws_flow_config_normalize($kind, $config)
 
         case 'condition':
             return function_exists('ws_flow_condition_normalize') ? ws_flow_condition_normalize($config) : array();
+
+        case 'delay':
+            return function_exists('ws_flow_delay_normalize') ? ws_flow_delay_normalize($config) : array();
 
         case 'schedule':
         case 'event':
@@ -468,6 +478,12 @@ function ws_flow_graph_check($graph)
 
         if ($node['kind'] === 'condition') {
             foreach (ws_flow_condition_problems($node['config'], $name) as $text) {
+                $problems[] = ws_flow_problem('bad_config', $id, null, $text);
+            }
+        }
+
+        if ($node['kind'] === 'delay') {
+            foreach (ws_flow_delay_problems($node['config'], $name) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
         }
@@ -1725,6 +1741,20 @@ function ws_flow_js_strings()
         'fl_start_target'     => lang('Scheduled action to start'),
         'fl_start_delay'      => lang('Minutes later'),
         'fl_start_delay_help' => lang('0 starts it at once; at most a week (10,080 minutes).'),
+        'fl_kind_delay'       => lang('Wait'),
+        'fl_delay_amount'     => lang('How long'),
+        'fl_delay_unit'       => lang('Counted in'),
+        'fl_delay_unit_minutes' => lang('Minutes'),
+        'fl_delay_unit_hours' => lang('Hours'),
+        'fl_delay_unit_days'  => lang('Days'),
+        'fl_delay_help'       => lang('The boxes after it start when the time is up: at least a minute, at most a week.'),
+        'fl_delay_none'       => lang('No time set'),
+        'fl_delay_minutes'    => ws_js_template('{var:1} minutes', 1),
+        'fl_delay_hours'      => ws_js_template('{var:1} hours', 1),
+        'fl_delay_days'       => ws_js_template('{var:1} days', 1),
+        'fl_delay_minute'     => lang('1 minute'),
+        'fl_delay_hour'       => lang('1 hour'),
+        'fl_delay_day'        => lang('1 day'),
         'fl_kind_change'      => lang('Change a record'),
         'fl_kind_lead'        => lang('Bring a customer into a channel'),
         'fl_lead_meta'        => lang('The customer of the submitted form'),

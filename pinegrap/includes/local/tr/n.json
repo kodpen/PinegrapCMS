@@ -903,6 +903,7 @@
     "No till or bank account is set up, so the money is not recorded; the invoice stays open.": "Tanımlı kasa ya da banka hesabı yok; para kaydedilmez, fatura açık kalır.",
     "No till or bank account yet. Add one to start recording money.": "Henüz kasa veya banka hesabı yok. Para hareketi girmek için bir tane ekleyin.",
     "No time is set, so {var:1} on the due date is taken.": "Saat seçilmediği için bitiş günündeki {var:1} esas alınır.",
+    "No time set": "Süre girilmedi",
     "No time stamp authority is set, so nothing was asked.": "Zaman damgası sunucusu tanımlı değil, hiçbir şey sorulmadı.",
     "No time written yet.": "Henüz süre yazılmadı.",
     "No timer of yours is running.": "Çalışan bir sayacınız yok.",

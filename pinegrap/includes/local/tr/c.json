@@ -1653,6 +1653,7 @@
     "Counted by top-level comments; each keeps its replies.": "Üst düzey yorumlar sayılır; her biri yanıtlarıyla kalır.",
     "Counted from the day it runs; leave it empty for no due date.": "Çalıştığı günden itibaren sayılır; bitiş tarihi olmasın istiyorsanız boş bırakın.",
     "Counted from the texts last read from this page and from what it places: shared components, menus, the records a list includes. A widget may draw other texts as well (products, form fields), and they count too when the page is drawn.": "Bu sayfadan ve sayfanın yerleştirdiklerinden (ortak bileşenler, menüler, bir listenin çeviriye kattığı kayıtlar) son okunan metinlerden sayıldı. Bir widget başka metinler de çizebilir (ürünler, form alanları); sayfa çizilirken onlar da sayılır.",
+    "Counted in": "Birim",
     "Counter sale #{var:1}": "Tezgâh satışı #{var:1}",
     "Counter sale #{var:1}, part {var:2}": "Tezgâh satışı #{var:1}, {var:2}. parça",
     "Counting": "Sayılıyor",

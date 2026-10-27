@@ -21,4 +21,7 @@ description: Sign-in throttle (pg_login_throttle_* in includes/fn/auth.php): add
 - 429 with `Retry-After` (`pg_login_throttle_deny()`), one message whichever subject closed and whether the account exists; JSON when `API_USERNAME` is set, `api_fail()` inside the external API.
 - The failure that closes a lock is recorded in `log_activity` and in `waf_log` (action `rate`, rule `login-lock`, category `login`, even with the firewall off); every refused attempt writes a `data/firewall.log` DENY line.
 
+## Which address is never locked?
+- One `waf_ip_is_counted()` refuses: infrastructure, or a private or reserved address, the one a proxy not listed under Trusted Proxies gives every visitor (`waf-counter-subjects-and-endpoints.md`); the account subject still counts there. Before, only infrastructure was spared and one visitor's failures behind such a proxy locked everybody out.
+
 Related: docs/memory/core/api-php-credentials-in-body.md
