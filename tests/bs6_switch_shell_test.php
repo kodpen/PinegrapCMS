@@ -32,7 +32,7 @@ function test_bs6_shell_dialog_markup()
 	$out = $result['source'];
 
 	pg_assert_same('applied', $result['status']);
-	pg_assert_contains("<dialog class=\"dialog pg-x dialog-lg md-down:dialog-fullscreen shadow\" id=\"m\" aria-labelledby=\"m_t\">\n            <div class=\"modal-header\">", $out);
+	pg_assert_contains("<dialog class=\"dialog pg-x dialog-lg pg-dialog-centered md-down:dialog-fullscreen shadow\" id=\"m\" aria-labelledby=\"m_t\">\n            <div class=\"modal-header\">", $out);
 	pg_assert_contains("<div class=\"modal-body\"><div><p>x</p></div></div>\n</dialog>';", $out);
 	pg_assert_false(strpos($out, 'modal-dialog') !== false || strpos($out, 'modal-content') !== false, 'both boxes gone');
 	pg_assert_same(array('source' => $out, 'status' => 'done', 'left' => 0), bs6_switch_dialogs($out), 'second run');
@@ -60,7 +60,7 @@ function test_bs6_shell_dialog_in_script()
 	$out = bs6_switch_dialogs($in)['source'];
 
 	pg_assert_contains("node = el('dialog', 'dialog ws-x dialog-xl dialog-scrollable');\n    node.innerHTML = '<div class=\"modal-body\"></div>';\n", $out);
-	pg_assert_contains("var b = document.createElement('dialog');\n    b.className = 'dialog';\n    b.innerHTML =\n        '<div class=\"modal-body\"></div>';\n", $out);
+	pg_assert_contains("var b = document.createElement('dialog');\n    b.className = 'dialog pg-dialog-centered';\n    b.innerHTML =\n        '<div class=\"modal-body\"></div>';\n", $out);
 	pg_assert_contains("$('body').append('<dialog class=\"dialog\" id=\"' + id + '\">' +\n        '<div class=\"modal-body\"></div>' +\n        '</dialog>');", $out);
 }
 
@@ -139,7 +139,7 @@ function test_bs6_shell_open_sheet()
 	$result = bs6_switch_dialogs($in);
 
 	pg_assert_same("<div class=\"pg-open-sheet\" id=\"s\" style=\"background:rgba(0,0,0,.6)\">\n"
-		. "\t<dialog class=\"dialog dialog-lg\" open>\n\t\t\t<div class=\"modal-body\">x</div>\n\t</dialog>\n</div>", $result['source']);
+		. "\t<dialog class=\"dialog dialog-lg pg-dialog-centered\" open>\n\t\t\t<div class=\"modal-body\">x</div>\n\t</dialog>\n</div>", $result['source']);
 	pg_assert_same('done', bs6_switch_dialogs($result['source'])['status'], 'second run');
 }
 
