@@ -589,8 +589,11 @@
     function step(sel, done, todo) {
         var el = $(sel);
         if (!el) { return; }
-        el.classList.toggle('pg-step-done', !!done && !todo);
-        el.classList.toggle('pg-step-todo', !!todo);
+        // Bootstrap's stepper colours only .active items, so every step stays
+        // active and its theme class carries the state.
+        el.classList.toggle('theme-success', !!done && !todo);
+        el.classList.toggle('theme-danger', !!todo);
+        el.classList.toggle('theme-secondary', !done && !todo);
     }
     function renderOptions() {
         $('#pg-if-period-open').classList.toggle('active', S.offer.period === 'open');

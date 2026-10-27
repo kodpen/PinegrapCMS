@@ -8,7 +8,7 @@ description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and st
 
 ## What happens after the switch?
 - B8, the switch, is done (#1866, `bootstrap-6-panel-done.md`); B9 can start.
-- B9 Component swaps on v6, one claim each (`bootstrap-6-components.md`): B9a Chips, B9b Combobox, B9c Datepicker and time, B9d OTP, B9e Range (done, #2207), B9f form-adorn, B9g Stepper, B9h hover-lift, B9i Strength, B9j Avatar, B9k research proposals.
+- B9 Component swaps on v6, one claim each (`bootstrap-6-components.md`): B9a Chips, B9b Combobox, B9c Datepicker and time, B9d OTP, B9e Range (done, #2207), B9f form-adorn, B9g Stepper (done, #2206), B9h hover-lift, B9i Strength, B9j Avatar, B9k research proposals.
 - B9h: first part done (#2217): `.mpp-pick`, the explorer's `.item-card`, `.esi-tile`. Left: the dashboard's `.pg-brief-ws-item` and `.pg-next`, after #2202 (it edits those rules).
 - B9b changes the same engine in `pg_fields.js` as B9a: start it once B9a (#2208) has merged.
 - B9j Avatar in slices (`ui/panel-avatar.md`): j1 server initials and tone, `pg_avatar_markup()`, header account button and menu (#2216); j2 Workspace screens (`avatar()` in `workspace.js` and the `workspace_*.js` that draw people from `initials`/`tone`, presence dot, `.avatar-stack` for voters, acks and task people, `tasks.php`, `workspace_settings.php`); j3 chat (`chat_backend.src.js`), dashboard widgets 4, 28, 30, designer collaborators (`designer_collab.php` toolbar) and the contact and order screens (`view_contacts.php`, `edit_contact.php`, `view_order.php`).

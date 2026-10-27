@@ -8119,11 +8119,33 @@ button.no-popover:focus-visible {
 [id^="pg_pb_sec_"] { scroll-margin-top: 5rem; }
 
 
-/* ── Admin screen step rail ───────────────────────────────────────────────
-   A numbered rail down the left edge of a screen whose sections are read in
-   order, top to bottom (edit_offer.php). Bootstrap has no stepper, so the
-   rail, its line and its node live here; everything inside a step is an
-   ordinary card and takes its widths from the grid and the utilities. */
+/* ── Admin screen stepper with cards ──────────────────────────────────────
+   Bootstrap's .stepper down the left edge of a screen whose sections are read
+   in order, top to bottom (edit_offer.php), each step a card. The stepper
+   sizes its rows evenly and its text column to the content, so a tall card
+   would stretch every row and a wide one overflow; here rows take their own
+   height, the card column the rest of the width, and the number sits level
+   with the card header. Every item is .active (only those are coloured);
+   its theme class carries the state, and .theme-reset on the card keeps that
+   theme out of the card's own buttons and switches. */
+
+.pg-stepper-cards {
+  --bs-stepper-size: 1.75rem;
+  --bs-stepper-gap: .75rem;
+  --bs-stepper-text-gap: 1rem;
+  --bs-stepper-align-items: start;
+  grid-auto-rows: auto;
+}
+.pg-stepper-cards > .stepper-item { grid-template-columns: var(--bs-stepper-size) minmax(0, 1fr); }
+.pg-stepper-cards > .stepper-item::before { margin-top: .6rem; }
+.pg-stepper-cards > .stepper-item::after {
+  inset-block-start: calc(.6rem + var(--bs-stepper-size) * .5);
+  height: calc(100% + var(--bs-stepper-gap));
+}
+
+/* ── Step rail of the workspace automation flow ───────────────────────────
+   The form's steps in a Workspace automation (workspace.js, .ws-sa-flow): a
+   numbered node with a line joining the nodes, a box beside it. */
 
 .pg-step { display: grid; grid-template-columns: 2.75rem minmax(0, 1fr); }
 .pg-step + .pg-step { margin-top: .75rem; }
@@ -8155,8 +8177,6 @@ button.no-popover:focus-visible {
   font-size: .8rem;
   font-weight: 700;
 }
-.pg-step-done .pg-step-node { border-color: var(--pg-success); color: var(--pg-success); }
-.pg-step-todo .pg-step-node { border-color: var(--pg-danger); color: var(--pg-danger); }
 
 @media (max-width: 575.98px) {
   .pg-step { grid-template-columns: 1.9rem minmax(0, 1fr); }
@@ -13084,8 +13104,9 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   letter-spacing: .04em;
   color: var(--pg-fg-2);
 }
-/* The form as a flow: its steps down the step rail (Admin screen step rail
-   above), each a box; the outline above them says in words what it will do. */
+/* The form as a flow: its steps down the step rail (Step rail of the workspace
+   automation flow above), each a box; the outline above them says in words
+   what it will do. */
 .ws-sa-flow {
   margin-top: .75rem;
 }
