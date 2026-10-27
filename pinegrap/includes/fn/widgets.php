@@ -84,6 +84,7 @@ function pg_sw_type_labels()
         'order_form'          => lang('Order Form'),
         'folder_view'         => lang('Folder View'),
         'photo_gallery'       => lang('Photo Gallery'),
+        'affiliate_sign_up_form' => lang('Affiliate Sign Up Form'),
         'menu_region'         => lang('Menu'),
         'menu_sequence_region' => lang('Menu Sequence'),
         'ad_region'           => lang('Ad Region'),
