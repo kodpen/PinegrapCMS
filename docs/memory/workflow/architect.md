@@ -15,7 +15,7 @@ description: Decision questions (2026-10-27): an issue labelled architect; the a
 
 ## What does the architect do?
 - One standing session on the model the owner chose; a 15-minute session cron on off-minutes and an hourly routine that re-creates it (`merger-wake.md`). Each check lists the open `architect` issues and the open PRs with a `## Decision question` section (it opens their issues); nothing new: no message.
-- Analyses each question from the code, memory and the decisions list and writes it on the issue: what each option changes, the risk for running sites, its recommendation. One memory answers is closed citing the file.
+- Analyses each question from the code, memory and the decisions list and writes it on the issue: what each option changes, the risk for running sites, its recommendation. A question memory answers is closed citing the file.
 - Decides every other question itself (owner, 2026-10-27: only big architectural changes are asked): a `Karar:` / `Decision:` comment with the reason, a comment on the blocked PR quoting it (it wakes the worker), the decision in memory by its own docs-only PR (product and schema in `decisions-made-*.md`, technical ones in the topic file or plan), several per PR; then the issue is closed.
 - Only a big architectural change gets `erdal` and goes to the owner in the architect's window, in Turkish, blocking ones first, each with its recommendation: a large refactor of a shared path, a design with several new tables or a hot-table change, a transport, commercial or licence choice, anything that makes Kodpen a data processor. The owner answers there; the architect writes it on the issue and goes on as above.
 - Writes no product code and merges nothing.
