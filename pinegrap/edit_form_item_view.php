@@ -268,8 +268,8 @@ if (!$_POST) {
                                                 </div>
                                                 <div class="col-12 lg:col-4 2xl:col-3 order-2 my-3" id="pg_fiv_variables">
                                                     <div class="d-flex align-items-center justify-content-between gap-3">
-                                                        <button type="button" class="btn btn-sm btn-ghost px-1 fw-bold fg-primary" data-bs-toggle="collapse" data-bs-target="#pg_fiv_variables_list" aria-expanded="true" aria-controls="pg_fiv_variables_list"><i class="bi bi-chevron-down me-1" aria-hidden="true"></i>' . lang('Available variables') . '</button>
-                                                        <button type="button" class="btn btn-sm btn-ghost" data-bs-toggle="dialog" data-bs-target="#hints"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('Hints') . '</button>
+                                                        <button type="button" class="btn btn-sm btn-text theme-secondary px-1 fw-bold fg-primary" data-bs-toggle="collapse" data-bs-target="#pg_fiv_variables_list" aria-expanded="true" aria-controls="pg_fiv_variables_list"><i class="bi bi-chevron-down me-1" aria-hidden="true"></i>' . lang('Available variables') . '</button>
+                                                        <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#hints"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('Hints') . '</button>
                                                     </div>
                                                     <div class="collapse show" id="pg_fiv_variables_list">
                                                         <p class="form-text mt-1 mb-3">' . lang('Click a variable to insert it at the cursor in the layout.') . '</p>

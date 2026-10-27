@@ -160,9 +160,9 @@ echo pg_page_shell($shell) . '
             <nav id="button_bar" class="pg-toolbar my-3" aria-label="' . h(lang('Button Bar')) . '">
                 <form method="post" action="view_accessibility.php" class="d-inline">
                     ' . get_token_field() . '
-                    <button type="submit" name="submit_check" value="1" class="btn btn-sm btn-ghost"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Check Pages Now')) . '</button>
+                    <button type="submit" name="submit_check" value="1" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Check Pages Now')) . '</button>
                 </form>
-                <a class="btn btn-sm btn-ghost" href="view_accessibility.php?pdf=1"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . h(lang('Download PDF')) . '</a>
+                <a class="btn btn-sm btn-text theme-secondary" href="view_accessibility.php?pdf=1"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . h(lang('Download PDF')) . '</a>
                 <div class="pg-toolbar-grow"></div>
                 ' . pg_filter_select('code', $code_options, $code, array('label' => lang('Check'), 'icon' => 'funnel', 'action' => 'view_accessibility.php')) . '
             </nav>

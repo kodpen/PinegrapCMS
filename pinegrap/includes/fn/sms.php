@@ -659,7 +659,7 @@ function pg_sms_queue_row($check, $kind, $options, $now)
  * is any message while SMS is not set up, so nothing collects in the queue
  * of a site without SMS.
  *
- * mysqli_query() rather than db(): db() ends the request on a failed query,
+ * db_q() rather than db(): db() ends the request on a failed query,
  * and a request that only wanted to send a text message must not die because
  * the queue refused a row.
  *
@@ -706,17 +706,18 @@ function pg_sms_enqueue($to, $text, $kind, $options = array())
         return $refused;
     }
 
-    $result = mysqli_query(db::$con,
+    $result = db_q(
         "INSERT INTO sms_outbox (created_at, send_after, expires_at, status, kind, recipient, body, reference)
-        VALUES (
-            '" . (int) $row['created_at'] . "',
-            '" . (int) $row['send_after'] . "',
-            '" . (int) $row['expires_at'] . "',
-            'queued',
-            '" . e($row['kind']) . "',
-            '" . e($row['recipient']) . "',
-            '" . e($row['body']) . "',
-            " . (($row['reference'] === null) ? 'NULL' : "'" . e($row['reference']) . "'") . ")");
+        VALUES (?, ?, ?, 'queued', ?, ?, ?, ?)",
+        array(
+            (string) (int) $row['created_at'],
+            (string) (int) $row['send_after'],
+            (string) (int) $row['expires_at'],
+            (string) $row['kind'],
+            (string) $row['recipient'],
+            (string) $row['body'],
+            ($row['reference'] === null) ? null : (string) $row['reference'],
+        ));
 
     if ($result !== false) {
         return array('ok' => true, 'row' => (int) mysqli_insert_id(db::$con), 'duplicate' => false, 'error' => '');

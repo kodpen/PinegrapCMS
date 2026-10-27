@@ -130,11 +130,11 @@ if (!$_POST) {
 
     $query = "INSERT INTO tax_zones (name, tax_rate, user, timestamp)
               VALUES (
-                '" . escape($_POST['name'] ?? '') . "',
-                '" . escape($_POST['tax_rate'] ?? '') . "',
-                " . $user['id'] . ",
+                ?,
+                ?,
+                ?,
                 UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) ($_POST['tax_rate'] ?? ''), (int) $user['id'])) or output_error('Query failed.');
 
     $tax_zone_id = mysqli_insert_id(db::$con);
 
@@ -142,8 +142,8 @@ if (!$_POST) {
 
     foreach ($allowed_countries as $country_id) {
         if ($country_id) {
-            $query = "INSERT INTO tax_zones_countries_xref (tax_zone_id, country_id) VALUES ($tax_zone_id, '" . escape($country_id) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "INSERT INTO tax_zones_countries_xref (tax_zone_id, country_id) VALUES (?, ?)";
+            $result = db_q($query, array((int) $tax_zone_id, (string) $country_id)) or output_error('Query failed.');
         }
     }
 
@@ -151,8 +151,8 @@ if (!$_POST) {
 
     foreach ($allowed_states as $state_id) {
         if ($state_id) {
-            $query = "INSERT INTO tax_zones_states_xref (tax_zone_id, state_id) VALUES ($tax_zone_id, '" . escape($state_id) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "INSERT INTO tax_zones_states_xref (tax_zone_id, state_id) VALUES (?, ?)";
+            $result = db_q($query, array((int) $tax_zone_id, (string) $state_id)) or output_error('Query failed.');
         }
     }
 

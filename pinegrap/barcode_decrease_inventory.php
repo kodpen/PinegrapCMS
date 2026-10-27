@@ -264,9 +264,11 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
             $product_id = (int) db_value("SELECT product_id FROM product_barcodes WHERE barcode = '" . escape($barcode) . "' LIMIT 1");
 
             if ($product_id) {
-                $sql_where = "id = '" . $product_id . "'";
+                $sql_where = "id = ?";
+                $where_values = array((string) $product_id);
             } else {
-                $sql_where = "name = '" . escape($barcode) . "'";
+                $sql_where = "name = ?";
+                $where_values = array((string) $barcode);
             }
 
             $query = "SELECT 
@@ -278,7 +280,7 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                 inventory_quantity
                 FROM products
                 WHERE " . $sql_where;
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+            $result = db_q($query, $where_values) or output_error('Query failed');
             $row = mysqli_fetch_assoc($result);
             if (mysqli_num_rows($result) == 0){
                 $response = array(
@@ -312,13 +314,13 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
             $query =
                 "UPDATE products
                 SET
-                    inventory_quantity = '" . escape($new_inventory_quantity) . "',
+                    inventory_quantity = ?,
                     $sql_out_of_stock
                     $sql_out_of_stock_timestamp
-                    user = '" . $user['id'] . "',
+                    user = ?,
                     timestamp = UNIX_TIMESTAMP()
-                WHERE id = '" . (int) $id . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                WHERE id = ?";
+            $result = db_q($query, array((string) $new_inventory_quantity, (string) $user['id'], (string) (int) $id)) or output_error('Query failed');
 
             // A scan is a stock write like any other: inventory.changed (and
             // stock.low on the crossing) is announced and the marketplace

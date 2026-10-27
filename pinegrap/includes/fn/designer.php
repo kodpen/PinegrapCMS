@@ -1125,6 +1125,14 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_shipping_method($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'order_form' — the classic order form: a product group's
+            // products put into the cart at once, posting to order_form.php
+            // (widgets_order_form.php).
+            if ($region_type === 'order_form') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_order_form($tree_json, $sid, $cfg, $mode);
+            }
+
             // 'menu_region' — one of the site's menus, its items kept in
             // the menu screen (widgets_menu.php).
             if ($region_type === 'menu_region') {
@@ -2807,7 +2815,12 @@ function pg_designer_rename_design($style_id, $name, $user)
     return $out;
 }
 
-function pg_designer_load_pages($style_id, $style_name = '')
+/**
+ * $classic: the pages of a classic style about to be opened in the visual
+ * designer (pg_classic_style_design_open()), which are not design pages yet:
+ * every page naming the style, without the legacy same-name link.
+ */
+function pg_designer_load_pages($style_id, $style_name = '', $classic = false)
 {
     $style_id = (int)$style_id;
     if ($style_id <= 0) return array();
@@ -2843,12 +2856,12 @@ function pg_designer_load_pages($style_id, $style_name = '')
          FROM page
          INNER JOIN style ON page.page_style = style.style_id
          WHERE page.page_style = '$style_id'
-           AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . "
+           AND " . ($classic ? '1' : pg_page_visual_design_sql()) . pg_designer_not_binned_sql() . "
          ORDER BY page.page_id ASC");
     if (!is_array($rows)) $rows = array();
 
     // Legacy bridge: nothing linked, but a same-named system page exists.
-    if (empty($rows) && $style_name !== '') {
+    if (empty($rows) && $style_name !== '' && !$classic) {
         $orphan_id = (int)db_value(
             "SELECT page_id FROM page
              WHERE page_name = '" . e($style_name) . "'
