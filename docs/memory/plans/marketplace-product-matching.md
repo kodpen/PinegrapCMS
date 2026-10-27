@@ -17,7 +17,7 @@ description: Plan (approved 2026-10-26): match a shop's products to its marketpl
 ## What remains?
 1. ~~Remote catalogue, suggestions and the review screen for n11.~~ Done #1880 (`commerce/marketplace-bulk-matching.md`).
 2. ~~Shop view: every shop product with its picture and state, codes in the row, bulk actions; the account screen's card a summary.~~ Done #1931 (`commerce/marketplace-shop-view.md`).
-3. `marketplace_product_map.remote_code` to `utf8mb4_bin`: a schema step in the open version (`install_modify_column()`, still VARCHAR(255) NOT NULL DEFAULT ''). `mp_order_match_product()` (`api/outbound/orders.php`) tries the exact code first, then the case-insensitive match when that finds a single mapping. The shop view's search (`remote_code LIKE` in `product_matches.php`) keeps ignoring case.
+3. `marketplace_product_map.remote_code` to `utf8mb4_bin`: a schema step in the open version (`install_modify_column()`, still VARCHAR(255) NOT NULL DEFAULT ''). `mp_order_match_product()` (`api/outbound/orders.php`) tries the exact code first, then the case-insensitive match when that finds a single mapping. The shop view's search (`remote_code LIKE` in `product_matches.php`) needs `COLLATE utf8mb4_unicode_ci`, or it turns case-sensitive.
 4. Listings on the same screen: article cards with pictures, category search by path, one category for several articles, required attributes first and optional ones folded; the old listing card goes.
 5. Trendyol `remote_products` (its product filter service, barcode as the key), so Trendyol accounts get the same suggestions.
 
