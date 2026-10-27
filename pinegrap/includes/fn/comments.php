@@ -380,11 +380,12 @@ function _pg_comment_db_failed()
  * NULL), or null when the query failed.
  *
  * @param string $sql
+ * @param array  $params db_q() values of the ? in $sql
  * @return int|null
  */
-function _pg_comment_db_int($sql)
+function _pg_comment_db_int($sql, array $params = array())
 {
-    $result = @mysqli_query(db::$con, $sql);
+    $result = db_q($sql, $params);
 
     if (!($result instanceof mysqli_result)) {
         _pg_comment_db_failed();
@@ -413,7 +414,7 @@ function _pg_comment_db_int($sql)
  * The statements keep the legacy read, DELETE, INSERT shape without a lock on
  * purpose, like the other comment writers. A failed query is logged and
  * answers false: a failed read writes nothing, so the old counters stay. It
- * uses @mysqli_query() rather than db(), whose failure prints an HTML error
+ * uses db_q() rather than db(), whose failure prints an HTML error
  * screen, also inside the API and MCP (the same choice as
  * pg_sfv_count_view()).
  *
@@ -433,11 +434,13 @@ function pg_comment_refresh_record_info($page_id, $item_type, $item_id)
         return false;
     }
 
-    $pair = "(submitted_form_id = '" . $rid . "') AND (page_id = '" . $pid . "')";
-    $published = "(page_id = '" . $pid . "') AND (item_id = '" . $rid . "') AND (item_type = 'submitted_form') AND (published = '1')";
+    $pair = "(submitted_form_id = ?) AND (page_id = ?)";
+    $pair_values = array((string) $rid, (string) $pid);
+    $published = "(page_id = ?) AND (item_id = ?) AND (item_type = 'submitted_form') AND (published = '1')";
+    $published_values = array((string) $pid, (string) $rid);
 
-    $views = _pg_comment_db_int("SELECT MAX(number_of_views) FROM submitted_form_info WHERE " . $pair);
-    $count = _pg_comment_db_int("SELECT COUNT(*) FROM comments WHERE " . $published);
+    $views = _pg_comment_db_int("SELECT MAX(number_of_views) FROM submitted_form_info WHERE " . $pair, $pair_values);
+    $count = _pg_comment_db_int("SELECT COUNT(*) FROM comments WHERE " . $published, $published_values);
 
     if (($views === null) || ($count === null)) {
         return false;
@@ -446,22 +449,22 @@ function pg_comment_refresh_record_info($page_id, $item_type, $item_id)
     $newest = 0;
 
     if ($count > 0) {
-        $newest = _pg_comment_db_int("SELECT id FROM comments WHERE " . $published . " ORDER BY created_timestamp DESC, id DESC LIMIT 1");
+        $newest = _pg_comment_db_int("SELECT id FROM comments WHERE " . $published . " ORDER BY created_timestamp DESC, id DESC LIMIT 1", $published_values);
 
         if ($newest === null) {
             return false;
         }
     }
 
-    if (!@mysqli_query(db::$con, "DELETE FROM submitted_form_info WHERE " . $pair)) {
+    if (!db_q("DELETE FROM submitted_form_info WHERE " . $pair, $pair_values)) {
         _pg_comment_db_failed();
         return false;
     }
 
     $insert = "INSERT INTO submitted_form_info (submitted_form_id, page_id, number_of_views, number_of_comments, newest_comment_id)
-        VALUES ('" . $rid . "', '" . $pid . "', '" . $views . "', '" . $count . "', '" . $newest . "')";
+        VALUES (?, ?, ?, ?, ?)";
 
-    if (!@mysqli_query(db::$con, $insert)) {
+    if (!db_q($insert, array((string) $rid, (string) $pid, (string) $views, (string) $count, (string) $newest))) {
         _pg_comment_db_failed();
         return false;
     }

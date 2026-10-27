@@ -4900,8 +4900,8 @@ function get_toolbar_page_row($page_id)
             folder.folder_archived
         FROM page
         LEFT JOIN folder ON page.page_folder = folder.folder_id
-        WHERE page.page_id = '" . escape($page_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE page.page_id = ?";
+    $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
     $cache[$key] = mysqli_fetch_assoc($result);
     return $cache[$key];
 }

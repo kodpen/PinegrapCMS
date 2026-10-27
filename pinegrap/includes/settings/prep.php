@@ -1226,13 +1226,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $output_auto_bans = '';
 
     if ($waf_ip_columns) {
-        $auto_result = mysqli_query(
-            db::$con,
+        $auto_result = db_q(
             "SELECT ip_address, note, expires_at
              FROM banned_ip_addresses
-             WHERE source = 'auto' AND (expires_at = 0 OR expires_at > " . time() . ")
+             WHERE source = 'auto' AND (expires_at = 0 OR expires_at > ?)
              ORDER BY expires_at DESC
-             LIMIT 25"
+             LIMIT 25",
+            array(time())
         );
 
         if ($auto_result) {

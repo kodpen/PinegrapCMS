@@ -87,7 +87,7 @@ function pg_dashboard_widget_8($request, $user)
                 $id = $order['id'];
                 $shipped = false;
                 if (ECOMMERCE_SHIPPING == true) {
-                    $ship_result = mysqli_query(db::$con, "SELECT id FROM shipping_tracking_numbers WHERE order_id = '" . $id . "' LIMIT 1") or output_error('Query failed.');
+                    $ship_result = db_q("SELECT id FROM shipping_tracking_numbers WHERE order_id = ? LIMIT 1", array((string) $id)) or output_error('Query failed.');
                     $shipped = (bool) mysqli_fetch_assoc($ship_result);
                 }
                 $ship_icon_color = $shipped ? '#10b981' : '#a1a1a1';
