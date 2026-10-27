@@ -4273,6 +4273,17 @@ table.chart thead th {
   width: 100%;
 }
 
+/* Answers are long category paths: the menu stays within the screen and an
+   item wraps instead of widening it. */
+.pg-combobox-remote {
+  width: max-content;
+  max-width: min(36rem, calc(100vw - 1rem));
+}
+
+.pg-combobox-remote .menu-item {
+  white-space: normal;
+}
+
 .pg-combobox-status {
   padding: .75rem 1rem;
   font-size: .875rem;

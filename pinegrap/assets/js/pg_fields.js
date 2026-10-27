@@ -369,6 +369,7 @@
         var source = el.getAttribute('data-pg-source'), query = null, status = null;
         var count = el.options.length, search = !source && count >= COMBOBOX_SEARCH_FROM;
         if (source) {
+            menu.className += ' pg-combobox-remote';
             // Our own search box: Bootstrap's would hide the server's answers
             // that do not contain the typed text word for word.
             var qbox = document.createElement('div');
