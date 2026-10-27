@@ -17,7 +17,7 @@ description: Bundles design note (storefront-conversion-pack step 6, for the own
 - `bundle_pricing`: `fixed` = `products.price` typed as today; `sum` = `round(sum(component price × quantity) × (10000 − bundle_discount_bp) / 10000)` written into `products.price` (minor units, `round()`). A component price change re-prices its `sum` bundles through the same refresh, with `pg_price_history_record()`.
 - Charged as a normal line from `products.price`: `get_express_order.php`, `get_order_preview.php` and `submit_order.php` totals are unchanged (`workflow/decisions-made-product.md`). The bundle's own `tax_rate` applies to the whole line; offers target the bundle id like any product.
 
-## Which schema is proposed? (owner approval needed, Fixed rule 5)
+## Which schema is approved? (owner, 2026-10-27, #2425)
 One sub-step `upgrade_2026_11_0_product_bundles()` in the open version, label taken at coding time from the general range, new tables in `get_tables()`:
 - `products`: `bundle TINYINT(1) NOT NULL DEFAULT 0`, `bundle_pricing ENUM('fixed','sum') NOT NULL DEFAULT 'fixed'`, `bundle_discount_bp SMALLINT UNSIGNED NOT NULL DEFAULT 0` (`install_add_column()`).
 - `product_bundle_items`: id, bundle_id, product_id (INT UNSIGNED), quantity INT UNSIGNED, sort_order; UNIQUE (bundle_id, product_id), KEY (product_id).

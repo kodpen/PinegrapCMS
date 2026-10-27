@@ -15,8 +15,8 @@ description: Refactor and infrastructure items from the 2026-10-08 code audit th
 5. Done: the last raw `SHOW COLUMNS` probes (`widgets.php` order view, `security.save.php`) use `pg_schema_has()` (PR #2127); see release/schema-probe-rules.md. Kept on purpose: the router's `config` check, the wildcard listings in `api/auth.php` and `backup_restore.php`; `waf_table_has_column()` (239 callers) uses LIKE.
 6. No fragment cache: with the query counter in `perf_stats`, cache the most expensive front-end widgets under `data/cache/`, keyed by content + `updated_at`; invalidation points first. M. Measured first (sandbox), fixed without a cache: classic menu 168 of a page's 257 queries (data/menu-tree-queries.md, PR #666), `<cregion>` tags 17 → 2 (data/common-region-queries.md, PR #801); home page now 75, measure designer pages before caching.
 
-## Which questions wait for the owner?
-- The six root `*_f.php` files (`duplicate_folder_f`, `duplicate_page_f`, `edit_offer_f`, `export_products_f`, `import_products_f`, `view_folder_and_files_f`) have no gate constant; they appear to define functions only. Add a gate, or leave them?
+## Which working rule applies?
+- The six root `*_f.php` files (`duplicate_folder_f` … `view_folder_and_files_f`) are included, never URL-called, and define functions only: add the gate constant when one is next touched; moving them under `includes/` waits for that touch (Fixed rules 4).
 
 ## What was never checked on a running site?
 - Search results after the `search_items` move to InnoDB (8.14; engine differences are listed in the comment of `upgrade_2026_4_8_innodb_search()`), list screen times with large data, queries per page.

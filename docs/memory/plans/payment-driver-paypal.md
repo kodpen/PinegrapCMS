@@ -15,16 +15,13 @@ description: Step 4b (PayPal Checkout v2) hand-over: branch feature/payment-4b-p
   - A PENDING capture's log line names PayPal's reason and asks for a check before shipping.
 
 ## What is missing before it lands?
-- The owner's answer below, and the code that follows from it.
+- Decided (#2408): a PENDING capture places the order awaiting payment, as the 4b PR does; the denial reaches the site by step 4b2 below.
 - Bring the branch up to date (merge `development`, or cherry-pick its two commits onto a fresh branch). Re-check that the step label is free (`release/version-numbering.md`) and re-check the TR keys (`php tools/check_lang.php`). Open a new PR titled `[plan:payment-driver-layer] 4b — …`.
 - Never verified: the fixtures follow PayPal's Orders v2 / Payments v2 docs, but no live or sandbox account was called, and the browser round trip (checkout → PayPal → `paypal_return` → receipt) never ran.
 - Known limits: PayPal takes no TRY (refused at authorize, the method is not hidden). Payments are always captured, whatever the Transaction Type.
 
-## Open question for the owner?
-- A capture can come back PENDING (PayPal review, eCheck). Today the order is placed with a log warning, and nothing learns of a later denial (there is no `notify()`). Options:
-  - (a) keep the order and the log line;
-  - (b) refuse the order (the money may already be held, and a retry starts a new PayPal order);
-  - (c) PayPal's `PAYMENT.CAPTURE.COMPLETED` / `DENIED` webhooks after 3b's `payment_callback.php`.
+## What was decided for a PENDING capture? (#2408)
+- The order is placed awaiting payment (a). Step 4b2, after 3b's callback endpoint, takes PayPal's `PAYMENT.CAPTURE.COMPLETED` / `DENIED` webhooks on `payment_callback.php?driver=paypal`: completion marks the order paid, a denial alerts.
 
 ## Where to start?
 - `git log origin/feature/payment-4b-paypal-v2`; the branch's `commerce/payment-driver-paypal.md`.

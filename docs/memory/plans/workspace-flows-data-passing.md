@@ -37,12 +37,12 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 - The draft card is a mini flow window: boxes and threads drawn small, the F4e dry run on each box, outbound boxes (webhook, e-mail) marked; a box is edited there or on the canvas.
 - On a live flow the model sends a patch (add, connect, remove, set), highlighted on the canvas, never a whole graph.
 
-## Open questions
-1. May a value go into a webhook address's path or query (an order id)? Today never; digit-only fields could be allowed.
-2. Webhook answer: keep the whole JSON (16 KB) or only fields the builder picks?
-3. Picker: offer values of a branch that may be skipped (marked "empty if skipped") or hide them?
-4. Role-3 personal flows (F6): the same values, or only records in their reach?
-5. Lists (D9): first source: table rows, a day's orders, or webhook arrays?
+## Which questions are answered? (#2414)
+1. Webhook address: digit-only fields may go into the path or query, URL-encoded; host and scheme stay the builder's.
+2. Webhook answer: the whole JSON, up to 16 KB, on the run row.
+3. Picker: values of a branch that may be skipped are offered, marked "empty if skipped".
+4. Role-3 personal flows (F6) read only records in the person's reach.
+5. Lists (D9): webhook arrays first; a day's orders need a records-list box; table rows once T1 exists.
 
 ## Where to start?
 - D6. Read workspace/workspace-flows-outputs.md and workspace-flows-trigger-values.md (`ws_flow_js_config()` `outputs`, `trigger_outputs`).

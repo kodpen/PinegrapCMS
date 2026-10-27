@@ -31,13 +31,13 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 
 ## Which order did the owner give?
 - 2026-10-27, through the coordinator: "bekleyen işçilere yanıtı sen ver benim yerime", "en makul ve işlevsel seçimle", and "sorular mimari soru değilse makul seçim yap". Under that the order is: order form, folder view, photo gallery, confirmations, affiliate sign-up form.
-- Confirmations: decided when reached; preferred: a state / next-page setting of the registration and membership widgets.
+- Confirmations (#2436): a next-page or message setting of the registration, membership and affiliate sign-up widgets.
 
-## Open questions?
-- Which of the types above must be designable before L5 (retire), and which may stay `system` region nodes?
+## Which stay `system` nodes?
+- #2436: 5a-5e of the owner's order get widgets; e-mail a friend, form view directory, affiliate confirmation and welcome stay `system` nodes.
 
 ## Where to start?
-- The multi-step checkout is done. Next: the next type of the owner's order that no open PR holds. One widget per PR.
+- Next: the next type of the owner's order that no open PR holds. One widget per PR.
 
 ## Which steps are there?
 1-4. Done: shipping address (#1746; verified box left), method (#1759), billing (#1777), order preview (#1789); [[shipping-address-widget]] and siblings, [[order-preview-widget]].

@@ -23,19 +23,19 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 3. Done. Parity boxes (F4, F5): 3a #2205 trigger values; 3b #2235 start a flow box; 3c #2249 arrows on always; 3d #2275 self-retry (workspace/workspace-flows-*.md).
 4. New rules on the canvas; the form stays for keys still `form`; templates are starters (flow gallery, G1). Parts:
    - 4a. Done (#2292). Scheduled actions section: New flow in the toolbar, the list's New hidden (`{ add: false }`); cards keep the form.
-   - 4b. The other ways in (composer insert menu, note toolbar, Duplicate): open the canvas instead of the form. Waits on questions 7 and 8.
+   - 4b. The other ways in (composer insert menu, note toolbar, Duplicate): open the canvas instead of the form. 7 and 8 answered: may start.
    - 4c. Done: AI drafts on the canvas (F8): 4c1 #2306 `ws_flow_graph_from_scheduled()`; 4c2 #2323 a draft card opens as a new flow.
-5. Conversion (answer 2): in the 2026.11.0 upgrade every row becomes a converted anchor, its id and every parity row kept. Schema (a mark for the two anchors): ask first.
+5. Conversion (answer 2): in the 2026.11.0 upgrade every row becomes a converted anchor, its id and every parity row kept. Schema: `ws_scheduled_actions.anchor` VARCHAR(12) ('', hidden, converted), approved (#2396).
 
-## Which questions are answered? (owner, 2026-10-24: 1 no, 2 c, 3 a; 4-8 open)
+## Which questions are answered? (owner, 2026-10-24: 1 no, 2 c, 3 a; 7 and 8 on 2026-10-27)
 1. Scheduled messages too? → no, staff's actions only; messages stay in the composer and their list.
 2. End → b (owner, 2026-10-27, was c opt-in per action): every part a box, all converted in the 2026.11.0 upgrade, form retired; Flows the one entry.
 3. Who edits and runs a moved action → any staff, as today.
 4. Card, note strip, decision reply → kept where written.
 5. History of a converted action → kept: a flow run writes its outcome to the anchor's `ws_scheduled_runs` row, boxes go at 30 days.
 6. Slice 1 before F4 → yes (#1555 is in).
-7. Composer insert menu "Scheduled action" in a channel (open): (a) opens a new flow on the Flows screen with that channel as its home (leaves the channel), (b) keeps the form until slice 5 retires it. Recommended a.
-8. A scheduled action kept in a note (its card in the note strip, open): flows have no note; (a) a flow gets a note as its home and its post box may write in the note, (b) no new ones from a note: the note toolbar entry goes, converted ones keep their card. Recommended b.
+7. Composer insert menu "Scheduled action" in a channel → C3 of workspace-flows-channels.md (#2394): the entry becomes "Scheduled flow", a mini window with that channel as home; built once, in C3's shape.
+8. A scheduled action kept in a note → b (#2395): no new ones from a note; the toolbar entry goes, converted ones keep their card and post step.
 
 ## Where to start?
-- Slices 1-3, 4a and 4c done. Next: 4b once 7 and 8 are answered, or slice 5 (ask about its schema first); read workspace/README.md.
+- Slices 1-3, 4a and 4c done. Next: 4b, or slice 5 (schema approved, #2396); read workspace/README.md.

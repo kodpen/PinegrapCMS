@@ -22,8 +22,8 @@ description: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in wid
 - Owner (2026-10-26), detail and reasons in [[widget-designability-decisions]]: W16 equal look and behaviour, not bytes; W5 three sources, filtered, copied; W8 the allow-list of [[widget-entity-fields]].
 - Owner (2026-10-27), every proposal accepted, reasons in [[widget-designability-decisions-2]].
 
-## What does the owner still answer?
-- W17/W18 (#2334): record = what the address opens? Its values shown outside widgets (W17)? A form record's own fields too?
+## W17/W18? (#2409)
+- The record is the one the address opens; values outside widgets are W17; a form record's text, number, date and pick-list fields join the allow-list (conditions and values).
 
 ## What are the steps? (one PR each)
 - W1 done (#1592, [[widget-finish-pass]], [[widget-conditions]]).
@@ -43,4 +43,4 @@ description: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in wid
 - Claim with a draft PR `[plan:widget-designability] Wn`. New kinds read saved-tree checks via `pg_sw_cond_tree_json()`.
 
 ## Where to start?
-- W16's rest ([[widget-default-parts]]); W17 after the answer ([[page-conditions]]).
+- W16's rest ([[widget-default-parts]]); W17 ([[page-conditions]]).

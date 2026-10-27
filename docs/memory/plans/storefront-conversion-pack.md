@@ -28,11 +28,11 @@ description: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, w
 
 ## What remains?
 2c. Review form, `__reviews`, designer aggregateRating: after designable-comments slice 20 (M).
-6. Bundles: note in `storefront-bundles-design.md`; owner review first.
+6. Bundles: `storefront-bundles-design.md`; owner review (#2425).
 
-## Open questions?
-- Photo reviews: comments take attachments; allow by a setting?
-- Featured comments show first; 28/B(4) asks for an objective order. Change it for product reviews?
+## Which questions are answered? (#2426)
+- Photo reviews by a site setting, off by default, images only.
+- Product reviews newest first, verified only, no featured-first (28/B(4)); featured-first stays for other threads.
 
 ## Where to start?
-- Step 6: owner answers `storefront-bundles-hooks.md` questions, then its step 1. 2c waits for designable-comments slice 20.
+- Step 6 after #2425; 2c after designable-comments slice 20.
