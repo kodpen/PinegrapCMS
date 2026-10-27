@@ -1196,8 +1196,14 @@ function bs6_switch_accordions($source)
 		return array('source' => $source, 'status' => strpos($source, 'accordion-button') === false ? 'done' : 'missing');
 	}
 
+	$site_output = bs6_site_output_ranges($source);
+
 	foreach ($matches as $m) {
 		$start = $m[0][1];
+		if ($site_output && bs6_in_ranges($start, $site_output)) {
+			continue;
+		}
+
 		$head_end = $start + strlen($m[0][0]);
 		$body_close = bs6_shell_close_of($source, $head_end);
 
