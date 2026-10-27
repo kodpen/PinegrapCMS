@@ -10,6 +10,7 @@ description: Content files converted to db_q() (get_page_content, content, seo, 
 - `get_page.php` (PR #2227): its 29 queries with values (page lookup, membership check, the RSS and Google feeds of form list views, calendars and catalogs, the iCalendar export), `(string)` as above. The two calendar OR lists are built as `?` with a value list beside them. Raw stay the calls without values, the home page lookup (integer list `$sql_not_binned`) and the two submitted form lists of the form list view feed, completed by `$sql_where` / `$sql_filters` with escaped filter values. `tests/db_q_get_page_test.php` guards it.
 
 - Commerce files (`includes/fn/ecommerce.php`, `shopping_cart.php`, `submit_order.php`, `includes/fn/forms.php`): `db-q-converted-commerce.md`.
+- User and page screens (`edit_user.php`, `add_user.php`, `import_users.php`, `edit_pages.php`, `edit_page.php`): `db-q-converted-panel.md`.
 
 ## What is the rule for a query that stays raw?
 - A query without values, or one completed by a clause built elsewhere with escaped values (it may hold a `?`, which `db_q()` would take as a placeholder), stays `mysqli_query()`. An integer-only IN list may stay too. Each file's test lists those clause variables by name.

@@ -294,13 +294,13 @@ if (!$_POST) {
     }
 
     // determine if username is already in use
-    $result = mysqli_query(db::$con, "SELECT user_id FROM user WHERE (user_username = '" . escape($_POST['username'] ?? '') . "') OR (user_email = '" . escape($_POST['username'] ?? '') . "')") or output_error('Query failed');
+    $result = db_q("SELECT user_id FROM user WHERE (user_username = ?) OR (user_email = ?)", array((string) ($_POST['username'] ?? ''), (string) ($_POST['username'] ?? ''))) or output_error('Query failed');
     if (mysqli_num_rows($result) > 0)
     {
         output_error(lang('The username that you entered is already in use') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
     // determine if e-mail address is already in use
-    $result = mysqli_query(db::$con, "SELECT user_id FROM user WHERE (user_email = '" . escape($_POST['email'] ?? '') . "') OR (user_username = '" . escape($_POST['email'] ?? '') . "')") or output_error('Query failed');
+    $result = db_q("SELECT user_id FROM user WHERE (user_email = ?) OR (user_username = ?)", array((string) ($_POST['email'] ?? ''), (string) ($_POST['email'] ?? ''))) or output_error('Query failed');
     if (mysqli_num_rows($result) > 0)
     {
         output_error(lang('The email address that you entered is already in use') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
@@ -518,7 +518,7 @@ if (!$_POST) {
             $rights = 0;
         }
         
-        $result2 = mysqli_query(db::$con, "INSERT INTO aclfolder (aclfolder_user, aclfolder_folder, aclfolder_rights, expiration_date) VALUES ('$user_id', '$folder_id', '$rights', '" . escape($sql_expiration_date) . "')") or output_error('Query failed.');
+        $result2 = db_q("INSERT INTO aclfolder (aclfolder_user, aclfolder_folder, aclfolder_rights, expiration_date) VALUES (?, ?, ?, ?)", array((string) $user_id, (string) $folder_id, (string) $rights, (string) $sql_expiration_date)) or output_error('Query failed.');
     }
     
     // if user that was created has a user role, then prepare to assign access to various items for user
@@ -542,9 +542,9 @@ if (!$_POST) {
                         user_id,
                         common_region_id)
                     VALUES (
-                        '" . escape($user_id) . "',
-                        '" . escape($common_region['cregion_id']) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        ?,
+                        ?)";
+                $result = db_q($query, array((string) $user_id, (string) $common_region['cregion_id'])) or output_error('Query failed.');
             }
         }
         
@@ -570,9 +570,9 @@ if (!$_POST) {
                         user_id,
                         menu_id)
                     VALUES (
-                        '" . escape($user_id) . "',
-                        '" . escape($menu['id']) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        ?,
+                        ?)";
+                $result = db_q($query, array((string) $user_id, (string) $menu['id'])) or output_error('Query failed.');
             }
         }
         
@@ -597,9 +597,9 @@ if (!$_POST) {
                             user_id,
                             contact_group_id)
                         VALUES (
-                            '" . $user_id . "',
-                            '" . $contact_group['id'] . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            ?,
+                            ?)";
+                    $result = db_q($query, array((string) $user_id, (string) $contact_group['id'])) or output_error('Query failed.');
                 }
             }
         }
@@ -625,9 +625,9 @@ if (!$_POST) {
                             user_id,
                             calendar_id)
                         VALUES (
-                            '" . $user_id . "',
-                            '" . $calendar['id'] . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            ?,
+                            ?)";
+                    $result = db_q($query, array((string) $user_id, (string) $calendar['id'])) or output_error('Query failed.');
                 }
             }
         }
@@ -653,9 +653,9 @@ if (!$_POST) {
                             user_id,
                             ad_region_id)
                         VALUES (
-                            '" . escape($user_id) . "',
-                            '" . escape($ad_region['id']) . "')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            ?,
+                            ?)";
+                    $result = db_q($query, array((string) $user_id, (string) $ad_region['id'])) or output_error('Query failed.');
                 }
             }
         }
