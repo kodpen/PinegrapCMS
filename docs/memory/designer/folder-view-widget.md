@@ -5,7 +5,7 @@ module: widgets_folder_view
 ---
 
 ## What is it?
-- Kind `folder_view` (`includes/fn/widgets_folder_view.php`), step 5b of [[system-widget-missing-types]]. It lists the pages and files of the page's folder and of the folders below it, as the classic `get_folder_view_screen_content.php` does: folders first (by `folder_order`, name), then pages (by name, `page_search` on, the confirmation / checkout step / detail types of `pg_fv_hidden_page_types()` left out, the page shown left out), then files. Nothing posts to it.
+- Kind `folder_view` (`includes/fn/widgets_folder_view.php`), step 5b (#2465) of [[system-widget-missing-types]]. It lists the pages and files of the page's folder and of the folders below it, as the classic `get_folder_view_screen_content.php` does: folders first (by `folder_order`, name), then pages (by name, `page_search` on, the confirmation / checkout step / detail types of `pg_fv_hidden_page_types()` left out, the page shown left out), then files. Nothing posts to it.
 
 ## Where are the settings?
 - `include_pages` / `include_files` in the widget's settings; a key the widget lacks falls back to the page's `folder_view_pages` row, then to the classic defaults (pages on, files off) (`pg_fv_settings()`). Nothing is written to the row. The folder is always the page's own.
