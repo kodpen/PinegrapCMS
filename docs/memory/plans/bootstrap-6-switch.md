@@ -5,20 +5,19 @@ description: Step B8 of plans/bootstrap-6-panel.md (claim #1866): building a reh
 
 ## How is the switch rehearsed?
 - Rebuild `feature/bootstrap-6` (#1866, a draft until the owner says go) on the latest `development`, comment the result there. Tool commits first, the generated commit last, pushed only when every check passes: drop it (`git rebase --onto <gen>~1 <gen>`), `git rebase origin/development`, `php tools/bs6_migrate.php --all --write`, `--switch --write`, `php tools/build_js.php`, every CI check, commit; then `git merge -s ours origin/feature/bootstrap-6` (keeps the old history, the tree stays the rebuild) and a plain `git push`. Never commit the sandbox's `data/config.php`.
-- Scriptable hand fixes are code in `tools/bs6_switch.php` and `tools/bs6_switch_shell.php` (tests `tests/bs6_switch_test.php`, `bs6_switch_shell_test.php`); a fix found by its exact text goes into `tools/bs6_switch_texts.txt`. Never a patch file. What each fix does: the file headers and `ui/bootstrap-6-codemod.md`.
+- Scriptable hand fixes are code in `tools/bs6_switch.php`, `bs6_switch_shell.php`, `bs6_switch_tokens.php`, `bs6_switch_stems.php` (tests `tests/bs6_switch*_test.php`); a fix found by its exact text goes into `tools/bs6_switch_texts.txt`. Never a patch file. What each fix does: the file headers and `ui/bootstrap-6-codemod.md`.
 
-## What is still on the hand-fix list (rehearsal 3, 2026-10-26)?
-- `check_bs6.php` reads the converted tree (309 findings): class API calls that would split 61, classes built in code 59, modal markup left 33 (class strings and the open sheets' own JS), surfaces with no v6 class 27, `display-*`/`lead` 23, text colours 22, dropdown markup left 12, CSS selectors 10, accordion 9, others under 15.
-- Look (B1b round of rehearsal 3): the panel's own button variables (v5 `--bs-btn-*`) no longer reach v6 buttons (pill toolbar buttons, the header's account and "Siteye Git" buttons; the header is 6 px taller); taller table rows; DataTables still writes v5 classes (length select, header checkbox); dialogs are centred.
-- The visual editor's canvas-facing code in `style_designer.js` is left on v5 on purpose; only its own dialogs are converted.
-- `forms.php` and the other shared files (`bs6_scope_kind()`) are not converted yet.
+## What is still on the hand-fix list (rehearsal 4, 2026-10-27)?
+- `check_bs6.php` on the converted tree, 185 findings: modal markup left 33, surfaces with no v6 class 27, `display-*`/`lead` 23, text colours 22, RGB variables 14 (`design_themes.php`, -rgb triples), dropdown 12, CSS selectors 10, stems built in code 9 (values the code does not show), others under 8. `page_designer.js`'s `addClass('btn-danger open')` targets the site preview (v5) and stays.
+- Look: v6 has no 1400 px breakpoint (`xxl` classes become `2xl`, 1536), so 1400–1535 px screens take the `xl` layout; a few px of height on cards and phone form rows.
+- The visual editor's canvas-facing code in `style_designer.js` stays v5 on purpose; `forms.php` and the other shared files (`bs6_scope_kind()`) are not converted.
 
 ## Where does the next rehearsal start?
-- Rebuild as above. Then map the panel's button and table variables to v6 tokens (backend.src.css token block), the DataTables class overrides in backend.src.js, then the class API calls and the code-built classes from `check_bs6.php --verbose`.
-- Open question for the owner: own media queries now follow v6's breakpoints (lg 1024, xl 1280); `bs6_switch_breakpoints()` is dropped if the owner keeps 992/1200.
+- Rebuild as above. Then open every dialog, menu and drawer of the liked screens in a browser (only the screenshot list and a few were opened), the modal (33) and dropdown (12) markup left, surfaces and text colours with no v6 class, the shared files.
+- Open owner questions in #1866's body: own media queries on 1024/1280 (keep until answered) and the lost 1400 px breakpoint.
 
 ## What does the owner check?
-- The before/after page of each round (rehearsal 3: https://claude.ai/artifact/Xdh6cnCar778Z77jphtzS4): liked, secure and visual editor screens at 1440, 834 and 390 px, light and dark (`ui/panel-screenshots.md`). Then the branch runs on dev.pinegrap.com and the owner says go.
+- The before/after page of each round (rehearsals 3 and 4: https://claude.ai/artifact/Xdh6cnCar778Z77jphtzS4): liked, secure and visual editor screens at 1440, 834 and 390 px, light and dark (`ui/panel-screenshots.md`). Then the branch runs on dev.pinegrap.com and the owner says go.
 
 ## What happens at and after the merge?
 - In the same PR: CLAUDE.md's "Bootstrap 5 + jQuery", the ui and designer key rules, `php tools/check_bs6.php --strict` in php-checks.yml, CLAUDE.md's check list and pre_push.sh; the body names the `[NEW]` line; new `lang()` keys go in with `php tools/tr_add.php`. The merging session merges it; tag the merge `bs6-switch`.
