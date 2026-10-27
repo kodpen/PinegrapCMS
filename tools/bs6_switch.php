@@ -119,6 +119,10 @@ function bs6_switch_plan($root)
 		$plan[] = array($path, 'tokens', 'bs6_switch_tokens');
 	}
 
+	foreach (bs6_switch_rgb_files($root) as $path) {
+		$plan[] = array($path, 'rgb', 'bs6_switch_rgb_variables');
+	}
+
 	$plan[] = array('assets/css/backend.src.css', 'bridge', 'bs6_switch_token_bridge');
 	$plan[] = array('assets/css/backend.src.css', 'shell', 'bs6_switch_shell_rules');
 
