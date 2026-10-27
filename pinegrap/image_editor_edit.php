@@ -737,6 +737,12 @@ else
         break;
 
         case 'cregion':
+            // A region made a shared component draws the component; its row
+            // is no longer read, so the picture is not written into it.
+            if (in_array((int) $object_id, pg_common_region_converted_ids(), true)) {
+                break;
+            }
+
             // get content
             $query = "SELECT cregion_content as content FROM cregion WHERE cregion_id = '" . escape($object_id) . "'";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

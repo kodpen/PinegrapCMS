@@ -1708,12 +1708,15 @@ if (!$_POST) {
         
         // if user that was created has a user role, then prepare to assign access to various items for user
         if ($saved_role == 3) {
-            // delete user and common region references in users_common_regions_xref
-            $query = "DELETE FROM users_common_regions_xref WHERE user_id = '" . escape($_POST['id'] ?? '') . "'";
+            // delete user and common region references in users_common_regions_xref;
+            // a region made a shared component is not on the screen, and its
+            // grant stays for the day the component is deleted and the region
+            // draws itself again
+            $query = "DELETE FROM users_common_regions_xref WHERE user_id = '" . escape($_POST['id'] ?? '') . "' AND " . pg_common_region_not_converted_sql('common_region_id');
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             // get all common regions
-            $query = "SELECT cregion_id FROM cregion";
+            $query = "SELECT cregion_id FROM cregion WHERE " . pg_common_region_not_converted_sql();
             $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
             
             $common_regions = array();

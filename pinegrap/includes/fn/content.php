@@ -321,6 +321,66 @@ function pg_common_region_components_read(array &$read, array $ids, $fetch)
     return $out;
 }
 
+/**
+ * The common regions made shared components, every one of them: the screens
+ * that list or write region rows leave these out (user grants, find and
+ * replace, the image editor). One query, kept for the request.
+ *
+ * @return int[]  cregion ids
+ */
+function pg_common_region_converted_ids()
+{
+    static $ids = null;
+
+    if ($ids === null) {
+        $rows = pg_schema_has('shared_components')
+            ? db_values("SELECT category FROM shared_components
+                WHERE
+                    category LIKE 'common\\_region:%'
+                    AND ((system_region_config IS NULL) OR (system_region_config = ''))")
+            : array();
+        $ids = pg_common_region_ids_from_categories(is_array($rows) ? $rows : array());
+    }
+
+    return $ids;
+}
+
+/**
+ * The region ids named by shared component categories of the
+ * "common_region:<id>" form; any other category is passed over.
+ *
+ * @param array $categories
+ * @return int[]  ids, each once, in ascending order
+ */
+function pg_common_region_ids_from_categories(array $categories)
+{
+    $ids = array();
+
+    foreach ($categories as $category) {
+        if (preg_match('/^common_region:([1-9][0-9]*)$/', (string) $category, $m)) {
+            $ids[(int) $m[1]] = (int) $m[1];
+        }
+    }
+
+    ksort($ids);
+
+    return array_values($ids);
+}
+
+/**
+ * An SQL condition leaving the converted common regions out, '1' when there
+ * are none.
+ *
+ * @param string $column  the cregion id column as the query names it
+ * @return string
+ */
+function pg_common_region_not_converted_sql($column = 'cregion_id')
+{
+    $ids = pg_common_region_converted_ids();
+
+    return $ids ? '(' . $column . ' NOT IN (' . implode(',', $ids) . '))' : '1';
+}
+
 // Outputs dynamic menu system using values from the database.
 // We don't currently support multiple menu items being set as the current menu item
 // because it causes problems for the accordion menu.  The logic for the accordion menu
@@ -2903,7 +2963,8 @@ function get_checkboxes_for_items_user_can_edit($item_type, $selected_ids = arra
                 cregion_name as name';
             $sql_where = '
 
-                WHERE cregion_designer_type = "no"';
+                WHERE cregion_designer_type = "no"
+                AND ' . pg_common_region_not_converted_sql() . '';
             break;
         case 'shared_components':
             // The visual designer's components a designer opened to content
