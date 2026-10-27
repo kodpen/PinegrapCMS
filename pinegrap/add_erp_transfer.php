@@ -80,13 +80,13 @@ if (!$_POST) {
                             </div>
                             <div class="col-12 sm:col-6 lg:col-4 my-3">
                                 <label for="amount" class="form-label">' . lang('Amount') . '</label>
-                                <div class="input-group">
+                                <label class="form-control form-adorn form-adorn-end">
+                                    <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
                                     ' . $liveform->output_field(array(
                                         'type' => 'text', 'id' => 'amount', 'name' => 'amount',
-                                        'class' => 'form-control text-end', 'maxlength' => '15',
+                                        'class' => 'form-ghost text-end', 'maxlength' => '15',
                                         'inputmode' => 'decimal', 'autocomplete' => 'off', 'required' => 'required')) . '
-                                    <label class="input-group-text" for="amount">' . BASE_CURRENCY_SYMBOL . '</label>
-                                </div>
+                                </label>
                             </div>
                         </div>
                         <div class="row">

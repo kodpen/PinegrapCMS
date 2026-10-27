@@ -32,7 +32,7 @@ description: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in wid
 - W6 done (#1680, [[widget-lists]]). W7 done (#1688, [[widget-lists-editor]]). W8 done (seven PRs #1809 to #1917, [[widget-entity-fields-list]]).
 - W9 done #1752 #1768 ([[widget-lists-product]]). W10 done (#1783, [[widget-lists-order]]). W11 done #1796 ([[widget-lists-cart]]). W12 done #1924 to #2245 ([[widget-list-paging]]). W13 done (#1758).
 - W14 done (#1602, #1701, #1719, [[widget-fill-filters]], [[widget-fill-shop]]).
-- W15 done (#1734). W16 default parts: order view #1808 #1824 #1863, stars #1908, crumbs #1945, cross-sell #1973 #2067, chips #2218, cart gift card #2260, cart payment schedule #2311; left: cancel, return forms, then the product order form.
+- W15 done (#1734). W16 default parts: #1808 #1824 #1863 #1908 #1945 #1973 #2067 #2218, cart gift card #2260, schedule #2311, cancel and return forms #2330; left: each return's moves, then the product order form.
 - W17 Parts anywhere, record values outside widgets. W18 done #2308 #2334 ([[page-conditions]]).
 - W19 done #1904 #1914 #1928, opening state #2232 ([[widget-condition-canvas]]).
 - W20 Parts palette, starter library. W21 done #2326 #2345. W22: W22a #2317 ([[layout-form-converter]]); W22b editor, after owner. W23 done #2225 #2307. W24 done #2259 #2304 ([[widget-lists-checkout]]).

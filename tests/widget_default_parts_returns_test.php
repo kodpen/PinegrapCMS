@@ -183,7 +183,7 @@ function test_widget_parts_returns_placed_beats_pushed()
 	pg_assert_contains('pg-ov-returns-block', $card['props']['cssClass']);
 	$body = $card['children'][0]['children'][1];
 	pg_assert_same('pg-ov-returns', $body['children'][0]['children'][0]['props']['cssClass'], 'the list in the card');
-	pg_assert_same('__return_form', $body['children'][1]['props']['_bindings']['text'], 'the form after it');
+	pg_assert_same('order.return_deliveries', $body['children'][1]['children'][0]['props']['source'], 'the request form after it');
 
 	// A layout with a returns list of its own is not given the card.
 	$own = json_encode(_pret_node('root', array(), array(
@@ -227,7 +227,7 @@ function test_widget_parts_returns_editor_twin()
 		. $cut("\n    var SW_DEFAULT_LOOP_TAILS = {", "\n    };\n")
 		. $cut("\n    var SD_RETURN_BADGE_CLASSES = {", "\n    };\n");
 	foreach (array('_sdDefaultParts', '_sdPartTokenOf', '_sdPartHost', '_sdPartEl', '_sdPartWhen', '_sdPartPlaced', '_sdPartValue',
-		'_sdDefaultTails', '_sdPartOrderCard', '_sdPartOrderReturns', '_sdPartOrderReturnsList', '_sdPartOrderLegal') as $fn) {
+		'_sdDefaultTails', '_sdPartOrderCard', '_sdPartOrderReturns', '_sdPartOrderReturnForm', '_sdPartSentence', '_sdPartOrderReturnQtyCell', '_sdPartOrderReturnReason', '_sdPartOrderReturnSubmit', '_sdPartOrderCancelForm', '_sdPartOrderCancelSubmit', '_sdPartOrderReturnsList', '_sdPartOrderLegal') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
 	}
 	$bare = _pret_node('root', array(), array(_pret_node('semantic', array('tag' => 'h6', 'text' => 'Order'))));
