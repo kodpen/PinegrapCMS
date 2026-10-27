@@ -221,3 +221,25 @@ function test_curl_run_allow_http_widens_the_request_only()
 
 	pg_assert_same('CURLPROTO_HTTPS', pg_curl_run_options('GET', 'https://example.com/', array('allow_http' => false), curl_run_test_env())['CURLOPT_PROTOCOLS']);
 }
+
+// Mailchimp's API answered a PATCH now and then with an empty reply (cURL
+// error 52) until the request was forced down to HTTP/1.0; 'http_version'
+// keeps that, and no other call sets a version.
+function test_curl_run_http_version_only_when_asked()
+{
+	$options = pg_curl_run_options('PATCH', 'https://us1.api.mailchimp.com/3.0/x', array('body' => '{}', 'http_version' => '1.0'), curl_run_test_env());
+
+	pg_assert_same('CURL_HTTP_VERSION_1_0', $options['CURLOPT_HTTP_VERSION']);
+
+	$options = pg_curl_run_options('GET', 'https://example.com/', array('http_version' => '1.1'), curl_run_test_env());
+
+	pg_assert_same('CURL_HTTP_VERSION_1_1', $options['CURLOPT_HTTP_VERSION']);
+
+	$options = pg_curl_run_options('GET', 'https://example.com/', array('http_version' => '3'), curl_run_test_env());
+
+	pg_assert_false(isset($options['CURLOPT_HTTP_VERSION']), 'an unknown version is left to libcurl');
+
+	$options = pg_curl_run_options('GET', 'https://example.com/', array(), curl_run_test_env());
+
+	pg_assert_false(isset($options['CURLOPT_HTTP_VERSION']), 'no version by default');
+}

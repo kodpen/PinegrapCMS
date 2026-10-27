@@ -3858,28 +3858,21 @@ function update_sitemap_and_ping()
                     "urlList" => [$sitemap_url]
                 ]);
 
-                $ch = curl_init($indexnow_url);
-                // Identify this installation on outgoing requests. Sent with no
-                // User-Agent, a request looks like an anonymous client to the receiving
-                // server's firewall and gets rejected — which is how Pinegrap ended up
-                // blocking its own licence and update checks.
-                curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-                curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+                // pg_curl_run() sends this installation's User-Agent, goes
+                // through PROXY_ADDRESS when set and applies pg_curl_tls().
+                // Any HTTP answer counts as sent, as before.
+                $answer = pg_curl_run('POST', $indexnow_url, array(
+                    'body'            => $post_data,
+                    'headers'         => array('Content-Type: application/json'),
+                    'timeout'         => 10,
+                    'connect_timeout' => 8,
+                ));
 
-                $response = curl_exec($ch);
-
-                if ($response === false) {
-                    log_activity(lang('IndexNow ping failed: ') . curl_error($ch), '');
+                if ($answer['status'] === 0) {
+                    log_activity(lang('IndexNow ping failed: ') . $answer['error'], '');
                 } else {
                     log_activity(lang('IndexNow ping sent successfully.'), '');
                 }
-
-                unset($ch);
             } else {
                 log_activity(lang('IndexNow skipped: INDEXNOW_KEY not defined or empty.'), '');
             }

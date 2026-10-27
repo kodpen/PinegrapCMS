@@ -490,29 +490,22 @@ function pg_panel_software_update($request, $action)
             // file this step wrote.
             $update_package = pg_update_package_file();
 
-            $ch = curl_init("https://www.kodpen.com/" . $update_package);
-            // Identify this installation on outgoing requests. Sent with no
-            // User-Agent, a request looks like an anonymous client to the receiving
-            // server's firewall and gets rejected — which is how Pinegrap ended up
-            // blocking its own licence and update checks.
-            curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-            curl_setopt($ch, CURLOPT_HEADER, 0);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15); // seconds to establish the connection
-            curl_setopt($ch, CURLOPT_TIMEOUT, 120);       // total seconds allowed for the zip download
-
-            // if there is a proxy address, then send cURL request through proxy
-            if (PROXY_ADDRESS != '') {
-                curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
-                curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-                curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
-            }
-            $raw = curl_exec($ch);
-            $curl_errno = curl_errno($ch);
-            $curl_error = curl_error($ch);
-            $http_status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $expected_bytes = (int) curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD);
-            unset($ch);
+            // pg_curl_run() sends this installation's User-Agent, goes through
+            // PROXY_ADDRESS when set and applies pg_curl_tls(), so the package
+            // download honours CURL_CA_BUNDLE and ALLOW_INSECURE_UPDATE_TLS
+            // like the version check before it. 15 s to connect, 120 s for
+            // the whole archive.
+            $answer = pg_curl_run('GET', 'https://www.kodpen.com/' . $update_package, array(
+                'timeout'         => 120,
+                'connect_timeout' => 15,
+            ));
+            // status is 0 only when no HTTP answer came (cURL failed or is
+            // missing); the checks below read false as that case.
+            $raw = ($answer['status'] > 0) ? $answer['body'] : false;
+            $curl_errno = $answer['errno'];
+            $curl_error = $answer['error'];
+            $http_status = $answer['status'];
+            $expected_bytes = $answer['content_length'];
 
             // A non-200 body is still a successful transfer as far as cURL
             // is concerned. Without this check a 403 from the update
