@@ -1064,13 +1064,17 @@ tr.explorer-item.selected > td { background: var(--pg-primary-bg-subtle) !import
   .item-thumb.pg-lazy { animation: none; }
   .item-thumb.thumb-appear { animation: none; }
 }
-/* A picture that will not load becomes the file glyph in the same box, so a
-   screen of missing files is never a screen of broken-image icons. */
+/* A picture that will not load becomes the file glyph on a plate, so a screen
+   of missing files is never a screen of broken-image icons. The plate takes
+   the width of a folder or group glyph from the tile scale: a percentage width
+   resolved against the shrink-to-fit .thumb-wrap, which collapsed to the glyph
+   once the picture was gone and drew a narrow, tall pill. */
 .explorer-item .item-thumb-fallback {
-  width: 100%; max-width: 116px; height: 84px; border-radius: .55rem;
+  width: calc(var(--pg-tile-icon) * 4 / 3); height: calc(var(--pg-tile-icon) * 4 / 3);
+  border-radius: .55rem;
   border: 1px solid var(--pg-border-color-translucent);
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 1.7rem; color: var(--pg-fg-2); background: var(--pg-bg-2);
+  font-size: calc(var(--pg-tile-icon) * .56); color: var(--pg-fg-2); background: var(--pg-bg-2);
 }
 #explorer_list_table .item-thumb-fallback { width: 36px; max-width: 36px; height: 36px; border-radius: .4rem; font-size: 1rem; }
 /* The corner glyph says what a tile is. Over a photo a bare glyph is a smudge
