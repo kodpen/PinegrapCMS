@@ -203,4 +203,7 @@ function test_bs6_form_adorn_settings_row_rules_name_the_wrapper()
 	// or a converted field drops out of the two-column row.
 	pg_assert_contains('.pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .form-adorn,', $css);
 	pg_assert_true(strpos($css, '> .input-group, > .form-range)') === false, 'every settings row shape test names .form-adorn');
+
+	// The add-on keeps the input-group add-on type, so a converted row stays 38px tall.
+	pg_assert_contains(".pg-set-card .form-adorn > .form-adorn-text {\n  font-size: var(--bs-btn-input-font-size);", $css);
 }
