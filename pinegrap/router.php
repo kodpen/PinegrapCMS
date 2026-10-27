@@ -372,6 +372,20 @@ if (preg_match('#^\.well-known/(oauth-authorization-server|openid-configuration|
     exit();
 }
 
+// The discovery document a team device client reads from the typed address
+// (includes/api/resources/discovery.php). Built with the API's helpers but
+// never through api_run(): it answers also with the API off and over http.
+// Like integration.php it runs with no session.
+if ($item_name_lowercase == '.well-known/pinegrap.json') {
+    define('PG_API_ENTRY', true);
+    define('PG_NO_SESSION', true);
+    $_SESSION = array();
+    ob_start();
+    include(dirname(__FILE__) . '/init.php');
+    require_once(dirname(__FILE__) . '/includes/api/bootstrap.php');
+    api_discovery_well_known();
+}
+
 // The MCP server at the site's own address (mcp.php in the software
 // directory). It is the address the site gives out, because it is the one a
 // person types into an AI application.
