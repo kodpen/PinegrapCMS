@@ -287,10 +287,10 @@ $audit_view_toolbar = '
                         </div>
                     </div>
                     <div class="pg-toolbar mt-5 mb-0">
-                        <div class="input-group input-group-sm rounded-pill pg-toolbar-search">
-                            <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
-                            <input type="search" class="form-control" name="q" value="' . h($audit_view_filters['q']) . '" maxlength="255" placeholder="' . h(lang('Record name')) . '" aria-label="' . h(lang('Record name')) . '">
-                        </div>
+                        <label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
+                            <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                            <input type="search" class="form-ghost" name="q" value="' . h($audit_view_filters['q']) . '" maxlength="255" placeholder="' . h(lang('Record name')) . '" aria-label="' . h(lang('Record name')) . '">
+                        </label>
                         <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-funnel me-1" aria-hidden="true"></i>' . h(lang('Filter')) . '</button>
                         ' . ($audit_view_query ? '<a href="view_audit_log.php" class="btn btn-sm btn-text theme-secondary">' . h(lang('Clear filters')) . '</a>' : '') . '
                         <div class="pg-toolbar-grow">' . $audit_view_narrowed . '</div>
