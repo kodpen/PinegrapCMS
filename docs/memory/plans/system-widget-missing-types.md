@@ -29,14 +29,17 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 ## How is a new type added?
 - `SW_TYPES` + `_swTypeDefaults`, `pg_sw_type_labels()`, renderer in `includes/fn/widgets*.php` with `_pg_inject_messages_node()` named after the classic liveform, PHP default tree and JS starter tree in lockstep, tokens and flags passing `tools/check_bindings.php`; compare against the classic page (`designer/system-widget-test-pages.md`).
 
+## Which order did the owner give?
+- 2026-10-27, through the coordinator: "bekleyen işçilere yanıtı sen ver benim yerime", "en makul ve işlevsel seçimle", and "sorular mimari soru değilse makul seçim yap". Under that the order is: order form, folder view, photo gallery, confirmations, affiliate sign-up form.
+- Confirmations: decided when reached; preferred is a state / next-page setting of the registration and membership widgets, not widgets of their own.
+
 ## Open questions?
-- Confirmations: widgets of their own, or a state / next-page setting of the registration and membership widgets?
 - Which of the types above must be designable before L5 (retire), and which may stay `system` region nodes?
 
 ## Where to start?
-- The multi-step checkout is done. Next: the owner's list (open question above) picks the types and their order; none starts before it. One widget per PR.
+- The multi-step checkout is done. Next: the next type of the owner's order that no open PR holds. One widget per PR.
 
 ## Which steps are there?
 1-4. Done: shipping address (#1746; verified box left), method (#1759), billing (#1777), order preview (#1789); [[shipping-address-widget]] and siblings, [[order-preview-widget]].
 - Left from 4: what [[order-preview-widget]] lists under "What is left out?". 4b, card fields and surcharge rows switching with the method: done (#1918).
-5. The owner's list of the remaining types (table above).
+5. The owner's order (above): 5a order form (in progress), 5b folder view, 5c photo gallery, 5d confirmations, 5e affiliate sign-up form.
