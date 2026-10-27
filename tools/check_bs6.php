@@ -62,7 +62,7 @@ if ($converted) {
 // Checks read from the source text. Each counts its matches per line.
 $text_checks = array(
 	'Bootstrap JS call of a renamed or bridged component' => '/\bbootstrap\.(Modal|Offcanvas|Dropdown|Tooltip|Popover|Collapse|Tab|Toast|Alert|Button|Carousel|ScrollSpy)\b/',
-	'jQuery Bootstrap plugin call (no jQuery bridge in v6)' => '/\.(modal|dropdown|offcanvas|tooltip|popover|collapse|toast)\(\s*(\'|"|\{|\)|\()/',
+	'jQuery Bootstrap plugin call (no jQuery bridge in v6)' => '/(?<!\bh|Suggest)\.(modal|dropdown|offcanvas|tooltip|popover|collapse|toast)\(\s*(\'|"|\{|\)|\()/',
 	'event of a renamed component (*.bs.dialog, *.bs.drawer, *.bs.menu)' => '/\b(show|shown|hide|hidden|hidePrevented)\.bs\.(modal|offcanvas|dropdown)\b/',
 	'data attribute of a renamed component' => '/data-bs-(toggle|dismiss)\s*=\s*\\\\?["\'](modal|offcanvas|dropdown)\b/',
 	'carousel ride attribute (data-bs-autoplay in v6)' => '/data-bs-ride\b/',

@@ -454,3 +454,197 @@ theme class stays on the button and only the variant (or the theme) changes.
         btn.classList.toggle('theme-warning', n > 0);
         btn.classList.toggle('theme-success', n === 0);
 >>>
+
+Classes built in code from a v5 stem whose values the code takes from a
+variable: a button variant (`primary`, `outline-secondary`), a badge or
+text tone. Every value is a theme colour.
+
+@@ assets/js/backend.src.js
+<<<
+                            '<button type="button" class="btn btn-' + variant + '" data-pg-action="confirm">' + escapeHtml(confirmText) + '</button>' +
+===
+                            '<button type="button" class="btn btn-solid theme-' + variant + '" data-pg-action="confirm">' + escapeHtml(confirmText) + '</button>' +
+>>>
+
+@@ includes/fn/output.php
+<<<
+        return '<a class="btn btn-' . $variant . ' me-3" href="' . $url . '">' . $icon_html . $label . '</a>';
+===
+        return '<a class="btn ' . ((strpos($variant, 'outline-') === 0) ? 'btn-outline theme-' . substr($variant, 8) : 'btn-solid theme-' . $variant) . ' me-3" href="' . $url . '">' . $icon_html . $label . '</a>';
+>>>
+
+@@ includes/fn/output.php
+<<<
+        $badge = '<span class="pg-lic-badge no-popover text-bg-' . h($badge_color) . '" title="' . h(lang('Premium features access status')) . '"><i class="bi bi-gem" aria-hidden="true"></i></span>';
+===
+        $badge = '<span class="pg-lic-badge no-popover bg-' . h($badge_color) . ' fg-contrast-' . h($badge_color) . '" title="' . h(lang('Premium features access status')) . '"><i class="bi bi-gem" aria-hidden="true"></i></span>';
+>>>
+
+@@ erp_dashboard.php
+<<<
+                            <td><i class="bi ' . $edoc_filter['icon'] . ' me-3 text-' . $edoc_tone . '" aria-hidden="true"></i>' . h($edoc_filter['label']) . '</td>
+===
+                            <td><i class="bi ' . $edoc_filter['icon'] . ' me-3 fg-' . $edoc_tone . '" aria-hidden="true"></i>' . h($edoc_filter['label']) . '</td>
+>>>
+
+@@ includes/dashboard/widgets/widget_21.php
+<<<
+                        <span class="badge bg-' . h($waf_badge[0]) . ' flex-shrink-0" style="font-size:9px">' . h($waf_badge[1]) . '</span>
+===
+                        <span class="badge theme-' . h($waf_badge[0]) . ' flex-shrink-0" style="font-size:9px">' . h($waf_badge[1]) . '</span>
+>>>
+
+@@ includes/fn/parasut.php
+<<<
+    return '<span class="badge bg-' . h($tone) . (($tone === 'warning') ? ' fg-black' : '') . '">' . h(lang('Invoiced through the ERP')) . '</span>'
+===
+    return '<span class="badge theme-' . h($tone) . '">' . h(lang('Invoiced through the ERP')) . '</span>'
+>>>
+
+Check markup whose class attribute is built in code: the structured
+data switch of the settings and the custom layout radio's label.
+
+@@ includes/settings/prep.php
+<<<
+                                            <div class="form-field">
+                                                <input value="1"' . $strutured_data_switch_checked . ' class="form-check-input' . (($output_structured_data_dependent != '') ? ' collapse-switcher' : '') . '" type="checkbox" id="strutured_data" name="strutured_data"' . (($output_structured_data_dependent != '') ? ' data-bs-target="#strutured_data_dependent_row"' : '') . '/>
+
+===
+                                            <div class="form-field">
+                                                <div class="switch">
+                                                    <input value="1"' . $strutured_data_switch_checked . ' class="' . (($output_structured_data_dependent != '') ? 'collapse-switcher' : '') . '" switch type="checkbox" id="strutured_data" name="strutured_data"' . (($output_structured_data_dependent != '') ? ' data-bs-target="#strutured_data_dependent_row"' : '') . '/>
+                                                </div>
+
+>>>
+
+@@ includes/forms/page_form.php
+<<<
+                                <label title="' . $layout_type_custom_label_title . '" class="form-check-label' . $layout_type_custom_label_class . '" for="layout_type_custom">'. lang('Custom') . '</label>
+===
+                                <label title="' . $layout_type_custom_label_title . '" class="' . trim($layout_type_custom_label_class) . '" for="layout_type_custom">'. lang('Custom') . '</label>
+>>>
+
+Selectors on v5 classes in code and style blocks the selector fix does
+not read.
+
+@@ assets/js/backend.src.js
+<<<
+            + 'td[data-pg-editing] .form-control,td[data-pg-editing] .form-select{min-width:7rem}'
+===
+            + 'td[data-pg-editing] .form-control,td[data-pg-editing] select.form-control{min-width:7rem}'
+>>>
+
+@@ assets/js/offer_editor.js
+<<<
+        $$('.list-group select.form-select').forEach(function (el) {
+===
+        $$('.list-group select.form-control').forEach(function (el) {
+>>>
+
+@@ add_theme_file.php
+<<<
+                    $("input.form-check-input").on("click", function() {
+===
+                    $("input:is(.check, .radio)").on("click", function() {
+>>>
+
+@@ editor_select_image.php
+<<<
+.esi-filters .form-select
+===
+.esi-filters select.form-control
+>>>
+
+@@ includes/fn/prototype.php
+<<<
+.pg-proto-nav .form-select
+===
+.pg-proto-nav select.form-control
+>>>
+
+Bootstrap 5 helpers v6 dropped: a dismissible alert (v6's alert is a flex
+row, so the close button goes to its end), a light link on a badge, a
+border opacity v5 never applied to a plain border, the comment naming the
+dropped modal box.
+
+@@ assets/js/backend.src.js
+<<<
+        var alert = $('<div class="alert alert-dismissible show mb-5" role="alert"></div>')
+===
+        var alert = $('<div class="alert show mb-5" role="alert"></div>')
+>>>
+
+@@ assets/js/backend.src.js
+<<<
+        $('<button type="button" class="btn-close no-popover" data-bs-dismiss="alert"></button>')
+===
+        $('<button type="button" class="btn-close no-popover ms-auto" data-bs-dismiss="alert"></button>')
+>>>
+
+@@ assets/js/backend.src.js
+<<<
+        // No py-* here. .alert-dismissible parks the close button absolutely at
+        // the top right with a padding of its own, so a shortened alert cannot
+        // contain it and the button hangs out of the box.
+===
+        // No py-* here: a shortened alert would crowd the close button.
+>>>
+
+@@ assets/js/offer_editor.js
+<<<
+            '<a href="#" class="link-light text-decoration-none" data-on="' + action + '" data-index="' + index + '" data-id="' + id + '" title="' + esc(L.remove) + '">&times;</a></span>';
+===
+            '<a href="#" class="fg-white text-decoration-none" data-on="' + action + '" data-index="' + index + '" data-id="' + id + '" title="' + esc(L.remove) + '">&times;</a></span>';
+>>>
+
+@@ assets/js/backend.src.js
+<<<
+ gap-3 text-start border-bottom border-opacity-10"
+===
+ gap-3 text-start border-bottom"
+>>>
+
+@@ assets/js/backend.src.js
+<<<
+    // .modal-content.pg-sm -- the box the sidebar, the pane and the drawer
+===
+    // .dialog.pg-sm -- the box the sidebar, the pane and the drawer
+>>>
+
+The panel's switch knob: dark when on, blue while focused (v5 drew it
+with --bs-form-switch-bg). The .danger switch variant is not used.
+
+@@ assets/css/backend.src.css
+<<<
+.form-switch :is(.check, .radio):focus {
+  --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%2364b5f6'/%3e%3c/svg%3e");
+}
+.form-switch :is(.check, .radio):checked {
+  --bs-form-switch-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%231a1c1e'/%3e%3c/svg%3e");
+}
+
+===
+.switch:focus-within {
+  --bs-switch-indicator-bg: #64b5f6;
+}
+.switch {
+  --bs-switch-checked-indicator-bg: #1a1c1e;
+}
+
+>>>
+
+@@ assets/css/backend.src.css
+<<<
+
+.form-switch :is(.check, .radio).danger {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23dc3545'/%3e%3c/svg%3e");
+}
+
+.form-switch :is(.check, .radio).danger:checked {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%231a1c1e'/%3e%3c/svg%3e");
+}
+
+===
+
+
+>>>
