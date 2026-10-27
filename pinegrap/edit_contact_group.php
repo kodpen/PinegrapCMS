@@ -39,8 +39,8 @@ include_once('liveform.class.php');
 $liveform = new liveform('edit_contact_group', $_REQUEST['id']);
 
 // get number of contacts in this contact group
-$query = "SELECT COUNT(contact_id) FROM contacts_contact_groups_xref WHERE contact_group_id = '" . escape($_REQUEST['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$query = "SELECT COUNT(contact_id) FROM contacts_contact_groups_xref WHERE contact_group_id = ?";
+$result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
 $row = mysqli_fetch_row($result);
 $number_of_contacts = $row[0];
 
@@ -55,8 +55,8 @@ if (!$_POST) {
                 email_subscription_type,
                 description
             FROM contact_groups
-            WHERE id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         $liveform->assign_field_value('name', $row['name']);
@@ -173,30 +173,30 @@ if (!$_POST) {
         // if there are no contacts in this contact group, proceed with deleting contact group
         if ($number_of_contacts == 0) {
             // get contact group name for log
-            $query = "SELECT name FROM contact_groups WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT name FROM contact_groups WHERE id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $contact_group_name = $row['name'];
             
             // delete contact group
-            $query = "DELETE FROM contact_groups WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM contact_groups WHERE id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             
             // delete contact group references in contacts_contact_groups_xref
-            $query = "DELETE FROM contacts_contact_groups_xref WHERE contact_group_id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM contacts_contact_groups_xref WHERE contact_group_id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             
             // delete contact group references in users_contact_groups_xref
-            $query = "DELETE FROM users_contact_groups_xref WHERE contact_group_id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM users_contact_groups_xref WHERE contact_group_id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             
             // delete contact group references in opt_in
-            $query = "DELETE FROM opt_in WHERE contact_group_id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM opt_in WHERE contact_group_id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             
             // delete contact group references in contact_groups_email_campaigns_xref
-            $query = "DELETE FROM contact_groups_email_campaigns_xref WHERE contact_group_id = '" . escape($_POST['id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM contact_groups_email_campaigns_xref WHERE contact_group_id = ?";
+            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
             log_activity(lang(array('string'=>'contact group ({var:1}) was deleted','vars'=>$contact_group_name)), $_SESSION['sessionusername']);
             $liveform->remove_form();
@@ -233,9 +233,9 @@ if (!$_POST) {
             "SELECT id
             FROM contact_groups
             WHERE
-                (name = '" . escape($liveform->get_field_value('name')) . "')
-                AND (id != '" . escape($_POST['id'] ?? '') . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (name = ?)
+                AND (id != ?)";
+        $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // if name is already in use by a different contact group, prepare error and forward user back to screen
         if (mysqli_num_rows($result) > 0) {
@@ -249,14 +249,14 @@ if (!$_POST) {
         $query =
             "UPDATE contact_groups
             SET
-                name = '" . escape($liveform->get_field_value('name')) . "',
-                email_subscription = '" . escape($liveform->get_field_value('email_subscription')) . "',
-                email_subscription_type = '" . escape($liveform->get_field_value('email_subscription_type')) . "',
-                description = '" . escape($liveform->get_field_value('description')) . "',
-                last_modified_user_id = '" . $user['id'] . "',
+                name = ?,
+                email_subscription = ?,
+                email_subscription_type = ?,
+                description = ?,
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) $liveform->get_field_value('email_subscription'), (string) $liveform->get_field_value('email_subscription_type'), (string) $liveform->get_field_value('description'), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         log_activity(lang(array('string'=>'contact group (name: {var:1}) was modified','vars'=>$liveform->get_field_value('name') )), $_SESSION['sessionusername']);
         $liveform->remove_form();
         $liveform_view_contact_groups = new liveform('view_contact_groups');

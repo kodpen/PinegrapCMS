@@ -12685,6 +12685,10 @@ const StyleDesigner = (function () {
             wrapper.classList.add('sd-cond');
             wrapper.setAttribute('data-sd-cond', _sdCondSentence(node));
             if (!_sdCondCanvasShows(node, _sdCondStateOf(_sysWidgetRenderTreeRoot))) wrapper.classList.add('sd-state-off');
+        } else if (!_sysWidgetRenderCfg && node.props && _sdCondPresent(node.props) && _sdPageFactRows(node)) {
+            // On a page: named, always drawn (each visit decides it).
+            wrapper.classList.add('sd-cond');
+            wrapper.setAttribute('data-sd-cond', _sdCondSentence(node));
         }
         // "Hide when empty": left out in the state that empties it.
         if (_sysWidgetRenderCfg && _sdHideEmptyCanvasOff(node, _sdCondStateOf(_sysWidgetRenderTreeRoot))) {
@@ -32816,6 +32820,7 @@ const StyleDesigner = (function () {
             (n.props.regionType === 'dynamic' ? _sdDregionPropsHtml(n) : '') +
             (n.props.regionType === 'system' ? _sdLayoutPropsHtml() : '') +
             (n.props.regionType === 'designer' || n.props.regionType === 'common' ? _sdDesignerRegionPropsHtml(n) : '') +
+            (n.props.regionType === 'page' ? _sdPageRegionPropsHtml(n) : '') +
             _sdRegionWidgetPropsHtml(n) +
             designableHtml
         ) + commentsInfo;
@@ -38119,7 +38124,26 @@ const StyleDesigner = (function () {
     // (_swBindTokenOptions(), the row position group inside a list
     // included) that a condition may read.
     function _sdCondTokenOptions(node) {
+        if (!_isInsideSystemWidget(node)) return SD_PAGE_FACTS.map(function (f) { return { token: f[0], label: f[1] }; });
         return _swBindTokenOptions(node).filter(function (o) { return _sdCondTokenAllowed(o.token); });
+    }
+
+    // The facts of the visit an element outside a widget may be shown by
+    // (pg_page_fact_tokens()): the page decides them for each visit and
+    // never prints them.
+    var SD_PAGE_FACTS = [
+        ['__visit_signed_in',      _sdT('Visitor is signed in')],
+        ['__visit_cart_has_items', _sdT('Cart has products')],
+        ['__visit_cart_count',     _sdT('Number of products in the cart')]
+    ];
+
+    // Whether every condition of `node` reads a fact of the visit, as the
+    // page needs to decide it (pg_page_fact_spec()).
+    function _sdPageFactRows(node) {
+        var rows = _sdCondRowsOf(node);
+        return rows.length > 0 && rows.every(function (r) {
+            return SD_PAGE_FACTS.some(function (f) { return f[0] === String(r.token).toLowerCase(); });
+        });
     }
 
     // The conditions of `node` as rows, [{token, op, value}] in the order of
@@ -38196,7 +38220,8 @@ const StyleDesigner = (function () {
         var any = _sdCondJoin(node) === 'any';
         return rows.map(function (r, i) {
             var entry = _sdCondOp(r.op);
-            var parts = [_swBindLabel(kind, r.token), entry ? entry[1] : String(r.op), (entry && entry[2]) ? r.value : ''];
+            var fact = kind ? null : SD_PAGE_FACTS.filter(function (f) { return f[0] === r.token; })[0];
+            var parts = [fact ? fact[1] : _swBindLabel(kind, r.token), entry ? entry[1] : String(r.op), (entry && entry[2]) ? r.value : ''];
             if (!i) return _sdT('Only when: {var:1} {var:2} {var:3}', parts);
             return any ? _sdT('or {var:1} {var:2} {var:3}', parts) : _sdT('and {var:1} {var:2} {var:3}', parts);
         }).join(' ').replace(/\s+/g, ' ').trim();
@@ -38384,7 +38409,11 @@ const StyleDesigner = (function () {
     // the "All must hold / Any is enough" switch. Beside the flag row above,
     // which some kinds have; when both are set both must pass.
     function _sdConditionRows(node) {
-        if (!node || !node.props || !_isInsideSystemWidget(node)) return '';
+        if (!node || !node.props) return '';
+        // Outside a widget the list holds the visit's facts only
+        // (_sdCondTokenOptions()); a condition written by hand on another
+        // value is still listed, so it can be seen and cleared.
+        var inWidget = _isInsideSystemWidget(node);
         if (node.type === 'root' || node.type === 'loop_area' || node.type === 'recipient_loop_area') return '';
         var label = esc(_sdT('Show only when a value…'));
         var note = function (text) { return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(text) + '</div>'; };
@@ -38432,7 +38461,11 @@ const StyleDesigner = (function () {
         }
         html += note(required
             ? _sdT('A required form field cannot be hidden by a condition: the site ignores this one. Choose Always to remove it.')
-            : _sdT('The page and Preview leave the element out while the value does not pass; the canvas keeps showing it. Numbers are compared as numbers, other values as text.'));
+            : inWidget
+                ? _sdT('The page and Preview leave the element out while the value does not pass; the canvas keeps showing it. Numbers are compared as numbers, other values as text.')
+                : (rows.length && !_sdPageFactRows(node))
+                    ? _sdT('Outside a system widget only the facts of the visit decide: with another value here the element is always shown.')
+                    : _sdT('Each visit decides it: the page leaves the element out while the fact does not pass; the canvas keeps showing it. Nothing about the visitor is shown.'));
         return row(label, html);
     }
 
@@ -41650,8 +41683,10 @@ const StyleDesigner = (function () {
         // Show-only-when: any element of a widget that evaluates visibility
         // flags. A flag written by an older starter that is no longer in the
         // list is still shown, so it can be seen and cleared.
-        var visFlags = SW_VISIBILITY_FLAGS[region];
-        if (visFlags && node.type !== 'loop_area' && node.type !== 'root') {
+        // Inside a list, the flags of its rows and of the lists around it
+        // too: the row decides (pg_sw_list_flag_alias()).
+        var visFlags = (SW_VISIBILITY_FLAGS[region] || []).concat(_sdListRowFlags(node));
+        if (visFlags.length && node.type !== 'loop_area' && node.type !== 'root') {
             var vis = [['', _sdT('Always')]].concat(visFlags);
             var curVis = cur.eo_visible_if || '';
             if (curVis && !visFlags.some(function (f) { return f[0] === curVis; })) vis.push([curVis, curVis]);
@@ -41677,7 +41712,7 @@ const StyleDesigner = (function () {
         // Node has an action/value binding but no token bindings (a plain
         // "Add to Cart" button, say) — still show the section, so every
         // binding is reachable from the panel named after the job.
-        if (!html) return sect('bi-link-45deg', _sdT('Bind Data (System Widget)'), extra);
+        if (!html) return sect('bi-link-45deg', _isInsideSystemWidget(node) ? _sdT('Bind Data (System Widget)') : _sdT('Show by the visit'), extra);
         // sect() closes with `</div></div>`; slot the rows in just before it
         // so they land INSIDE the section body.
         var idx = html.lastIndexOf('</div></div>');
@@ -46072,6 +46107,106 @@ const StyleDesigner = (function () {
             .catch(function () { sdToast(esc(_sdT('Network error')), 'error'); });
     }
 
+    // A page region node in the open page's own tree: its content (the
+    // page's pregion row) moves into the tree as a block content editors
+    // edit (_sdPageRegionsConvert()), for the roles that convert regions.
+    function _sdPageRegionPropsHtml(n) {
+        var page = _pgActivePage();
+        if (!_design || !_design.designerRegionConvert || !page || !(page.page_id > 0)) return '';
+        var hit = _sdAnyParent(n);
+        if (!hit || hit.sid) return '';
+        return '<div class="sd-prop-row">' +
+                '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-page-region-convert">' +
+                    '<span class="bi bi-box-arrow-in-down me-1"></span>' + esc(_sdT('Move page content into the page')) +
+                '</button>' +
+            '</div>' +
+            '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                esc(_sdT('Every page region of this page becomes a block with its content, edited here by the people who edit the page today; front-end inline editing of the page ends. Saving the page keeps it.')) +
+            '</div></div>';
+    }
+
+    // The page region nodes of the open page, the way the site fills them
+    // (the Nth <pregion> tag takes the page's Nth row): own holds the nodes
+    // of the page tree in document order, shared counts those inside the
+    // shared components and widgets it places, loading tells a component
+    // not fetched yet.
+    function _sdPageRegionNodes() {
+        var out = { own: [], shared: 0, loading: false };
+        var open = {};
+        function walk(node, sid) {
+            if (!node) return;
+            if (node.type === 'region' && node.props && node.props.regionType === 'page') {
+                if (sid) out.shared++; else out.own.push(node);
+            }
+            if (node.type === 'shared_ref') {
+                var rid = parseInt(node.props && node.props.sharedId, 10) || 0;
+                if (rid <= 0 || open[rid]) return;
+                var c = _sharedCache[rid];
+                if (!c || !c.tree) { out.loading = true; return; }
+                open[rid] = true;
+                walk(c.tree, rid);
+                delete open[rid];
+                return;
+            }
+            (node.children || []).forEach(function (k) { walk(k, sid); });
+        }
+        walk(tree, 0);
+        return out;
+    }
+
+    // Every page region node of the open page is replaced by the block the
+    // server made from its row (designer sub-action page_regions_import),
+    // in one undo step. All of them at once: a node left behind would be
+    // filled with another row once the ones before it are gone. A page
+    // region inside a shared component is drawn from every placing page's
+    // rows, so such a page is refused. The rows stay; the saved tree no
+    // longer asks for them.
+    function _sdPageRegionsConvert() {
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        var page = _pgActivePage();
+        if (!page || !(page.page_id > 0)) return;
+        var found = _sdPageRegionNodes();
+        if (found.loading) { sdToast(esc(_sdT('The shared components are still loading — wait a second.')), 'warning'); return; }
+        if (found.shared) {
+            sdToast(esc(_sdT('A page region inside a shared component shows the content of every page that places it, so it cannot move into one page. Put it on the page first.')), 'error', 9000);
+            return;
+        }
+        if (!found.own.length) return;
+        var key = _activeKey;
+        _pgApiPost('page_regions_import', { page_id: page.page_id, count: found.own.length }).then(function (data) {
+            if (!data || data.status !== 'success') {
+                sdToast(esc((data && data.message) || _sdT('Network error')), 'error');
+                return;
+            }
+            // Another tab, an undo or an edit meanwhile: the rows would no
+            // longer match the nodes.
+            var blocks = Array.isArray(data.blocks) ? data.blocks : [];
+            var spots = (_activeKey === key && blocks.length === found.own.length) ? found.own.map(function (node) {
+                var parent = findParent(node, tree);
+                var idx = (parent && Array.isArray(parent.children)) ? parent.children.indexOf(node) : -1;
+                return idx === -1 ? null : { parent: parent, node: node };
+            }) : [];
+            if (!spots.length || spots.indexOf(null) !== -1) {
+                sdToast(esc(_sdT('The page changed meanwhile; try again.')), 'warning');
+                return;
+            }
+            saveState();
+            var first = null;
+            spots.forEach(function (s, i) {
+                var block = blocks[i];
+                _backfillIds(block);
+                s.parent.children.splice(s.parent.children.indexOf(s.node), 1, block);
+                if (!first) first = block;
+            });
+            selectedNode  = first;
+            selectedNodes = [];
+            if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(first);
+            render();
+            sdToast(esc(_sdT('The page\'s content is now part of the page; save the page to keep it.')), 'success', 7000);
+            (Array.isArray(data.warnings) ? data.warnings : []).forEach(function (w) { sdToast(esc(String(w)), 'warning', 12000); });
+        }).catch(function () { sdToast(esc(_sdT('Network error')), 'error'); });
+    }
+
     // The classic data-driven regions, the widget kind that draws each and
     // the widget setting that names the region (the same name the region
     // node holds).
@@ -48824,6 +48959,9 @@ const StyleDesigner = (function () {
         // A designer region becomes a shared component on this page.
         var dsgRegionBtn = document.getElementById('sd-designer-region-convert');
         if (dsgRegionBtn) dsgRegionBtn.addEventListener('click', function () { _sdDesignerRegionConvert(selectedNode); });
+        // The page's own regions move into its tree.
+        var pageRegionBtn = document.getElementById('sd-page-region-convert');
+        if (pageRegionBtn) pageRegionBtn.addEventListener('click', function () { _sdPageRegionsConvert(); });
         // A menu, menu sequence, ad or tag cloud region becomes its widget.
         var regionWidgetBtn = document.getElementById('sd-region-make-widget');
         if (regionWidgetBtn) regionWidgetBtn.addEventListener('click', function () { _sdRegionMakeWidget(selectedNode); });
@@ -55815,6 +55953,25 @@ const StyleDesigner = (function () {
     }
 
     // The sources a widget kind offers, in their order (pg_sw_kind_lists()).
+    // The flags the rows of the lists `node` is drawn in answer, nearest
+    // list first: each list's "1 or empty" row values (__menu_item_has_children
+    // as menu_item_has_children), labelled with the list's name.
+    function _sdListRowFlags(node) {
+        var out = [];
+        var seen = {};
+        _sdListsAbove(node).forEach(function (l) {
+            var src = SW_LIST_SOURCES[l.props.source];
+            if (!src) return;
+            src.rows.forEach(function (r) {
+                var name = String(r[0]).replace(/^__/, '');
+                if (seen[name] || !/_(is|has|holds)_/.test(r[0])) return;
+                seen[name] = true;
+                out.push([name, src.label + ': ' + r[1]]);
+            });
+        });
+        return out;
+    }
+
     function _sdKindLists(kind) {
         return Object.keys(SW_LIST_SOURCES).filter(function (s) { return SW_LIST_SOURCES[s].kinds.indexOf(kind) !== -1; });
     }

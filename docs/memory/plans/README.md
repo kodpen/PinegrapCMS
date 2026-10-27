@@ -48,7 +48,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - legacy-page-designer-l5-list.md: What step L5 (retire page_designer.php) reroutes or removes beyond the three files: Edit Layout links, help row, menu case, panel actions used only by page_designer.js
 - legacy-page-designer-parity.md: L4 parity list (2026-10-26): what page_designer.php does that the visual designer lacks, with a build-or-drop proposal and files per item; waits for the owner
 - legacy-page-designer-retirement.md: Plan (2026-10-19, waits for its prerequisites) to open classic pages in the visual designer and retire page_designer.php: placeholder converter L1, entry point, parity list, what leaves
-- legacy-retirement-prerequisites.md: Plan (2026-10-19, R1-R4 and R6 done, R5 left): regions editable in the visual designer before classic pages move, content rights kept
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer; Trendyol 1, 2, 2b-i, 2b-ii, 3, 4a-4c, 5a, 5b (with rejection), 5c, 6, A, B done; Hepsiburada open
 - merge-flow-tools.md: Plan (2026-10-25, steps 1 to 5 done): merge_train.php (lock, build, fast-forward landing), CI guards, filtered install matrix, generated fn-module map, lang cache, merge queue
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what M1–M6 built, what M7 (native push) and M8 add, decisions, how its needs arrive
@@ -79,9 +78,9 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - waf-legit-traffic-auto-ban-findings-counting.md: Review findings of 2026-10-26 for plans/waf-legit-traffic-auto-ban.md step 2: refusals that become offences, the ladder, shared addresses, endpoints without an allowance
 - waf-legit-traffic-auto-ban-findings-lockout.md: Review findings of 2026-10-26 for plans/waf-legit-traffic-auto-ban.md steps 2, 4 and 5: how staff lock themselves out, what the operator is not told, the recovery paths that do not exist
 - waf-legit-traffic-auto-ban-findings-writes.md: Review findings of 2026-10-26 for plans/waf-legit-traffic-auto-ban.md step 3: the ban note without a rule, log lines without a path, the shield's bare answer, the mirror line outliving the ban
-- waf-legit-traffic-auto-ban-questions.md: Questions of plans/waf-legit-traffic-auto-ban.md with the owner's answers: Q1-Q5 answered (attachments, banned address, 2026.4.x patch, thresholds, global limit), Q6 open (address lock release)
+- waf-legit-traffic-auto-ban-questions.md: Questions of plans/waf-legit-traffic-auto-ban.md with the owner's answers: Q1-Q6 answered (attachments, banned address, 2026.4.x patch, thresholds, global limit, address lock release)
 - waf-legit-traffic-auto-ban.md: Plan (2026-10-26, issue #1989): legitimate traffic must not end in an auto-ban: sub-resource fetches, refusals feeding the ban, staff lockout, the shield's page, visibility, self-rescue
-- widget-designability.md: Plan (done: W1-W15, W19, W24a, W25): legacy-layout power in widgets
+- widget-designability.md: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in widgets
 - workspace-agent-discussion-follow.md: Plan (2026-10-21, step 1 done #1121, answers open): an assistant a discussion is about, or was asked in it, answers each later message there without its @name; channels unchanged
 - workspace-agent-handles.md: Plan (2026-10-21, step 1 done, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1 (#1462), 2 (#1523), 3 (#1726) done; answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset

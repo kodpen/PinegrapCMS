@@ -537,6 +537,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         if (is_array($pg_sw_prev_ctx)) pg_sw_render_context($pg_sw_prev_ctx);
     }
 
+    // ── Page conditions ─────────────────────────────────────────────────────────
+    // Elements shown by a fact of the visit (signed in, cart) stand between
+    // markers in the stored body and in shared components; decided here, once
+    // every shared component and widget is drawn (page_facts.php).
+    if (strpos($content, '<!--pg-pf:') !== false) {
+        $content = pg_page_facts_apply($content, $email);
+    }
+
     // ── Custom PHP marker expansion ─────────────────────────────────────────────
     // Visual-designer `custom_php` content nodes are emitted as `<!--pg-custom-php:BASE64-->`
     // markers. Eval them here so the PHP runs at page-render time (fresh state every request).

@@ -1268,6 +1268,24 @@ function pg_panel_designer($request, $action)
             ));
             break;
 
+        // A page's own regions as blocks of its tree, one per page region
+        // node the editor counts on it (pg_page_region_blocks()). Placing
+        // them changes the page's structure: the designer's right, as the
+        // other region conversions ask. Nothing is written here; the page's
+        // Save does.
+        case 'page_regions_import':
+            $pr_page = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+            if ((int)$user['role'] > 1) {
+                respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+            }
+            if ($pr_page <= 0 || !db_value("SELECT page_id FROM page WHERE page_id = '$pr_page' LIMIT 1")) {
+                respond(array('status' => 'error', 'message' => lang('Record not found.')));
+            }
+            require_once(PG_FUNCTIONS_DIR . '/includes/designer_region_import.php');
+            $pr = pg_page_region_blocks($pr_page, isset($request['count']) ? (int)$request['count'] : 0);
+            respond(array('status' => 'success', 'blocks' => $pr['blocks'], 'warnings' => $pr['warnings']));
+            break;
+
         // A page the user may not know is drawn as an unsaved one: a
         // comments widget then shows no thread of it. The comment settings
         // are the page's as the editor holds them, saved or not, on a page

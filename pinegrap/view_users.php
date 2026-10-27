@@ -732,8 +732,8 @@ foreach ($user_rows as $row) {
         }
         
         // Get folders user has access to
-        $query2 = "SELECT DISTINCT aclfolder_user FROM aclfolder WHERE ((aclfolder_user = '" . $id . "') AND (aclfolder_rights = 1))";
-        $result2 = mysqli_query(db::$con, $query2) or output_error('Query failed.');
+        $query2 = "SELECT DISTINCT aclfolder_user FROM aclfolder WHERE ((aclfolder_user = ?) AND (aclfolder_rights = 1))";
+        $result2 = db_q($query2, array((string) $id)) or output_error('Query failed.');
         $row2 = mysqli_fetch_assoc($result2);
         
         // if user is a manager or above, or if the basic user has a aclfolder_user value
@@ -936,10 +936,10 @@ foreach ($user_rows as $row) {
                     FROM folder 
                     LEFT JOIN aclfolder ON aclfolder.aclfolder_folder = folder.folder_id
                     WHERE 
-                        ((aclfolder_user = '" . $id . "')
+                        ((aclfolder_user = ?)
                         AND (aclfolder_rights = '1'))
                     ORDER BY folder_name ASC";
-                $result2 = mysqli_query(db::$con, $query2) or output_error('Query failed.');
+                $result2 = db_q($query2, array((string) $id)) or output_error('Query failed.');
                 
                 // Loop through all folders that user has access to.
                 while ($row2 = mysqli_fetch_assoc($result2)) {
@@ -980,10 +980,10 @@ foreach ($user_rows as $row) {
                     FROM folder 
                     LEFT JOIN aclfolder ON aclfolder.aclfolder_folder = folder.folder_id
                     WHERE 
-                        ((aclfolder_user = '" . $id . "')
+                        ((aclfolder_user = ?)
                         AND (aclfolder_rights = '2'))
                     ORDER BY folder_name ASC";
-                $result2 = mysqli_query(db::$con, $query2) or output_error('Query failed.');
+                $result2 = db_q($query2, array((string) $id)) or output_error('Query failed.');
                 
                 // Loop through all folders that user has access to.
                 while ($row2 = mysqli_fetch_assoc($result2)) {
@@ -1036,8 +1036,8 @@ foreach ($user_rows as $row) {
                     FROM users_calendars_xref
                     LEFT JOIN calendars ON calendars.id = users_calendars_xref.calendar_id
                     WHERE 
-                        users_calendars_xref.user_id = '" . $id . "'";
-                $result2 = mysqli_query(db::$con, $query2) or output_error('Query failed.');
+                        users_calendars_xref.user_id = ?";
+                $result2 = db_q($query2, array((string) $id)) or output_error('Query failed.');
                 while ($row2 = mysqli_fetch_assoc($result2)) {
                     $calendars_that_user_has_access_to .= '<li><span class="menu-text badge fg-black fw-light py-3" >' . h($row2['name']) . '</span></li>';
                 }
@@ -1131,8 +1131,8 @@ foreach ($user_rows as $row) {
                     contact_groups.name as contact_group_name
                 FROM users_contact_groups_xref
                 LEFT JOIN contact_groups ON contact_groups.id = users_contact_groups_xref.contact_group_id
-                WHERE users_contact_groups_xref.user_id = '" . $id . "'";
-            $result2 = mysqli_query(db::$con, $query2) or output_error('Query failed.');
+                WHERE users_contact_groups_xref.user_id = ?";
+            $result2 = db_q($query2, array((string) $id)) or output_error('Query failed.');
             while ($row2 = mysqli_fetch_assoc($result2)) {
                 // If there is a contact group then prepare to output the contact group
                 if ($row2['contact_group_name'] != '') {

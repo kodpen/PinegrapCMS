@@ -514,3 +514,66 @@ function pg_common_region_component($cregion_id, $user, &$warnings)
         'vars' => array($row['cregion_name'], $unique))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
     return array('id' => $sid, 'name' => $unique, 'created' => true);
 }
+
+/**
+ * The blocks a page's own regions become in its tree: each page region's
+ * content converted as a common region's is, in one block marked
+ * `_editable`, so the people who edit the page today (managers, users with
+ * the folder's edit right) keep editing all of it at content level. Block N
+ * takes the place of the page's Nth page region node, the one
+ * get_page_content.php fills with the Nth row; a node with no row becomes an
+ * empty block, as the page drew it.
+ *
+ * @param array    $contents  pregion_content values in pregion_order
+ * @param int      $count     page region nodes on the page
+ * @param callable $lookup    as pg_di_designer_region_tree()
+ * @param array    $opts      as pg_di_designer_region_tree()
+ * @return array  'blocks' (one semantic node each), 'warnings' (prefixed with the region's number)
+ */
+function pg_di_page_region_blocks($contents, $count, $lookup, $opts = array())
+{
+    $contents = array_values((array)$contents);
+    $out = array('blocks' => array(), 'warnings' => array());
+    for ($i = 0; $i < (int)$count; $i++) {
+        $res = pg_di_common_region_tree(isset($contents[$i]) ? $contents[$i] : '', $lookup, $opts);
+        $out['blocks'][] = $res['tree']['children'][0];
+        $notes = $res['warnings'];
+        if ($res['php'] === 'whole') {
+            $notes[] = lang('Its PHP could not be cut into separate blocks, so the region is one PHP block that prints it as before.');
+        }
+        if (($res['php'] === 'blocks' || $res['php'] === 'whole') && !empty($opts['hosted'])) {
+            $notes[] = lang('A hosted site runs no PHP written in the designer: its PHP blocks print nothing.');
+        }
+        foreach ($notes as $note) {
+            $out['warnings'][] = lang(array('string' => 'Page region {var:1}', 'vars' => array($i + 1))) . ': ' . $note;
+        }
+    }
+    return $out;
+}
+
+/**
+ * The blocks of a page's own regions (pg_di_page_region_blocks()), read in
+ * the collection of the page's style as the page draws them. The rows stay;
+ * once the page is saved without page region nodes nothing reads them.
+ *
+ * @param int $page_id
+ * @param int $count  page region nodes on the page
+ * @return array  as pg_di_page_region_blocks()
+ */
+function pg_page_region_blocks($page_id, $count)
+{
+    $pid = (int)$page_id;
+    $count = max(0, min(100, (int)$count));
+    $collection = (string)db_value("SELECT style.collection FROM page
+                                    LEFT JOIN style ON style.style_id = page.page_style
+                                    WHERE page.page_id = '$pid' LIMIT 1");
+    $contents = ($count > 0) ? db_values("SELECT pregion_content FROM pregion
+                                          WHERE pregion_page = '$pid' AND collection = '" . e($collection) . "'
+                                          ORDER BY pregion_order ASC LIMIT $count") : array();
+    $lookup = function ($inner) {
+        $hit = db_item("SELECT cregion_designer_type FROM cregion WHERE cregion_name = '" . e($inner) . "' LIMIT 1");
+        return array('regionType' => (is_array($hit) && $hit['cregion_designer_type'] === 'yes') ? 'designer' : 'common');
+    };
+    return pg_di_page_region_blocks($contents, $count, $lookup,
+        array('php' => defined('PHP_REGIONS') && PHP_REGIONS, 'hosted' => pg_hosted()));
+}
