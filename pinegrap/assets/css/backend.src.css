@@ -11811,6 +11811,34 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   font-size: .72rem;
   color: var(--pg-fg-2);
 }
+/* A checklist item's task: its tag, or the button that makes one, shown on
+   hover (always on a touch screen). */
+.ws-check-task .ws-chip {
+  font-size: .78rem;
+}
+.ws-check-make {
+  padding: 0 .2rem;
+  border: 0;
+  border-radius: var(--ws-radius-sm);
+  background: none;
+  color: var(--pg-fg-2);
+  font-size: .8rem;
+  line-height: 1.2;
+  opacity: 0;
+}
+.ws-check:hover .ws-check-make,
+.ws-check-make:focus-visible {
+  opacity: 1;
+}
+.ws-check-make:hover {
+  color: var(--pg-primary);
+  background: var(--pg-tint-hover);
+}
+@media (hover: none) {
+  .ws-check-make {
+    opacity: 1;
+  }
+}
 
 /* A poll in the conversation. */
 .ws-poll {

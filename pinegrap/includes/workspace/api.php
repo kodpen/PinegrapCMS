@@ -1442,6 +1442,23 @@ function ws_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.messages.item_task',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/item-task',
+            'scope'       => 'tasks:write',
+            'handler'     => 'ws_api_messages_item_task',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceTask',
+            'status'      => 201,
+            'summary'     => 'Make one checklist item of a message a task',
+            'description' => 'Makes one item of a message\'s checklist ("- [ ] " lines) a task in the message\'s channel, the way the button beside the item does in the panel. The item\'s words are read as /task reads them: a day or date, a time, an estimate such as "1.5 saat", tagged people and typed usernames of team members; a task given to nobody is the owner\'s own. The task\'s description is the item as written and its source_message_id the message; no card is posted, the item shows the task\'s tag instead. item counts the checklist items of the message from 0. Whoever may write in the channel may, for the people they may give tasks to; a message of a guest, a task card or a message in an earlier version of the conversation is refused, and so is an item a task was already made of (422), so a retried call does not make two tasks. A clash with somebody\'s leave is refused too: /task shows it and may hand the task over anyway. A dry run makes the same checks and its detail gives the task\'s title, channel and people.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'item', 'in' => 'body', 'type' => 'int', 'min' => 0, 'required' => true, 'description' => 'The checklist item, counted from 0 in the order of the message.'),
+            ),
+        ),
+
+        array(
             'id'           => 'workspace.tasks.update',
             'method'       => 'POST',
             'also_accepts' => array('PATCH'),

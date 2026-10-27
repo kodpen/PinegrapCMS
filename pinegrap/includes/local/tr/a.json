@@ -855,6 +855,7 @@
     "A task needs a title.": "Görevin bir başlığı olmalı.",
     "A task repeats every 1 to 99 days, weeks, months or years.": "Bir görev 1 ile 99 arasında gün, hafta, ay ya da yılda bir tekrarlanır.",
     "A task timer is running": "Görev sayacı çalışıyor",
+    "A task was already made of that item.": "Bu maddeden zaten bir görev yapıldı.",
     "A task with no estimate counts as (hours)": "Süre tahmini olmayan görev şu kadar sayılır (saat)",
     "A task you cannot see": "Göremediğiniz bir görev",
     "A tax amount needs a tax rate.": "Vergi tutarı girmek için vergi oranı gerekir.",
