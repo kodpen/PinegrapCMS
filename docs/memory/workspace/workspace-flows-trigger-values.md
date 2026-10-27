@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-trigger-values
-description: What a flow's step boxes read of what started the run (#2205): event and record values, the newcomer and the channel joined in their texts, a post box in the channel joined (-1)
+description: What a flow's step boxes read of what started the run (#2205, D5 #2341): {{trigger.<field>}} declared per start kind, event and record values, the newcomer, a post box in the channel joined (-1)
 ---
 
 ## What does a box read of what started its run?
@@ -9,5 +9,12 @@ description: What a flow's step boxes read of what started the run (#2205): even
 ## How does a post box write in the channel joined?
 - `channel_id` -1 kept by `ws_step_config_normalize()` (post only); `ws_flow_starts_on_join($graph)` (a `join` box in the graph) lets `ws_step_config_problems()` and `ws_step_check(…, $joined)` = `ws_scheduled_action_input(…, $joined)` take it at publish, run and try; without a join box it is a `bad_config` problem. Canvas: `postFields()` offers "The channel they joined" when the graph has a join box (`startsOnJoin()`), the box reads `fl_post_meta_joined`.
 
+## What does {{trigger.<field>}} read? (D5, PR #2341)
+- Declared per start box like outputs: `ws_flow_trigger_outputs($kind, $config)` (flow_anchors.php). join: `newcomer_id`, `newcomer_name`, `channel_id`, `channel_name`; event: `event` (its key), `record_id` (`ws_events_record_of()`), plus `ws_flow_event_outputs()[event]`: the scalar payload keys its announcer always sends (lists never). manual, schedule: none. Canvas: `ws_flow_js_config()` `trigger_outputs` (kinds, events) for D6.
+- Filled by `ws_step_trigger_values()` (pure) from the run context, under `WS_STEP_TRIGGER` among the box values, so `ws_step_fill_nodes()` (`WS_STEP_VALUE_PATTERN`) escapes it per destination like a box value. Every declared field is written; one the context lacks is ''. Only the context's trigger kind declares: a run another flow's box started (manual) carries the event but gives no trigger values.
+- Rights: `ws_step_trigger_values_for()` gives record and payload only while the owner holds the catalogue right of the event's record and, for the workspace's own events, still sees it (`ws_events_creator_sees()`); else only `event`. Before, a payload value would have bypassed the gates `ws_events_fill_values()` keeps.
+- Check: an undeclared field is `bad_reference` (`ws_flow_trigger_fields()`); no skippable warning, the start always ran. A box try fills them from the chosen run.
+- Tests `tests/workspace_flow_trigger_values_test.php`.
+
 ## What is left?
-- A box try still leaves trigger tokens unfilled.
+- A box try still leaves the scheduled tokens (`{{record}}`, `{{newcomer}}` …) unfilled. The waiting task box fills no values at run time.
