@@ -8,7 +8,7 @@ description: Rules for opening products on a marketplace (listings.php): product
 
 ## How are categories and attributes fetched?
 - The category tree is cached PER PROVIDER. Attributes are fetched per category and on demand: fetching all of them is tens of thousands of calls against the per-minute limit.
-- Attributes come from two sources: what the category wants from the product, answered once in the matching screen; and the variant attributes (Trendyol varianter and slicer, n11 isVariant), which take the product's own option first (`mp_listing_variant_value()`: the name, then the VALUE) and the article's value as fallback; two products with the same variant values refuse the article (`marketplace-variant-attributes.md`, PR #1239).
+- Attributes come from two sources: what the category wants from the product, answered once on the listings view; and the variant attributes (Trendyol varianter and slicer, n11 isVariant), which take the product's own option first (`mp_listing_variant_value()`: the name, then the VALUE) and the article's value as fallback; two products with the same variant values refuse the article (`marketplace-variant-attributes.md`, PR #1239).
 
 ## What if the category's attributes cannot be read?
 - The article is refused with the error (`mp_listing_definitions()`): shown at once by "List on the marketplace" and written on the article row by the job; the queue tries again when the connector said `retry` (timeout, 5xx, rate limit). It used to be read as an empty list, so the mandatory check passed and the article went out with no attributes, the variant one included (#916, PR #1238). Only the first listing of a category and a forced refresh are affected; the cache answers otherwise.

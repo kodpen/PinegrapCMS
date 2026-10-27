@@ -6,7 +6,9 @@
  * (accept, pick another product, not sold here, remove a match, undo), the
  * picture grid that picks a shop product, and accepting many at once. In the
  * shop view: matching a product under its own code or a typed one, sending
- * it now, removing its match, and the same for the ticked ones.
+ * it now, removing its match, and the same for the ticked ones. In the
+ * listings view: finding a category by words of its path and filing one or
+ * many articles under it, answering what the category asks, and listing.
  *
  * Every step is a POST to the screen, answered in JSON. A row step answers the
  * row drawn again in its new state; it stays where it is, so the operator sees
@@ -255,7 +257,9 @@
             var row = button.closest('[data-mp-row]');
             var act = button.getAttribute('data-mp-act');
 
-            if (row.hasAttribute('data-mp-shop')) {
+            if (row.hasAttribute('data-mp-article')) {
+                listAct(act, [row.getAttribute('data-mp-row')], button);
+            } else if (row.hasAttribute('data-mp-shop')) {
                 if (act === 'code') {
                     editCode(row);
                 } else if (act === 'shop_remove') {
@@ -358,7 +362,7 @@
 
     // One step on some products of the shop view (none for "send all"). The
     // rows it changed come back drawn again and take their old places.
-    function shopStep(action, ids, button) {
+    function shopStep(action, ids, button, extra) {
         if (button) {
             button.disabled = true;
         }
@@ -371,7 +375,7 @@
             }
         });
 
-        return post(action, { ids: ids }).then(function (answer) {
+        return post(action, Object.assign({ ids: ids }, extra || {})).then(function (answer) {
             if (button) {
                 button.disabled = false;
             }
@@ -416,6 +420,11 @@
             var ids = (action === 'shop_send_all') ? [] : selected();
 
             if ((action !== 'shop_send_all') && !ids.length) {
+                return;
+            }
+
+            if (action.indexOf('list_') === 0) {
+                listAct(action, ids, button);
                 return;
             }
 
@@ -697,6 +706,270 @@
 
         pgUI.dialog.show(picker.root).then(function () {
             picker.search.focus();
+        });
+    }
+
+    /* -------------------------------------------------------- the listings */
+
+    // A step on some articles: pick their category, answer one's attributes,
+    // or queue them for listing.
+    function listAct(act, ids, button) {
+        if (act === 'list_pick') {
+            openCategories(ids);
+        } else if (act === 'list_form') {
+            openForm(ids[0]);
+        } else if ((act === 'list_now') && ((ids.length === 1) || window.confirm(label('confirm_list', [number(ids.length)])))) {
+            shopStep('list_now', ids, button);
+        }
+    }
+
+    var fetchButton = document.getElementById('mpa-fetch');
+
+    if (fetchButton) {
+        fetchButton.addEventListener('click', function () {
+            fetchButton.disabled = true;
+            flash(label('fetching'), 'info');
+
+            post('list_fetch_categories').then(function (answer) {
+                fetchButton.disabled = false;
+
+                if (!answer.ok) {
+                    flash(answer.error || label('failed'), 'danger');
+                    return;
+                }
+
+                window.location.reload();
+            });
+        });
+    }
+
+    // The category search: any words of the path, the deepest categories
+    // only; a click files every article it was opened for.
+    var categories = null;
+
+    function buildCategories() {
+        var built = pgUI.dialog.build({
+            id: 'mpa-categories',
+            title: label('category_title'),
+            size: 'lg',
+            scrollable: true,
+            footer: false,
+            closeLabel: label('close')
+        });
+
+        var caption = element('div', 'small text-body-secondary mb-2');
+        var search = element('input', 'form-control');
+        var hint = element('div', 'form-text', label('category_hint'));
+        var results = element('div', 'mpa-results');
+
+        search.type = 'search';
+        search.placeholder = label('category_search');
+        search.setAttribute('aria-label', label('category_search'));
+
+        built.body.appendChild(caption);
+        built.body.appendChild(search);
+        built.body.appendChild(hint);
+        built.body.appendChild(results);
+        document.body.appendChild(built.root);
+
+        var timer = null;
+
+        search.addEventListener('input', function () {
+            clearTimeout(timer);
+            timer = setTimeout(findCategories, 300);
+        });
+
+        search.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+            }
+        });
+
+        categories = { root: built.root, caption: caption, search: search, results: results, ids: [], request: 0 };
+    }
+
+    function findCategories() {
+        var q = categories.search.value.trim();
+        var request = ++categories.request;
+
+        categories.results.innerHTML = '';
+
+        if (q === '') {
+            return;
+        }
+
+        categories.results.appendChild(element('div', 'small text-body-secondary', label('loading')));
+
+        post('list_categories', { q: q }).then(function (answer) {
+            if (request !== categories.request) {
+                return;
+            }
+
+            categories.results.innerHTML = '';
+
+            if (!answer.ok || !answer.categories.length) {
+                categories.results.appendChild(element('div', 'small text-body-secondary', answer.ok ? label('nothing') : (answer.error || label('failed'))));
+                return;
+            }
+
+            answer.categories.forEach(function (category) {
+                var button = element('button', 'mpa-result');
+
+                button.type = 'button';
+                button.appendChild(element('b', '', category.name));
+
+                if (category.parents) {
+                    button.appendChild(element('small', '', category.parents));
+                }
+
+                button.addEventListener('click', function () {
+                    chooseCategory(category.id, button);
+                });
+
+                categories.results.appendChild(button);
+            });
+        });
+    }
+
+    function chooseCategory(id, button) {
+        var ids = categories.ids;
+
+        button.disabled = true;
+
+        shopStep('list_category', ids, null, { category: id }).then(function (answer) {
+            button.disabled = false;
+
+            if (answer.rows && Object.keys(answer.rows).length) {
+                pgUI.dialog.hide(categories.root);
+            }
+
+            // One article whose category asks for something goes on to its
+            // answers.
+            if (answer.ask) {
+                openForm(ids[0]);
+            }
+        });
+    }
+
+    function openCategories(ids) {
+        if (!window.pgUI || !ids.length) {
+            return;
+        }
+
+        if (!categories) {
+            buildCategories();
+        }
+
+        var row = (ids.length === 1) && list ? list.querySelector('[data-mp-row="' + ids[0] + '"]') : null;
+
+        categories.ids = ids;
+        categories.caption.textContent = row ? row.getAttribute('data-mp-title') : label('category_for', [number(ids.length)]);
+        categories.results.innerHTML = '';
+
+        pgUI.dialog.show(categories.root).then(function () {
+            categories.search.focus();
+            categories.search.select();
+        });
+    }
+
+    // An article's answers, drawn by the screen: the required ones first, the
+    // optional ones folded.
+    var answers = null;
+
+    function buildForm() {
+        var built = pgUI.dialog.build({
+            id: 'mpa-attributes',
+            title: label('attributes'),
+            size: 'lg',
+            scrollable: true,
+            closeLabel: label('close')
+        });
+
+        var cancel = element('button', 'btn btn-ghost', label('cancel'));
+        var save = element('button', 'btn btn-primary', label('save'));
+
+        cancel.type = 'button';
+        save.type = 'button';
+
+        built.footer.appendChild(cancel);
+        built.footer.appendChild(save);
+        document.body.appendChild(built.root);
+
+        cancel.addEventListener('click', function () {
+            pgUI.dialog.hide(built.root);
+        });
+
+        save.addEventListener('click', function () {
+            var form = built.body.querySelector('[data-mp-form]');
+
+            if (!form) {
+                pgUI.dialog.hide(built.root);
+                return;
+            }
+
+            var data = { id: answers.id };
+
+            new FormData(form).forEach(function (value, key) {
+                data[key] = value;
+            });
+
+            save.disabled = true;
+
+            shopStep('list_attributes', [answers.id], null, data).then(function (answer) {
+                save.disabled = false;
+
+                if (answer.ok) {
+                    pgUI.dialog.hide(built.root);
+                }
+            });
+        });
+
+        // Enter in a field saves rather than sending the form to the page.
+        built.body.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            if (!save.disabled) {
+                save.click();
+            }
+        });
+
+        answers = { root: built.root, title: built.title, body: built.body, save: save, id: 0 };
+    }
+
+    function openForm(id) {
+        if (!window.pgUI || !id) {
+            return;
+        }
+
+        if (!answers) {
+            buildForm();
+        }
+
+        var row = list ? list.querySelector('[data-mp-row="' + id + '"]') : null;
+
+        answers.id = id;
+        answers.title.textContent = label('attributes') + (row ? ' · ' + row.getAttribute('data-mp-title') : '');
+        answers.body.innerHTML = '';
+        answers.body.appendChild(element('div', 'small text-body-secondary', label('loading')));
+        answers.save.disabled = true;
+
+        pgUI.dialog.show(answers.root);
+
+        post('list_form', { id: id }).then(function (answer) {
+            if (answers.id !== id) {
+                return;
+            }
+
+            answers.body.innerHTML = '';
+
+            if (!answer.ok) {
+                answers.body.appendChild(element('div', 'alert alert-warning mb-0', answer.error || label('failed')));
+                return;
+            }
+
+            // Markup the screen drew and escaped.
+            answers.body.innerHTML = answer.html;
+            answers.save.disabled = false;
         });
     }
 })();

@@ -362,168 +362,6 @@ if ($_POST) {
 
 	}
 
-	if ($action === 'categories' && $account) {
-
-		$result = mp_categories_refresh($account);
-
-		if ($result['ok']) {
-
-			$liveform->add_notice(lang(array(
-				'string' => '{var:1} categories are up to date.',
-				'vars'   => array(pg_format_number((int)$result['data']['count'], 0))
-			)));
-
-		} else {
-
-			$liveform->add_warning(h($result['error']));
-
-		}
-
-		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-list');
-
-		exit();
-
-	}
-
-	if ($action === 'category' && $account) {
-
-		$group_id = isset($_POST['group_id']) ? (int)$_POST['group_id'] : 0;
-
-		$category_id = isset($_POST['remote_category_id']) ? trim($_POST['remote_category_id']) : '';
-
-		// Only a leaf can hold a product. A branch is a shelf on their side too,
-		// and a listing filed against one is refused - by them, hours later.
-		$leaf = $category_id !== '' ? db_item("SELECT remote_id, path, is_leaf FROM marketplace_categories
-			WHERE (provider = '" . e($account['provider']) . "') AND (remote_id = '" . e($category_id) . "')") : null;
-
-		if (!$group_id || !$leaf) {
-
-			$liveform->add_error(lang('Choose a category from the list.'));
-
-		} elseif (empty($leaf['is_leaf'])) {
-
-			$liveform->add_error(lang('That is a parent category. Pick one of the categories inside it.'));
-
-		} else {
-
-			$existing = db_value("SELECT id FROM marketplace_category_map
-				WHERE (account_id = '" . e($account_id) . "') AND (group_id = '" . e($group_id) . "')");
-
-			if ($existing) {
-
-				// A different category means different attributes, so what was
-				// answered for the old one is thrown away rather than carried
-				// across under ids that mean something else there - the
-				// marketplace would refuse every variant, and its reason would
-				// name an attribute nobody recognised.
-				//
-				// attributes_json is assigned BEFORE remote_category_id. MySQL
-				// evaluates a SET list left to right and a later assignment sees
-				// the new value of an earlier one, so testing the category
-				// after setting it compares the new value with itself and the
-				// answers are always kept.
-				db("UPDATE marketplace_category_map
-					SET attributes_json = IF(remote_category_id = '" . e($category_id) . "', attributes_json, ''),
-						remote_category_id = '" . e($category_id) . "',
-						last_error = '', updated_timestamp = UNIX_TIMESTAMP()
-					WHERE id = '" . e((int)$existing) . "'");
-
-			} else {
-
-				db("INSERT INTO marketplace_category_map
-					(account_id, group_id, remote_category_id, attributes_json, updated_timestamp)
-					VALUES ('" . e($account_id) . "', '" . e($group_id) . "', '" . e($category_id) . "', '',
-						UNIX_TIMESTAMP())");
-
-			}
-
-			// Fetched now, while somebody is waiting and can be told it failed.
-			$loaded = mp_category_attributes($account, $category_id);
-
-			if (!$loaded['ok']) {
-
-				$liveform->add_warning(h($loaded['error']));
-
-			}
-
-		}
-
-		header('Location: ' . $screen_url . '?account=' . $account_id . '&group=' . $group_id . '#mp-list');
-
-		exit();
-
-	}
-
-	if ($action === 'attributes' && $account) {
-
-		$group_id = isset($_POST['group_id']) ? (int)$_POST['group_id'] : 0;
-
-		$map = $group_id ? db_item("SELECT * FROM marketplace_category_map
-			WHERE (account_id = '" . e($account_id) . "') AND (group_id = '" . e($group_id) . "')") : null;
-
-		if ($map) {
-
-			$values = array();
-
-			foreach ((array)(isset($_POST['attribute']) ? $_POST['attribute'] : array()) as $attribute_id => $value) {
-
-				$value = trim((string)$value);
-
-				if ($value !== '') {
-
-					$values[(string)$attribute_id] = $value;
-
-				}
-
-			}
-
-			db("UPDATE marketplace_category_map
-				SET attributes_json = '" . e(json_encode($values)) . "', last_error = '',
-					updated_timestamp = UNIX_TIMESTAMP()
-				WHERE id = '" . e((int)$map['id']) . "'");
-
-			$liveform->add_notice(lang('Saved.'));
-
-		}
-
-		header('Location: ' . $screen_url . '?account=' . $account_id . '&group=' . $group_id . '#mp-list');
-
-		exit();
-
-	}
-
-	if ($action === 'list_now' && $account) {
-
-		$group_id = isset($_POST['group_id']) ? (int)$_POST['group_id'] : 0;
-
-		$ready = mp_can($account['provider'], 'create_listings')
-			? mp_listing_items($account, $group_id)
-			: array('ok' => false, 'error' => lang(array(
-				'string' => '{var:1} cannot do this.',
-				'vars'   => array(mp_provider_name($account['provider']))
-			)));
-
-		if (!$ready['ok']) {
-
-			$liveform->add_warning(h($ready['error']));
-
-		} else {
-
-			$queued = mp_listing_enqueue($account_id, $group_id);
-
-			$liveform->add_notice($queued
-				? lang(array('string' => '{var:1} product(s) queued for listing. They go out on the next run.',
-					'vars' => array($queued)))
-				: lang('Already queued.'));
-
-		}
-
-		header('Location: ' . $screen_url . '?account=' . $account_id . '&group=' . $group_id . '#mp-list');
-
-		exit();
-
-	}
-
 	// Matches of products deleted since, or in the Recycle Bin: no view lists
 	// them, and while they stand they hold their codes.
 	if ($action === 'clear_stale_matches' && $account) {
@@ -1478,138 +1316,6 @@ function mp_settings_invoice_form($account_id, $row) {
 
 }
 
-// The two-step mapping for one article, drawn inline under its row.
-//
-// Two steps rather than one, and no scripting: the attributes cannot be drawn
-// until the category is known, because they ARE the category. A single form
-// would have to fetch them in the browser, and this screen has no endpoint to
-// fetch them from - so the first submit chooses the category and the page comes
-// back with the second half.
-function mp_settings_article_form($account, $account_id, $article, $map, $attributes, $chosen) {
-
-	$group_id = (int) $article['id'];
-
-	$chosen_category = $map ? (string)$map['remote_category_id'] : '';
-
-	$out = '
-			<div class="mp-row" style="display:block;background:var(--pg-bg-1)">
-				<form method="post" action="marketplace_settings.php" class="mb-3">
-					' . get_token_field() . '
-					<input type="hidden" name="mp_action" value="category">
-					<input type="hidden" name="account_id" value="' . (int)$account_id . '">
-					<input type="hidden" name="group_id" value="' . $group_id . '">
-					<label class="form-label small" for="cat_' . $group_id . '">'
-						. lang('Marketplace category') . '</label>
-					<div class="d-flex gap-2 flex-wrap">
-						<input class="form-control form-control-sm" list="mp_categories" id="cat_' . $group_id . '"
-							name="remote_category_id" style="max-width:520px" autocomplete="off"
-							placeholder="' . lang('Type part of the category name') . '"
-							value="' . h($chosen_category) . '">
-						<button type="submit" class="btn btn-sm btn-primary">' . lang('Choose') . '</button>
-					</div>
-					<div class="form-text">'
-						. lang('Only the deepest categories can hold a product. Start typing and pick one from the list.') . '</div>
-				</form>';
-
-	if ($chosen_category === '') {
-
-		return $out . '
-			</div>';
-
-	}
-
-	if (!$attributes) {
-
-		return $out . '
-				<p class="small opacity-75 mb-0">'
-			. lang('This category asks for nothing else. The article is ready to list.') . '</p>
-			</div>';
-
-	}
-
-	$out .= '
-				<form method="post" action="marketplace_settings.php">
-					' . get_token_field() . '
-					<input type="hidden" name="mp_action" value="attributes">
-					<input type="hidden" name="account_id" value="' . (int)$account_id . '">
-					<input type="hidden" name="group_id" value="' . $group_id . '">
-					<div class="row g-2">';
-
-	foreach ($attributes as $attribute) {
-
-		$id = (string) $attribute['attribute_id'];
-
-		$value = isset($chosen[$id]) ? (string)$chosen[$id] : '';
-
-		// A variant attribute is answered by the products themselves - it is
-		// what tells them apart - so it is never required here. A value chosen
-		// for the article is used only by a product whose options do not match
-		// it (no option of that name, no label on the category's list): an
-		// article in one colour, in a category that splits its pages by colour.
-		// Two products that would end up the same refuse the article
-		// (mp_listing_variant_clash()).
-		$variant = !empty($attribute['is_variant']);
-
-		$required = !empty($attribute['mandatory']) && !$variant;
-
-		$out .= '
-						<div class="col-12 col-md-6 col-xl-4">
-							<label class="form-label small mb-1" for="attr_' . $group_id . '_' . h($id) . '">'
-								. h((string)$attribute['name'])
-								. ($required ? ' <span class="text-danger">*</span>' : '')
-								. ($variant ? ' <span class="mp-pill off">' . lang('from the variants') . '</span>' : '')
-								. '</label>';
-
-		if (!empty($attribute['values'])) {
-
-			$out .= '
-							<select class="form-select form-select-sm" id="attr_' . $group_id . '_' . h($id) . '"
-								name="attribute[' . h($id) . ']">
-								<option value="">' . ($required ? lang('Choose') : lang('Leave empty')) . '</option>';
-
-			foreach ((array)$attribute['values'] as $option) {
-
-				$out .= '<option value="' . h((string)$option['id']) . '"'
-					. (((string)$option['id'] === $value) ? ' selected' : '') . '>'
-					. h((string)$option['value']) . '</option>';
-
-			}
-
-			$out .= '
-							</select>';
-
-		} else {
-
-			$out .= '
-							<input type="text" class="form-control form-control-sm"
-								id="attr_' . $group_id . '_' . h($id) . '"
-								name="attribute[' . h($id) . ']" value="' . h($value) . '" autocomplete="off">';
-
-		}
-
-		if ($variant) {
-
-			$out .= '
-							<div class="form-text">'
-								. lang('Taken from each product\'s own option. This value is used only for a product whose options do not match this attribute; two products that would end up the same refuse the article.') . '</div>';
-
-		}
-
-		$out .= '
-						</div>';
-
-	}
-
-	$out .= '
-					</div>
-					<button type="submit" class="btn btn-sm btn-primary mt-3">' . lang('Save') . '</button>
-				</form>
-			</div>';
-
-	return $out;
-
-}
-
 // When something last happened, in words.
 //
 // The same shape the application screen uses. get_relative_time() is the
@@ -1718,18 +1424,6 @@ $orders = array();
 
 $failed_orders = 0;
 
-$articles = array();
-
-$category_count = 0;
-
-$open_group = 0;
-
-$open_map = null;
-
-$open_attributes = array();
-
-$open_chosen = array();
-
 $queue_counts = array('waiting' => 0, 'sent' => 0, 'done' => 0, 'failed' => 0);
 
 $failures = array();
@@ -1751,33 +1445,6 @@ if ($selected) {
 		WHERE account_id = '" . e($selected_id) . "' GROUP BY status") as $row) {
 
 		$queue_counts[$row['status']] = (int) $row['n'];
-
-	}
-
-	$articles = mp_listing_articles($selected_id);
-
-	$category_count = (int) db_value("SELECT COUNT(*) FROM marketplace_categories
-		WHERE (provider = '" . e($selected['provider']) . "') AND (is_leaf = '1')");
-
-	// The article whose mapping is open, if the operator picked one.
-	$open_group = isset($_GET['group']) ? (int)$_GET['group'] : 0;
-
-	$open_map = $open_group ? db_item("SELECT * FROM marketplace_category_map
-		WHERE (account_id = '" . e($selected_id) . "') AND (group_id = '" . e($open_group) . "')") : null;
-
-	$open_attributes = array();
-
-	$open_chosen = array();
-
-	if ($open_map && $open_map['remote_category_id'] !== '') {
-
-		$loaded = mp_category_attributes($selected, $open_map['remote_category_id']);
-
-		$open_attributes = $loaded['ok'] ? (array)$loaded['data']['attributes'] : array();
-
-		$decoded = json_decode((string)$open_map['attributes_json'], true);
-
-		$open_chosen = is_array($decoded) ? $decoded : array();
 
 	}
 
@@ -1948,10 +1615,9 @@ if (!$accounts) {
 
 if ($selected) {
 
-	// A marketplace that cannot open listings yet still has its categories and
-	// attributes mapped here; only the button that would queue the listing is
-	// left out, since the job would never pick that row up.
-	$can_list = mp_can($selected['provider'], 'create_listings');
+	// Articles are filed under the marketplace's categories on the listings
+	// view of marketplace_products.php, where the connector reads them.
+	$can_listings = mp_can($selected['provider'], 'category_tree');
 
 	// Orders come in only from a marketplace whose connector reads them, and
 	// are accepted only by one that can accept them. The job skips the rest
@@ -2063,7 +1729,10 @@ if ($selected) {
 					<i class="bi bi-shop me-1"></i>' . h(lang('Products in this shop')) . '</a>'
 				. ($can_read_products ? '
 				<a class="btn btn-sm btn-primary" href="marketplace_products.php?account=' . $selected_id . '">
-					<i class="bi bi-boxes me-1"></i>' . h(lang('Match in bulk with pictures')) . '</a>' : '') . '
+					<i class="bi bi-boxes me-1"></i>' . h(lang('Match in bulk with pictures')) . '</a>' : '')
+				. ($can_listings ? '
+				<a class="btn btn-sm btn-outline-secondary" href="marketplace_products.php?account=' . $selected_id . '&amp;mode=listings">
+					<i class="bi bi-tags me-1"></i>' . h(lang('Listings')) . '</a>' : '') . '
 			</div>
 		</div>
 		<div class="card-body small">'
@@ -2084,108 +1753,6 @@ if ($selected) {
 					'vars' => array(pg_format_number($map_counts['stale'], 0))))) . '</span>
 				<button type="submit" class="btn btn-sm btn-outline-warning"><i class="bi bi-trash me-1"></i>' . h(lang('Remove them')) . '</button>
 			</form>' : '') . '
-		</div>
-	</div>';
-
-	/* ------------------------------------------------------------ listings */
-
-	echo '
-	<div class="card mb-3" id="mp-list">
-		<div class="card-header d-flex align-items-center flex-wrap gap-2">
-			<i class="bi bi-tags me-1"></i><b>' . lang('Listing articles') . '</b>
-			<span class="small opacity-75 d-none d-lg-inline">'
-				. lang('An article is listed once, with its variants as options. Pick the marketplace category and answer what it asks.') . '</span>
-			<div class="ms-auto d-flex align-items-center gap-2">
-				<span class="small opacity-75">'
-					. ($category_count
-						? h(lang(array('string' => '{var:1} categories', 'vars' => array(pg_format_number($category_count, 0)))))
-						: lang('No categories yet')) . '</span>
-				<form method="post" action="marketplace_settings.php" class="d-inline">
-					' . get_token_field() . '
-					<input type="hidden" name="mp_action" value="categories">
-					<input type="hidden" name="account_id" value="' . $selected_id . '">
-					<button type="submit" class="btn btn-sm btn-outline-secondary">
-						<i class="bi bi-download me-1"></i>' . lang('Fetch categories') . '</button>
-				</form>
-			</div>
-		</div>
-		<div class="card-body px-2 py-3">';
-
-	if (!$category_count) {
-
-		echo '
-			<p class="small opacity-75 text-center my-4 mb-0">'
-			. lang('Fetch the marketplace category list first. It is downloaded once and kept.') . '</p>';
-
-	} elseif (!$articles) {
-
-		echo '
-			<p class="small opacity-75 text-center my-4 mb-0">'
-			. lang('This shop has no product group with products in it, so there is no article to list.') . '</p>';
-
-	} else {
-
-		echo '
-			<div class="mp-scroll">
-			<div class="mp-head" style="grid-template-columns:1.6fr 2fr .7fr 1.1fr">
-				<span>' . lang('Article') . '</span><span>' . lang('Marketplace category') . '</span>
-				<span>' . lang('Variants') . '</span><span></span>
-			</div>';
-
-		foreach ($articles as $article) {
-
-			$is_open = ((int)$article['id'] === $open_group);
-
-			echo '
-			<div class="mp-row" style="grid-template-columns:1.6fr 2fr .7fr 1.1fr">
-				<span>
-					<b>' . h((string)$article['name']) . '</b>
-					<code>' . h(mb_substr((string)$article['title'], 0, 40)) . '</code>
-				</span>
-				<span>' . (($article['category_path'] !== null && $article['category_path'] !== '')
-						? '<span class="small">' . h((string)$article['category_path']) . '</span>'
-						: '<span class="mp-pill off">' . lang('Not chosen') . '</span>')
-					. ((string)$article['last_error'] !== ''
-						? '<div class="mp-err">' . h(mb_substr((string)$article['last_error'], 0, 110)) . '</div>'
-						: '') . '</span>
-				<span>' . (int)$article['variants'] . '</span>
-				<span class="d-flex gap-1 justify-content-end">
-					<a class="btn btn-sm ' . ($is_open ? 'btn-primary' : 'btn-outline-secondary') . '"
-						href="marketplace_settings.php?account=' . $selected_id . '&amp;group=' . (int)$article['id'] . '#mp-list">'
-						. ($is_open ? lang('Close') : lang('Set up')) . '</a>';
-
-			if ((string)$article['remote_category_id'] !== '' && $can_list) {
-
-				echo '
-					<form method="post" action="marketplace_settings.php" class="d-inline">
-						' . get_token_field() . '
-						<input type="hidden" name="mp_action" value="list_now">
-						<input type="hidden" name="account_id" value="' . $selected_id . '">
-						<input type="hidden" name="group_id" value="' . (int)$article['id'] . '">
-						<button type="submit" class="btn btn-sm btn-outline-secondary" title="' . lang('List on the marketplace') . '">
-							<i class="bi bi-upload"></i></button>
-					</form>';
-
-			}
-
-			echo '
-				</span>
-			</div>';
-
-			if ($is_open) {
-
-				echo mp_settings_article_form($selected, $selected_id, $article, $open_map, $open_attributes, $open_chosen);
-
-			}
-
-		}
-
-		echo '
-			</div>';
-
-	}
-
-	echo '
 		</div>
 	</div>';
 
@@ -2872,30 +2439,7 @@ if ($selected) {
 
 }
 
-// The category picker's list.
-//
-// Leaves only, because nothing else can hold a product, and only when an
-// article is open - the tree runs to tens of thousands of rows and putting all
-// of them into every page view would be a megabyte of markup nobody reads.
-$category_options = '';
-
-if ($selected && $open_group) {
-
-	foreach ((array) db_items("SELECT remote_id, path FROM marketplace_categories
-		WHERE (provider = '" . e($selected['provider']) . "') AND (is_leaf = '1')
-		ORDER BY path ASC
-		LIMIT 6000") as $row) {
-
-		$category_options .= '<option value="' . h((string)$row['remote_id']) . '">'
-			. h((string)$row['path']) . '</option>';
-
-	}
-
-}
-
 echo '
-<datalist id="mp_categories">' . $category_options . '</datalist>
-
 <script>
 (function () {
 

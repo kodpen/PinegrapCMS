@@ -1,6 +1,6 @@
 ---
 name: marketplace-product-matching
-description: Plan (approved 2026-10-26): match a shop's products to its marketplace catalogue in bulk, with pictures, on a new Marketplace products screen; steps 1 (#1880) and 2 (#1931) done, step 3 next
+description: Plan (approved 2026-10-26): bulk matching of a shop's products to its marketplace catalogue, with pictures, on the Marketplace products screen; steps 1-3 done (#1880, #1931, #2066), step 4 next
 ---
 
 ## Why?
@@ -16,7 +16,7 @@ description: Plan (approved 2026-10-26): match a shop's products to its marketpl
 ## What remains?
 1. ~~Remote catalogue, suggestions and the review screen for n11.~~ Done #1880 (`commerce/marketplace-bulk-matching.md`).
 2. ~~Shop view: every shop product with its picture and state, codes in the row, bulk actions; the account screen's card a summary.~~ Done #1931 (`commerce/marketplace-shop-view.md`).
-3. Listings on the same screen: article cards with pictures, category search by path, one category for several articles, required attributes first and optional ones folded; the old listing card goes.
+3. ~~Listings on the same screen: article cards with pictures, category search by path, one category for several articles, required attributes first and optional ones folded; the old listing card goes.~~ Done #2066 (`commerce/marketplace-listing-view.md`).
 4. Trendyol `remote_products` (its product filter service, barcode as the key), so Trendyol accounts get the same suggestions.
 
 ## Open questions?
@@ -24,4 +24,4 @@ description: Plan (approved 2026-10-26): match a shop's products to its marketpl
 - Owner: whether `marketplace_product_map.remote_code` (2026.4.4, `utf8mb4_unicode_ci`) becomes `utf8mb4_bin` in a schema step. Step 1 compares it byte for byte in its own queries; the order import's lookup by stock code (`orders.php`) still treats "ABC-1" and "abc-1" as one code.
 
 ## Where to start?
-- Step 3, after `docs/memory/commerce/README.md`, `marketplace-listings.md`, `marketplace-shop-view.md` and the listing card of `marketplace_settings.php` (`#mp-list`). One step per PR, in order.
+- Step 4, after `docs/memory/commerce/README.md`, `marketplace-bulk-matching.md` and `trendyol-api-facts.md`. One step per PR, in order.
