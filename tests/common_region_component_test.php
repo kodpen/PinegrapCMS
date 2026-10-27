@@ -94,3 +94,19 @@ function test_common_region_components_read()
 	pg_assert_same(array(0 => 0), pg_common_region_components_read($read, array(0), $fetch), 'no query for an empty id');
 	pg_assert_same(1, count($queries));
 }
+
+function test_designer_component_style_choice()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
+	$designs = array(9, 4, 7);
+	$placed = array(
+		array('style_id' => 7, 'binned' => true),
+		array('style_id' => 3, 'binned' => false),
+		array('style_id' => 9, 'binned' => false),
+	);
+	pg_assert_same(4, pg_designer_component_style(4, $placed, $designs), 'the design asked for');
+	pg_assert_same(9, pg_designer_component_style(0, $placed, $designs), 'a design placing it, outside the bin, that is a visual design');
+	pg_assert_same(9, pg_designer_component_style(3, $placed, $designs), 'a classic style asked for is passed over');
+	pg_assert_same(4, pg_designer_component_style(0, array(), $designs), 'else the first visual design');
+	pg_assert_same(0, pg_designer_component_style(5, $placed, array()), 'none without a visual design');
+}

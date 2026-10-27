@@ -52,7 +52,8 @@ if (!isset($_POST['name'])) {
         $component_name = (string) db_value("SELECT name FROM shared_components WHERE id = '" . (int) $component_id . "'");
         $output_component =
             '<div class="alert theme-primary my-7">
-                <p class="mb-0">' . h(lang(array('string' => 'This common region is now the shared component "{var:1}". Its content is edited in the visual designer, by managers and by the users granted the component; the content kept below is no longer shown on the site.', 'vars' => $component_name))) . '</p>
+                <p>' . h(lang(array('string' => 'This common region is now the shared component "{var:1}". Its content is edited in the visual designer, by managers and by the users granted the component; the content kept below is no longer shown on the site.', 'vars' => $component_name))) . '</p>
+                <a class="btn btn-sm btn-solid theme-primary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_system_style.php?component=' . (int) $component_id . '&amp;send_to=' . h(urlencode(get_request_uri())) . '"><span class="material-icons me-1">edit</span>' . h(lang('Edit in the visual designer')) . '</a>
             </div>';
     } elseif (($user['role'] <= 1) && pg_shared_component_content_ready()) {
         $output_component =

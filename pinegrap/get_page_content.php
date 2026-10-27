@@ -5332,7 +5332,24 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // If this is a common region (not a designer region), then continue to replace it.
         if ($cregion_designer_type == 'no') {
             if (!empty($common_region_components[(int) $cregion_id])) {
-                $content = str_replace($region, pg_common_region_component_html($common_region_components[(int) $cregion_id], $mode, $email), $content);
+                $component_id = $common_region_components[(int) $cregion_id];
+                $component_html = pg_common_region_component_html($component_id, $mode, $email);
+
+                // In edit mode the people who may edit the component get a
+                // link that opens it on its own in the designer.
+                if ($mode == 'edit') {
+                    require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
+                }
+
+                if (($mode == 'edit') && pg_designer_component_editable($user, $component_id)) {
+                    $component_html =
+                        '<div class="edit_mode" style="position: relative; outline: 1px dashed #c2185b;">
+                            <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_system_style.php?component=' . (int) $component_id . '&send_to=' . h(urlencode(get_request_uri())) . '" class="software_pinegrap_inline_edit_button design" title="' . lang('Common Region') . ': ' . h($cregion_name) . '">' . $edit_label . '</a>
+                            ' . $component_html . '
+                        </div>';
+                }
+
+                $content = str_replace($region, $component_html, $content);
                 continue;
             }
 

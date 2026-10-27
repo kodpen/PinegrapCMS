@@ -219,6 +219,23 @@ function pg_designer_screen_render($ctx)
         );
         $active = 0;
     }
+    // One shared component opened on its own (edit_system_style.php
+    // ?component=): its one tab places the component and is never saved as
+    // a page; Save writes the component (designer_access.php,
+    // pg_designer_component_entry()).
+    $sd_component = (isset($ctx['component']) && is_array($ctx['component'])) ? $ctx['component'] : null;
+    if ($sd_component) {
+        $js_pages = array(array_merge($js_pages[0], array(
+            'key'        => 'c' . (int)$sd_component['id'],
+            'page_name'  => (string)$sd_component['name'],
+            'page_draft' => 0,
+            'tree'       => array('type' => 'root', 'props' => new stdClass(), 'children' => array(
+                array('type' => 'shared_ref', 'props' => array('sharedId' => (int)$sd_component['id'], 'sharedName' => (string)$sd_component['name']), 'children' => array()),
+            )),
+            'access'     => 'edit',
+        )));
+        $active = 0;
+    }
     $active_key = 'p' . $active;
     $found_active = false;
     foreach ($js_pages as $jp) { if ($jp['key'] === $active_key) { $found_active = true; break; } }
@@ -248,6 +265,8 @@ function pg_designer_screen_render($ctx)
         'styleName'     => (string)$style['name'],
         'activeKey'     => $active_key,
         'pages'         => $js_pages,
+        // A shared component opened on its own: Save writes only it.
+        'componentOnly' => $sd_component ? array('id' => (int)$sd_component['id'], 'name' => (string)$sd_component['name']) : null,
         'canSetHome'    => ((int)$user['role'] < 3),
         'noindexReady'  => (pg_page_noindex_ready() == TRUE),
         'apiUrl'        => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php',
@@ -477,7 +496,7 @@ function pg_designer_screen_render($ctx)
                          the header link and the browser back button all go through
                          the unsaved-changes guard. -->
                     <div class="sd-toolbar sd-toolbar-tabs">
-                        <div class="sd-toolbar-group sd-toolbar-pages">
+                        <div class="sd-toolbar-group sd-toolbar-pages"' . ($sd_component ? ' hidden' : '') . '>
                             <div class="pg-menu-wrap sd-tabs-add">
                                 <button type="button" class="sd-tabs-add-btn" data-bs-toggle="menu" aria-expanded="false" title="' . lang('Add Page') . '">
                                     <span class="bi bi-plus-lg"></span><span class="sd-tabs-add-txt">' . lang('Add Page') . '</span>
@@ -515,8 +534,8 @@ function pg_designer_screen_render($ctx)
                             <!-- The main action puts every page of the design on the
                                  site, so it says so. The label drops to the icon on
                                  narrow screens; the title still names it. -->
-                            <button type="button" id="sd-ajax-save" name="submit_save" value="Save" class="sd-icon-btn sd-icon-btn-primary sd-publish-btn" title="' . lang('Publish') . '"><span class="bi bi-rocket-takeoff" aria-hidden="true"></span><span class="sd-publish-txt">' . lang('Publish') . '</span></button>
-                            ' . (($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready()) ? '<!-- A draft page has two actions: the main button saves it
+                            <button type="button" id="sd-ajax-save" name="submit_save" value="Save" class="sd-icon-btn sd-icon-btn-primary sd-publish-btn" title="' . ($sd_component ? lang('Save') : lang('Publish')) . '"><span class="bi ' . ($sd_component ? 'bi-floppy' : 'bi-rocket-takeoff') . '" aria-hidden="true"></span><span class="sd-publish-txt">' . ($sd_component ? lang('Save') : lang('Publish')) . '</span></button>
+                            ' . (($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready() && !$sd_component) ? '<!-- A draft page has two actions: the main button saves it
                                  (it stays a draft), this one puts it on the
                                  site. Hidden while the page on screen is on
                                  the site. -->

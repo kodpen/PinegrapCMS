@@ -545,3 +545,81 @@ function _pg_dm_neutralise_markers(&$value)
     }
     unset($v);
 }
+
+/**
+ * The design a shared component opened on its own is drawn in: the one asked
+ * for when it is a visual design, else the first design that places the
+ * component on a page outside the recycle bin, else the first visual design.
+ *
+ * @param int   $asked       style id from the address, 0 for none
+ * @param array $placements  pg_shared_component_usage() rows of the component
+ * @param int[] $design_ids  the visual design style ids
+ * @return int  0 when there is no visual design
+ */
+function pg_designer_component_style($asked, array $placements, array $design_ids)
+{
+    $designs = array();
+    foreach ($design_ids as $id) {
+        if ((int)$id > 0) $designs[(int)$id] = true;
+    }
+    if (isset($designs[(int)$asked])) return (int)$asked;
+    foreach ($placements as $u) {
+        if (empty($u['binned']) && isset($designs[(int)$u['style_id']])) return (int)$u['style_id'];
+    }
+    $first = array_keys($designs);
+    sort($first);
+    return $first ? (int)$first[0] : 0;
+}
+
+/**
+ * A shared component this operator may open on its own in the designer: an
+ * administrator or designer any component that is not a system widget, a
+ * manager or user one opened to them (pg_shared_component_content_editable_ids()).
+ * A user granted a component needs no folder right for it.
+ *
+ * @param int   $sid
+ * @param array $user      validate_user() row
+ * @param int   $style_id  the design asked for, 0 for none
+ * @return array|string  array('id', 'name', 'style_id'), or the reason it is refused
+ */
+function pg_designer_component_entry($sid, $user, $style_id = 0)
+{
+    $sid = (int)$sid;
+    $row = ($sid > 0) ? db_item("SELECT id, name, (system_region_config IS NOT NULL AND system_region_config != '') AS is_widget
+                                 FROM shared_components WHERE id = '$sid' LIMIT 1") : null;
+    if (!is_array($row) || !empty($row['is_widget'])) return lang('Record not found.');
+
+    if (!pg_designer_is_full($user)) {
+        $may = pg_shared_component_content_editable_ids($user, array($sid));
+        if (empty($may[$sid])) return lang('Access denied.');
+    }
+
+    $usage = pg_shared_component_usage(array($sid));
+    $style = pg_designer_component_style($style_id, isset($usage[$sid]) ? $usage[$sid] : array(), array_keys(pg_visual_design_style_ids()));
+    if ($style <= 0) return lang('There is no visual design to open the shared component in.');
+
+    return array('id' => $sid, 'name' => (string)$row['name'], 'style_id' => $style);
+}
+
+/**
+ * Whether this operator may open a shared component on its own in the
+ * designer (the edit link a converted common region shows in edit mode):
+ * pg_designer_component_entry() without reading the component row. Answers
+ * are kept for the request.
+ *
+ * @param array $user validate_user() row
+ * @param int   $sid
+ * @return bool
+ */
+function pg_designer_component_editable($user, $sid)
+{
+    static $known = array();
+
+    $sid = (int)$sid;
+    if ($sid <= 0 || !is_array($user)) return false;
+    if (pg_designer_is_full($user)) return true;
+    if (!isset($known[$sid])) {
+        $known[$sid] = !empty(pg_shared_component_content_editable_ids($user, array($sid))[$sid]);
+    }
+    return $known[$sid];
+}

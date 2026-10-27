@@ -64028,6 +64028,33 @@ const StyleDesigner = (function () {
     // The flush the last prepareFormData() started; the AJAX save awaits it.
     var _sharedFlushPromise = null;
 
+    // A shared component opened on its own (edit_system_style.php
+    // ?component=): its one tab is never a page of the design.
+    function _sdComponentOnly() {
+        return !!(_design && _design.componentOnly);
+    }
+
+    // Save in that mode: the component and the ones placed in it, through
+    // the same flush a design save makes (content_update at content level);
+    // the design and its pages are not sent.
+    function _sdSaveComponentOnly(opts) {
+        _sdSharedCatchEdits();
+        Object.keys(_sharedCache).forEach(function (k) {
+            if (_sharedDirty[k] && _sharedCache[k] && _sharedCache[k].tree) _normalizeToggleableShowState(_sharedCache[k].tree);
+        });
+        var had = Object.keys(_sharedDirty).filter(function (k) { return !!_sharedDirty[k]; }).length;
+        _flushDirtyShared().then(function () {
+            var left = Object.keys(_sharedDirty).filter(function (k) { return !!_sharedDirty[k]; }).length;
+            if (left) {
+                if (typeof opts.onError === 'function') opts.onError();
+                return;
+            }
+            sdToast(esc(had ? _sdT('The shared component was saved.') : _sdT('There are no changes to save.')), had ? 'success' : 'info');
+            _pgTabsRender();
+            if (typeof opts.onSuccess === 'function') opts.onSuccess({});
+        });
+    }
+
     // AJAX save: serialise + POST the style_designer_form via fetch, surface
     // a Bootstrap toast (success/error), and keep the user on the page.
     // Replaces the legacy "Save → form submit → redirect to view_styles.php" flow.
@@ -64054,6 +64081,7 @@ const StyleDesigner = (function () {
             _abandon();
             return;
         }
+        if (_sdComponentOnly()) { _sdSaveComponentOnly(opts); return; }
 
         // Every tab is saved, but only the open one had its shared
         // components loaded. A shared_ref that is not in the cache counts
@@ -64301,6 +64329,7 @@ const StyleDesigner = (function () {
 
     function _pgPageDirty(p) {
         if (!p) return false;
+        if (_sdComponentOnly()) return false;             // never saved as a page
         if (p.page_id === 0) return true;                 // never saved
         if (p.key === _activeKey) _pgReadFieldsIntoPage(p);
         return _pgBaselineOf(p) !== p.baseline;
@@ -64326,6 +64355,11 @@ const StyleDesigner = (function () {
 
     // Replaces the old isDirty(): any page, or the shared design, changed.
     function isDirty() {
+        // A shared component opened on its own: only the component is saved.
+        if (_sdComponentOnly()) {
+            _sdSharedCatchEdits();
+            return Object.keys(_sharedDirty).some(function (k) { return !!_sharedDirty[k]; });
+        }
         if (_styleBaseline !== null && _pgStyleJSON() !== _styleBaseline) return true;
         for (var i = 0; i < _pages.length; i++) if (_pgPageDirty(_pages[i])) return true;
         return false;
@@ -64432,7 +64466,9 @@ const StyleDesigner = (function () {
             // active tab carries the menu so the strip stays quiet; every
             // tab opens the same menu on right-click.
             var extra = '';
-            if (p.key === _activeKey) {
+            if (_sdComponentOnly()) {
+                extra = '';
+            } else if (p.key === _activeKey) {
                 extra = '<span class="sd-tab-menu" data-menu="' + esc(p.key) + '" title="' + esc(_sdT('Page options')) + '"><span class="bi bi-three-dots-vertical"></span></span>';
             } else if (p.page_id === 0) {
                 extra = '<span class="sd-tab-close" data-close="' + esc(p.key) + '" title="' + esc(_sdT('Remove')) + '">&times;</span>';
@@ -65138,6 +65174,7 @@ const StyleDesigner = (function () {
     // cursor for the right-click path, where the strip has just been rebuilt
     // and there is no stable element to hang from.
     function _pgTabsOpenMenu(anchor, key, at) {
+        if (_sdComponentOnly()) return;
         _pgTabsCloseMenu();
         var p = _pgPageByKey(key);
         if (!p) return;
@@ -65278,6 +65315,7 @@ const StyleDesigner = (function () {
     // the menu). Enter / blur commit, Escape restores. The toolbar name box
     // and the page object follow, the same as typing in the box would.
     function _pgTabsRename(key) {
+        if (_sdComponentOnly()) return;
         key = key || _activeKey;
         var p = _pgPageByKey(key);
         var label = document.querySelector('.sd-tab[data-key="' + key + '"] .sd-tab-name');
@@ -68261,6 +68299,14 @@ const StyleDesigner = (function () {
     function _pgTabsSyncPublishButton() {
         var btn = document.getElementById('sd-ajax-save');
         if (!btn) return;
+        // A shared component opened on its own is saved, never published:
+        // the server wrote that label.
+        if (_sdComponentOnly()) {
+            var ctitle = _sdT('Saves the shared component.') + ' (' + _SD_SAVE_KEYS + ')';
+            if (!btn.classList.contains('sd-saving-blocked')) _sdSetButtonTitle(btn, ctitle);
+            btn.dataset.origTitle = ctitle;
+            return;
+        }
         var a = _pgActivePage();
         var draft = _pgDraftsReady() && !!(a && a.page_draft);
         var label = draft ? _sdT('Save') : _sdT('Publish');
