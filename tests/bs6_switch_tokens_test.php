@@ -61,6 +61,8 @@ function test_bs6_switch_drawer_variables()
 	pg_assert_same(".pg-perm-panel {\n  --pg-drawer-width: min(32rem, 100vw - 2rem);\n}\n.x { width: var(--bs-drawer-width); }\n", $result['source'], 'a declaration, not a read');
 	pg_assert_same('done', bs6_switch_drawer_variables($result['source'])['status'], 'second run');
 	pg_assert_contains('  --bs-drawer-width: var(--pg-drawer-width, 400px);', bs6_switch_token_bridge_block(), 'the bridge reads it unlayered');
+	$sheet = $in . bs6_switch_token_bridge_block();
+	pg_assert_contains('  --bs-drawer-width: var(--pg-drawer-width, 400px);', bs6_switch_drawer_variables($sheet)['source'], 'the bridge is left alone');
 }
 
 function test_bs6_switch_token_bridge()
