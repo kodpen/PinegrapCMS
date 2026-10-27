@@ -43,7 +43,7 @@ function test_order_receipt_plain_text_billing_information_page_defaults()
 {
 	$source = order_receipt_plain_text_test_source();
 
-	pg_assert_true(strpos($source, "escape(\$_SESSION['ecommerce']['billing_information_page_id'] ?? '')") !== false, 'page id from the session');
+	pg_assert_true(strpos($source, "(string) (\$_SESSION['ecommerce']['billing_information_page_id'] ?? '')") !== false, 'page id from the session');
 
 	foreach (array('custom_field_1_label', 'custom_field_1_required', 'custom_field_2_label', 'custom_field_2_required') as $column) {
 		pg_assert_true(strpos($source, "\$" . $column . " = \$row['" . $column . "'] ?? '';") !== false, $column);
