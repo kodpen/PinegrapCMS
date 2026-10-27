@@ -24,7 +24,7 @@ description: Plan (2026-10-26, issue #1989): legitimate traffic must not end in 
 
 5. Self-rescue and self-lockout guards (findings-lockout): a CLI root script `waf_unban.php` (cron-gated); Settings › Firewall refuses a block entry that covers the operator's own address; the sign-in throttle's address lock honours the allow list (owner); nothing is served to a banned address (Q3). Done (#2187, `waf/waf-self-rescue.md`); the release action beside the account unlock stays open.
 
-6. Scenario tests: `tests/waf_scenarios_test.php` playing the decision functions through "a page with N protected images", "staff whose address changes mid-session" and "a refresh after the ban"; a sandbox run only with a reason in the PR.
+6. Scenario tests: `tests/waf_scenarios_test.php` playing the decision functions through "a page with N protected images", "staff whose address changes mid-session" and "a refresh after the ban"; no sandbox run (every step is a pure decision). Claimed by #2212.
 
 ## Where to start?
 - 2b after 2a lands; 3 and 4 independent of 2 and of each other; 5 after 4; 6 last. Claim: `[plan:waf-legit-traffic-auto-ban] <step> — <topic>`.
