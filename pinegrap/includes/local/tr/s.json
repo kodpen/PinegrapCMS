@@ -740,6 +740,7 @@
     "Send stock": "Stok gönder",
     "Send the Reset Link": "Sıfırlama Bağlantısı Gönder",
     "Send the approved quote to the customer": "Onaylanan teklifi müşteriye gönder",
+    "Send the code": "Kodu gönder",
     "Send the comment": "Yorumu gönder",
     "Send the contact ids to add, to remove, or both.": "Eklenecek, çıkarılacak ya da her iki türden kişi kimliklerini gönderin.",
     "Send the customer the request-received e-mail ({var:1})": "Müşteriye talebin alındığını bildiren e-postayı gönder ({var:1})",
