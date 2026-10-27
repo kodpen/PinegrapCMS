@@ -19475,6 +19475,13 @@ html[data-bs-theme="dark"] .wsf-node-end { --wsf-kind: #b3ab9b; }
 .wsf-problem:not(:disabled):hover {
   text-decoration: underline;
 }
+.wsf-problems.wsf-warned {
+  border-color: var(--pg-warning-border-subtle);
+  background: var(--pg-warning-bg-subtle);
+}
+.wsf-problem.wsf-warning {
+  color: var(--pg-warning-fg-emphasis);
+}
 .wsf-people-list {
   max-height: 12rem;
   overflow-y: auto;
