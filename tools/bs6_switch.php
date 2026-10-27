@@ -787,6 +787,7 @@ function bs6_switch_test_pins()
 		'tests/ai_fields_test.php' => array(
 			array('bg-primary-subtle text-primary-emphasis border border-primary-subtle', 'bg-subtle-primary fg-emphasis-primary border border-subtle-primary'),
 			array('column-gap-2', 'column-gap-3'),
+			array('lh-1 text-reset pg-ai-mark-remove', 'lh-1 fg-reset pg-ai-mark-remove'),
 		),
 		'tests/ai_write_test.php' => array(
 			array('column-gap-2', 'column-gap-3'),
@@ -804,8 +805,15 @@ function bs6_switch_test_pins()
 			array("pg_assert_contains('text-warning-emphasis', \$html);", "pg_assert_contains('fg-emphasis-warning', \$html);"),
 		),
 		'tests/parasut_order_gates_test.php' => array(
-			array("'created' => 'bg-warning text-dark',", "'created' => 'bg-warning fg-black',"),
-			array("'<span class=\"badge bg-warning text-dark\">'", "'<span class=\"badge bg-warning fg-black\">'"),
+			array("'accepted' => 'bg-success',", "'accepted' => 'theme-success',"),
+			array("'sent' => 'bg-primary',", "'sent' => 'theme-primary',"),
+			array("'created' => 'bg-warning text-dark',", "'created' => 'theme-warning',"),
+			array("'error' => 'bg-danger',", "'error' => 'theme-danger',"),
+			array("'rejected' => 'bg-danger',", "'rejected' => 'theme-danger',"),
+			array("'cancelled' => 'bg-secondary',", "'cancelled' => 'theme-secondary',"),
+			array("'' => 'bg-secondary',", "'' => 'theme-secondary',"),
+			array("'<span class=\"badge bg-warning text-dark\">'", "'<span class=\"badge theme-warning\">'"),
+			array("pg_assert_contains('bg-success\">' . h(lang('Invoiced through the ERP'))", "pg_assert_contains('theme-success\">' . h(lang('Invoiced through the ERP'))"),
 			array("pg_assert_contains('bg-success\">' . lang('Sent')", "pg_assert_contains('theme-success\">' . lang('Sent')"),
 			array("pg_assert_contains('bg-warning', \$open)", "pg_assert_contains('theme-warning', \$open)"),
 		),
