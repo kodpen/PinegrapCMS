@@ -5,7 +5,8 @@
  * Tests for the one picture and icon an MCP server that is asked by its alias
  * is drawn with (includes/workspace/mcp_catalogue.php): the catalogue entry a
  * server's address is, the icon it gives, the letters and colour of the
- * avatar, and what a deleted server is drawn as.
+ * avatar, what a deleted server is drawn as, and what the channel's @ picker
+ * and a task's delegate tag are given to draw it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -19,6 +20,9 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_catalogue.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_ask.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_agent.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/delegation.php');
 
 function test_workspace_mcp_avatar_catalogue_entry_by_url()
 {
@@ -87,4 +91,85 @@ function test_workspace_mcp_avatar_deleted_server()
 	pg_assert_same('mcp12', $gone['seed'], 'its colour still seeded by its id');
 	pg_assert_same(pg_initials('mcp', ''), $gone['initials'], 'drawn with the letters of mcp');
 	pg_assert_same(pg_initials_avatar_url($gone['initials'], 'contact', 'mcp12'), $gone['avatar'], 'the letters avatar');
+}
+
+function test_workspace_mcp_avatar_picker_entry_carries_the_identity()
+{
+	$catalogue = ws_mcp_catalogue();
+	$server = array('id' => 14, 'alias' => 'wiki', 'name' => 'DeepWiki', 'url' => $catalogue['deepwiki']['url'], 'agent_tool' => '');
+	$identity = ws_mcp_agent_identity($server);
+	$entry = ws_mcp_boot_entry($server);
+
+	pg_assert_same('wiki', $entry['alias'], 'the alias the picker writes');
+	pg_assert_same('DeepWiki', $entry['name'], 'the server name for the meta line');
+	pg_assert_same(false, $entry['agent'], 'answered by Pinegrap AI');
+	pg_assert_same($identity['avatar'], $entry['avatar'], 'the avatar it has everywhere');
+	pg_assert_same($catalogue['deepwiki']['icon'], $entry['icon'], 'the catalogue entry\'s icon');
+	pg_assert_same(array('alias', 'name', 'agent', 'avatar', 'icon'), array_keys($entry), 'nothing more reaches the page');
+
+	$agent = ws_mcp_boot_entry(array('id' => 15, 'alias' => 'tools', 'name' => 'Tools', 'url' => 'https://mcp.example.com/mcp', 'agent_tool' => 'ask'));
+
+	pg_assert_same(true, $agent['agent'], 'a server that answers on its own');
+	pg_assert_same('bi-plug', $agent['icon'], 'the plug when no catalogue entry');
+}
+
+function test_workspace_mcp_avatar_delegate_icon()
+{
+	// An alias's icon is ws_mcp_agent_identity_for_id()'s, which reads the
+	// server row (tested above through ws_mcp_agent_identity()); the keys
+	// that are no alias need no database.
+	pg_assert_same('', ws_assistant_mcp_icon('ai'), 'Pinegrap AI keeps the tag\'s own icon');
+	pg_assert_same('', ws_assistant_mcp_icon('claude'), 'Claude keeps the tag\'s own icon');
+	pg_assert_same('', ws_assistant_mcp_icon('mcp:x'), 'no server id');
+	pg_assert_same('', ws_assistant_mcp_icon(''), 'no delegate');
+}
+
+// delegateIcon() of workspace_task_delegate.js run under Node on the tasks
+// given; null when Node is not installed.
+function workspace_mcp_avatar_test_delegate_icons($tasks)
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_task_delegate.js');
+	$start = strpos($source, "\n    function delegateIcon(");
+	pg_assert_true($start !== false, 'delegateIcon() is found');
+	$end = strpos($source, "\n    }\n", (int) $start);
+
+	$script = "'use strict';\n" . substr($source, (int) $start, (int) $end - (int) $start) . "\n    }\n"
+		. 'console.log(JSON.stringify(' . json_encode($tasks) . ".map(delegateIcon)));\n";
+
+	$file = tempnam(sys_get_temp_dir(), 'pgwsicon');
+	file_put_contents($file, $script);
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+
+	$printed = implode("\n", $out);
+	pg_assert_same(0, $code, $printed);
+
+	return json_decode($printed, true);
+}
+
+function test_workspace_mcp_avatar_delegate_tag_icon()
+{
+	$icons = workspace_mcp_avatar_test_delegate_icons(array(
+		array('delegate' => 'ai', 'delegate_icon' => ''),
+		array('delegate' => 'claude', 'delegate_icon' => ''),
+		array('delegate' => 'mcp:3', 'delegate_icon' => 'bi-book'),
+		array('delegate' => 'mcp:3', 'delegate_icon' => ''),
+		array('delegate' => 'mcp:3'),
+		array('delegate' => 'mcp:3', 'delegate_icon' => 'bi-x" onclick="y'),
+	));
+
+	if ($icons === null) {
+		return;
+	}
+
+	pg_assert_same(array('bi-cpu', 'bi-stars', 'bi-book', 'bi-plug', 'bi-plug', 'bi-plug'), $icons, 'Pinegrap AI, Claude, an alias\'s own icon, the plug otherwise');
 }

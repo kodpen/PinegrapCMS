@@ -63,11 +63,12 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-empty-states.md: Workspace empty lists with a small theme-coloured drawing (emptyState(), the shared ART kit / window.PGWsArt) and skeleton rows instead of "Loading…" (U4, PR #2027)
 - workspace-file-manager-files.md: A file of the file manager posted into a Workspace channel as a copy (library.php): "Send to a channel" in the file manager, "From the file manager" under the paperclip; who may pick what, refusals
 - workspace-flows-anchors.md: Flow start boxes at a time, on an event, on a join (F4d, PR #2006, flow_anchors.php): the hidden anchor scheduled action, publish/pause/delete sync, how it starts runs, why it is in no list
+- workspace-flows-api-filters.md: Flow list filters start, status, channel_id, updated_since and the start/start_text of GET /workspace/flows/{id} (A1, PR #2122)
 - workspace-flows-box-try.md: Trying one box of a flow's draft without running it (F4e, PR #2024, ws_flow_box_try()): answers per kind, run values, rights, panel action, read-only API route, canvas button
 - workspace-flows-canvas.md: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, panel actions, editor, autosave, 409, focus, keys, outline, read-only, what is left; the run view has its own file
 - workspace-flows-change-box.md: The change box of a flow (F4b3, PR #1957): the scheduled change step as a box, its settings, rights, what it writes, and why its record and values reach only the flow's editors
 - workspace-flows-condition-box.md: The condition box of a flow (F4c, PR #1980, flow_conditions.php): one scheduled-action condition, yes/no outcomes, a no without an arrow ends the branch, owner rights, what non-editors read
-- workspace-flows-outputs.md: Values a flow box gives later boxes (data-passing D1): outputs per kind, ws_step_outputs(), ws_step_result_data(), null rules, report counts, canvas config
+- workspace-flows-outputs.md: Values a flow box gives later boxes (data-passing D1, D2): outputs per kind, ws_step_outputs(), ws_step_result_data(), null rules, report counts, one-pass fill, canvas config
 - workspace-flows-parity-test.md: tests/workspace_flows_parity_test.php maps every scheduled-action key to the Flows box that keeps it; the changes far from scheduled.php that fail it, how call sites are keyed, what to do
 - workspace-flows-retry-skip.md: A failed box of a flow run tried again or skipped by hand (F5a, PR #2098, ws_flow_step_mend()): which boxes, owner only, double click, boxes walked again, routes, panel action, canvas buttons
 - workspace-flows-run-view.md: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, how it is read again, what a failed read shows
