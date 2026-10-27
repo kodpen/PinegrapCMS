@@ -579,6 +579,8 @@ if (!$_POST) {
     
     $contact_id = mysqli_insert_id(db::$con);
 
+    pg_audit_record('create', 'contacts', $contact_id);
+
     // A contact that did not exist a moment ago. The panel's own screen is as
     // much a source of new customers as the checkout is, so an integration
     // watching the address book hears about this one too.

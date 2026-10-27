@@ -759,11 +759,15 @@ if (!$_POST) {
     
     // if contact was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
+        $audit_before = pg_audit_fetch('contacts', (int) ($_POST['id'] ?? 0));
+
         // delete contact
         $query =
             "DELETE FROM contacts
             WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        pg_audit_record('delete', 'contacts', (int) ($_POST['id'] ?? 0), $audit_before);
         
         // delete contact references in contacts_contact_groups_xref
         $query = "DELETE FROM contacts_contact_groups_xref WHERE contact_id = '" . escape($_POST['id'] ?? '') . "'";
@@ -834,6 +838,8 @@ if (!$_POST) {
         }else{
             $sql_image = "image = '',";
         }
+        $audit_before = pg_audit_fetch('contacts', (int) ($_POST['id'] ?? 0));
+
         $query =
             "UPDATE contacts
             SET
@@ -888,6 +894,8 @@ if (!$_POST) {
                 "UPDATE contacts SET opt_in = '" . e($_POST['opt_in'] ?? '') . "'
                 WHERE email_address = '" . e($_POST['email_address'] ?? '') . "'");
         }
+
+        pg_audit_record('update', 'contacts', (int) ($_POST['id'] ?? 0), $audit_before);
         
         // get all contact groups, so that contact can be added to selected contact groups
         $query =
