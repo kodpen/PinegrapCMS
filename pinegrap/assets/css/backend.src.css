@@ -7585,13 +7585,12 @@ html[data-bs-theme="dark"] [data-widget-theme="glass"] .pg-clockbar {
   font-size: 0.75rem;
   line-height: 1.4;
   text-decoration: none;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  --pg-lift-also: border-color 0.15s ease;
 }
 .pg-brief-ws-item:hover,
 .pg-brief-ws-item:focus-visible {
   color: var(--pg-fg-body);
   border-color: color-mix(in srgb, currentColor 45%, transparent);
-  transform: translateY(-1px);
 }
 /* Something new: a small dot in the clock's colours ahead of the icon. */
 .pg-brief-ws-item.is-new::before {
@@ -7730,7 +7729,7 @@ html[data-bs-theme="dark"] [data-widget-theme="glass"] .pg-clockbar {
   font-size: 0.75rem;
   line-height: 1.4;
   text-decoration: none;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  --pg-lift-also: border-color 0.15s ease;
 }
 html[data-bs-theme="dark"] .pg-next {
   background: color-mix(in srgb, var(--pg-bg-body) 55%, transparent);
@@ -7739,7 +7738,6 @@ html[data-bs-theme="dark"] .pg-next {
 .pg-next:focus-visible {
   color: var(--pg-fg-body);
   border-color: color-mix(in srgb, currentColor 45%, transparent);
-  transform: translateY(-1px);
 }
 .pg-next .bi {
   color: var(--pg-fg-2);
