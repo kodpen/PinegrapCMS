@@ -1350,6 +1350,7 @@
     "Products low in stock": "Stoğu azalan ürünler",
     "Products of product group ({var:1}) were changed in the Workspace, on Claude's proposal.": "Ürün grubunun ({var:1}) ürünleri Çalışma Alanı'nda Claude'un önerisiyle değiştirildi.",
     "Products of product group ({var:1}) were changed through the API by the application {var:2} (key {var:3}).": "Ürün grubunun ({var:1}) ürünleri, {var:2} uygulaması tarafından API üzerinden değiştirildi (anahtar {var:3}).",
+    "Products of the delivery": "Teslimatın ürünleri",
     "Products of the return request": "İade talebindeki ürünler",
     "Products only (ECOMMERCE required)": "Sadece ürünler (ECOMMERCE gerekli)",
     "Products retrieved successfully.": "Ürünler başarıyla getirildi.",

@@ -32915,6 +32915,8 @@ const StyleDesigner = (function () {
             'order.item_gift_cards': _sdT('One row for every gift card of the item the row stands in that was filled in: its amount, recipient, sender, message and delivery date.'),
             'order.returns':      _sdT('One row for every return request of the order, for its owner signed in: its status, products, notes and the customer\'s moves. Put a list of the products of the return inside the row.'),
             'order.return_lines': _sdT('One row for every product of the return request the row stands in, with the quantity asked back.'),
+            'order.return_deliveries': _sdT('One row for every delivery of the order a return may still be asked for: put the request form in it; the order gives the form its address and its controls their names, and the reason and the button come back when they are deleted.'),
+            'order.return_delivery_lines': _sdT('One row for every product of the delivery the row stands in, with how many may still go back: put the quantity box in it.'),
             'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
             'cart.item_gift_cards': _sdT('One row for every gift card of the cart line the row stands in, one per unit: put the recipient controls in it; the cart gives them their names and values, and the recipient\'s e-mail comes back when it is deleted.'),
@@ -38235,7 +38237,7 @@ const StyleDesigner = (function () {
         '__comment_message_html', '__comment_seller_reply_html',
         '__field_value_html', '__field_info_html', '__gift_card_message_html',
         '__return_customer_note_html', '__return_decision_note_html', '__return_actions_html',
-        '__schedule_period_options_html',
+        '__schedule_period_options_html', '__return_reason_options_html',
         '__ad_content_html', '__ad_caption_html'
     ];
     // Twin of pg_sw_attr_name_ok().
@@ -40313,7 +40315,9 @@ const StyleDesigner = (function () {
             '__order_status_badge': function (cfg) { return _sdPartOrderStatusBadge(cfg); },
             '__item_form_data_html': function (cfg) { return _sdPartOrderItemForm(); },
             '__item_gift_card_html': function (cfg) { return _sdPartOrderItemGiftCard(); },
-            '__returns':             function (cfg) { return _sdPartOrderReturnsList(); }
+            '__returns':             function (cfg) { return _sdPartOrderReturnsList(); },
+            '__cancel_form':         function (cfg) { return _sdPartOrderCancelForm(); },
+            '__return_form':         function (cfg) { return _sdPartOrderReturnForm(); }
         },
         comments: {
             '__comment_stars_html': function (cfg) { return _sdPartCommentStars(); }
@@ -40651,7 +40655,7 @@ const StyleDesigner = (function () {
 
     var SW_DEFAULT_TAILS = {
         order_view: [
-            [['__return_form', '__returns', 'order.returns'], function (cfg, tree) { return _sdPartOrderReturns(); }],
+            [['__return_form', '__returns', 'order.returns', 'order.return_deliveries'], function (cfg, tree) { return _sdPartOrderReturns(); }],
             [['__legal_preinfo_url', '__legal_contract_url'], function (cfg, tree) { return _sdPartOrderLegal(tree); }]
         ]
     };
@@ -40970,8 +40974,118 @@ const StyleDesigner = (function () {
     function _sdPartOrderReturns() {
         return [_sdPartOrderCard('pg-ov-returns-block', _sdT('Returns'), 'show_returns_card', _sdT('Returns'), [
             _sdPartEl('div', '', _sdT('Return requests'), {}, _sdPartOrderReturnsList()),
-            _sdPartEl('div', '', _sdT('Return request form'), { _bindings: { text: '__return_form' } })
+            _sdPartEl('div', '', _sdT('Return request form'), {}, _sdPartOrderReturnForm())
         ])];
+    }
+
+    // The cancel form's submit button (pg_sw_part_order_cancel_submit()).
+    /* @pg-site-output */
+    function _sdPartOrderCancelSubmit() {
+        return _sdPartEl('button', 'btn btn-outline-danger', _sdT('Cancel button'), { _bindings: { action: 'order_cancel_submit' } }, [
+            _sdPartEl('i', 'bi bi-x-circle me-1', _sdT('Icon')),
+            _sdPartEl('span', '', _sdT('Text'), { text: _sdT('Cancel Order') })
+        ]);
+    }
+
+    // The order's cancel form (pg_sw_part_order_cancel_form()): the server
+    // gives it its address, hidden fields and the reason's name.
+    /* @pg-site-output */
+    function _sdPartOrderCancelForm() {
+        return [_sdPartEl('form', 'pg-ov-cancel-form', _sdT('Cancellation form'), { _bindings: { action: 'order_cancel_form' } }, [
+            _sdPartEl('div', 'alert alert-warning small mb-3', _sdT('Refund warning'),
+                { _bindings: { eo_visible_if: 'cancel_needs_refund' }, _attrs: [{ name: 'role', value: 'alert' }] }, [
+                _sdPartEl('i', 'bi bi-exclamation-triangle me-1', _sdT('Icon')),
+                _sdPartEl('span', '', _sdT('Text'), { text: _sdT('Payment refunds are processed manually. Please contact us for refund status.') })
+            ]),
+            _sdPartEl('div', 'mb-3', _sdT('Reason'), {}, [
+                _sdPartEl('label', 'form-label small fw-semibold', _sdT('Label'), { text: _sdT('Cancellation reason (optional)') }),
+                _sdPartEl('textarea', 'form-control', _sdT('Reason'), { _bindings: { value: 'cancel_reason' }, _attrs: [
+                    { name: 'rows', value: '2' },
+                    { name: 'placeholder', value: _sdT('Tell us why you\'re cancelling — helps us improve.') }
+                ] })
+            ]),
+            _sdPartOrderCancelSubmit()
+        ])];
+    }
+
+    // A delivery line's quantity cell (pg_sw_part_order_return_qty_cell()).
+    /* @pg-site-output */
+    function _sdPartOrderReturnQtyCell() {
+        var box = _sdPartWhen('__return_item_left', 'gt', '0');
+        box._bindings.value = 'return_qty';
+        var done = _sdPartWhen('__return_item_left', 'eq', '0');
+        done.text = _sdT('Already in a return');
+        return _sdPartEl('td', 'text-end', _sdT('To return'), {}, [
+            _sdPartEl('input', 'form-control form-control-sm text-end', _sdT('Quantity'), box),
+            _sdPartEl('span', 'small text-muted', _sdT('Already in a return'), done)
+        ]);
+    }
+
+    // A sentence with one value (pg_sw_part_sentence()).
+    /* @pg-site-output */
+    function _sdPartSentence(tag, cls, name, text, token, props) {
+        var p = { text: text, _sentence: true };
+        Object.keys(props || {}).forEach(function (k) { p[k] = props[k]; });
+        return _sdPartEl(tag, cls, name, p, [_sdPartEl('span', '', _sdT('Value'), { _bindings: { text: token } })]);
+    }
+
+    // The return request form (pg_sw_part_order_return_form()): a form per
+    // delivery of the order.return_deliveries list; the server gives it its
+    // address, hidden fields and the controls' names.
+    /* @pg-site-output */
+    function _sdPartOrderReturnForm() {
+        var th = function (cls, text) {
+            return _sdPartEl('th', cls, text, { text: text, _attrs: [{ name: 'scope', value: 'col' }] });
+        };
+        return [createNode('loop_area', { source: 'order.return_deliveries' }, [
+            _sdPartEl('form', 'pg-ov-return-form mb-4', _sdT('Return request form'), { _bindings: { action: 'order_return_form' } }, [
+                _sdPartSentence('h6', 'fw-semibold mb-2', _sdT('Recipient'), _sdT('Sent to {var:1}'), '__return_delivery_label',
+                    _sdPartWhen('__return_delivery_several', 'not_empty')),
+                _sdPartSentence('p', 'small text-muted mb-2', _sdT('Last day'), _sdT('You can ask to return these items until {var:1}.'), '__return_delivery_deadline',
+                    _sdPartWhen('__return_delivery_deadline', 'not_empty')),
+                _sdPartEl('div', 'table-responsive', _sdT('Products'), {}, [
+                    _sdPartEl('table', 'table table-sm align-middle mb-3', _sdT('Table'), {}, [
+                        _sdPartEl('thead', '', _sdT('Head'), {}, [
+                            _sdPartEl('tr', '', _sdT('Row'), {}, [th('', _sdT('Product')), th('text-end', _sdT('Ordered')), th('text-end', _sdT('To return'))])
+                        ]),
+                        _sdPartEl('tbody', '', _sdT('Body'), {}, [
+                            createNode('loop_area', { source: 'order.return_delivery_lines' }, [
+                                _sdPartEl('tr', '', _sdT('Product'), {}, [
+                                    _sdPartEl('td', '', _sdT('Name'), { _bindings: { text: '__return_item_name' } }),
+                                    _sdPartEl('td', 'text-end', _sdT('Ordered'), { _bindings: { text: '__return_item_ordered' } }),
+                                    _sdPartOrderReturnQtyCell()
+                                ])
+                            ])
+                        ])
+                    ])
+                ]),
+                _sdPartOrderReturnReason(),
+                _sdPartEl('div', 'mb-3', _sdT('Note'), {}, [
+                    _sdPartEl('label', 'form-label small fw-semibold', _sdT('Label'), { text: _sdT('Note (optional)') }),
+                    _sdPartEl('textarea', 'form-control', _sdT('Note'), { _bindings: { value: 'return_note' }, _attrs: [{ name: 'rows', value: '2' }] }),
+                    _sdPartEl('div', 'form-text', _sdT('Help'), { text: _sdT('Needed when the reason is "Another reason".') })
+                ]),
+                _sdPartOrderReturnSubmit()
+            ])
+        ])];
+    }
+
+    // A return request's reason (pg_sw_part_order_return_reason()).
+    /* @pg-site-output */
+    function _sdPartOrderReturnReason() {
+        return _sdPartEl('div', 'mb-3', _sdT('Reason'), {}, [
+            _sdPartEl('label', 'form-label small fw-semibold', _sdT('Label'), { text: _sdT('Reason for the return') }),
+            _sdPartEl('select', 'form-select', _sdT('Reason'), { _bindings: { value: 'return_reason' } })
+        ]);
+    }
+
+    // The return request's button (pg_sw_part_order_return_submit()).
+    /* @pg-site-output */
+    function _sdPartOrderReturnSubmit() {
+        return _sdPartEl('button', 'btn btn-outline-primary', _sdT('Request button'), { _bindings: { action: 'order_return_submit' } }, [
+            _sdPartEl('i', 'bi bi-arrow-return-left me-1', _sdT('Icon'), { _attrs: [{ name: 'aria-hidden', value: 'true' }] }),
+            _sdPartEl('span', '', _sdT('Text'), { text: _sdT('Request a return') })
+        ]);
     }
 
     // A return's status badge classes by status (pg_sw_return_badge_classes()).
@@ -41217,6 +41331,7 @@ const StyleDesigner = (function () {
             ['withdrawal_deadline_estimated', _sdT('The withdrawal deadline is an estimate')],
             ['withdrawal_ended',        _sdT('The right of withdrawal has ended')],
             ['can_cancel',              _sdT('The order can be cancelled')],
+            ['cancel_needs_refund',     _sdT('The order was paid through a payment provider (refund by hand)')],
             ['is_cancelled',            _sdT('The order is cancelled')],
             ['cancel_flash_success',    _sdT('Just cancelled (notice after the redirect)')],
             ['cancel_flash_already',    _sdT('Already cancelled (notice after the redirect)')],
@@ -41686,6 +41801,10 @@ const StyleDesigner = (function () {
                 aOpts.push(['passkey_remove',          _sdT('Remove the passkey (passkey list)')]);
                 aOpts.push(['passkey_send_code',       _sdT('Send the code by e-mail (add a passkey form)')]);
             }
+            if (region === 'order_view') {
+                aOpts.push(['order_cancel_submit', _sdT('Cancel the order (cancellation form)')]);
+                aOpts.push(['order_return_submit', _sdT('Request a return (return request form)')]);
+            }
             // Only a button can post a list action's form; a link bound to
             // one is dropped on the page (_pg_wishlist_wire_actions()), so a
             // link that already carries one still lists it to be cleared.
@@ -41706,6 +41825,10 @@ const StyleDesigner = (function () {
                 fOpts.push(['account_security_form', _sdT('Account security form')]);
                 fOpts.push(['passkey_add_form',      _sdT('Add a passkey form')]);
             }
+            else if (region === 'order_view') {
+                fOpts.push(['order_cancel_form', _sdT('Cancellation form')]);
+                fOpts.push(['order_return_form', _sdT('Return request form (order.return_deliveries)')]);
+            }
             else if (region === 'comments') {
                 fOpts.push(['comment_form',           _sdT('Add-comment form')]);
                 fOpts.push(['comment_watch_form',     _sdT('Watch form (notify me of new comments)')]);
@@ -41723,6 +41846,12 @@ const StyleDesigner = (function () {
                 vOpts.push(['recipient_select', _sdT('Recipient picker (ship_to) — catalog_item_view')]);
                 vOpts.push(['stock_notify_email', _sdT('E-mail for the back-in-stock notice (email_address) — catalog_item_view')]);
                 vOpts.push(['stock_notify_phone', _sdT('Mobile number for the back-in-stock text message (phone) — catalog_item_view')]);
+            }
+            if (region === 'order_view') {
+                vOpts.push(['cancel_reason', _sdT('Cancellation reason (cancellation form)')]);
+                vOpts.push(['return_qty',    _sdT('Quantity to return (order.return_delivery_lines)')]);
+                vOpts.push(['return_reason', _sdT('Reason for the return (required)')]);
+                vOpts.push(['return_note',   _sdT('Note of the return request')]);
             }
             if (region === 'shopping_cart') {
                 vOpts.push(['cart_qty',    _sdT('Row quantity (cart_qty) — shopping_cart loop_area')]);
@@ -55728,6 +55857,30 @@ const StyleDesigner = (function () {
                 ['__return_line_qty',  _sdT('Quantity')]
             ]
         },
+        'order.return_deliveries': {
+            label: _sdT('Deliveries a return may be asked for'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__return_delivery_id',         _sdT('Recipient ID')],
+                ['__return_delivery_label',      _sdT('Recipient')],
+                ['__return_delivery_several',    _sdT('The order has several deliveries (1 or empty)')],
+                ['__return_delivery_deadline',   _sdT('Return requests accepted until')],
+                ['__return_reason_options_html', _sdT('Choices of the reason (HTML)')]
+            ]
+        },
+        'order.return_delivery_lines': {
+            label: _sdT('Products of the delivery'),
+            arg: '', argRequired: false,
+            kinds: ['order_view'],
+            rows: [
+                ['__return_item_id',        _sdT('Order item ID')],
+                ['__return_item_name',      _sdT('Product name')],
+                ['__return_item_ordered',   _sdT('Ordered')],
+                ['__return_item_left',      _sdT('How many may go back')],
+                ['__return_item_qty_label', _sdT('Label of the quantity box')]
+            ]
+        },
         'account.orders': {
             label: _sdT('Orders of the member'),
             arg: '', argRequired: false,
@@ -56331,7 +56484,7 @@ const StyleDesigner = (function () {
             return !_sdListsAbove(node).some(function (l) { return l.props.source === key; })
                 && ((key !== 'order.items' && key !== 'cart.items') || !_sdInMainLoopAt(node));
         }
-        if (source !== 'order.shipments' && source !== 'order.steps' && source !== 'order.returns') return false;
+        if (source !== 'order.shipments' && source !== 'order.steps' && source !== 'order.returns' && source !== 'order.return_deliveries') return false;
         return _sdListsAbove(node).some(function (l) { return l.props.source === 'order.shipments'; });
     }
 
@@ -56341,7 +56494,7 @@ const StyleDesigner = (function () {
     function _sdOrderItemListKey(source) {
         var keys = { 'order.item_forms': 'order.items', 'order.item_gift_cards': 'order.items', 'order.item_form_fields': 'order.item_forms',
             'cart.item_gift_cards': 'cart.items', 'cart.item_schedule': 'cart.items',
-            'order.return_lines': 'order.returns' };
+            'order.return_lines': 'order.returns', 'order.return_delivery_lines': 'order.return_deliveries' };
         return keys.hasOwnProperty(source) ? keys[source] : '';
     }
 
@@ -59429,8 +59582,7 @@ const StyleDesigner = (function () {
                                         createNode('semantic', { tag: 'div', customName: _sdT('Return Request Form'),
                                             _bindings: { eo_visible_if: 'can_request_return' } }, [
                                             createNode('semantic', { tag: 'div',
-                                                customName: _sdT('Return Request Form (HTML)'),
-                                                _bindings: { text: '__return_form' } })
+                                                customName: _sdT('Return request form') }, _sdPartOrderReturnForm())
                                         ])
                                     ])
                                 ])
@@ -59660,9 +59812,9 @@ const StyleDesigner = (function () {
                                 // Card is wrapped in eo_visible_if='can_cancel': site
                                 // must have ECOMMERCE_ORDER_CANCEL_ALLOWED=true AND the
                                 // order must not be already cancelled or shipped.
-                                // The form HTML (CSRF, hidden order_id, reason
-                                // textarea, destructive submit, refund warning if
-                                // gateway payment) comes from __cancel_form token.
+                                // The form (reason, destructive submit, refund
+                                // warning on a gateway payment) is the cancel
+                                // form part; CSRF and order_id are the server's.
                                 createNode('semantic', { tag: 'div',
                                     cssClass: 'card border-danger', customName: _sdT('Order Cancellation Card'),
                                     _bindings: { eo_visible_if: 'can_cancel' } }, [
@@ -59671,13 +59823,11 @@ const StyleDesigner = (function () {
                                             text: _sdT('Cancel Order'), cssClass: 'mb-0 fw-semibold' })
                                     ]),
                                     createNode('semantic', { tag: 'div', cssClass: 'card-body' }, [
-                                        // <div> for the same reason as the
-                                        // cancel-status slot above: the token
-                                        // expands to a <form> with a textarea
-                                        // and a button.
+                                        // The cancel form part: the server gives
+                                        // it its address, hidden fields and the
+                                        // reason's name (pg_sw_order_cancel_wire()).
                                         createNode('semantic', { tag: 'div',
-                                            customName: _sdT('Cancellation Form (HTML)'),
-                                            _bindings: { text: '__cancel_form' } })
+                                            customName: _sdT('Cancellation form') }, _sdPartOrderCancelForm())
                                     ])
                                 ])
                             ])
