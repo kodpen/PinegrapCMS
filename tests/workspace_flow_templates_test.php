@@ -82,6 +82,12 @@ function ws_flow_templates_test_filled($template)
 	return $graph;
 }
 
+// The templates a scheduled action has no form for.
+function ws_flow_templates_test_flow_only()
+{
+	return array('new_customer', 'quote_approval', 'text_review');
+}
+
 function ws_flow_templates_test_source()
 {
 	$function = new ReflectionFunction('ws_flow_templates');
@@ -184,6 +190,11 @@ function test_workspace_flow_templates_keep_the_scheduled_texts()
 	$strings = ws_scheduled_js_strings();
 
 	foreach (ws_flow_templates(ws_flow_templates_test_fill()) as $template) {
+		if (in_array($template['key'], ws_flow_templates_test_flow_only(), true)) {
+			pg_assert_false(isset($strings['sa_tpl_' . $template['key']]), $template['key'] . ' is a flow\'s own');
+			continue;
+		}
+
 		pg_assert_same($strings['sa_tpl_' . $template['key']] ?? null, $template['title'], $template['key'] . ' title');
 	}
 
@@ -240,4 +251,76 @@ function test_workspace_flow_templates_reach_the_canvas()
 	pg_assert_true(strpos($script, 'FL.templates') !== false, 'the script reads them');
 	pg_assert_true(strpos($script, 'function showGallery(') !== false, 'the gallery');
 	pg_assert_true(strpos($script, "'fl_tpl_from_template'") !== false, 'the box list offers a template');
+}
+
+// The flow-only templates are offered to everyone, whatever counts they read
+// and whether a channel is open.
+function test_workspace_flow_templates_flow_only_offered()
+{
+	foreach (array(array(), array('metrics' => array()), array('channel' => 3), array('email' => '')) as $fill) {
+		$keys = array_column(ws_flow_templates(ws_flow_templates_test_fill($fill)), 'key');
+
+		foreach (ws_flow_templates_test_flow_only() as $key) {
+			pg_assert_true(in_array($key, $keys, true), $key . ' offered');
+		}
+	}
+}
+
+// Each arrow leaves its box on one of the outcomes its kind has, and the
+// flow-only templates use what a scheduled action cannot: tasks that wait
+// for each other, a wait, a timeout, an approval's outcomes.
+function test_workspace_flow_templates_flow_only_use_their_boxes()
+{
+	$kinds = ws_flow_kinds();
+	$by_key = array_column(ws_flow_templates(ws_flow_templates_test_fill()), null, 'key');
+
+	foreach (ws_flow_templates_test_flow_only() as $key) {
+		$graph = $by_key[$key]['graph'];
+		$node_kinds = array_column($graph['nodes'], 'kind', 'id');
+
+		pg_assert_same('manual', $by_key[$key]['start'], $key . ' is started by hand');
+
+		foreach ($graph['edges'] as $edge) {
+			pg_assert_true(in_array($edge['on'], $kinds[$node_kinds[$edge['from']]]['outcomes'], true), $key . ': ' . $edge['from'] . ' on ' . $edge['on']);
+		}
+
+		// Filled in, the engine's own check finds nothing to stop it.
+		pg_assert_same(array(), array_column(ws_flow_graph_check(ws_flow_templates_test_filled($by_key[$key])), 'text'), $key . ' publishes');
+	}
+
+	$on = function ($key) use ($by_key) {
+		$out = array();
+
+		foreach ($by_key[$key]['graph']['edges'] as $edge) {
+			$out[] = $edge['from'] . ':' . $edge['on'];
+		}
+
+		return $out;
+	};
+
+	// New customer: a welcome task, a wait once it is done, a follow-up
+	// task that leaves on timeout when nobody does it in time.
+	$customer = array_column($by_key['new_customer']['graph']['nodes'], null, 'id');
+	pg_assert_same('task', $customer['welcome']['kind']);
+	pg_assert_same('delay', $customer['wait']['kind']);
+	pg_assert_same('task', $customer['follow']['kind']);
+	pg_assert_true($customer['follow']['config']['timeout'] !== '', 'the follow-up has a timeout');
+	pg_assert_same(array('start:next', 'welcome:done', 'wait:done', 'follow:timeout'), $on('new_customer'));
+
+	// Quote approval: an approval with a branch for each way it ends.
+	$quote = array_column($by_key['quote_approval']['graph']['nodes'], null, 'id');
+	pg_assert_same('approval', $quote['ask']['kind']);
+	pg_assert_true($quote['ask']['config']['closes_in'] !== '', 'the approval has a deadline');
+	pg_assert_same(array('start:next', 'ask:approved', 'ask:rejected', 'ask:expired', 'ask:withdrawn'), $on('quote_approval'));
+
+	// Text review: a task, an approval waiting on it, a task after it.
+	$review = array_column($by_key['text_review']['graph']['nodes'], null, 'id');
+	pg_assert_same(array('manual', 'task', 'approval', 'task_open', 'notify'), array_values(array_column($review, 'kind')));
+	pg_assert_true($by_key['text_review']['threads'] > 0, 'the approval reads the task');
+
+	// The approval needs a channel: the person is asked for one.
+	foreach (array('quote_approval', 'text_review') as $key) {
+		pg_assert_true(in_array('channel', array_column($by_key[$key]['settings'], 'type'), true), $key . ' asks for a channel');
+		pg_assert_true(in_array('person', array_column($by_key[$key]['settings'], 'type'), true), $key . ' asks for people');
+	}
 }
