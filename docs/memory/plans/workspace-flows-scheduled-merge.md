@@ -22,7 +22,7 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 2. Done (#1810). "Show on canvas": `ws_scheduled_graph()`, `showAction()` draws it read-only.
 3. Done. Parity boxes (F4, F5): 3a #2205 trigger values; 3b #2235 start a flow box; 3c #2249 arrows on always; 3d #2275 self-retry (workspace/workspace-flows-*.md).
 4. New rules on the canvas; the form stays for keys still `form`; templates are starters (flow gallery, G1). Parts:
-   - 4a. Done (#PR). Scheduled actions section: New flow in the toolbar, the list's New hidden (`{ add: false }`); cards keep the form.
+   - 4a. Done (#2292). Scheduled actions section: New flow in the toolbar, the list's New hidden (`{ add: false }`); cards keep the form.
    - 4b. The other ways in (composer insert menu, note toolbar, Duplicate): open the canvas instead of the form. Waits on questions 7 and 8.
    - 4c. AI drafts on the canvas (F8, plans/workspace-flows-data-passing.md D8): `propose_scheduled_action` and drafts of kind scheduled become flow drafts.
 5. Conversion (answer 2): in the 2026.11.0 upgrade every row becomes a converted anchor, its id and every parity row kept. Schema (a mark for the two anchors): ask first.
