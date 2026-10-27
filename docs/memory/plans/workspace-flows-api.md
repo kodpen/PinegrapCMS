@@ -11,7 +11,7 @@ description: Plan (owner request 2026-10-27, draft): flow API beyond the removed
 - Publish is the person's own session only and no MCP tool (workflow/decisions-made-product.md).
 
 ## What comes? (one PR each, in this order)
-- A1 list filters: `start` (time, event, join, manual), `status`, `channel_id`, `updated_since`; `GET /{id}` gives the start in plain words.
+- A1 done (PR #2122): list filters `start`, `status`, `channel_id`, `updated_since`; `GET /{id}` gives `start` and `start_text` (workspace-flows-api-filters.md).
 
 - A2 `GET /workspace/flow-kinds`: every box kind with its settings, outputs and types (D1 of workspace-flows-data-passing.md); what AI and MCP build drafts from.
 
