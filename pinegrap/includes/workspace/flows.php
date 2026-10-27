@@ -85,33 +85,36 @@ function ws_flows_ready()
    --------------------------------------------------------------------------- */
 
 /**
- * The kinds of box a flow knows: whether the box starts the flow, and the
- * outcomes an arrow may leave it on.
+ * The kinds of box a flow knows: whether the box starts the flow, the
+ * outcomes an arrow may leave it on, and the values it gives the boxes after
+ * it ({{node.<id>.<key>}}; key, type, label): a task box its task, a step
+ * box those of ws_step_kinds().
  *
- * @return array kind => label, trigger, outcomes
+ * @return array kind => label, trigger, outcomes, step, outputs
  */
 function ws_flow_kinds()
 {
     $kinds = array(
-        'manual' => array('label' => lang('Started by hand'), 'trigger' => true, 'outcomes' => array('next'), 'step' => false),
-        'task'   => array('label' => lang('Task'), 'trigger' => false, 'outcomes' => array('done', 'cancelled'), 'step' => false),
-        'end'    => array('label' => lang('End'), 'trigger' => false, 'outcomes' => array(), 'step' => false),
+        'manual' => array('label' => lang('Started by hand'), 'trigger' => true, 'outcomes' => array('next'), 'step' => false, 'outputs' => array()),
+        'task'   => array('label' => lang('Task'), 'trigger' => false, 'outcomes' => array('done', 'cancelled'), 'step' => false,
+            'outputs' => array(array('key' => 'task_id', 'type' => 'number', 'label' => lang('Task')))),
+        'end'    => array('label' => lang('End'), 'trigger' => false, 'outcomes' => array(), 'step' => false, 'outputs' => array()),
     );
 
     // The boxes that start a flow on their own, through its anchor
     // (flow_anchors.php).
     foreach ((function_exists('ws_flow_anchor_kinds') ? ws_flow_anchor_kinds() : array()) as $kind => $info) {
-        $kinds[$kind] = array('label' => $info['label'], 'trigger' => true, 'outcomes' => array('next'), 'step' => false);
+        $kinds[$kind] = array('label' => $info['label'], 'trigger' => true, 'outcomes' => array('next'), 'step' => false, 'outputs' => array());
     }
 
     // One condition of a scheduled action (flow_conditions.php).
     if (function_exists('ws_flow_condition_outcomes')) {
-        $kinds['condition'] = array('label' => lang('Condition'), 'trigger' => false, 'outcomes' => ws_flow_condition_outcomes(), 'step' => false);
+        $kinds['condition'] = array('label' => lang('Condition'), 'trigger' => false, 'outcomes' => ws_flow_condition_outcomes(), 'step' => false, 'outputs' => array());
     }
 
     // The steps of a scheduled action, each a box of its own (steps.php).
     foreach ((function_exists('ws_step_kinds') ? ws_step_kinds() : array()) as $kind => $info) {
-        $kinds[$kind] = array('label' => $info['label'], 'trigger' => false, 'outcomes' => ws_step_outcomes(), 'step' => true);
+        $kinds[$kind] = array('label' => $info['label'], 'trigger' => false, 'outcomes' => ws_step_outcomes(), 'step' => true, 'outputs' => $info['outputs']);
     }
 
     return $kinds;
@@ -1862,10 +1865,19 @@ function ws_flow_js_config($viewer, $mode)
         $steps['events'] = is_array($scheduled) ? $scheduled['events'] : null;
     }
 
+    // The values each kind of box gives the boxes after it (a report's
+    // counts follow from the counts it is set to send: ws_step_outputs()).
+    $outputs = array();
+
+    foreach (ws_flow_kinds() as $kind => $info) {
+        $outputs[$kind] = $info['outputs'];
+    }
+
     return $config + array(
         'ready'    => ws_flows_ready(),
         'build'    => $build,
         'steps'    => $steps,
+        'outputs'  => $outputs,
         'subjects' => $subjects,
         'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'coord' => WS_FLOW_COORD_MAX),
     );

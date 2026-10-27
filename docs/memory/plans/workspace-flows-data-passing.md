@@ -12,7 +12,7 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 - `ws_scheduled_fill()` runs after the node fill on the same text, so a filled value holding `{{customer}}` or `{{form_fields}}` is expanded again.
 
 ## Which steps? (one PR each, in this order)
-- D1 outputs: every kind declares `outputs` (key, type, label) beside `texts`; each step writes those keys into `result.data`. Test: every declared key is written.
+- D1 outputs: done (#2111), see workspace/workspace-flows-outputs.md.
 
 - D2 one-pass fill: node values and scheduled placeholders filled in one pass, or `{{` in an inserted value neutralised as `pg_ai_data_block()` does with `<<<`. Red test first.
 

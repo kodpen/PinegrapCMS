@@ -270,7 +270,7 @@ function test_workspace_flow_steps_effects()
 	$run = ws_flow_steps_test_source('ws_step_run');
 
 	pg_assert_contains("'idempotency_key' => ws_step_idempotency_key(", $run);
-	pg_assert_contains("array('message_id', 'task_id', 'channel_id')", $run);
+	pg_assert_contains("ws_step_result_data(\$kind, \$node['config'], \$done)", $run);
 }
 
 // A hook's address carries its secret: only whoever may change the flow

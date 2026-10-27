@@ -3935,7 +3935,9 @@ function ws_scheduled_compare($current, $operator, $value, $kind)
  * @param array $row     the scheduled action
  * @param array $action
  * @param array $context what placeholders read (ws_scheduled_fill()), the run and its depth
- * @return array ok, text, message_id
+ * @return array ok, text, message_id; task_id, channel_id where a task or a
+ *               channel was opened; data: the values a flow's box gives the
+ *               boxes after it (ws_step_result_data())
  */
 function ws_scheduled_do($viewer, $row, $action, $context = array())
 {
@@ -3989,10 +3991,11 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
             $sent = ws_scheduled_mail((array) $action['to'], $subject, $body, $format);
 
             if ($sent === 0) {
-                return $fail(lang(array('string' => 'The e-mail to {var:1} could not be sent.', 'vars' => implode(', ', (array) $action['to']))));
+                return $fail(lang(array('string' => 'The e-mail to {var:1} could not be sent.', 'vars' => implode(', ', (array) $action['to'])))) + array('data' => array('sent' => 0));
             }
 
-            return array('ok' => true, 'text' => lang(array('string' => 'e-mail “{var:1}” sent to {var:2}', 'vars' => array($subject, implode(', ', (array) $action['to'])))), 'message_id' => 0);
+            return array('ok' => true, 'text' => lang(array('string' => 'e-mail “{var:1}” sent to {var:2}', 'vars' => array($subject, implode(', ', (array) $action['to'])))), 'message_id' => 0,
+                'data' => array('sent' => $sent));
 
         case 'notify':
             return ws_scheduled_notify($viewer, $row, $action, $context);
@@ -4125,10 +4128,10 @@ function ws_scheduled_notify($viewer, $row, $action, $context)
     }
 
     if (empty($told)) {
-        return array('ok' => false, 'text' => lang('Nobody could be told: the people are no longer in the team.'), 'message_id' => 0);
+        return array('ok' => false, 'text' => lang('Nobody could be told: the people are no longer in the team.'), 'message_id' => 0, 'data' => array('told' => 0));
     }
 
-    return array('ok' => true, 'text' => lang(array('string' => '{var:1} told', 'vars' => implode(', ', $told))), 'message_id' => 0);
+    return array('ok' => true, 'text' => lang(array('string' => '{var:1} told', 'vars' => implode(', ', $told))), 'message_id' => 0, 'data' => array('told' => count($told)));
 }
 
 /**
@@ -4269,15 +4272,17 @@ function ws_scheduled_task_digest($viewer, $row, $action, $context)
         }
     }
 
+    $data = array('sent' => $sent, 'tasks' => $listed);
+
     if ($tried === 0) {
-        return array('ok' => true, 'text' => lang('no task e-mail went out: nobody had a task to list'), 'message_id' => 0);
+        return array('ok' => true, 'text' => lang('no task e-mail went out: nobody had a task to list'), 'message_id' => 0, 'data' => $data);
     }
 
     if ($sent === 0) {
-        return array('ok' => false, 'text' => lang('The task e-mail could not be sent.'), 'message_id' => 0);
+        return array('ok' => false, 'text' => lang('The task e-mail could not be sent.'), 'message_id' => 0, 'data' => $data);
     }
 
-    return array('ok' => true, 'text' => lang(array('string' => 'task e-mail sent to {var:1} people ({var:2} tasks listed)', 'vars' => array($sent, $listed))), 'message_id' => 0);
+    return array('ok' => true, 'text' => lang(array('string' => 'task e-mail sent to {var:1} people ({var:2} tasks listed)', 'vars' => array($sent, $listed))), 'message_id' => 0, 'data' => $data);
 }
 
 /**
@@ -4491,13 +4496,15 @@ function ws_scheduled_webhook($viewer, $row, $action, $context)
     ));
 
     $host = ws_scheduled_host($action['url']);
+    // No status when nothing answered.
+    $data = array('status_code' => ($answer['status'] > 0) ? (int) $answer['status'] : null, 'duration_ms' => (int) $answer['duration_ms']);
 
     if (!$answer['ok']) {
         return array('ok' => false, 'text' => lang(array('string' => 'the webhook {var:1} did not take it: {var:2}', 'vars' => array(
-            $host, ($answer['status'] > 0) ? 'HTTP ' . $answer['status'] : lang((string) $answer['error'])))), 'message_id' => 0);
+            $host, ($answer['status'] > 0) ? 'HTTP ' . $answer['status'] : lang((string) $answer['error'])))), 'message_id' => 0, 'data' => $data);
     }
 
-    return array('ok' => true, 'text' => lang(array('string' => 'webhook {var:1} called (HTTP {var:2}, {var:3} ms)', 'vars' => array($host, $answer['status'], $answer['duration_ms']))), 'message_id' => 0);
+    return array('ok' => true, 'text' => lang(array('string' => 'webhook {var:1} called (HTTP {var:2}, {var:3} ms)', 'vars' => array($host, $answer['status'], $answer['duration_ms']))), 'message_id' => 0, 'data' => $data);
 }
 
 /**
@@ -4525,8 +4532,9 @@ function ws_scheduled_web_check($action)
     // the run, and the address may carry a secret (user:pass@, a token).
     $url = ws_scheduled_host((string) $action['url']);
     $status = (int) $answer['status'];
-    $fail = function ($text) {
-        return array('ok' => false, 'text' => $text, 'message_id' => 0);
+    $data = array('status_code' => ($status > 0) ? $status : null, 'duration_ms' => (int) $answer['duration_ms']);
+    $fail = function ($text) use ($data) {
+        return array('ok' => false, 'text' => $text, 'message_id' => 0, 'data' => $data);
     };
 
     if ($status === 0) {
@@ -4551,7 +4559,7 @@ function ws_scheduled_web_check($action)
         return $fail(lang(array('string' => '{var:1} answered in {var:2} ms, slower than {var:3} ms', 'vars' => array($url, $answer['duration_ms'], (int) $action['max_ms']))));
     }
 
-    return array('ok' => true, 'text' => lang(array('string' => '{var:1} answered HTTP {var:2} in {var:3} ms', 'vars' => array($url, $status, $answer['duration_ms']))), 'message_id' => 0);
+    return array('ok' => true, 'text' => lang(array('string' => '{var:1} answered HTTP {var:2} in {var:3} ms', 'vars' => array($url, $status, $answer['duration_ms']))), 'message_id' => 0, 'data' => $data);
 }
 
 /**
@@ -4611,15 +4619,18 @@ function ws_scheduled_ssl_check($action)
     $ends = (int) $parsed['validTo_time_t'];
     $left = (int) floor(($ends - time()) / 86400);
 
+    // Below 0 once it ran out.
+    $data = array('days_left' => $left);
+
     if ($ends <= time()) {
-        return $fail(lang(array('string' => 'The certificate of {var:1} ran out on {var:2}', 'vars' => array($host, date('d.m.Y', $ends)))));
+        return $fail(lang(array('string' => 'The certificate of {var:1} ran out on {var:2}', 'vars' => array($host, date('d.m.Y', $ends))))) + array('data' => $data);
     }
 
     if ($left < (int) $action['days']) {
-        return $fail(lang(array('string' => 'The certificate of {var:1} ends in {var:2} days ({var:3})', 'vars' => array($host, $left, date('d.m.Y', $ends)))));
+        return $fail(lang(array('string' => 'The certificate of {var:1} ends in {var:2} days ({var:3})', 'vars' => array($host, $left, date('d.m.Y', $ends))))) + array('data' => $data);
     }
 
-    return array('ok' => true, 'text' => lang(array('string' => 'the certificate of {var:1} has {var:2} days left ({var:3})', 'vars' => array($host, $left, date('d.m.Y', $ends)))), 'message_id' => 0);
+    return array('ok' => true, 'text' => lang(array('string' => 'the certificate of {var:1} has {var:2} days left ({var:3})', 'vars' => array($host, $left, date('d.m.Y', $ends)))), 'message_id' => 0, 'data' => $data);
 }
 
 /**
@@ -4632,6 +4643,7 @@ function ws_scheduled_summary($viewer, $row, $action, $context)
     $title = ws_scheduled_fill(((string) ($action['title'] ?? '') !== '') ? (string) $action['title'] : (string) $row['name'], $context);
     $lines = array();
     $plain = array();
+    $counts = array();
 
     foreach ((array) $action['metrics'] as $item) {
         $param = (int) ($item['param'] ?? 0);
@@ -4645,6 +4657,7 @@ function ws_scheduled_summary($viewer, $row, $action, $context)
 
         $label = ws_scheduled_metric_label($item['key'], $param);
         $value = $count['ok'] ? $count['text'] : '—';
+        $counts[] = $count['ok'] ? (int) $count['value'] : null;
 
         $lines[] = '• ' . $label . ': **' . $value . '**';
         $plain[] = '- ' . $label . ': ' . $value;
@@ -4678,7 +4691,9 @@ function ws_scheduled_summary($viewer, $row, $action, $context)
         $where[] = implode(', ', (array) $action['to']);
     }
 
-    return array('ok' => true, 'text' => lang(array('string' => 'summary sent to {var:1}', 'vars' => implode(' · ', $where))), 'message_id' => $message_id);
+    // The counts in the order of the metrics, null where one was refused.
+    return array('ok' => true, 'text' => lang(array('string' => 'summary sent to {var:1}', 'vars' => implode(' · ', $where))), 'message_id' => $message_id,
+        'data' => array('counts' => $counts));
 }
 
 /**
@@ -4832,7 +4847,7 @@ function ws_scheduled_change($viewer, $row, $action)
 
     log_activity(lang(array('string' => 'scheduled action “{var:1}”: {var:2}', 'vars' => array($row['name'], $text))), ws_person_name($viewer['id']));
 
-    return array('ok' => true, 'text' => $text, 'message_id' => $decision_id);
+    return array('ok' => true, 'text' => $text, 'message_id' => $decision_id, 'data' => array('record_id' => (int) $action['id']));
 }
 
 /**
