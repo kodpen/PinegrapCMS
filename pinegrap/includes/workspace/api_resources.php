@@ -4230,18 +4230,100 @@ function ws_api_refs_get($params)
 function ws_api_plan_row_schema()
 {
     return array(
-        'user_id' => 'integer',
-        'name'    => 'string',
-        'days'    => array(array(
-            'date'     => 'string',
-            'workday'  => 'boolean',
-            'leave'    => 'boolean',
-            'holiday'  => 'boolean',
-            'capacity' => 'integer',
-            'minutes'  => 'integer',
-            'load'     => 'integer',
-            'tasks'    => array('integer'),
+        'user_id'     => 'integer',
+        'name'        => 'string',
+        'unscheduled' => 'integer',
+        'days'        => array(array(
+            'date'       => 'string',
+            'workday'    => 'boolean',
+            'leave'      => 'boolean',
+            'holiday'    => 'boolean',
+            'capacity'   => 'integer',
+            'minutes'    => 'integer',
+            'load'       => 'integer',
+            'tasks'      => array('integer'),
+            'task_items' => array(array(
+                'id'         => 'integer',
+                'minutes'    => 'integer',
+                'due'        => 'boolean',
+                'upcoming'   => 'boolean',
+                'repeat'     => 'string',
+                'moved_from' => 'string',
+                'waits_for'  => 'string',
+            )),
+            'events'     => array(array(
+                'id'          => 'integer',
+                'kind'        => 'string',
+                'title'       => 'string',
+                'time'        => 'string',
+                'minutes'     => 'integer',
+                'meeting_url' => 'string',
+            )),
         )),
+    );
+}
+
+/**
+ * One person's row of the planning board as the API answers it: the cells
+ * ws_plan_grid() filled, with the task entries and plan items it placed on
+ * each day, and the count of the person's tasks with neither date.
+ *
+ * @param array $row a ws_board() row
+ * @return array
+ */
+function ws_api_plan_present($row)
+{
+    $days = array();
+
+    foreach ($row['cells'] as $cell) {
+        $task_ids = array();
+        $task_items = array();
+
+        foreach ($cell['tasks'] as $task) {
+            $task_ids[] = (int) $task['id'];
+            $task_items[] = array(
+                'id'         => (int) $task['id'],
+                'minutes'    => (int) $task['minutes'],
+                'due'        => !empty($task['due']),
+                'upcoming'   => !empty($task['upcoming']),
+                'repeat'     => (string) ($task['repeat'] ?? ''),
+                'moved_from' => (string) ($task['moved_from'] ?? ''),
+                'waits_for'  => (string) ($task['waits_for'] ?? ''),
+            );
+        }
+
+        $events = array();
+
+        foreach ($cell['events'] ?? array() as $event) {
+            $events[] = array(
+                'id'          => (int) $event['id'],
+                'kind'        => (string) $event['kind'],
+                'title'       => (string) $event['title'],
+                'time'        => (string) $event['time'],
+                'minutes'     => (int) $event['minutes'],
+                'meeting_url' => (string) ($event['meeting_url'] ?? ''),
+            );
+        }
+
+        $days[] = array(
+            'date'       => (string) $cell['date'],
+            'workday'    => (bool) $cell['workday'],
+            'leave'      => (bool) $cell['leave'],
+            'holiday'    => (bool) $cell['holiday'],
+            'capacity'   => (int) $cell['capacity'],
+            'minutes'    => (int) $cell['minutes'],
+            'load'       => (int) $cell['load'],
+            'tasks'      => $task_ids,
+            'task_items' => $task_items,
+            'events'     => $events,
+        );
+    }
+
+    return array(
+        'user_id'     => (int) $row['person']['id'],
+        'name'        => (string) $row['person']['name'],
+        'unscheduled' => (int) ($row['unscheduled'] ?? 0),
+        'days'        => $days,
     );
 }
 
@@ -4252,32 +4334,7 @@ function ws_api_plan_get($params)
     $out = array();
 
     foreach ($board['rows'] as $row) {
-        $days = array();
-
-        foreach ($row['cells'] as $cell) {
-            $task_ids = array();
-
-            foreach ($cell['tasks'] as $task) {
-                $task_ids[] = (int) $task['id'];
-            }
-
-            $days[] = array(
-                'date'     => (string) $cell['date'],
-                'workday'  => (bool) $cell['workday'],
-                'leave'    => (bool) $cell['leave'],
-                'holiday'  => (bool) $cell['holiday'],
-                'capacity' => (int) $cell['capacity'],
-                'minutes'  => (int) $cell['minutes'],
-                'load'     => (int) $cell['load'],
-                'tasks'    => $task_ids,
-            );
-        }
-
-        $out[] = array(
-            'user_id' => (int) $row['person']['id'],
-            'name'    => (string) $row['person']['name'],
-            'days'    => $days,
-        );
+        $out[] = ws_api_plan_present($row);
     }
 
     api_ok_list($out, count($out));
