@@ -795,12 +795,16 @@ function _expand_shared_refs($html, $depth = 0, $ancestors = array())
         $replacements[$sid] = $rendered;
     }
 
-    // Single-pass replace using preg_replace_callback (stable, no re-scan of replacement text)
+    // Single-pass replace using preg_replace_callback (stable, no re-scan of replacement text).
+    // A placement marker stays before a system widget's marker, which reads it;
+    // before anything else it is dropped.
     return preg_replace_callback(
-        '/<!--pg-shared-ref:(\d+)-->/',
+        '/(<!--pg-placement:[A-Za-z0-9_-]*-->)?<!--pg-shared-ref:(\d+)-->/',
         function ($m) use ($replacements) {
-            $sid = (int)$m[1];
-            return isset($replacements[$sid]) ? $replacements[$sid] : '';
+            $sid = (int)$m[2];
+            if (!isset($replacements[$sid])) return '';
+            $is_widget = ($replacements[$sid] === '<!--pg-system-widget:' . $sid . '-->');
+            return ($is_widget ? $m[1] : '') . $replacements[$sid];
         },
         $html
     );
@@ -868,12 +872,16 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
     // (pg_img_responsive_html()). Not in an e-mail, which takes none. Rich
     // text written for the classic theme keeps its pictures in their column
     // on a Bootstrap 5 page through the same pass (pg_img_fluid_alias()).
-    $render = function ($m) use ($configs, $mode, $email) {
+    $render = function ($m, $placement = array()) use ($configs, $mode, $email) {
             $sid = (int)$m[1];
             if (!isset($configs[$sid])) return '';
 
             $cfg         = $configs[$sid];
             $region_type = isset($cfg['regionType']) ? $cfg['regionType'] : '';
+            // This placement may narrow what the widget shows (widgets_placement.php).
+            if ($placement) {
+                $cfg = pg_sw_placement_narrow(is_string($region_type) ? $region_type : '', $cfg, $placement, 'pg_sw_placement_group_within');
+            }
             $tree_json   = isset($cfg['_tree_json']) ? $cfg['_tree_json'] : '';
 
             // The widget points at a custom form via page.page_id. Field name evolved:
@@ -1165,13 +1173,15 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
     // value condition is drawn between markers; the finish pass resolves
     // them on the widget's own output (widgets_finish.php).
     return preg_replace_callback(
-        '/<!--pg-system-widget:(\d+)-->/',
+        '/(?:<!--pg-placement:([A-Za-z0-9_-]*)-->)?<!--pg-system-widget:(\d+)-->/',
         function ($m) use ($render, $email, $configs) {
-            $sid   = (int)$m[1];
+            $sid       = (int)$m[2];
+            $placement = ($m[1] !== '') ? pg_sw_placement_decode($m[1]) : array();
+            $m         = array($m[0], $sid);
             $kind  = (isset($configs[$sid]['regionType']) && is_string($configs[$sid]['regionType'])) ? $configs[$sid]['regionType'] : '';
             $scope = pg_sw_finish_open(array('sid' => $sid, 'kind' => $kind, 'email' => $email));
             try {
-                $out = $render($m);
+                $out = $render($m, $placement);
             } finally {
                 pg_sw_finish_close();
             }
@@ -1486,7 +1496,7 @@ function _sanitize_dynamic_placeholders(&$node)
  *
  * The keys that hold objects are known, so the empty ones are re-typed
  * before encoding: `props`, `props._bindings`, `props._bindParams` (a
- * link's page and values), `props._cf`, `props._cf.ids`. Real lists
+ * link's page and values), `props._cf`, `props._cf.ids`, `props.placement`. Real lists
  * (`children`, `_attrs`, `_styles`) are left as they are. Walks shared_ref
  * children too — a widget tree passes through here as well.
  */
@@ -1498,7 +1508,7 @@ function pg_designer_tree_objects(&$node)
             if (empty($node['props'])) {
                 $node['props'] = new stdClass();
             } else {
-                foreach (array('_bindings', '_bindParams', '_cf') as $k) {
+                foreach (array('_bindings', '_bindParams', '_cf', 'placement') as $k) {
                     if (isset($node['props'][$k]) && is_array($node['props'][$k]) && empty($node['props'][$k])) {
                         $node['props'][$k] = new stdClass();
                     }
@@ -4921,9 +4931,12 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             //
             // Marker format: `<!--pg-shared-ref:ID-->` (HTML comment — invisible in browsers,
             // regex-matchable on the server). See `_expand_shared_refs()` for the expander.
+            // A widget placement's own content values (widgets_placement.php)
+            // ride in a marker just before it; none without values.
             $sc_id = isset($props['sharedId']) ? (int)$props['sharedId'] : 0;
             if ($sc_id > 0) {
-                $html .= $pad . '<!--pg-shared-ref:' . $sc_id . '-->' . "\n";
+                $placement = pg_sw_placement_marker(isset($props['placement']) ? $props['placement'] : null);
+                $html .= $pad . $placement . '<!--pg-shared-ref:' . $sc_id . '-->' . "\n";
             }
             break;
     }
