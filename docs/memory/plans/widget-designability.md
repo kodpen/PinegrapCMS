@@ -1,6 +1,6 @@
 ---
 name: widget-designability
-description: Plan (done: W1 #1592, W2 #1582, W3 #1597, W4 #1665, W5 #1879 #1905, W6 #1680, W7 #1688, W8, W10, W11, W14 #1602 #1701, W15 #1734, W19): legacy-layout power in widgets
+description: Plan (done: W25 #2221, W1 #1592, W2 #1582, W3 #1597, W4 #1665, W5 #1879 #1905, W6 #1680, W7 #1688, W8, W10, W11, W14 #1602 #1701, W15 #1734, W19): legacy-layout power in widgets
 ---
 
 ## What is built, and why?
@@ -36,7 +36,7 @@ OR in conditions; canvas default state; pg-hide-if-empty everywhere; words besid
 - W17 Widget parts anywhere on the page. W18 Page-level conditions and page record context.
 - W19 done #1904 #1914 #1928 ([[widget-condition-canvas]]).
 - W20 Parts palette, starter library. W21 Per-placement settings. W22 Code areas, classic form-layout converter. W23 `eo_visible_if` and pg-hide-if-empty as engine aliases. W24 Express order lists.
-- W25 Several conditions per element (owner, 2026-10-27): up to three, All or Any, each compared text translated. W25a server and twin; W25b panel and chip.
+- W25 done (#2221, [[widget-condition-rows]]): up to three conditions per element, All or Any (owner, 2026-10-27).
 
 ## How are other sessions kept clear?
 - Claim with a draft PR `[plan:widget-designability] Wn`. New kinds read saved-tree checks via `pg_sw_cond_tree_json()`.

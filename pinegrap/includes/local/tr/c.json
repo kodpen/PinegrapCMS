@@ -1292,6 +1292,7 @@
     "Concluded": "Sonuçlandı",
     "Concluded by {var:1} on {var:2}; kept until {var:3}": "{var:1} tarafından {var:2} tarihinde sonuçlandırıldı; {var:3} tarihine kadar saklanır",
     "Condition": "Koşul",
+    "Condition {var:1}: compared with": "Koşul {var:1}: karşılaştırılan metin",
     "Condition: compared with": "Koşul: karşılaştırılan metin",
     "Conditions that trigger an offer": "Bir teklifi tetikleyen koşullar",
     "Conference Room": "Toplantı Salonu",

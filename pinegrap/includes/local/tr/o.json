@@ -1213,6 +1213,7 @@
     "or add name": "veya isim ekle",
     "or enter a code": "ya da bir kod girin",
     "or just a block of markup": "ya da yalnızca bir işaretleme bloğu",
+    "or {var:1} {var:2} {var:3}": "veya {var:1} {var:3} {var:2}",
     "order": "sipariş",
     "order ({var:1}) was changed on the order list: {var:2} from \"{var:3}\" to \"{var:4}\"": "sipariş ({var:1}) sipariş listesinde değiştirildi: {var:2} \"{var:3}\" iken \"{var:4}\" oldu",
     "order abandoned": "sipariş unutulmuş",

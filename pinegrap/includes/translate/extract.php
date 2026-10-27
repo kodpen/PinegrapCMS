@@ -108,12 +108,14 @@ function pg_tr_node_fields($type, $props)
         $add('_labelExpand', 'text');
     }
 
-    // The text a value condition compares with (_bindParams.show_if.value)
-    // when it is words: the value it is compared with is drawn in the page's
-    // language, so the compared text is read in it too
-    // (pg_tr_condition_props()).
-    if (function_exists('pg_sw_cond_operand_is_words') && pg_sw_cond_operand_is_words($props)) {
-        $fields[] = array('_cond:show_if', 'text');
+    // The text each value condition compares with (_bindParams.show_if.value,
+    // show_if_2, show_if_3) when it is words: the value it is compared with
+    // is drawn in the page's language, so the compared text is read in it
+    // too (pg_tr_condition_props()).
+    if (function_exists('pg_sw_cond_operand_is_words')) {
+        foreach (pg_sw_cond_names() as $cond_name) {
+            if (pg_sw_cond_operand_is_words($props, $cond_name)) $fields[] = array('_cond:' . $cond_name, 'text');
+        }
     }
 
     // Attributes with words in them, on any node. A submit, button or reset

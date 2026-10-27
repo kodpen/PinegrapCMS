@@ -22,6 +22,12 @@
 //
 //   <!--pg-if:NONCE:N:OP:OPERAND-->  the node  <!--pg-cv:NONCE:N-->^^token^^<!--/pg-cv:NONCE:N-->  <!--/pg-if:NONCE:N-->
 //
+// A node with several conditions (pg_sw_cond_specs()) carries them all in
+// its open marker, joined by '.', with the join last, and one carrier for
+// each, the first numbered N and the others N.2, N.3:
+//
+//   <!--pg-if:NONCE:N:OP:OPERAND.OP:OPERAND:any-->  the node  carriers  <!--/pg-if:NONCE:N-->
+//
 // The renderer fills ^^token^^ in the carrier with its own fill, whatever
 // that is (pg_sw_apply_tokens(), strtr(), str_replace()), as it fills the
 // node, so a span copied into every row carries that row's value. The pass
@@ -95,19 +101,28 @@ function pg_sw_finish_scope()
     return $stack ? $stack[count($stack) - 1] : null;
 }
 
-// $html (a node drawn inside a widget) between the markers of the
-// condition $spec (pg_sw_cond_spec()), with the carrier of its token after
-// the node: the row id passes skip only leading comments, so a row's first
-// element stays first.
+// $html (a node drawn inside a widget) between the markers of its
+// conditions, with the carrier of each token after the node: the row id
+// passes skip only leading comments, so a row's first element stays first.
+// $spec is one condition (pg_sw_cond_spec()) or all of a node's
+// (pg_sw_cond_specs()); one condition writes the markers it always did.
 function pg_sw_finish_wrap($html, $spec)
 {
     static $seq = 0;
-    $n       = ++$seq;
-    $nonce   = pg_sw_marker_nonce();
-    $operand = rtrim(strtr(base64_encode((string)$spec['operand']), '+/', '-_'), '=');
-    return '<!--pg-if:' . $nonce . ':' . $n . ':' . $spec['op'] . ':' . $operand . '-->'
+    $n     = ++$seq;
+    $nonce = pg_sw_marker_nonce();
+    $conds = isset($spec['conds']) ? $spec['conds'] : array($spec);
+    $heads = array();
+    $carry = '';
+    foreach (array_values($conds) as $i => $cond) {
+        $id       = $i ? $n . '.' . ($i + 1) : (string)$n;
+        $heads[]  = $cond['op'] . ':' . rtrim(strtr(base64_encode((string)$cond['operand']), '+/', '-_'), '=');
+        $carry   .= '<!--pg-cv:' . $nonce . ':' . $id . '-->^^' . $cond['token'] . '^^<!--/pg-cv:' . $nonce . ':' . $id . '-->';
+    }
+    $join = (count($heads) > 1) ? ':' . (($spec['join'] === 'any') ? 'any' : 'all') : '';
+    return '<!--pg-if:' . $nonce . ':' . $n . ':' . implode('.', $heads) . $join . '-->'
          . $html
-         . '<!--pg-cv:' . $nonce . ':' . $n . '-->^^' . $spec['token'] . '^^<!--/pg-cv:' . $nonce . ':' . $n . '-->'
+         . $carry
          . '<!--/pg-if:' . $nonce . ':' . $n . '-->';
 }
 
@@ -180,10 +195,11 @@ function _pg_sw_finish_pair_end($html, $open, $close, $from)
 }
 
 // Keeps or cuts every condition span of $nonce in $html, outermost first; a
-// span that is kept has the spans inside it resolved in turn. A span's
-// value is its own carrier, the last one of its number in its body (the
-// wrap writes it just before the close marker), taken out of the body; a
-// token the renderer neither filled nor swept reads as empty, never as
+// span that is kept has the spans inside it resolved in turn. A
+// condition's value is its own carrier, the last one of its number in the
+// span's body (the wrap writes them just before the close marker), taken
+// out of the body; several conditions are joined as the marker says
+// (pg_sw_cond_eval_all()). A token the renderer neither filled nor swept reads as empty, never as
 // '^^token^^'. A cut span leaves its cut point (pg_sw_finish_cut_mark()).
 // The spans are found with strpos(), never with one pattern over a body,
 // so no body is too big to judge. A marker without its pair is left for
@@ -200,7 +216,7 @@ function pg_sw_finish_resolve($html, $nonce, &$cut)
         if ($head_end === false) break;
         $after = $head_end + 3;
         $head  = substr($html, $at + strlen($open), $head_end - $at - strlen($open));
-        $end   = preg_match('/^(\d+):([a-z_]+):([A-Za-z0-9_\-]*)$/', $head, $h)
+        $end   = preg_match('/^(\d+):([a-z_]+:[A-Za-z0-9_\-]*(?:\.[a-z_]+:[A-Za-z0-9_\-]*)*)(?::(all|any))?$/', $head, $h)
             ? _pg_sw_finish_pair_end($html, $open . $h[1] . ':', '<!--/pg-if:' . $nonce . ':' . $h[1] . '-->', $after) : null;
         if ($end === null) {
             $out .= substr($html, $pos, $after - $pos);
@@ -211,17 +227,23 @@ function pg_sw_finish_resolve($html, $nonce, &$cut)
         $out  .= substr($html, $pos, $at - $pos);
         $body  = substr($html, $after, $end[0] - $after);
         $pos   = $end[1];
-        $value = '';
-        $cv_open  = '<!--pg-cv:' . $nonce . ':' . $h[1] . '-->';
-        $cv_close = '<!--/pg-cv:' . $nonce . ':' . $h[1] . '-->';
-        $c0 = strrpos($body, $cv_open);
-        $c1 = ($c0 === false) ? false : strpos($body, $cv_close, $c0);
-        if ($c1 !== false) {
-            $value = pg_sw_cond_text(pg_sw_sweep_tokens(substr($body, $c0 + strlen($cv_open), $c1 - $c0 - strlen($cv_open))));
-            $body  = substr($body, 0, $c0) . substr($body, $c1 + strlen($cv_close));
+        $tests = array();
+        foreach (explode('.', $h[2]) as $i => $test) {
+            list($op, $operand) = explode(':', $test, 2);
+            $id    = $i ? $h[1] . '.' . ($i + 1) : $h[1];
+            $value = '';
+            $cv_open  = '<!--pg-cv:' . $nonce . ':' . $id . '-->';
+            $cv_close = '<!--/pg-cv:' . $nonce . ':' . $id . '-->';
+            $c0 = strrpos($body, $cv_open);
+            $c1 = ($c0 === false) ? false : strpos($body, $cv_close, $c0);
+            if ($c1 !== false) {
+                $value = pg_sw_cond_text(pg_sw_sweep_tokens(substr($body, $c0 + strlen($cv_open), $c1 - $c0 - strlen($cv_open))));
+                $body  = substr($body, 0, $c0) . substr($body, $c1 + strlen($cv_close));
+            }
+            $tests[] = array($op, $value, _pg_sw_finish_operand($operand));
         }
 
-        if (pg_sw_cond_eval($h[2], $value, _pg_sw_finish_operand($h[3]))) {
+        if (pg_sw_cond_eval_all(isset($h[3]) ? $h[3] : 'all', $tests)) {
             $out .= pg_sw_finish_resolve($body, $nonce, $cut);
         } else {
             $cut  = true;
@@ -247,7 +269,7 @@ function pg_sw_finish_strip_carriers($html, $nonce = null)
         if ($head_end === false) break;
         $n     = substr($html, $at + strlen($open), $head_end - $at - strlen($open));
         $close = '<!--/pg-cv:' . $nonce . ':' . $n . '-->';
-        $c     = preg_match('/^a?\d+$/', $n) ? strpos($html, $close, $head_end + 3) : false;
+        $c     = preg_match('/^a?\d+(?:\.\d)?$/', $n) ? strpos($html, $close, $head_end + 3) : false;
         if ($c === false) {
             $out .= substr($html, $pos, $head_end + 3 - $pos);
             $pos  = $head_end + 3;

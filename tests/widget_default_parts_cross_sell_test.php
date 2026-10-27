@@ -205,7 +205,7 @@ function test_widget_parts_cross_sell_editor_twin()
 		$b = strpos($js, $to, $a);
 		return substr($js, $a, $b + strlen($to) - $a);
 	};
-	$src = $cut("\n    var SW_DEFAULT_PARTS = {", "\n    };\n") . $cut("\n    var SW_DEFAULT_LOOP_TAILS = {", "\n    };\n");
+	$src = $cut("\n    var SD_COND_NAMES = ", ";\n") . $cut("\n    var SW_DEFAULT_PARTS = {", "\n    };\n") . $cut("\n    var SW_DEFAULT_LOOP_TAILS = {", "\n    };\n");
 	foreach (array('_sdDefaultParts', '_sdPartTokenOf', '_sdPartHost', '_sdPartEl', '_sdPartWhen', '_sdPartCatalogCrumbs', '_sdPartCatalogBreadcrumb',
 		'_sdPartCatalogCrossSell', '_sdDefaultLoopTails', '_sdMainLoop', '_sdPartPlaced', '_sdListIsSourced', '_sdPartOrderItemForm', '_sdPartOrderItemGiftCard') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
@@ -332,13 +332,14 @@ function test_widget_parts_cross_sell_canvas_sample()
 		return substr($js, $a, $b + strlen($to) - $a);
 	};
 	$src = $cut("\n    var SD_COND_WS = ", ";\n")
+		. $cut("\n    var SD_COND_NAMES = ", ";\n")
 		. $cut("\n    var SW_COND_OPS = [", "\n    ];\n")
 		. $cut("\n    var SW_COND_DENY = [", "\n    ];\n")
 		. $cut("\n    var SD_OV_STATUS_STAGES = ", ";\n")
 		. $cut("\n    var _SD_FLAG_TOKENS = {", "\n    };\n");
 	foreach (array('_sdCondPlain', '_sdCondText', '_sdCondFold', '_sdCondFigureOk', '_sdCondFigureNumber', '_sdCondAmount', '_sdCondNumber',
 		'_sdCondComparable', '_sdCondIsWhole', '_sdCondEval', '_sdCondTokenAllowed', '_sdCondOp', '_sdCondHoldsRequired', '_sdCondCodeStates',
-		'_sdCondCanvasValue', '_sdCondCanvasShows', '_sdTokenPlaceholder') as $fn) {
+		'_sdCondCanvasValue', '_sdCondCanvasShows', '_sdCondPresent', '_sdCondSpecs', '_sdCondEvalAll', '_sdTokenPlaceholder') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
 	}
 	// A token no preview map names reads as its placeholder, as in
