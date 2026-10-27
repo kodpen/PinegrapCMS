@@ -213,6 +213,7 @@ function ws_task_brief($task, $assignees)
         // The assistant the task is handed to (delegation.php).
         'delegate'         => (string) ($task['delegate'] ?? ''),
         'delegate_name'    => ((string) ($task['delegate'] ?? '') !== '') ? ws_assistant_name($task['delegate']) : '',
+        'delegate_icon'    => ((string) ($task['delegate'] ?? '') !== '') ? ws_assistant_mcp_icon($task['delegate']) : '',
         // What the assistants proposed on it and nobody has decided yet.
         'waiting_changes'  => $waiting,
     );
