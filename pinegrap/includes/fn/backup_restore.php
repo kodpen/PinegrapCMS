@@ -771,7 +771,7 @@ function pg_restore_tables($prefix)
 
     $like = str_replace(array('\\', '_', '%'), array('\\\\', '\\_', '\\%'), $prefix) . '%';
 
-    $result = @mysqli_query(db::$con, "SHOW TABLES LIKE '" . mysqli_real_escape_string(db::$con, $like) . "'");
+    $result = db_q("SHOW TABLES LIKE ?", array((string) $like));
 
     if ($result) {
         while ($row = mysqli_fetch_row($result)) {
@@ -999,20 +999,23 @@ function pg_restore_session_save()
 function pg_restore_session_restore(array $saved)
 {
     $sets = array();
+    $values = array();
 
     foreach ($saved as $name => $value) {
-        // The switches (autocommit, the checks) refuse a quoted '1'.
+        // The switches (autocommit, the checks) refuse a quoted '1', so a
+        // digit-only value stays bare in the text.
         if ($value === null) {
             $sets[] = $name . ' = NULL';
         } elseif (ctype_digit((string) $value)) {
             $sets[] = $name . ' = ' . $value;
         } else {
-            $sets[] = $name . " = '" . mysqli_real_escape_string(db::$con, $value) . "'";
+            $sets[] = $name . ' = ?';
+            $values[] = (string) $value;
         }
     }
 
     if ($sets) {
-        @mysqli_query(db::$con, 'SET SESSION ' . implode(', ', $sets));
+        db_q('SET SESSION ' . implode(', ', $sets), $values);
     }
 }
 
@@ -1402,7 +1405,7 @@ function pg_restore_step(array &$state, $heartbeat = null)
  */
 function pg_restore_lock($database)
 {
-    $result = @mysqli_query(db::$con, "SELECT GET_LOCK('" . mysqli_real_escape_string(db::$con, 'pg_restore_' . md5($database)) . "', 0)");
+    $result = db_q("SELECT GET_LOCK(?, 0)", array('pg_restore_' . md5($database)));
 
     if (!$result) {
         return false;

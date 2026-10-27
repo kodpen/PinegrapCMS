@@ -561,7 +561,7 @@ function pg_price_history_forget($product_id)
         return;
     }
 
-    if (!@mysqli_query(db::$con, "DELETE FROM product_price_history WHERE product_id = '" . $product_id . "'")) {
+    if (!db_q("DELETE FROM product_price_history WHERE product_id = ?", array((string) $product_id))) {
         pg_price_history_log_failure('removing the history of a deleted product');
     }
 }
@@ -769,12 +769,12 @@ function pg_price_history_offer_pass_run($seconds)
         $result['state'] = 'more';
 
         while (microtime(true) < $deadline) {
-            $products = @mysqli_query(db::$con,
+            $products = db_q(
                 "SELECT id, price
                 FROM products
-                WHERE id > '" . (int) $state['after_id'] . "'
+                WHERE id > ?
                 ORDER BY id
-                LIMIT " . PG_PRICE_HISTORY_CHUNK);
+                LIMIT ?", array((string) (int) $state['after_id'], (int) PG_PRICE_HISTORY_CHUNK));
 
             if (!$products) {
                 pg_price_history_log_failure('reading the prices for the offer pass');
