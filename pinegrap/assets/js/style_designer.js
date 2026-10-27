@@ -62588,7 +62588,9 @@ const StyleDesigner = (function () {
                    '        <link rel="stylesheet" href="' + googleFontUrl(f) + '">\n';
         }).join('');
 
-        var code = '<!DOCTYPE html>\n\n<html lang="' + esc(_sdDocLang()) + '">\n\n    <head>\n\n        <meta charset="utf-8">\n\n        <title></title>\n\n' +
+        // A converted classic style's title (generate_style_code_from_tree()).
+        var rootTitle = (root.props && typeof root.props.title === 'string') ? root.props.title.trim() : '';
+        var code = '<!DOCTYPE html>\n\n<html lang="' + esc(_sdDocLang()) + '">\n\n    <head>\n\n        <meta charset="utf-8">\n\n        <title>' + esc(rootTitle) + '</title>\n\n' +
             '        <meta name="viewport" content="width=device-width, initial-scale=1">\n\n' +
             '        <meta_tags></meta_tags>\n\n        <stylesheet></stylesheet>\n\n' +
             (fontImports ? fontImports + '\n' : '') +
