@@ -1,10 +1,10 @@
 ---
 name: waf-counter-subjects-and-endpoints
-description: A private visitor address is infrastructure, the web root's index.php is the router, shipworks.php and workspace_guest.php are credential endpoints, the api.php allowance exempts staff only
+description: A private visitor address is not counted, the web root's index.php is the router, shipworks.php and workspace_guest.php are credential endpoints, the api.php allowance exempts staff only
 ---
 
 ## Which addresses are never counted or auto-banned?
-- Besides loopback and the listed Trusted Proxies, every private or reserved address (`waf_ip_is_private_or_reserved()`: 10/8, 172.16/12, 192.168/16, fc00::/7, link-local, unspecified, documentation ranges; the same test as `pg_cf_visitor_address_counted()`). It is the peer of a reverse proxy, a load balancer or a container network not listed under Trusted Proxies, or a local network, shared by every visitor behind it: counted, the whole site lived on one visitor's allowance, and six refusals banned everybody. `waf_ip_is_infrastructure()` answers true for it, so the rate limits, the in-flight cap and `waf_register_offence()` skip it; the IP lists and the signature scan still apply.
+- `waf_ip_is_counted($ip)` is the one question the rate limits, the in-flight cap and `waf_register_offence()` ask: not infrastructure (`waf_ip_is_infrastructure()`: loopback, the listed Trusted Proxies) and not private or reserved (`waf_ip_is_private_or_reserved()`: 10/8, 172.16/12, 192.168/16, fc00::/7, link-local, unspecified, documentation ranges; the same test as `pg_cf_visitor_address_counted()`). A private address is the peer of a reverse proxy, a load balancer or a container network not listed under Trusted Proxies, or a local network, shared by every visitor behind it: counted, the whole site lived on one visitor's allowance, and six refusals banned everybody. The IP lists and the signature scan still apply. `waf_ip_is_infrastructure()` keeps its meaning (the server or a proxy), which the maintenance card reads: on a local network a private address is a person's own.
 - The Firewall settings screen warns beside Trusted Proxies when the operator's own request resolves to such an address (not loopback): the proxy in front of the site should be listed so visitors are told apart again.
 - An intranet site whose visitors all have private addresses has no per-address limits; the lists and the scan remain.
 

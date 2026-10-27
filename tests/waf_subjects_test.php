@@ -3,8 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for what the firewall's per-address counters count and whom they
- * spare: a private or reserved visitor address is infrastructure
- * (waf_ip_is_private_or_reserved(), waf_ip_is_infrastructure()), the web
+ * spare: a private or reserved visitor address is not counted
+ * (waf_ip_is_private_or_reserved(), waf_ip_is_counted()), the web
  * root's index.php answers as router.php (waf_script_name_from()), the
  * ShipWorks and guest room endpoints are credential endpoints, and the
  * api.php allowance exempts staff rather than any session.
@@ -22,19 +22,38 @@ if (!defined('PG_TEST_RUNNER')) {
 require_once(PG_FUNCTIONS_DIR . '/waf.php');
 
 // A private, link-local, loopback or documentation address is nobody's on
-// the internet; a public one is a visitor's.
+// the internet and is not counted; a public one is a visitor's. Being
+// infrastructure (the server, a trusted proxy) keeps its own meaning, which
+// the maintenance card reads: a private address is not that.
 function test_waf_subjects_private_or_reserved_addresses()
 {
+	waf_config(array('waf_trusted_proxies' => ''));
+
 	foreach (array('10.1.2.3', '172.16.0.1', '172.31.255.254', '192.168.1.1', '127.0.0.1', '169.254.10.10', '0.0.0.0', 'fd00::1', 'fc00::1', 'fe80::1', '::1', '::') as $ip) {
 		pg_assert_true(waf_ip_is_private_or_reserved($ip), $ip);
-		pg_assert_true(waf_ip_is_infrastructure($ip), $ip . ' is infrastructure');
+		pg_assert_false(waf_ip_is_counted($ip), $ip . ' is not counted');
 	}
 
 	foreach (array('203.0.113.9', '8.8.8.8', '172.32.0.1', '192.169.1.1', '2a00:1450:4001::1', '2001:4860::8888') as $ip) {
 		pg_assert_false(waf_ip_is_private_or_reserved($ip), $ip);
+		pg_assert_true(waf_ip_is_counted($ip), $ip . ' is counted');
 	}
 
-	pg_assert_true(waf_ip_is_infrastructure('not an address'), 'an unresolved address is infrastructure, as before');
+	pg_assert_false(waf_ip_is_infrastructure('192.168.1.20'), 'a private address is not the server or a proxy');
+	pg_assert_true(waf_ip_is_infrastructure('127.0.0.1'), 'loopback is');
+	pg_assert_false(waf_ip_is_counted('not an address'), 'an unresolved address is not counted, as before');
+}
+
+// Every per-address counter asks the one question.
+function test_waf_subjects_counters_ask_whether_the_address_counts()
+{
+	$waf = (string) file_get_contents(PG_FUNCTIONS_DIR . '/waf.php');
+
+	foreach (array('waf_handle_rate_global', 'waf_handle_rate_sensitive', 'waf_handle_rate_api', 'waf_handle_inflight', 'waf_register_offence') as $name) {
+		$start = strpos($waf, 'function ' . $name . '(');
+		$body = substr($waf, (int) $start, (int) strpos($waf, "\n}\n", (int) $start) - (int) $start);
+		pg_assert_contains('if (!waf_ip_is_counted($ip)) {', $body, $name);
+	}
 }
 
 // The web root's index.php (a require of router.php) answers as router.php;

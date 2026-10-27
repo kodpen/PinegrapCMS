@@ -427,20 +427,32 @@ function waf_ip_is_infrastructure($ip)
         return true;
     }
 
-    // A private or reserved address is the peer of a reverse proxy, a load
-    // balancer or a container network not listed under Trusted Proxies, or a
-    // local network, and is shared by every visitor behind it: counted, it
-    // would hold the whole site to one visitor's allowance, and six refusals
-    // would ban them all. The form limits make the same call
-    // (pg_cf_visitor_address_counted()). The IP lists still apply to it: they
-    // are the operator's own data.
-    if (waf_ip_is_private_or_reserved($ip)) {
-        return true;
-    }
-
     $trusted = waf_parse_list(waf_setting('waf_trusted_proxies', ''));
 
     return ($trusted && waf_ip_in_any($ip, $trusted));
+}
+
+/**
+ * Whether per-address enforcement applies to this address: the rate limits,
+ * the ceiling on open requests and the offence count.
+ *
+ * Not to infrastructure (above), and not to a private or reserved address:
+ * that is the peer of a reverse proxy, a load balancer or a container
+ * network not listed under Trusted Proxies, or a local network, and is shared
+ * by every visitor behind it. Counted, it held the whole site to one
+ * visitor's allowance, and six refusals banned everybody. The form limits
+ * make the same call (pg_cf_visitor_address_counted()). The IP lists still
+ * apply to it, being the operator's own data, and so does the signature
+ * scan, which judges the request; the maintenance card keeps asking
+ * waf_ip_is_infrastructure(), since on a local network such an address is a
+ * person's own.
+ *
+ * @param string $ip the visitor's address (waf_client_ip())
+ * @return bool
+ */
+function waf_ip_is_counted($ip)
+{
+    return (!waf_ip_is_infrastructure($ip) && !waf_ip_is_private_or_reserved($ip));
 }
 
 
@@ -4875,9 +4887,9 @@ function waf_handle_rate_global($ip, $blocking)
         return;
     }
 
-    // Counting requests against an unresolved address would count the whole
-    // internet as one visitor. See waf_ip_is_infrastructure().
-    if (waf_ip_is_infrastructure($ip)) {
+    // Counting requests against an unresolved or a shared address would
+    // count the whole internet as one visitor. See waf_ip_is_counted().
+    if (!waf_ip_is_counted($ip)) {
         return;
     }
 
@@ -4904,9 +4916,9 @@ function waf_handle_rate_sensitive($ip, $blocking)
         return;
     }
 
-    // Counting requests against an unresolved address would count the whole
-    // internet as one visitor. See waf_ip_is_infrastructure().
-    if (waf_ip_is_infrastructure($ip)) {
+    // Counting requests against an unresolved or a shared address would
+    // count the whole internet as one visitor. See waf_ip_is_counted().
+    if (!waf_ip_is_counted($ip)) {
         return;
     }
 
@@ -4988,9 +5000,9 @@ function waf_handle_rate_api($ip, $blocking)
         return;
     }
 
-    // Counting requests against an unresolved address would count the whole
-    // internet as one visitor. See waf_ip_is_infrastructure().
-    if (waf_ip_is_infrastructure($ip)) {
+    // Counting requests against an unresolved or a shared address would
+    // count the whole internet as one visitor. See waf_ip_is_counted().
+    if (!waf_ip_is_counted($ip)) {
         return;
     }
 
@@ -5042,9 +5054,9 @@ function waf_handle_inflight($ip, $blocking)
         return;
     }
 
-    // Counting requests against an unresolved address would count the whole
-    // internet as one visitor. See waf_ip_is_infrastructure().
-    if (waf_ip_is_infrastructure($ip)) {
+    // Counting requests against an unresolved or a shared address would
+    // count the whole internet as one visitor. See waf_ip_is_counted().
+    if (!waf_ip_is_counted($ip)) {
         return;
     }
 
@@ -5151,8 +5163,9 @@ function waf_register_offence($ip, $score, $blocking, $burst = false)
         return;
     }
 
-    // Banning loopback or the tunnel's own address takes the site off the air.
-    if (waf_ip_is_infrastructure($ip)) {
+    // Banning loopback, the tunnel's own address or the one address an
+    // unlisted proxy gives every visitor takes the site off the air.
+    if (!waf_ip_is_counted($ip)) {
         return;
     }
 
