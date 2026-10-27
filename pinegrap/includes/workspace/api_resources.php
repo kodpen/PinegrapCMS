@@ -5876,6 +5876,40 @@ function ws_api_task_time_schema()
 }
 
 /**
+ * A row of the owner's time across tasks: the per-task row and its task.
+ *
+ * @param array $row  ws_task_time row
+ * @param array $task ws_task_time_task_ref()
+ * @return array
+ */
+function ws_api_task_time_range_present($row, $task)
+{
+    return ws_api_task_time_present($row) + array(
+        'task' => array(
+            'id'      => (int) $task['id'],
+            'title'   => (string) $task['title'],
+            'visible' => (bool) $task['visible'],
+        ),
+    );
+}
+
+// What ws_api_task_time_range_present() returns.
+function ws_api_task_time_range_schema()
+{
+    return ws_api_task_time_schema() + array('task' => 'WorkspaceTimeTask');
+}
+
+// The task of a WorkspaceTimeEntry.
+function ws_api_task_time_task_schema()
+{
+    return array(
+        'id'      => 'integer',
+        'title'   => 'string',
+        'visible' => 'boolean',
+    );
+}
+
+/**
  * The task of a time request, with the schema there.
  *
  * @return array viewer, task
@@ -5940,6 +5974,87 @@ function ws_api_task_time_create($params)
     ws_api_log(lang(array('string' => 'time was written on workspace task ({var:1})', 'vars' => ws_task_number($task['id']))));
 
     api_ok(ws_api_task_time_present(ws_task_time_entry($result['id'])), 201);
+}
+
+function ws_api_time_list($params)
+{
+    $viewer = ws_api_viewer();
+
+    if (!ws_task_time_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    $range = ws_task_time_range_check((string) ($params['from'] ?? ''), (string) ($params['to'] ?? ''));
+
+    if (!$range['ok']) {
+        api_fail_validation($range['error'], $range['field']);
+    }
+
+    $after = null;
+
+    if (isset($params['cursor']) && ($params['cursor'] !== '')) {
+        $cursor = api_cursor_decode($params['cursor']);
+        $day = ($cursor === null) ? null : ws_task_time_position_unpack($cursor['v']);
+
+        if ($day === null) {
+            api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+        }
+
+        $after = array('day' => $day, 'id' => (int) $cursor['i']);
+    }
+
+    $limit = (int) ($params['limit'] ?? 250);
+    $page = ws_task_time_range($viewer, $range['from'], $range['to'], $after, $limit);
+    $out = array();
+
+    foreach ($page['rows'] as $row) {
+        $out[] = ws_api_task_time_range_present($row, $row['task']);
+    }
+
+    $next = ($page['next'] !== null) ? api_cursor_encode(ws_task_time_position_pack($page['next']['day']), $page['next']['id']) : null;
+
+    api_ok_list($out, $limit, $next, null, array('total_minutes' => (int) $page['total_minutes']));
+}
+
+function ws_api_task_time_update($params)
+{
+    list($viewer, $task) = ws_api_task_time_task($params);
+    $entry = ws_task_time_entry((int) $params['entry_id']);
+
+    if (!$entry || ((int) $entry['task_id'] !== (int) $task['id'])) {
+        api_fail_not_found(lang('Time entry'));
+    }
+
+    // Only the fields sent change; a cleared note arrives as ''.
+    $changes = array();
+
+    foreach (array('minutes', 'worked_on', 'note', 'billable') as $field) {
+        if (array_key_exists($field, $params)) {
+            $changes[$field] = $params[$field];
+        }
+    }
+
+    $checked = ws_task_time_update_check($viewer, $entry, $changes);
+
+    if (!$checked['ok']) {
+        if ((int) $checked['status'] === 403) {
+            api_fail(403, 'forbidden', $checked['error']);
+        }
+
+        api_fail_validation($checked['error'], $checked['field'] ?: null);
+    }
+
+    api_dry_run_stop('updated', 'workspace_task_time', array('id' => (int) $entry['id'], 'changes' => array_keys($changes)));
+
+    $result = ws_task_time_update($viewer, $entry, $changes);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], $result['field'] ?: null);
+    }
+
+    ws_api_log(lang(array('string' => 'time was changed on workspace task ({var:1})', 'vars' => ws_task_number($task['id']))));
+
+    api_ok(ws_api_task_time_present(ws_task_time_entry($entry['id'])));
 }
 
 function ws_api_task_time_delete($params)
