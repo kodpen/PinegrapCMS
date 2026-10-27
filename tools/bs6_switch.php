@@ -858,6 +858,16 @@ function bs6_switch_test_pins()
 		'tests/workspace_sales_quote_test.php' => array(
 			array("'\\\\.dropdown-divider'", "'\\\\.menu-divider'"),
 		),
+		'tests/order_quick_edit_test.php' => array(
+			array("pg_assert_contains('bg-warning', pg_order_list_status_html(", "pg_assert_contains('theme-warning', pg_order_list_status_html("),
+			array("pg_assert_contains('bg-primary', pg_order_list_status_html(", "pg_assert_contains('theme-primary', pg_order_list_status_html("),
+			array("pg_assert_contains('bg-success', pg_order_list_status_html(", "pg_assert_contains('theme-success', pg_order_list_status_html("),
+			array("pg_assert_contains('bg-danger', pg_order_list_status_html(", "pg_assert_contains('theme-danger', pg_order_list_status_html("),
+			array("pg_assert_contains('bg-warning', \$unsure);", "pg_assert_contains('theme-warning', \$unsure);"),
+		),
+		'tests/waf_offence_test.php' => array(
+			array("\"'would-ban'   => array('bg-warning text-dark', lang('Would ban')),\"", "\"'would-ban'   => array('bg-warning fg-black', lang('Would ban')),\""),
+		),
 		'tests/widget_fill_test.php' => array(
 			array('<select class="form-select form-select-sm sd-sw-bindfilter"', '<select class="form-control form-control-sm sd-sw-bindfilter"'),
 		),
