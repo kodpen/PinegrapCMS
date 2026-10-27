@@ -20,7 +20,8 @@ description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b½, 4a, 5 done; rest of 
 ## What remains?
 - Done: 1 contract and registry (PR #740), 2 iyzico (#812), 2b its 3-D Secure return (#1710), 3a Stripe PaymentIntents (#937), 4a one list of checkout methods (#1743, `commerce/payment-method-lists.md`), 5 refund and cancel through the driver (#873).
 3b. Stripe webhook (`payment_callback.php?driver=stripe`, `notify()` with signature check, a `webhook_secret` field): a payment that succeeds after the visitor left, a dispute or refund made on Stripe's screen (M). First half done (PR #2143, alert only: `commerce/payment-callback.md`); second half after the owner's answer below.
-4b. PayPal Checkout v2 driver (M), after 4a: a redirect method appended to `orders.payment_method` by a 2026.11.0 step; Orders v2 create, approve redirect, capture in `complete()`; refund by capture id; no webhook needed. Built on a branch, not landed: `plans/payment-driver-paypal.md`.
+4b. PayPal Checkout v2: done (#2377). PENDING capture, coordinator for the owner, 2026-10-27 ("bekleyen işçilere yanıtı sen ver benim yerime", "en makul ve işlevsel seçimle"): (a) placed, `paid_at` 0, log, panel banner.
+4b+. PayPal `PAYMENT.CAPTURE.COMPLETED`/`DENIED` via 3b's `payment_callback.php`: complete or flag it.
 4c. PayTR driver (M), after 3b's callback: it confirms payments only server to server, so orders complete from the callback (3b's owner question); its iframe needs frame-src CSP.
 6. Memory: keep `commerce/payment-drivers.md` current; the decisions list entry (legacy gateways frozen on purpose, `workflow/decisions-made-product.md`) is the owner's to add.
 
