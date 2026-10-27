@@ -145,3 +145,31 @@ function test_workspace_flow_chain_start_source()
 	pg_assert_contains("case 'start_flow':", ws_flow_chain_test_source('ws_flow_step_run'));
 	pg_assert_contains("'start_flow'", ws_flow_chain_test_source('ws_flow_publish_check'));
 }
+
+// {{source_result}}: the sentence of the box done whose arrow led in.
+function test_workspace_flow_chain_source_result()
+{
+	$graph = array('edges' => array(
+		array('from' => 'check', 'to' => 'next', 'on' => 'no'),
+		array('from' => 'say', 'to' => 'next', 'on' => 'done'),
+	));
+	$values = array(
+		'check' => array('text' => 'did not hold', 'status' => 'skipped'),
+		'say'   => array('text' => 'written in #general', 'status' => 'done'),
+	);
+
+	pg_assert_same('written in #general', ws_flow_chain_source_result($graph, 'next', $values));
+	pg_assert_same('', ws_flow_chain_source_result($graph, 'other', $values));
+	pg_assert_same('', ws_flow_chain_source_result($graph, 'next', array()));
+}
+
+// A reader who may not change the flow does not read the name of the flow
+// a box started.
+function test_workspace_flow_chain_result_kept_back()
+{
+	$text = 'flow “Payroll” started, run 4';
+
+	pg_assert_same($text, ws_step_result_shown('start_flow', 'done', $text, true));
+	pg_assert_same('Another flow was started.', ws_step_result_shown('start_flow', 'done', $text, false));
+	pg_assert_same('Another flow could not be started.', ws_step_result_shown('start_flow', 'failed', 'The flow to start is not live.', false));
+}

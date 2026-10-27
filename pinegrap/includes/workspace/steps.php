@@ -574,12 +574,14 @@ function ws_step_check($viewer, $kind, $config, $joined = false)
 /**
  * What a box's step reads of what started its run, as a scheduled action's
  * step reads it (ws_scheduled_fill(), ws_events_fill_values()): the event
- * and its payload, the newcomer and the channel they joined. The run's
+ * and its payload, the newcomer and the channel they joined, the flow
+ * whose box started it ({{source}}, {{source_result}}). The run's
  * other keys (its trigger box, home channel, flow name) are the flow's own.
  * Pure.
  *
  * @param array $context ws_flow_run_context()
- * @return array event, event_payload, newcomer, join_channel_id, those known
+ * @return array event, event_payload, newcomer, join_channel_id, source,
+ *               source_result, those known
  */
 function ws_step_trigger_context($context)
 {
@@ -596,6 +598,12 @@ function ws_step_trigger_context($context)
     if ((int) ($context['newcomer'] ?? 0) > 0) {
         $out['newcomer'] = (int) $context['newcomer'];
         $out['join_channel_id'] = max(0, (int) ($context['join_channel_id'] ?? 0));
+    }
+
+    // A run another flow's box started: that flow and what led to it.
+    if ((string) ($context['source'] ?? '') !== '') {
+        $out['source'] = (string) $context['source'];
+        $out['source_result'] = (string) ($context['source_result'] ?? '');
     }
 
     return $out;
@@ -789,9 +797,10 @@ function ws_step_idempotency_key($run_id, $node_id, $pass)
 /**
  * What a box of a run says it did, as a reader of the run sees it. A change
  * box's sentence names the record and the values it wrote, a condition box's
- * the record, the value and the count it looked at, which only whoever may
- * change the flow reads (ws_flow_graph_present() keeps them
- * back the same way); everybody else reads that a change was made, or not.
+ * the record, the value and the count it looked at, a start box's the flow
+ * it started, which only whoever may change the flow reads
+ * (ws_flow_graph_present() keeps them back the same way); everybody else
+ * reads that a change was made, or not.
  * Pure.
  *
  * @param string $kind    the box's kind
@@ -802,8 +811,14 @@ function ws_step_idempotency_key($run_id, $node_id, $pass)
  */
 function ws_step_result_shown($kind, $outcome, $text, $edit)
 {
-    if ($edit || !in_array((string) $kind, array('change', 'condition'), true) || ((string) $text === '')) {
+    if ($edit || !in_array((string) $kind, array('change', 'condition', 'start_flow'), true) || ((string) $text === '')) {
         return (string) $text;
+    }
+
+    // The flow started may be one the reader does not reach: its name stays
+    // back.
+    if ((string) $kind === 'start_flow') {
+        return ((string) $outcome === 'done') ? lang('Another flow was started.') : lang('Another flow could not be started.');
     }
 
     // A condition's sentence names the record, the value and the count now.
@@ -1103,6 +1118,20 @@ function ws_flow_box_try($viewer, $flow, $data)
                 'outcome' => 'done',
                 'said'    => lang(array('string' => 'Waits {var:1}, then the boxes after it start.', 'vars' => ws_flow_delay_text($node['config']))),
                 'next'    => array(ws_scheduled_moment(ws_flow_delay_until($node['config'], time()))),
+            ) + $answer;
+
+        // The flow it would start; the chain's depth and the started flow's
+        // limits are a run's, so they are not asked here.
+        case 'start_flow':
+            $chain = ws_flow_chain_check($owner, (int) $flow['id'], $node['config']);
+
+            if (!$chain['ok']) {
+                return array('outcome' => 'failed', 'refusal' => (string) $chain['error']) + $answer;
+            }
+
+            return array(
+                'outcome' => 'done',
+                'said'    => lang(array('string' => 'Starts the flow “{var:1}” and goes on without waiting for it.', 'vars' => (string) $chain['flow']['name'])),
             ) + $answer;
     }
 

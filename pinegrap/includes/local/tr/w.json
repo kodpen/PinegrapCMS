@@ -1105,6 +1105,7 @@
     "workspace flow ({var:1}) was paused": "çalışma alanı akışı ({var:1}) duraklatıldı",
     "workspace flow ({var:1}) was published as version {var:2}": "çalışma alanı akışı ({var:1}) {var:2}. sürüm olarak yayımlandı",
     "workspace flow ({var:1}) was shared with {var:2}: {var:3}": "çalışma alanı akışı ({var:1}) {var:2} ile paylaşıldı: {var:3}",
+    "workspace flow ({var:1}) was started by the flow ({var:2}), run {var:3}": "çalışma alanı akışı ({var:1}), ({var:2}) akışı tarafından başlatıldı, çalışma {var:3}",
     "workspace flow ({var:1}) was started, run {var:2}": "çalışma alanı akışı ({var:1}) başlatıldı, {var:2} numaralı çalıştırma",
     "workspace flow ({var:1}): the share with {var:2} was changed to {var:3}": "çalışma alanı akışı ({var:1}): {var:2} ile paylaşımı {var:3} olarak değiştirildi",
     "workspace flow “{var:1}” did not start on its own: {var:2}": "“{var:1}” çalışma alanı akışı kendiliğinden başlamadı: {var:2}",

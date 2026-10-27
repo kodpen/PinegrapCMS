@@ -23,7 +23,7 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 2. Done (#1810). "Show on canvas": `ws_scheduled_graph()`, `showAction()` draws it read-only.
 3. Parity boxes (F4, F5), one per parity row. Built: start boxes on the anchor, condition, step boxes, approval, delay, retry by hand (F4, F5). Parts:
    - 3a. Done (#2205). Trigger values in every box; post in the channel joined.
-   - 3b. Start a flow box: another flow ("by hand or chain only" row), depth refused at 8, 60 starts an hour; `{{source}}`, `{{source_result}}`.
+   - 3b. Done (#2235). Start a flow box (workspace/workspace-flows-chain-box.md).
    - 3c. Arrows on skipped and always, at most 5 per box in order, one failing fails a good run.
    - 3d. Self-retry: a failed box tried again on its own after a delay, within depth 8.
 4. New rules on the canvas; the form stays for keys still `form`; templates become starters, AI drafts (F8).
@@ -38,4 +38,4 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 6. Slice 1 before F4 → yes (#1555 is in).
 
 ## Where to start?
-- Date fix (#1798), slice 2 (#1810) and 3a (#2205) done. Next: 3b; read workspace/README.md.
+- Date fix (#1798), slice 2 (#1810), 3a (#2205) and 3b (#2235) done. Next: 3c; read workspace/README.md.
