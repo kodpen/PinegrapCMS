@@ -113,8 +113,10 @@ function pg_sw_kind_lists($kind)
                       'order_view' => 'order', 'my_account' => 'account', 'cart_link' => 'cart', 'shopping_cart' => 'cart',
                       'express_order' => array('cart', 'checkout'),
                       'menu_region' => 'menu', 'account_security' => 'security', 'search_results' => 'paging');
-    $except   = array('catalog_listing' => array('product.related' => true), 'cart_link' => array('cart.item_gift_cards' => true, 'cart.item_schedule' => true),
-                      'express_order' => array('cart.item_gift_cards' => true, 'cart.item_schedule' => true));
+    $except   = array('catalog_listing' => array('product.related' => true), 'cart_link' => array('cart.item_gift_cards' => true, 'cart.item_schedule' => true,
+                          'cart.item_forms' => true, 'cart.item_form_fields' => true, 'cart.item_form_field_options' => true),
+                      'express_order' => array('cart.item_gift_cards' => true, 'cart.item_schedule' => true,
+                          'cart.item_forms' => true, 'cart.item_form_fields' => true, 'cart.item_form_field_options' => true));
     $kind = pg_sw_finish_kind($kind);
     if (!isset($families[$kind])) return array();
     $out = array();

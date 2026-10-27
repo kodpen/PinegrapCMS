@@ -32924,6 +32924,9 @@ const StyleDesigner = (function () {
             'account.orders':     _sdT('One row for every order of the signed-in member, newest first, at most 50: the orders the order history shows.'),
             'cart.items':         _sdT('One row for every product in the visitor\'s cart, lines saved for later left out: a mini cart in the cart link, or a summary beside the cart\'s own rows.'),
             'cart.item_gift_cards': _sdT('One row for every gift card of the cart line the row stands in, one per unit: put the recipient controls in it; the cart gives them their names and values, and the recipient\'s e-mail comes back when it is deleted.'),
+            'cart.item_forms':    _sdT('One row for every product form of the cart line the row stands in: one per unit when the product asks for a form per quantity. Put a list of the form\'s fields inside the row.'),
+            'cart.item_form_fields': _sdT('One row for every field of the product form the row stands in: put a control for each kind of field in it, shown by a condition on "Control of the field"; the cart gives them their names, values, limits and whether they are required, and a deleted control comes back.'),
+            'cart.item_form_field_options': _sdT('One row for every choice of the radio button or check box field the row stands in: put a check control and its label in it.'),
             'cart.item_schedule': _sdT('One row when the customer may set the payment schedule of the cart line the row stands in: put the frequency, number of payments and start date controls in it; the cart gives them their names, values and the payment gateway\'s rules, and a required control comes back when it is deleted.'),
             'checkout.offers':    _sdT('One row for every offer applied to the order: a discount on the cart, an item\'s or a recipient\'s bonus. An offer without a message shows its code.'),
             'checkout.suggestions': _sdT('One row for every offer the cart could still earn, with its message; a condition on "Offer page URL" shows its button only when the offer points to a page.'),
@@ -38241,7 +38244,7 @@ const StyleDesigner = (function () {
         '__comment_message_html', '__comment_seller_reply_html',
         '__field_value_html', '__field_info_html', '__gift_card_message_html',
         '__return_customer_note_html', '__return_decision_note_html', '__return_actions_html',
-        '__schedule_period_options_html', '__return_reason_options_html',
+        '__schedule_period_options_html', '__field_options_html', '__return_reason_options_html',
         '__ad_content_html', '__ad_caption_html'
     ];
     // Twin of pg_sw_attr_name_ok().
@@ -38270,7 +38273,9 @@ const StyleDesigner = (function () {
     function _sdCondHoldsRequired(node) {
         if (!node) return false;
         var attrs = node.props && node.props._attrs;
-        if (Array.isArray(attrs) && attrs.some(function (a) { return a && String(a.name || '').toLowerCase() === 'required'; })) return true;
+        if (Array.isArray(attrs) && attrs.some(function (a) {
+            return a && String(a.name || '').toLowerCase() === 'required' && !/^\{\{[A-Za-z0-9_-]+\}\}$/.test(String(a.value || ''));
+        })) return true;
         return Array.isArray(node.children) && node.children.some(_sdCondHoldsRequired);
     }
 
@@ -40332,6 +40337,7 @@ const StyleDesigner = (function () {
             '__comment_stars_html': function (cfg) { return _sdPartCommentStars(); }
         },
         shopping_cart: {
+            '__item_form_data_html': function (cfg) { return _sdPartCartItemForm(); },
             '__item_gift_card_html': function (cfg) { return _sdPartCartItemGiftCard(); },
             '__item_recurring_schedule_html': function (cfg) { return _sdPartCartItemSchedule(); }
         },
@@ -40711,6 +40717,7 @@ const StyleDesigner = (function () {
             [['__item_gift_card_html', 'order.item_gift_cards'], function () { return _sdPartOrderItemGiftCard(); }]
         ],
         shopping_cart: [
+            [['__item_form_data_html', 'cart.item_forms'], function () { return _sdPartCartItemForm(); }],
             [['__item_gift_card_html', 'cart.item_gift_cards'], function () { return _sdPartCartItemGiftCard(); }],
             [['__item_recurring_schedule_html', 'cart.item_schedule'], function () { return _sdPartCartItemSchedule(); }]
         ],
@@ -40963,6 +40970,71 @@ const StyleDesigner = (function () {
             _sdPartEl('fieldset', 'pg-cart-recurring-set border rounded p-3 mb-3', _sdT('Payment Schedule'),
                 { _attrs: [{ name: 'data-pg-recurring-item', value: '{{__schedule_item}}' }] },
                 [_sdPartEl('legend', 'float-none w-auto px-2 fs-6 fw-semibold', _sdT('Heading'), { text: _sdT('Payment Schedule') })].concat(fields))
+        ])];
+    }
+
+    // The control the cart's product form part draws for a field of kind
+    // `kind`, shown only on a row of that kind (pg_sw_part_cart_form_control()).
+    // The server gives it its name, value, limits and whether it is required.
+    /* @pg-site-output */
+    function _sdPartCartFormControl(kind) {
+        var when = function (props) {
+            props._bindings = props._bindings || {};
+            props._bindings.show_if = '__field_control';
+            props._bindParams = { show_if: { op: 'eq', value: kind } };
+            return props;
+        };
+        if (kind === 'textarea') return _sdPartEl('textarea', 'form-control', _sdT('Text area'), when({ _bindings: { value: 'form_field' } }));
+        if (kind === 'select') return _sdPartEl('select', 'form-select', _sdT('Pick list'), when({ _bindings: { value: 'form_field' } }));
+        if (kind === 'choice') {
+            return _sdPartEl('div', '', _sdT('Choices'), when({}), [
+                createNode('loop_area', { source: 'cart.item_form_field_options' }, [
+                    _sdPartEl('div', 'form-check', _sdT('Choice'), {}, [
+                        _sdPartEl('input', 'form-check-input', _sdT('Choice'), { _bindings: { value: 'form_field_option' } }),
+                        _sdPartEl('label', 'form-check-label', _sdT('Label'), _sdPartValue('__option_label', _sdT('Choice')))
+                    ])
+                ])
+            ]);
+        }
+        if (kind === 'file') return _sdPartEl('input', 'form-control', _sdT('File upload'), when({ _bindings: { value: 'form_field_file' } }));
+        return _sdPartEl('input', 'form-control', _sdT('Text box'), when({ _bindings: { value: 'form_field' } }));
+    }
+
+    // A cart line's product form (pg_sw_part_cart_item_form()): a box per
+    // block of the cart.item_forms list, a field box per field with the
+    // control its kind shows, an information field's label and text.
+    /* @pg-site-output */
+    function _sdPartCartItemForm() {
+        var controls = ['input', 'textarea', 'select', 'choice', 'file'].map(function (k) { return _sdPartCartFormControl(k); });
+        var star = _sdPartWhen('__field_required', 'not_empty');
+        star.text = '*';
+        var field = _sdPartEl('div', 'mb-3', _sdT('Field'), _sdPartWhen('__field_is_info', 'empty'), [
+            _sdPartEl('label', 'form-label', _sdT('Label'), {}, [
+                _sdPartEl('span', '', _sdT('Text'), _sdPartValue('__field_label', _sdT('Label'))),
+                _sdPartEl('span', 'text-danger', _sdT('Required mark'), star)
+            ])
+        ].concat(controls, [
+            _sdPartEl('div', 'form-text small', _sdT('Current file'), _sdPartWhen('__field_file', 'not_empty'), [
+                _sdPartEl('span', '', _sdT('Text'), { text: _sdT('Current file:') }),
+                _sdPartEl('span', '', _sdT('File name'), _sdPartValue('__field_file', 'file.pdf'))
+            ])
+        ]));
+        var infoText = _sdPartWhen('__field_has_info', 'not_empty');
+        infoText.text = '';
+        infoText._bindings.text = '__field_info_html';
+        var info = _sdPartEl('div', 'mb-3 small', _sdT('Information'), _sdPartWhen('__field_is_info', 'not_empty'), [
+            _sdPartEl('div', 'fw-semibold', _sdT('Label'), _sdPartValue('__field_label', _sdT('Label'), 'not_empty')),
+            _sdPartEl('div', 'text-muted', _sdT('Information'), infoText)
+        ]);
+        return [_sdPartEl('div', 'pg-cart-item-form mt-3 pg-hide-if-empty', _sdT('Product Form'),
+            { _attrs: [{ name: 'data-pg-cart-item-form', value: '{{__item_id}}' }] }, [
+            createNode('loop_area', { source: 'cart.item_forms' }, [
+                _sdPartEl('fieldset', 'pg-cart-item-form-block border rounded p-3 mt-2', _sdT('Form'), {}, [
+                    _sdPartItemLegend(_sdPartWhen('__form_has_legend', 'not_empty'),
+                        _sdPartValue('__form_name', _sdT('Order Form')), '__form_number', '__form_count'),
+                    createNode('loop_area', { source: 'cart.item_form_fields' }, [field, info])
+                ])
+            ])
         ])];
     }
 
@@ -41903,6 +41975,9 @@ const StyleDesigner = (function () {
                 vOpts.push(['schedule_period',         _sdT('Payment schedule: frequency (required)')]);
                 vOpts.push(['schedule_payments',       _sdT('Payment schedule: number of payments')]);
                 vOpts.push(['schedule_start',          _sdT('Payment schedule: start date')]);
+                vOpts.push(['form_field',              _sdT('Product form: the field\'s text box, text area or pick list (cart.item_form_fields)')]);
+                vOpts.push(['form_field_file',         _sdT('Product form: the field\'s file upload (cart.item_form_fields)')]);
+                vOpts.push(['form_field_option',       _sdT('Product form: one choice of the field (cart.item_form_field_options)')]);
             }
             if (region === 'catalog_listing' || region === 'search_results') {
                 vOpts.push(['search_query', _sdT('Search text (query)')]);
@@ -56060,6 +56135,56 @@ const StyleDesigner = (function () {
                 ['__schedule_period_options_html', _sdT('Choices of the frequency (HTML)')]
             ]
         },
+        'cart.item_forms': {
+            label: _sdT('Product forms of the item'),
+            arg: '', argRequired: false,
+            kinds: ['shopping_cart'],
+            rows: [
+                ['__form_key',        _sdT('Form in the order')],
+                ['__form_name',       _sdT('Form name')],
+                ['__form_number',     _sdT('Number of the form')],
+                ['__form_count',      _sdT('Number of forms')],
+                ['__form_has_legend', _sdT('Has a heading (1 or empty)')]
+            ]
+        },
+        'cart.item_form_fields': {
+            label: _sdT('Fields of the product form'),
+            arg: '', argRequired: false,
+            kinds: ['shopping_cart'],
+            rows: [
+                ['__field_key',          _sdT('Field in the form')],
+                ['__field_label',        _sdT('Label')],
+                ['__field_control',      _sdT('Control of the field (input, textarea, select, choice, file, info)')],
+                ['__field_required',     _sdT('Required (1 or empty)')],
+                ['__field_is_info',      _sdT('Information field (1 or empty)')],
+                ['__field_has_info',     _sdT('Has an information text (1 or empty)')],
+                ['__field_info_html',    _sdT('Information (HTML)')],
+                ['__field_name',         _sdT('Name of the control')],
+                ['__field_id',           _sdT('ID of the control')],
+                ['__field_type',         _sdT('Type of the input')],
+                ['__field_value',        _sdT('Value')],
+                ['__field_maxlength',    _sdT('Maximum length')],
+                ['__field_rows',         _sdT('Rows')],
+                ['__field_cols',         _sdT('Columns')],
+                ['__field_multiple',     _sdT('Several choices (1 or empty)')],
+                ['__field_options_html', _sdT('Choices of the pick list (HTML)')],
+                ['__field_file',         _sdT('Current file')]
+            ]
+        },
+        'cart.item_form_field_options': {
+            label: _sdT('Choices of the field'),
+            arg: '', argRequired: false,
+            kinds: ['shopping_cart'],
+            rows: [
+                ['__option_label',    _sdT('Label')],
+                ['__option_value',    _sdT('Value')],
+                ['__option_id',       _sdT('ID of the control')],
+                ['__option_name',     _sdT('Name of the control')],
+                ['__option_type',     _sdT('Type of the input')],
+                ['__option_checked',  _sdT('Chosen (1 or empty)')],
+                ['__option_required', _sdT('Required (1 or empty)')]
+            ]
+        },
         // The express order's sources (pg_sw_list_checkout_sources()): rows
         // under the whole order only; a cart list inside a recipients row
         // lists that recipient's products.
@@ -56610,6 +56735,7 @@ const StyleDesigner = (function () {
     function _sdOrderItemListKey(source) {
         var keys = { 'order.item_forms': 'order.items', 'order.item_gift_cards': 'order.items', 'order.item_form_fields': 'order.item_forms',
             'cart.item_gift_cards': 'cart.items', 'cart.item_schedule': 'cart.items',
+            'cart.item_forms': 'cart.items', 'cart.item_form_fields': 'cart.item_forms', 'cart.item_form_field_options': 'cart.item_form_fields',
             'order.return_lines': 'order.returns', 'order.return_delivery_lines': 'order.return_deliveries' };
         return keys.hasOwnProperty(source) ? keys[source] : '';
     }

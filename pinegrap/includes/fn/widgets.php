@@ -829,6 +829,8 @@ function pg_sw_raw_token_keys()
         '__return_actions_html',
         // Cart: a payment schedule's frequency choices, the value selected.
         '__schedule_period_options_html',
+        // Cart: a product form's pick list choices, the value selected.
+        '__field_options_html',
         // Order view: a return request's reasons (the return form part).
         '__return_reason_options_html',
         // Ad Region widget: the ad's own markup.

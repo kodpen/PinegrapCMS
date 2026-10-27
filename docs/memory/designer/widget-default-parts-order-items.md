@@ -21,5 +21,5 @@ description: The order view's item form and gift card parts (W16, #1863): the th
 - `_sdListPlaceOk()` lets an item's list into the item loop; `_sdOrderItemListKey()` names the list giving its key; outside an item the band is amber ("outside an item of the order"). No palette item: the parts carry the lists.
 
 ## What is left?
-- The cart's editable twin: controls with their names (`_pg_render_cart_item_form_data()`, the cart's gift card inputs), waiting on "parts with controls".
+- The cart's editable twins: [[widget-default-parts-cart-form]], [[widget-default-parts-cart-gift-card]].
 - Tests: `tests/widget_default_parts_item_test.php` (old vs new by visible text, classes, markers; e-mail; the editor twin).
