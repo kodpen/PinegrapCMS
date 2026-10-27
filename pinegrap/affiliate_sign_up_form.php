@@ -44,8 +44,8 @@ if (!isset($_POST['submit'])) {
             contacts.affiliate_approved
         FROM user
         LEFT JOIN contacts ON user.user_contact = contacts.id
-        WHERE user.user_username = '" . escape($_SESSION['sessionusername']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE user.user_username = ?";
+    $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $user_id = $row['user_id'];
     $contact_id = $row['contact_id'];
@@ -103,8 +103,8 @@ if (!isset($_POST['submit'])) {
         "SELECT page.page_name
         FROM affiliate_sign_up_form_pages
         LEFT JOIN page ON affiliate_sign_up_form_pages.terms_page_id = page.page_id
-        WHERE affiliate_sign_up_form_pages.page_id = '" . escape($liveform->get_field_value('current_page_id')) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE affiliate_sign_up_form_pages.page_id = ?";
+    $result = db_q($query, array((string) $liveform->get_field_value('current_page_id'))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     // No row for the legacy screen (current page 0) or a page that is not an affiliate form.
     $terms_page_name = $row ? $row['page_name'] : '';
@@ -126,8 +126,8 @@ if (!isset($_POST['submit'])) {
     }
 
     // check to see if e-mail address is already in use
-    $query = "SELECT user_id FROM user WHERE (user_email = '" . escape($liveform->get_field_value('email_address')) . "') AND (user_username != '" . escape($_SESSION['sessionusername']) . "')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT user_id FROM user WHERE (user_email = ?) AND (user_username != ?)";
+    $result = db_q($query, array((string) $liveform->get_field_value('email_address'), (string) $_SESSION['sessionusername'])) or output_error('Query failed.');
     if (mysqli_num_rows($result) > 0) {
         $liveform->mark_error('email_address', lang('That email address is already in use. Please enter a different email address.'));
         $liveform->assign_field_value('email_address', '');
@@ -139,9 +139,9 @@ if (!isset($_POST['submit'])) {
             "SELECT id
             FROM contacts
             WHERE
-                (affiliate_code = '" . escape($liveform->get_field_value('affiliate_code')) . "')
-                AND (id != '" . $contact_id . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (affiliate_code = ?)
+                AND (id != ?)";
+        $result = db_q($query, array((string) $liveform->get_field_value('affiliate_code'), (string) $contact_id)) or output_error('Query failed.');
         
         // if the affiliate code is already in use, then add error
         if (mysqli_num_rows($result) > 0) {
@@ -167,26 +167,44 @@ if (!isset($_POST['submit'])) {
             
             $query = "UPDATE contacts
                      SET
-                        first_name = '" . escape($liveform->get_field_value('first_name')) . "',
-                        last_name = '" . escape($liveform->get_field_value('last_name')) . "',
-                        business_address_1 = '" . escape($liveform->get_field_value('address_1')) . "',
-                        business_address_2 = '" . escape($liveform->get_field_value('address_2')) . "',
-                        business_city = '" . escape($liveform->get_field_value('city')) . "',
-                        business_state = '" . escape($liveform->get_field_value('state')) . "',
-                        business_zip_code = '" . escape($liveform->get_field_value('zip_code')) . "',
-                        business_country = '" . escape($liveform->get_field_value('country')) . "',
-                        business_phone = '" . escape($liveform->get_field_value('phone_number')) . "',
-                        business_fax = '" . escape($liveform->get_field_value('fax_number')) . "',
-                        email_address = '" . escape($liveform->get_field_value('email_address')) . "',
-                        affiliate_name = '" . escape($liveform->get_field_value('affiliate_name')) . "',
-                        company = '" . escape($liveform->get_field_value('affiliate_name')) . "',
-                        website = '" . escape($liveform->get_field_value('affiliate_website')) . "',
-                        affiliate_approved = '$affiliate_approved',
-                        affiliate_code = '" . escape($liveform->get_field_value('affiliate_code')) . "',
-                        user = $user_id,
+                        first_name = ?,
+                        last_name = ?,
+                        business_address_1 = ?,
+                        business_address_2 = ?,
+                        business_city = ?,
+                        business_state = ?,
+                        business_zip_code = ?,
+                        business_country = ?,
+                        business_phone = ?,
+                        business_fax = ?,
+                        email_address = ?,
+                        affiliate_name = ?,
+                        company = ?,
+                        website = ?,
+                        affiliate_approved = ?,
+                        affiliate_code = ?,
+                        user = ?,
                         timestamp = UNIX_TIMESTAMP()
-                     WHERE id = $contact_id";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                     WHERE id = ?";
+            $result = db_q($query, array(
+                (string) $liveform->get_field_value('first_name'),
+                (string) $liveform->get_field_value('last_name'),
+                (string) $liveform->get_field_value('address_1'),
+                (string) $liveform->get_field_value('address_2'),
+                (string) $liveform->get_field_value('city'),
+                (string) $liveform->get_field_value('state'),
+                (string) $liveform->get_field_value('zip_code'),
+                (string) $liveform->get_field_value('country'),
+                (string) $liveform->get_field_value('phone_number'),
+                (string) $liveform->get_field_value('fax_number'),
+                (string) $liveform->get_field_value('email_address'),
+                (string) $liveform->get_field_value('affiliate_name'),
+                (string) $liveform->get_field_value('affiliate_name'),
+                (string) $liveform->get_field_value('affiliate_website'),
+                (string) $affiliate_approved,
+                (string) $liveform->get_field_value('affiliate_code'),
+                (int) $user_id,
+                (int) $contact_id)) or output_error('Query failed.');
 
         // else a contact was not found, so create contact
         } else {
@@ -218,25 +236,42 @@ if (!isset($_POST['submit'])) {
                          user,
                          timestamp)
                      VALUES (
-                         '" . escape($liveform->get_field_value('first_name')) . "',
-                         '" . escape($liveform->get_field_value('last_name')) . "',
-                         '" . escape($liveform->get_field_value('address_1')) . "',
-                         '" . escape($liveform->get_field_value('address_2')) . "',
-                         '" . escape($liveform->get_field_value('city')) . "',
-                         '" . escape($liveform->get_field_value('state')) . "',
-                         '" . escape($liveform->get_field_value('zip_code')) . "',
-                         '" . escape($liveform->get_field_value('country')) . "',
-                         '" . escape($liveform->get_field_value('phone_number')) . "',
-                         '" . escape($liveform->get_field_value('fax_number')) . "',
-                         '" . escape($liveform->get_field_value('email_address')) . "',
-                         '" . escape($liveform->get_field_value('affiliate_name')) . "',
-                         '" . escape($liveform->get_field_value('affiliate_name')) . "',
-                         '" . escape($liveform->get_field_value('affiliate_website')) . "',
-                         '$affiliate_approved',
-                         '" . escape($liveform->get_field_value('affiliate_code')) . "',
-                         '$user_id',
+                         ?,
+                         ?,
+                         ?,
+                         ?,
+                         ?,
+                         ?,
+                         ?,
+                         ?,
+                         ?,
+                         ?,
+                         ?,
+                         ?,
+                         ?,
+                         ?,
+                         ?,
+                         ?,
+                         ?,
                          UNIX_TIMESTAMP())";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array(
+                (string) $liveform->get_field_value('first_name'),
+                (string) $liveform->get_field_value('last_name'),
+                (string) $liveform->get_field_value('address_1'),
+                (string) $liveform->get_field_value('address_2'),
+                (string) $liveform->get_field_value('city'),
+                (string) $liveform->get_field_value('state'),
+                (string) $liveform->get_field_value('zip_code'),
+                (string) $liveform->get_field_value('country'),
+                (string) $liveform->get_field_value('phone_number'),
+                (string) $liveform->get_field_value('fax_number'),
+                (string) $liveform->get_field_value('email_address'),
+                (string) $liveform->get_field_value('affiliate_name'),
+                (string) $liveform->get_field_value('affiliate_name'),
+                (string) $liveform->get_field_value('affiliate_website'),
+                (string) $affiliate_approved,
+                (string) $liveform->get_field_value('affiliate_code'),
+                (string) $user_id)) or output_error('Query failed.');
 
             // get contact id so we can connect user to contact
             $contact_id = mysqli_insert_id(db::$con);
@@ -246,8 +281,8 @@ if (!isset($_POST['submit'])) {
         }
         
         // check if affiliate contact group exists
-        $query = "SELECT id FROM contact_groups WHERE id = '" . AFFILIATE_CONTACT_GROUP_ID  . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT id FROM contact_groups WHERE id = ?";
+        $result = db_q($query, array((string) AFFILIATE_CONTACT_GROUP_ID)) or output_error('Query failed.');
         
         // if affiliate contact group exists
         if (mysqli_num_rows($result) > 0) {
@@ -256,9 +291,9 @@ if (!isset($_POST['submit'])) {
                 "SELECT contact_id
                 FROM contacts_contact_groups_xref
                 WHERE
-                    (contact_id = '$contact_id')
-                    AND (contact_group_id = '" . AFFILIATE_CONTACT_GROUP_ID . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    (contact_id = ?)
+                    AND (contact_group_id = ?)";
+            $result = db_q($query, array((string) $contact_id, (string) AFFILIATE_CONTACT_GROUP_ID)) or output_error('Query failed.');
             
             // if contact is not already in contact group, then add contact to affiliate contact group
             if (mysqli_num_rows($result) == 0) {
@@ -267,27 +302,27 @@ if (!isset($_POST['submit'])) {
                         contact_id,
                         contact_group_id)
                     VALUES (
-                        '$contact_id',
-                        '" . AFFILIATE_CONTACT_GROUP_ID . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        ?,
+                        ?)";
+                $result = db_q($query, array((string) $contact_id, (string) AFFILIATE_CONTACT_GROUP_ID)) or output_error('Query failed.');
             }
         }
 
         // update user
         $query = "UPDATE user
                  SET
-                    user_email = '" . escape($liveform->get_field_value('email_address')) . "',
-                    user_contact = '$contact_id',
-                    user_user = '$user_id',
+                    user_email = ?,
+                    user_contact = ?,
+                    user_user = ?,
                     user_timestamp = UNIX_TIMESTAMP()
-                 WHERE user_id = '$user_id'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                 WHERE user_id = ?";
+        $result = db_q($query, array((string) $liveform->get_field_value('email_address'), (string) $contact_id, (string) $user_id, (string) $user_id)) or output_error('Query failed.');
         
         // if there is a group offer and the affiliate has been approved, then determine if we need to add a key code for group offer for this affiliate
         if ((AFFILIATE_GROUP_OFFER_ID != 0) && ($affiliate_approved == 1)) {
             // check if offer exists and get offer code
-            $query = "SELECT code FROM offers WHERE id = '" . AFFILIATE_GROUP_OFFER_ID . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT code FROM offers WHERE id = ?";
+            $result = db_q($query, array((string) AFFILIATE_GROUP_OFFER_ID)) or output_error('Query failed.');
             
             // if an offer was found, then continue to check if a key code should be added for group offer
             if (mysqli_num_rows($result) > 0) {
@@ -298,9 +333,9 @@ if (!isset($_POST['submit'])) {
                     "SELECT id
                     FROM key_codes
                     WHERE
-                        (code = '" . escape($liveform->get_field_value('affiliate_code')) . "')
-                        AND (offer_code = '" . escape($offer['code']) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        (code = ?)
+                        AND (offer_code = ?)";
+                $result = db_q($query, array((string) $liveform->get_field_value('affiliate_code'), (string) $offer['code'])) or output_error('Query failed.');
                 
                 // if a key code does not already exist for this group offer and affiliate, then create key code
                 if (mysqli_num_rows($result) == 0) {
@@ -312,12 +347,12 @@ if (!isset($_POST['submit'])) {
                             user,
                             timestamp)
                         VALUES (
-                            '" . escape($liveform->get_field_value('affiliate_code')) . "',
-                            '" . escape($offer['code']) . "',
+                            ?,
+                            ?,
                             '1',
-                            '" . $user_id . "',
+                            ?,
                             UNIX_TIMESTAMP())";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $liveform->get_field_value('affiliate_code'), (string) $offer['code'], (string) $user_id)) or output_error('Query failed.');
                 }
             }
         }
