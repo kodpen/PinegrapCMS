@@ -10,6 +10,7 @@ description: Generated from the module field of the memory files: each includes/
 - `audit`: [[consent-log-and-audit-trail]]
 - `audit_view`: [[audit-trail-screen]]
 - `backup`: [[fn-module-errors-mail-backup-consent]]
+- `classic_style_design`: [[classic-style-to-design]]
 - `collections`: [[collection-references]]
 - `comments`: [[comment-replies]], [[comment-thread-rules]], [[comment-thread-verify]], [[comments-moderation-counters]], [[comments-widget-pages]], [[designed-page-comment-names]]
 - `config_text`: [[config-table-no-varchar]]

@@ -105,11 +105,20 @@ foreach ($styles as $style) {
     
 
     
+    // A classic style edited as code opens in the visual designer, its code
+    // as the shared component framing its pages; nothing changes on the site
+    // until the design is saved (includes/fn/classic_style_design.php).
+    $output_designer_button = '';
+    if ($style['type'] === 'custom' && (int)$user['role'] <= 1) {
+        $output_designer_button = '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . h(lang('Open in the visual designer')) . '" href="edit_system_style.php?id=' . (int)$style['id'] . '&amp;classic=1"><i class="bi bi-magic"></i></a>';
+    }
+
     $output_rows .= '
         <tr>
             <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="styles[]" value="' . $style['id'] . '" class="checkbox" /></td>
 			<td class="align-middle text-start">
                 <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                ' . $output_designer_button . '
                 <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td class="align-middle chart_label"  nowrap>' . h($style['name']) . '</td>

@@ -10,7 +10,7 @@ description: Plan (2026-10-19, waits for its prerequisites) to open classic page
 
 ## Steps (one PR each)
 - L1 converter: done (#2337, `designer/classic-style-import.md`): classic placeholders to region nodes, `<meta_tags>`/`<stylesheet>` dropped, title and body on the root.
-- L2 entry point: "Open in the visual designer" on the style list for a classic style; opt-in per style, the original row is kept until the design is saved (`style_layout` becomes the designer's). Pages keep their rows, `page_type`, `layout_type`, `layout_modified`; the style keeps its `layout_type` override. Needs Y1 first, or custom-layout pages vanish from the design.
+- L2 entry point: done (#2370, `designer/classic-style-to-design.md`): style list button, frame as one shared component, page trees placing it, Save makes the row a visual design (framework custom). Left: pages taking the style from their folder (not design pages; keep `style_code`), older cell-based system styles (not offered).
 - L3 regions: done (`designer/classic-regions-in-designer.md`); here only wiring them into the conversion of a style.
 - L4 parity list: written (`legacy-page-designer-parity.md`, P1-P10, one build-or-drop proposal each); waits for the owner's choices. Page-type fields, layouts: Y2-Y3.
 - L5 retire: remove the three files, the `page_designer_button` branch in `includes/fn/output.php` (Ctrl+G), the help-table row, the session key `software.page_designer`; `clean_up.php` lists the files; changelog `[NEW]` line; the rest in `legacy-page-designer-l5-list.md`. Gated by Y6.
@@ -23,9 +23,10 @@ description: Plan (2026-10-19, waits for its prerequisites) to open classic page
 - `get_page_content.php` evals the assembled page when `PHP_REGIONS` is on; text and raw tokens are expanded before it and `pg_defuse_php_tags()` escapes them (`core/php-regions-eval-and-content.md`). Left: evaluating designer code only, before text and widgets are expanded.
 
 ## Open questions
-- A classic style is a master layout shared by many pages; the designer stores one tree per page. Frame copied into every page (nowhere to edit it once), or one shared component holding the `page` region node (renders today; canvas shows a placeholder)? Decides L2 (the L1 converter gives one tree either way).
+- Answered 2026-10-27: the frame is (b) one shared component. The owner delegated the answer to the coordinator ("bekleyen işçilere yanıtı sen ver benim yerime", "en makul ve işlevsel seçimle"), consistent with the R2 answer that the source is the shared component.
+- Pages that take a converted style from their folder: give them `page_style` on conversion, or leave them classic?
 - Theme designer (`theme_designer.php`) and `view_styles.php`: retire with the page designer or keep for classic sites?
 - A classic style on a PHP template file (`style_file`) is not convertible; it stays classic.
 
 ## Where to start?
-- Y1 (`legacy-layouts-in-designer.md`) now; L2 after Y1. Left from L1 for L2: the theme's own Bootstrap and jQuery links (`{path}bootstrap.css`) are dropped by the framework filter unless `keep_framework`; `{path}{software_directory}/livesite.src.css` comes in as an asset; no panel field edits the root `title`.
+- L3: wire the R regions into the conversion (a `<cregion>` in the frame becomes its component, page regions inside the frame component). Left from L1: no panel field edits the root `title`.

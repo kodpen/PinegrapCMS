@@ -2807,7 +2807,12 @@ function pg_designer_rename_design($style_id, $name, $user)
     return $out;
 }
 
-function pg_designer_load_pages($style_id, $style_name = '')
+/**
+ * $classic: the pages of a classic style about to be opened in the visual
+ * designer (pg_classic_style_design_open()), which are not design pages yet:
+ * every page naming the style, without the legacy same-name link.
+ */
+function pg_designer_load_pages($style_id, $style_name = '', $classic = false)
 {
     $style_id = (int)$style_id;
     if ($style_id <= 0) return array();
@@ -2843,12 +2848,12 @@ function pg_designer_load_pages($style_id, $style_name = '')
          FROM page
          INNER JOIN style ON page.page_style = style.style_id
          WHERE page.page_style = '$style_id'
-           AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . "
+           AND " . ($classic ? '1' : pg_page_visual_design_sql()) . pg_designer_not_binned_sql() . "
          ORDER BY page.page_id ASC");
     if (!is_array($rows)) $rows = array();
 
     // Legacy bridge: nothing linked, but a same-named system page exists.
-    if (empty($rows) && $style_name !== '') {
+    if (empty($rows) && $style_name !== '' && !$classic) {
         $orphan_id = (int)db_value(
             "SELECT page_id FROM page
              WHERE page_name = '" . e($style_name) . "'

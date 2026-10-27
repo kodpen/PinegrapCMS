@@ -2703,6 +2703,7 @@
     "style ({var:1}) tree JSON could not be parsed on load — empty canvas shown": "stil ({var:1}) ağaç JSON'u yüklenirken ayrıştırılamadı — boş tuval gösterildi",
     "style ({var:1}) was created": "stil ({var:1}) oluşturuldu",
     "style ({var:1}) was deleted": "stil ({var:1}) silindi",
+    "style ({var:1}) was made a visual design": "stil ({var:1}) görsel tasarıma çevrildi",
     "style ({var:1}) was modified": "stil ({var:1}) düzenlendi",
     "submit-a-story": "yazi-gonder",
     "submit-an-article": "haber-gonder",
