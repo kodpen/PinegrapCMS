@@ -128,7 +128,7 @@
         var warn = row.querySelector('.pg-tr-suspicious');
 
         if (badge) {
-            badge.className = 'badge pg-tr-state-badge ' + ((state === 'reviewed') ? 'text-bg-success' : ((state === 'machine') ? 'text-bg-warning' : 'text-bg-secondary'));
+            badge.className = 'badge pg-tr-state-badge ' + ((state === 'reviewed') ? 'theme-success' : ((state === 'machine') ? 'theme-warning' : 'theme-secondary'));
             badge.textContent = text(state);
         }
         if (engineEl) {
@@ -359,7 +359,7 @@
 
             if (note) {
                 var line = document.createElement('div');
-                line.className = 'small mt-2 fw-semibold';
+                line.className = 'small mt-3 fw-semibold';
                 line.textContent = text('model_fallback', config.language);
                 note.appendChild(line);
             }
@@ -966,7 +966,7 @@
             all: glossaryModal.querySelector('input[name="all_languages"]'),
             caseSensitive: glossaryModal.querySelector('input[name="case_sensitive"]'),
             note: glossaryModal.querySelector('input[name="note"]'),
-            title: glossaryModal.querySelector('.modal-title')
+            title: glossaryModal.querySelector('.dialog-title')
         };
 
         // A kept term has no translation and may apply to every language.

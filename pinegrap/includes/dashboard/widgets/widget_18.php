@@ -269,7 +269,7 @@ function pg_dashboard_widget_18($request, $user)
         if ($fm_can_run) {
 
             $fm_action .= '
-            <a class="btn btn-sm btn-outline-success border-0 py-0 px-1 flex-shrink-0 d-flex align-items-center"
+            <a class="btn btn-sm btn-outline theme-success border-0 py-0 px-1 flex-shrink-0 d-flex align-items-center"
                title="' . lang('Optimize this image') . '"
                href="optimize.php?id=' . h($fm_item['id']) . get_token_query_string_field() . '&amp;send_to=welcome"><i class="bi bi-fast-forward-circle"></i>' . $fm_percent . '</a>';
         }
@@ -282,7 +282,7 @@ function pg_dashboard_widget_18($request, $user)
         if ($fm_can_resize) {
 
             $fm_action .= '
-            <a class="btn btn-sm btn-outline-warning border-0 py-0 px-1 flex-shrink-0 d-flex align-items-center"
+            <a class="btn btn-sm btn-outline theme-warning border-0 py-0 px-1 flex-shrink-0 d-flex align-items-center"
                title="' . lang(array('string' => 'Resize to {var:1} pixels and optimize', 'vars' => array($fm_resize_target))) . '"
                href="optimize.php?id=' . h($fm_item['id']) . get_token_query_string_field() . '&amp;mode=resize&amp;send_to=welcome"><i class="bi bi-arrows-angle-contract"></i></a>';
 
@@ -298,7 +298,7 @@ function pg_dashboard_widget_18($request, $user)
             // save button always fails. The row still carries the
             // size warning, it just has nothing to offer.
             $fm_action .= '
-            <a class="btn btn-sm btn-outline-secondary border-0 py-0 px-1 flex-shrink-0 d-flex align-items-center"
+            <a class="btn btn-sm btn-outline theme-secondary border-0 py-0 px-1 flex-shrink-0 d-flex align-items-center"
                title="' . lang(array('string' => 'Edit this image with {var:1}', 'vars' => array(lang('Image Editor')))) . '"
                href="image_editor_edit.php?file_name=' . rawurlencode($fm_item['name']) . '&amp;send_to=' . h(PATH . SOFTWARE_DIRECTORY . '/welcome.php') . '"><i class="bi bi-brush"></i></a>';
         }
@@ -307,14 +307,14 @@ function pg_dashboard_widget_18($request, $user)
 
         if ($fm_too_large) {
             $fm_note = '
-            <div class="text-warning" style="font-size:10px;line-height:1.3">' . lang('The file is very large, please make it smaller if possible.') . '</div>';
+            <div class="fg-warning" style="font-size:10px;line-height:1.3">' . lang('The file is very large, please make it smaller if possible.') . '</div>';
         }
 
         $fm_optimize_rows .= '
-        <div class="mb-2">
+        <div class="mb-3">
             <div class="d-flex align-items-center" style="gap:6px">
                 <span class="text-truncate flex-fill" style="font-size:12px" title="' . h($fm_item['name']) . '">' . h($fm_shorten($fm_item['name'])) . '</span>
-                <span class="text-muted flex-shrink-0" style="font-size:11px">' . h(convert_bytes_to_string($fm_size, 1)) . '</span>
+                <span class="fg-secondary flex-shrink-0" style="font-size:11px">' . h(convert_bytes_to_string($fm_size, 1)) . '</span>
                 ' . $fm_action . '
             </div>
             ' . $fm_note . '
@@ -323,9 +323,9 @@ function pg_dashboard_widget_18($request, $user)
 
     if ($fm_optimize_rows === '') {
         $fm_optimize_rows = '
-        <div class="text-center py-3">
-            <i class="bi bi-check2-circle d-block mb-1 text-success" style="font-size:22px;opacity:.8"></i>
-            <p class="text-muted mb-0" style="font-size:12px">' . lang('Congratulations, there are no files that need optimizing.') . '</p>
+        <div class="text-center py-5">
+            <i class="bi bi-check2-circle d-block mb-1 fg-success" style="font-size:22px;opacity:.8"></i>
+            <p class="fg-secondary mb-0" style="font-size:12px">' . lang('Congratulations, there are no files that need optimizing.') . '</p>
         </div>';
     }
 
@@ -356,12 +356,12 @@ function pg_dashboard_widget_18($request, $user)
         // and colouring it as one would train the operator to
         // ignore the warning that does mean something.
         $fm_largest_rows .= '
-        <div class="mb-2">
+        <div class="mb-3">
             <div class="d-flex align-items-center justify-content-between" style="gap:6px">
                 <a class="text-truncate text-decoration-none" style="font-size:12px"
                    title="' . h($fm_item['name']) . '"
                    href="edit_file.php?id=' . h($fm_item['id']) . '&amp;send_to=' . h(PATH . SOFTWARE_DIRECTORY . '/welcome.php') . '">' . h($fm_shorten($fm_item['name'])) . '</a>
-                <span class="text-muted flex-shrink-0" style="font-size:11px">' . h(convert_bytes_to_string($fm_size, 1)) . '</span>
+                <span class="fg-secondary flex-shrink-0" style="font-size:11px">' . h(convert_bytes_to_string($fm_size, 1)) . '</span>
             </div>
             <div class="progress mt-1" style="height:4px;background:rgba(0,0,0,.06)">
                 <div class="progress-bar bg-secondary" style="width:' . $fm_width . '%"></div>
@@ -371,9 +371,9 @@ function pg_dashboard_widget_18($request, $user)
 
     if ($fm_largest_rows === '') {
         $fm_largest_rows = '
-        <div class="text-center py-3">
+        <div class="text-center py-5">
             <i class="bi bi-folder2-open d-block mb-1" style="font-size:22px;opacity:.35"></i>
-            <p class="text-muted mb-0" style="font-size:12px">' . lang('No files found.') . '</p>
+            <p class="fg-secondary mb-0" style="font-size:12px">' . lang('No files found.') . '</p>
         </div>';
     }
 
@@ -383,24 +383,24 @@ function pg_dashboard_widget_18($request, $user)
 
     if ((!$fm_optimizer_available) && $fm_optimize_items) {
         $fm_optimizer_note = '
-        <div class="px-3 pb-2">
-            <div class="text-muted" style="font-size:10px">' . lang('Image optimization is not available on this server.') . '</div>
+        <div class="px-5 pb-3">
+            <div class="fg-secondary" style="font-size:10px">' . lang('Image optimization is not available on this server.') . '</div>
         </div>';
     }
 
     $output_data = '
     <div class="card-body p-0 d-flex flex-column" style="overflow-x:hidden;overflow-y:auto">
-        <div class="d-flex align-items-center justify-content-between px-3 pt-2 pb-1">
-            <span class="text-muted" style="font-size:11px">' . lang('Needs optimizing') . '</span>
-            <span class="text-muted" style="font-size:10px">' . pg_format_number($fm_optimize_total, 0) . '</span>
+        <div class="d-flex align-items-center justify-content-between px-5 pt-3 pb-1">
+            <span class="fg-secondary" style="font-size:11px">' . lang('Needs optimizing') . '</span>
+            <span class="fg-secondary" style="font-size:10px">' . pg_format_number($fm_optimize_total, 0) . '</span>
         </div>
-        <div class="px-3 pb-1">' . $fm_optimize_rows . '</div>
+        <div class="px-5 pb-1">' . $fm_optimize_rows . '</div>
         ' . $fm_optimizer_note . '
-        <div class="d-flex align-items-center justify-content-between px-3 pt-2 pb-1 border-top">
-            <span class="text-muted" style="font-size:11px">' . lang('Largest files') . '</span>
-            <span class="text-muted" style="font-size:10px">' . lang(array('string' => 'Top {var:1}', 'vars' => pg_format_number($fm_largest_limit, 0))) . '</span>
+        <div class="d-flex align-items-center justify-content-between px-5 pt-3 pb-1 border-top">
+            <span class="fg-secondary" style="font-size:11px">' . lang('Largest files') . '</span>
+            <span class="fg-secondary" style="font-size:10px">' . lang(array('string' => 'Top {var:1}', 'vars' => pg_format_number($fm_largest_limit, 0))) . '</span>
         </div>
-        <div class="px-3 pb-2">' . $fm_largest_rows . '</div>
+        <div class="px-5 pb-3">' . $fm_largest_rows . '</div>
     </div>
     <div class="card-footer border-0 bg-reset py-1 text-center">
         <a href="view_files.php" class="text-decoration-none" style="font-size:11px">'

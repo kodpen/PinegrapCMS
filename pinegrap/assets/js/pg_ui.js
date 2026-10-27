@@ -287,7 +287,7 @@
         size = o.size ? (six ? 'dialog-' : 'modal-') + o.size : '';
 
         if (six) {
-            parts.root = make('dialog', ['dialog', size, o.scrollable ? 'dialog-scrollable' : '', o.className || ''].join(' ').replace(/\s+/g, ' ').trim());
+            parts.root = make('dialog', ['dialog', size, o.centered ? 'pg-dialog-centered' : '', o.scrollable ? 'dialog-scrollable' : '', o.className || ''].join(' ').replace(/\s+/g, ' ').trim());
             box = parts.root;
         } else {
             parts.root = make('div', ['modal', 'fade', o.className || ''].join(' ').trim(), { tabindex: '-1', 'aria-hidden': 'true' });

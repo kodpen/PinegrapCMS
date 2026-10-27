@@ -411,7 +411,7 @@
             var share = total ? Math.round(option.count * 100 / total) : 0;
 
             if (open) {
-                var pick = el('input', 'form-check-input');
+                var pick = el('input', poll.multiple ? 'check' : 'radio');
                 pick.type = poll.multiple ? 'checkbox' : 'radio';
                 pick.name = 'poll-' + poll.id;
                 pick.checked = option.mine;

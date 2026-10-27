@@ -2864,7 +2864,7 @@ function get_checkboxes_for_items_user_can_edit($item_type, $selected_ids = arra
         if (in_array($item['id'], $selected_ids) == true) {
             $checked = ' checked="checked"';
         }
-        $output .= '<div class="form-check"><input type="checkbox" name="' . $item_type . '_' . $item['id'] . '" id="' . $item_type . '_' . $item['id'] . '" value="1" class="form-check-input multiselect-checkbox"' . $checked . ' /><label class="form-check-label" for="' . $item_type . '_' . $item['id'] . '">' . h($item['name']) . '</label></div>';
+        $output .= '<div class="form-field"><input type="checkbox" name="' . $item_type . '_' . $item['id'] . '" id="' . $item_type . '_' . $item['id'] . '" value="1" class="check multiselect-checkbox"' . $checked . ' /><label class="" for="' . $item_type . '_' . $item['id'] . '">' . h($item['name']) . '</label></div>';
     }
     return $output;
 }

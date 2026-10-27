@@ -114,7 +114,7 @@ if ($currencies) {
             '<tr>
                 <td></td>
                 <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                 </td>
                 <td class="chart_label align-middle">' . h($currency['name']) . '</td>
                 <td class="align-middle text-center">' . $output_base_check_mark . '</td>
@@ -143,20 +143,20 @@ pg_page_shell(
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 text-center text-md-start">
+            <div class="row mb-3  flex-wrap">
+                <div class="col-12 text-center md:text-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_currency.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_currency.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                         <div class=" btn-group btn-group-sm flex-wrap">
-                            <a class="btn btn-link link-secondary py-0 m-1 bi bi-currency-exchange bi-me-2" href="update_exchange_rates.php?send_to=' . h(get_request_uri()) . '">' . lang(array('string'=>'Update Exchange Rates') ) . '</a>
+                            <a class="btn btn-link pg-link-secondary py-0 m-1 bi bi-currency-exchange bi-me-2" href="update_exchange_rates.php?send_to=' . h(get_request_uri()) . '">' . lang(array('string'=>'Update Exchange Rates') ) . '</a>
                         </div>
                         <div class="pg-toolbar-grow"></div>
                         ' . pg_list_sort_menu('view_currencies.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>
                 </div>
             </div>
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none">
                         <thead>

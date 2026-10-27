@@ -180,8 +180,8 @@ if (!$table_exists) {
     ));
 
     echo '<main id="content" class="container-fluid">
-        <div class="alert alert-warning my-4">
-            <i class="bi bi-exclamation-triangle me-2"></i>'
+        <div class="alert theme-warning my-7">
+            <i class="bi bi-exclamation-triangle me-3"></i>'
             . lang('The firewall tables do not exist yet. Please run the software upgrade to create them.')
         . '</div>
     </main>';
@@ -422,18 +422,18 @@ if ($verdict !== '') {
 $mode_banner = '';
 
 if ($mode === 'off') {
-    $mode_banner = '<div class="alert alert-secondary d-flex align-items-center">'
-        . '<i class="bi bi-shield-slash me-2"></i>'
+    $mode_banner = '<div class="alert theme-secondary d-flex align-items-center">'
+        . '<i class="bi bi-shield-slash me-3"></i>'
         . lang('The firewall is currently off. Nothing new is being recorded.')
-        . ' <a class="ms-2" href="' . pg_settings_link('firewall', 'pgset-waf') . '">' . lang('Site Settings') . '</a></div>';
+        . ' <a class="ms-3" href="' . pg_settings_link('firewall', 'pgset-waf') . '">' . lang('Site Settings') . '</a></div>';
 } elseif ($mode === 'monitor') {
-    $mode_banner = '<div class="alert alert-info d-flex align-items-center">'
-        . '<i class="bi bi-eye me-2"></i>'
+    $mode_banner = '<div class="alert theme-info d-flex align-items-center">'
+        . '<i class="bi bi-eye me-3"></i>'
         . '<span>' . lang('Monitor mode: these requests were recorded but allowed through, except addresses on the ban list, which are refused in every mode. Review the rest, and when nothing legitimate appears here, switch the firewall to Block.') . $verdict . '</span>'
         . '</div>';
 } else {
-    $mode_banner = '<div class="alert alert-' . ($suspect_count > 0 ? 'warning' : 'success') . ' d-flex align-items-center">'
-        . '<i class="bi bi-shield-check me-2"></i>'
+    $mode_banner = '<div class="alert theme-' . ($suspect_count > 0 ? 'warning' : 'success') . ' d-flex align-items-center">'
+        . '<i class="bi bi-shield-check me-3"></i>'
         . '<span>' . lang('Blocking mode: attacking requests are being rejected.') . $verdict . '</span>'
         . '</div>';
 }
@@ -479,10 +479,10 @@ $events = mysqli_fetch_items(mysqli_query(
 $action_badges = array(
     'block'       => array('bg-danger', lang('Blocked')),
     'rate'        => array('bg-danger', lang('Rate limited')),
-    'ban'         => array('bg-dark', lang('Banned')),
-    'would-block' => array('bg-warning text-dark', lang('Would block')),
-    'would-rate'  => array('bg-warning text-dark', lang('Would rate limit')),
-    'would-ban'   => array('bg-warning text-dark', lang('Would ban')),
+    'ban'         => array('bg-black', lang('Banned')),
+    'would-block' => array('bg-warning fg-black', lang('Would block')),
+    'would-rate'  => array('bg-warning fg-black', lang('Would rate limit')),
+    'would-ban'   => array('bg-warning fg-black', lang('Would ban')),
     'log'         => array('bg-secondary', lang('Recorded')),
 );
 
@@ -500,10 +500,10 @@ echo $liveform->output_notices();
 echo $mode_banner;
 
 // Filter bar.
-echo '<form method="get" action="view_waf_log.php" class="row g-2 align-items-end mb-4">
-    <div class="col-12 col-md-3">
+echo '<form method="get" action="view_waf_log.php" class="row g-3 align-items-end mb-7">
+    <div class="col-12 md:col-3">
         <label for="range" class="form-label">' . lang('Period') . '</label>
-        <select name="range" id="range" class="form-select">';
+        <select name="range" id="range" class="form-control">';
 
 foreach ($range_options as $value => $label) {
     echo '<option value="' . h($value) . '"' . ($range === $value ? ' selected="selected"' : '') . '>' . h($label) . '</option>';
@@ -511,9 +511,9 @@ foreach ($range_options as $value => $label) {
 
 echo '</select>
     </div>
-    <div class="col-12 col-md-3">
+    <div class="col-12 md:col-3">
         <label for="category" class="form-label">' . lang('Category') . '</label>
-        <select name="category" id="category" class="form-select">';
+        <select name="category" id="category" class="form-control">';
 
 foreach ($category_options as $value => $label) {
     echo '<option value="' . h($value) . '"' . ($category === $value ? ' selected="selected"' : '') . '>' . h($label) . '</option>';
@@ -521,43 +521,43 @@ foreach ($category_options as $value => $label) {
 
 echo '</select>
     </div>
-    <div class="col-12 col-md-4">
+    <div class="col-12 md:col-4">
         <label for="search" class="form-label">' . lang('Search') . '</label>
         <input type="text" name="search" id="search" class="form-control" value="' . h($search) . '" placeholder="' . lang('IP address, URL, rule, reference') . '"/>
     </div>
-    <div class="col-12 col-md-2">
-        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-funnel me-1"></i>' . lang('Filter') . '</button>
+    <div class="col-12 md:col-2">
+        <button type="submit" class="btn btn-solid theme-primary w-100"><i class="bi bi-funnel me-1"></i>' . lang('Filter') . '</button>
     </div>
 </form>';
 
 // Summary cards.
-echo '<div class="row g-3 mb-4">
-    <div class="col-6 col-lg-3">
+echo '<div class="row g-5 mb-7">
+    <div class="col-6 lg:col-3">
         <div class="card h-100"><div class="card-body">
-            <div class="text-muted small text-uppercase">' . lang('Events') . '</div>
+            <div class="fg-secondary small text-uppercase">' . lang('Events') . '</div>
             <div class="h3 mb-0">' . pg_format_number((int) $summary['total'], 0) . '</div>
         </div></div>
     </div>
-    <div class="col-6 col-lg-3">
+    <div class="col-6 lg:col-3">
         <div class="card h-100"><div class="card-body">
-            <div class="text-muted small text-uppercase">' . lang('Blocked') . '</div>
-            <div class="h3 mb-0 text-danger">' . pg_format_number((int) $summary['blocked'], 0) . '</div>
+            <div class="fg-secondary small text-uppercase">' . lang('Blocked') . '</div>
+            <div class="h3 mb-0 fg-danger">' . pg_format_number((int) $summary['blocked'], 0) . '</div>
         </div></div>
     </div>
-    <div class="col-6 col-lg-3">
+    <div class="col-6 lg:col-3">
         <div class="card h-100"><div class="card-body">
-            <div class="text-muted small text-uppercase">' . lang('Would block') . '</div>
-            <div class="h3 mb-0 text-warning">' . pg_format_number((int) $summary['would_block'], 0) . '</div>
+            <div class="fg-secondary small text-uppercase">' . lang('Would block') . '</div>
+            <div class="h3 mb-0 fg-warning">' . pg_format_number((int) $summary['would_block'], 0) . '</div>
         </div></div>
     </div>
-    <div class="col-6 col-lg-3">
+    <div class="col-6 lg:col-3">
         <div class="card h-100"><div class="card-body">
-            <div class="text-muted small text-uppercase">' . lang('Distinct Addresses') . '</div>
+            <div class="fg-secondary small text-uppercase">' . lang('Distinct Addresses') . '</div>
             <div class="h3 mb-0">' . pg_format_number((int) $summary['addresses'], 0) . '</div>
         </div></div>
     </div>
 </div>
-<p class="text-muted small mb-4">' . lang(array(
+<p class="fg-secondary small mb-7">' . lang(array(
     'string' => 'Identical events within five minutes share one row. {var:1} requests are stored as {var:2} rows.',
     'vars'   => array(pg_format_number((int) $summary['total'], 0), pg_format_number((int) $summary['rows_stored'], 0)),
 )) . '</p>';
@@ -565,19 +565,19 @@ echo '<div class="row g-3 mb-4">
 // Possible false positives.
 if ($suspects) {
     $sign_badges = array(
-        'user'     => array('bg-danger-subtle text-danger-emphasis border-danger-subtle', lang('Signed-in user')),
-        'token'    => array('bg-primary-subtle text-primary-emphasis border-primary-subtle', lang('Remember-me sign-in')),
-        'activity' => array('bg-primary-subtle text-primary-emphasis border-primary-subtle', lang('Activity log')),
-        'order'    => array('bg-success-subtle text-success-emphasis border-success-subtle', lang('Completed order')),
+        'user'     => array('bg-subtle-danger fg-emphasis-danger border-subtle-danger', lang('Signed-in user')),
+        'token'    => array('bg-subtle-primary fg-emphasis-primary border-subtle-primary', lang('Remember-me sign-in')),
+        'activity' => array('bg-subtle-primary fg-emphasis-primary border-subtle-primary', lang('Activity log')),
+        'order'    => array('bg-subtle-success fg-emphasis-success border-subtle-success', lang('Completed order')),
     );
 
-    echo '<div class="card mb-4 border-warning-subtle">
+    echo '<div class="card mb-7 border-subtle-warning">
         <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-            <span class="text-uppercase h6 text-warning-emphasis fw-bold mb-0"><i class="bi bi-person-exclamation me-1"></i>' . lang('Possible False Positives') . '</span>
-            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">' . pg_format_number($suspect_count, 0) . '</span>
+            <span class="text-uppercase h6 fg-emphasis-warning fw-bold mb-0"><i class="bi bi-person-exclamation me-1"></i>' . lang('Possible False Positives') . '</span>
+            <span class="badge bg-subtle-warning fg-emphasis-warning border border-subtle-warning">' . pg_format_number($suspect_count, 0) . '</span>
         </div>
         <div class="card-body">
-            <p class="text-muted small">' . lang('These addresses were flagged by the firewall in this period and also look like real people: a signed-in user, a "remember me" sign-in, a named entry in the activity log or a completed order came from the same address. Check them before switching the firewall to Block. Allowing an address puts it on the allowed list in Site Settings and releases any automatic ban on it.') . '</p>
+            <p class="fg-secondary small">' . lang('These addresses were flagged by the firewall in this period and also look like real people: a signed-in user, a "remember me" sign-in, a named entry in the activity log or a completed order came from the same address. Check them before switching the firewall to Block. Allowing an address puts it on the allowed list in Site Settings and releases any automatic ban on it.') . '</p>
             <div class="table-responsive"><table class="table table-sm align-middle mb-0">
                 <thead><tr>
                     <th>' . lang('IP Address') . '</th>
@@ -597,7 +597,7 @@ if ($suspects) {
 
         echo '<tr>
             <td class="font-monospace small text-nowrap">' . h($suspect['ip_address']) . '</td>
-            <td class="small"><span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">&times;' . pg_format_number((int) $suspect['hits'], 0) . '</span></td>
+            <td class="small"><span class="badge bg-subtle-warning fg-emphasis-warning border border-subtle-warning">&times;' . pg_format_number((int) $suspect['hits'], 0) . '</span></td>
             <td class="small"><code>' . h($suspect['rules']) . '</code></td>
             <td class="small">' . $badges . '</td>
             <td class="small text-nowrap">' . get_relative_time(array('timestamp' => (int) $suspect['last_seen'])) . '</td>
@@ -605,7 +605,7 @@ if ($suspects) {
                 <form method="post" action="view_waf_log.php" class="d-inline">'
                     . get_token_field() . '
                     <input type="hidden" name="allow_ip" value="' . h($suspect['ip_address']) . '"/>
-                    <button type="submit" name="submit_allow" value="1" class="btn btn-sm btn-outline-success">
+                    <button type="submit" name="submit_allow" value="1" class="btn btn-sm btn-outline theme-success">
                         <i class="bi bi-check-circle me-1"></i>' . lang('Allow') . '
                     </button>
                 </form>
@@ -618,8 +618,8 @@ if ($suspects) {
 
 // Active automatic bans.
 if ($auto_bans) {
-    echo '<div class="card mb-4">
-        <div class="card-header bg-reset border-0 text-uppercase h6 text-primary fw-bold">'
+    echo '<div class="card mb-7">
+        <div class="card-header bg-reset border-0 text-uppercase h6 fg-primary fw-bold">'
         . lang('Active Automatic Bans') . '</div>
         <div class="card-body">
             <div class="table-responsive"><table class="table table-sm align-middle mb-0">
@@ -635,13 +635,13 @@ if ($auto_bans) {
 
         echo '<tr>
             <td class="font-monospace">' . h($ban['ip_address']) . '</td>
-            <td class="small text-muted">' . h($ban['note']) . '</td>
+            <td class="small fg-secondary">' . h($ban['note']) . '</td>
             <td class="small">' . ceil($remaining / 60) . ' ' . lang('minute(s)') . '</td>
             <td class="text-end">
                 <form method="post" action="view_waf_log.php" class="d-inline">'
                     . get_token_field() . '
                     <input type="hidden" name="release_ip" value="' . h($ban['ip_address']) . '"/>
-                    <button type="submit" name="submit_release" value="1" class="btn btn-sm btn-outline-secondary">
+                    <button type="submit" name="submit_release" value="1" class="btn btn-sm btn-outline theme-secondary">
                         <i class="bi bi-unlock me-1"></i>' . lang('Release') . '
                     </button>
                 </form>
@@ -655,24 +655,24 @@ if ($auto_bans) {
 // Content Security Policy reports.
 if ($csp_entries || $csp_mode !== 'off') {
     $csp_mode_badges = array(
-        'off'     => array('bg-secondary-subtle text-secondary-emphasis border-secondary-subtle', lang('Off')),
-        'report'  => array('bg-info-subtle text-info-emphasis border-info-subtle', lang('Report Only')),
-        'enforce' => array('bg-success-subtle text-success-emphasis border-success-subtle', lang('Enforce')),
+        'off'     => array('bg-subtle-secondary fg-emphasis-secondary border-subtle-secondary', lang('Off')),
+        'report'  => array('bg-subtle-info fg-emphasis-info border-subtle-info', lang('Report Only')),
+        'enforce' => array('bg-subtle-success fg-emphasis-success border-subtle-success', lang('Enforce')),
     );
 
     $csp_mode_badge = isset($csp_mode_badges[$csp_mode]) ? $csp_mode_badges[$csp_mode] : $csp_mode_badges['report'];
 
-    echo '<div class="card mb-4">
-        <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <span class="d-flex align-items-center gap-2">
-                <span class="text-uppercase h6 text-primary fw-bold mb-0">' . lang('Content Security Policy Reports') . '</span>
+    echo '<div class="card mb-7">
+        <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <span class="d-flex align-items-center gap-3">
+                <span class="text-uppercase h6 fg-primary fw-bold mb-0">' . lang('Content Security Policy Reports') . '</span>
                 <span class="badge border fw-normal ' . h($csp_mode_badge[0]) . '">' . h($csp_mode_badge[1]) . '</span>
             </span>
-            <span class="d-flex align-items-center gap-2">
-                <a href="' . pg_settings_link('firewall', 'pgset-headers') . '" class="btn btn-sm btn-outline-secondary"><i class="bi bi-sliders me-1"></i>' . lang('Policy Settings') . '</a>'
+            <span class="d-flex align-items-center gap-3">
+                <a href="' . pg_settings_link('firewall', 'pgset-headers') . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-sliders me-1"></i>' . lang('Policy Settings') . '</a>'
                 . ($csp_entries ? '<form method="post" action="view_waf_log.php" class="d-inline">'
                     . get_token_field() . '
-                    <button type="submit" name="submit_csp_clear" value="1" class="btn btn-sm btn-outline-danger">
+                    <button type="submit" name="submit_csp_clear" value="1" class="btn btn-sm btn-outline theme-danger">
                         <i class="bi bi-trash me-1"></i>' . lang('Clear Reports') . '
                     </button>
                 </form>' : '') . '
@@ -681,9 +681,9 @@ if ($csp_entries || $csp_mode !== 'off') {
         <div class="card-body">';
 
     if (!$csp_entries) {
-        echo '<p class="text-muted mb-0">' . lang('No policy violations have been reported in the last fourteen days. Browsers report a violation when a page loads something the policy does not allow; an empty list after real visits means the policy fits the site.') . '</p>';
+        echo '<p class="fg-secondary mb-0">' . lang('No policy violations have been reported in the last fourteen days. Browsers report a violation when a page loads something the policy does not allow; an empty list after real visits means the policy fits the site.') . '</p>';
     } else {
-        echo '<p class="text-muted small">' . lang('What browsers reported the policy would refuse, grouped by directive and source and kept for fourteen days. A source the site needs belongs in the policy; one you do not recognise is worth a look. Counts are reports, not visitors.') . '</p>
+        echo '<p class="fg-secondary small">' . lang('What browsers reported the policy would refuse, grouped by directive and source and kept for fourteen days. A source the site needs belongs in the policy; one you do not recognise is worth a look. Counts are reports, not visitors.') . '</p>
             <div class="table-responsive"><table class="table table-sm align-middle mb-0">
                 <thead><tr>
                     <th>' . lang('Directive') . '</th>
@@ -698,7 +698,7 @@ if ($csp_entries || $csp_mode !== 'off') {
                 <td class="small"><code>' . h($entry['d']) . '</code></td>
                 <td class="font-monospace small text-break" style="max-width:20rem;">' . h($entry['b']) . '</td>
                 <td class="small text-break" style="max-width:18rem;">' . h($entry['p']) . '</td>
-                <td class="small"><span class="badge bg-secondary-subtle text-secondary-emphasis border">&times;' . pg_format_number((int) $entry['n'], 0) . '</span></td>
+                <td class="small"><span class="badge bg-subtle-secondary fg-emphasis-secondary border">&times;' . pg_format_number((int) $entry['n'], 0) . '</span></td>
                 <td class="small text-nowrap">' . get_relative_time(array('timestamp' => (int) $entry['l'])) . '</td>
             </tr>';
         }
@@ -710,12 +710,12 @@ if ($csp_entries || $csp_mode !== 'off') {
 }
 
 // Event table.
-echo '<div class="card mb-4">
+echo '<div class="card mb-7">
     <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-        <span class="text-uppercase h6 text-primary fw-bold mb-0">' . lang('Recent Events') . '</span>
+        <span class="text-uppercase h6 fg-primary fw-bold mb-0">' . lang('Recent Events') . '</span>
         <form method="post" action="view_waf_log.php" onsubmit="return confirm(\'' . lang('Clear all firewall log data?') . '\');">'
             . get_token_field() . '
-            <button type="submit" name="submit_clear" value="1" class="btn btn-sm btn-outline-danger">
+            <button type="submit" name="submit_clear" value="1" class="btn btn-sm btn-outline theme-danger">
                 <i class="bi bi-trash me-1"></i>' . lang('Clear Log') . '
             </button>
         </form>
@@ -723,7 +723,7 @@ echo '<div class="card mb-4">
     <div class="card-body">';
 
 if (!$events) {
-    echo '<p class="text-muted mb-0">' . lang('No firewall events were recorded in this period.') . '</p>';
+    echo '<p class="fg-secondary mb-0">' . lang('No firewall events were recorded in this period.') . '</p>';
 } else {
     echo '<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
         <thead><tr>
@@ -745,7 +745,7 @@ if (!$events) {
         echo '<tr>
             <td class="small text-nowrap">' . h(date('Y-m-d H:i', (int) $event['log_timestamp']))
                 . ($event['last_seen'] > $event['log_timestamp']
-                    ? '<div class="text-muted" style="font-size:.75rem;">&rarr; ' . h(date('H:i', (int) $event['last_seen'])) . '</div>'
+                    ? '<div class="fg-secondary" style="font-size:.75rem;">&rarr; ' . h(date('H:i', (int) $event['last_seen'])) . '</div>'
                     : '')
                 // Relative age of the LAST hit. Without it a row that stopped
                 // firing an hour ago is indistinguishable from one still
@@ -753,26 +753,26 @@ if (!$events) {
                 // operator who has just fixed the cause cannot tell whether
                 // the entry is live or a historical record of the problem
                 // they already solved.
-                . '<div class="' . ($event['last_seen'] > (time() - 300) ? 'text-danger fw-semibold' : 'text-muted')
+                . '<div class="' . ($event['last_seen'] > (time() - 300) ? 'fg-danger fw-semibold' : 'fg-secondary')
                 . '" style="font-size:.75rem;">'
                 . get_relative_time(array('timestamp' => (int) $event['last_seen']))
                 . '</div></td>
             <td class="small">' . ((int) $event['hit_count'] > 1
-                ? '<span class="badge bg-secondary-subtle text-secondary-emphasis border">&times;' . pg_format_number((int) $event['hit_count'], 0) . '</span>'
+                ? '<span class="badge bg-subtle-secondary fg-emphasis-secondary border">&times;' . pg_format_number((int) $event['hit_count'], 0) . '</span>'
                 : '1') . '</td>
             <td><span class="badge ' . h($badge[0]) . '">' . h($badge[1]) . '</span></td>
             <td class="font-monospace small text-nowrap">' . h($event['ip_address']) . '</td>
             <td class="small"><code>' . h($event['rule_id']) . '</code>'
                 . (isset($event['reference']) && $event['reference'] !== ''
-                    ? '<div class="text-muted" style="font-size:.7rem;" title="' . lang('Reference') . '">' . h($event['reference']) . '</div>'
+                    ? '<div class="fg-secondary" style="font-size:.7rem;" title="' . lang('Reference') . '">' . h($event['reference']) . '</div>'
                     : '') . '</td>
             <td class="small">' . (int) $event['score'] . '</td>
             <td class="small text-break" style="max-width:22rem;">
-                <span class="text-muted">' . h($event['method']) . '</span> ' . h($event['request_url']) . '
-                <div class="text-muted" style="font-size:.75rem;">' . h(mb_substr($event['user_agent'], 0, 90)) . '</div>
+                <span class="fg-secondary">' . h($event['method']) . '</span> ' . h($event['request_url']) . '
+                <div class="fg-secondary" style="font-size:.75rem;">' . h(mb_substr($event['user_agent'], 0, 90)) . '</div>
             </td>
             <td class="small text-break" style="max-width:16rem;">
-                <span class="text-muted">' . h($event['target']) . '</span>
+                <span class="fg-secondary">' . h($event['target']) . '</span>
                 <div><code>' . h($event['matched']) . '</code></div>
             </td>
         </tr>';

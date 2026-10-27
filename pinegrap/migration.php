@@ -49,13 +49,13 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Source Site Login Info') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-8 my-2">
+                                        <div class="col-12 md:col-8 my-3">
                                             <label for="address_name" class="form-label">' . lang('API URL') . '</label>
                                             <div class="input-group ">
                                                 <label for="address_name" class="input-group-text material-icons" title="' . lang('API URL') . '" data-bs-content="' . lang('Example') . ': https://www.example.com/software_directory/api.php">public</label>
@@ -64,11 +64,11 @@ if (!$_POST) {
                                             <div class="form-text text-end">' . lang('If source site supports it, make sure to use \'https\' URL so login info is sent securely.') . '</div>
                                         </div>
                                         <div class="col-12"></div>
-                                        <div class="col-12 col-sm-6 col-lg-4 my-1">
+                                        <div class="col-12 sm:col-6 lg:col-4 my-1">
                                             <label class="form-label" for="username">' . lang('Email') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'username', 'id'=>'username', 'class'=>'form-control', 'size'=>'30')) . '
                                         </div>
-                                        <div class="col-12 col-sm-6 col-lg-4 my-1">
+                                        <div class="col-12 sm:col-6 lg:col-4 my-1">
                                             <label class="form-label" for="username">' . lang('Password') . '</label>
                                             ' . $liveform->output_field(array('type'=>'password', 'name'=>'password', 'id'=>'password', 'class'=>'form-control', 'size'=>'30')) . '
                                         </div>
@@ -77,34 +77,34 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Items to Migrate') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                ' . $liveform->output_field(array('type'=>'checkbox', 'id'=>'styles', 'name'=>'styles', 'value'=>'1', 'class'=>'form-check-input')) . '
-                                                <label class="form-check-label" for="styles">' . lang('Page Styles') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'id'=>'styles', 'name'=>'styles', 'value'=>'1', 'class'=>'no-bs')) . '</div>
+                                                <label class="" for="styles">' . lang('Page Styles') . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                ' . $liveform->output_field(array('type'=>'checkbox', 'id'=>'common_regions', 'name'=>'common_regions', 'value'=>'1', 'class'=>'form-check-input')) . '
-                                                <label class="form-check-label" for="common_regions">' . lang('Common Regions') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'id'=>'common_regions', 'name'=>'common_regions', 'value'=>'1', 'class'=>'no-bs')) . '</div>
+                                                <label class="" for="common_regions">' . lang('Common Regions') . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                ' . $liveform->output_field(array('type'=>'checkbox', 'id'=>'designer_regions', 'name'=>'designer_regions', 'value'=>'1', 'class'=>'form-check-input')) . '
-                                                <label class="form-check-label" for="designer_regions">' . lang('Designer Regions') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'id'=>'designer_regions', 'name'=>'designer_regions', 'value'=>'1', 'class'=>'no-bs')) . '</div>
+                                                <label class="" for="designer_regions">' . lang('Designer Regions') . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                ' . $liveform->output_field(array('type'=>'checkbox', 'id'=>'folders_and_pages', 'name'=>'folders_and_pages', 'value'=>'1', 'class'=>'form-check-input')) . '
-                                                <label class="form-check-label" for="folders_and_pages">' . lang('Folders & Pages') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'id'=>'folders_and_pages', 'name'=>'folders_and_pages', 'value'=>'1', 'class'=>'no-bs')) . '</div>
+                                                <label class="" for="folders_and_pages">' . lang('Folders & Pages') . '</label>
                                             </div>
                                         </div>
                                     </div>
@@ -112,10 +112,10 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_migrate" name="submit_migrate" value="Migrate" class="btn my-1  btn-success "><span class="material-icons me-2">drive_file_move</span><span class="pg-btn-label">' . lang(array('string'=>'Migrate') ) . '</span></button>
+                                <button type="submit" id="submit_migrate" name="submit_migrate" value="Migrate" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">drive_file_move</span><span class="pg-btn-label">' . lang(array('string'=>'Migrate') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

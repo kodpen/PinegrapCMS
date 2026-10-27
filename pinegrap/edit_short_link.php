@@ -138,9 +138,9 @@ if (!$_POST) {
 
     if (pg_short_link_redirects_ready()) {
         $output_redirect_code = '
-                                                <div class="col-12 col-md-8 col-lg-6 my-2" id="redirect_code_row">
+                                                <div class="col-12 md:col-8 lg:col-6 my-3" id="redirect_code_row">
                                                     <label for="redirect_code" class="form-label">' . lang('How it answers') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'redirect_code', 'id'=>'redirect_code', 'class'=>'form-select', 'options'=>pg_short_link_answer_options())) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'redirect_code', 'id'=>'redirect_code', 'class'=>'form-control', 'options'=>pg_short_link_answer_options())) . '
                                                     <div class="form-text">' . lang('A redirect sends visitors to the destination\'s own address and keeps their query string: 301 for the old address of a page that moved, 302 for a while.') . '</div>
                                                 </div>';
     }
@@ -207,15 +207,15 @@ if (!$_POST) {
         $short_link_qr_file = pg_ascii_file_name((string) $short_link['name']);
 
         $output_short_link_qr_card =
-            '<div class="col-12 col-md-6 col-xl-4">
-                <div class="card my-4">
+            '<div class="col-12 md:col-6 xl:col-4">
+                <div class="card my-7">
                     <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                        <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('QR Code')) . '</span>
-                        <a class="btn btn-sm btn-outline-secondary" download="' . h((($short_link_qr_file !== '') ? $short_link_qr_file : 'short-link') . '-qr.svg') . '" href="' . h(pg_qr_svg_data_uri($short_link_qr_url, 0, $short_link_qr_options)) . '"><i class="bi bi-download me-1" aria-hidden="true"></i>' . h(lang('Download SVG')) . '</a>
+                        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('QR Code')) . '</span>
+                        <a class="btn btn-sm btn-outline theme-secondary" download="' . h((($short_link_qr_file !== '') ? $short_link_qr_file : 'short-link') . '-qr.svg') . '" href="' . h(pg_qr_svg_data_uri($short_link_qr_url, 0, $short_link_qr_options)) . '"><i class="bi bi-download me-1" aria-hidden="true"></i>' . h(lang('Download SVG')) . '</a>
                     </div>
                     <div class="card-body text-center">
-                        <div class="d-inline-block border rounded p-2 bg-white">' . $short_link_qr . '</div>
-                        <p class="small text-muted mt-2 mb-0 text-break">' . h($short_link_qr_url) . '</p>
+                        <div class="d-inline-block border rounded-4 p-3 bg-white">' . $short_link_qr . '</div>
+                        <p class="small fg-secondary mt-3 mb-0 text-break">' . h($short_link_qr_url) . '</p>
                     </div>
                 </div>
             </div>';
@@ -239,12 +239,12 @@ if (!$_POST) {
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
 
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <div class=" btn-group btn-group-sm flex-wrap">
-                                ' . ($short_link_is_pattern ? '' : '<a class="btn btn-link link-secondary py-0 mb-2 "  href="' . OUTPUT_PATH . h(encode_url_path($short_link['name'])) . '" target="_blank"><span class="material-icons me-1">link</span>' . lang('Visit') . '</a>') . '
+                                ' . ($short_link_is_pattern ? '' : '<a class="btn btn-link pg-link-secondary py-0 mb-3 "  href="' . OUTPUT_PATH . h(encode_url_path($short_link['name'])) . '" target="_blank"><span class="material-icons me-1">link</span>' . lang('Visit') . '</a>') . '
                             </div>
                         </nav>
                     </div>
@@ -253,15 +253,15 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$_GET['id'])) . '
                     <div class="row">
-                        <div class="col-12 col-md-4 col-lg-3 col-xl-2">
-                            <div class="card my-4 position-sticky" style="top:56px;">
-                                <label for="type" class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-4 lg:col-3 xl:col-2">
+                            <div class="card my-7 position-sticky" style="top:56px;">
+                                <label for="type" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Destination Type') . '
                                 </label>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12">
-                                            ' . $liveform->output_field(array('type'=>'select', 'id'=>'destination_type', 'class'=>'form-select collapse-if-selected', 'name'=>'destination_type', 'options'=>$destination_type_options, 'onchange'=>'change_short_link_destination_type(this.options[this.selectedIndex].value)', 'data-bs-target'=>'#options_row', 'required'=>'required')) . '
+                                            ' . $liveform->output_field(array('type'=>'select', 'id'=>'destination_type', 'class'=>'form-control collapse-if-selected', 'name'=>'destination_type', 'options'=>$destination_type_options, 'onchange'=>'change_short_link_destination_type(this.options[this.selectedIndex].value)', 'data-bs-target'=>'#options_row', 'required'=>'required')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             <script>
                                                 $(document).ready(function() {
@@ -273,16 +273,16 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-8 col-lg-9 col-xl-10">
+                        <div class="col-12 md:col-8 lg:col-9 xl:col-10">
                             <div class="row">
                                 <div class="col-12">
-                                    <div class="card my-4 position-sticky" style="top:56px;">
-                                        <label for="name" class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    <div class="card my-7 position-sticky" style="top:56px;">
+                                        <label for="name" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Main Informations') . '
                                         </label>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 col-md-8 col-lg-6 my-2">
+                                                <div class="col-12 md:col-8 lg:col-6 my-3">
                                                     <label for="name" class="form-label">' . lang('Name') . '</label>
                                                     <div class="input-group ">
                                                         <label for="name" class="input-group-text material-icons" title="' . lang('This option determines the url address of the short link.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Short Link Name') . '}">public</label>
@@ -299,53 +299,53 @@ if (!$_POST) {
                                 </div>
                                 ' . $output_short_link_qr_card . '
                                 <div class="col-12 collapse" id="options_row">
-                                    <div class="card my-4">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                    <div class="card my-7">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Function Options') . '
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 col-md-6 col-lg-4 my-2" id="page_id_row"' . $output_page_id_row_style . '>
+                                                <div class="col-12 md:col-6 lg:col-4 my-3" id="page_id_row"' . $output_page_id_row_style . '>
                                                     <label for="page_id" class="form-label">' . lang('Page') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'page_id', 'id'=>'page_id', 'class'=>'form-select', 'options'=>get_page_options('', '', 'edit', FALSE, $short_link['page_id']))) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'page_id', 'id'=>'page_id', 'class'=>'form-control', 'options'=>get_page_options('', '', 'edit', FALSE, $short_link['page_id']))) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
-                                                <div class="col-12 col-md-6 col-lg-5 my-2" id="catalog_page_id_row"' . $output_catalog_page_id_row_style . '>
+                                                <div class="col-12 md:col-6 lg:col-5 my-3" id="catalog_page_id_row"' . $output_catalog_page_id_row_style . '>
                                                     <label for="catalog_page_id" class="form-label">' . lang('Catalog Page') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_page_id', 'id'=>'catalog_page_id', 'class'=>'form-select', 'options'=>get_page_options('', 'catalog', 'edit', FALSE, $short_link['page_id']), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_detail_page_id\').selectedIndex = 0}' )) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_page_id', 'id'=>'catalog_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'catalog', 'edit', FALSE, $short_link['page_id']), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_detail_page_id\').selectedIndex = 0}' )) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
-                                                <div class="col-12 col-lg-2 my-2 text-lg-center" id="or_row"' . $output_or_row_style . '>
+                                                <div class="col-12 lg:col-2 my-3 lg:text-center" id="or_row"' . $output_or_row_style . '>
                                                 -' . lang('or') . '-
                                                 </div>
-                                                <div class="col-12 col-md-6 col-lg-5 my-2" id="catalog_detail_page_id_row"' . $output_catalog_detail_page_id_row_style . '>
+                                                <div class="col-12 md:col-6 lg:col-5 my-3" id="catalog_detail_page_id_row"' . $output_catalog_detail_page_id_row_style . '>
                                                     <label for="catalog_detail_page_id" class="form-label">' . lang('Catalog Detail Page') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_detail_page_id', 'id'=>'catalog_detail_page_id', 'class'=>'form-select', 'options'=>get_page_options('', 'catalog detail', 'edit', FALSE, $short_link['page_id']), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_page_id\').selectedIndex = 0}' )) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_detail_page_id', 'id'=>'catalog_detail_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'catalog detail', 'edit', FALSE, $short_link['page_id']), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_page_id\').selectedIndex = 0}' )) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
-                                                <div class="col-12 col-md-6 col-lg-5 my-2" id="product_group_id_row"' . $output_product_group_id_row_style . '>
+                                                <div class="col-12 md:col-6 lg:col-5 my-3" id="product_group_id_row"' . $output_product_group_id_row_style . '>
                                                     <label for="product_group_id" class="form-label">' . lang('Product Group') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_group_id', 'id'=>'product_group_id', 'class'=>'form-select', 'options'=>get_product_group_options($product_group_id = 0, $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = TRUE, $format = 'array', $include_blank_option = TRUE, TRUE, FALSE, $liveform->get_field_value('product_group_id')))) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_group_id', 'id'=>'product_group_id', 'class'=>'form-control', 'options'=>get_product_group_options($product_group_id = 0, $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = TRUE, $format = 'array', $include_blank_option = TRUE, TRUE, FALSE, $liveform->get_field_value('product_group_id')))) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
-                                                <div class="col-12 col-md-6 col-lg-7 my-2" id="product_id_row"' . $output_product_id_row_style . '>
+                                                <div class="col-12 md:col-6 lg:col-7 my-3" id="product_id_row"' . $output_product_id_row_style . '>
                                                     <label for="product_id" class="form-label">' . lang('Product') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-select', 'options'=>get_product_options(true, $liveform->get_field_value('product_id')))) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-control', 'options'=>get_product_options(true, $liveform->get_field_value('product_id')))) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
-                                                <div class="col-12 col-md-8 col-lg-6 my-2" id="url_row"' . $output_url_row_style . '>
+                                                <div class="col-12 md:col-8 lg:col-6 my-3" id="url_row"' . $output_url_row_style . '>
                                                     <label for="url" class="form-label">' . lang('Destination URL') . '</label>
                                                     ' . $liveform->output_field(array('type'=>'text', 'name'=>'url', 'id'=>'url', 'class'=>'form-control', 'maxlength'=>pg_short_link_url_max(), 'placeholder' => lang('Enter URL that visitor should be redirected to'))) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                     <div class="form-text">' . lang('With a * in the name, $1 to $9 put here what each * matched, after the host name.') . '</div>
                                                 </div>
-                                                <div class="col-12 col-md-6 col-lg my-2" id="tracking_code_row"' . $output_tracking_code_row_style . '>
+                                                <div class="col-12 md:col-6 lg:col my-3" id="tracking_code_row"' . $output_tracking_code_row_style . '>
                                                     <label for="tracking_code" class="form-label">' . lang('Tracking Code') . '</label>
                                                     ' . $liveform->output_field(array('type'=>'text', 'name'=>'tracking_code', 'id'=>'tracking_code', 'class'=>'form-control', 'maxlength'=>'100')) . '
                                                 </div>
-                                                <div class="col-12 col-md-6 col-lg-4 my-2" id="file_row"' . $output_file_row_style . '>
+                                                <div class="col-12 md:col-6 lg:col-4 my-3" id="file_row"' . $output_file_row_style . '>
                                                      <label for="file" class="form-label">' . lang('File') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'file', 'id'=>'file', 'class'=>'form-select', 'options'=>get_file_options($design=true, $short_link['file_id']))) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'file', 'id'=>'file', 'class'=>'form-control', 'options'=>get_file_options($design=true, $short_link['file_id']))) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                             </div>
@@ -355,11 +355,11 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . (pg_short_link_recycle_ready() ? lang('This short link will be moved to the Recycle Bin.') : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('short link'))))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . (pg_short_link_recycle_ready() ? lang('This short link will be moved to the Recycle Bin.') : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('short link'))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
