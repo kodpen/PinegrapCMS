@@ -28,9 +28,9 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 5. Conversion (answer 2): in the 2026.11.0 upgrade every row becomes a converted anchor, its id and every parity row kept. Schema approved (#2396).
    - 5a done (#2558, workspace-flows-converted-anchor.md). 5b: convert rows, edit path.
 
-## Which questions are answered? (owner, 2026-10-24: 1 no, 2 c, 3 a; 7 and 8 on 2026-10-27)
+## Which questions are answered? (owner: 1 no, 3 a on 2026-10-24; 2 b, 7 and 8 on 2026-10-27)
 1. Scheduled messages too? → no, staff's actions only; messages stay in the composer and their list.
-2. End → b (owner, 2026-10-27, was c opt-in per action): every part a box, all converted in the 2026.11.0 upgrade, form retired; Flows the one entry.
+2. End → b (was c, opt-in per action): every part a box, all converted in the 2026.11.0 upgrade, form retired; Flows the one entry.
 3. Who edits and runs a moved action → any staff, as today.
 4. Card, note strip, decision reply → kept where written.
 5. History of a converted action → kept: a flow run writes its outcome to the anchor's `ws_scheduled_runs` row, boxes go at 30 days.
