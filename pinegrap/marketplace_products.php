@@ -324,7 +324,9 @@ function mp_products_status_label($status) {
 		'InCatalogApproval' => lang('In catalogue approval'),
 		'CatalogRejected'   => lang('Rejected from the catalogue'),
 		'Prohibited'        => lang('Prohibited'),
-		'Unlisted'          => lang('Over the listing limit')
+		'Unlisted'          => lang('Over the listing limit'),
+		// n11 ships it from its own warehouse and keeps its stock.
+		'N11_Warehouse'     => lang('Shipped from the n11 warehouse')
 	);
 
 	$words = array();
