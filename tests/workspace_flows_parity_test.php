@@ -2439,6 +2439,7 @@ function workspace_flows_parity_table()
 			array(array('change'), 3, 'change box (steps.php)'),
 			array(array('approval'), 3, 'approval box, the flows\' own'),
 			array(array('checkin'), 3, 'check-in box (steps.php)'),
+			array(array('lead'), 3, 'lead box (steps.php): a submitted form\'s customer into a channel, reused or opened with the New customer template'),
 		),
 		'step_options' => array(
 			array(array('post.channel_id'), 3, 'post box: a channel, or the channel joined (-1)'),
@@ -2459,6 +2460,7 @@ function workspace_flows_parity_table()
 			array(workspace_flows_parity_prefixed('change', 'record action id fields'), 3, 'change box: kind, update or delete, record, fields'),
 			array(workspace_flows_parity_prefixed('approval', 'channel_id title text approvers rule'), 3, 'approval box: channel, title, text, people asked, rule'),
 			array(workspace_flows_parity_prefixed('checkin', 'channel_id question'), 3, 'check-in box: channel, question'),
+			array(workspace_flows_parity_prefixed('lead', 'private user_ids'), 3, 'lead box: a private channel, the people put in a channel it opens'),
 		),
 		'step_option_values' => array(
 			array(array('web_check.mode=status'), 3, 'web check box: the answer (redirect, contains, slowest answer)'),
@@ -2503,6 +2505,7 @@ function workspace_flows_parity_table()
 			array(array('WS_SCHEDULED_MIN_MINUTES=5'), 3, 'schedule trigger box: every 5 minutes at the most'),
 			array(array('WS_SCHEDULED_MAX_RECIPIENTS=20'), 3, 'email box and report box: 20 addresses'),
 			array(array('WS_SCHEDULED_LOCK=600'), 3, 'anchor: a run holds it 10 minutes (running_at)'),
+			array(array('WS_SCHEDULED_LEAD_HOURLY=20'), 3, 'lead box: at most 20 customer channels opened an hour by the owner'),
 			array(array('WS_SCHEDULED_BATCH=5'), 3, 'driver: ws_scheduled_run() takes 5 anchors a request by default (ws_tick, job.php); the Workspace job asks for 20 (see starts)'),
 		),
 		'caps' => array(
@@ -2530,6 +2533,7 @@ function workspace_flows_parity_table()
 			array(array('WS_SCHEDULED_CHAIN_HOURLY in ws_scheduled_joined'), 3, 'join trigger box: 60 starts an hour'),
 			array(array('WS_SCHEDULED_CHAIN_HOURLY in ws_scheduled_start'), 3, 'start box: 60 starts an hour'),
 			array(array('WS_SCHEDULED_MAX_FOLLOW in ws_scheduled_input'), 3, 'at most 5 outcome arrows'),
+			array(array('WS_SCHEDULED_LEAD_HOURLY in ws_scheduled_lead'), 3, 'lead box: no channel opened over the hour\'s cap; one reused is not held'),
 			array(array('WS_SCHEDULED_CHAIN_DEPTH in ws_scheduled_js_config', 'WS_SCHEDULED_MAX_FOLLOW in ws_scheduled_js_config'), 'form', 'what the form tells about the limits; the canvas has its own (WS_FLOW_*)'),
 			array(array('WS_SCHEDULED_MAX_FOLLOW in ws_api_scheduled_body_params'), 'form', 'what the API\'s create and change routes tell about the limit; a flow\'s routes have their own (WS_FLOW_*)'),
 			array(array('ws_event_depth in ws_scheduled_execute'), 3, 'depth through flow runs: a run hands its depth to the events it causes'),
