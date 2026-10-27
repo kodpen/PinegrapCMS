@@ -22,6 +22,6 @@ description: Which includes/fn/ module holds which kind of function (core, auth,
 - `system_status`: the status card and checks, cache clearing, file integrity, write permissions, changelog, table repair.
 - `image` (image processing), `parasut` (Paraşüt), `update` (update channel, cURL TLS, archive extraction).
 - Added in 2026.4.8 and later (`errors`, `mail_queue`, `backup`, `consent`, `privacy`, `audit`, `comments`, the `widgets_lists*` family ...): [[fn-modules]], generated from the `module:` field of the memory file that describes each. A new module goes there the same way, never as a line here.
-- `includes/explorer/` (not `fn/`): groups moved out of `view_folder_and_files_f.php` (`plans/refactor-candidates.md` item 7).
+- `includes/explorer/` (not `fn/`): groups moved out of `view_folder_and_files_f.php` (`plans/refactor-candidates.md` item 7); `handle_*.php`: sub-actions of `pg_explorer_handle()`.
 
 Related: docs/memory/core/functions-php-split-rules.md
