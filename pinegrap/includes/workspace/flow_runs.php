@@ -94,6 +94,9 @@ define('WS_FLOW_APPROVAL_WAIT', 'workspace.approval.decided');
 /** The longest a delay box waits, in minutes: a scheduled action's start delay (a week). */
 define('WS_FLOW_DELAY_MAX', 10080);
 
+/** The longest a task box waits before it leaves on timeout, in hours: as long as an approval waits for its decision (30 days). */
+define('WS_FLOW_TIMEOUT_MAX', 720);
+
 /* ---------------------------------------------------------------------------
    States and the walk (pure)
    --------------------------------------------------------------------------- */
@@ -400,6 +403,93 @@ function ws_flow_task_settlement($task_status, $cancel_routed)
     }
 
     return array('status' => '', 'outcome' => '', 'reason' => '');
+}
+
+/**
+ * The hours a task box waits for its task before it leaves on timeout
+ * (its timeout setting), 0 for no timeout.
+ *
+ * @param array $config the box's settings
+ * @return int
+ */
+function ws_flow_timeout_hours($config)
+{
+    $hours = $config['timeout'] ?? '';
+
+    return (is_int($hours) && ($hours > 0)) ? min(WS_FLOW_TIMEOUT_MAX, $hours) : 0;
+}
+
+/**
+ * The moment a task box runs out: so many hours after it began (its claim),
+ * 0 for a box without a timeout or without a known start.
+ *
+ * @param array $config the box's settings
+ * @param int   $since  when the box began
+ * @return int
+ */
+function ws_flow_timeout_at($config, $since)
+{
+    $hours = ws_flow_timeout_hours($config);
+
+    return (($hours > 0) && ((int) $since > 0)) ? (int) $since + $hours * 3600 : 0;
+}
+
+/**
+ * The next look of a waiting box: in WS_FLOW_RECHECK seconds, or at its
+ * deadline when that comes sooner (at once when it has passed).
+ *
+ * @param int $now
+ * @param int $timeout_at ws_flow_timeout_at(), 0 for none
+ * @return int
+ */
+function ws_flow_timeout_next_look($now, $timeout_at)
+{
+    $next = (int) $now + WS_FLOW_RECHECK;
+
+    return ((int) $timeout_at > 0) ? max((int) $now, min($next, (int) $timeout_at)) : $next;
+}
+
+/**
+ * Has a box's deadline come?
+ *
+ * @param int $timeout_at ws_flow_timeout_at(), 0 for none
+ * @param int $now
+ * @return bool
+ */
+function ws_flow_timed_out($timeout_at, $now)
+{
+    return ((int) $timeout_at > 0) && ((int) $now >= (int) $timeout_at);
+}
+
+/**
+ * How a task box whose deadline came settles: done on timeout where an arrow
+ * leaves it on timeout, failed where none does (the run fails), as a
+ * cancelled task fails a box without an arrow on cancelled.
+ *
+ * @param bool $routed an arrow leaves the box on timeout
+ * @return array status, outcome
+ */
+function ws_flow_timeout_settlement($routed)
+{
+    return array('status' => $routed ? 'done' : 'failed', 'outcome' => 'timeout');
+}
+
+/**
+ * The publish problems of a task box's timeout: an arrow on timeout from a
+ * box that never runs out would never be followed.
+ *
+ * @param array  $config the box's settings
+ * @param string $name   the box's name
+ * @param bool   $routed an arrow leaves the box on timeout
+ * @return string[]
+ */
+function ws_flow_timeout_problems($config, $name, $routed)
+{
+    if ($routed && (ws_flow_timeout_hours($config) === 0)) {
+        return array(lang(array('string' => 'An arrow leaves the task box {var:1} on timeout, but the box has no timeout.', 'vars' => $name)));
+    }
+
+    return array();
 }
 
 /**
@@ -2073,7 +2163,8 @@ function ws_flow_step_task_find($owner, $run_id, $title, $marker, $since)
  * opened, and looks at it at once when it finds it: the task may have been
  * finished meanwhile, and the event that said so woke no box. A run
  * cancelled while the box was on its way opens no task; one cancelled while
- * the task was being opened keeps its id on the box.
+ * the task was being opened keeps its id on the box. A box with a timeout
+ * says in its result when it runs out; its next look is no later than that.
  *
  * @param array $run
  * @param array $flow
@@ -2125,12 +2216,16 @@ function ws_flow_step_task($run, $flow, $step, $node, $owner)
         $unassigned = $people['unassigned'];
     }
 
-    $text = lang(array('string' => 'task {var:1} “{var:2}” opened', 'vars' => array(ws_task_number($task_id), $title)))
-        . ($unassigned ? ' · ' . lang('with nobody on it: the people it was meant for could not be given it') : '');
+    // Counted from the claim this request made a moment ago, which the
+    // look counts from too (claimed_at).
     $now = time();
+    $timeout_at = ws_flow_timeout_at($config, $now);
+    $text = lang(array('string' => 'task {var:1} “{var:2}” opened', 'vars' => array(ws_task_number($task_id), $title)))
+        . ($unassigned ? ' · ' . lang('with nobody on it: the people it was meant for could not be given it') : '')
+        . (($timeout_at > 0) ? ' · ' . lang(array('string' => 'leaves on timeout at {var:1}', 'vars' => ws_scheduled_moment($timeout_at))) : '');
 
     db("UPDATE ws_flow_run_steps SET effect = 'task:" . $task_id . "', status = 'waiting',
-            wait_event = '" . e(WS_FLOW_TASK_WAIT) . "', wait_key = 'task:" . $task_id . "', wake_at = '" . ($adopted ? $now : $now + WS_FLOW_RECHECK) . "',
+            wait_event = '" . e(WS_FLOW_TASK_WAIT) . "', wait_key = 'task:" . $task_id . "', wake_at = '" . ($adopted ? $now : ws_flow_timeout_next_look($now, $timeout_at)) . "',
             result = '" . e(ws_flow_result_pack($text, array('task_id' => $task_id))) . "'
         WHERE id = '" . (int) $step['id'] . "' AND status = 'running'");
 
@@ -2156,9 +2251,12 @@ function ws_flow_step_task($run, $flow, $step, $node, $owner)
 
 /**
  * A waiting box looks at its task: done, cancelled or gone settles it
- * (ws_flow_task_settlement()); still open, it goes on waiting. The task's
- * state now is what counts, not what an event said about it. A box of a run
- * that ended is let go.
+ * (ws_flow_task_settlement()); still open past the box's timeout
+ * (ws_flow_timeout_at(), counted from its claim), it leaves on timeout
+ * (ws_flow_timeout_settlement()) and the task stays open; still open before
+ * it, it goes on waiting. The task's state now is what counts, not what an
+ * event said about it, and a task that ended counts before the deadline. A
+ * box of a run that ended is let go.
  *
  * @param array $step ws_flow_run_steps row, waiting
  * @return bool whether this request settled it
@@ -2187,14 +2285,37 @@ function ws_flow_step_recheck($step)
     }
 
     $task = ws_task($task_id);
-    $routed = ws_flow_outcome_routed(ws_flow_run_graph($run), $step['node_id'], 'cancelled');
+    $graph = ws_flow_run_graph($run);
+    $routed = ws_flow_outcome_routed($graph, $step['node_id'], 'cancelled');
     $settled = ws_flow_task_settlement($task ? (string) $task['status'] : null, $routed);
-
-    if ($settled['status'] === '') {
-        return false;
-    }
-
     $number = ws_task_number($task_id);
+
+    // The task still open: the box runs out at its deadline, or goes on
+    // waiting with its next look no later than it. Both ends go through
+    // ws_flow_step_settle(), whose write holds only while the box waits, so
+    // a task finished at that moment and the deadline never both settle it.
+    if ($settled['status'] === '') {
+        $node = ws_flow_graph_node($graph, $step['node_id']);
+        $timeout_at = $node ? ws_flow_timeout_at($node['config'] ?? array(), (int) $step['claimed_at']) : 0;
+        $now = time();
+
+        if (!ws_flow_timed_out($timeout_at, $now)) {
+            if ($timeout_at > 0) {
+                db("UPDATE ws_flow_run_steps SET wake_at = '" . ws_flow_timeout_next_look($now, $timeout_at) . "'
+                    WHERE id = '" . (int) $step['id'] . "' AND status = 'waiting' AND wake_at > '" . (int) $timeout_at . "'");
+            }
+
+            return false;
+        }
+
+        $timeout = ws_flow_timeout_settlement(ws_flow_outcome_routed($graph, $step['node_id'], 'timeout'));
+        $hours = ws_flow_timeout_hours($node['config']);
+        $text = ($timeout['status'] === 'done')
+            ? lang(array('string' => 'Task {var:1} was not finished within {var:2} hours; it stays open.', 'vars' => array($number, $hours)))
+            : lang(array('string' => 'Task {var:1} was not finished within {var:2} hours, and no arrow leaves the box on timeout; it stays open.', 'vars' => array($number, $hours)));
+
+        return ws_flow_step_settle($step, 'waiting', $timeout['status'], $timeout['outcome'], $text, array('task_id' => $task_id));
+    }
 
     switch ($settled['reason']) {
         case 'done':

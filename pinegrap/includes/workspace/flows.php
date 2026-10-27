@@ -96,7 +96,7 @@ function ws_flow_kinds()
 {
     $kinds = array(
         'manual' => array('label' => lang('Started by hand'), 'trigger' => true, 'outcomes' => array('next'), 'step' => false, 'outputs' => array()),
-        'task'   => array('label' => lang('Task'), 'trigger' => false, 'outcomes' => array('done', 'cancelled'), 'step' => false,
+        'task'   => array('label' => lang('Task'), 'trigger' => false, 'outcomes' => array('done', 'cancelled', 'timeout'), 'step' => false,
             'outputs' => array(array('key' => 'task_id', 'type' => 'number', 'label' => lang('Task')))),
         'end'    => array('label' => lang('End'), 'trigger' => false, 'outcomes' => array(), 'step' => false, 'outputs' => array()),
     );
@@ -233,7 +233,9 @@ function ws_flow_lines($value, $length)
  * manual: subject ('' or a kind of record a run is about)
  * task:   title, description, assignees (up to 20 user ids) or assign (a
  *         rule of ws_template_assign_valid(), 'creator' being whoever starts
- *         the run), due_in ('' or 0-3650 days), priority
+ *         the run), due_in ('' or 0-3650 days), priority, timeout ('' for
+ *         none, else 1 to WS_FLOW_TIMEOUT_MAX hours: the box leaves on
+ *         timeout when its task is still open by then)
  * condition: ws_flow_condition_normalize()
  * delay: ws_flow_delay_normalize()
  * schedule, event, join: ws_flow_anchor_normalize()
@@ -264,6 +266,7 @@ function ws_flow_config_normalize($kind, $config)
 
             $due_in = $config['due_in'] ?? '';
             $priority = ws_flow_text($config['priority'] ?? '');
+            $timeout = $config['timeout'] ?? '';
 
             return array(
                 'title'       => ws_flow_line($config['title'] ?? '', 200),
@@ -272,6 +275,7 @@ function ws_flow_config_normalize($kind, $config)
                 'assign'      => ws_flow_line($config['assign'] ?? '', 40),
                 'due_in'      => (is_bool($due_in) || !is_numeric($due_in)) ? '' : max(0, min(3650, (int) $due_in)),
                 'priority'    => in_array($priority, array('low', 'normal', 'high', 'urgent'), true) ? $priority : 'normal',
+                'timeout'     => (is_bool($timeout) || !is_numeric($timeout)) ? '' : max(1, min(defined('WS_FLOW_TIMEOUT_MAX') ? WS_FLOW_TIMEOUT_MAX : 720, (int) $timeout)),
             );
 
         case 'condition':
@@ -461,6 +465,12 @@ function ws_flow_graph_check($graph)
                 $problems[] = ws_flow_problem('bad_config', $id, null, lang(array('string' => 'The task box {var:1} names both people and a rule for whom it goes to; keep one of the two.', 'vars' => $name)));
             } elseif (($config['assign'] !== '') && !ws_template_assign_valid($config['assign'])) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, lang(array('string' => 'The task box {var:1} has a rule for whom it goes to that the flow does not know.', 'vars' => $name)));
+            }
+
+            if (function_exists('ws_flow_timeout_problems')) {
+                foreach (ws_flow_timeout_problems($config, $name, ws_flow_outcome_routed($graph, $id, 'timeout')) as $text) {
+                    $problems[] = ws_flow_problem('bad_config', $id, null, $text);
+                }
             }
         }
 
@@ -1760,6 +1770,10 @@ function ws_flow_js_strings()
         'fl_on_rejected'      => lang('Rejected'),
         'fl_on_expired'       => lang('Expired'),
         'fl_on_withdrawn'     => lang('Closed without a decision'),
+        'fl_on_timeout'       => lang('Not done in time'),
+        'fl_timeout'          => lang('Timeout (hours)'),
+        'fl_timeout_help'     => lang('Empty to wait as long as it takes; at most 720 hours (30 days). Still open by then, the box leaves on Not done in time and the task stays open.'),
+        'fl_timeout_meta'     => ws_js_template('{var:1} · timeout {var:2} h', 2),
         'fl_approval_channel' => lang('Channel to ask in'),
         'fl_approval_no_channel' => lang('No channel to ask in'),
         'fl_approval_who'     => lang('People asked to approve'),

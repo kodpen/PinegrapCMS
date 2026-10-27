@@ -111,7 +111,7 @@
         schedule: { icon: 'bi-clock', name: 'fl_kind_schedule', into: false, out: ['next'] },
         event: { icon: 'bi-lightning', name: 'fl_kind_event', into: false, out: ['next'] },
         join: { icon: 'bi-person-plus', name: 'fl_kind_join', into: false, out: ['next'] },
-        task: { icon: 'bi-check2-square', name: 'fl_kind_task', into: true, out: ['done', 'cancelled'] },
+        task: { icon: 'bi-check2-square', name: 'fl_kind_task', into: true, out: ['done', 'cancelled', 'timeout'] },
         post: { icon: 'bi-chat-left-text', name: 'fl_kind_post', into: true, out: ['done', 'failed'] },
         email: { icon: 'bi-envelope', name: 'fl_kind_email', into: true, out: ['done', 'failed'] },
         notify: { icon: 'bi-bell', name: 'fl_kind_notify', into: true, out: ['done', 'failed'] },
@@ -140,7 +140,8 @@
         approved: 'fl_on_approved',
         rejected: 'fl_on_rejected',
         expired: 'fl_on_expired',
-        withdrawn: 'fl_on_withdrawn'
+        withdrawn: 'fl_on_withdrawn',
+        timeout: 'fl_on_timeout'
     };
 
     // What a share lets its holder do (ws_flow_share_levels()), lowest first.
@@ -446,7 +447,9 @@
             var people = (config.assignees || []).map(function (id) { return person(id) ? person(id).name : '#' + id; });
             var who = people.length ? ((people.length > 2) ? t('fl_people_more', people.slice(0, 2).join(', '), people.length - 2) : people.join(', ')) : ruleLabel(config.assign);
 
-            return ((config.due_in === '') || (config.due_in === undefined) || (config.due_in === null)) ? who : t('fl_due_meta', who, config.due_in);
+            var meta = ((config.due_in === '') || (config.due_in === undefined) || (config.due_in === null)) ? who : t('fl_due_meta', who, config.due_in);
+
+            return (config.timeout > 0) ? t('fl_timeout_meta', meta, config.timeout) : meta;
         }
 
         if (node.kind === 'post') {
@@ -2139,6 +2142,21 @@
         });
         box.appendChild(field(t('fl_due_in'), due, t('fl_due_help')));
 
+        // Hours the box waits for its task before it leaves on timeout
+        // (ws_flow_timeout_hours()); the task itself stays open.
+        var timeout = el('input', 'form-control form-control-sm wsf-number');
+
+        timeout.type = 'number';
+        timeout.min = '1';
+        timeout.max = '720';
+        timeout.step = '1';
+        timeout.value = (config.timeout === '' || config.timeout === undefined || config.timeout === null) ? '' : String(config.timeout);
+        timeout.addEventListener('input', function () {
+            config.timeout = (timeout.value === '') ? '' : clamp(parseInt(timeout.value, 10) || 1, 1, 720);
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_timeout'), timeout, t('fl_timeout_help')));
+
         var priorities = BOOT.priorities || {};
         var priority = K.select(Object.keys(priorities).map(function (key) { return [key, priorities[key]]; }), config.priority || 'normal');
 
@@ -3560,7 +3578,7 @@
         var config = {};
 
         if (kind === 'task') {
-            config = { title: '', description: '', assignees: [], assign: 'creator', due_in: '', priority: 'normal' };
+            config = { title: '', description: '', assignees: [], assign: 'creator', due_in: '', priority: 'normal', timeout: '' };
         } else if (kind === 'manual') {
             config = { subject: '' };
         } else if (kind === 'post') {

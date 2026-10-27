@@ -1042,8 +1042,12 @@ function ws_flow_box_try($viewer, $flow, $data)
         case 'task':
             $title = ws_step_fill_nodes((string) ($node['config']['title'] ?? ''), $values);
 
+            $hours = function_exists('ws_flow_timeout_hours') ? ws_flow_timeout_hours($node['config']) : 0;
+
             return array(
-                'said'  => lang(array('string' => 'Opens the task “{var:1}” and waits until it is done or cancelled.', 'vars' => $title)),
+                'said'  => ($hours > 0)
+                    ? lang(array('string' => 'Opens the task “{var:1}” and waits until it is done or cancelled, at most {var:2} hours.', 'vars' => array($title, $hours)))
+                    : lang(array('string' => 'Opens the task “{var:1}” and waits until it is done or cancelled.', 'vars' => $title)),
                 'texts' => array(array('key' => 'title', 'text' => $title)),
                 'empty' => ws_step_fill_missing((string) ($node['config']['title'] ?? ''), $values),
             ) + $answer;
