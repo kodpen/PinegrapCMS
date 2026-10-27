@@ -345,7 +345,7 @@
             document.body.appendChild(toastRoot);
         }
 
-        var box = el('div', 'toast align-items-center border-0 show text-bg-' + (kind || 'dark'));
+        var box = el('div', 'toast align-items-center border-0 text-bg-' + (kind || 'dark'));
         box.setAttribute('role', 'status');
 
         var row = el('div', 'd-flex');
@@ -361,12 +361,23 @@
         row.appendChild(text);
 
         var close = button('btn-close fg-white me-3 m-auto', '', '', t('close'));
-        close.addEventListener('click', function () { box.remove(); });
+        close.setAttribute('data-bs-dismiss', 'toast');
         row.appendChild(close);
         box.appendChild(row);
         toastRoot.appendChild(box);
 
-        setTimeout(function () { box.remove(); }, 5000);
+        // Bootstrap's Toast: hides after five seconds, pauses while hovered
+        // or focused, and the close button dismisses it.
+        var instance = window.pgUI ? pgUI.toast.get(box, { delay: 5000 }) : null;
+
+        if (instance) {
+            pgUI.toast.on(box, 'hidden', function () { box.remove(); });
+            instance.show();
+        } else {
+            box.classList.add('show');
+            close.addEventListener('click', function () { box.remove(); });
+            setTimeout(function () { box.remove(); }, 5000);
+        }
     }
 
     function fail(error) {

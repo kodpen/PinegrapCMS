@@ -16,6 +16,7 @@ description: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped fo
 - B9j Avatar (57 sites), text initials in theme colours: `ws_people()`, chat and widget sources return initials and a tone index (8 `theme-*`); presence dot; no `src=""`. `pg_initials_avatar_url()` stays for e-mail, PDF, print. `.avatar-stack` is row-reverse. Slice U2 of `workspace-friendly-ui.md`.
 
 ## What did research add (B9k, not owner decisions)?
+- Slice 1 done (#2273): `.ws-cb-progress-bar` to `.progress`, `.pg-chip` to `.chip`, the workspace toast to Toast (`ui/bootstrap-6-own-widget-swaps.md`).
 - Only where screenshots show no change, else in B11: own theme tokens and focus ring to v6 tokens, `.btn-ghost` (285) to `.btn-text.theme-secondary`, own toasts to Toast, `.pg-chip` to `.chip`, pills and `.ws-chip` to `.badge-subtle`, role cards to `form-field-card`, status choice to `label.btn-check.btn-subtle`, `.ws-cb-progress-bar` to `.progress`.
 
 ## What stays as it is?

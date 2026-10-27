@@ -86,7 +86,7 @@ if (!$_POST) {
         foreach ($pg_settings_category['sections'] as $pg_settings_section_id => $pg_settings_section_label) {
 
             $pg_settings_chips .=
-                '<a class="pg-chip" href="#' . h($pg_settings_section_id) . '" data-pgset="' . h($pg_settings_section_id) . '">'
+                '<a class="chip" href="#' . h($pg_settings_section_id) . '" data-pgset="' . h($pg_settings_section_id) . '">'
                 . h($pg_settings_section_label) . '</a>';
         }
     }

@@ -423,9 +423,13 @@
 
         if (item.progress) {
             var share = k.el('span', 'ws-cb-progress');
-            var bar = k.el('span', 'ws-cb-progress-bar');
-            var fill = k.el('span');
+            var bar = k.el('span', 'progress ws-cb-progress-bar');
+            var fill = k.el('span', 'progress-bar');
 
+            bar.setAttribute('role', 'progressbar');
+            bar.setAttribute('aria-valuemin', '0');
+            bar.setAttribute('aria-valuemax', '100');
+            bar.setAttribute('aria-valuenow', String(item.progress.percent));
             fill.style.width = item.progress.percent + '%';
             bar.appendChild(fill);
             share.appendChild(bar);
