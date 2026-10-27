@@ -24,6 +24,7 @@ description: Generated from the module field of the memory files: each includes/
 - `prototype`: [[designer-prototype-viewer]]
 - `prototype_links`: [[designer-prototype-share-links]]
 - `reviews`: [[product-reviews-verified]]
+- `shipment_lookup`: [[guest-shipment-lookup]]
 - `stock_notify`: [[back-in-stock-notices]]
 - `widgets_attrs`: [[widget-attr-bindings]]
 - `widgets_billing_information`: [[billing-information-widget]]

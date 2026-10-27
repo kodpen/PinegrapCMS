@@ -48,6 +48,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - form-fields-zero-id-query-trap.md: Product-form reads must pin form_type = 'product' (template rows have page_id and product_id 0); the deleted-product receipt bug and the empty-id rule.
 - gift-card-balance-edit.md: The gift card screen (edit_gift_card.php) writes the balance only when it was changed there, and only over the balance it opened with; why, and what a stale save sees
 - givex-gift-card.md: How Givex gift card replies are read (pg_givex_parse_response), what an unreadable reply does at apply, at the submit check and at redemption, and how to test Givex without the real service.
+- guest-shipment-lookup.md: Guest parcel lookup (track_shipment.php, PR #2116): order number + billing e-mail, neutral not-found answer, shipping fields only, 10 lookups/hour per address in waf_rate, how operators place it
 - iyzipay-sdk-php71-patch.md: includes/iyzipay-php (iyzico SDK 2.0.59, asks for PHP 7.4) patched for 7.1: typed properties dropped, \stdClass in the refund mapper; why, what is left, what an SDK update re-applies
 - key-code-import.md: Key code CSV import (import_key_codes.php): a code already there is updated, not re-added (a used single-use code stays used); BOM, separator, dates, yes/no cells
 - marketplace-api-and-events.md: GET /products/{id}/marketplaces (manager role only, never credentials) and the marketplace.order.imported, .cancelled and .shipped webhook events: where each is announced and what it carries (#1667)
