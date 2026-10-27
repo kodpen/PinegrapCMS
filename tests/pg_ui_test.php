@@ -6,7 +6,8 @@
  * Bootstrap's JavaScript, run under Node against stand-ins for Bootstrap 5
  * and 6 and a small fake document: the component names, the option mapping,
  * the promises of show and hide, listening to both event names, the dialog
- * markup of each version, the overlay host and the readiness promise.
+ * markup of each version, the overlay host, the readiness promise and the
+ * Range with its value bubble.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -156,8 +157,10 @@ function makeBootstrap(v) {
         b.Dialog = makeComponent('Dialog', 'dialog', true);
         b.Drawer = makeComponent('Drawer', 'drawer', true);
         b.Menu = makeComponent('Menu', 'menu', true);
+        b.Chips = makeComponent('Chips', 'chips', true);
     }
     ['Tooltip', 'Popover', 'Collapse', 'Tab', 'Toast'].forEach(function (n) { b[n] = makeComponent(n, n.toLowerCase(), v === 6); });
+    if (v === 6) { b.Range = makeComponent('Range', 'range', true); }
     return b;
 }
 
@@ -216,6 +219,7 @@ async function main() {
     dlg.className = 'dialog';
     out.v6_ctor = ui6.get('dialog', dlg).name;
     out.v6_menu_ctor = ui6.get('menu', d6.createElement('button')).name;
+    out.chips_ctor = [ui6.get('chips', d6.createElement('div')).name, ui.get('chips', d5.createElement('div'))];
     out.v6_options = ui6.options('tooltip', { popperConfig: { strategy: 'fixed' }, placement: 'auto' });
     out.v6_collapse_options = ui6.options('collapse', { toggle: false, parent: '#a' });
     var v6Types = [];
@@ -233,6 +237,17 @@ async function main() {
         header: parts6.header.className, body: parts6.body.className, footer: parts6.footer,
         dismiss: parts6.close.getAttribute('data-bs-dismiss'), children: parts6.root.children.length
     };
+
+    // Range with the value bubble: v6 only, old wrappers disposed.
+    var r1 = d6.createElement('div'), r2 = d6.createElement('div');
+    var inst1 = await ui6.range.bubble(r1, function (v) { return v + '%'; });
+    r1.isConnected = false;
+    var inst2 = await ui6.range.bubble(r2);
+    out.v6_range = {
+        name: inst1.name, bubble: inst1.opts.bubble, text: inst1.opts.formatter(40),
+        plain_formatter: inst2.opts.formatter, old_disposed: !ui6.range.find(r1), new_kept: ui6.range.find(r2) === inst2
+    };
+    out.v5_range = await ui.range.bubble(d5.createElement('div'));
 
     // No Bootstrap yet: the module bridge announces it later.
     var w0 = load(0);
@@ -273,6 +288,7 @@ function test_pg_ui_names_and_options()
 	pg_assert_same(6, $r['v6_version']);
 	pg_assert_same('Dialog', $r['v6_ctor'], 'dialog is Dialog under 6');
 	pg_assert_same('Menu', $r['v6_menu_ctor'], 'menu is Menu under 6');
+	pg_assert_same(array('Chips', null), $r['chips_ctor'], 'chips only under 6');
 	pg_assert_same(array('popperConfig' => array('strategy' => 'fixed')), $r['v5_options'], 'floatingConfig read as popperConfig by 5');
 	pg_assert_same(array('placement' => 'auto', 'floatingConfig' => array('strategy' => 'fixed')), $r['v6_options'], 'popperConfig read as floatingConfig by 6');
 	pg_assert_same(array('parent' => '#a'), $r['v6_collapse_options'], 'v6 Collapse has no toggle option');
@@ -339,4 +355,22 @@ function test_pg_ui_overlay_host_and_ready()
 	pg_assert_same(0, $r['none_version']);
 	pg_assert_same(null, $r['none_get'], 'no instance before Bootstrap is there');
 	pg_assert_true($r['none_ready'], 'ready when the module bridge announces Bootstrap 6');
+}
+
+function test_pg_ui_range_bubble()
+{
+	$r = pg_ui_test_result();
+	if (!is_array($r) || isset($r['error'])) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'name' => 'Range',
+		'bubble' => true,
+		'text' => '40%',
+		'plain_formatter' => null,
+		'old_disposed' => true,
+		'new_kept' => true,
+	), $r['v6_range'], 'Range with the bubble, a detached wrapper disposed');
+	pg_assert_same(null, $r['v5_range'], 'no Range under Bootstrap 5');
 }

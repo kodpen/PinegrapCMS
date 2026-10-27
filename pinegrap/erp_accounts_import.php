@@ -96,12 +96,14 @@ function erp_import_page($liveform, $body, $list_url)
 function erp_import_steps($current)
 {
     $labels = array(1 => lang('Upload'), 2 => lang('Map and preview'), 3 => lang('Result'));
-    $output = '<ol class="list-unstyled d-flex flex-wrap gap-5 mt-7 mb-0 small">';
+    // Bootstrap's stepper colours only .active items: a finished step is
+    // green, the current one takes the primary colour, a later one stays grey.
+    $output = '<ol class="stepper stepper-horizontal mt-7 mb-0">';
 
     foreach ($labels as $number => $label) {
-        $class = ($number === $current) ? 'fw-bold fg-primary' : (($number < $current) ? 'fg-secondary' : 'fg-3');
-        $icon = ($number < $current) ? 'bi-check-circle-fill' : (($number === $current) ? 'bi-' . $number . '-circle-fill' : 'bi-' . $number . '-circle');
-        $output .= '<li class="' . $class . '"><i class="bi ' . $icon . ' me-1"></i>' . h($label) . '</li>';
+        $class = ($number < $current) ? ' active theme-success' : (($number === $current) ? ' active' : '');
+        $current_attribute = ($number === $current) ? ' aria-current="step"' : '';
+        $output .= '<li class="stepper-item' . $class . '"' . $current_attribute . '>' . h($label) . '</li>';
     }
 
     return $output . '</ol>';

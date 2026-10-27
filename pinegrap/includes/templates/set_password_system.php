@@ -30,7 +30,7 @@ if (!defined('PG_INIT_LOADED')) {
 		<?php endif ?>
 		<tr>
 			<td><label for="new_password">Password*:</label></td>
-			<td><input type="password" name="new_password" id="new_password" class="software_input_password"></td>
+			<td><input type="password" name="new_password" id="new_password" class="software_input_password"><?php if (!empty($strength_meter)): ?><?=$strength_meter?><?php endif ?></td>
 		</tr>
 		<?php if (PASSWORD_HINT): ?>
 		<tr>

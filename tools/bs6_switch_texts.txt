@@ -858,7 +858,7 @@ the top layer, above a picker hung off <body> whatever its z-index.
 
 @@ assets/js/pg_fields.js
 <<<
-    function removeTaginWrapper(el) {
+    // The posted input's own classes the chip box takes over: its borders,
 ===
     // The jQuery UI picker's one box moves into the field's overlay host each
     // time it opens (the open dialog holding the field, else <body>); a
@@ -882,7 +882,7 @@ the top layer, above a picker hung off <body> whatever its z-index.
         return copy;
     }
 
-    function removeTaginWrapper(el) {
+    // The posted input's own classes the chip box takes over: its borders,
 >>>
 
 @@ assets/js/pg_fields.js

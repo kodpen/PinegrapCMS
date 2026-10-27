@@ -4685,10 +4685,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
                                     <div class="col-12 lg:col-3 my-3">
                                         <label for="price" class="form-label">' . lang('Unit Price') . '</label>
-                                        <div class="input-group">
-                                            <input value="' . h($v('price', '0')) . '" type="text" name="price" id="price" class="form-control" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
-                                            <label class="input-group-text" for="price">' . BASE_CURRENCY_SYMBOL . '</label>
-                                        </div>
+                                        <label class="form-control form-adorn form-adorn-end">
+                                            <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                            <input value="' . h($v('price', '0')) . '" type="text" name="price" id="price" class="form-ghost" maxlength="12" inputmode="decimal" inputmask=""' . pg_money_mask_html() . ' style="text-align:right;" />
+                                        </label>
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Starting price for every variant; each row can differ.') . '</div>
                                     </div>
 

@@ -66,6 +66,20 @@ function ws_avatar_url($row)
 }
 
 /**
+ * A person's letters and the tone they are drawn in (includes/fn/contacts.php),
+ * for the panel's Avatar; the same seed as their picture of letters.
+ *
+ * @param array $row first_name, last_name, username, id
+ * @return array initials, tone
+ */
+function ws_avatar_letters($row)
+{
+    $initials = function_exists('pg_initials') ? pg_initials($row['first_name'] ?? '', $row['last_name'] ?? '', $row['username'] ?? '') : '?';
+
+    return function_exists('pg_avatar_letters') ? pg_avatar_letters($initials, (string) ($row['id'] ?? '')) : array('initials' => $initials, 'tone' => 0);
+}
+
+/**
  * What a person's picture is: their own (photo), the letters of their name
  * in the address book (contact), or the letters of a login that has no name
  * yet (user) - drawn as a square, so the missing name shows.
@@ -149,7 +163,7 @@ function ws_person_brief($row)
         'avatar'   => ws_avatar_url($row),
         'avatar_kind' => ws_avatar_kind($row),
         'presence' => ws_presence($row['online_timestamp'] ?? 0),
-    );
+    ) + ws_avatar_letters($row);
 }
 
 /**
@@ -263,6 +277,8 @@ function ws_people($user_ids)
                     'title'    => '',
                     'avatar'   => function_exists('pg_initials_avatar_url') ? pg_initials_avatar_url('?', 'user') : PATH . SOFTWARE_DIRECTORY . '/assets/images/person1.png',
                     'avatar_kind' => 'user',
+                    'initials' => '?',
+                    'tone'     => 0,
                     'presence' => 'offline',
                     // No account behind it any more: nothing to open.
                     'gone'     => true,

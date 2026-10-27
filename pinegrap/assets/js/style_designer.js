@@ -42,6 +42,11 @@ const StyleDesigner = (function () {
         return out;
     }
 
+    // The text of a percent slider's value bubble (pgUI.range.bubble()).
+    function _sdPercent(value) {
+        return value + '%';
+    }
+
     // Locale for Date#toLocaleString: the panel's <html lang>, or the
     // browser default when the page does not declare one.
     function _sdLocale() {
@@ -43557,9 +43562,8 @@ const StyleDesigner = (function () {
         var pct = pctMatch ? Math.round(parseFloat(pctMatch[1])) : 50;
 
         return sect('bi-bar-chart-steps', _sdT('Progress Bar'),
-            row(_sdT('Value'), '<div class="d-flex align-items-center gap-3">' +
-                '<input type="range" class="form-range flex-grow-1" min="0" max="100" value="' + pct + '" data-pb-value>' +
-                '<span class="sd-pb-pct-lbl" style="min-width:2.5rem;font-size:.75rem;text-align:right">' + pct + '%</span>' +
+            row(_sdT('Value'), '<div class="form-range pg-range-bubble">' +
+                '<input type="range" class="form-range-input" min="0" max="100" value="' + pct + '" data-pb-value aria-label="' + esc(_sdT('Value')) + '">' +
                 '</div>') +
             row(_sdT('Color'), colorSel) +
             row(_sdT('Striped'),   swAttr('data-util-toggle="progress-bar-striped"',  isStriped)) +
@@ -46502,8 +46506,9 @@ const StyleDesigner = (function () {
                     '</div>' +
                     '<div class="sd-bcp-mid-row">' +
                         '<span class="sd-bcp-clabel">' + esc(_sdT('Mid')) + '</span>' +
-                        '<input type="range" class="form-range" id="sd-bcp-lin-mid" min="0" max="100" value="' + _grad.mid + '" style="flex:1">' +
-                        '<span class="sd-bcp-mid-val" id="sd-bcp-lin-mid-val">' + _grad.mid + '%</span>' +
+                        '<div class="form-range pg-range-bubble">' +
+                            '<input type="range" class="form-range-input" id="sd-bcp-lin-mid" min="0" max="100" value="' + _grad.mid + '" aria-label="' + esc(_sdT('Mid')) + '">' +
+                        '</div>' +
                     '</div>' +
                     '<div class="sd-bcp-preview" id="sd-bcp-lin-prev" style="background:' + buildGradientStr(Object.assign({}, _grad, {type:'linear'})) + '"></div>' +
                 '</div>' +
@@ -46530,8 +46535,9 @@ const StyleDesigner = (function () {
                     '</div>' +
                     '<div class="sd-bcp-mid-row">' +
                         '<span class="sd-bcp-clabel">' + esc(_sdT('Mid')) + '</span>' +
-                        '<input type="range" class="form-range" id="sd-bcp-rad-mid" min="0" max="100" value="' + _grad.mid + '" style="flex:1">' +
-                        '<span class="sd-bcp-mid-val" id="sd-bcp-rad-mid-val">' + _grad.mid + '%</span>' +
+                        '<div class="form-range pg-range-bubble">' +
+                            '<input type="range" class="form-range-input" id="sd-bcp-rad-mid" min="0" max="100" value="' + _grad.mid + '" aria-label="' + esc(_sdT('Mid')) + '">' +
+                        '</div>' +
                     '</div>' +
                     '<div class="sd-bcp-preview" id="sd-bcp-rad-prev" style="background:' + buildGradientStr(Object.assign({}, _grad, {type:'radial'})) + '"></div>' +
                 '</div>' +
@@ -46980,14 +46986,13 @@ const StyleDesigner = (function () {
                 });
             });
             var linMid = document.getElementById('sd-bcp-lin-mid');
-            var linMidVal = document.getElementById('sd-bcp-lin-mid-val');
             if (linMid) {
+                pgUI.range.bubble(linMid.parentNode, _sdPercent);
                 linMid.addEventListener('input', function() {
                     if (!selectedNode) return;
                     saveState(_sdEditRun('grad:lin-mid'));
                     var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'linear'};
                     g.mid = Number(this.value);
-                    if (linMidVal) linMidVal.textContent = this.value + '%';
                     applyGrad();
                 });
             }
@@ -47037,14 +47042,13 @@ const StyleDesigner = (function () {
                 });
             });
             var radMid = document.getElementById('sd-bcp-rad-mid');
-            var radMidVal = document.getElementById('sd-bcp-rad-mid-val');
             if (radMid) {
+                pgUI.range.bubble(radMid.parentNode, _sdPercent);
                 radMid.addEventListener('input', function() {
                     if (!selectedNode) return;
                     saveState(_sdEditRun('grad:rad-mid'));
                     var g = selectedNode.props._bgGrad = selectedNode.props._bgGrad || {type:'radial'};
                     g.mid = Number(this.value);
-                    if (radMidVal) radMidVal.textContent = this.value + '%';
                     applyGrad();
                 });
             }
@@ -47328,12 +47332,8 @@ const StyleDesigner = (function () {
 
         // Progress bar: value range slider
         document.querySelectorAll('#sd-properties [data-pb-value]').forEach(function(el) {
-            var lbl = el.parentElement ? el.parentElement.querySelector('.sd-pb-pct-lbl') : null;
-            // Live preview while dragging
-            el.addEventListener('input', function() {
-                if (lbl) lbl.textContent = this.value + '%';
-            });
-            // Commit on release
+            // The bubble follows the thumb while dragging; commit on release.
+            pgUI.range.bubble(el.parentNode, _sdPercent);
             el.addEventListener('change', function() {
                 if (!selectedNode) return;
                 saveState();
@@ -47345,7 +47345,6 @@ const StyleDesigner = (function () {
                     if (attrs[i].name === 'aria-valuenow') { attrs[i].value = String(val); }
                 }
                 if (!hasStyle) attrs.push({ name: 'style', value: 'width:' + val + '%' });
-                if (lbl) lbl.textContent = val + '%';
                 renderCanvas();
                 renderAttrsPanel();
                 renderHtmlTree();
