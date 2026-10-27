@@ -7384,41 +7384,76 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
   opacity: 0.8;
 }
 
-/* ══ Dashboard clock ═══════════════════════════════════════════════════════
-   Was a centred display-3 stack that ate a fifth of the fold before the first
-   widget appeared. Left aligned with the grid and set on one baseline, the same
-   three facts cost roughly a third of the height.
+/* ══ Dashboard welcome card ════════════════════════════════════════════════
+   The greeting and the clock are one card at the top of the dashboard, as wide
+   as the widget grid under it and with the same radius and the grid's gap
+   below it. They used to be two loose pieces in a row, the brief on the left
+   and a large clock pushed to the far right, and the empty middle split the
+   row in two.
 
-   On a wide screen the brief and the clock share one row -- the sentence on
-   the left where reading starts, the clock right-aligned at the far end with
-   the next meeting under it -- so the whole bar is about as tall as the brief
-   alone. Narrower, they stack, brief first. */
+   Wide, the brief takes the room on the left and the date and time sit on the
+   right inside the card, vertically centred and set off by a hairline. Narrow,
+   the two stack, brief first, and the time and date share one baseline under
+   a hairline across. */
 .pg-clockbar {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.25rem 0 1.25rem;
+  gap: 0.75rem;
+  margin: 0.25rem 0 2rem;
+  padding: 0.85rem 1rem 0.85rem 1.1rem;
 }
-@media (min-width: 1024px) {
+/* A thin stroke of the clock's gradient down the left edge, inset from the
+   corners so it does not have to follow the radius. Positioned rather than
+   clipped: overflow on the card would also clip the mark's ring. */
+.pg-clockbar::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.75rem;
+  bottom: 0.75rem;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--clock-gradient);
+  pointer-events: none;
+}
+/* The glass card theme lays the widgets over the panel backdrop; the welcome
+   card follows them so it does not read as the one opaque sheet on the page. */
+[data-widget-theme="glass"] .pg-clockbar {
+  background: rgba(255, 255, 255, 0.58);
+}
+html[data-bs-theme="dark"] [data-widget-theme="glass"] .pg-clockbar {
+  background: rgba(255, 255, 255, 0.045);
+}
+.pg-clockbar > .pg-clockbar-now {
+  padding-top: 0.75rem;
+  border-top: 1px solid color-mix(in srgb, var(--pg-border-color) 70%, transparent);
+}
+@media (min-width: 768px) {
   .pg-clockbar {
     flex-direction: row;
     align-items: center;
-    justify-content: space-between;
     gap: 1.5rem;
+    padding: 1rem 1.5rem 1rem 1.25rem;
   }
   .pg-clockbar > .pg-brief {
-    align-self: center;
+    flex: 1 1 auto;
   }
   /* Parent-qualified: the base rules for these two come further down. */
   .pg-clockbar > .pg-clockbar-now {
     flex: 0 0 auto;
+    align-self: stretch;
+    justify-content: center;
     align-items: flex-end;
     max-width: 40%;
+    padding: 0 0 0 1.5rem;
+    border-top: 0;
+    border-left: 1px solid color-mix(in srgb, var(--pg-border-color) 70%, transparent);
     text-align: right;
   }
   .pg-clockbar .pg-clockbar-when {
     flex-direction: column;
     align-items: flex-end;
+    gap: 0.15rem;
   }
 }
 /* The briefing.
@@ -7430,44 +7465,21 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
 
    The sentence is capped at 62ch. Prose set across two thousand pixels is not
    read, it is scanned, and the whole point of writing this as a sentence is
-   that it gets read. The card around it is allowed a little more, for its
-   padding and the mark.
+   that it gets read.
 
-   A quiet card rather than bare text: a translucent surface over the panel
-   backdrop, so the line reads as one object sitting on the page instead of a
-   caption floating above the widgets. Translucent without a blur, for the
-   reason the glass cards give: the wash behind it is too soft for a blur to
-   show, and the filter was redone on every frame of a scroll. */
+   The card around it is the welcome card (.pg-clockbar); the brief itself
+   has no surface of its own. */
 .pg-brief {
   position: relative;
-  align-self: flex-start;
   display: flex;
   align-items: flex-start;
   gap: 0.6rem;
-  max-width: min(100%, 68ch);
-  padding: 0.6rem 0.9rem 0.6rem 0.7rem;
-  border: 1px solid color-mix(in srgb, var(--pg-border-color) 70%, transparent);
-  border-radius: 0.85rem;
-  background: color-mix(in srgb, var(--pg-bg-body) 72%, transparent);
+  min-width: 0;
 }
-html[data-bs-theme="dark"] .pg-brief {
-  background: color-mix(in srgb, var(--pg-bg-body) 55%, transparent);
-}
-/* A thin stroke of the clock's gradient down the left edge, inset from the
-   corners so it does not have to follow the radius. Positioned rather than
-   clipped: overflow on the card would also clip the mark's ring. */
-.pg-brief::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0.5rem;
-  bottom: 0.5rem;
-  width: 3px;
-  border-radius: 3px;
-  background: var(--clock-gradient);
-  pointer-events: none;
-}
+/* Grows, so "Say something else" sits at the card's reading end rather than
+   wherever the sentence happens to stop. */
 .pg-brief-body {
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
@@ -7708,9 +7720,6 @@ html[data-bs-theme="dark"] .pg-brief {
   font-weight: 600;
 }
 @media (max-width: 575.98px) {
-  .pg-brief {
-    padding: 0.5rem 0.65rem;
-  }
   .pg-brief-ws-text {
     max-width: 14ch;
   }
@@ -7729,7 +7738,7 @@ html[data-bs-theme="dark"] .pg-brief {
   gap: 0 0.7rem;
 }
 .pg-clockbar-time {
-  font-size: 2.25rem;
+  font-size: 1.75rem;
   line-height: 1.05;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -7840,7 +7849,7 @@ html[data-bs-theme="dark"] .pg-next {
 }
 @media (max-width: 575.98px) {
   .pg-clockbar-time {
-    font-size: 1.875rem;
+    font-size: 1.5rem;
   }
 }
 
