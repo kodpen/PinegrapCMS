@@ -78,6 +78,7 @@
     "#product": "#ürün",
     "#record": "#kayıt",
     "#{var:1} opened by {var:2}": "#{var:1} kanalını {var:2} açtı",
+    "#{var:1} opened for the customer": "müşteri için #{var:1} açıldı",
     "$0.00": "0,00 TL",
     "$1,039": "₺1.039",
     "$1,299": "₺1.299",

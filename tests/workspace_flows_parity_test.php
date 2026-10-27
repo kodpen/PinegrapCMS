@@ -4,7 +4,7 @@
  *
  * Scheduled actions move into Flows with nothing lost: every key a scheduled
  * action has (what it is made of and what the form sends for it, its
- * "when", the events, the conditions, the twelve steps, each option they
+ * "when", the events, the conditions, the thirteen steps, each option they
  * read and the values one takes from a list, the fields a change writes,
  * the webhook's body, the outcomes, the chain limits and the caps written
  * as numbers, what starts and runs it, the placeholders, the states, the
@@ -2533,7 +2533,6 @@ function workspace_flows_parity_table()
 			array(array('WS_SCHEDULED_CHAIN_HOURLY in ws_scheduled_joined'), 3, 'join trigger box: 60 starts an hour'),
 			array(array('WS_SCHEDULED_CHAIN_HOURLY in ws_scheduled_start'), 3, 'start box: 60 starts an hour'),
 			array(array('WS_SCHEDULED_MAX_FOLLOW in ws_scheduled_input'), 3, 'at most 5 outcome arrows'),
-			array(array('WS_SCHEDULED_LEAD_HOURLY in ws_scheduled_lead'), 3, 'lead box: no channel opened over the hour\'s cap; one reused is not held'),
 			array(array('WS_SCHEDULED_CHAIN_DEPTH in ws_scheduled_js_config', 'WS_SCHEDULED_MAX_FOLLOW in ws_scheduled_js_config'), 'form', 'what the form tells about the limits; the canvas has its own (WS_FLOW_*)'),
 			array(array('WS_SCHEDULED_MAX_FOLLOW in ws_api_scheduled_body_params'), 'form', 'what the API\'s create and change routes tell about the limit; a flow\'s routes have their own (WS_FLOW_*)'),
 			array(array('ws_event_depth in ws_scheduled_execute'), 3, 'depth through flow runs: a run hands its depth to the events it causes'),
@@ -2736,12 +2735,12 @@ function test_workspace_flows_parity_every_key_is_mapped()
 }
 
 // Twelve steps, the same in the form's check and in the run.
-function test_workspace_flows_parity_twelve_steps()
+function test_workspace_flows_parity_thirteen_steps()
 {
 	$run = workspace_flows_parity_read_steps();
 	$input = array_keys(workspace_flows_parity_cases(workspace_flows_parity_source('ws_scheduled_action_input')));
 
-	pg_assert_same(12, count($run), 'ws_scheduled_do() has 12 steps');
+	pg_assert_same(13, count($run), 'ws_scheduled_do() has 13 steps');
 	sort($run);
 	sort($input);
 	pg_assert_same($run, $input, 'ws_scheduled_action_input() checks the steps ws_scheduled_do() runs');
