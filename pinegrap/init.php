@@ -1032,6 +1032,13 @@ initialize_user();
 // (who edits HTML, JavaScript and SQL for a living) or from a stranger.
 waf_run('init');
 
+// Ban notices waf.php queued without a database or mail (includes/fn/
+// waf_notice.php): sent by this request, and by the general job, which loads
+// this file too. One file check when nothing is queued.
+if (function_exists('pg_waf_ban_notice_send')) {
+    pg_waf_ban_notice_send();
+}
+
 // Page cache: a write by a signed-in user or an API client may change what
 // pages show, so every stored page is made old once the request ends
 // (includes/fn/page_cache.php). The MCP server and OAuth answer reads with

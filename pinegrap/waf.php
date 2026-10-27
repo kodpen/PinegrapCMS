@@ -5377,6 +5377,12 @@ function waf_register_offence($ip, $score, $blocking, $burst = false)
     // brought it, which the Active Automatic Bans table could not say.
     waf_log_event('ban', 'auto-ban', 'ban', $score, 'REMOTE_ADDR', $subject . ' ' . ($applied > 0 ? $applied : $minutes) . ' min' . ($rule === 'auto-ban' ? '' : ' ' . $rule));
     waf_text_log('BAN', $ip, array('minutes' => ($applied > 0 ? $applied : $minutes), 'subject' => $subject, 'rule' => $rule));
+
+    // Nothing else tells the operator: no screen they are on shows a ban as
+    // it happens, and a banned operator cannot open the panel to look.
+    if ($applied > 0) {
+        waf_ban_notice_queue($ip, $subject, $rule, $applied);
+    }
 }
 
 /**
@@ -5398,6 +5404,96 @@ function waf_ban_note($rule, $threshold)
     }
 
     return 'Automatic: ' . $rule . ', ' . $events;
+}
+
+/**
+ * Queue the operator's notice of an automatic ban.
+ *
+ * This file runs before the database and functions.php, so it cannot send
+ * mail: it appends one line to data/temp/waf_ban_notice.log, and the next
+ * request with functions.php loaded, or the general job, sends it through
+ * the site's mail queue (pg_waf_ban_notice_send() in
+ * includes/fn/waf_notice.php). The file is capped: a flood of bans past the
+ * cap is still in the firewall log, and the burst notice already names it.
+ *
+ * @param string $ip      the visitor address that was refused
+ * @param string $subject what was banned (the address, or its IPv6 /64)
+ * @param string $rule    the rule that brought the ban
+ * @param int    $minutes the length of the ban in force
+ * @return void
+ */
+function waf_ban_notice_queue($ip, $subject, $rule, $minutes)
+{
+    $file = dirname(__FILE__) . '/data/temp/waf_ban_notice.log';
+
+    if (@filesize($file) > 65536) {
+        return;
+    }
+
+    @file_put_contents($file, waf_ban_notice_line(time(), $ip, $subject, $rule, $minutes), FILE_APPEND | LOCK_EX);
+}
+
+/**
+ * One line of data/temp/waf_ban_notice.log: time, address, banned subject,
+ * rule and minutes, tab-separated.
+ *
+ * @param int    $when
+ * @param string $ip
+ * @param string $subject
+ * @param string $rule
+ * @param int    $minutes
+ * @return string
+ */
+function waf_ban_notice_line($when, $ip, $subject, $rule, $minutes)
+{
+    $rule = substr(preg_replace('/[^A-Za-z0-9._:-]/', '', (string) $rule), 0, 40);
+
+    return (int) $when
+        . "\t" . preg_replace('/\s+/', '', (string) $ip)
+        . "\t" . preg_replace('/\s+/', '', (string) $subject)
+        . "\t" . (($rule === '') ? 'auto-ban' : $rule)
+        . "\t" . max(0, (int) $minutes) . "\n";
+}
+
+/**
+ * Read one line of data/temp/waf_ban_notice.log (waf_ban_notice_line()).
+ *
+ * @param string $line
+ * @return array|null array('when', 'ip', 'subject', 'rule', 'minutes'), or
+ *                    null for a line that cannot be read
+ */
+function waf_ban_notice_parse($line)
+{
+    $parts = explode("\t", trim((string) $line));
+
+    if (count($parts) !== 5) {
+        return null;
+    }
+
+    $when = (int) $parts[0];
+
+    if ($when <= 0 || !waf_is_ip($parts[1])) {
+        return null;
+    }
+
+    // The subject is the address or a range of it, never free text: it is
+    // printed into a mail and a link.
+    $slash = strpos($parts[2], '/');
+    $address = ($slash === false) ? $parts[2] : substr($parts[2], 0, $slash);
+
+    if (!waf_is_ip($address) || ($slash !== false && !ctype_digit(substr($parts[2], $slash + 1)))) {
+        return null;
+    }
+
+    $rule = preg_replace('/[^A-Za-z0-9._:-]/', '', $parts[3]);
+
+    return array(
+        'when'    => $when,
+        'ip'      => $parts[1],
+        'subject' => $parts[2],
+        'rule'    => ($rule === '') ? 'auto-ban' : $rule,
+        'minutes' => max(0, (int) $parts[4]),
+    );
 }
 
 /**

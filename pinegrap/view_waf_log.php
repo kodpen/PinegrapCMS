@@ -634,7 +634,7 @@ if ($auto_bans) {
         $remaining = max(0, (int) $ban['expires_at'] - time());
 
         echo '<tr>
-            <td class="font-monospace">' . h($ban['ip_address']) . '</td>
+            <td class="font-monospace"><a href="' . h(pg_waf_ban_log_url($ban['ip_address'])) . '" title="' . h(lang('Open the firewall log for this address')) . '">' . h($ban['ip_address']) . '</a></td>
             <td class="small text-muted">' . h($ban['note']) . '</td>
             <td class="small">' . ceil($remaining / 60) . ' ' . lang('minute(s)') . '</td>
             <td class="text-end">
