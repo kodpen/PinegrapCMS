@@ -696,6 +696,7 @@
     "Low text contrast {var:1}:1, at least {var:2}:1 is needed: \"{var:3}\"": "Metin kontrastı düşük: {var:1}:1, en az {var:2}:1 gerekli: \"{var:3}\"",
     "Lowest price of the last 10 days": "Son 10 günün en düşük fiyatı",
     "Lowest price of the last 30 days": "Son 30 günün en düşük fiyatı",
+    "Lowest price of the last {var:1} days": "Son {var:1} günün en düşük fiyatı",
     "Loyalty (Stamp Card)": "Sadakat (Damga Kartı)",
     "Loyalty Copy": "Sadakat Metni",
     "Loyalty Row": "Sadakat Satırı",

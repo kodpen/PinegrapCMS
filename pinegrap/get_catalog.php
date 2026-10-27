@@ -397,6 +397,10 @@ function get_catalog($properties) {
                     }
                 }
                 
+                // The price before the discount of every product the top,
+                // featured and new items show, read for them all at once.
+                $reference_prices = pg_price_reference_catalog_items(array_merge($featured_items, $new_items), $discounted_product_prices);
+
                 // if there is at least one featured item, then prepare top item and prepare to output top item heading for a featured item
                 if (count($featured_items) > 0) {
                     $top_item_type = 'featured';
@@ -504,6 +508,7 @@ function get_catalog($properties) {
                     }
                     
                     $output_top_item_price = '<div class="price">' . prepare_price_for_output($top_item['price'], $discounted, $discounted_price, 'html') . '</div>';
+                    $output_top_item_price .= pg_price_reference_html(isset($reference_prices[$top_item['id']]) ? $reference_prices[$top_item['id']] : null);
                 }
                 
                 $output_top_item_more_detail = '';
@@ -680,6 +685,7 @@ function get_catalog($properties) {
                                     }
 
                                     $output_price = '<div class="price">' . prepare_price_for_output($featured_item['price'], $discounted, $discounted_price, 'html') . '</div>';
+                                    $output_price .= pg_price_reference_html(isset($reference_prices[$featured_item['id']]) ? $reference_prices[$featured_item['id']] : null);
                                 }
                                 
                                 $output_edit_container_start = '';
@@ -848,6 +854,7 @@ function get_catalog($properties) {
                                     }
                                     
                                     $output_price = '<div class="price">' . prepare_price_for_output($new_item['price'], $discounted, $discounted_price, 'html') . '</div>';
+                                    $output_price .= pg_price_reference_html(isset($reference_prices[$new_item['id']]) ? $reference_prices[$new_item['id']] : null);
                                 }
                                 
                                 $output_edit_container_start = '';
@@ -1050,6 +1057,10 @@ function get_catalog($properties) {
         
         // if there is at least one item and number_of_columns is greater than 0, output items
         if ((count($items) > 0) && ($number_of_columns > 0)) {
+            // The price before the discount of every product listed, read
+            // for the whole list at once.
+            $reference_prices = pg_price_reference_catalog_items($items, $discounted_product_prices);
+
             // initialize variable that will store output for item rows
             $output_item_rows = '';
             
@@ -1161,6 +1172,7 @@ function get_catalog($properties) {
                     }
                     
                     $output_price = '<div class="price">' . prepare_price_for_output($item['price'], $discounted, $discounted_price, 'html') . '</div>';
+                    $output_price .= pg_price_reference_html(isset($reference_prices[$item['id']]) ? $reference_prices[$item['id']] : null);
                 }
                 
                 $output_end_row = '';
@@ -1658,8 +1670,20 @@ function get_catalog($properties) {
                 $catalog_detail_url = PATH . encode_url_path($catalog_detail_page_name) . '/';
             }
 
+            // The price before the discount of every product listed, read
+            // for the whole list at once, before prices turn into amounts.
+            $reference_prices = pg_price_reference_catalog_items($items, $discounted_product_prices);
+
             // Loop through the catalog items in order to prepare more info.
             foreach ($items as $key => $item) {
+                // The price before the discount ('' when none):
+                // reference_label, reference_price (the amount as text) and
+                // reference_price_info (the line the system layout prints).
+                $item_reference = (($item['type'] == 'product') && isset($reference_prices[$item['id']])) ? $reference_prices[$item['id']] : null;
+                $item['reference_label'] = pg_price_reference_label($item_reference);
+                $item['reference_price'] = ($item['reference_label'] !== '') ? prepare_price_for_output($item_reference['price'], false, '', 'plain_text', true, false) : '';
+                $item['reference_price_info'] = pg_price_reference_html($item_reference);
+
                 $item['url'] = '';
 
                 if (($item['type'] == 'product group') && ($item['display_type'] == 'browse')) {

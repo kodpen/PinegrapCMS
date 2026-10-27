@@ -13860,6 +13860,7 @@ const StyleDesigner = (function () {
         '__price': 1, '__price_formatted': 1, '__price_block_html': 1,
         '__price_min': 1, '__price_max': 1, '__price_range': 1,
         '__original_price': 1, '__original_price_formatted': 1,
+        '__reference_price': 1,
         // Search results — products only; empty for pages.
         '__result_price': 1,
         '__discount_amount': 1, '__discount_amount_formatted': 1,
@@ -13988,6 +13989,9 @@ const StyleDesigner = (function () {
         '__added_date': _sdDateSample(false),
         // The badge a product out of stock carries (catalog cards, Favourites).
         '__out_of_stock_label': _sdT('Out of stock'),
+        // The words before the price before the discount (catalog cards and
+        // product page), for the default rule.
+        '__reference_label': _sdT('Lowest price of the last 30 days'),
         '__withdrawal_deadline': _sdDateSample(false),
         '__estimated_arrival': _sdDateSample(false),
         // The page writes the amount alone (total ÷ number of installments).
@@ -38818,7 +38822,9 @@ const StyleDesigner = (function () {
             ['__price_min',         _sdT('Price — lower bound (number)')],
             ['__price_max',         _sdT('Price — upper bound (number)')],
             ['__price_range',       _sdT('Price range (formatted)')],
-            ['__price_block_html',  _sdT('Price block (automatic struck-through + new, HTML)')]
+            ['__price_block_html',  _sdT('Price block (automatic struck-through + new, HTML)')],
+            ['__reference_price',   _sdT('Price before the discount (the reference price rule, with symbol)')],
+            ['__reference_label',   _sdT('Reference price label (e.g. lowest price of the last 30 days)')]
         ]},
         { label: _sdT('Image'), tokens: [
             ['__image_url',         _sdT('Image URL')],
@@ -38989,7 +38995,9 @@ const StyleDesigner = (function () {
             ['__price_min',         _sdT('Price — lower bound (number)')],
             ['__price_max',         _sdT('Price — upper bound (number)')],
             ['__price_range',       _sdT('Price range (formatted)')],
-            ['__price_block_html',  _sdT('Price block (automatic struck-through + new, HTML)')]
+            ['__price_block_html',  _sdT('Price block (automatic struck-through + new, HTML)')],
+            ['__reference_price',   _sdT('Price before the discount (the reference price rule, with symbol)')],
+            ['__reference_label',   _sdT('Reference price label (e.g. lowest price of the last 30 days)')]
         ]},
         { label: _sdT('Image'), tokens: [
             ['__image_url',         _sdT('Main image URL')],
