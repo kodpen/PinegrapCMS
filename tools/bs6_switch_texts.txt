@@ -55,6 +55,20 @@ The panel's own rules on the dropped modal boxes (.modal-dialog and
 .pg-settings-modal.pg-sm
 >>>
 
+The box was positioned relative for its phone drawer; the dialog itself
+stays fixed (a fixed box is the drawer's containing block too), or a closed
+one takes a row of the page grid.
+
+@@ assets/css/backend.src.css
+<<<
+.pg-settings-modal.pg-sm {
+  position: relative;
+  flex-direction: row;
+===
+.pg-settings-modal.pg-sm {
+  flex-direction: row;
+>>>
+
 @@ assets/css/backend.src.css
 <<<
 #pg_settings_modal_extras .modal-content
