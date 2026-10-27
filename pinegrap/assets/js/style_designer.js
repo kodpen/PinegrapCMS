@@ -38121,7 +38121,9 @@ const StyleDesigner = (function () {
     // (_swBindTokenOptions(), the row position group inside a list
     // included) that a condition may read.
     function _sdCondTokenOptions(node) {
-        if (!_isInsideSystemWidget(node)) return SD_PAGE_FACTS.map(function (f) { return { token: f[0], label: f[1] }; });
+        if (!_isInsideSystemWidget(node)) {
+            return SD_PAGE_FACTS.map(function (f) { return { token: f[0], label: f[1] }; }).concat(_sdPageRecordOptions());
+        }
         return _swBindTokenOptions(node).filter(function (o) { return _sdCondTokenAllowed(o.token); });
     }
 
@@ -38134,13 +38136,57 @@ const StyleDesigner = (function () {
         ['__visit_cart_count',     _sdT('Number of products in the cart')]
     ];
 
-    // Whether every condition of `node` reads a fact of the visit, as the
-    // page needs to decide it (pg_page_fact_spec()).
+    // The page's record (pg_page_record_tokens()): whether the record the
+    // address opens was found, and the allow-listed values of the kinds
+    // whose detail widget the page holds (a product, an event, a form
+    // record), each read as __record<token>.
+    var SD_PAGE_RECORD_KINDS = {
+        catalog_item_view:   function () { return SW_PRODUCT_ENTITY_TOKENS; },
+        calendar_event_view: function () { return SW_EVENT_ENTITY_TOKENS; },
+        form_item_view:      function () { return SW_FORM_RECORD_ENTITY_TOKENS; }
+    };
+    function _sdPageRecordOptions() {
+        var kinds = {}, seen = {};
+        var walk = function (n) {
+            if (!n) return;
+            if (n.type === 'shared_ref') {
+                var sid = parseInt(n.props && n.props.sharedId, 10) || 0;
+                if (!sid || seen[sid]) return;
+                seen[sid] = true;
+                var cached = _sharedCache[sid];
+                var cfg = null;
+                try { cfg = (cached && cached.system_region_config) ? JSON.parse(cached.system_region_config) : null; } catch (e) { cfg = null; }
+                var kind = _swKindOf(cfg);
+                if (SD_PAGE_RECORD_KINDS[kind]) kinds[kind] = true;
+                else if (cached && cached.tree) walk(cached.tree);
+                return;
+            }
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        };
+        walk(tree);
+        var out = [], names = Object.keys(kinds);
+        if (!names.length) return out;
+        out.push({ token: '__record_found', label: _sdT('This page\'s record is found') });
+        names.forEach(function (kind) {
+            SD_PAGE_RECORD_KINDS[kind]().forEach(function (t) {
+                out.push({ token: '__record' + t[0], label: _sdT('Record: {var:1}', [t[1]]) });
+            });
+        });
+        return out;
+    }
+
+    // Whether `token` is one the page decides (pg_page_fact_spec()).
+    function _sdPageCondToken(token) {
+        var t = String(token || '').toLowerCase();
+        return t === '__record_found' || t.indexOf('__record__') === 0
+            || SD_PAGE_FACTS.some(function (f) { return f[0] === t; });
+    }
+
+    // Whether every condition of `node` reads a fact of the visit or the
+    // page's record, as the page needs to decide it (pg_page_fact_spec()).
     function _sdPageFactRows(node) {
         var rows = _sdCondRowsOf(node);
-        return rows.length > 0 && rows.every(function (r) {
-            return SD_PAGE_FACTS.some(function (f) { return f[0] === String(r.token).toLowerCase(); });
-        });
+        return rows.length > 0 && rows.every(function (r) { return _sdPageCondToken(r.token); });
     }
 
     // The conditions of `node` as rows, [{token, op, value}] in the order of
@@ -38217,7 +38263,8 @@ const StyleDesigner = (function () {
         var any = _sdCondJoin(node) === 'any';
         return rows.map(function (r, i) {
             var entry = _sdCondOp(r.op);
-            var fact = kind ? null : SD_PAGE_FACTS.filter(function (f) { return f[0] === r.token; })[0];
+            var fact = kind ? null : SD_PAGE_FACTS.concat(_sdPageRecordOptions().map(function (o) { return [o.token, o.label]; }))
+                .filter(function (f) { return f[0] === r.token; })[0];
             var parts = [fact ? fact[1] : _swBindLabel(kind, r.token), entry ? entry[1] : String(r.op), (entry && entry[2]) ? r.value : ''];
             if (!i) return _sdT('Only when: {var:1} {var:2} {var:3}', parts);
             return any ? _sdT('or {var:1} {var:2} {var:3}', parts) : _sdT('and {var:1} {var:2} {var:3}', parts);
@@ -38462,7 +38509,8 @@ const StyleDesigner = (function () {
                 ? _sdT('The page and Preview leave the element out while the value does not pass; the canvas keeps showing it. Numbers are compared as numbers, other values as text.')
                 : (rows.length && !_sdPageFactRows(node))
                     ? _sdT('Outside a system widget only the facts of the visit decide: with another value here the element is always shown.')
-                    : _sdT('Each visit decides it: the page leaves the element out while the fact does not pass; the canvas keeps showing it. Nothing about the visitor is shown.'));
+                    : _sdT('Each visit decides it: the page leaves the element out while the fact does not pass; the canvas keeps showing it. Nothing about the visitor is shown.')
+                        + ' ' + _sdT('The page\'s record is the product, event or form record its address opens.'));
         return row(label, html);
     }
 

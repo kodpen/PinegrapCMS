@@ -5371,7 +5371,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
 
     // The product's allow-listed values (widgets_entity_fields.php), empty
     // when no product was found.
-    $values += pg_sw_entity_values('product', $p ? $p : null, array('currency_symbol' => $currency_symbol));
+    $_civ_entity = pg_sw_entity_values('product', $p ? $p : null, array('currency_symbol' => $currency_symbol));
+    $values += $_civ_entity;
+    // The product is the page's record (page_facts.php).
+    pg_page_record_publish('product', $p ? $_civ_entity : null);
 
     // Both branches escape here, so the not-found map cannot drift from the
     // found one.
