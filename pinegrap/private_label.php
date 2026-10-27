@@ -115,9 +115,9 @@ if (!$_POST) {
                 <div class="col-12">
                     ' . $liveform->output_errors() . '
                     ' . $liveform->output_notices() . '
-                    <div class="row mb-3">
+                    <div class="row mb-5">
                         <div class="col-12">
-                            <p class="text-muted">' . lang('Update the branding for the control panel.') . '</p>
+                            <p class="fg-secondary">' . lang('Update the branding for the control panel.') . '</p>
                         </div>
                     </div>
             <form name="form" action="private_label.php" method="post" style="margin-bottom: 1em">
@@ -131,7 +131,7 @@ if (!$_POST) {
                         }
                     }
                 </script>
-                <div style="margin-bottom: 1em"><label for="private_label">' . lang('Enable Private Label') . ': </label>' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'private_label', 'id'=>'private_label', 'value'=>'1', 'class'=>'checkbox', 'onclick'=>'show_or_hide_private_label()')) . '</div>
+                <div style="margin-bottom: 1em"><label for="private_label">' . lang('Enable Private Label') . ': </label>' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'private_label', 'id'=>'private_label', 'value'=>'1', 'class'=>'checkbox check', 'onclick'=>'show_or_hide_private_label()')) . '</div>
                 <table id="private_label_table" style="margin-bottom: 1em; margin-left: 1em' . $private_label_table_style . '">
                     <tr>
                         <td>' . lang('Logo URL') . ':</td>
@@ -197,10 +197,10 @@ if (!$_POST) {
                         <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_5_url', 'size'=>'80')) . '</td>
                     </tr>
                 </table>
-                <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                            <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
                         </div>
                     </div>
                 </nav>

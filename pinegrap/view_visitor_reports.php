@@ -27,7 +27,7 @@ $output_web_statistics_link = '';
 
 // if an external web stats link is supplied in the settings, then prepare link to web stats
 if ((defined('STATS_URL') == true) && (STATS_URL != '')) {
-	$output_web_statistics_link = '<a class="btn btn-sm btn-secondary m-1 " href="' . STATS_URL . '" target="_blank"><span class="bi bi-box-arrow-up-right me-2"></span>' . lang(array('string'=>'Website Analytics') ) . '</a>';
+	$output_web_statistics_link = '<a class="btn btn-sm btn-solid theme-secondary m-1 " href="' . STATS_URL . '" target="_blank"><span class="bi bi-box-arrow-up-right me-3"></span>' . lang(array('string'=>'Website Analytics') ) . '</a>';
 }
 
 
@@ -122,7 +122,7 @@ if ($visitor_reports) {
         $output_rows .=
             '<tr>
                 <td class="align-middle text-start">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('View') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-eye"></i></button>
+                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('View') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-eye"></i></button>
                 </td>
                 <td class="chart_label">' . h($visitor_report['name']) . '</td>
                 <td>' . get_relative_time(array('timestamp' => $visitor_report['created_timestamp'])) . ' ' . $created_username . '</td>
@@ -150,18 +150,18 @@ print
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
            
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 text-center text-md-start">
+            <div class="row mb-3  flex-wrap">
+                <div class="col-12 text-center md:text-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="view_visitor_report.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-solid theme-primary m-1 " href="view_visitor_report.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                         ' . $output_web_statistics_link . '
                         <div class="pg-toolbar-grow"></div>
                         ' . pg_list_sort_menu('view_visitor_reports.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>
                 </div>
             </div>
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none">
                         <thead>

@@ -149,12 +149,12 @@ if ($files) {
         $output_rows .=
             '<tr>
                 <td class="align-middle text-start">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                 </td>
                 <td class="align-middle chart_label">' . h($file['name']) . '</td>
                 <td class="align-middle">' . nl2br(h($file['description'])) . '</td>
-                <td class="align-middle text-start ' . $folder_access_control_type . '" title="' . h($file['folder_name']) . '"><span class="d-block overflow-hidden text-truncate" style="width: 100px;max-width:100%;"><span class="material-icons d-inline">folder</span><span class="badge fw-light text-reset d-inline">' . h($file['folder_name']) . '</span></span><span class="badge fw-light text-reset d-inline">(' . $output_access_control . ')</span></td>
+                <td class="align-middle text-start ' . $folder_access_control_type . '" title="' . h($file['folder_name']) . '"><span class="d-block overflow-hidden text-truncate" style="width: 100px;max-width:100%;"><span class="material-icons d-inline">folder</span><span class="badge fw-light fg-reset d-inline">' . h($file['folder_name']) . '</span></span><span class="badge fw-light fg-reset d-inline">(' . $output_access_control . ')</span></td>
                 <td class="align-middle text-center">' . $output_activated_desktop_theme_check_mark . '</td>
                 <td class="align-middle text-center">' . $output_activated_mobile_theme_check_mark . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $file['timestamp'])) . ' ' . $output_created_by_user . '</td>
@@ -176,17 +176,17 @@ pg_page_shell([
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 text-center text-md-start">
+            <div class="row mb-3  flex-wrap">
+                <div class="col-12 text-center md:text-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_theme_file.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_theme_file.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                         <div class="pg-toolbar-grow"></div>
                         ' . pg_list_sort_menu('view_themes.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>
                 </div>
             </div>
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none">
                         <thead>

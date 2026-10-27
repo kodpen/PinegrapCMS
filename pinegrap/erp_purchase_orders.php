@@ -48,19 +48,19 @@ foreach ($rows as $row) {
 
     $output_rows .= '
         <tr>
-            <td class="text-nowrap"><a class="link-body-emphasis fw-semibold" href="edit_erp_purchase_order.php?id=' . (int) $row['id'] . '">' . h((string) $row['full_number']) . '</a></td>
+            <td class="text-nowrap"><a class="pg-link-body-emphasis fw-semibold" href="edit_erp_purchase_order.php?id=' . (int) $row['id'] . '">' . h((string) $row['full_number']) . '</a></td>
             <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $row['issue_date'])) . '">' . h(prepare_form_data_for_output((string) $row['issue_date'], 'date')) . '</td>
             <td style="max-width:280px" class="text-truncate">' . h((string) $row['account_title']) . '</td>
-            <td class="text-nowrap' . ($late ? ' text-danger' : '') . '" data-sort="' . h(str_replace('-', '', $expected)) . '">'
-                . (($expected > '0000-00-00') ? h(prepare_form_data_for_output($expected, 'date')) : '<span class="text-body-secondary">—</span>')
-                . ($late ? ' <span class="badge text-bg-danger">' . lang('Late') . '</span>' : '') . '</td>
+            <td class="text-nowrap' . ($late ? ' fg-danger' : '') . '" data-sort="' . h(str_replace('-', '', $expected)) . '">'
+                . (($expected > '0000-00-00') ? h(prepare_form_data_for_output($expected, 'date')) : '<span class="fg-secondary">—</span>')
+                . ($late ? ' <span class="badge theme-danger">' . lang('Late') . '</span>' : '') . '</td>
             <td class="text-end text-nowrap" data-sort="' . (int) $row['grand_total'] . '">' . h(erp_money_out_currency((int) $row['grand_total'], (string) $row['currency'])) . '</td>
-            <td><span class="badge text-bg-' . h($row_status[1]) . '">' . h($row_status[0]) . '</span></td>
+            <td><span class="badge theme-' . h($row_status[1]) . '">' . h($row_status[0]) . '</span></td>
         </tr>';
 }
 
 if ($output_rows === '') {
-    $output_rows = '<tr data-pg-sort-fixed><td colspan="6" class="text-center text-body-secondary py-4">'
+    $output_rows = '<tr data-pg-sort-fixed><td colspan="6" class="text-center fg-secondary py-7">'
         . ((($status === '') && ($search === '') && ($account_id === 0)) ? lang('No purchase order yet. "New purchase order" writes what to ask a supplier for.') : lang('No purchase order matches.')) . '</td></tr>';
 }
 
@@ -72,11 +72,11 @@ if ($account_id > 0) {
     $account_title = (string) db_value("SELECT title FROM erp_accounts WHERE id = '" . $account_id . "' LIMIT 1");
     $clear_query = http_build_query(array_filter(array('status' => $status, 'search' => $search)));
     $output_filter_note = '
-            <div class="alert alert-light d-flex align-items-center gap-2 py-2 mb-3" role="status">
+            <div class="alert theme-secondary d-flex align-items-center gap-3 py-3 mb-5" role="status">
                 <i class="bi bi-funnel" aria-hidden="true"></i>
                 <span>' . h(lang(array('string' => 'Showing: {var:1}', 'vars' => ($account_title !== '') ? $account_title : ('#' . $account_id)))) . '</span>
-                <span class="text-body-secondary">(' . count($rows) . ')</span>
-                <a href="erp_purchase_orders.php' . (($clear_query !== '') ? '?' . h($clear_query) : '') . '" class="ms-auto link-body-emphasis">' . lang('Clear the filter') . '</a>
+                <span class="fg-secondary">(' . count($rows) . ')</span>
+                <a href="erp_purchase_orders.php' . (($clear_query !== '') ? '?' . h($clear_query) : '') . '" class="ms-auto pg-link-body-emphasis">' . lang('Clear the filter') . '</a>
             </div>';
 }
 
@@ -106,7 +106,7 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                ' . ((!$readonly && $ready) ? '<a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_purchase_order.php' . (($account_id > 0) ? '?account_id=' . $account_id : '') . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('New purchase order') . '</a>' : '') . '
+                ' . ((!$readonly && $ready) ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_purchase_order.php' . (($account_id > 0) ? '?account_id=' . $account_id : '') . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('New purchase order') . '</a>' : '') . '
                 <div class="pg-toolbar-grow"></div>
                 <form method="get" action="erp_purchase_orders.php" class="input-group input-group-sm rounded-pill pg-toolbar-search disable_shortcut" role="search">
                     ' . (($status !== '') ? '<input type="hidden" name="status" value="' . h($status) . '" />' : '') . '
@@ -118,7 +118,7 @@ pg_page_shell([
             </nav>
             ' . $output_filter_note . '
 
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
@@ -134,7 +134,7 @@ pg_page_shell([
                         <tbody>' . $output_rows . '</tbody>
                     </table>
                 </div>
-                <div class="form-text px-3 pb-3">' . h(lang(array('string' => 'The latest {var:1} purchase orders; search or pick a status to narrow the list.', 'vars' => 300))) . '</div>
+                <div class="form-text px-5 pb-5">' . h(lang(array('string' => 'The latest {var:1} purchase orders; search or pick a status to narrow the list.', 'vars' => 300))) . '</div>
             </div>
         </div>
     </div>

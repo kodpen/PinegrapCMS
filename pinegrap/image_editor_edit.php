@@ -116,24 +116,24 @@ if (!$_POST)
     output_header_secure(array('title'=>lang('Image Editor') . ' | Pintura | ' . h($file_name),'icon'=>'file')) . ' 
     <link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/image_editor/packages/doka/doka.css">
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/image_editor/packages/jquery_doka/doka.js"></script>
-    <style>
+    <style>@layer custom {
         img {
             max-width: 100%;
         }
         .inline-editor{height:calc(100vh - 57px)}
-    </style>
+    }</style>
     <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
         <div class="container-fluid">
             <span class="navbar-text me-auto text-nowrap overflow-hidden text-truncate" data-bs-content="' . h($file_name) . '" title="' . lang('Edit Image') . '">
                 ' . h($file_name) . '
             </span>
             <ul class="navbar-nav ms-auto">
-                <li class="nav-item dropdown no-popover"  title="' . lang('Software Theme') . '">
-                    <button class="nav-link nav-link-sm position-relative dropdown-toggle dropdown-menu-right" data-bs-toggle="dropdown" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
-                    <ul aria-labelledby="bd-theme" class="dropdown-menu shadow dropdown-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-dropdown-min-width: 8rem;">
-                        <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-2"></i>' . lang('Light') . '</button></li>
-                        <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-2"></i>' . lang('Dark') . '</button></li>
-                        <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-2"></i>' . lang('Auto') . '</button></li>
+                <li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
+                    <button class="nav-link nav-link-sm position-relative pg-menu-caret" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
+                    <ul aria-labelledby="bd-theme" class="menu shadow pg-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-menu-min-width: 8rem;">
+                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i>' . lang('Light') . '</button></li>
+                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i>' . lang('Dark') . '</button></li>
+                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-3"></i>' . lang('Auto') . '</button></li>
                     </ul>
                 </li>
                 <li class="nav-item">
@@ -352,20 +352,18 @@ if (!$_POST)
             pgUI.dialog.toggle("#confirm_modal");
         });
         </script>
-        <div class="modal fade" id="confirm_modal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="exampleModalLabel">' . lang('Save Option') . '</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <dialog class="dialog" id="confirm_modal" data-bs-backdrop="static" data-bs-keyboard="false">
+                    <div class="dialog-header">
+                        <h5 class="dialog-title" id="exampleModalLabel">' . lang('Save Option') . '</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body" style="font-size:smaller;">
+                    <div class="dialog-body" style="font-size:smaller;">
                         <h5>' . lang('Keep Original And Save') . '</h5>
                         <p>' . lang('Keep the original file with the same name, create a new file from the editing properties and save.') . '</p>
                         <h5>' . lang('Replace') . '</h5>
                         <p>' . lang('Overwrite the changes to the file. Do not create one more file.') . '</p>
                     </div>
-                    <div class="modal-footer">
+                    <div class="dialog-footer">
                         <form id="image_form" name="form" action="image_editor_edit.php" method="post">
                             ' . get_token_field() . '
                             <input type="hidden" name="file_id" value="' . $file_id . '" />
@@ -376,9 +374,9 @@ if (!$_POST)
                             <input type="hidden" name="image_file" value="" />
                             <input type="hidden" name="save_option" value="" />
                             <div class="d-flex justify-content-end">
-                                <div class="input-group input-group-sm me-2">
-                                    <button type="button" class="btn btn-sm btn-primary" onclick="$(\'input[name=save_option]\').val(\'Keep and Save\');$(\'form#image_form\').submit();">' . lang('Keep Original And Save') . '</button>
-                                    <select class="form-select" id="save_option_item_type" name="save_option_item_type">
+                                <div class="input-group input-group-sm me-3">
+                                    <button type="button" class="btn btn-sm btn-solid theme-primary" onclick="$(\'input[name=save_option]\').val(\'Keep and Save\');$(\'form#image_form\').submit();">' . lang('Keep Original And Save') . '</button>
+                                    <select class="form-control" id="save_option_item_type" name="save_option_item_type">
                                         <option ' . $output_jpg_selected  . 'value="jpg">jpg</option>
                                         <option ' . $output_png_selected . 'value="png">png</option>
                                         <option ' . $output_webp_selected  . 'value="webp">webp</option>
@@ -387,13 +385,11 @@ if (!$_POST)
                                     </select>
                                 </div>
                            
-                                <button type="button" class="btn btn-sm btn-primary" onclick="$(\'input[name=save_option]\').val(\'Replace\');$(\'form#image_form\').submit();">' . lang('Replace') . '</button>
+                                <button type="button" class="btn btn-sm btn-solid theme-primary" onclick="$(\'input[name=save_option]\').val(\'Replace\');$(\'form#image_form\').submit();">' . lang('Replace') . '</button>
                             </div>
                         </form>
                     </div>
-                </div>
-            </div>
-        </div>
+        </dialog>
                         
     </main>' . output_footer_secure();
 

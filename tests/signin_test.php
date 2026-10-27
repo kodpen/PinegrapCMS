@@ -339,16 +339,16 @@ function test_signin_identity_badges()
 
 	$only = pg_signin_identity_badges(array('apple'), 3);
 	pg_assert_contains('Apple only', $only, 'the only way in');
-	pg_assert_contains('bg-warning', $only, 'as a warning');
+	pg_assert_contains('theme-warning', $only, 'as a warning');
 
 	$with_password = pg_signin_identity_badges(array('google'), 2);
 	pg_assert_contains('>Google<', $with_password, 'Google with a password');
-	pg_assert_false(strpos($with_password, 'bg-warning') !== false, 'no warning with a password');
+	pg_assert_false(strpos($with_password, 'theme-warning') !== false, 'no warning with a password');
 
 	$two = pg_signin_identity_badges(array('google', 'microsoft'), 3);
 	pg_assert_contains('>Google<', $two, 'two providers, Google');
 	pg_assert_contains('>Microsoft<', $two, 'two providers, Microsoft');
-	pg_assert_false(strpos($two, 'bg-warning') !== false, 'either one can go');
+	pg_assert_false(strpos($two, 'theme-warning') !== false, 'either one can go');
 
 	pg_assert_same(pg_signin_identity_badges(array('google'), 2), pg_connected_account_label('google', 2), 'the sessions screen reads the same');
 	pg_assert_contains('&mdash;', pg_connected_account_label('', 2), 'sessions screen, nothing');
@@ -385,8 +385,8 @@ function test_signin_failure_card()
 	pg_assert_contains('&lt;b&gt;x@example.com&lt;/b&gt;', $card, 'the message is escaped');
 	pg_assert_contains('role="alert"', $card, 'an error is announced');
 	pg_assert_contains('bi-exclamation-triangle', $card, 'an error mark');
-	pg_assert_contains('class="btn btn-primary" href="/giris?a=1&amp;b=2"', $card, 'the way back comes first');
-	pg_assert_contains('class="btn btn-outline-secondary" href="/pinegrap/signin.php?provider=google"', $card, 'another try');
+	pg_assert_contains('class="btn btn-solid theme-primary" href="/giris?a=1&amp;b=2"', $card, 'the way back comes first');
+	pg_assert_contains('class="btn btn-outline theme-secondary" href="/pinegrap/signin.php?provider=google"', $card, 'another try');
 	pg_assert_false(strpos($card, 'dropped') !== false, 'a link without an address drops');
 	pg_assert_true(strpos($card, 'Go Back') < strpos($card, 'Try again with Google'), 'back before again');
 

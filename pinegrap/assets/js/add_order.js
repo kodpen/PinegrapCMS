@@ -571,7 +571,7 @@
         var line = byId('pg_sale_split_rest');
         if (line) {
             var over = sum > state.total;
-            line.classList.toggle('text-danger', over);
+            line.classList.toggle('fg-danger', over);
             line.textContent = (sum <= 0) ? '' : (over ? t.splitOver : ((sum === state.total) ? t.splitPaid : fill(t.splitRest, [money(state.total - sum)])));
         }
     }
@@ -809,7 +809,7 @@
                 var out = (p.inventory === 1) && (p.inventory_quantity <= 0);
                 var sub = (p.name !== title) ? '<span class="font-monospace">' + esc(p.name) + '</span>' : '';
                 if (p.inventory === 1) {
-                    sub += (sub ? ' · ' : '') + (out ? '<span class="text-danger-emphasis">' + esc(t.outOfStock) + '</span>' : esc(fill(t.inStock, [p.inventory_quantity])));
+                    sub += (sub ? ' · ' : '') + (out ? '<span class="fg-emphasis-danger">' + esc(t.outOfStock) + '</span>' : esc(fill(t.inStock, [p.inventory_quantity])));
                 }
                 return '<div class="pg-sale-res" role="option" id="pg_sale_opt_' + index + '" data-index="' + index + '" aria-selected="false"' + (out ? ' aria-disabled="true"' : '') + '>'
                     + '<b>' + esc(title) + '</b><small>' + sub + '</small>'
@@ -1021,7 +1021,7 @@
         var items = results.slice();
         var html = results.map(function (c, index) {
             return '<div class="pg-sale-res" role="option" id="pg_sale_copt_' + index + '" data-index="' + index + '" aria-selected="false">'
-                + '<b><i class="bi ' + (c.kind === 'account' ? 'bi-journal-text' : 'bi-person') + ' me-2" aria-hidden="true"></i>' + esc(c.label) + '</b>'
+                + '<b><i class="bi ' + (c.kind === 'account' ? 'bi-journal-text' : 'bi-person') + ' me-3" aria-hidden="true"></i>' + esc(c.label) + '</b>'
                 + (c.sub ? '<small>' + esc(c.sub) + '</small>' : '') + '</div>';
         }).join('');
 
@@ -1034,7 +1034,7 @@
             var index = items.length;
             items.push({ kind: 'new' });
             html += '<div class="pg-sale-res pg-sale-res-new" role="option" id="pg_sale_copt_' + index + '" data-index="' + index + '" aria-selected="false">'
-                + '<b><i class="bi bi-person-plus me-2" aria-hidden="true"></i>' + esc(q ? fill(t.newAccount, [q]) : t.newAccountEmpty) + '</b></div>';
+                + '<b><i class="bi bi-person-plus me-3" aria-hidden="true"></i>' + esc(q ? fill(t.newAccount, [q]) : t.newAccountEmpty) + '</b></div>';
         }
 
         customerList.show(html, items);
@@ -1153,7 +1153,7 @@
         var open = byId('erp_drawer_open');
         title.textContent = '';
         open.classList.add('d-none');
-        body.innerHTML = '<div class="d-flex justify-content-center py-5"><span class="spinner-border text-secondary" role="status" aria-hidden="true"></span></div>';
+        body.innerHTML = '<div class="d-flex justify-content-center py-12"><span class="spinner-border fg-secondary" role="status" aria-hidden="true"></span></div>';
         pgUI.drawer.show(panel);
 
         fetch(cfg.drawerUrl + '?type=account&id=' + encodeURIComponent(button.getAttribute('data-sale-ledger')), {
@@ -1170,7 +1170,7 @@
             open.classList.remove('d-none');
             body.innerHTML = data.html;
         }).catch(function () {
-            body.innerHTML = '<div class="alert alert-warning mb-0"></div>';
+            body.innerHTML = '<div class="alert theme-warning mb-0"></div>';
             body.firstChild.textContent = t.loadFailed;
         });
     });
@@ -1268,7 +1268,7 @@
         send('issue_invoice', { order_id: button.getAttribute('data-sale-invoice') }, { toast: true }).then(function (answer) {
             if (answer && answer.ok && el.done.contains(button)) {
                 var note = document.createElement('span');
-                note.className = 'badge text-bg-success align-self-center';
+                note.className = 'badge theme-success align-self-center';
                 note.textContent = answer.message;
                 button.replaceWith(note);
             } else {
@@ -1331,11 +1331,11 @@
         });
         pgUI.drawer.on(el.recent, 'show', function () {
             document.body.classList.add('pg-side-panel-open');
-            el.recentBody.innerHTML = '<div class="d-flex justify-content-center py-5"><span class="spinner-border text-secondary" role="status" aria-hidden="true"></span></div>';
+            el.recentBody.innerHTML = '<div class="d-flex justify-content-center py-12"><span class="spinner-border fg-secondary" role="status" aria-hidden="true"></span></div>';
             getJson({ request: 'recent' }).then(function (data) {
                 el.recentBody.innerHTML = (data && data.html) ? data.html : '';
             }).catch(function () {
-                el.recentBody.innerHTML = '<div class="alert alert-warning m-3"></div>';
+                el.recentBody.innerHTML = '<div class="alert theme-warning m-5"></div>';
                 el.recentBody.firstChild.textContent = t.loadFailed;
             });
         });

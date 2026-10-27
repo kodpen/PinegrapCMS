@@ -422,7 +422,7 @@ function test_ai_write_button_config()
 function test_ai_write_label_row()
 {
 	pg_assert_same('<label>A</label>', pg_ai_write_label_row('<label>A</label>', ''));
-	pg_assert_same('<div class="d-flex flex-wrap align-items-baseline justify-content-between column-gap-2"><label>A</label><button></button></div>', pg_ai_write_label_row('<label>A</label>', '<button></button>'));
+	pg_assert_same('<div class="d-flex flex-wrap align-items-baseline justify-content-between column-gap-3"><label>A</label><button></button></div>', pg_ai_write_label_row('<label>A</label>', '<button></button>'));
 }
 
 // The script's words: every key the panel reads, a tone for each of the
