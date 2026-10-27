@@ -1,6 +1,7 @@
 ---
 name: audit-trail-screen
 description: The audit trail screen view_audit_log.php, its CSV export and GET /audit-log (includes/fn/audit_view.php): who may open it, filters, how each stored value form is shown, export limits
+module: audit_view
 ---
 
 ## What is it?

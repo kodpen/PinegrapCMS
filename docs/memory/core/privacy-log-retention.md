@@ -1,6 +1,7 @@
 ---
 name: privacy-log-retention
 description: How long audit_log and consent_log keep lines: config.audit_log_retention_years (11.0.47), the Audit Trail settings card, the daily job pass, why the answer in force stays
+module: privacy_retention
 ---
 
 ## What is kept, and for how long?
