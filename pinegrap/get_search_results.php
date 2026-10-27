@@ -59,8 +59,8 @@ function get_search_results($properties) {
         && (isset($_SESSION['software']['visitor_id']) == true)
     ) {
         // get visitor's search terms from visitors table
-        $db_query = "SELECT site_search_terms FROM visitors WHERE id = '" . $_SESSION['software']['visitor_id'] . "'";
-        $result = mysqli_query(db::$con, $db_query) or output_error('Query failed.');
+        $db_query = "SELECT site_search_terms FROM visitors WHERE id = ?";
+        $result = db_q($db_query, array((string) $_SESSION['software']['visitor_id'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         // The session can name a row that is gone: a restored backup carries
         // no visitor rows.
@@ -78,10 +78,10 @@ function get_search_results($properties) {
         $db_query =
             "UPDATE visitors
             SET
-                site_search_terms = '" . escape($site_search_terms) . "',
+                site_search_terms = ?,
                 stop_timestamp = UNIX_TIMESTAMP()
-            WHERE (id = '" . $_SESSION['software']['visitor_id'] . "')";
-        $result = mysqli_query(db::$con, $db_query) or output_error('Query failed.');
+            WHERE (id = ?)";
+        $result = db_q($db_query, array((string) $site_search_terms, (string) $_SESSION['software']['visitor_id'])) or output_error('Query failed.');
     }
 
     // get current URL parts in order to deal with query string parameters
@@ -223,8 +223,8 @@ function get_search_results($properties) {
                     }
 
                     // get all page regions for page
-                    $db_query = "SELECT pregion_id, pregion_content FROM pregion WHERE (pregion_page = '$this_page_id') AND (collection = '$collection')";
-                    $result_2 = mysqli_query(db::$con, $db_query) or output_error('Query failed');
+                    $db_query = "SELECT pregion_id, pregion_content FROM pregion WHERE (pregion_page = ?) AND (collection = ?)";
+                    $result_2 = db_q($db_query, array((string) $this_page_id, (string) $collection)) or output_error('Query failed');
                     while($row = mysqli_fetch_array($result_2)) {
                         $pregion_content = $row['pregion_content'];
                         
@@ -252,8 +252,8 @@ function get_search_results($properties) {
                 WHERE
                     (page_search = 1)
                     AND (page_id NOT IN (" . $featured_page_id_list . "))
-                    AND (page_search_keywords LIKE '%" . escape(escape_like($query)) . "%')";
-            $result = mysqli_query(db::$con, $db_query) or output_error('Query failed.');
+                    AND (page_search_keywords LIKE ?)";
+            $result = db_q($db_query, array('%' . escape_like($query) . '%')) or output_error('Query failed.');
             while ($row = mysqli_fetch_array($result)) {
                 $this_page_id = $row['page_id'];
                 $page_name = $row['page_name'];
@@ -294,8 +294,8 @@ function get_search_results($properties) {
                     (comments.item_id = '0')
                     AND (comments.published = '1')
                     AND (page.page_search = '1')
-                    AND (LOWER(CONCAT_WS(',', comments.name, comments.message)) LIKE '%" . escape(escape_like($query)) . "%')";
-            $result = mysqli_query(db::$con, $db_query) or output_error('Query failed.');
+                    AND (LOWER(CONCAT_WS(',', comments.name, comments.message)) LIKE ?)";
+            $result = db_q($db_query, array('%' . escape_like($query) . '%')) or output_error('Query failed.');
             while($row = mysqli_fetch_array($result)) {
                 // if the page for this comment is not already a search result, then add the comment to the comments array
                 if ((array_key_exists($row['page_id'], $featured_items) == FALSE) && (array_key_exists($row['page_id'], $pages) == FALSE)) {
