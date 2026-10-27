@@ -4164,6 +4164,12 @@ table.chart thead th {
   outline: 0;
 }
 
+/* In an input group the box fills the room left, as .form-control does. */
+.input-group > .pg-chips {
+  flex: 1 1 auto;
+  width: 1%;
+}
+
 .pg-chips-sm {
   --bs-chip-input-padding-y: 0.125rem;
   --bs-chip-input-padding-x: 0.5rem;
