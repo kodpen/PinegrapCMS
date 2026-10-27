@@ -1,6 +1,6 @@
 ---
 name: password-strength-js
-description: pg_password_strength.js, the panel copy of validate_password_strength() and the Bootstrap 6 Strength meter it drives (#1698, #2211, installer #PRNUM): scoring on and off, where it shows, tests
+description: pg_password_strength.js, the panel copy of validate_password_strength() and the Bootstrap 6 Strength meter it drives (#1698, #2211, installer #2274): scoring on and off, where it shows, tests
 ---
 
 ## What is it?
@@ -18,7 +18,7 @@ description: pg_password_strength.js, the panel copy of validate_password_streng
 
 ## Where does it show?
 - Panel chrome only (Bootstrap 6): `set_password.php`'s built-in form (`get_set_password()` with `page_id` 0, `$strength_meter` in `set_password_system.php`). A site page (5.3.8, no Strength) gets nothing; change password is drawn only on site pages, so it has no meter.
-- The installer's administrator password (`install/index.php`, `admin_password`): `pg_password_strength_meter('admin_password', false)`, always advisory because `strong_password` is off in a new database. Its own `.pg-strength` CSS and scoring script were removed (#PRNUM).
+- The installer's administrator password (`install/index.php`, `admin_password`): `pg_password_strength_meter('admin_password', false)`, always advisory because `strong_password` is off in a new database. Its own `.pg-strength` CSS and scoring script were removed (#2274).
 
 ## What must stay the same as the PHP function?
 - `validate_password_strength()` in `includes/fn/auth.php`; change both together.
