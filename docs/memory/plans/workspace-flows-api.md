@@ -23,7 +23,7 @@ description: Plan (owner request 2026-10-27, draft): flow API beyond the removed
 
 - A6 templates done (PR #2298): `GET /workspace/flow-templates`; `POST /workspace/flows` with `template` and `answers` (workspace-flows-api-templates.md). Never publishes.
 
-- A7 done (PR #PRNUM): `workspace.flow.run.finished`, `.failed`, `.waiting` (workspace-flows-run-events.md). The run-level result waits for C1, as A5's flag does.
+- A7 done (PR #2388): `workspace.flow.run.finished`, `.failed`, `.waiting` (workspace-flows-run-events.md). The run-level result waits for C1, as A5's flag does.
 
 - A8 proposals: a `{type: flow}` draft card replaces `{type: scheduled}` (api_proposals.php, scheduled_draft.php).
 
