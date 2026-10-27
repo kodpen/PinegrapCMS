@@ -16,6 +16,6 @@ description: Designer settings modal size and closing: dialog-xl from 1024px, fu
 - Only from its own buttons: `data-bs-backdrop="static"` and `data-bs-keyboard="false"`; a click beside it or Escape makes Bootstrap shake it (`dialog-static`). Before, a stray click closed it in the middle of typing.
 - X and Apply do the same: what was changed is already on the design and nothing is undone. Every way out redraws the HTML tree (`pgUI.dialog.on(…, 'hide')`) and schedules the live preview (`'hidden'`); the theme file reaches the canvas on `change`, not on Apply.
 - The footer's main button (`#sd-settings-save`) closes the dialog and then clicks the toolbar's main button, under its word: Save on a draft, Publish otherwise (`_sdSettingsSyncSave()`). It is off while that one is disabled and in view mode, where the toolbar's is only out of reach.
-- Reset Layout (footer, left) resets the editor's panel sizes, not the design; it is a neutral button with a title saying so. `initSettingsMenu()` (`style_designer.js`) adds it to the footer it looks up as `.modal-footer`; the dialog's footer is `.dialog-footer`, so on this markup the button is not added.
+- Reset Layout (footer, left) resets the editor's panel sizes, not the design; it is a neutral button with a title saying so. `initSettingsMenu()` (`style_designer.js`) adds it to the dialog's `.dialog-footer`.
 
 Related: docs/memory/designer/designer-settings-modal-panes.md
