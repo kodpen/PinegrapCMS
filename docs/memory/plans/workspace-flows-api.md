@@ -19,7 +19,7 @@ description: Plan (owner request 2026-10-27, draft): flow API beyond the removed
 
 - A4 done (PR #2234): `/{id}/resume` (own session); `/{id}/versions` list, `/{n}` read, `/{n}/restore` into the draft (workspace-flows-versions.md).
 
-- A5 run values: `GET /workspace/flow-runs/{id}` gives each box's threads in, outputs, the flag and its result; `/steps/{node}/retry` and `/skip` (F5).
+- A5 run values done (PR #2284): each box's `threads_in` and `outputs` (workspace-flows-run-values.md); retry and skip were already routes (F5a, #2098). The run's flag and its result wait for C1 of workspace-flows-channels.md (question in #2284).
 
 - A6 templates: `GET /workspace/flow-templates`; `POST /workspace/flows` with `template` and its settings (workspace-flows-templates.md).
 
@@ -28,7 +28,7 @@ description: Plan (owner request 2026-10-27, draft): flow API beyond the removed
 - A8 proposals: a `{type: flow}` draft card replaces `{type: scheduled}` (api_proposals.php, scheduled_draft.php).
 
 ## Where to start?
-- Next: A5 (run values), then A6, A7, A8; none claimed.
+- Next: A6, then A7, A8; none claimed.
 
 ## Which rules hold?
 - Reads are MCP tools; a key or OAuth connection may write drafts; publishing, changing a live flow and resuming stay the person's own session (#1708 rule).
