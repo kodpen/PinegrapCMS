@@ -665,6 +665,17 @@ function ws_handle_action($action, $request)
 
             return $flow ? ws_action_ok(array('flow' => ws_flow_detail($viewer, $flow))) : ws_action_error(lang('That flow could not be found.'));
 
+        // A scheduled action drafted on a card (scheduled_draft.php) opened
+        // as a new flow of the person who asked for it.
+        case 'ws_flow_from_draft':
+            $result = ws_scheduled_draft_flow_open($viewer, (int) ($request['change_id'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            return ws_action_ok(array('flow_id' => $result['flow_id'], 'left' => $result['left']));
+
         case 'ws_flow_create':
         case 'ws_flow_save':
             $flow = null;

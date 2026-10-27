@@ -10307,18 +10307,41 @@
                     actions.appendChild(apply);
                 }
 
-                // A drafted scheduled action opens in its form, filled in, for
-                // the one who asked; saved there, the card says so.
+                // A drafted scheduled action opens as a new flow of the one
+                // who asked, on the Flows canvas; what the flow keeps
+                // otherwise is told before it opens.
                 if (change.draft) {
-                    var open = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sa_draft_open'), 'bi-alarm');
+                    var open = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sa_draft_open'), 'bi-diagram-3');
 
                     open.addEventListener('click', function () {
-                        scheduledForm({ channel_id: change.draft.channel_id }, null, function () { self.sync(); }, {
-                            key: 'sentence',
-                            sentence: change.draft.sentence,
-                            data: JSON.parse(JSON.stringify(change.draft.data)),
-                            notes: change.draft.notes || [],
-                            change_id: change.id
+                        open.disabled = true;
+
+                        api('ws_flow_from_draft', { change_id: change.id }).then(function (result) {
+                            var go = function () {
+                                window.location.href = CFG.urls.flows + '?flow=' + result.flow_id;
+                            };
+
+                            if (!result.left || !result.left.length) {
+                                go();
+                                return;
+                            }
+
+                            var list = el('ul', 'mb-0');
+
+                            result.left.forEach(function (line) {
+                                list.appendChild(el('li', '', line));
+                            });
+
+                            ask(t('sa_draft_flow_left'), t('sa_draft_flow_see'), false, list).then(function (yes) {
+                                if (yes) {
+                                    go();
+                                } else {
+                                    self.sync();
+                                }
+                            });
+                        }).catch(function (error) {
+                            open.disabled = false;
+                            fail(error);
                         });
                     });
 
@@ -10387,9 +10410,13 @@
                     account.appendChild(off);
                     card.appendChild(account);
                 } else if (change.status === 'applied') {
-                    var done = el('div', 'ws-draft-done', t(change.action === 'draft' ? 'sa_draft_saved' : 'change_applied', change.decided_by, change.decided) + ' ');
+                    var done = el('div', 'ws-draft-done', t(change.action === 'draft' ? (change.flow_id ? 'sa_draft_flowed' : 'sa_draft_saved') : 'change_applied', change.decided_by, change.decided) + ' ');
 
-                    if (change.decision_id) {
+                    if (change.flow_id) {
+                        var flow = el('a', '', t('sa_draft_flow_see'));
+                        flow.href = CFG.urls.flows + '?flow=' + change.flow_id;
+                        done.appendChild(flow);
+                    } else if (change.decision_id) {
                         var see = el('a', '', t(change.action === 'draft' ? 'sa_draft_see' : 'change_see_decision'));
                         see.href = '#';
                         see.addEventListener('click', function (event) {

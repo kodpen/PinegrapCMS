@@ -5,7 +5,7 @@ description: A scheduled action as a flow graph (ws_flow_graph_from_scheduled(),
 
 ## Where is it, and who uses it?
 - `ws_flow_graph_from_scheduled($data, $money, $self_id)` in `includes/workspace/flow_templates.php` (pure); tests `tests/workspace_flow_from_scheduled_test.php`.
-- `$data` is the form's shape (`ws_scheduled_form_data()`, a draft's data). Meant for a scheduled draft opened on the canvas (merge plan 4c2) and the 2026.11.0 conversion (slice 5).
+- `$data` is the form's shape (`ws_scheduled_form_data()`, a draft's data). Used by a scheduled draft opened as a new flow (`ws_scheduled_draft_flow_input()`, #2323) and meant for the 2026.11.0 conversion (slice 5).
 
 ## How does each part map?
 - First "when": at → schedule, event → event, join → join (config the rule minus type); trigger or none → manual.
