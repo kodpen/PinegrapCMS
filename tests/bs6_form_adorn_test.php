@@ -18,8 +18,8 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 /**
- * The markup between the form-adorn wrapper that holds the input with $id
- * and the end of that input's tag, or '' when the input is not in one.
+ * The markup from the form-adorn wrapper that holds the input with $id to
+ * the end of that input's line, or '' when the input is not in one.
  */
 function pg_test_form_adorn_block($source, $id)
 {
@@ -36,7 +36,9 @@ function pg_test_form_adorn_block($source, $id)
 		return '';
 	}
 
-	return substr($source, $start, $at - $start + strlen($id));
+	$end = strpos($source, "\n", $at);
+
+	return substr($source, $start, (($end === false) ? strlen($source) : $end) - $start);
 }
 
 function pg_test_form_adorn_cases()

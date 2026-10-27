@@ -97,10 +97,10 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 sm:col-4 lg:col-3 xl:col-2 my-3">
                                             <label for="amount" class="form-label">' . lang('Amount') . '</label>
-                                            <div class="input-group">
-                                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'amount', 'name' => 'amount', 'class' => 'form-control text-end', 'maxlength'=>'12', 'inputmode'=>'numeric', 'required'=>'required') + pg_money_mask_attributes()) . '
-                                                <label class="input-group-text" for="amount">' . BASE_CURRENCY_SYMBOL . '</label>
-                                            </div>
+                                            <label class="form-control form-adorn form-adorn-end">
+                                                <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'amount', 'name' => 'amount', 'class' => 'form-ghost text-end', 'maxlength'=>'12', 'inputmode'=>'numeric', 'required'=>'required') + pg_money_mask_attributes()) . '
+                                            </label>
                                            
                                             <script>$("#amount").focus()</script>
                                         </div>
