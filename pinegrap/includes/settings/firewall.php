@@ -66,17 +66,17 @@ $pg_settings_cards[] = '
                                                         </div>
                                                         <div class="pg-f-xs">
                                                             <label for="waf_log_retention_days" class="form-label">' . lang('Log Retention') . '</label>
-                                                            <div class="input-group">
-                                                                <input type="text" name="waf_log_retention_days" id="waf_log_retention_days" class="form-control" value="' . (int) $waf_log_retention_days . '" size="4" maxlength="4" inputmode="numeric" style="text-align: right;"/>
-                                                                <span class="input-group-text">' . lang('day(s)') . '</span>
-                                                            </div>
+                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                                                                <input type="text" name="waf_log_retention_days" id="waf_log_retention_days" class="form-ghost" value="' . (int) $waf_log_retention_days . '" size="4" maxlength="4" inputmode="numeric" style="text-align: right;"/>
+                                                            </label>
                                                         </div>
                                                         <div class="pg-f-xs">
                                                             <label for="waf_log_max_rows" class="form-label">' . lang('Log Size Limit') . '</label>
-                                                            <div class="input-group">
-                                                                <input type="text" name="waf_log_max_rows" id="waf_log_max_rows" class="form-control" value="' . (int) $waf_log_max_rows . '" size="7" maxlength="7" inputmode="numeric" style="text-align: right;"/>
-                                                                <span class="input-group-text">' . lang('row(s)') . '</span>
-                                                            </div>
+                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('row(s)') . '</span>
+                                                                <input type="text" name="waf_log_max_rows" id="waf_log_max_rows" class="form-ghost" value="' . (int) $waf_log_max_rows . '" size="7" maxlength="7" inputmode="numeric" style="text-align: right;"/>
+                                                            </label>
                                                             <div class="form-text">' . lang('Identical events within five minutes already share one row. This is the hard ceiling: the oldest rows are dropped beyond it, so an attack cannot fill the database.') . '</div>
                                                         </div>
                                                         <div class="col-12 ">
@@ -112,32 +112,32 @@ $pg_settings_cards[] = '
                                                                    <div class="row gy-5">
                                                                         <div class="pg-f-xs">
                                                                             <label for="waf_rate_limit_requests" class="form-label">' . lang('All Requests') . '</label>
-                                                                            <div class="input-group">
-                                                                                <input type="text" name="waf_rate_limit_requests" id="waf_rate_limit_requests" class="form-control" value="' . (int) $waf_rate_limit_requests . '" size="5" maxlength="5" inputmode="numeric" style="text-align: right;"/>
-                                                                                <span class="input-group-text">' . lang('per minute') . '</span>
-                                                                            </div>
+                                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('per minute') . '</span>
+                                                                                <input type="text" name="waf_rate_limit_requests" id="waf_rate_limit_requests" class="form-ghost" value="' . (int) $waf_rate_limit_requests . '" size="5" maxlength="5" inputmode="numeric" style="text-align: right;"/>
+                                                                            </label>
                                                                         </div>
                                                                         <div class="pg-f-xs">
                                                                             <label for="waf_rate_limit_sensitive" class="form-label">' . lang('Sign-in, Forms and Checkout') . '</label>
-                                                                            <div class="input-group">
-                                                                                <input type="text" name="waf_rate_limit_sensitive" id="waf_rate_limit_sensitive" class="form-control" value="' . (int) $waf_rate_limit_sensitive . '" size="5" maxlength="5" inputmode="numeric" style="text-align: right;"/>
-                                                                                <span class="input-group-text">' . lang('per minute') . '</span>
-                                                                            </div>
+                                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('per minute') . '</span>
+                                                                                <input type="text" name="waf_rate_limit_sensitive" id="waf_rate_limit_sensitive" class="form-ghost" value="' . (int) $waf_rate_limit_sensitive . '" size="5" maxlength="5" inputmode="numeric" style="text-align: right;"/>
+                                                                            </label>
                                                                         </div>
                                                                         <div class="pg-f-xs">
                                                                             <label for="waf_rate_limit_api" class="form-label">' . lang('Live Chat and Store Pages') . '</label>
-                                                                            <div class="input-group">
-                                                                                <input type="text" name="waf_rate_limit_api" id="waf_rate_limit_api" class="form-control" value="' . (int) $waf_rate_limit_api . '" size="5" maxlength="5" inputmode="numeric" style="text-align: right;"/>
-                                                                                <span class="input-group-text">' . lang('per minute') . '</span>
-                                                                            </div>
+                                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('per minute') . '</span>
+                                                                                <input type="text" name="waf_rate_limit_api" id="waf_rate_limit_api" class="form-ghost" value="' . (int) $waf_rate_limit_api . '" size="5" maxlength="5" inputmode="numeric" style="text-align: right;"/>
+                                                                            </label>
                                                                             <div class="form-text">' . lang('The requests your pages make in the background. An open chat window alone asks about thirty times a minute.') . '</div>
                                                                         </div>
                                                                         ' . ($security_ready ? '<div class="pg-f-xs">
                                                                             <label for="waf_inflight_limit" class="form-label">' . lang('Open at Once') . '</label>
-                                                                            <div class="input-group">
-                                                                                <input type="text" name="waf_inflight_limit" id="waf_inflight_limit" class="form-control" value="' . (int) $waf_inflight_limit . '" size="4" maxlength="3" inputmode="numeric" style="text-align: right;"/>
-                                                                                <span class="input-group-text">' . lang('requests') . '</span>
-                                                                            </div>
+                                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('requests') . '</span>
+                                                                                <input type="text" name="waf_inflight_limit" id="waf_inflight_limit" class="form-ghost" value="' . (int) $waf_inflight_limit . '" size="4" maxlength="3" inputmode="numeric" style="text-align: right;"/>
+                                                                            </label>
                                                                             <div class="form-text">' . lang('How many sign-in, form or checkout requests one address may have running at the same time. Catches a request that waits on e-mail or a payment gateway while holding a database connection, which the per-minute limits above cannot see. 0 turns it off.') . '</div>
                                                                         </div>' : '') . '
                                                                         <div class="col-12">
@@ -159,24 +159,24 @@ $pg_settings_cards[] = '
                                                                    <div class="row gy-5">
                                                                         <div class="pg-f-xs">
                                                                             <label for="waf_auto_ban_threshold" class="form-label">' . lang('Ban After') . '</label>
-                                                                            <div class="input-group">
-                                                                                <input type="text" name="waf_auto_ban_threshold" id="waf_auto_ban_threshold" class="form-control" value="' . (int) $waf_auto_ban_threshold . '" size="4" maxlength="4" inputmode="numeric" style="text-align: right;"/>
-                                                                                <span class="input-group-text">' . lang('events / 10 min') . '</span>
-                                                                            </div>
+                                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('events / 10 min') . '</span>
+                                                                                <input type="text" name="waf_auto_ban_threshold" id="waf_auto_ban_threshold" class="form-ghost" value="' . (int) $waf_auto_ban_threshold . '" size="4" maxlength="4" inputmode="numeric" style="text-align: right;"/>
+                                                                            </label>
                                                                         </div>
                                                                         <div class="pg-f-xs">
                                                                             <label for="waf_auto_ban_minutes" class="form-label">' . lang('Ban Duration') . '</label>
-                                                                            <div class="input-group">
-                                                                                <input type="text" name="waf_auto_ban_minutes" id="waf_auto_ban_minutes" class="form-control" value="' . (int) $waf_auto_ban_minutes . '" size="5" maxlength="5" inputmode="numeric" style="text-align: right;"/>
-                                                                                <span class="input-group-text">' . lang('minute(s)') . '</span>
-                                                                            </div>
+                                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('minute(s)') . '</span>
+                                                                                <input type="text" name="waf_auto_ban_minutes" id="waf_auto_ban_minutes" class="form-ghost" value="' . (int) $waf_auto_ban_minutes . '" size="5" maxlength="5" inputmode="numeric" style="text-align: right;"/>
+                                                                            </label>
                                                                         </div>
                                                                         ' . ($security_ready ? '<div class="pg-f-xs">
                                                                             <label for="waf_auto_ban_max_minutes" class="form-label">' . lang('Longest Ban') . '</label>
-                                                                            <div class="input-group">
-                                                                                <input type="text" name="waf_auto_ban_max_minutes" id="waf_auto_ban_max_minutes" class="form-control" value="' . (int) $waf_auto_ban_max_minutes . '" size="6" maxlength="6" inputmode="numeric" style="text-align: right;"/>
-                                                                                <span class="input-group-text">' . lang('minute(s)') . '</span>
-                                                                            </div>
+                                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('minute(s)') . '</span>
+                                                                                <input type="text" name="waf_auto_ban_max_minutes" id="waf_auto_ban_max_minutes" class="form-ghost" value="' . (int) $waf_auto_ban_max_minutes . '" size="6" maxlength="6" inputmode="numeric" style="text-align: right;"/>
+                                                                            </label>
                                                                             <div class="form-text">' . lang('An address banned again after its ban ran out is banned four times as long each time, up to this ceiling. 10080 is seven days.') . '</div>
                                                                         </div>' : '') . '
                                                                     </div>

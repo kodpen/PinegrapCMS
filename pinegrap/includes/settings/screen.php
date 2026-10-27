@@ -200,10 +200,10 @@ if (!$_POST) {
                     'suffix' => ((count($pg_settings_category['sections']) == 1) ? '' : 's'),
                 ))) . '</span>
                 <div class="pg-toolbar-grow pg-chips">' . $pg_settings_chips . '</div>
-                <div class="input-group input-group-sm rounded-pill pg-toolbar-search">
-                    <span class="input-group-text bg-transparent border-end-0 rounded-start-pill"><i class="bi bi-search" aria-hidden="true"></i></span>
-                    <input type="search" id="pg_settings_filter" class="form-control border-start-0 rounded-end-pill" placeholder="' . h(lang('Search in this page')) . '" autocomplete="pg-no-autofill" />
-                </div>
+                <label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
+                    <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="search" id="pg_settings_filter" class="form-ghost" placeholder="' . h(lang('Search in this page')) . '" aria-label="' . h(lang('Search in this page')) . '" autocomplete="pg-no-autofill" />
+                </label>
                 <div class="btn-group btn-group-sm">' . $pg_settings_step_links . '</div>
             </div>
 
