@@ -25,7 +25,7 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
    - 3a. Done (#2205). Trigger values in every box; post in the channel joined.
    - 3b. Done (#2235). Start a flow box (workspace/workspace-flows-chain-box.md).
    - 3c. Done (#2249). Arrows on always (workspace/workspace-flows-arrows-always.md).
-   - 3d. Self-retry: a failed box tried again on its own after a delay, within depth 8.
+   - 3d. Done (#2275). Self-retry: a failed step box tried again on its own (workspace/workspace-flows-retry-skip.md).
 4. New rules on the canvas; the form stays for keys still `form`; templates become starters, AI drafts (F8).
 5. Conversion (answer 2): in the 2026.11.0 upgrade every row becomes a converted anchor, its id and every parity row kept. Schema (a mark for the two anchors): ask first.
 
@@ -38,4 +38,4 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 6. Slice 1 before F4 → yes (#1555 is in).
 
 ## Where to start?
-- Date fix (#1798), slice 2 (#1810), 3a (#2205), 3b (#2235), 3c (#2249) done. Next: 3d; read workspace/README.md.
+- Date fix (#1798), slice 2 (#1810), 3a-3d (#2205, #2235, #2249, #2275) done. Next: slice 4; read workspace/README.md.

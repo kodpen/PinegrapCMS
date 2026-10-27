@@ -76,7 +76,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-delay-box.md: The delay box of a flow (F5b, PR #2135): amount and unit up to a week, waits as a waiting box with wake_at, settles done with waited_until, problems, try, canvas form
 - workspace-flows-outputs.md: Values a flow box gives later boxes (data-passing D1, D2): outputs per kind, ws_step_outputs(), ws_step_result_data(), null rules, report counts, one-pass fill, canvas config
 - workspace-flows-parity-test.md: tests/workspace_flows_parity_test.php maps every scheduled-action key to the Flows box that keeps it; the changes far from scheduled.php that fail it, how call sites are keyed, what to do
-- workspace-flows-retry-skip.md: A failed box of a flow run tried again or skipped by hand (F5a, PR #2098, ws_flow_step_mend()): which boxes, owner only, double click, boxes walked again, routes, panel action, canvas buttons
+- workspace-flows-retry-skip.md: A failed box of a flow run tried again on its own (3d, PR #2275, retry/retry_after) or by hand or skipped (F5a, PR #2098, ws_flow_step_mend()): which boxes, owner only, double click, routes, canvas
 - workspace-flows-run-view.md: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, how it is read again, what a failed read shows
 - workspace-flows-runner.md: Workspace flow runs (flow_runs.php, no schema change): start, run channel, walk, task boxes, wake-ups, recovery, drivers, limits, end, cancel, routes
 - workspace-flows-shares.md: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/edit, who manages and publishes, access, runs, Claude's reach, lists, bell row, panel actions, API routes, the Share dialog
