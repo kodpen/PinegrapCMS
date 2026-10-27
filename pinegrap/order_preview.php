@@ -83,8 +83,8 @@ if ((isset($_POST['submit_apply_gift_card']) == TRUE) && (ECOMMERCE_GIFT_CARD ==
         $gift_card_code = preg_replace('/[^A-Za-z0-9]/', '', $liveform->get_field_value('gift_card_code'));
 
         // check if the gift card has already been added to the order
-        $query = "SELECT COUNT(*) FROM applied_gift_cards WHERE (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "') AND (code = '" . escape($gift_card_code) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT COUNT(*) FROM applied_gift_cards WHERE (order_id = ?) AND (code = ?)";
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $gift_card_code)) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         
         // if the gift card has already been added to the order, then add error
@@ -186,13 +186,13 @@ if ((isset($_POST['submit_apply_gift_card']) == TRUE) && (ECOMMERCE_GIFT_CARD ==
                     code,
                     old_balance,
                     givex)
-                VALUES (
-                    '" . $gift_card_id . "',
-                    '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "',
-                    '" . escape($gift_card_code) . "',
-                    '" . escape($old_balance) . "',
-                    '" . $givex . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                VALUES (?, ?, ?, ?, ?)";
+            $result = db_q($query, array(
+                (string) $gift_card_id,
+                (string) ($_SESSION['ecommerce']['order_id'] ?? ''),
+                (string) $gift_card_code,
+                (string) $old_balance,
+                (string) $givex)) or output_error('Query failed.');
             
             // clear the gift card code form field
             $liveform->assign_field_value('gift_card_code', '');
