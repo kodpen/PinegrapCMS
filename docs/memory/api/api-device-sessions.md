@@ -27,3 +27,7 @@ description: The three external API callers (application key, team devices sessi
 ## How does a session end?
 - Every path that ends a person's sessions (password change or reset, sign out everywhere, account deletion, an e-mail address blocked in the firewall settings) goes through `pg_auth_token_revoke_user()`, which calls `api_devices_revoke_user()`; turning two-step verification on or off uses `pg_mfa_revoke_other_sessions()`, which does the same. Devices and OAuth connections end with them; a new such path calls one of the two.
 - At most 20 devices per person per application; the least recently used gives way.
+
+## Which notifications does an API caller see? (#PRNUM)
+- `pg_notification_visible()` with `api_notifications_rights()`, whose `orders_read` says the call's scopes hold `orders:read`: without it `new_order` and `order_return` leave the list, every unread count (`/auth/me`, `/workspace/sync` too) and the read targets. A device without Orders listed notices whose order answered 403.
+- The panel and push sender pass no such key: unchanged. `out_stock` follows the e-commerce right alone.

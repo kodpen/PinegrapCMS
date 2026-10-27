@@ -3107,7 +3107,7 @@ function api_schema() {
 			'handler' => 'api_notifications_list',
 			'returns' => array('list' => 'Notification'),
 			'summary' => 'This person\'s notifications',
-			'description' => 'The panel\'s bell for the same person, newest first: the same rows, the same wording, and only the kinds this account may see. Reading the list does not mark anything read. A page can come back shorter than limit with a next_cursor when many rows in between are not for this person; follow the cursor as usual. After a push arrives, ask for unread=true.',
+			'description' => 'The panel\'s bell for the same person, newest first: the same rows, the same wording, and only the kinds this account may see; the kinds also follow the caller\'s scopes: new_order and order_return rows need orders:read. Reading the list does not mark anything read. A page can come back shorter than limit with a next_cursor when many rows in between are not for this person; follow the cursor as usual. After a push arrives, ask for unread=true.',
 			'params'  => array(
 				array('name' => 'unread', 'in' => 'query', 'type' => 'bool',     'description' => 'Only what this person has not read yet.'),
 				array('name' => 'since',  'in' => 'query', 'type' => 'datetime', 'description' => 'Only notifications created at or after this moment.'),
@@ -3124,7 +3124,7 @@ function api_schema() {
 			'handler' => 'api_notifications_count',
 			'returns' => array('unread' => 'integer'),
 			'summary' => 'How many notifications are unread',
-			'description' => 'The number on the bell. Cheap enough to poll; send If-None-Match with the last ETag and an unchanged count answers 304.',
+			'description' => 'The number on the bell, counting only the kinds GET /notifications lists for this caller (new_order and order_return need orders:read). Cheap enough to poll; send If-None-Match with the last ETag and an unchanged count answers 304.',
 			'params'  => array()
 		),
 
