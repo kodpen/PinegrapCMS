@@ -7,15 +7,16 @@ description: Coordinator session (pilot, 2026-10-26): one per account, keeps its
 - Sessions stopped and waited to be told to go on, each asking the owner in its own window, while the quotas were 20-30% used. A coordinator keeps its account's workers busy and gathers the owner's questions in one place.
 
 ## What does it do each turn?
-- Reads the state from GitHub and the plan files, never from its own memory: open PRs and drafts (the claims), the queue count (`CLAUDE.md`, Working mode 8); `docs/memory/plans/README.md` and the open plan steps only when a worker slot is free.
+- Reads the state from GitHub and the plan files, never from its own memory: open PRs and drafts (the claims), the queue count (Working mode 8); `docs/memory/plans/README.md` and the open plan steps only when a worker slot is free.
 - Picks work no open PR holds: one plan or area per worker, never two workers on the same files or the same plan (Claim work, step 1); steps of one plan in parallel only when the owner assigned them so.
 - Starts each worker as a cloud session with a short brief: the plan file and step (or the task), the memory folder to read, and "follow CLAUDE.md". The worker claims with its own draft PR and works as every session does, its plan's next steps included (Working mode 2 and 6).
 - Keeps as many workers busy as the owner set for the account (3 to start with), fewer while the queue is near its limit.
-- Writes no product code, opens no PR, merges nothing, does not review: the merging session does (`merge-train.md`, `merge-review.md`).
+- Keeps a to-do list of its workers' PRs (`coordinator-todo-list.md`).
+- Writes no product code, opens no PR, merges nothing, does not review: the merging session does.
 
 ## How do questions reach the owner?
 - A worker that needs the owner's decision writes it under `## Questions for the owner` in its PR body, asks it in its own reply too, and waits. The coordinator reads that section of every open PR and asks the owner in one list.
-- It brings the answer back as one PR comment quoting the owner's words; the comment wakes the worker, which records the decision with its reason (`decisions-made.md`; `CLAUDE.md`, Fixed rules 6). Cloud sessions cannot message other sessions, so the PRs carry both ways, across accounts too.
+- It brings the answer back as one PR comment quoting the owner's words; the comment wakes the worker, which records the decision with its reason (`decisions-made.md`; Fixed rules 6). Cloud sessions cannot message other sessions, so the PRs carry both ways, across accounts too.
 
 ## What can it not do?
 - The app starts a new session only on a turn the owner started. On a turn woken by a check-in or a GitHub event the coordinator offers the workers as cards instead, and the owner's short "go on" in the coordinator starts a batch.
