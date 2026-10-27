@@ -1733,7 +1733,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_plan_get',
             'returns'     => array('list' => 'WorkspacePlanRow'),
             'summary'     => 'The planning board',
-            'description' => 'One row per person, one entry per day: the minutes planned, the capacity and the load in percent, leave and holidays. Only the people the owner may see on the board: everyone for a board holder, the owner and the departments they lead otherwise.',
+            'description' => 'One row per person, one entry per day: the minutes planned, the capacity and the load in percent, leave and holidays. A day lists its task ids (tasks) and the task entries the board draws (task_items: the day\'s share of minutes; due on the last day of the task\'s window; upcoming for a projected copy of a repeating task, under the series task\'s id, with its repeat label, the day it was moved from and the task number it waits for while the newest copy is overdue), and the plan items placed on it (events: meetings, leave, holidays and others with their minutes that day). A row counts the person\'s open tasks with neither a start nor a due date (unscheduled). Only the people the owner may see on the board: everyone for a board holder, the owner and the departments they lead otherwise.',
             'params'      => array(
                 array('name' => 'from', 'in' => 'query', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD. Monday of this week when left out.'),
                 array('name' => 'days', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 31, 'default' => 7),
