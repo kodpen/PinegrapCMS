@@ -8870,14 +8870,13 @@
                 });
             }
 
-            // A checklist item becomes a task of its own.
-            if (checkItem && self.channel.can_post) {
-                var itemText = ((checkItem.querySelector('.ws-check-text') || checkItem).textContent || '').trim();
+            // A checklist item becomes a task of its own, read as /task
+            // reads it; the server offers it only on an item without one.
+            var makeButton = checkItem ? checkItem.querySelector('[data-ws-item-task]') : null;
 
+            if (makeButton) {
                 items.push({ icon: 'bi-check2-square', label: t('task_from_item'), action: function () {
-                    taskDrawer.open(0, Object.assign(self.taskDefaults(), {
-                        title: itemText.slice(0, 200)
-                    }), function () { self.sync(); });
+                    self.itemTask(message, makeButton);
                 } });
                 items.push('-');
             }
@@ -10530,8 +10529,38 @@
             return row;
         },
 
+        // Makes one checklist item a task (ws_check_task); the redrawn
+        // message shows its tag beside the item.
+        itemTask: function (message, button) {
+            var self = this;
+
+            if (button.disabled) {
+                return;
+            }
+
+            button.disabled = true;
+
+            api('ws_check_task', {
+                message_id: message.id,
+                item: parseInt(button.getAttribute('data-ws-item-task'), 10)
+            }).then(function (result) {
+                self.replaceMessage(result.message);
+            }).catch(function (error) {
+                button.disabled = false;
+                fail(error);
+            });
+        },
+
         bindChecks: function (body, message) {
             var self = this;
+
+            Array.prototype.forEach.call(body.querySelectorAll('[data-ws-item-task]'), function (button) {
+                button.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    self.itemTask(message, button);
+                });
+            });
 
             Array.prototype.forEach.call(body.querySelectorAll('input[data-ws-check]'), function (box) {
                 box.addEventListener('change', function () {

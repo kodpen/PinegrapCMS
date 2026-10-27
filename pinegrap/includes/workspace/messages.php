@@ -155,6 +155,15 @@ function ws_message_payloads($viewer, $rows, $options = array())
         }
     }
 
+    // The tasks made of checklist items, their tags resolved with the rest.
+    $item_tasks = ws_checklist_item_tasks_map($rows);
+
+    foreach ($item_tasks as $pairs) {
+        foreach ($pairs as $task_id) {
+            $tokens[] = array('sigil' => '#', 'type' => 'task', 'id' => (int) $task_id);
+        }
+    }
+
     $refs = ws_refs_resolve($viewer, $tokens);
     $people = ws_people($senders);
     $tasks = array();
@@ -189,6 +198,7 @@ function ws_message_payloads($viewer, $rows, $options = array())
         // Status updates and check-ins (status.php).
         'status'     => function_exists('ws_status_cards_map') ? ws_status_cards_map($viewer, $ids) : array(),
         'list_tasks' => ws_checklist_tasks_map($viewer, $ids),
+        'item_tasks' => $item_tasks,
         'can_post'   => $can_post,
         // Requests to Claude, and the tasks and record changes its answers
         // propose.
@@ -298,6 +308,13 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         }
     }
 
+    // Its checklist items show the tasks made of them, and offer to make
+    // one where the reader may (task_work.php).
+    $item_tasks = $agent ? null : array(
+        'tasks' => $extra['item_tasks'][$id] ?? array(),
+        'make'  => ws_checklist_item_task_offered($row, $can_post),
+    );
+
     // A message that is one record tag and nothing else is drawn as its card
     // (render.php), with what this reader may see of the record.
     $tag_card = (!$deleted && !$agent && in_array($row['kind'], array('message', 'decision', 'note'), true)
@@ -317,7 +334,7 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         // (guests.php), here as on their own page: a guest adds no table.
         'html'        => $deleted ? '' : ((($row['sender_kind'] === 'guest') && function_exists('ws_guest_render'))
             ? ws_guest_render($row['body'])
-            : (($tag_card !== '') ? $tag_card : ws_render_body($agent ? $agent['text'] : $row['body'], $refs, $extra['checks'][$id] ?? array(), $can_post && ws_interact_ready()))),
+            : (($tag_card !== '') ? $tag_card : ws_render_body($agent ? $agent['text'] : $row['body'], $refs, $extra['checks'][$id] ?? array(), $can_post && ws_interact_ready(), null, $item_tasks))),
         'raw'         => ($mine && !$deleted) ? (string) $row['body'] : '',
         'labels'      => ($mine && !$deleted) ? $labels : array(),
         'deleted'     => $deleted,

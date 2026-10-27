@@ -1943,6 +1943,7 @@
     "The invoice's currency; the receipt is entered in it.": "Faturanın para birimi; tahsilat bu para biriminde girilir.",
     "The invoices do not change: they carry the whole VAT and the withheld part either way. Only the difference the report works out does.": "Faturalar değişmez: her iki durumda da KDV'nin tamamını ve tevkif edilen kısmı taşırlar. Yalnız raporun hesapladığı fark değişir.",
     "The issues so far": "Bugüne kadarki sayılar",
+    "The item gives the task no title.": "Bu madde göreve bir başlık vermiyor.",
     "The item has been added to your cart.": "Ürün sepetinize eklendi.",
     "The item that you attempted to add requires a recipient.": "Eklemeye çalıştığınız ürün için bir alıcı seçmelisiniz.",
     "The item that you selected could not be found. Please select a different item to add.": "Seçtiğiniz ürün bulunamadı. Eklemek için başka bir ürün seçin.",

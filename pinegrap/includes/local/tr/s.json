@@ -1659,6 +1659,7 @@
     "Somebody is waiting on an answer to the {var:1} sent in this week.": "Bu hafta gönderilen {var:1} için yanıt bekleyen biri var.",
     "Somebody mentioned you here since you last looked.": "Son bakışınızdan bu yana burada biri sizi andı.",
     "Somebody on this task is away then. Only a lead or somebody with the team board can hand it over anyway.": "Bu görevdeki biri o tarihte izinde. Yine de vermek için ekip lideri ya da ekip panosu yetkisi olan biri gerekir.",
+    "Somebody on this task is away then. Write it with /task to see the clash.": "Bu görevdeki biri o tarihte izinde. Çakışmayı görmek için /görev ile yazın.",
     "Somebody said hi!": "Biri merhaba dedi!",
     "Somebody searching for one of these words gets this page at the top of the results; a search for a part of one finds the page too. Press Enter after each word.": "Bu kelimelerden birini arayan kişi bu sayfayı sonuçların en üstünde görür; kelimenin bir parçasını aramak da sayfayı bulur. Her kelimeden sonra Enter'a basın.",
     "Somebody voted for this option, so it stays as it is.": "Bu seçeneğe oy verildi; olduğu gibi kalır.",

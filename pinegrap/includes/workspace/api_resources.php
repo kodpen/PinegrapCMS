@@ -3723,6 +3723,43 @@ function ws_api_tasks_create($params)
     api_ok(ws_api_task_present($viewer, ws_task($result['task_id']), $warnings), 201);
 }
 
+/**
+ * Makes one checklist item of a message a task, the way the button beside
+ * the item does (task_work.php, ws_checklist_item_task()).
+ */
+function ws_api_messages_item_task($params)
+{
+    $viewer = ws_api_viewer();
+    $message = ws_api_message_or_404($viewer, $params['id']);
+    $item = (int) $params['item'];
+
+    // The checks ws_checklist_item_task() makes, made first so that a dry
+    // run meets the same refusals.
+    $checked = ws_checklist_item_task_check($viewer, $message, $item);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], 'item');
+    }
+
+    api_dry_run_stop('created', 'workspace_task', array(
+        'title'      => $checked['data']['title'],
+        'channel_id' => (int) $checked['data']['channel_id'],
+        'message_id' => (int) $message['id'],
+        'item'       => $item,
+        'assignees'  => $checked['data']['assignees'],
+    ));
+
+    $result = ws_checklist_item_task($viewer, $message, $item);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], 'item');
+    }
+
+    ws_api_log(lang(array('string' => 'workspace task ({var:1}) was created', 'vars' => ws_task_number($result['task_id']))));
+
+    api_ok(ws_api_task_present($viewer, ws_task($result['task_id']), array()), 201);
+}
+
 function ws_api_tasks_update($params)
 {
     $viewer = ws_api_viewer();

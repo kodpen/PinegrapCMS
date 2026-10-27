@@ -304,7 +304,7 @@ function pg_panel_actions()
         'ws_task_status', 'ws_task_move', 'ws_tasks', 'ws_board',
         'ws_conflicts', 'ws_calendar', 'ws_event_save', 'ws_event_get',
         'ws_event_delete', 'ws_meeting_note', 'ws_meeting_transfer', 'ws_inbox', 'ws_inbox_read', 'ws_react',
-        'ws_check', 'ws_poll_create', 'ws_poll_vote', 'ws_poll_close',
+        'ws_check', 'ws_check_task', 'ws_poll_create', 'ws_poll_vote', 'ws_poll_close',
         'ws_poll_edit', 'ws_approval_create', 'ws_approval_decide',
         'ws_approval_close', 'ws_ack_request', 'ws_ack', 'ws_ack_people',
         'ws_status_facts', 'ws_status_ai', 'ws_status_post', 'ws_checkin_start',

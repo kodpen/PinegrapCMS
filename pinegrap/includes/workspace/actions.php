@@ -311,7 +311,7 @@ function ws_handle_action($action, $request)
     if (function_exists('ws_message_in_past') && ws_eras_ready()) {
         $touched = null;
 
-        if (in_array($action, array('ws_edit', 'ws_mark', 'ws_react', 'ws_check', 'ws_ack', 'ws_ack_request'), true)
+        if (in_array($action, array('ws_edit', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request'), true)
             || (($action === 'ws_delete') && ((string) ($request['scope'] ?? '') !== 'me'))) {
             $touched = ws_message((int) ($request['message_id'] ?? 0));
         } elseif (in_array($action, array('ws_poll_edit', 'ws_poll_vote', 'ws_poll_close'), true)) {
@@ -1654,6 +1654,24 @@ function ws_handle_action($action, $request)
             $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
 
             return ws_action_ok(array('message' => $payload[0]));
+
+        // One checklist item made into a task (task_work.php).
+        case 'ws_check_task':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!$message || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            $result = ws_checklist_item_task($viewer, $message, (int) ($request['item'] ?? -1));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
+
+            return ws_action_ok(array('message' => $payload[0], 'task_id' => $result['task_id']));
 
         case 'ws_poll_create':
             $channel = ws_action_channel($viewer, $request, 'post');

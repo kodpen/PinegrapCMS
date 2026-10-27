@@ -587,6 +587,38 @@ function ws_render_text($text, $refs)
 }
 
 /**
+ * What a checklist item of a channel message shows about its task: the
+ * task's tag when one was made of the item, else the button that makes one
+ * for a reader who may (task_work.php, ws_checklist_item_task()).
+ *
+ * @param int        $item       the item's number in the list
+ * @param array      $refs       ws_refs_resolve() output, the task's tag among them
+ * @param array|null $item_tasks tasks (item => task id), make (bool)
+ * @return string
+ */
+function ws_check_task_html($item, $refs, $item_tasks)
+{
+    if (!is_array($item_tasks)) {
+        return '';
+    }
+
+    $task_id = (int) ($item_tasks['tasks'][$item] ?? 0);
+
+    if ($task_id > 0) {
+        return isset($refs['task:' . $task_id]) ? '<span class="ws-check-task">' . ws_chip_html($refs['task:' . $task_id]) . '</span>' : '';
+    }
+
+    if (empty($item_tasks['make'])) {
+        return '';
+    }
+
+    $label = lang('Make a task');
+
+    return '<button type="button" class="ws-check-make" data-ws-item-task="' . (int) $item . '" title="' . h($label) . '" aria-label="' . h($label) . '">'
+        . '<i class="bi bi-check2-square" aria-hidden="true"></i></button>';
+}
+
+/**
  * A stored text as HTML for this reader.
  *
  * @param string     $body
@@ -596,9 +628,13 @@ function ws_render_text($text, $refs)
  * @param array|null $calc      for a piece of a longer text (a note's block):
  *                              seed, the names its hesap blocks inherit, and
  *                              all, the names its tables may use
+ * @param array|null $item_tasks for a channel message's checklist: tasks (item
+ *                              => task id, its tag drawn beside the item; the
+ *                              id's task:N must be in $refs) and make (the
+ *                              reader may make a task of an item without one)
  * @return string
  */
-function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc = null)
+function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc = null, $item_tasks = null)
 {
     $body = (string) $body;
 
@@ -792,7 +828,8 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc 
 
                 $list .= '<li class="ws-check' . ($checked ? ' ws-checked' : '') . '"><label>'
                     . '<input type="checkbox" class="form-check-input" data-ws-check="' . $item . '"' . ($checked ? ' checked' : '') . ($can_check ? '' : ' disabled') . '>'
-                    . '<span class="ws-check-text">' . ws_render_inline(trim($match[2]), $refs) . '</span></label>' . $who . '</li>';
+                    . '<span class="ws-check-text">' . ws_render_inline(trim($match[2]), $refs) . '</span></label>' . $who
+                    . ws_check_task_html($item, $refs, $item_tasks) . '</li>';
 
                 $item++;
                 $i++;
