@@ -1595,6 +1595,7 @@ $(document).ready(function () {
     // again over a pane that arrives later; see pgInitInjected().
     pgBindTitlePopovers(document);
     pgSyncCollapseSwitchers(document);
+    pgBindRanges(document);
 
     $(document).on("change", "select.collapse-if-selected", function () {
         var target = $(this).attr("data-bs-target");
@@ -8376,12 +8377,17 @@ function bindPageRenameRedirect(ids) {
                 const scrollWrap = document.createElement('div');
                 scrollWrap.style.cssText = 'margin-top:6px;';
                 scrollWrap.innerHTML = `<label style="font-size:12px">${pgLang('Scroll X')}</label>`;
+                const range = document.createElement('div');
+                range.className = 'form-range pg-range-bubble';
                 const slider = document.createElement('input');
-                slider.type = 'range'; slider.min = -200; slider.max = 200; slider.value = el.scrollX || 0;
-                slider.style.width = '100%';
+                slider.type = 'range'; slider.className = 'form-range-input';
+                slider.min = -200; slider.max = 200; slider.value = el.scrollX || 0;
+                slider.setAttribute('aria-label', pgLang('Scroll X'));
                 slider.addEventListener('input', () => { el.scrollX = +slider.value; this.render(); this._fireChange(); });
-                scrollWrap.appendChild(slider);
+                range.appendChild(slider);
+                scrollWrap.appendChild(range);
                 props.appendChild(scrollWrap);
+                pgUI.range.bubble(range);
 
                 if (el.field === 'custom') {
                     props.appendChild(this._fieldRow(pgLang('Text'), 'text', el.text || '', v => { el.text = v; this.render(); this._fireChange(); }));
@@ -10068,6 +10074,15 @@ function pgSyncCollapseSwitchers(scope) {
 /**
  * Everything a freshly injected piece of the panel still needs.
  */
+// Bootstrap 6 Ranges marked data-pg-range, with the value bubble; the
+// attribute's value is the unit after the number ("%").
+function pgBindRanges(scope) {
+    $(scope).find('.form-range[data-pg-range]').each(function () {
+        var unit = this.getAttribute('data-pg-range') || '';
+        pgUI.range.bubble(this, function (value) { return value + unit; });
+    });
+}
+
 function pgInitInjected(scope) {
 
     var $scope = $(scope);
@@ -10078,6 +10093,7 @@ function pgInitInjected(scope) {
 
     pgBindTitlePopovers($scope);
     pgSyncCollapseSwitchers($scope);
+    pgBindRanges($scope);
 
     if ($.fn.inputmask) {
         $scope.find('.input-mask-key-code').inputmask({

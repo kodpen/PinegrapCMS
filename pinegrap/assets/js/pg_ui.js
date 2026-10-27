@@ -356,9 +356,10 @@
     var ranges = [];
 
     // A Bootstrap 6 Range on a .form-range wrapper, with the value bubble.
-    // Bootstrap starts only the ranges present at DOMContentLoaded, so markup
-    // drawn later comes here. format(value) gives the bubble's text. Returns
-    // a promise of the instance (null under Bootstrap 5).
+    // Bootstrap starts only the ranges present at DOMContentLoaded, and
+    // without a formatter, so an instance already there is replaced; markup
+    // drawn later comes here too. format(value) gives the bubble's text.
+    // Returns a promise of the instance (null under Bootstrap 5).
     function bubbleRange(target, format) {
         var el = node(target);
         return ready(function () {
@@ -372,6 +373,7 @@
             if (!el) {
                 return null;
             }
+            dispose('range', el);
             var inst = get('range', el, { bubble: true, formatter: format || null });
             if (inst) {
                 ranges.push(el);

@@ -1488,17 +1488,14 @@ html[data-bs-theme="dark"] .accordion {
 .switch {
   --bs-switch-checked-indicator-bg: #1a1c1e;
 }
-.form-range::-webkit-slider-thumb {
-  background-color: var(--pg-primary);
+.form-range {
+  --bs-range-thumb-bg: var(--pg-primary);
+  --bs-range-thumb-active-bg: var(--pg-primary-line);
+  --bs-range-track-fill-bg: var(--pg-primary);
 }
-.form-range::-moz-range-thumb {
-  background-color: var(--pg-primary);
-}
-.form-range::-webkit-slider-thumb:active {
-  background-color: var(--pg-primary-line);
-}
-.form-range::-moz-range-thumb:active {
-  background-color: var(--pg-primary-line);
+/* Room above a Range for its value bubble, which sits over the thumb */
+.pg-range-bubble {
+  margin-top: 1.75rem;
 }
 
 /***********/
