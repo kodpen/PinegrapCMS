@@ -53,6 +53,7 @@ function pg_sw_page_type_widgets()
         'shipping method'       => 'shipping_method',
         'billing information'   => 'billing_information',
         'order preview'         => 'order_preview',
+        'order form'            => 'order_form',
         'view order'            => 'order_view',
         'calendar view'         => 'calendar_view',
         'calendar event view'   => 'calendar_event_view',
