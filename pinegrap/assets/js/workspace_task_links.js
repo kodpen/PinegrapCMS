@@ -47,7 +47,7 @@
         function item(other, removable) {
             var row = h.el('div', 'ws-task-links-row' + (other.open ? '' : ' ws-task-links-done'));
 
-            row.appendChild(h.icon(other.open ? 'bi-lock' : 'bi-check2-circle', other.open ? 'text-warning' : 'text-success'));
+            row.appendChild(h.icon(other.open ? 'bi-lock' : 'bi-check2-circle', other.open ? 'fg-warning' : 'fg-success'));
 
             var label = h.el(other.visible ? 'a' : 'span', 'ws-grow text-truncate', other.visible ? (other.number + ' · ' + other.title) : (other.number + ' · ' + h.t('tl_task_hidden')));
 
@@ -62,7 +62,7 @@
             row.appendChild(label);
 
             if (other.status_label) {
-                row.appendChild(h.el('span', 'badge text-bg-light', other.status_label));
+                row.appendChild(h.el('span', 'badge badge-subtle theme-secondary', other.status_label));
             }
 
             if (removable) {
@@ -123,7 +123,7 @@
                     });
 
                     if (!list.firstChild) {
-                        list.appendChild(h.el('div', 'list-group-item small text-body-secondary', h.t('nothing_found')));
+                        list.appendChild(h.el('div', 'list-group-item small fg-secondary', h.t('nothing_found')));
                     }
 
                     list.classList.remove('d-none');
@@ -153,10 +153,10 @@
             head.appendChild(h.el('span', 'fw-semibold', h.t('tl_title')));
             wrap.appendChild(head);
 
-            wrap.appendChild(h.el('div', 'small text-body-secondary mt-1', h.t('tl_blocked_by')));
+            wrap.appendChild(h.el('div', 'small fg-secondary mt-1', h.t('tl_blocked_by')));
 
             if (!links.blocked_by.length) {
-                wrap.appendChild(h.el('div', 'small text-body-secondary ms-3', h.t('tl_none')));
+                wrap.appendChild(h.el('div', 'small fg-secondary ms-5', h.t('tl_none')));
             }
 
             links.blocked_by.forEach(function (other) {
@@ -168,7 +168,7 @@
             }
 
             if (links.blocks.length) {
-                wrap.appendChild(h.el('div', 'small text-body-secondary mt-2', h.t('tl_blocks')));
+                wrap.appendChild(h.el('div', 'small fg-secondary mt-3', h.t('tl_blocks')));
 
                 links.blocks.forEach(function (other) {
                     wrap.appendChild(item(other, false));
@@ -188,7 +188,7 @@
             return;
         }
 
-        var tag = h.el('span', 'ws-task-links-tag ms-2');
+        var tag = h.el('span', 'ws-task-links-tag ms-3');
         tag.appendChild(h.icon('bi-lock', 'me-1'));
         tag.appendChild(document.createTextNode(h.t('tl_waits', numbers(task.blocked_by))));
         container.appendChild(tag);

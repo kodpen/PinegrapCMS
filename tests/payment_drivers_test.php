@@ -513,6 +513,6 @@ function test_payment_drivers_fields_html_escapes_and_never_draws_secrets()
 	pg_assert_false(strpos($html, '<script>') !== false);
 
 	$unread = pg_payment_settings_fields_html($definition, $fields, array('values' => array(), 'secrets' => array(), 'secret_stored' => true, 'readable' => false, 'enabled' => false, 'exists' => true));
-	pg_assert_contains('alert-warning', $unread, 'secrets the site\'s key cannot read');
+	pg_assert_contains('alert theme-warning', $unread, 'secrets the site\'s key cannot read');
 	pg_assert_false(strpos($unread, 'placeholder="') !== false, 'nothing readable is stored');
 }

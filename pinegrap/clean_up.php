@@ -240,20 +240,20 @@ if (!$_POST) {
     $folder_counter = 0;
     $file_counter = 0;
     foreach($file_directory_files_diff as $file){
-        $file_icon = '<span class="material-icons me-3">insert_drive_file</span>';
+        $file_icon = '<span class="material-icons me-5">insert_drive_file</span>';
         $file_counter++;
-        $files .= '<li class="list-group-item bg-reset border-0 text-danger">' . $file_icon . $file . '</li>';
+        $files .= '<li class="list-group-item bg-reset border-0 fg-danger">' . $file_icon . $file . '</li>';
     }
     foreach($file_list as $file){
         if(file_exists($file)){
             if(is_dir($file)){
-                $file_icon = '<span class="material-icons me-3">folder</span>';
+                $file_icon = '<span class="material-icons me-5">folder</span>';
                 $folder_counter++;
             }else{
-                $file_icon = '<span class="material-icons me-3">insert_drive_file</span>';
+                $file_icon = '<span class="material-icons me-5">insert_drive_file</span>';
                 $file_counter++;
             }
-            $files .= '<li class="list-group-item bg-reset border-0 text-danger">' . $file_icon . $file . '</li>';
+            $files .= '<li class="list-group-item bg-reset border-0 fg-danger">' . $file_icon . $file . '</li>';
         }
     }
 
@@ -267,7 +267,7 @@ if (!$_POST) {
         }
         if ($expired_3ds_count > 0) {
             $file_counter++;
-            $files .= '<li class="list-group-item bg-reset border-0 text-danger"><span class="material-icons me-3">storage</span>iyzipay_3ds_state &mdash; ' . $expired_3ds_count . ' ' . lang(array('string' => 'expired record{suffix}', 'suffix' => ($expired_3ds_count != 1 ? 's' : ''))) . ' (&gt;30 ' . lang('days') . ')</li>';
+            $files .= '<li class="list-group-item bg-reset border-0 fg-danger"><span class="material-icons me-5">storage</span>iyzipay_3ds_state &mdash; ' . $expired_3ds_count . ' ' . lang(array('string' => 'expired record{suffix}', 'suffix' => ($expired_3ds_count != 1 ? 's' : ''))) . ' (&gt;30 ' . lang('days') . ')</li>';
         }
     }
 
@@ -304,9 +304,9 @@ if (!$_POST) {
             $file_text = ' ' . $file_counter . ' ' . lang('file');
 
         }
-        $output_counter_info = '<div class="alert alert-success">' . lang(array('string'=>'Found{var:1}{suffix:1}{var:2}{var:3}{suffix:2} that can be cleaned.','vars'=>array($folder_text,$and_text,$file_text),'suffix'=>array($folder_suffix,$file_suffix) )) . '</div>';
+        $output_counter_info = '<div class="alert theme-success">' . lang(array('string'=>'Found{var:1}{suffix:1}{var:2}{var:3}{suffix:2} that can be cleaned.','vars'=>array($folder_text,$and_text,$file_text),'suffix'=>array($folder_suffix,$file_suffix) )) . '</div>';
 
-        $output_delete_button = '<button type="submit" id="delete_button" name="submit_delete" value="Delete" class="btn my-1  btn-success "><span class="material-icons me-2">auto_delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete all unnecessary files and folders') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" id="delete_button" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">auto_delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete all unnecessary files and folders') ) . '</span></button>';
     }else{
         include_once('liveform.class.php');
         $liveform = new liveform('settings');
@@ -331,12 +331,12 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
+                            <div class="card my-7">
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             ' . $output_counter_info . '
-                                            <div class="overflow-auto position-relative mb-3 w-100" style="max-height:500px">
+                                            <div class="overflow-auto position-relative mb-5 w-100" style="max-height:500px">
                                                 <ul class="list-group bg-reset">' . $files . '</ul>
                                             </div>
                                         </div>
@@ -345,7 +345,7 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>          
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 ' . $output_delete_button . '

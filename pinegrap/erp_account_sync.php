@@ -208,23 +208,23 @@ $sources = array(
 );
 
 $view = function ($url) {
-    return '<button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('View') . '" onclick="window.location.href=\'' . h($url) . '\'"><i class="bi bi-eye" aria-hidden="true"></i></button>';
+    return '<button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('View') . '" onclick="window.location.href=\'' . h($url) . '\'"><i class="bi bi-eye" aria-hidden="true"></i></button>';
 };
 
 $check = function ($name, $id, $label) {
-    return '<td class="select-all align-middle text-start"><input class="form-check-input" type="checkbox" name="' . $name . '[]" value="' . (int) $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => $label))) . '" /></td>';
+    return '<td class="select-all align-middle text-start"><input class="check" type="checkbox" name="' . $name . '[]" value="' . (int) $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => $label))) . '" /></td>';
 };
 
 $card_cell = function ($row) {
     $sub = array_filter(array((string) $row['tax_number'], ((string) $row['code'] !== '') ? lang(array('string' => 'code {var:1}', 'vars' => (string) $row['code'])) : ''), 'strlen');
 
     return '<div class="text-truncate">' . h(((string) $row['title'] !== '') ? $row['title'] : ('#' . $row['external_id'])) . '</div>'
-        . '<div class="small text-body-secondary">' . h(implode(' · ', $sub)) . '</div>';
+        . '<div class="small fg-secondary">' . h(implode(' · ', $sub)) . '</div>';
 };
 
 $gone = function ($row) use ($provider_label) {
     return !empty($row['gone'])
-        ? ' <span class="badge rounded-pill text-bg-danger" title="' . h(lang(array('string' => 'The last complete read of {var:1} did not find this card.', 'vars' => $provider_label))) . '">' . lang(array('string' => 'Not at {var:1} any more', 'vars' => h($provider_label))) . '</span>'
+        ? ' <span class="badge rounded-pill theme-danger" title="' . h(lang(array('string' => 'The last complete read of {var:1} did not find this card.', 'vars' => $provider_label))) . '">' . lang(array('string' => 'Not at {var:1} any more', 'vars' => h($provider_label))) . '</span>'
         : '';
 };
 
@@ -246,21 +246,21 @@ switch ($tab) {
             $output_info = ($tab === 'differ')
                 ? h(implode(', ', array_map(function ($field) use ($fields) { return $fields[$field]; }, array_keys($row['diff']))))
                 : h($sources[(string) $row['link_source']] ?? '')
-                    . (((int) $row['synced_at'] > 0) ? '<div class="small text-body-secondary">' . h(lang(array('string' => 'aligned {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $row['synced_at']), 'date and time')))) . '</div>' : '');
+                    . (((int) $row['synced_at'] > 0) ? '<div class="small fg-secondary">' . h(lang(array('string' => 'aligned {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $row['synced_at']), 'date and time')))) . '</div>' : '');
 
             $output_rows .= '
                         <tr>
                             <td class="align-middle text-start">' . $view('erp_account_sync_item.php?id=' . (int) $row['id']) . '</td>
                             <td style="max-width:320px" class="align-middle">' . $card_cell($row) . $gone($row) . '</td>
-                            <td style="max-width:320px" class="align-middle"><a class="link-body-emphasis" href="edit_erp_account.php?id=' . (int) $row['a_id'] . '">' . h($row['a_title']) . '</a>'
-                                . '<div class="small text-body-secondary">' . h($row['a_tax_number']) . '</div></td>
+                            <td style="max-width:320px" class="align-middle"><a class="pg-link-body-emphasis" href="edit_erp_account.php?id=' . (int) $row['a_id'] . '">' . h($row['a_title']) . '</a>'
+                                . '<div class="small fg-secondary">' . h($row['a_tax_number']) . '</div></td>
                             <td class="align-middle">' . $output_info . '</td>
                         </tr>';
         }
         break;
 
     case 'provider_only':
-        $head = '<th class="noVis"><input class="form-check-input" title="' . lang(array('string' => 'Select/Deselect All')) . '" type="checkbox" id="select_all"></th>
+        $head = '<th class="noVis"><input class="check" title="' . lang(array('string' => 'Select/Deselect All')) . '" type="checkbox" id="select_all"></th>
                                 <th class="noVis">' . lang(array('string' => 'Action')) . '</th>
                                 <th>' . lang('Name') . '</th>
                                 <th>' . lang('City') . '</th>
@@ -276,7 +276,7 @@ switch ($tab) {
 
             foreach ((array) $row['candidates'] as $candidate) {
                 $note[] = lang(array('string' => 'In the ERP: {var:1}', 'vars' => '<a href="edit_erp_account.php?id=' . (int) $candidate['id'] . '">' . h($candidate['title']) . '</a>'))
-                    . (((int) $candidate['card_id'] > 0) ? ' <span class="text-body-secondary">(' . lang('linked to another card') . ')</span>' : '');
+                    . (((int) $candidate['card_id'] > 0) ? ' <span class="fg-secondary">(' . lang('linked to another card') . ')</span>' : '');
             }
 
             $output_rows .= '
@@ -285,20 +285,20 @@ switch ($tab) {
                             <td class="align-middle text-start">' . $view('erp_account_sync_item.php?id=' . (int) $row['id']) . '</td>
                             <td style="max-width:320px" class="align-middle">' . $card_cell($row) . $gone($row) . '</td>
                             <td class="align-middle">' . h($row['city']) . '</td>
-                            <td class="align-middle">' . h(erp_edoc_account_value_text('kind', $row['kind'])) . (empty($row['is_active']) ? ' <span class="badge rounded-pill text-bg-light">' . lang('Passive') . '</span>' : '') . '</td>
+                            <td class="align-middle">' . h(erp_edoc_account_value_text('kind', $row['kind'])) . (empty($row['is_active']) ? ' <span class="badge rounded-pill badge-subtle theme-secondary">' . lang('Passive') . '</span>' : '') . '</td>
                             <td class="align-middle small">' . implode('<br />', $note) . '</td>
                         </tr>';
         }
 
         $bulk = '
                 <span class="enable-on-selected d-inline-flex flex-wrap gap-1">
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_import" class="btn btn-sm btn-outline-secondary disabled" data-confirm-content="' . h(lang('Take the ticked cards into the ERP as new accounts? A card whose number an account already carries is linked to that account instead.')) . '"><i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>' . lang('Take into the ERP') . '</button>
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_aside" class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . lang('Set aside') . '</button>
+                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_import" class="btn btn-sm btn-outline theme-secondary disabled" data-confirm-content="' . h(lang('Take the ticked cards into the ERP as new accounts? A card whose number an account already carries is linked to that account instead.')) . '"><i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>' . lang('Take into the ERP') . '</button>
+                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_aside" class="btn btn-sm btn-outline theme-secondary disabled"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . lang('Set aside') . '</button>
                 </span>';
         break;
 
     case 'erp_only':
-        $head = '<th class="noVis"><input class="form-check-input" title="' . lang(array('string' => 'Select/Deselect All')) . '" type="checkbox" id="select_all"></th>
+        $head = '<th class="noVis"><input class="check" title="' . lang(array('string' => 'Select/Deselect All')) . '" type="checkbox" id="select_all"></th>
                                 <th class="noVis">' . lang(array('string' => 'Action')) . '</th>
                                 <th>' . lang('Name') . '</th>
                                 <th>' . h(erp_tax_id_label()) . '</th>
@@ -310,7 +310,7 @@ switch ($tab) {
                         <tr>
                             ' . $check('account_ids', $account['id'], (string) $account['title']) . '
                             <td class="align-middle text-start">' . $view('erp_account_sync_item.php?account_id=' . (int) $account['id']) . '</td>
-                            <td style="max-width:320px" class="align-middle text-truncate"><a class="link-body-emphasis" href="edit_erp_account.php?id=' . (int) $account['id'] . '">' . h($account['title']) . '</a></td>
+                            <td style="max-width:320px" class="align-middle text-truncate"><a class="pg-link-body-emphasis" href="edit_erp_account.php?id=' . (int) $account['id'] . '">' . h($account['title']) . '</a></td>
                             <td class="align-middle text-nowrap">' . h($account['tax_number']) . '</td>
                             <td class="align-middle">' . h($account['city']) . '</td>
                             <td class="align-middle">' . h(erp_edoc_account_value_text('kind', $account['kind'])) . '</td>
@@ -319,13 +319,13 @@ switch ($tab) {
 
         $bulk = '
                 <span class="enable-on-selected d-inline-flex flex-wrap gap-1">
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_push" class="btn btn-sm btn-outline-secondary disabled" data-confirm-content="' . h(lang(array('string' => 'Open a card at {var:1} for each ticked account?', 'vars' => $provider_label))) . '"><i class="bi bi-cloud-upload me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Send to {var:1}', 'vars' => $provider_label))) . '</button>
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_aside" class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . lang('Set aside') . '</button>
+                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_push" class="btn btn-sm btn-outline theme-secondary disabled" data-confirm-content="' . h(lang(array('string' => 'Open a card at {var:1} for each ticked account?', 'vars' => $provider_label))) . '"><i class="bi bi-cloud-upload me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Send to {var:1}', 'vars' => $provider_label))) . '</button>
+                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_aside" class="btn btn-sm btn-outline theme-secondary disabled"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . lang('Set aside') . '</button>
                 </span>';
         break;
 
     case 'ignored':
-        $head = '<th class="noVis"><input class="form-check-input" title="' . lang(array('string' => 'Select/Deselect All')) . '" type="checkbox" id="select_all"></th>
+        $head = '<th class="noVis"><input class="check" title="' . lang(array('string' => 'Select/Deselect All')) . '" type="checkbox" id="select_all"></th>
                                 <th class="noVis">' . lang(array('string' => 'Action')) . '</th>
                                 <th>' . lang('Name') . '</th>
                                 <th>' . h(erp_tax_id_label()) . '</th>
@@ -333,7 +333,7 @@ switch ($tab) {
 
         foreach ($groups['ignored'] as $row) {
             $output_rows .= '
-                        <tr class="text-body-secondary">
+                        <tr class="fg-secondary">
                             ' . $check('card_ids', $row['id'], (string) $row['title']) . '
                             <td class="align-middle text-start">' . $view('erp_account_sync_item.php?id=' . (int) $row['id']) . '</td>
                             <td style="max-width:320px" class="align-middle">' . $card_cell($row) . '</td>
@@ -344,7 +344,7 @@ switch ($tab) {
 
         foreach ($groups['ignored_accounts'] as $account) {
             $output_rows .= '
-                        <tr class="text-body-secondary">
+                        <tr class="fg-secondary">
                             ' . $check('account_ids', $account['id'], (string) $account['title']) . '
                             <td class="align-middle text-start">' . $view('erp_account_sync_item.php?account_id=' . (int) $account['id']) . '</td>
                             <td style="max-width:320px" class="align-middle text-truncate">' . h($account['title']) . '</td>
@@ -355,7 +355,7 @@ switch ($tab) {
 
         $bulk = '
                 <span class="enable-on-selected d-inline-flex flex-wrap gap-1">
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_restore" class="btn btn-sm btn-outline-secondary disabled"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . lang('Bring back') . '</button>
+                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_restore" class="btn btn-sm btn-outline theme-secondary disabled"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . lang('Bring back') . '</button>
                 </span>';
         break;
 }
@@ -375,10 +375,10 @@ $output_filter = pg_filter_select('tab', $filter_options, $tab, array('label' =>
 $output_notice = '';
 
 if (!$installed) {
-    $output_notice = '<div class="alert alert-warning my-4">' . lang('Run the software upgrade first: the account sync table is not there yet.') . '</div>';
+    $output_notice = '<div class="alert theme-warning my-7">' . lang('Run the software upgrade first: the account sync table is not there yet.') . '</div>';
 } elseif ($provider === '') {
     $active = erp_edoc_installed() ? erp_edoc_active() : '';
-    $output_notice = '<div class="alert alert-info my-4">'
+    $output_notice = '<div class="alert theme-info my-7">'
         . (($active === '')
             ? lang('The cards are compared with the e-document provider\'s, and no provider is selected.')
             : lang(array('string' => '{var:1} does not hand over its customer and supplier cards yet.', 'vars' => h(erp_edoc_info($active)['label']))))
@@ -394,15 +394,15 @@ if ($provider !== '') {
     $read_at = (int) ($settings['accounts_read_at'] ?? 0);
 
     $output_fetch = '
-                <form action="erp_account_sync.php" method="post" class="d-inline-flex align-items-center gap-2">
+                <form action="erp_account_sync.php" method="post" class="d-inline-flex align-items-center gap-3">
                     ' . get_token_field() . '
                     <input type="hidden" name="erp_action" value="fetch" />
                     <input type="hidden" name="tab" value="' . h($tab) . '" />
-                    <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 text-nowrap"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Read from {var:1}', 'vars' => $provider_label))) . '</button>
+                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 text-nowrap"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Read from {var:1}', 'vars' => $provider_label))) . '</button>
                 </form>
                 ' . (($read_at > 0)
-                    ? '<span class="small text-body-secondary">' . lang(array('string' => 'Last read {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d H:i:s', $read_at), 'date and time'))) . '</span>'
-                    : '<span class="small text-body-secondary">' . lang('Not read yet.') . '</span>');
+                    ? '<span class="small fg-secondary">' . lang(array('string' => 'Last read {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d H:i:s', $read_at), 'date and time'))) . '</span>'
+                    : '<span class="small fg-secondary">' . lang('Not read yet.') . '</span>');
 
     $tab_notes = array(
         'differ' => lang('Linked pairs whose details differ. Open one to choose, field by field, which side is right; nothing is written until you confirm.'),
@@ -411,7 +411,7 @@ if ($provider !== '') {
         'same' => lang('Linked pairs whose details agree.'),
         'ignored' => lang('Cards and accounts you put aside. They are not offered again until you bring them back.'),
     );
-    $output_tab_note = '<p class="text-body-secondary small mt-3 mb-0">' . $tab_notes[$tab] . ' ' . lang('Balances are never exchanged.') . '</p>';
+    $output_tab_note = '<p class="fg-secondary small mt-5 mb-0">' . $tab_notes[$tab] . ' ' . lang('Balances are never exchanged.') . '</p>';
 }
 
 echo
@@ -441,7 +441,7 @@ pg_page_shell([
             </nav>
             ' . $output_tab_note . '
             ' . $form_open . '
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none;">
                         <thead>

@@ -197,7 +197,7 @@ $output_permissions_block = '';
 
 if ($permissions_block['blocked']) {
     $output_permissions_block = '
-        <div class="col-12 col-md-8 offset-md-2">' . $permissions_block['html'] . '
+        <div class="col-12 md:col-8 md:offset-2">' . $permissions_block['html'] . '
         </div>';
 }
 
@@ -333,11 +333,11 @@ pg_page_shell([
         ' . $liveform->get_warnings() . '
         ' . $liveform->output_notices() . '
         ' . $output_permissions_block . '
-        <div class="col-12 col-md-8 offset-md-2">
-			<div class="card my-5 border-4">
+        <div class="col-12 md:col-8 md:offset-2">
+			<div class="card my-12 border-4">
 				<div class="card-body">
-					<h4 class="text-success text-center"><span class="material-icons" style="line-height:1em;font-size:4em;">browser_updated</span><br/>' . lang('A new Update has been found!') . '</h4>
-                    <div class="text-center"><span class="text-secondary h4">'. $old_version . '</span> <span class="material-icons h2">arrow_right_alt</span> <span class="text-primary fw-bold h2 text-success">'. $new_version . '</span></div>
+					<h4 class="fg-success text-center"><span class="material-icons" style="line-height:1em;font-size:4em;">browser_updated</span><br/>' . lang('A new Update has been found!') . '</h4>
+                    <div class="text-center"><span class="fg-secondary h4">'. $old_version . '</span> <span class="material-icons h2">arrow_right_alt</span> <span class="fg-primary fw-bold h2 fg-success">'. $new_version . '</span></div>
                     
                     <div class="progress">
                       <div class="progress-bar progress-bar-striped  text-start" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"><span class="logbox ms-1"></span></div>
@@ -345,13 +345,13 @@ pg_page_shell([
 				</div>
 				<div class="card-footer">
 					<div class="text-center">
-                    <a id="update" class="btn btn-light ' . ($update_blocked ? 'disabled' : 'ready') . '" href="#!"' . ($update_blocked ? ' aria-disabled="true" title="' . h(lang('Open the folders listed above first.')) . '"' : '') . '><span class="me-1 material-icons">sync</span>' . lang('Update') . '</a></div>
+                    <a id="update" class="btn btn-subtle theme-secondary ' . ($update_blocked ? 'disabled' : 'ready') . '" href="#!"' . ($update_blocked ? ' aria-disabled="true" title="' . h(lang('Open the folders listed above first.')) . '"' : '') . '><span class="me-1 material-icons">sync</span>' . lang('Update') . '</a></div>
 				</div>
                 
 			</div>
 		</div>
-        <div class="col-12 col-md-8 offset-md-2">
-            <div class="alert alert-warning">
+        <div class="col-12 md:col-8 md:offset-2">
+            <div class="alert theme-warning">
                 <p class="form-text">' . lang('New files received from the update service will be replaced with software files. If changes have been made specifically for you, contact your server administrator before updating.') . '</p>' . (pg_update_backup_enabled() ? '
                 <p class="form-text mb-0">' . lang('The files that are replaced and the database are backed up first (data/backups/pre-update-….zip). Repair Software can roll the files back to it.') . '</p>' : '') . '
             </div>

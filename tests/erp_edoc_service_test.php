@@ -81,7 +81,7 @@ function test_erp_edoc_stalled_send_is_offered_again()
 	pg_assert_true(strpos($flow, "if (erp_edoc_invoice_send_stalled(\$invoice)) {\n                \$step['facts'][] = array('text' => lang(array('string' => '" . $note) !== false, 'the order card says why');
 
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_erp_invoice.php');
-	pg_assert_true(strpos($screen, "(erp_edoc_invoice_send_stalled(\$invoice)\n                            ? '<div class=\"col-12 my-2\"><div class=\"form-text\">' . h(lang(array('string' => '" . $note) !== false, 'the invoice screen says why');
+	pg_assert_true(strpos($screen, "(erp_edoc_invoice_send_stalled(\$invoice)\n                            ? '<div class=\"col-12 my-3\"><div class=\"form-text\">' . h(lang(array('string' => '" . $note) !== false, 'the invoice screen says why');
 }
 
 // A number whose check digits do not add up is refused before the provider is

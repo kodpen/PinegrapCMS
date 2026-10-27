@@ -60,14 +60,14 @@ if (!isset($_POST['name'])) {
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
 
                         <p>' . lang('Page Style Body Tag') . ': <strong>' . h('<cregion>' . $cregion_name . '</cregion>') . '</strong></p>
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <div class=" btn-group btn-group-sm flex-wrap">
-                                <a class="btn btn-link link-secondary py-0 mb-2 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/duplicate_common_region.php?id=' . h(escape_javascript(urlencode($_REQUEST['id']))) . get_token_query_string_field() . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
+                                <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/duplicate_common_region.php?id=' . h(escape_javascript(urlencode($_REQUEST['id']))) . get_token_query_string_field() . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
                             </div>
                         </nav>
                     </div>
@@ -77,13 +77,13 @@ if (!isset($_POST['name'])) {
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '">
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-6 my-2">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="name" class="form-label">' . lang('Common Region Name') . '</label>
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<cregion>') . '</div>
@@ -91,13 +91,13 @@ if (!isset($_POST['name'])) {
                                                 <div class="input-group-text">' . h('</cregion>') . '</div>
                                             </div>
                                         </div>
-                                        <div class="col-12 col-md-6 my-2">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="name" class="form-label">' . lang('Region Type') . '</label>
-                                            <select name="type" id="type" class="form-select"><option value="common" selected="selected">' . lang('Common Region') . '</option><option value="designer">' . lang('Designer Region') . '</option></select>
+                                            <select name="type" id="type" class="form-control"><option value="common" selected="selected">' . lang('Common Region') . '</option><option value="designer">' . lang('Designer Region') . '</option></select>
                                             <div class="form-text text-end">' . lang('You can change Region Type') . '</div>
                                         </div>
-                                        <h5 class="mt-5">' . lang('Shared Content to appear on associated Pages') . '</h5>
-                                        <div class="col-12 my-2">
+                                        <h5 class="mt-12">' . lang('Shared Content to appear on associated Pages') . '</h5>
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang('Content') . '</label>
                                             <textarea id="content_textarea" name="content" style="width: 100%" rows="30" wrap="off">' . h(prepare_rich_text_editor_content_for_output($cregion_content)) . '</textarea>
                                         </div>
@@ -106,11 +106,11 @@ if (!isset($_POST['name'])) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('common region')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('common region')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

@@ -28,13 +28,13 @@ if(isset($_GET['id']) && $_GET['id'] != ''){
 }
 
 
-$output_breadcrumb_link = '<li class="breadcrumb-item"><a class="link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php">' . lang('All Folders') . '</a></li>';
+$output_breadcrumb_link = '<li class="breadcrumb-item"><a class="pg-link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php">' . lang('All Folders') . '</a></li>';
 
 if (!$_POST) {
     // if user role is Administrator, Designer, or Manager, then allow user to select style and mobile style for folder
     if ($user['role'] < 3) {
-        $output_style = '<select class="form-select" id="style" name="style">' . select_style() . '</select>';
-        $output_mobile_style = '<select class="form-select" id="mobile_style_id" name="mobile_style_id">' . get_mobile_style_options() . '</select>';
+        $output_style = '<select class="form-control" id="style" name="style">' . select_style() . '</select>';
+        $output_mobile_style = '<select class="form-control" id="mobile_style_id" name="mobile_style_id">' . get_mobile_style_options() . '</select>';
         
     // else user has a user role so don't allow user to select style and mobile style for folder
     } else {
@@ -69,18 +69,18 @@ if (!$_POST) {
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('New Folder Information') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-8 my-2">
+                                        <div class="col-12 md:col-8 my-3">
                                             <label for="name" class="form-label">*' . lang('Folder Name') . '</label>
                                             ' . $liveform_add_folder->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control ', 'required'=>'required')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
-                                        <div class="col-12 col-md-4  my-2">
+                                        <div class="col-12 md:col-4  my-3">
                                             <label for="order" class="form-label" data-bs-content="' . lang('Display order of this Folder to other Folders') . '" title="' . lang('Sorting') . '">' . lang('Sorting') . ' (?)</label>
                                             <div class="input-group number-controls">
                                                 <button class="btn material-icons minus border border-end-0" type="button">remove</button>
@@ -89,10 +89,10 @@ if (!$_POST) {
 
                                             </div>
                                         </div>
-                                        <div class="col-12 my-3">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="folder_archived" name="folder_archived" value="1" />
-                                                <label class="form-check-label" for="folder_archived" data-bs-content="' . lang('Archive Folder for Pages and Files that are no longer being used') . '" title="' . lang('Archive') . '">' . lang('Archive') . ' (?)</label>
+                                        <div class="col-12 my-5">
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" type="checkbox" id="folder_archived" name="folder_archived" value="1" /></div>
+                                                <label class="" for="folder_archived" data-bs-content="' . lang('Archive Folder for Pages and Files that are no longer being used') . '" title="' . lang('Archive') . '">' . lang('Archive') . ' (?)</label>
                                             </div>
                                         </div>
 
@@ -101,27 +101,27 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Content Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-6 my-2">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="folder" class="form-label">' . lang('Parent Folder') . '</label>
-                                            <select class="form-select" id="folder" name="folder">' . select_folder($folder_id) . '</select>
+                                            <select class="form-control" id="folder" name="folder">' . select_folder($folder_id) . '</select>
                                         </div>
-                                        <div class="col-12 col-md-6 col-lg-auto my-2">
+                                        <div class="col-12 md:col-6 lg:col-auto my-3">
                                             <label for="access_control_type" class="form-label" data-bs-content="' . lang('Access Control for all Pages and Files within this Folder') . '" title="' . lang('Folder Access Control Type') . '">' . lang('Folder Access Control Type') . ' (?)</label>
-                                            <select class="form-select" id="access_control_type" name="access_control_type">' . select_access_control_type() . '</select>
+                                            <select class="form-control" id="access_control_type" name="access_control_type">' . select_access_control_type() . '</select>
                                         </div>
                                     </div>
-                                    <div class="row mt-4">
-                                        <div class="col-12 col-md-6 col-lg-auto my-2">
+                                    <div class="row mt-7">
+                                        <div class="col-12 md:col-6 lg:col-auto my-3">
                                             <label for="style" class="form-label">' . lang('Desktop Page Style') . '</label>
                                             ' . $output_style . '
                                         </div>
-                                        <div class="col-12 col-md-6 col-lg-auto my-2">
+                                        <div class="col-12 md:col-6 lg:col-auto my-3">
                                             <label for="mobile_style_id" class="form-label">' . lang('Mobile Page Style') . '</label>
                                             ' . $output_mobile_style . '
                                         </div>
@@ -132,10 +132,10 @@ if (!$_POST) {
                         </div>
                     </div>
                     <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />          
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

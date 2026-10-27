@@ -114,19 +114,19 @@ foreach ($accounts as $account) {
     }
 
     $output_credit_flag = isset($over_limit[$id])
-        ? ' <span class="badge text-bg-danger" title="' . h(lang(array('string' => 'Credit limit {var:1}, over by {var:2}', 'vars' => array(erp_money_out($over_limit[$id]['limit']), erp_money_out($over_limit[$id]['balance'] - $over_limit[$id]['limit']))))) . '">' . lang('Over limit') . '</span>'
+        ? ' <span class="badge theme-danger" title="' . h(lang(array('string' => 'Credit limit {var:1}, over by {var:2}', 'vars' => array(erp_money_out($over_limit[$id]['limit']), erp_money_out($over_limit[$id]['balance'] - $over_limit[$id]['limit']))))) . '">' . lang('Over limit') . '</span>'
         : '';
 
     // The gap is named in the tooltip: "not ready" without saying what
     // is missing only moves the question one click further away.
     $output_edoc_flag = isset($edoc_gaps[$id])
-        ? ' <i class="bi bi-exclamation-triangle-fill text-warning" title="' . h(lang(array('string' => 'Missing for the e-document: {var:1}', 'vars' => implode(', ', $edoc_gaps[$id])))) . '"></i>'
+        ? ' <i class="bi bi-exclamation-triangle-fill fg-warning" title="' . h(lang(array('string' => 'Missing for the e-document: {var:1}', 'vars' => implode(', ', $edoc_gaps[$id])))) . '"></i>'
         : '';
     $balance = (int) $account['balance'];
 
     // Positive is money owed to the shop. Saying which way round it is beats a
     // minus sign the reader has to read the sign convention off.
-    $balance_class = ($balance > 0) ? 'text-success' : (($balance < 0) ? 'text-danger' : 'text-body-secondary');
+    $balance_class = ($balance > 0) ? 'fg-success' : (($balance < 0) ? 'fg-danger' : 'fg-secondary');
     $balance_side = ($balance > 0) ? lang('owes you') : (($balance < 0) ? lang('you owe') : '');
 
     // A foreign-currency account shows its own-currency position too; the
@@ -137,7 +137,7 @@ foreach ($accounts as $account) {
         $output_balance_fc = '<div class="small fw-normal">' . h(erp_money_out_currency(abs((int) $account['balance_fc']), $account_currency)) . '</div>';
     }
 
-    $status_class = ((string) $account['status'] === 'passive') ? ' text-body-secondary text-decoration-line-through' : '';
+    $status_class = ((string) $account['status'] === 'passive') ? ' fg-secondary text-decoration-line-through' : '';
 
     $output_link_url = 'edit_erp_account.php?id=' . $id;
 
@@ -145,13 +145,13 @@ foreach ($accounts as $account) {
     // orders come from.
     $contact_id = (int) ($account['contact_id'] ?? 0);
     $output_contact = ($contact_id > 0)
-        ? '<a href="edit_contact.php?id=' . $contact_id . '" class="link-body-emphasis" title="' . h(lang('Contact')) . '"><i class="bi bi-person-check"></i></a>'
-        : '<span class="text-body-secondary" title="' . h(lang('No contact is linked to this account.')) . '">—</span>';
+        ? '<a href="edit_contact.php?id=' . $contact_id . '" class="pg-link-body-emphasis" title="' . h(lang('Contact')) . '"><i class="bi bi-person-check"></i></a>'
+        : '<span class="fg-secondary" title="' . h(lang('No contact is linked to this account.')) . '">—</span>';
 
     $output_rows .=
         '<tr' . erp_drawer_row_attributes($id) . '>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
             </td>
             <td style="max-width:220px" class="text-nowrap text-truncate align-middle chart_label' . $status_class . '">' . h($account['title']) . $output_edoc_flag . '</td>
             <td class="align-middle">' . h($kind_labels[$account['kind']] ?? $account['kind']) . '</td>
@@ -199,18 +199,18 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                ' . (!$readonly ? '<a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_account.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang(array('string' => 'Create')) . '</a>' : '') . '
-                ' . (!$readonly ? '<a class="btn btn-sm btn-outline-secondary" href="erp_accounts_import.php"><i class="bi bi-upload me-1"></i>' . lang('Import CSV') . '</a>' : '') . '
+                ' . (!$readonly ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_account.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang(array('string' => 'Create')) . '</a>' : '') . '
+                ' . (!$readonly ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_accounts_import.php"><i class="bi bi-upload me-1"></i>' . lang('Import CSV') . '</a>' : '') . '
                 ' . ((!$readonly && ($unlinked_contacts > 0)) ? '
                 <form method="post" action="erp_accounts.php" class="d-inline">
                     ' . get_token_field() . '
                     <input type="hidden" name="erp_action" value="sync_contacts" />
-                    <button type="submit" class="btn btn-sm btn-outline-secondary" data-confirm-content="' . h(lang(array('string' => '{var:1} contact(s) have placed orders but have no account. Open an account for each of them from their contact card?', 'vars' => $unlinked_contacts))) . '"><i class="bi bi-person-plus me-1"></i>' . h(lang(array('string' => 'Open accounts for {var:1} contact(s) with orders', 'vars' => $unlinked_contacts))) . '</button>
+                    <button type="submit" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang(array('string' => '{var:1} contact(s) have placed orders but have no account. Open an account for each of them from their contact card?', 'vars' => $unlinked_contacts))) . '"><i class="bi bi-person-plus me-1"></i>' . h(lang(array('string' => 'Open accounts for {var:1} contact(s) with orders', 'vars' => $unlinked_contacts))) . '</button>
                 </form>' : '') . '
                 <div class="pg-toolbar-grow"></div>
                 ' . $output_filter . '
             </nav>
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none;">
                         <thead>

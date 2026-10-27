@@ -271,14 +271,14 @@ function erp_account_price_cells($row)
     $sku = trim((string) $row['product_sku']);
     $price = (int) $row['price'];
     $rate = (float) $row['discount_rate'];
-    $none = '<span class="text-body-secondary">—</span>';
+    $none = '<span class="fg-secondary">—</span>';
 
     return array(
         'product' => array(
             'html'  => h($name)
-                . ((($sku !== '') && ($sku !== trim($name))) ? '<div class="small text-body-secondary font-monospace">' . h($sku) . '</div>' : '')
-                . (((string) $row['enabled'] !== '1') ? ' <span class="badge text-bg-secondary">' . lang('Not on sale') . '</span>' : '')
-                . ((array_key_exists('on_list', $row) && empty($row['on_list'])) ? ' <span class="badge text-bg-warning">' . lang('Taken off the list') . '</span>' : ''),
+                . ((($sku !== '') && ($sku !== trim($name))) ? '<div class="small fg-secondary font-monospace">' . h($sku) . '</div>' : '')
+                . (((string) $row['enabled'] !== '1') ? ' <span class="badge theme-secondary">' . lang('Not on sale') . '</span>' : '')
+                . ((array_key_exists('on_list', $row) && empty($row['on_list'])) ? ' <span class="badge theme-warning">' . lang('Taken off the list') . '</span>' : ''),
             'class' => '',
         ),
         'price' => array(

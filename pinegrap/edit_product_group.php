@@ -131,12 +131,12 @@ if (!$_POST) {
     }
     
     $output_display_type_options =
-        '<div class="form-check  form-check-inline" title="' . lang('Display contents for browsing on catalog page') . '">
-            <input class="form-check-input collapse-switcher"  type="radio" id="browse" name="display_type" value="browse" ' . $display_type_browse_checked . '/>
+        '<div class="form-field  d-inline-grid me-5" title="' . lang('Display contents for browsing on catalog page') . '">
+            <input class="radio collapse-switcher"  type="radio" id="browse" name="display_type" value="browse" ' . $display_type_browse_checked . '/>
             <label for="browse">' . lang('Browse') . '</label>
         </div>
-        <div class="form-check  form-check-inline" title="' . lang('Display contents for selection on catalog detail page') . '">
-            <input class="form-check-input collapse-switcher"  type="radio" id="select" name="display_type" value="select" ' . $display_type_select_checked . ' data-bs-target="#display_type_select_row"/>
+        <div class="form-field  d-inline-grid me-5" title="' . lang('Display contents for selection on catalog detail page') . '">
+            <input class="radio collapse-switcher"  type="radio" id="select" name="display_type" value="select" ' . $display_type_select_checked . ' data-bs-target="#display_type_select_row"/>
             <label for="select">' . lang('Select') . '</label>
         </div>';
     
@@ -222,7 +222,7 @@ if (!$_POST) {
     foreach ($items as $item) {
         // if this is a product
         if ($item['type'] == "product") {
-            $output_checkbox = '<input class="form-check-input " type="checkbox" name="products[]" checked="checked" value="' . $item['id'] . '"  />';
+            $output_checkbox = '<input class="check" type="checkbox" name="products[]" checked="checked" value="' . $item['id'] . '"  />';
             $output_product_group_class = '';
             $price = prepare_amount($item['price']);
             $id_type = 'product_id';
@@ -239,11 +239,11 @@ if (!$_POST) {
 
         // If this item is enabled, then use green color for name and short description.
         if ($item['enabled'] == 1) {
-            $status_class = 'text-success';
+            $status_class = 'fg-success';
         
         // Otherwise this item is disabled, so use red color for name and short description.
         } else {
-            $status_class = 'text-danger';
+            $status_class = 'fg-danger';
         }
         $output_image_column = '';
         if ($show_image) {
@@ -257,8 +257,8 @@ if (!$_POST) {
             '<tr id="' . $item['id'] . '" class="' . $output_product_group_class . '">
                 <td class="select-all align-middle text-start">' . $output_checkbox . '</td>
 			    <td class="align-middle text-start">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_url . '\'"><i class="bi bi-pencil"></i></button>
+                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                 </td>
                 ' . $output_image_column . '
                 <td class="chart_label  align-middle ' . $status_class . '">' . h($item['name']) . '</td>
@@ -288,7 +288,7 @@ if (!$_POST) {
 
     foreach ($initial_unselected as $urow) {
         $urow['price'] = $urow['price'] / 100;
-        $ustatus_class = $urow['enabled'] == 1 ? 'text-success' : 'text-danger';
+        $ustatus_class = $urow['enabled'] == 1 ? 'fg-success' : 'fg-danger';
         $uoutput_image_column = '';
         if ($show_image) {
             $uoutput_image_column = pg_product_image_cell('product-' . (int) $urow['id'], $urow['image_name'], $urow['name'], $urow['short_description'],
@@ -296,8 +296,8 @@ if (!$_POST) {
         }
         $output_rows .=
             '<tr id="' . $urow['id'] . '">' .
-            '<td class="select-all align-middle text-start"><input class="form-check-input" type="checkbox" name="products[]" value="' . $urow['id'] . '"/></td>' .
-            '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $urow['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
+            '<td class="select-all align-middle text-start"><input class="check" type="checkbox" name="products[]" value="' . $urow['id'] . '"/></td>' .
+            '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $urow['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
             $uoutput_image_column .
             '<td class="chart_label align-middle ' . $ustatus_class . '">' . h($urow['name']) . '</td>' .
             '<td class="align-middle ' . $ustatus_class . '">' . h($urow['short_description']) . '</td>' .
@@ -320,7 +320,7 @@ if (!$_POST) {
 
     $output_thumbnail ='';
     if($image_name == true){
-        $output_thumbnail ='<div class="col-12 col-md-auto"><a href="' . OUTPUT_PATH . $image_name . '" target="_blank"><img style="width: 100px;height:100px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . OUTPUT_PATH . $image_name . '" /></a></div>';
+        $output_thumbnail ='<div class="col-12 md:col-auto"><a href="' . OUTPUT_PATH . $image_name . '" target="_blank"><img style="width: 100px;height:100px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . OUTPUT_PATH . $image_name . '" /></a></div>';
     }
 
     $output_attributes = '';
@@ -478,20 +478,20 @@ if (!$_POST) {
         // so output message to user that explains that.
         } else {
             $output_attribute_management =
-                '<div class="attributes alert alert-warning">
+                '<div class="attributes alert theme-warning">
                     ' . lang('No Attributes were found for Products in this Product Group.  Once you assign Attributes to Products and include those Products in this Product Group, then you may manage those Attributes here.') . '
                 </div>';
         }
 
         $output_attributes =
-            '<div class="col-12 mt-3 mb-2">
-                <h6 class="text-muted">' . lang('Attributes') . '</h6>
+            '<div class="col-12 mt-5 mb-3">
+                <h6 class="fg-secondary">' . lang('Attributes') . '</h6>
                 <input type="hidden" name="enable_attributes_exists" value="true">
-                <div class="form-check form-switch">
-                    <input value="1" ' . $output_enable_attributes_checked . ' id="enable_attributes" name="enable_attributes" class="form-check-input collapse-switcher" type="checkbox" role="switch" data-bs-target="#enable_attributes_row" />
-                    <label class="form-check-label" for="enable_attributes">' . lang('Enable Attributes') . '</label>
+                <div class="form-field">
+                    <div class="switch"><input value="1" ' . $output_enable_attributes_checked . ' id="enable_attributes" name="enable_attributes" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#enable_attributes_row" /></div>
+                    <label class="" for="enable_attributes">' . lang('Enable Attributes') . '</label>
                 </div>
-                <div class="collapse popover  fade bs-popover-bottom p-0 mb-2" id="enable_attributes_row">
+                <div class="collapse popover  fade bs-popover-bottom p-0 mb-3" id="enable_attributes_row">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(51px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
@@ -512,9 +512,9 @@ if (!$_POST) {
     $_parent_options_html = get_product_group_options($parent_id, 0, $_GET['id'], 0, array(), FALSE, 'text', false, true, false);
     if ($_parent_options_html !== '') {
         $output_parent_product_group_row =
-            '<div class="col-12 col-md-4 my-2">
+            '<div class="col-12 md:col-4 my-3">
                 <label for="parent_id" class="form-label">' . lang('Parent Product Group') . '</label>
-                <select style="width:100%" class="form-select" data-pg-combobox id="parent_id" name="parent_id" data-placeholder="' . lang('Select Parent Group') . '" data-allow-clear="true"><option value=""></option>' . $_parent_options_html . '</select>
+                <select style="width:100%" class="form-control" data-pg-combobox id="parent_id" name="parent_id" data-placeholder="' . lang('Select Parent Group') . '" data-allow-clear="true"><option value=""></option>' . $_parent_options_html . '</select>
             </div>';
     } else {
         $output_parent_product_group_row = '';
@@ -527,11 +527,11 @@ if (!$_POST) {
     } elseif ($parent_id != 0) {
         // if there is a child product group in this product group, then disable delete button
         if ($child_product_group_exists == true) {
-            $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " onclick="alert(\'' . lang('Please delete all product groups in this product group before deleting this product group.') . '\')" ><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+            $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " onclick="alert(\'' . lang('Please delete all product groups in this product group before deleting this product group.') . '\')" ><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
         // else there is not a child object in this product group, so allow delete
         } else {
             $output_delete_button = '
-            <button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product group')))) : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('product group'))))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+            <button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h(pg_catalog_bin_ready() ? lang(array('string' => 'This {var:1} will be moved to the Recycle Bin. It can be restored from the Recycle Bin in the Catalog Manager.', 'vars' => array(lang('product group')))) : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('product group'))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
         }
     } else {
         $output_delete_button = '';
@@ -542,7 +542,7 @@ if (!$_POST) {
 
     if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
         require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
-        $output_workspace_button = ws_record_button($user, 'product_group', (int) $_GET['id'], (string) db_value("SELECT name FROM product_groups WHERE id = '" . (int) $_GET['id'] . "'"), 'btn btn-link link-secondary py-0 mb-2');
+        $output_workspace_button = ws_record_button($user, 'product_group', (int) $_GET['id'], (string) db_value("SELECT name FROM product_groups WHERE id = '" . (int) $_GET['id'] . "'"), 'btn btn-link pg-link-secondary py-0 mb-3');
     }
 
     echo
@@ -564,14 +564,14 @@ if (!$_POST) {
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                 ' . ($group_binned
-                    ? '<div class="alert alert-warning d-flex flex-wrap align-items-center gap-2" role="alert"><span class="bi bi-trash3"></span><span class="me-auto">' . lang('This product group is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.') . '</span><a class="btn btn-sm btn-outline-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin">' . lang('Open the Recycle Bin') . '</a></div>'
+                    ? '<div class="alert theme-warning d-flex flex-wrap align-items-center gap-3" role="alert"><span class="bi bi-trash3"></span><span class="me-auto">' . lang('This product group is in the Recycle Bin. Restore it from the Recycle Bin in the Catalog Manager before changing it.') . '</span><a class="btn btn-sm btn-outline theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin">' . lang('Open the Recycle Bin') . '</a></div>'
                     : '') . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
 
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
                             <div class=" btn-group btn-group-sm flex-wrap">
-                                <a class="btn btn-link link-secondary py-0 mb-2 " href="duplicate_product_group.php?id=' . h($_GET['id']) . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
+                                <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="duplicate_product_group.php?id=' . h($_GET['id']) . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
                                 ' . $output_workspace_button . '
                             </div>
                         </nav>
@@ -584,20 +584,20 @@ if (!$_POST) {
 
                     <div class="row edit_product_group_container">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Product Group Information') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="name" class="form-label">' . lang('Product Group Name') . '</label>
                                             <input type="text" name="name" id="name" class="form-control" value="' . $name . '"/>
                                         </div>
-                                        <div class="col-12 my-3">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="enabled" name="enabled" value="1"' . $enabled_checked . ' />
-                                                <label class="form-check-label" for="enabled">' . lang('Enabled') . '</label>
+                                        <div class="col-12 my-5">
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" type="checkbox" id="enabled" name="enabled" value="1"' . $enabled_checked . ' /></div>
+                                                <label class="" for="enabled">' . lang('Enabled') . '</label>
                                             </div>
                                         </div>
                                     </div>
@@ -605,39 +605,39 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Catalog Page Display Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
                                         ' . $output_parent_product_group_row . '
-                                        <div class="col-12 col-md-8 my-2">
+                                        <div class="col-12 md:col-8 my-3">
                                             <label for="short_description" class="form-label">' . lang('Short Description') . '</label>
                                             <input type="text" name="short_description" placeholder="' . lang('Short Description') . '" id="short_description" maxlength="100" class="form-control" value="' . $short_description . '" />
                                         </div>
-                                        <div class="col-12 mt-1 mb-2">
+                                        <div class="col-12 mt-1 mb-3">
                                             <label for="full_description" class="form-label">' . lang('Full Description') . '</label>
                                             <textarea id="full_description" name="full_description">' . $full_description . '</textarea>
                                         </div>
 
-                                        <div class="col-12 my-3">
+                                        <div class="col-12 my-5">
                                             <div class="col-12">
                                                 <label class="form-label">' . lang('Display Type') . '</label>
                                             </div>
                                             ' . $output_display_type_options . '
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-2 w-100" id="display_type_select_row">
+                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="display_type_select_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                                                 <div class="popover-body">
                                                     <div class="row">
-                                                        <div class="col-12 my-2">
-                                                            <div class="alert alert-primary">' . lang('Product group behaves like a product and provides the ability to select options in product detail page.') . '</div>
+                                                        <div class="col-12 my-3">
+                                                            <div class="alert theme-primary">' . lang('Product group behaves like a product and provides the ability to select options in product detail page.') . '</div>
                                                         </div>
-                                                        <div class="col-12 mt-1 mb-2">
+                                                        <div class="col-12 mt-1 mb-3">
                                                             <label for="details" class="form-label">' . lang('Details') . '</label>
                                                             <textarea id="details" name="details">' . $details . '</textarea>
                                                         </div>
-                                                        <div class="col-12 mt-3 mb-2">
+                                                        <div class="col-12 mt-5 mb-3">
                                                             <label for="keywords" class="form-label">' . lang('Search Keywords') . '</label>
                                                             <input type="text" name="keywords" id="keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"  maxlength="255" value="' . $keywords . '"/>' . pg_fields_script() . '
                                                         </div>
@@ -652,38 +652,34 @@ if (!$_POST) {
                         </div>
 
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Image Options') . ' 
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 mt-3">
+                                        <div class="col-12 mt-5">
                                             ' . pg_pb_render_image_picker(
                                                     $picker_images,
-                                                    '<button type="button" class="btn btn-sm btn-outline-secondary ms-auto" data-bs-toggle="modal" data-bs-target="#image_code" title="' . lang('Code') . '"><i class="bi bi-code-slash"></i></button>') . '
+                                                    '<button type="button" class="btn btn-sm btn-outline theme-secondary ms-auto" data-bs-toggle="dialog" data-bs-target="#image_code" title="' . lang('Code') . '"><i class="bi bi-code-slash"></i></button>') . '
 
-                                            <div class="modal fade" id="image_code" tabindex="-1" aria-labelledby="image_code" aria-hidden="true">
-                                                <div class="modal-dialog modal-lg ">
-                                                    <div class="modal-content">
-                                                        <div class="modal-header">
-                                                            <h5 class="modal-title">' . lang('Code') . '</h5>
-                                                            <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            <dialog class="dialog dialog-lg" id="image_code" aria-labelledby="image_code">
+                                                        <div class="dialog-header">
+                                                            <h5 class="dialog-title">' . lang('Code') . '</h5>
+                                                            <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
                                                         </div>
-                                                        <div class="modal-body "> 
+                                                        <div class="dialog-body "> 
                                                             <div class="row">
-                                                                <div class="col-12 my-2">
-                                                                <div class="alert alert-primary">' . lang('Tags') . ':<span title="' . lang('Loop start') . '">^^image_loop_start^^</span>, <span title="' . lang('Short Description') . '">^^image_alt^^</span>, <span title="' . lang('Image Url') . '">^^image_url^^</span>, <span title="' . lang('Loop End') . '">^^image_loop_end^^</span></div>
+                                                                <div class="col-12 my-3">
+                                                                <div class="alert theme-primary">' . lang('Tags') . ':<span title="' . lang('Loop start') . '">^^image_loop_start^^</span>, <span title="' . lang('Short Description') . '">^^image_alt^^</span>, <span title="' . lang('Image Url') . '">^^image_url^^</span>, <span title="' . lang('Loop End') . '">^^image_loop_end^^</span></div>
                                                                 </div>
-                                                                <div class="col-12 my-2">
+                                                                <div class="col-12 my-3">
                                                                     <textarea id="code" name="code">' . h($code) . '</textarea>
                                                                     ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'mixed')) . '
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            </dialog>
                                         </div>
                                     </div>
                                 </div>
@@ -691,28 +687,28 @@ if (!$_POST) {
                         </div>
 
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('SEO') . '<span class="float-end">' . pg_seo_render_badge($seo_row) . '</span>
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 mt-1 mb-2">
+                                        <div class="col-12 mt-1 mb-3">
                                             <label for="address_name" class="form-label">' . lang('Catalog Name') . '</label>
                                             <div class="input-group ">
                                                 <label for="address_name" class="input-group-text material-icons" title="' . lang('This option determines the url address of the product. Automatically assigned if left blank.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Catalog Name') . '}">public</label>
                                                 <input type="text" name="address_name" id="address_name" class="form-control" value="' . h($address_name) . '" />
                                             </div>
                                         </div>
-                                        <div class="col-12 mt-1 mb-2">
+                                        <div class="col-12 mt-1 mb-3">
                                             <label for="title" class="form-label">' . lang('Web Browser Title') . '</label>
                                             <input type="text" name="title" id="title" class="form-control" value="' . h($title) . '" />
                                         </div>
-                                        <div class="col-12 mt-1 mb-2">
+                                        <div class="col-12 mt-1 mb-3">
                                             <label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>
                                             <textarea name="meta_description" id="meta_description" class="form-control" maxlength="255" >' . h($meta_description) . '</textarea>
                                         </div>
-                                        <div class="col-12 mt-1 mb-2">
+                                        <div class="col-12 mt-1 mb-3">
                                             <label for="meta_keywords" class="form-label">' . lang('Web Browser Keywords') . '</label>
                                             <input type="text" name="meta_keywords" id="meta_keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"  maxlength="255" value="' . h($meta_keywords) . '"/>' . pg_fields_script() . '
                                         </div>
@@ -724,14 +720,14 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4 edit_products">
-                                <div class="card-header bg-reset text-uppercase text-primary h5 fw-bold">' . lang('Products and Child Product Groups to Include') . '</div>                                <div class="card-body p-0 position-relative">
+                            <div class="card my-7 edit_products">
+                                <div class="card-header bg-reset text-uppercase fg-primary h5 fw-bold">' . lang('Products and Child Product Groups to Include') . '</div>                                <div class="card-body p-0 position-relative">
                                     <table id="product_group_products_table" class="chart table-hover table datatable-restricted-mode" style="width:100%;display:none">
                                         <thead>
                                             <tr>
                                                 <th class="noVis">
-                                                    <div class="form-check form-switch">
-                                                        <input class="form-check-input" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all">
+                                                    <div class="form-field">
+                                                        <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
                                                     </div>
                                                 </th>
                                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
@@ -747,9 +743,9 @@ if (!$_POST) {
                                     </table>
                                 </div>
                                 ' . ($total_unselected > $initial_unselected_count ? '
-                                <div class="p-3 border-top">
-                                    <button id="btn_load_more_products" type="button" class="btn btn-outline-secondary btn-sm">
-                                        <i class="bi bi-arrow-down-circle me-2"></i>' . lang('Load More Products') . '
+                                <div class="p-5 border-top">
+                                    <button id="btn_load_more_products" type="button" class="btn btn-outline theme-secondary btn-sm">
+                                        <i class="bi bi-arrow-down-circle me-3"></i>' . lang('Load More Products') . '
                                     </button>
                                 </div>' : '') . '
                             </div>
@@ -815,16 +811,16 @@ if (!$_POST) {
                         </script>
                     </div>
                     <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />          
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 ' . ($group_binned
-                                    ? '<a class="btn my-1 btn-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin"><span class="bi bi-trash3 me-2"></span><span class="pg-btn-label">' . lang('Open the Recycle Bin') . '</span></a>'
-                                    : '<button type="submit" id="submit_button" name="submit_button" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>') . '
+                                    ? '<a class="btn my-1 btn-solid theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin"><span class="bi bi-trash3 me-3"></span><span class="pg-btn-label">' . lang('Open the Recycle Bin') . '</span></a>'
+                                    : '<button type="submit" id="submit_button" name="submit_button" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>') . '
                                 ' . $output_delete_button . '
                             </div>
                             <span class="enable-on-selected"> 
-                                <button type="button" value="Modify Selected" title="' . lang('Modify Selected Products') . '" data-bs-content="' . lang('All selected products will be modified. However, the changes you made on this page will be removed. If you have made any changes, save first.') . '" class="btn btn-sm my-1 btn-primary p-2 disabled material-icons" onclick="convert_product_group_to_product_form(\'edit_products.php\')">living</button>
+                                <button type="button" value="Modify Selected" title="' . lang('Modify Selected Products') . '" data-bs-content="' . lang('All selected products will be modified. However, the changes you made on this page will be removed. If you have made any changes, save first.') . '" class="btn btn-sm my-1 btn-solid theme-primary p-3 disabled material-icons" onclick="convert_product_group_to_product_form(\'edit_products.php\')">living</button>
                             </span>
                         </div>
                     </nav>

@@ -119,24 +119,24 @@ if (!$_POST) {
                         <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                         <div class="row">
                             <div class="col-12">
-                                <div class="card my-4">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card my-7">
+                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Options') . '
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Ad'))) . '</label>
                                                 ' . $liveform->output_field(array('type'=>'text', 'id'=>'name', 'name'=>'name', 'size'=>'60', 'class'=>'form-control', 'maxlength'=>'100')) . '
                                                 <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             </div>
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="ad_region_id" class="form-label">' . lang('Ad Region') . '</label>
-                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'ad_region_id', 'id'=>'ad_region_id', 'class'=>'form-select', 'options'=>get_ad_region_options())) . '
+                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'ad_region_id', 'id'=>'ad_region_id', 'class'=>'form-control', 'options'=>get_ad_region_options())) . '
                                                 <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 <div class="form-text">' . lang('Assign to Ad Region') . '</div>
                                             </div>
-                                            <div class="col-12 mt-1 mb-2">
+                                            <div class="col-12 mt-1 mb-3">
                                                 <label for="content_textarea" class="form-label">' . lang('Ad Content') . '</label>
                                                 ' . $liveform->output_field(array('type'=>'textarea', 'id'=>'content_textarea', 'name'=>'content')) . '
                                             </div>
@@ -145,22 +145,22 @@ if (!$_POST) {
                                 </div>
                             </div>
                             <div class="col-12">
-                                <div class="card my-4">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                                <div class="card my-7">
+                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Dynamic Ad Region Display Options') . '
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
-                                            <div class="col-12 col-md-4 my-2">
+                                            <div class="col-12 md:col-4 my-3">
                                                 <label for="label" class="form-label">' . lang('Label') . '</label>
                                                 ' . $liveform->output_field(array('type'=>'text', 'id'=>'label', 'name'=>'label', 'size'=>'60', 'class'=>'form-control', 'maxlength'=>'255')) . '
                                             </div>
-                                            <div class="col-12 col-md-4 my-2">
+                                            <div class="col-12 md:col-4 my-3">
                                                 <label for="sort_order" class="form-label">' . lang('Sort Order') . '</label>
                                                 ' . $liveform->output_field(array('type'=>'text', 'id'=>'sort_order', 'name'=>'sort_order', 'size'=>'5', 'class'=>'form-control', 'maxlength'=>'4')) . '
                                                 <div class="form-text">' . lang('leave blank for random order') . '</div>
                                             </div>
-                                            <div class="col-12 mt-1 mb-2">
+                                            <div class="col-12 mt-1 mb-3">
                                                 <label for="caption" class="form-label">' . lang('Caption') . ' ( ' . lang('Add Caption on Top of Content') . ' )</label>
                                                 ' . $liveform->output_field(array('type'=>'textarea', 'id'=>'caption', 'name'=>'caption')) . '
                                             </div>
@@ -169,11 +169,11 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                             <div class="container">
                                 <div class=" btn-group flex-wrap justify-content-center">
-                                    <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('ad')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                    <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('ad')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                                 </div>
                             </div>
                         </nav>

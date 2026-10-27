@@ -249,11 +249,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
                     || ($gift_card['expiration_date'] >= $current_date)
                 )
             ) {
-                $output_status_class = 'status_enabled text-success';
+                $output_status_class = 'status_enabled fg-success';
             
             // Otherwise this gift card has expired, so use class that shows red color.
             } else {
-                $output_status_class = 'status_disabled text-danger';
+                $output_status_class = 'status_disabled fg-danger';
             }
 
             $output_expiration_date = '';
@@ -296,12 +296,12 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
             $output_rows .=
                 '<tr>
                     <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_gift_card.php?id=' . $gift_card['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                        <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                        <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_gift_card.php?id=' . $gift_card['id'] . '\'"><i class="bi bi-pencil"></i></button>
+                        <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                     </td>
                     <td class="chart_label align-middle"><span class=" badge fw-lighter ' . $output_status_class . '">' . output_gift_card_code($gift_card['code']) . '</span></td>
-                    <td class="align-middle text-end"><span class=" badge bg-secondary  fw-lighter">' . pg_format_money($gift_card['balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
-                    <td class="align-middle text-end"><span class=" badge bg-primary  fw-lighter">' . pg_format_money($gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
+                    <td class="align-middle text-end"><span class=" badge theme-secondary  fw-lighter">' . pg_format_money($gift_card['balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
+                    <td class="align-middle text-end"><span class=" badge theme-primary  fw-lighter">' . pg_format_money($gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
                     <td class="align-middle">' . $output_expiration_date . '</td>
                     <td class="' . $list_cells['notes']['class'] . '"' . (pg_gift_card_notes_fit_list($gift_card['notes']) ? pg_list_edit_cell($quick_edit, 'notes', $gift_card['id'], $gift_card['notes']) : '') . '>' . $list_cells['notes']['html'] . '</td>
                     <td class="align-middle">' . $output_from_name . '</td>
@@ -370,14 +370,14 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 text-center md:text-start">
                         
                         <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                            <a class="btn btn-sm btn-primary m-1 " href="add_gift_card.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                            <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_gift_card.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                                 <div class=" btn-group btn-group-sm flex-wrap">
-                                    <button type="submit" name="submit_data" value="Export Gift Cards" class="btn btn-link link-secondary py-0 m-1"><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang(array('string'=>'Export') ) . '</button>
+                                    <button type="submit" name="submit_data" value="Export Gift Cards" class="btn btn-link pg-link-secondary py-0 m-1"><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang(array('string'=>'Export') ) . '</button>
                                 </div>
                             </form>
                             <div class="pg-toolbar-grow"></div>
@@ -385,7 +385,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
                         </nav>
                     </div>
                 </div>
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <table class="chart table-hover table " style="width:100%;display:none"' . pg_list_edit_table('view_gift_cards.php', $quick_edit) . '>
                             <thead>
@@ -407,9 +407,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
                         </table>
                     </div>
                 </div>
-                <div class="clearfix">
-                    <div class="col-12 col-sm-6 col-md-4 col-lg-3  float-sm-end">
-                        <div class="card my-4 border-primary">
+                <div class="d-flow-root">
+                    <div class="col-12 sm:col-6 md:col-4 lg:col-3  sm:float-end">
+                        <div class="card my-7 border-primary">
                             <div class="card-body ">
                                 <div class="row">
                                     <div class="col-12 text-center">

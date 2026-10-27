@@ -124,8 +124,8 @@ if (($_GET['fragment'] ?? '') === 'checklist') {
 }
 
 echo
-    '<div class="d-flex align-items-center mb-2">
+    '<div class="d-flex align-items-center mb-3">
         <strong class="text-truncate">' . h($record['name']) . '</strong>
-        <a class="btn btn-sm btn-outline-primary ms-auto" href="' . h($edit_url) . '"><i class="bi bi-pencil me-1"></i>' . lang('Edit') . '</a>
+        <a class="btn btn-sm btn-outline theme-primary ms-auto" href="' . h($edit_url) . '"><i class="bi bi-pencil me-1"></i>' . lang('Edit') . '</a>
     </div>'
     . pg_seo_render_checklist($record, $type, $id);

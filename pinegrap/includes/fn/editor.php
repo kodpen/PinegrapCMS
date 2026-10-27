@@ -779,7 +779,7 @@ function pg_code_editor_attach($properties)
                     var formats = ["css","javascript","json"];
                     var format = document.createElement("button");
                     format.type = "button";
-                    format.className = "btn btn-sm btn-outline-secondary pg-code-field-format";
+                    format.className = "btn btn-sm btn-outline theme-secondary pg-code-field-format";
                     format.title = "Shift+Alt+F";
                     format.textContent = ' . pg_code_editor_json(lang('Format code')) . ';
                     format.addEventListener("click", function () {
@@ -799,10 +799,10 @@ function pg_code_editor_attach($properties)
 
     $tools = '
                     var tools = document.createElement("div");
-                    tools.className = "pg-code-field-tools gap-2";
+                    tools.className = "pg-code-field-tools gap-3";
                     var minimap = document.createElement("button");
                     minimap.type = "button";
-                    minimap.className = "btn btn-sm btn-outline-secondary pg-code-field-minimap";
+                    minimap.className = "btn btn-sm btn-outline theme-secondary pg-code-field-minimap";
                     minimap.textContent = ' . pg_code_editor_json(lang('Minimap')) . ';
                     var syncMinimap = function () {
                         var on = editor.hasMinimap();

@@ -69,7 +69,7 @@ echo '<!DOCTYPE html>
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <title>' . $title . '</title>
-<link rel="stylesheet" href="' . $software . '/assets/lib/bootstrap-5.3.8/css/bootstrap.min.css?v=' . $version('/assets/lib/bootstrap-5.3.8/css/bootstrap.min.css') . '">
+<link rel="stylesheet" href="' . $software . '/assets/lib/bootstrap-6/css/bootstrap.min.css?v=' . $version('/assets/lib/bootstrap-6/css/bootstrap.min.css') . '">
 <link rel="stylesheet" href="' . $software . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css?v=' . $version('/assets/fonts/bootstrap-icons/bootstrap-icons.min.css') . '">
 <link rel="stylesheet" href="' . $software . '/assets/css/workspace_guest.css?v=' . $version('/assets/css/workspace_guest.css') . '">
 </head>
@@ -94,7 +94,7 @@ echo '<!DOCTYPE html>
                 <button type="button" class="btn btn-sm btn-link" data-wrap="~~" title="' . h(lang('Strikethrough')) . '" aria-label="' . h(lang('Strikethrough')) . '"><i class="bi bi-type-strikethrough" aria-hidden="true"></i></button>
             </div>
             <textarea class="form-control" id="pg-guest-text" rows="1" maxlength="' . (int) WS_GUEST_MESSAGE_MAX . '" placeholder="' . h(lang('Write a message')) . '" aria-label="' . h(lang('Write a message')) . '"></textarea>
-            <button type="button" class="btn btn-primary pg-guest-send" id="pg-guest-send" title="' . h(lang('Send')) . '" aria-label="' . h(lang('Send')) . '"><i class="bi bi-send-fill" aria-hidden="true"></i></button>
+            <button type="button" class="btn btn-solid theme-primary pg-guest-send" id="pg-guest-send" title="' . h(lang('Send')) . '" aria-label="' . h(lang('Send')) . '"><i class="bi bi-send-fill" aria-hidden="true"></i></button>
         </div>
         <div class="pg-guest-hint">' . h(lang('Only the people of the site in this conversation read what you write here.')) . '</div>
     </footer>
