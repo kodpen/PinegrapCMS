@@ -44,6 +44,7 @@
     var _editor    = null;   // PgCodeEditor instance
     var _titleEl   = null;
     var _saveBtn   = null;
+    var _formatBtn = null;
     var _opts      = null;   // current call's options
     var _didSave   = false;  // guard: distinguish Save click from dismiss
     var _opening   = 0;      // the call the bundle is being fetched for
@@ -72,6 +73,7 @@
                             '<div id="pgCodeEditorHost" class="pg-code-editor" style="flex:1 1 auto;min-height:0;"></div>' +
                         '</div>' +
                         '<div class="modal-footer">' +
+                            '<button type="button" class="btn btn-outline-secondary me-auto d-none" id="pgCodeEditorFormat" title="Shift+Alt+F">' + _h(_t('Format code')) + '</button>' +
                             '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' + _h(_t('Cancel')) + '</button>' +
                             '<button type="button" class="btn btn-primary" id="pgCodeEditorSave">' + _h(_t('Save')) + '</button>' +
                         '</div>' +
@@ -87,6 +89,13 @@
         _host     = _modalEl.querySelector('#pgCodeEditorHost');
         _titleEl  = _modalEl.querySelector('#pgCodeEditorTitle');
         _saveBtn  = _modalEl.querySelector('#pgCodeEditorSave');
+        _formatBtn = _modalEl.querySelector('#pgCodeEditorFormat');
+
+        _formatBtn.addEventListener('click', function () {
+            if (!_editor) return;
+            _editor.format();
+            _editor.focus();
+        });
 
         _saveBtn.addEventListener('click', function () {
             if (!_opts || !_editor) return;
@@ -126,6 +135,11 @@
         return 'html';
     }
 
+    // The facade formats CSS, JavaScript and JSON only.
+    function _formats(mode) {
+        return _language(mode) !== 'html';
+    }
+
     function _toggleFullscreen() {
         var dlg = _modalEl ? _modalEl.querySelector('.modal-dialog') : null;
         if (dlg) dlg.classList.toggle('modal-fullscreen');
@@ -160,6 +174,7 @@
         // The button says what it does. "Save" is wrong when the dialog
         // hands its content on to a next step rather than storing it.
         _saveBtn.textContent = opts.saveLabel || _t('Save');
+        _formatBtn.classList.toggle('d-none', !!opts.readonly || !_formats(opts.mode));
 
         pgUI.dialog.show(_modalEl, { backdrop: 'static', keyboard: true });
 

@@ -1,6 +1,6 @@
 ---
 name: code-editor-format
-description: The code editor's format command: ed.format() and Shift+Alt+F for CSS, JavaScript and JSON through the bundled js-beautify, what refuses it, how it lands in the undo history (PR #1909)
+description: The code editor's format command: ed.format(), Shift+Alt+F and the Format code buttons for CSS, JavaScript and JSON through the bundled js-beautify, what refuses it (PRs #1909, #2072)
 ---
 
 ## What does format do?
@@ -12,6 +12,11 @@ description: The code editor's format command: ed.format() and Shift+Alt+F for C
 - False, nothing changed: no formatter for the language, the editor is read-only, a lock (`ed.lock()`) overlaps the part that would change (`canEdit()` is asked first, so `onLockHit` is not called), or js-beautify threw.
 - Only the part that differs (common prefix and suffix cut off) is replaced, in one transaction with `userEvent: 'input.format'` through the lock filter: one Ctrl+Z step, and `onChange` / `attach()` write-back hear it like typing. The cursor stays before the same non-blank character.
 - True when the text changed or was already formatted.
+
+## Which buttons run it?
+- The code editor dialog (`codemirror_modal.js`): "Format code" at the left of the footer, shown only for the css, javascript and json modes when the dialog is not read-only; its label is `PgCodeModalLabels['Format code']` (`designer_screen.php`).
+- A panel code field (`pg_code_editor_attach()`): a small button under an editable field (`.pg-code-field-tools`, `backend.src.css`), hidden while the language has no formatter; it follows `setLanguage()` (`create_file.php` changes the type) and goes with `destroy()`. A read-only field gets none.
+- The designer's bottom code view (`style_designer.js`) has no button yet; Shift+Alt+F works there.
 
 ## Where does the formatter come from?
 - `js-beautify` pinned at an exact version in `tools/code_editor/package.json`; `entry.js` imports only `js/src/css/index.js` and `js/src/javascript/index.js` (not its HTML part, CLI or config loading). MIT, named in the bundle banner.

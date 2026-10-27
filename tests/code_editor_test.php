@@ -584,3 +584,67 @@ function test_code_editor_minimap_option()
 
 	pg_assert_contains('PgCodeEditor.configure({ minimap: true, bundle:', $screen, 'the designer turns it on');
 }
+
+// A code field that can be edited gets a "Format code" button that follows
+// the editor's language (create_file.php changes it after the start); a
+// read-only field gets none. The button runs the instance's format().
+// Drawn in a PHP process of its own: the field's first script names the
+// facade on OUTPUT_PATH, which the tests after this one must not find defined.
+function test_code_editor_attach_offers_a_format_button()
+{
+	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
+		return;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgcodeattach');
+
+	if ($file === false) {
+		return;
+	}
+
+	file_put_contents($file, '<?php' . "\n"
+		. "define('PG_TEST_RUNNER', true);\n"
+		. "define('OUTPUT_PATH', '/');\n"
+		. "define('OUTPUT_SOFTWARE_DIRECTORY', 'pinegrap');\n"
+		. 'require ' . var_export(PG_FUNCTIONS_DIR . '/functions.php', true) . ";\n"
+		. "echo json_encode(array("
+		. "'css' => pg_code_editor_attach(array('id' => 'code', 'code_type' => 'css')),"
+		. "'ro' => pg_code_editor_attach(array('id' => 'code', 'code_type' => 'css', 'readonly' => true))));\n");
+
+	$out = array();
+	$code = 1;
+	@exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+	$res = json_decode(implode("\n", $out), true);
+
+	pg_assert_same(0, $code, 'drawn: ' . implode("\n", array_slice($out, 0, 8)));
+	if (!is_array($res)) {
+		pg_assert_true(false, 'the process answers');
+		return;
+	}
+
+	$css = $res['css'];
+	$ro = $res['ro'];
+
+	pg_assert_contains('pg-code-field-format', $css, 'an editable field draws the button');
+	pg_assert_contains(lang('Format code'), $css, 'with a translated label');
+	pg_assert_contains('editor.format()', $css, 'which runs the instance\'s format()');
+	pg_assert_contains('["css","javascript","json"]', $css, 'shown only for the languages with a formatter');
+	pg_assert_contains('editor.setLanguage = function', $css, 'and kept in step with a language change');
+	pg_assert_false(strpos($ro, 'pg-code-field-format') !== false, 'a read-only field has no button');
+}
+
+// The code editor dialog's footer shows "Format code" only for CSS,
+// JavaScript and JSON when it is not read-only; its label comes from the
+// designer's PgCodeModalLabels map.
+function test_code_editor_dialog_offers_a_format_button()
+{
+	$modal = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/codemirror_modal.js');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+
+	pg_assert_contains('id="pgCodeEditorFormat"', $modal, 'the footer has the button');
+	pg_assert_contains("_t('Format code')", $modal, 'its label is read from the map');
+	pg_assert_contains('_editor.format()', $modal, 'it runs the editor\'s format()');
+	pg_assert_contains("_formatBtn.classList.toggle('d-none', !!opts.readonly || !_formats(opts.mode));", $modal, 'hidden for read-only and other languages');
+	pg_assert_contains("'Format code'  => lang('Format code'),", $screen, 'the designer prints the label');
+}
