@@ -320,7 +320,8 @@ function test_widget_parts_order_tail_cards_match_the_old_blocks()
 {
 	$layout = _parts_tree(array(_parts_node('semantic', array('tag' => 'p', 'cssClass' => 'lead', 'text' => 'Thanks'))));
 	$urls = array('preinfo' => '/p/legal_document.php?order_id=7&type=preinfo', 'contract' => '/p/legal_document.php?order_id=7&type=contract');
-	$line = 'Last day of the right of withdrawal: 03.11.2026 <est>';
+	$day = '03.11.2026 <est>';
+	$line = pg_legal_withdrawal_text(array('open' => true, 'estimated' => false), $day);
 	// The requests are a list of their own, without rows here
 	// (widget_default_parts_returns_test.php).
 	$list = '';
@@ -329,10 +330,10 @@ function test_widget_parts_order_tail_cards_match_the_old_blocks()
 	$form = '';
 	$static = array(
 		'__legal_preinfo_url' => h($urls['preinfo']), '__legal_contract_url' => h($urls['contract']),
-		'__withdrawal_text' => h($line), '__returns' => $list, '__return_form' => $form,
+		'__withdrawal_deadline' => h($day), '__returns' => $list, '__return_form' => $form,
 	);
 	$flags = array('has_legal_documents' => true, 'has_legal_preinfo' => true, 'has_legal_contract' => true,
-		'has_withdrawal_deadline' => true, 'show_returns_card' => true);
+		'has_withdrawal_deadline' => true, 'withdrawal_deadline_firm' => true, 'show_returns_card' => true);
 	$new = _parts_render($layout, $static, array(), false, $flags);
 	$old = '<p class="lead">Thanks</p>' . _parts_old_returns_html($list, $form) . _parts_old_legal_html($urls, $line);
 
@@ -341,6 +342,18 @@ function test_widget_parts_order_tail_cards_match_the_old_blocks()
 	pg_assert_same(_parts_links($old), _parts_links($new), 'same links, new window');
 	pg_assert_same(array(), _parts_fields($new), 'no request form without a delivery to ask for');
 	pg_assert_contains('&lt;est&gt;', $new, 'the line escaped once');
+
+	// Each state its own sentence, the words pg_legal_withdrawal_text() writes.
+	foreach (array('withdrawal_deadline_estimated' => array('open' => true, 'estimated' => true), 'withdrawal_ended' => array('open' => false, 'estimated' => false)) as $flag => $state) {
+		$state_line = pg_legal_withdrawal_text($state, $day);
+		$new = _parts_render($layout, $static, array(), false, array('has_legal_documents' => true, 'has_legal_contract' => true, 'has_withdrawal_deadline' => true, $flag => true));
+		$old = '<p class="lead">Thanks</p>' . _parts_old_legal_html(array('preinfo' => '', 'contract' => $urls['contract']), $state_line);
+		// Tags read as spaces: a value before its full stop joins it again.
+		$words = function ($html) { return preg_replace('/ ([.)])/', '$1', _parts_visible($html)); };
+		pg_assert_same($words($old), $words($new), $flag . ': same words');
+		pg_assert_same(_parts_classes($old), _parts_classes($new), $flag . ': same classes');
+		pg_assert_same(1, substr_count($new, '">03.11.2026 &lt;est&gt;</span>'), $flag . ': the day a value of its own, once');
+	}
 
 	// The contract alone, no deadline, returns off: what the old blocks drew.
 	$flags = array('has_legal_documents' => true, 'has_legal_contract' => true);
