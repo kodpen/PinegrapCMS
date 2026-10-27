@@ -872,7 +872,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
         // If the status of this order is complete, then update the status to be exported.
         if ($order['status'] == 'complete') {
-            db("UPDATE orders SET status = 'exported' WHERE id = '" . $order['id'] . "'");
+            db("UPDATE orders SET status = 'exported', " . pg_order_touch_sql() . " WHERE id = '" . $order['id'] . "'");
 
             // Only the status changed, so the line is written from what the
             // export read rather than reading thousands of rows again. An
@@ -2259,7 +2259,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
         // If the status of this order is complete, then update the status to be exported.
         if ($order['status'] == 'complete') {
-            db("UPDATE orders SET status = 'exported' WHERE id = '" . $order['id'] . "'");
+            db("UPDATE orders SET status = 'exported', " . pg_order_touch_sql() . " WHERE id = '" . $order['id'] . "'");
 
             // Only the status changed, so the line is written from what the
             // export read rather than reading thousands of rows again. An

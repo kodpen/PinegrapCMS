@@ -79,7 +79,7 @@ function test_api_order_status_update_route_drops_incomplete()
 	$values = array();
 
 	foreach (api_schema() as $route) {
-		if ($route['id'] === 'orders.update' || $route['id'] === 'orders.list') {
+		if ($route['id'] === 'orders.update') {
 			foreach ($route['params'] as $param) {
 				if ($param['name'] === 'status') {
 					$values[$route['id']] = $param['values'];
@@ -89,5 +89,6 @@ function test_api_order_status_update_route_drops_incomplete()
 	}
 
 	pg_assert_same(array('complete', 'exported', 'cancelled'), $values['orders.update'], 'the update takes no cart status');
-	pg_assert_true(in_array('incomplete', $values['orders.list'], true), 'the list still filters abandoned carts');
+	// The list's status is a comma list checked by api_orders_status_filter().
+	pg_assert_same(array('incomplete'), api_orders_status_filter('incomplete'), 'the list still filters abandoned carts');
 }
