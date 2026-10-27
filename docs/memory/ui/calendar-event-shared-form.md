@@ -4,7 +4,7 @@ description: add_calendar_event.php and edit_calendar_event.php check a submitte
 ---
 
 ## What is shared?
-- `includes/forms/calendar_event_form.php` (loaded with `require_once(PG_FUNCTIONS_DIR . …)` after `init.php`) holds the submit check both screens used to write out (PR #2354 add, #PRNUM edit): `pg_calendar_event_form_validate($liveform, $calendar_event_id = '0')`. It marks the errors on the liveform and returns `start_time`/`end_time` (as entered; all day adds 12:00 AM / 11:59 PM; null on error), `calendars` (every id) and `calendar_event_locations` (every location; empty when the schedule has an error, so only read after the error redirect).
+- `includes/forms/calendar_event_form.php` (loaded with `require_once(PG_FUNCTIONS_DIR . …)` after `init.php`) holds the submit check both screens used to write out (PR #2354 add, #2376 edit): `pg_calendar_event_form_validate($liveform, $calendar_event_id = '0')`. It marks the errors on the liveform and returns `start_time`/`end_time` (as entered; all day adds 12:00 AM / 11:59 PM; null on error), `calendars` (every id) and `calendar_event_locations` (every location; empty when the schedule has an error, so only read after the error redirect).
 - A screen keeps its gates, CSRF check, the error redirect (add: plain; edit: `id`, `recurrence_number`, `send_to`), the write and the success redirect.
 - The form markup is still written out in both files: the next slice of `plans/refactor-candidates.md` item 2.
 
