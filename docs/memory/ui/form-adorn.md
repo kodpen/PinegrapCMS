@@ -21,7 +21,9 @@ description: Bootstrap 6 form-adorn in the panel (step B9f): which input-groups 
 - Pilot #2219: `product_builder.php` Unit Price, `includes/templates/edit_offer.php` upsell subtotal, `assets/js/offer_editor.js` subtotal condition. Heights unchanged: 38 px and 31 px (small).
 - #2280: shipping method and zone rates, container weight and cost, the rest of `product_builder.php`, `includes/forms/page_form.php` (40 places).
 - Part 3 (#2355): ERP amounts (expense, receipt, transfer, account opening amount, till opening balance), the stock count scan field (`form-control-lg` on the wrapper, icon add-on), the order refund amount (`view_order.php`), the barcode increase/decrease fields. Heights unchanged: 38 px, 48 px (large).
-- An add-on whose text a script changes keeps its id on the span (`#erp_expense_currency_label`).
+- Part 4 (#2404): gift card amount and balance (`add_gift_card.php`, `edit_gift_card.php`), the workspace template icon (`workspace_template.php`), the MCP "@" alias fields (`includes/workspace/mcp.php`, `mcp_catalogue.php`; small). `tests/bs6_form_adorn_test.php` pins them.
+- An add-on whose text a script changes keeps its id on the span (`#erp_expense_currency_label`) or on the element inside it (`#ws_tpl_icon_preview`).
+- A disabled input leaves the wrapper white (the dist greys only `.chip-input`): the MCP alias wrapper takes `bg-2`, the disabled control colour, when the field is read-only.
 - The add-on is `aria-hidden`, so every converted input needs its own name: a `<label for>` outside the wrapper, or `aria-label` through `lang()` (barcode fields, whose only text was the add-on).
 - A wrapper toggled by script keeps its id (container `#weight_pound` / `#weight_kg`); `d-none` on the label works. `is-invalid` stays on the input: Bootstrap marks the wrapper through `:has()`.
 
