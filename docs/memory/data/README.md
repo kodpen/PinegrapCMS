@@ -37,6 +37,7 @@ Table structures and SQL pitfalls.
 - db-q-converted-front.md: Front-end files converted to db_q() (shopping cart, form item view, view order, email preferences, watchers, affiliate sign-up): PR, clauses with values, what stayed raw, guard test.
 - db-q-converted-order-front.md: Order preview, receipts, shipping address step, reorder, retrieve order and remove item converted to db_q(): special cases, what stayed raw, guard test.
 - db-q-converted-panel-content.md: Folder, page copy, calendar event, image editor and theme designer screens converted to db_q(): PR, optional SQL pieces with their values, what stayed raw, guard test.
+- db-q-converted-panel-menus-calendars.md: Region, menu, form list view and calendar panel screens converted to db_q(): PR, optional SQL pieces with their values, what stayed raw, guard test.
 - db-q-converted-panel.md: Panel screens converted to db_q() (user screens edit_user, add_user, import_users; page screens edit_pages, edit_page): PR, special cases, what stayed raw and why, guard test.
 - db-q-converted-shipping-import.md: Shipping, zone, arrival date, commission, commerce settings and product import files converted to db_q() (PR #2314): how values are passed, what stayed raw and why, the guard test.
 - db-q-placeholder-helper.md: db_q($sql, $params) and its binder pg_db_bind(): how each ? is filled, what is refused, why it returns false like mysqli_query() instead of ending the request, the new-code rule.
