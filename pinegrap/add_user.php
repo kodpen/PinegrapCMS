@@ -19,6 +19,7 @@
 include('init.php');
 include_once('liveform.class.php');
 include_once('includes/user_permissions.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/user_form.php');
 $user = validate_user();
 validate_area_access($user, 'manager');
 
@@ -222,25 +223,7 @@ if (!$_POST) {
                         </div>
                     </div>
 
-                    <div class="card mb-5 d-none" id="pg_permissions_everything">
-                        <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('User Rights') . '</span>
-                        </div>
-                        <div class="card-body">
-                            ' . pg_user_permission_everything() . '
-                        </div>
-                    </div>
-
-                    <div class="card mb-5" id="pg_permissions_block">
-                        <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('User Rights') . '</span>
-                            <span class="small fg-secondary" data-pg-tally="' . h(lang(array('string' => '{var:1} of {var:2} areas on', 'vars' => array('{n}', '{m}')))) . '"></span>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="pg-perms" id="pg_permissions" data-pg-empty="' . h(lang('No selection')) . '">' . $permission_ui['rows'] . '
-                            </div>
-                        </div>
-                    </div>
+                    ' . pg_user_form_rights_cards($permission_ui['rows']) . '
 
                     ' . $permission_ui['panels'] . '
 
@@ -471,195 +454,7 @@ if (!$_POST) {
         db("UPDATE user SET user_password_changed_at = UNIX_TIMESTAMP() WHERE user_id = '" . e($user_id) . "'");
     }
     
-    // insert data into aclfolder table
-    $result = mysqli_query(db::$con, "SELECT folder_id FROM folder") or output_error('Query failed');
-    while($row = mysqli_fetch_array($result))
-    {
-        $folder_id = $row['folder_id'];
-        $sql_expiration_date = "";
-        
-        // if the user was given edit rights to this folder, then set rights value to 2
-        if (($_POST['edit_' . $folder_id] ?? '') == 1) {
-            $rights = 2;
-            
-        // else if the user was given view rights to this folder, then deal with that.
-        } elseif (($_POST['view_' . $folder_id] ?? '') == 1) {
-            // Remove spaces from beginning and end of date.
-            $expiration_date = trim($_POST['view_' . $folder_id . '_expiration_date'] ?? '');
-
-            // If an expiration date was entered, then validate it.
-            if ($expiration_date != '') {
-                // Convert date to storage format.
-                $expiration_date = prepare_form_data_for_input($expiration_date, 'date');
-                
-                // Split date into parts.
-                $expiration_date_parts = explode('-', $expiration_date);
-                $year = $expiration_date_parts[0];
-                $month = $expiration_date_parts[1];
-                $day = $expiration_date_parts[2];
-                
-                // If the expiration date is valid, then give user access and set expiration date in SQL.
-                if ((is_numeric($month) == true) && (is_numeric($day) == true) && (is_numeric($year) == true) && (checkdate($month, $day, $year) == true)) {
-                    $rights = 1;
-                    $sql_expiration_date = $expiration_date;
-                    
-                // Otherwise the expiration date is not valid, so do not give user access and do not set expiration date in SQL.
-                } else {
-                    $rights = 0;
-                }
-
-            // Otherwise an expiration date was not entered, so just give user access.
-            } else {
-                $rights = 1;
-            }
-            
-        // else the user was was given no rights to this folder, so set rights value to 0
-        } else {
-            $rights = 0;
-        }
-        
-        $result2 = db_q("INSERT INTO aclfolder (aclfolder_user, aclfolder_folder, aclfolder_rights, expiration_date) VALUES (?, ?, ?, ?)", array((string) $user_id, (string) $folder_id, (string) $rights, (string) $sql_expiration_date)) or output_error('Query failed.');
-    }
-    
-    // if user that was created has a user role, then prepare to assign access to various items for user
-    if ($_POST['role'] == 3) {
-        // get all common regions
-        $query = "SELECT cregion_id FROM cregion";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
-        $common_regions = array();
-        
-        while ($row = mysqli_fetch_assoc($result)) {
-            $common_regions[] = $row;
-        }
-        
-        // loop through all common regions and input them if they were selected
-        foreach ($common_regions as $common_region) {
-            // if common region was selected for user to be given access to, give access to common region
-            if (($_POST['common_region_' . $common_region['cregion_id']] ?? '') == 1) {
-                $query =
-                    "INSERT INTO users_common_regions_xref (
-                        user_id,
-                        common_region_id)
-                    VALUES (
-                        ?,
-                        ?)";
-                $result = db_q($query, array((string) $user_id, (string) $common_region['cregion_id'])) or output_error('Query failed.');
-            }
-        }
-        
-        // the shared components opened to content editors the user was given
-        pg_save_shared_component_grants($user_id, $_POST);
-
-        // get all menus
-        $query = "SELECT id FROM menus";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
-        $menus = array();
-        
-        while ($row = mysqli_fetch_assoc($result)) {
-            $menus[] = $row;
-        }
-        
-        // loop through all menus and input them if they were selected
-        foreach ($menus as $menu) {
-            // if menu was selected for user to be given access to, give access to menu
-            if (($_POST['menu_' . $menu['id']] ?? '') == 1) {
-                $query =
-                    "INSERT INTO users_menus_xref (
-                        user_id,
-                        menu_id)
-                    VALUES (
-                        ?,
-                        ?)";
-                $result = db_q($query, array((string) $user_id, (string) $menu['id'])) or output_error('Query failed.');
-            }
-        }
-        
-        // if manage contacts or manage e-mails was checked, check to see which contact groups the user needs to be given access to
-        if ((($_POST['manage_contacts'] ?? '') == 'yes') || (($_POST['manage_emails'] ?? '') == 'yes')) {
-            // get all contact groups
-            $query = "SELECT id FROM contact_groups";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            
-            $contact_groups = array();
-            
-            while ($row = mysqli_fetch_assoc($result)) {
-                $contact_groups[] = $row;
-            }
-            
-            // loop through all contact groups
-            foreach ($contact_groups as $contact_group) {
-                // if contact group was selected for user to be given access to, give access to user to contact group
-                if (($_POST['contact_group_' . $contact_group['id']] ?? '') == 1) {
-                    $query =
-                        "INSERT INTO users_contact_groups_xref (
-                            user_id,
-                            contact_group_id)
-                        VALUES (
-                            ?,
-                            ?)";
-                    $result = db_q($query, array((string) $user_id, (string) $contact_group['id'])) or output_error('Query failed.');
-                }
-            }
-        }
-        
-        // if manage calendars was checked, check to see which calendars the user needs to be given access to
-        if ($_POST['manage_calendars'] == 'yes') {
-            // get all calendars
-            $query = "SELECT id FROM calendars";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            
-            $calendars = array();
-            
-            while ($row = mysqli_fetch_assoc($result)) {
-                $calendars[] = $row;
-            }
-            
-            // loop through all calendars
-            foreach ($calendars as $calendar) {
-                // if calendar was selected for user to be given access to, give access to user to calendar
-                if (($_POST['calendar_' . $calendar['id']] ?? '') == 1) {
-                    $query =
-                        "INSERT INTO users_calendars_xref (
-                            user_id,
-                            calendar_id)
-                        VALUES (
-                            ?,
-                            ?)";
-                    $result = db_q($query, array((string) $user_id, (string) $calendar['id'])) or output_error('Query failed.');
-                }
-            }
-        }
-
-        // If ads are enabled, then store access.
-        if (ADS === true) {
-            // get all ad regions
-            $query = "SELECT id FROM ad_regions";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            
-            $ad_regions = array();
-            
-            while ($row = mysqli_fetch_assoc($result)) {
-                $ad_regions[] = $row;
-            }
-            
-            // loop through all ad regions and input them if they were selected
-            foreach ($ad_regions as $ad_region) {
-                // if ad region was selected for user to be given access to, give access to ad region
-                if (($_POST['ad_region_' . $ad_region['id']] ?? '') == 1) {
-                    $query =
-                        "INSERT INTO users_ad_regions_xref (
-                            user_id,
-                            ad_region_id)
-                        VALUES (
-                            ?,
-                            ?)";
-                    $result = db_q($query, array((string) $user_id, (string) $ad_region['id'])) or output_error('Query failed.');
-                }
-            }
-        }
-    }
+    pg_user_form_save_access($user_id, $_POST['role'], $_POST, false);
 
     // If the user checked to notify the user, then send email to user.
     if ($_POST['notify_user'] == 1) {
