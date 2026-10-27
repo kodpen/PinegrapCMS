@@ -83,9 +83,11 @@ function get_shopping_cart($properties) {
         if (get_offer_code_for_special_offer_code($_SESSION['ecommerce']['special_offer_code'])) {
             $query =
                 "UPDATE orders
-                SET special_offer_code = '" . escape($_SESSION['ecommerce']['special_offer_code']) . "'
-                WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                SET special_offer_code = ?
+                WHERE id = ?";
+            $result = db_q($query, array(
+                (string) $_SESSION['ecommerce']['special_offer_code'],
+                (string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
         }
         
         // clear special offer code from session
@@ -115,8 +117,8 @@ function get_shopping_cart($properties) {
                 discount_offer_id,
                 offline_payment_allowed
              FROM orders
-             WHERE id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+             WHERE id = ?";
+    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     // $row is null when there is no order in the session yet.
@@ -128,8 +130,8 @@ function get_shopping_cart($properties) {
     if ($layout_type == 'system') {
     
         // get all ship tos
-        $query = "SELECT DISTINCT ship_to_id FROM order_items WHERE order_id = '" . escape(($_SESSION['ecommerce']['order_id'] ?? '')) . "' ORDER BY ship_to_id";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT DISTINCT ship_to_id FROM order_items WHERE order_id = ? ORDER BY ship_to_id";
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
         
         $ship_tos = array();
         
@@ -157,9 +159,9 @@ function get_shopping_cart($properties) {
                 FROM offers_offer_actions_xref
                 LEFT JOIN offer_actions ON offers_offer_actions_xref.offer_action_id = offer_actions.id
                 WHERE 
-                    (offers_offer_actions_xref.offer_id = '" . $pending_offer['id'] . "')
+                    (offers_offer_actions_xref.offer_id = ?)
                     AND (offer_actions.type = 'add product')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $pending_offer['id'])) or output_error('Query failed.');
             $row = mysqli_fetch_row($result);
             
             $multiple_actions = FALSE;
@@ -199,8 +201,8 @@ function get_shopping_cart($properties) {
                         $recipient_options[''] = '';
                         
                         foreach ($offer_action['allowed_recipients'] as $ship_to_id) {
-                            $query = "SELECT ship_to_name FROM ship_tos WHERE id = '$ship_to_id'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $query = "SELECT ship_to_name FROM ship_tos WHERE id = ?";
+                            $result = db_q($query, array((string) $ship_to_id)) or output_error('Query failed.');
                             $row = mysqli_fetch_assoc($result);
 
                             $recipient_options[$row['ship_to_name']] = $row['ship_to_name'];
@@ -345,10 +347,10 @@ function get_shopping_cart($properties) {
                 FROM products_groups_xref
                 LEFT JOIN products ON products.id = products_groups_xref.product
                 WHERE
-                    (products_groups_xref.product_group = '$quick_add_product_group_id')
+                    (products_groups_xref.product_group = ?)
                     AND (products.enabled = '1')
                 ORDER BY products_groups_xref.sort_order, products.name";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $quick_add_product_group_id)) or output_error('Query failed.');
 
             // if there is at least one product in quick add product group, prepare quick add area
             if (mysqli_num_rows($result) > 0) {
@@ -631,8 +633,8 @@ function get_shopping_cart($properties) {
                         ship_to_name,
                         offer_id
                     FROM ship_tos
-                    WHERE id = '$ship_to_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    WHERE id = ?";
+                $result = db_q($query, array((string) $ship_to_id)) or output_error('Query failed.');
                 // Items that are not shipped sit under ship to 0, which has no row.
                 $row = mysqli_fetch_assoc($result) ?: array_fill_keys(array_column(mysqli_fetch_fields($result), 'name'), null);
                 $ship_to_name = $row['ship_to_name'];
@@ -682,9 +684,9 @@ function get_shopping_cart($properties) {
                         products.submit_form_quantity_type
                     FROM order_items
                     LEFT JOIN products ON order_items.product_id = products.id
-                    WHERE order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "' AND order_items.ship_to_id = '$ship_to_id'
+                    WHERE order_items.order_id = ? AND order_items.ship_to_id = ?
                     ORDER BY order_items.id";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $ship_to_id)) or output_error('Query failed.');
                 
                 $order_items = array();
                 
@@ -1083,10 +1085,10 @@ function get_shopping_cart($properties) {
                                     FROM form_data
                                     LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
                                     WHERE
-                                        (form_data.order_item_id = '$order_item_id')
-                                        AND (form_data.quantity_number = '$quantity_number')
+                                        (form_data.order_item_id = ?)
+                                        AND (form_data.quantity_number = ?)
                                     GROUP BY form_data.form_field_id";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                $result = db_q($query, array((string) $order_item_id, (string) $quantity_number)) or output_error('Query failed.');
                                 
                                 $fields = array();
                                 
@@ -1102,11 +1104,14 @@ function get_shopping_cart($properties) {
                                             "SELECT data
                                             FROM form_data
                                             WHERE
-                                                (order_item_id = '$order_item_id')
-                                                AND (quantity_number = '$quantity_number')
-                                                AND (form_field_id = '" . $field['form_field_id'] . "')
+                                                (order_item_id = ?)
+                                                AND (quantity_number = ?)
+                                                AND (form_field_id = ?)
                                             ORDER BY id";
-                                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                        $result = db_q($query, array(
+                                            (string) $order_item_id,
+                                            (string) $quantity_number,
+                                            (string) $field['form_field_id'])) or output_error('Query failed.');
                                         
                                         $field['data'] = array();
                                         
@@ -1595,8 +1600,8 @@ function get_shopping_cart($properties) {
                 // loop through each applied offer
                 foreach ($applied_offers as $offer_id) {
                     // get offer data
-                    $query = "SELECT code, description FROM offers WHERE id = '$offer_id'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $query = "SELECT code, description FROM offers WHERE id = ?";
+                    $result = db_q($query, array((string) $offer_id)) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
                     $offer_description = pg_offer_public_label($row);
                     
@@ -1756,9 +1761,9 @@ function get_shopping_cart($properties) {
                     FROM offers_offer_actions_xref
                     LEFT JOIN offer_actions ON offers_offer_actions_xref.offer_action_id = offer_actions.id
                     WHERE 
-                        (offers_offer_actions_xref.offer_id = '" . $offer['id'] . "')
+                        (offers_offer_actions_xref.offer_id = ?)
                         AND (offer_actions.type = 'add product')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $offer['id'])) or output_error('Query failed.');
                 $row = mysqli_fetch_row($result);
                 
                 $offer['multiple_actions'] = false;
@@ -1799,8 +1804,8 @@ function get_shopping_cart($properties) {
                             $recipient_options[''] = '';
                             
                             foreach ($action['allowed_recipients'] as $ship_to_id) {
-                                $query = "SELECT ship_to_name FROM ship_tos WHERE id = '$ship_to_id'";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                $query = "SELECT ship_to_name FROM ship_tos WHERE id = ?";
+                                $result = db_q($query, array((string) $ship_to_id)) or output_error('Query failed.');
                                 $row = mysqli_fetch_assoc($result);
 
                                 $recipient_options[$row['ship_to_name']] = $row['ship_to_name'];
