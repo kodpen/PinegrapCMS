@@ -685,7 +685,9 @@ function ws_scheduled_placeholders()
 }
 
 /**
- * Fills the placeholders of a text.
+ * Fills the placeholders of a text in one pass over the text as written:
+ * a value (a customer's name, a form field, a follow-up's result) is never
+ * read again as a placeholder, a count included.
  *
  * @param string $text
  * @param array  $context viewer, row, result, status, source, source_result
@@ -725,20 +727,27 @@ function ws_scheduled_fill($text, $context)
             : array_fill_keys($asked[0], '');
     }
 
-    $text = strtr($text, $values);
-
     // A count by its key: {{count:orders_new}}, {{count:stock_low:5}}.
-    return preg_replace_callback('/\{\{count:([a-z_]+)(?::(\d+))?\}\}/', function ($match) use ($context, $row) {
+    if (preg_match_all('/\{\{count:([a-z_]+)(?::(\d+))?\}\}/', $text, $counts, PREG_SET_ORDER)) {
         $viewer = $context['viewer'] ?? null;
 
-        if (!is_array($viewer)) {
-            return '';
+        foreach ($counts as $match) {
+            if (isset($values[$match[0]])) {
+                continue;
+            }
+
+            if (!is_array($viewer)) {
+                $values[$match[0]] = '';
+                continue;
+            }
+
+            $count = ws_scheduled_metric_value($viewer, $match[1], (int) ($match[2] ?? 0), (int) ($row['last_run_at'] ?? 0));
+            $values[$match[0]] = $count['ok'] ? $count['text'] : '?';
         }
+    }
 
-        $count = ws_scheduled_metric_value($viewer, $match[1], (int) ($match[2] ?? 0), (int) ($row['last_run_at'] ?? 0));
-
-        return $count['ok'] ? $count['text'] : '?';
-    }, $text);
+    // strtr() never looks again at what it put in.
+    return strtr($text, $values);
 }
 
 /**

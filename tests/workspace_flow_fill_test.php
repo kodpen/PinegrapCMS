@@ -37,7 +37,8 @@ function test_workspace_flow_fill_node_value_stays_literal()
 
 	pg_assert_true(strpos($filled, 'hidden') === false, 'a node value does not pull in another node value');
 	pg_assert_true(strpos($filled, date('d.m.Y')) === false, 'a node value does not pull in the date');
-	pg_assert_same(1, preg_match('/^Said: Hi \{.?\{customer\}\} \{.?\{form_fields\}\} \{.?\{date\}\} \{.?\{node\.form\.secret\}\} \{.?\{count:tasks_open\}\}$/u', $filled), 'the braces stay readable: ' . $filled);
+	$j = "\u{2060}";
+	pg_assert_same("Said: Hi {{$j}{{$j}customer}} {{$j}{{$j}form_fields}} {{$j}{{$j}date}} {{$j}{{$j}node.form.secret}} {{$j}{{$j}count:tasks_open}}", $filled, 'each brace of a value is followed by a word joiner');
 
 	// A brace at either end of a value cannot meet one of the text.
 	$values = array('a' => array('text' => '{', 'end' => 'x{'));

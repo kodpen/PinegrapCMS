@@ -66,7 +66,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-canvas.md: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, panel actions, editor, autosave, 409, focus, keys, outline, read-only, what is left; the run view has its own file
 - workspace-flows-change-box.md: The change box of a flow (F4b3, PR #1957): the scheduled change step as a box, its settings, rights, what it writes, and why its record and values reach only the flow's editors
 - workspace-flows-condition-box.md: The condition box of a flow (F4c, PR #1980, flow_conditions.php): one scheduled-action condition, yes/no outcomes, a no without an arrow ends the branch, owner rights, what non-editors read
-- workspace-flows-outputs.md: Values a flow box gives later boxes (data-passing D1): outputs per kind, ws_step_outputs(), ws_step_result_data(), null rules, report counts, canvas config
+- workspace-flows-outputs.md: Values a flow box gives later boxes (data-passing D1, D2): outputs per kind, ws_step_outputs(), ws_step_result_data(), null rules, report counts, one-pass fill, canvas config
 - workspace-flows-parity-test.md: tests/workspace_flows_parity_test.php maps every scheduled-action key to the Flows box that keeps it; the changes far from scheduled.php that fail it, how call sites are keyed, what to do
 - workspace-flows-retry-skip.md: A failed box of a flow run tried again or skipped by hand (F5a, PR #2098, ws_flow_step_mend()): which boxes, owner only, double click, boxes walked again, routes, panel action, canvas buttons
 - workspace-flows-run-view.md: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, how it is read again, what a failed read shows
