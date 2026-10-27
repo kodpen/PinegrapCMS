@@ -1,6 +1,6 @@
 ---
 name: workspace-flows
-description: Plan (2026-10-24, F1-F2 done #1503 #1529, F3a #1551, F3b #1555, F7 #1578): one Flows system: process templates, "when X do Y" rules, an n8n-like canvas; canvas first, one engine
+description: Plan (2026-10-24): one Flows system: process templates, "when X do Y" rules, an n8n-like canvas; canvas first, one engine
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -41,4 +41,4 @@ Owner 2026-10-24: 1 a, 2 b, 3 a, 4 a; name "Akışlar". 5-7: recommendations tak
 8. Scheduled actions in Flows, no loss: answered in workspace-flows-scheduled-merge.md (owner, 2026-10-24).
 
 ## Where to start?
-- F4 next (plans/workspace-flows-engine.md). Read workspace/README.md, plans/workspace-growth-terms.md.
+- F4 next (plans/workspace-flows-engine.md); values between boxes: plans/workspace-flows-data-passing.md. Read workspace/README.md, plans/workspace-growth-terms.md.

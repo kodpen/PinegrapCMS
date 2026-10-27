@@ -8,7 +8,7 @@ description: view_waf_log.php likely false positive evidence and Allow/Remove ac
 - `log` and `orders` are not indexed by address, so only the last 20,000 rows (PK range) are checked. Both store `REMOTE_ADDR`, so behind a CDN they stay silent (never mismatch).
 - Works with the period filter, not with category/search.
 - "Izin Ver" (Allow) writes the same row as `firewall.save.php` (`allow` / `manual`), deletes auto bans covering the address and refreshes the shield; the allowed address drops from the list.
-- Remove and Allow refresh the shield IMMEDIATELY (`waf_ip_lists(true)` + `waf_ban_shield_refresh(true)`), not left to the mtime throttle.
+- Remove and Allow refresh the shield IMMEDIATELY (`waf_ip_lists(true)` + `waf_ban_shield_refresh(true)`), not left to the mtime throttle, and forget the address's offences (`waf_offence_clear()`, `waf-offence-fold-and-staff-address.md`).
 
 ## How is the reference number handled?
 - `waf_reference()` is `static` per request, so the code on the block page equals the code in the log row. Before, it was generated at deny time and stored nowhere: the visitor got a code the operator could not look up.

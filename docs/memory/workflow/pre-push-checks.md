@@ -22,6 +22,9 @@ description: git push runs tools/pre_push.sh first (installed when a cloud sessi
 - Sessions that start elsewhere (several repositories, one added later) and the owner's machine run `bash tools/install_git_hooks.sh` once. A `pre-push` hook that is not the shim, or `core.hooksPath`, is left alone; the installer prints a guarded line to put first in that hook that passes the refs on.
 - By hand: `bash tools/pre_push.sh` checks HEAD the same way, `bash tools/pre_push.sh <base>` against another base.
 
+## Does it work on Windows?
+- Yes, from Git Bash with a Windows PHP; since #2091 the commit check too (`branch-guards.md`).
+
 ## May a push skip it?
 - Not to push a commit that fails: fix it and push again. `git push --no-verify` only when the script itself is broken (say so in the PR), and fix the script.
 

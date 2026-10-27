@@ -32,11 +32,12 @@ description: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: ta
 - `WS_FLOW_*`: 100 boxes, 200 box runs a run, 60 starts a flow an hour, 500 open runs, result 16 KB, finished runs kept 30 days.
 
 ## Shared steps and idempotency?
-- Built (F4a): steps.php, workspace/workspace-flows-steps.md. Left: steps return `approval_id`; change, row save `effect` at once; a stale begun step turns interrupted (F5: a person retries or skips). Webhook: `Idempotency-Key` from run, node, pass.
+- Built (F4a): steps.php, workspace/workspace-flows-steps.md. Left: steps return `approval_id`; change, row save `effect` at once; a stale begun step fails and its owner retries or skips it (F5a). Webhook: `Idempotency-Key` from run, node, pass.
 
 ## API and MCP?
 - /workspace/flows, /{id}, /publish, /resume (`ws_api_own_words_only()`, `'mcp' => false`), /pause, /runs; /workspace/flow-runs/{id}, /cancel, /steps/{node}/retry, /skip; `dry_run`; `workspace:read`, `:write`.
 
 ## Where to start?
-- Built: F1 #1503, F3a #1551 (workspace-flows-runner.md). Next: F5; read workspace-flows-box-try.md first.
-- F4: a) #1835 post, email; b) #1857 notify, task_open, webhook, web_check; b2) #1923 task_digest, report, checkin, start_action; b3) #1957 change; c) #1980 condition; d) #2006 anchor triggers; e) #2024 box dry-run; f) #2070 a change box also checks the run starter's rights. Then F5.
+- Built: F1 #1503, F3a #1551 (workspace-flows-runner.md).
+- F4 done: a #1835, b #1857, b2 #1923, b3 #1957 (step kinds), c #1980 condition, d #2006 anchors, e #2024 box try, f #2070 starter's rights.
+- F5: a) #2098 retry or skip a failed box (workspace-flows-retry-skip.md); b) delay box; c) approval box (approval_id, approval.decided); d) wait with a timeout outcome (`wake_at`). Next: F5b.

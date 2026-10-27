@@ -9,7 +9,7 @@ description: Bulk matching of marketplace products to the shop's (marketplace_pr
 
 ## Where is the remote catalogue kept?
 - `marketplace_remote_products` (2026.11.0, step 11.0.40), one row per account and `remote_code`: what a `marketplace_product_map` row would carry (n11: stock code). Title, picture address (https only), price in minor units as sold there, quantity, their status words, and the suggestion columns (`suggested_product_id`, `suggestion_score`, `suggestion_reason`, `suggestion_sure`) plus `dismissed`.
-- `remote_code` is `utf8mb4_bin`: the seller types it, and under `unicode_ci` "ABC-1"/"abc-1" or "ŞAPKA-01"/"SAPKA-01" were one row taking the second product's data under the first's code, so an accepted match sent stock to the wrong listing (review of #1880). The map's `remote_code` (2026.4.4) stays `unicode_ci`; every comparison with it is made in its collation (its `idx_code` is used) and on the bytes: `mp_remote_products_code_join_sql()`, `mp_remote_products_map_code_sql()`, `mp_remote_products_same_code()`.
+- `remote_code` is `utf8mb4_bin`: the seller types it, and under `unicode_ci` "ABC-1"/"abc-1" or "ŞAPKA-01"/"SAPKA-01" were one row taking the second product's data under the first's code, so an accepted match sent stock to the wrong listing (review of #1880). The map's `remote_code` became `utf8mb4_bin` too (11.0.44); the helpers still compare in `unicode_ci` and on the bytes, so they work before and after that step: `mp_remote_products_code_join_sql()`, `mp_remote_products_map_code_sql()`, `mp_remote_products_same_code()`.
 - Matched is not a column: a row is matched when a map row of its account has exactly its code (`mp_remote_products_matched_sql()`).
 
 ## How is it read?

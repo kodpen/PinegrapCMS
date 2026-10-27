@@ -113,3 +113,11 @@ function test_marketplace_product_matches_send_needs_an_active_account()
 	pg_assert_false(strpos($body, 'mp_enqueue(') !== false, 'this account only, not every account the product is on');
 	pg_assert_contains("(status = 'active')", $body, 'only an active match is sent');
 }
+
+// The code column compares byte for byte; the search ignores case on it as on
+// the other columns.
+function test_marketplace_product_matches_search_ignores_case_on_the_code()
+{
+	pg_assert_contains("marketplace_product_map.remote_code COLLATE utf8mb4_unicode_ci LIKE '%abc-1%'", mp_matches_search_sql('abc-1'));
+	pg_assert_same('', mp_matches_search_sql('  '));
+}

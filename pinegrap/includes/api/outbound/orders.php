@@ -781,6 +781,13 @@ function mp_order_totals($lines, $shipping = 0) {
 
 }
 
+// The one row a lookup found, or null when it found none or more than one.
+function mp_order_single_match($rows) {
+
+	return (is_array($rows) && (count($rows) === 1)) ? reset($rows) : null;
+
+}
+
 // Which product here is the marketplace talking about.
 //
 // The mapping table first, because that is the answer the operator gave and it
@@ -820,7 +827,23 @@ function mp_order_match_product($account, $line) {
 
 	}
 
-	$product = null;
+	// remote_code compares byte for byte (utf8mb4_bin), so "abc-1" on the
+	// order does not find the product mapped as "ABC-1". A marketplace that
+	// sends the code in another case still finds it, but only when one
+	// mapping of the account answers: two codes that differ only in case are
+	// two products, and picking either would sell the other's stock.
+	$product = mp_order_single_match((array) db_items("SELECT products.id, products.name, products.inventory, products.inventory_quantity
+		FROM marketplace_product_map
+		INNER JOIN products ON products.id = marketplace_product_map.product_id
+		WHERE (marketplace_product_map.account_id = '" . e((int)$account['id']) . "')
+		  AND (marketplace_product_map.remote_code COLLATE utf8mb4_unicode_ci = '" . e($code) . "')
+		LIMIT 2"));
+
+	if ($product) {
+
+		return $product;
+
+	}
 
 	if (mp_provider_keys_by_barcode($account['provider'])) {
 
