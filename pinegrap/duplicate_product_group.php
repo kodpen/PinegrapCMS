@@ -74,33 +74,33 @@ if (!$_POST) {
                     ' . $liveform->output_field(array('type' => 'hidden', 'name' => 'id', 'value' => $_GET['id'])) . '
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Duplicate Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-3">
-                                            <div class="form-check form-switch">
-                                                ' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'duplicate_product_groups', 'name' => 'duplicate_product_groups', 'value' => '1', 'class' => 'form-check-input')) . '
-                                                <label class="form-check-label" for="duplicate_product_groups">' . lang('Also duplicate Product Groups inside this Product Group') . '.</label>
+                                        <div class="col-12 my-5">
+                                            <div class="form-field">
+                                                <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'duplicate_product_groups', 'name' => 'duplicate_product_groups', 'value' => '1', 'class' => 'no-bs')) . '</div>
+                                                <label class="" for="duplicate_product_groups">' . lang('Also duplicate Product Groups inside this Product Group') . '.</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-3">
-                                            <div class="form-check form-switch">
-                                                ' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'duplicate_products', 'name' => 'duplicate_products', 'value' => '1', 'class' => 'form-check-input')) . '
+                                        <div class="col-12 my-5">
+                                            <div class="form-field">
+                                                <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'duplicate_products', 'name' => 'duplicate_products', 'value' => '1', 'class' => 'no-bs')) . '</div>
 
-                                                <label class="form-check-label" for="duplicate_products">' . lang('Also duplicate Products inside this Product Group') . '.</label>
+                                                <label class="" for="duplicate_products">' . lang('Also duplicate Products inside this Product Group') . '.</label>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                             <div class="container">
                                 <div class=" btn-group flex-wrap justify-content-center">
-                                    <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1  btn-success "><span class="material-icons me-2">control_point_duplicate</span><span class="pg-btn-label" >' . lang(array('string'=>'Duplicate') ) . '</span></button>
+                                    <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">control_point_duplicate</span><span class="pg-btn-label" >' . lang(array('string'=>'Duplicate') ) . '</span></button>
                                 </div>
                             </div>
                         </nav>

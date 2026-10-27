@@ -113,11 +113,11 @@ if ($mail_queue_tab === 'sms') {
     $sms_queue_counts = pg_sms_queue_counts();
 
     $sms_queue_status_labels = array(
-        'queued'    => array(lang('Queued'), 'text-bg-secondary'),
-        'sending'   => array(lang('Sending'), 'text-bg-info'),
-        'sent'      => array(lang('Sent'), 'text-bg-success'),
-        'failed'    => array(lang('Failed'), 'text-bg-danger'),
-        'uncertain' => array(lang('Outcome unknown'), 'text-bg-warning'),
+        'queued'    => array(lang('Queued'), 'theme-secondary'),
+        'sending'   => array(lang('Sending'), 'theme-info'),
+        'sent'      => array(lang('Sent'), 'theme-success'),
+        'failed'    => array(lang('Failed'), 'theme-danger'),
+        'uncertain' => array(lang('Outcome unknown'), 'theme-warning'),
     );
 
     $sms_queue_kind_labels = array(
@@ -144,29 +144,29 @@ if ($mail_queue_tab === 'sms') {
 
         if ($sms_queue_counts[$sms_queue_stat[1]] > 0) {
             if ($sms_queue_stat[1] === 'failed') {
-                $sms_queue_colour = ' text-danger';
+                $sms_queue_colour = ' fg-danger';
             } elseif ($sms_queue_stat[1] === 'uncertain') {
-                $sms_queue_colour = ' text-warning-emphasis';
+                $sms_queue_colour = ' fg-emphasis-warning';
             }
         }
 
         $sms_queue_stats .= '
-                <div class="col-6 col-md-4 col-xl">
+                <div class="col-6 md:col-4 xl:col">
                     <div class="card h-100">
                         <div class="card-body">
-                            <div class="small text-body-secondary">' . h($sms_queue_stat[0]) . '</div>
-                            <div class="fs-3 fw-bold' . $sms_queue_colour . '">' . pg_format_number($sms_queue_counts[$sms_queue_stat[1]], 0) . '</div>
+                            <div class="small fg-secondary">' . h($sms_queue_stat[0]) . '</div>
+                            <div class="fs-2xl fw-bold' . $sms_queue_colour . '">' . pg_format_number($sms_queue_counts[$sms_queue_stat[1]], 0) . '</div>
                         </div>
                     </div>
                 </div>';
     }
 
     if (!pg_sms_ready()) {
-        $sms_queue_state = '<span class="badge text-bg-secondary">' . lang('Not set up') . '</span> <a class="small" href="' . h(pg_settings_link('contact', 'pgset-sms')) . '">' . lang('SMS settings') . '</a>';
+        $sms_queue_state = '<span class="badge theme-secondary">' . lang('Not set up') . '</span> <a class="small" href="' . h(pg_settings_link('contact', 'pgset-sms')) . '">' . lang('SMS settings') . '</a>';
     } elseif (pg_sms_job_alive()) {
-        $sms_queue_state = '<span class="badge text-bg-success">' . lang('Queue active') . '</span> <span class="small text-body-secondary">' . lang('The general job sends text messages.') . '</span>';
+        $sms_queue_state = '<span class="badge theme-success">' . lang('Queue active') . '</span> <span class="small fg-secondary">' . lang('The general job sends text messages.') . '</span>';
     } else {
-        $sms_queue_state = '<span class="badge text-bg-warning">' . lang('Queue inactive') . '</span> <span class="small text-body-secondary">' . lang('The general job has not run in the last 15 minutes, so text messages wait in the queue.') . '</span>';
+        $sms_queue_state = '<span class="badge theme-warning">' . lang('Queue inactive') . '</span> <span class="small fg-secondary">' . lang('The general job has not run in the last 15 minutes, so text messages wait in the queue.') . '</span>';
     }
 
     $sms_queue_runs = pg_cron_last_runs();
@@ -187,7 +187,7 @@ if ($mail_queue_tab === 'sms') {
 
         $sms_queue_status = isset($sms_queue_status_labels[$sms_queue_row['status']])
             ? $sms_queue_status_labels[$sms_queue_row['status']]
-            : array($sms_queue_row['status'], 'text-bg-light');
+            : array($sms_queue_row['status'], 'bg-1 fg-body');
 
         $sms_queue_expired = ((int) $sms_queue_row['expires_at'] > 0) && ((int) $sms_queue_row['expires_at'] <= time());
 
@@ -230,10 +230,10 @@ if ($mail_queue_tab === 'sms') {
                 ? ' data-confirm-content="' . h(lang('The provider may already have delivered this message, and sent again it would arrive twice. Check the provider\'s report first.')) . '"'
                 : '';
 
-            $sms_queue_buttons .= '<button type="submit" name="sms_action" value="retry:' . (int) $sms_queue_row['id'] . '" class="btn btn-sm btn-outline-secondary me-1" title="' . h(lang('Retry')) . '"' . $sms_queue_confirm . '><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>';
+            $sms_queue_buttons .= '<button type="submit" name="sms_action" value="retry:' . (int) $sms_queue_row['id'] . '" class="btn btn-sm btn-outline theme-secondary me-1" title="' . h(lang('Retry')) . '"' . $sms_queue_confirm . '><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>';
         }
 
-        $sms_queue_buttons .= '<button type="submit" name="sms_action" value="delete:' . (int) $sms_queue_row['id'] . '" class="btn btn-sm btn-outline-warning" title="' . h(lang('Delete')) . '" data-confirm-content="' . h(lang('The message will be deleted from the queue and not sent.')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>';
+        $sms_queue_buttons .= '<button type="submit" name="sms_action" value="delete:' . (int) $sms_queue_row['id'] . '" class="btn btn-sm btn-outline theme-warning" title="' . h(lang('Delete')) . '" data-confirm-content="' . h(lang('The message will be deleted from the queue and not sent.')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>';
 
         $sms_queue_rows .= '
                         <tr>
@@ -242,9 +242,9 @@ if ($mail_queue_tab === 'sms') {
                             <td class="align-middle"><span class="badge ' . $sms_queue_status[1] . '">' . h($sms_queue_status[0]) . '</span></td>
                             <td class="align-middle">' . h(isset($sms_queue_kind_labels[$sms_queue_row['kind']]) ? $sms_queue_kind_labels[$sms_queue_row['kind']] : $sms_queue_row['kind']) . '</td>
                             <td class="align-middle text-nowrap">+' . h($sms_queue_row['recipient']) . '</td>
-                            <td class="align-middle" title="' . h($sms_queue_row['body']) . '">' . h(truncate($sms_queue_row['body'], 80)) . (($sms_queue_reference !== '') ? '<div class="small text-body-secondary">' . h($sms_queue_reference) . '</div>' : '') . '</td>
+                            <td class="align-middle" title="' . h($sms_queue_row['body']) . '">' . h(truncate($sms_queue_row['body'], 80)) . (($sms_queue_reference !== '') ? '<div class="small fg-secondary">' . h($sms_queue_reference) . '</div>' : '') . '</td>
                             <td class="align-middle">' . (int) $sms_queue_row['attempts'] . '</td>
-                            <td class="align-middle small text-danger" title="' . h($sms_queue_error) . '">' . h(truncate($sms_queue_error, 80)) . '</td>
+                            <td class="align-middle small fg-danger" title="' . h($sms_queue_error) . '">' . h(truncate($sms_queue_error, 80)) . '</td>
                             <td class="align-middle small text-nowrap">' . h($sms_queue_provider) . '</td>
                             <td class="align-middle text-nowrap">' . prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $sms_queue_row['created_at']), 'date and time') . '</td>
                             <td class="align-middle text-nowrap">' . $sms_queue_when . '</td>
@@ -255,20 +255,20 @@ if ($mail_queue_tab === 'sms') {
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 <form action="mail_queue.php?tab=sms" method="post" class="disable_shortcut">
                     ' . get_token_field() . '
-                    <button type="submit" name="sms_action" value="run_now" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Run now') . '</button>
+                    <button type="submit" name="sms_action" value="run_now" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Run now') . '</button>
                 </form>
                 <div class="pg-toolbar-grow"></div>
                 <div class="small">' . $sms_queue_state . '</div>
             </nav>
 
-            <div class="row g-3 my-2">' . $sms_queue_stats . '
+            <div class="row g-5 my-3">' . $sms_queue_stats . '
             </div>
 
-            <p class="small text-body-secondary mt-3 mb-0">' . lang('Last run of the general job') . ': ' . $sms_queue_job_text . '</p>
+            <p class="small fg-secondary mt-5 mb-0">' . lang('Last run of the general job') . ': ' . $sms_queue_job_text . '</p>
 
             <form action="mail_queue.php?tab=sms" method="post" class="disable_shortcut">
                 ' . get_token_field() . '
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <table class="chart table-hover table" style="width:100%;display:none;">
                             <thead>
@@ -294,7 +294,7 @@ if ($mail_queue_tab === 'sms') {
 
 } elseif (!pg_mail_queue_ready()) {
 
-    $output_content = '<div class="alert alert-info">' . lang('The mail queue table is not available yet; run the upgrade.') . '</div>';
+    $output_content = '<div class="alert theme-info">' . lang('The mail queue table is not available yet; run the upgrade.') . '</div>';
 
 } else {
 
@@ -311,10 +311,10 @@ if ($mail_queue_tab === 'sms') {
     $mail_queue_job_run = (is_array($mail_queue_runs) && isset($mail_queue_runs['job'])) ? (int) $mail_queue_runs['job'] : 0;
 
     $mail_queue_status_labels = array(
-        'queued'  => array(lang('Queued'), 'text-bg-secondary'),
-        'sending' => array(lang('Sending'), 'text-bg-info'),
-        'sent'    => array(lang('Sent'), 'text-bg-success'),
-        'failed'  => array(lang('Failed'), 'text-bg-danger'),
+        'queued'  => array(lang('Queued'), 'theme-secondary'),
+        'sending' => array(lang('Sending'), 'theme-info'),
+        'sent'    => array(lang('Sent'), 'theme-success'),
+        'failed'  => array(lang('Failed'), 'theme-danger'),
     );
 
     $mail_queue_type_labels = array(
@@ -333,20 +333,20 @@ if ($mail_queue_tab === 'sms') {
         ) as $mail_queue_stat
     ) {
         $mail_queue_stats .= '
-                <div class="col-6 col-md-3">
+                <div class="col-6 md:col-3">
                     <div class="card h-100">
                         <div class="card-body">
-                            <div class="small text-body-secondary">' . h($mail_queue_stat[0]) . '</div>
-                            <div class="fs-3 fw-bold' . ((($mail_queue_stat[1] === 'failed') && ((int) $mail_queue_counts['failed'] > 0)) ? ' text-danger' : '') . '">' . pg_format_number((int) $mail_queue_counts[$mail_queue_stat[1]], 0) . '</div>
+                            <div class="small fg-secondary">' . h($mail_queue_stat[0]) . '</div>
+                            <div class="fs-2xl fw-bold' . ((($mail_queue_stat[1] === 'failed') && ((int) $mail_queue_counts['failed'] > 0)) ? ' fg-danger' : '') . '">' . pg_format_number((int) $mail_queue_counts[$mail_queue_stat[1]], 0) . '</div>
                         </div>
                     </div>
                 </div>';
     }
 
     if (pg_mail_job_alive()) {
-        $mail_queue_state = '<span class="badge text-bg-success">' . lang('Queue active') . '</span> <span class="small text-body-secondary">' . lang('E-mail is handed to the general job.') . '</span>';
+        $mail_queue_state = '<span class="badge theme-success">' . lang('Queue active') . '</span> <span class="small fg-secondary">' . lang('E-mail is handed to the general job.') . '</span>';
     } else {
-        $mail_queue_state = '<span class="badge text-bg-secondary">' . lang('Queue inactive') . '</span> <span class="small text-body-secondary">' . lang('The general job has not run in the last 15 minutes, so e-mail is sent immediately.') . '</span>';
+        $mail_queue_state = '<span class="badge theme-secondary">' . lang('Queue inactive') . '</span> <span class="small fg-secondary">' . lang('The general job has not run in the last 15 minutes, so e-mail is sent immediately.') . '</span>';
     }
 
     $mail_queue_job_text = ($mail_queue_job_run > 0)
@@ -363,7 +363,7 @@ if ($mail_queue_tab === 'sms') {
 
         $mail_queue_status = isset($mail_queue_status_labels[$mail_queue_row['status']])
             ? $mail_queue_status_labels[$mail_queue_row['status']]
-            : array($mail_queue_row['status'], 'text-bg-light');
+            : array($mail_queue_row['status'], 'bg-1 fg-body');
 
         // When it went, or when it goes next.
         if ($mail_queue_row['status'] === 'sent') {
@@ -382,16 +382,16 @@ if ($mail_queue_tab === 'sms') {
         // retry fails the same way until the cause is fixed where it was
         // written.
         $mail_queue_permanent = pg_mail_failed_permanently($mail_queue_row['status'], $mail_queue_row['attempts'])
-            ? ' <span class="badge text-bg-dark" title="' . h(lang('Not tried again: sending it again would fail the same way.')) . '">' . h(lang('Permanent')) . '</span>'
+            ? ' <span class="badge theme-inverse" title="' . h(lang('Not tried again: sending it again would fail the same way.')) . '">' . h(lang('Permanent')) . '</span>'
             : '';
 
         $mail_queue_buttons = '';
 
         if (in_array($mail_queue_row['status'], array('queued', 'failed'), true)) {
-            $mail_queue_buttons .= '<button type="submit" name="mail_action" value="retry:' . (int) $mail_queue_row['id'] . '" class="btn btn-sm btn-outline-secondary me-1" title="' . h(lang('Retry')) . '"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>';
+            $mail_queue_buttons .= '<button type="submit" name="mail_action" value="retry:' . (int) $mail_queue_row['id'] . '" class="btn btn-sm btn-outline theme-secondary me-1" title="' . h(lang('Retry')) . '"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>';
         }
 
-        $mail_queue_buttons .= '<button type="submit" name="mail_action" value="delete:' . (int) $mail_queue_row['id'] . '" class="btn btn-sm btn-outline-warning" title="' . h(lang('Delete')) . '" data-confirm-content="' . h(lang('The message will be deleted from the queue and not sent.')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>';
+        $mail_queue_buttons .= '<button type="submit" name="mail_action" value="delete:' . (int) $mail_queue_row['id'] . '" class="btn btn-sm btn-outline theme-warning" title="' . h(lang('Delete')) . '" data-confirm-content="' . h(lang('The message will be deleted from the queue and not sent.')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>';
 
         $mail_queue_rows .= '
                         <tr>
@@ -402,7 +402,7 @@ if ($mail_queue_tab === 'sms') {
                             <td class="align-middle">' . h($mail_queue_row['recipient']) . '</td>
                             <td class="align-middle">' . h($mail_queue_row['subject']) . '</td>
                             <td class="align-middle">' . (int) $mail_queue_row['attempts'] . '</td>
-                            <td class="align-middle small text-danger" title="' . h($mail_queue_error) . '">' . h(truncate($mail_queue_error, 80)) . '</td>
+                            <td class="align-middle small fg-danger" title="' . h($mail_queue_error) . '">' . h(truncate($mail_queue_error, 80)) . '</td>
                             <td class="align-middle text-nowrap">' . prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $mail_queue_row['created_at']), 'date and time') . '</td>
                             <td class="align-middle text-nowrap">' . $mail_queue_when . '</td>
                         </tr>';
@@ -412,20 +412,20 @@ if ($mail_queue_tab === 'sms') {
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 <form action="mail_queue.php" method="post" class="disable_shortcut">
                     ' . get_token_field() . '
-                    <button type="submit" name="mail_action" value="run_now" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Run now') . '</button>
+                    <button type="submit" name="mail_action" value="run_now" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Run now') . '</button>
                 </form>
                 <div class="pg-toolbar-grow"></div>
                 <div class="small">' . $mail_queue_state . '</div>
             </nav>
 
-            <div class="row g-3 my-2">' . $mail_queue_stats . '
+            <div class="row g-5 my-3">' . $mail_queue_stats . '
             </div>
 
-            <p class="small text-body-secondary mt-3 mb-0">' . lang('Last run of the general job') . ': ' . $mail_queue_job_text . '</p>
+            <p class="small fg-secondary mt-5 mb-0">' . lang('Last run of the general job') . ': ' . $mail_queue_job_text . '</p>
 
             <form action="mail_queue.php" method="post" class="disable_shortcut">
                 ' . get_token_field() . '
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <table class="chart table-hover table" style="width:100%;display:none;">
                             <thead>
@@ -463,12 +463,12 @@ if ($mail_queue_tabs) {
 
         $mail_queue_tab_nav .= '
                 <li class="nav-item">
-                    <a class="nav-link' . ($mail_queue_tab_current ? ' active' : '') . '"' . ($mail_queue_tab_current ? ' aria-current="page"' : '') . ' href="' . h($mail_queue_tab_link[0]) . '"><i class="bi ' . $mail_queue_tab_link[1] . ' me-2" aria-hidden="true"></i>' . h($mail_queue_tab_link[2]) . '</a>
+                    <a class="nav-link' . ($mail_queue_tab_current ? ' active' : '') . '"' . ($mail_queue_tab_current ? ' aria-current="page"' : '') . ' href="' . h($mail_queue_tab_link[0]) . '"><i class="bi ' . $mail_queue_tab_link[1] . ' me-3" aria-hidden="true"></i>' . h($mail_queue_tab_link[2]) . '</a>
                 </li>';
     }
 
     $mail_queue_tab_nav = '
-            <ul class="nav nav-tabs mb-3">' . $mail_queue_tab_nav . '
+            <ul class="nav nav-tabs mb-5">' . $mail_queue_tab_nav . '
             </ul>';
 }
 

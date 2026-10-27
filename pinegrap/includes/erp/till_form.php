@@ -35,46 +35,46 @@ function erp_till_form_cards($liveform, $currency_locked = false)
     $active_options[lang('Passive')] = '0';
 
     return '
-    <div class="card my-4">
-        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+    <div class="card my-7">
+        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
             ' . lang('Till or Bank Account') . '
         </div>
         <div class="card-body">
             <div class="row">
-                <div class="col-12 col-lg-5 my-2">
+                <div class="col-12 lg:col-5 my-3">
                     <label for="name" class="form-label">' . lang('Name') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'name', 'name' => 'name',
                         'class' => 'form-control', 'maxlength' => '100',
                         'autocomplete' => 'off', 'required' => 'required')) . '
                 </div>
-                <div class="col-12 col-sm-6 col-lg-4 my-2">
+                <div class="col-12 sm:col-6 lg:col-4 my-3">
                     <label for="kind" class="form-label">' . lang('Type') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'kind', 'name' => 'kind',
-                        'class' => 'form-select', 'options' => $kind_options)) . '
+                        'class' => 'form-control', 'options' => $kind_options)) . '
                 </div>
-                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="is_active" class="form-label">' . lang('Status') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'is_active', 'name' => 'is_active',
-                        'class' => 'form-select', 'options' => $active_options)) . '
+                        'class' => 'form-control', 'options' => $active_options)) . '
                 </div>
             </div>
             <div class="row">
-                <div class="col-12 col-lg-4 my-2">
+                <div class="col-12 lg:col-4 my-3">
                     <label for="bank_name" class="form-label">' . lang('Bank') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'bank_name', 'name' => 'bank_name',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 col-lg-5 my-2">
+                <div class="col-12 lg:col-5 my-3">
                     <label for="iban" class="form-label">' . lang('IBAN') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'iban', 'name' => 'iban',
                         'class' => 'form-control', 'maxlength' => '34', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 col-sm-4 col-lg-3 my-2">
+                <div class="col-12 sm:col-4 lg:col-3 my-3">
                     <label for="opening_balance" class="form-label">' . lang('Opening Balance') . '</label>
                     <div class="input-group">
                         ' . $liveform->output_field(array(

@@ -27,10 +27,10 @@ if (!$_POST) {
     $output_design_rows = '';
     if ($user['role'] <= 1) {
         $output_design_rows = '
-        <div class="col-12 my-2">
-            <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" id="design" name="design" value="1">
-                <label class="form-check-label" for="design">' . lang('Design File') . '</label>
+        <div class="col-12 my-3">
+            <div class="form-field">
+                <div class="switch"><input class="" type="checkbox" id="design" name="design" value="1"></div>
+                <label class="" for="design">' . lang('Design File') . '</label>
             </div>
         </div>';
     }
@@ -55,17 +55,17 @@ if (!$_POST) {
                 <form action="create_file.php" method="post">
                     ' . get_token_field() . '
                     <div class="row justify-content-center">
-                        <div class="col-12 col-md">
+                        <div class="col-12 md:col">
                             <div class="row">
                                 <div class="col-12">
-                                    <div class="card my-4">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Main Informations') . '</div>
+                                    <div class="card my-7">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Main Informations') . '</div>
                                         <div class="card-body">
                                             <div class="row">
-                                                <div class="col-12 my-2">
+                                                <div class="col-12 my-3">
                                                     <div class="input-group">
                                                         <input type="text" name="name" id="name" class="form-control " style="width:70%"/>
-                                                        <select class="form-select" id="type" name="type" required>
+                                                        <select class="form-control" id="type" name="type" required>
                                                             <option value="txt" selected>.txt</option>
                                                             <option value="json">.json</option>
                                                             <option value="svg">.svg</option>
@@ -81,21 +81,21 @@ if (!$_POST) {
                                 </div>
 
                                 <div class="col-12">
-                                    <div class="card my-4">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('File Access Control') . '</div>
+                                    <div class="card my-7">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('File Access Control') . '</div>
                                         <div class="card-body">
-                                            <div class="col-12 my-2">
+                                            <div class="col-12 my-3">
                                                 <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                                                <select class="form-select" id="folder" name="folder">' . select_folder(0, 0) . '</select>
+                                                <select class="form-control" id="folder" name="folder">' . select_folder(0, 0) . '</select>
                                             </div>
                                             ' . $output_design_rows . '
                                         </div>
                                     </div>
 
-                                    <div class="card my-4">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Description') . '</div>
+                                    <div class="card my-7">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Description') . '</div>
                                         <div class="card-body">
-                                            <div class="col-12 my-2">
+                                            <div class="col-12 my-3">
                                                 <label for="description" class="form-label">' . lang('File Description') . '</label>
                                                 <textarea class="form-control" id="description" name="description" style="min-height:85px;"></textarea>
                                             </div>
@@ -104,11 +104,11 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-8">
-                            <div class="card my-4" id="code_block" style="display:block;">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('File Content') . '</div>
+                        <div class="col-12 md:col-8">
+                            <div class="card my-7" id="code_block" style="display:block;">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('File Content') . '</div>
                                 <div class="card-body">
-                                    <div class="col-12 my-2">
+                                    <div class="col-12 my-3">
                                         <label for="code" class="form-label">' . lang('Code') . '</label>
                                         <textarea name="code" id="code" rows="25" class="form-control"></textarea>
                                     </div>
@@ -118,11 +118,11 @@ if (!$_POST) {
 
                     </div>
 
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                         <div class="container">
                             <div class="btn-group flex-wrap justify-content-center">
-                                <button type="submit" class="btn my-1 btn-success">
-                                    <span class="bi bi-plus-circle me-2"></span>
+                                <button type="submit" class="btn my-1 btn-solid theme-success">
+                                    <span class="bi bi-plus-circle me-3"></span>
                                     <span class="pg-btn-label">' . lang('Create File') . '</span>
                                 </button>
                             </div>

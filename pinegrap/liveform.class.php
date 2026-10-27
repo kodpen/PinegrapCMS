@@ -301,7 +301,7 @@ class liveform {
         $_pg_has_bs = function ($cls) {
             $tokens = preg_split('/\s+/', (string)$cls);
             foreach (array('form-control', 'form-select', 'form-check-input',
-                           'btn', 'no-bs') as $marker) {
+                           'check', 'radio', 'btn', 'no-bs') as $marker) {
                 if (in_array($marker, $tokens, true)) return true;
             }
             return false;

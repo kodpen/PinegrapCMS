@@ -135,7 +135,7 @@ function pg_dashboard_widget_1($request, $user)
             'maps'  => $sm_maps,
             'rows'  => array(),
             'names' => array(),
-            'none'  => '<span class="text-muted">' . h(lang('No sales')) . '</span>');
+            'none'  => '<span class="fg-secondary">' . h(lang('No sales')) . '</span>');
 
         foreach ($sm_views as $sm_view_key => $sm_view_label) {
 
@@ -165,7 +165,7 @@ function pg_dashboard_widget_1($request, $user)
             $sm_payload['rows'][$sm_view_key] = array();
 
             $sm_switch .=
-                '<li><button type="button" class="dropdown-item'
+                '<li><button type="button" class="menu-item'
                 . (($sm_view_key === $sm_view) ? ' active' : '') . '" data-smap-view="' . h($sm_view_key) . '">'
                 . '<i class="bi bi-check2 pg-smap-tick"></i>' . h($sm_view_label) . '</button></li>';
 
@@ -205,8 +205,8 @@ function pg_dashboard_widget_1($request, $user)
                     '<div class="pg-head' . $sm_hidden . '" data-smap-head="' . $sm_slot . '">'
                     . '<div class="pg-head-line">'
                     . '<span class="pg-head-num">' . $sm_money($sm_total) . '</span>'
-                    . '<span class="pg-head-unit text-muted">' . h($sm_period['label']) . '</span>'
-                    . '<span class="pg-head-total text-muted">'
+                    . '<span class="pg-head-unit fg-secondary">' . h($sm_period['label']) . '</span>'
+                    . '<span class="pg-head-total fg-secondary">'
                     . $sm_orders($sm_orders_count)
                     . ' &middot; '
                     . lang(array(
@@ -323,7 +323,7 @@ function pg_dashboard_widget_1($request, $user)
                             . $sm_orders($sm_entry['count']) . '</span>'
                             . '<span>' . lang(array('string' => '{var:1}% share', 'vars' => $sm_share)) . '</span>'
                             . (!empty($sm_detail)
-                                ? '<span class="text-muted">' . implode(', ', $sm_detail) . '</span>'
+                                ? '<span class="fg-secondary">' . implode(', ', $sm_detail) . '</span>'
                                 : ''));
                 }
 
@@ -335,7 +335,7 @@ function pg_dashboard_widget_1($request, $user)
         foreach ($sales_map['periods'] as $sm_period_key => $sm_period) {
 
             $sm_tabs .=
-                '<li><button type="button" class="dropdown-item'
+                '<li><button type="button" class="menu-item'
                 . (($sm_period_key === $sales_map['period']) ? ' active' : '') . '"'
                 . ' data-smap="' . $sm_period_key . '">'
                 . '<i class="bi bi-check2 pg-smap-tick"></i>' . h($sm_period['label']) . '</button></li>';
@@ -353,16 +353,16 @@ function pg_dashboard_widget_1($request, $user)
         // The map section only appears where there is a second map
         // to switch to.
         $sm_menu =
-            '<div class="dropdown pg-smap-menu">'
+            '<div class="pg-menu-wrap pg-smap-menu">'
             . '<button type="button" class="btn btn-sm btn-ghost pg-smap-menu-btn" id="pg_smap_menu"'
-            . ' data-bs-toggle="dropdown" aria-expanded="false" aria-label="' . h(lang('Filter')) . '">'
+            . ' data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" aria-label="' . h(lang('Filter')) . '">'
             . '<i class="bi bi-sliders"></i></button>'
-            . '<ul class="dropdown-menu dropdown-menu-end">'
-            . '<li><h6 class="dropdown-header">' . h(lang('Period')) . '</h6></li>'
+            . '<ul class="menu pg-menu-end">'
+            . '<li><h6 class="menu-header">' . h(lang('Period')) . '</h6></li>'
             . $sm_tabs
             . ((count($sm_views) > 1)
-                ? '<li><hr class="dropdown-divider"></li>'
-                    . '<li><h6 class="dropdown-header">' . h(lang('Map')) . '</h6></li>' . $sm_switch
+                ? '<li><hr class="menu-divider"></li>'
+                    . '<li><h6 class="menu-header">' . h(lang('Map')) . '</h6></li>' . $sm_switch
                 : '')
             . '</ul></div>';
 

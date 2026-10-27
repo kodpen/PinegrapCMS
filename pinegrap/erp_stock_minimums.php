@@ -70,20 +70,20 @@ foreach ($rows as $row) {
 
     $output_rows .= '
         <tr' . ($enabled ? '' : ' class="opacity-75"') . '>
-            ' . ($can_order ? '<td class="align-middle" style="width:2.5rem"><input type="checkbox" class="form-check-input" form="erp_order_form" name="products[]" value="' . $product_id . '" aria-label="' . h(lang(array('string' => 'Order {var:1}', 'vars' => erp_stock_product_label($row)))) . '" data-erp-order-pick /></td>' : '') . '
+            ' . ($can_order ? '<td class="align-middle" style="width:2.5rem"><input type="checkbox" class="check" form="erp_order_form" name="products[]" value="' . $product_id . '" aria-label="' . h(lang(array('string' => 'Order {var:1}', 'vars' => erp_stock_product_label($row)))) . '" data-erp-order-pick /></td>' : '') . '
             <td class="align-middle">' . h(erp_stock_product_label($row))
-                . (((trim((string) $row['product_sku']) !== '') && (trim((string) $row['product_sku']) !== trim(erp_stock_product_label($row)))) ? '<div class="small text-body-secondary font-monospace">' . h((string) $row['product_sku']) . '</div>' : '')
-                . ($enabled ? '' : '<span class="badge text-bg-secondary">' . lang('Not on sale') . '</span>') . '</td>
+                . (((trim((string) $row['product_sku']) !== '') && (trim((string) $row['product_sku']) !== trim(erp_stock_product_label($row)))) ? '<div class="small fg-secondary font-monospace">' . h((string) $row['product_sku']) . '</div>' : '')
+                . ($enabled ? '' : '<span class="badge theme-secondary">' . lang('Not on sale') . '</span>') . '</td>
             <td class="' . $cells['stock']['class'] . '" data-sort="' . $cells['stock']['sort'] . '" data-pg-cell="stock">' . $cells['stock']['html'] . '</td>
             <td class="' . $cells['min_quantity']['class'] . '" style="width:9rem" data-sort="' . $cells['min_quantity']['sort'] . '"' . pg_list_edit_cell($quick_edit, 'min_quantity', $product_id, ($minimum > 0) ? $minimum : '') . '>' . $cells['min_quantity']['html'] . '</td>
             <td class="align-middle text-end" style="width:7rem">
-                <a class="btn btn-sm btn-outline-secondary" href="erp_stock.php?product_id=' . $product_id . '#erp_stock_moves" title="' . h(lang('Stock movements')) . '"><i class="bi bi-list-ul" aria-hidden="true"></i></a>
+                <a class="btn btn-sm btn-outline theme-secondary" href="erp_stock.php?product_id=' . $product_id . '#erp_stock_moves" title="' . h(lang('Stock movements')) . '"><i class="bi bi-list-ul" aria-hidden="true"></i></a>
             </td>
         </tr>';
 }
 
 if ($output_rows === '') {
-    $output_rows = '<tr data-pg-sort-fixed><td colspan="' . ($can_order ? 5 : 4) . '" class="text-center text-body-secondary py-4">'
+    $output_rows = '<tr data-pg-sort-fixed><td colspan="' . ($can_order ? 5 : 4) . '" class="text-center fg-secondary py-7">'
         . (($show === 'low') ? lang('No product on sale is at or below its minimum.') : lang('No product that tracks stock matches.')) . '</td></tr>';
 }
 
@@ -108,14 +108,14 @@ pg_page_shell([
 ]) . '
 <main id="content" class="container-fluid">
     <div class="row">
-        <div class="col-12 col-xxl-9">
+        <div class="col-12 2xl:col-9">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 ' . ($can_order ? '<form method="get" action="add_erp_purchase_order.php" id="erp_order_form" class="d-inline">
-                    <button type="submit" class="btn btn-sm btn-outline-primary rounded-pill px-3" disabled data-erp-order-submit><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang('Purchase order for the ticked') . '</button>
+                    <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5" disabled data-erp-order-submit><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang('Purchase order for the ticked') . '</button>
                 </form>' : '') . '
                 <div class="pg-toolbar-grow"></div>
                 <form method="get" action="erp_stock_minimums.php" class="input-group input-group-sm rounded-pill pg-toolbar-search disable_shortcut" role="search">
@@ -126,12 +126,12 @@ pg_page_shell([
                 ' . $output_show_filter . '
             </nav>
 
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort' . pg_list_edit_table('erp_stock_minimums.php', $quick_edit) . '>
                         <thead>
                             <tr>
-                                ' . ($can_order ? '<th data-pg-sort="none"><input type="checkbox" class="form-check-input" aria-label="' . h(lang('Tick all')) . '" data-erp-order-all /></th>' : '') . '
+                                ' . ($can_order ? '<th data-pg-sort="none"><input type="checkbox" class="check" aria-label="' . h(lang('Tick all')) . '" data-erp-order-all /></th>' : '') . '
                                 <th>' . lang('Product') . '</th>
                                 <th class="text-end">' . lang('Stock') . '</th>
                                 <th class="text-end">' . lang('Minimum') . '</th>
@@ -141,7 +141,7 @@ pg_page_shell([
                         <tbody>' . $output_rows . '</tbody>
                     </table>
                 </div>
-                <div class="form-text px-3 pb-3">' . h(lang(array('string' => 'Products that track stock, at most {var:1} at a time; search to narrow the list. Empty is no minimum. The stock is the store\'s own count, the one orders take from.', 'vars' => 500)))
+                <div class="form-text px-5 pb-5">' . h(lang(array('string' => 'Products that track stock, at most {var:1} at a time; search to narrow the list. Empty is no minimum. The stock is the store\'s own count, the one orders take from.', 'vars' => 500)))
                     . ($quick_edit ? ' ' . h(lang('Click a minimum to change it; it is saved as soon as you press Enter or leave the box.')) : '') . '</div>
             </div>
         </div>

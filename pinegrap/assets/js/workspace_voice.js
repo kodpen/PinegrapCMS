@@ -222,7 +222,7 @@
         var row = el('div', 'ws-voice-rec');
         var time = el('span', 'ws-voice-rec-time', '0:00');
         var discard = h.button('btn btn-sm btn-ghost', '', 'bi-trash', t('voice_discard'));
-        var stop = h.button('btn btn-sm btn-primary rounded-pill px-3 ws-voice-rec-stop', '', 'bi-stop-fill', t('voice_stop'));
+        var stop = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5 ws-voice-rec-stop', '', 'bi-stop-fill', t('voice_stop'));
         var dot = el('span', 'ws-voice-rec-dot');
         var cap = el('span', 'ws-voice-rec-cap', '/ ' + clock(LIMIT));
 
@@ -439,7 +439,7 @@
         var locale = (h.cfg && h.cfg.locale) || '';
         var box = el('div', 'ws-voice');
         var audio = document.createElement('audio');
-        var play = h.button('btn btn-primary ws-voice-play', '', 'bi-play-fill', t('voice_play'));
+        var play = h.button('btn btn-solid theme-primary ws-voice-play', '', 'bi-play-fill', t('voice_play'));
         var main = el('div', 'ws-voice-main');
         var name = el('div', 'ws-voice-name', isVoice(file.name) ? t('voice_message') : file.name);
         var bar = el('div', 'ws-voice-bar');

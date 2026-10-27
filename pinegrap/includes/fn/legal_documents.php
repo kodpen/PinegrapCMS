@@ -1567,10 +1567,10 @@ function pg_legal_documents_panel_card($order_id)
         $accepted = (int) $row['accepted_at'];
         $status = ($accepted > 0)
             ? h(pg_legal_document_time_text($accepted))
-            : '<span class="text-danger">' . h(lang('Not accepted')) . '</span>';
+            : '<span class="fg-danger">' . h(lang('Not accepted')) . '</span>';
 
         $rows .= '<div class="row">
-                        <span class="col text-muted"><a class="link-secondary" href="' . h(pg_legal_document_copy_url($order_id, $type)) . '" target="_blank" rel="noopener">' . h($types[$type]) . '</a>:</span>
+                        <span class="col fg-secondary"><a class="pg-link-secondary" href="' . h(pg_legal_document_copy_url($order_id, $type)) . '" target="_blank" rel="noopener">' . h($types[$type]) . '</a>:</span>
                         <span class="col text-end" title="' . h((string) $row['ip']) . '">' . $status . '</span>
                     </div>';
     }
@@ -1589,16 +1589,16 @@ function pg_legal_documents_panel_card($order_id)
             : ($withdrawal['estimated'] ? lang('Estimated') : '');
 
         $rows .= '<div class="row">
-                        <span class="col text-muted">' . h(lang('Right of withdrawal until')) . ':</span>
+                        <span class="col fg-secondary">' . h(lang('Right of withdrawal until')) . ':</span>
                         <span class="col text-end"' . ($withdrawal['estimated'] ? ' title="' . h(lang('Estimated from the ship date or the expected delivery date; the 14 days run from delivery.')) . '"' : '') . '>'
                             . h(pg_return_day_text($withdrawal['deadline']))
-                            . (($note !== '') ? ' <span class="text-muted small">(' . h($note) . ')</span>' : '')
+                            . (($note !== '') ? ' <span class="fg-secondary small">(' . h($note) . ')</span>' : '')
                         . '</span>
                     </div>';
     }
 
-    return '<div class="card mt-3">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+    return '<div class="card mt-5">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . h(lang('Legal Documents')) . '
                 </div>
                 <div class="card-body">

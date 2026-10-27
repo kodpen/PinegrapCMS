@@ -1467,14 +1467,14 @@ function pg_ai_write_button_markup($config, $label, $hidden = false)
 function pg_ai_write_label_row($label, $button, $marker = '')
 {
     if ($marker !== '') {
-        $label = '<div class="d-flex flex-wrap align-items-baseline column-gap-2">' . $label . $marker . '</div>';
+        $label = '<div class="d-flex flex-wrap align-items-baseline column-gap-3">' . $label . $marker . '</div>';
     }
 
     if ($button === '') {
         return $label;
     }
 
-    return '<div class="d-flex flex-wrap align-items-baseline justify-content-between column-gap-2">' . $label . $button . '</div>';
+    return '<div class="d-flex flex-wrap align-items-baseline justify-content-between column-gap-3">' . $label . $button . '</div>';
 }
 
 /**
@@ -2062,7 +2062,7 @@ function pg_ai_fields_for_variant($marks, $set_text, $variant_text)
 function pg_ai_fields_marker($column, $field, $marked, $removable = true)
 {
     $words = lang('Written with AI');
-    $html = '<span class="pg-ai-mark badge rounded-pill bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-normal d-inline-flex align-items-center gap-1' . ($marked ? '' : ' d-none') . '"'
+    $html = '<span class="pg-ai-mark badge rounded-pill bg-subtle-primary fg-emphasis-primary border border-subtle-primary fw-normal d-inline-flex align-items-center gap-1' . ($marked ? '' : ' d-none') . '"'
         . ' data-pg-ai-mark="' . h((string) $column) . '" data-pg-ai-field="' . h((string) $field) . '">'
         . '<span class="no-popover" data-bs-toggle="tooltip" title="' . h($words) . '">'
         . '<i class="bi bi-stars" aria-hidden="true"></i> <span aria-hidden="true">' . h(lang('AI')) . '</span>'
@@ -2070,7 +2070,7 @@ function pg_ai_fields_marker($column, $field, $marked, $removable = true)
 
     if ($removable) {
         $remove = lang('Remove the AI mark');
-        $html .= '<button type="button" class="btn btn-link btn-sm p-0 border-0 lh-1 text-reset pg-ai-mark-remove no-popover" data-bs-toggle="tooltip"'
+        $html .= '<button type="button" class="btn btn-link btn-sm p-0 border-0 lh-1 fg-reset pg-ai-mark-remove no-popover" data-bs-toggle="tooltip"'
             . ' title="' . h($remove) . '" aria-label="' . h($remove) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>';
     }
 

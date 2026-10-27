@@ -654,7 +654,7 @@ $(document).ready(function () {
             return menuBackdrop;
         }
         menuBackdrop = document.createElement('div');
-        menuBackdrop.className = 'software-menu-backdrop d-print-none';
+        menuBackdrop.className = 'software-menu-backdrop pg-print-none';
         menuBackdrop.setAttribute('aria-hidden', 'true');
         document.body.appendChild(menuBackdrop);
         return menuBackdrop;
@@ -1388,6 +1388,21 @@ $(document).ready(function () {
     }
 
 
+    // DataTables' Bootstrap 5 integration names v5 classes for the controls
+    // it builds; the panel runs Bootstrap 6.
+    if ($.fn.dataTable) {
+        $.extend(true, $.fn.dataTable.ext.classes, {
+            length: { select: 'form-control form-control-sm' },
+            layout: {
+                row: 'row mt-3 justify-content-between',
+                cell: 'md:d-flex justify-content-between align-items-center',
+                start: 'dt-layout-start md:col-auto me-auto',
+                end: 'dt-layout-end md:col-auto ms-auto',
+                full: 'dt-layout-full md:col'
+            }
+        });
+    }
+
     var options = {};
     options["language"] = {
         url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/tr.json"
@@ -1458,7 +1473,7 @@ $(document).ready(function () {
 
 
 
-    options["dom"] = "<'container-fluid p-3 pt-4'<'row'<'col-12 col-md-6 text-center text-md-start'li><'col-12 col-md-6 text-center text-md-end'BRf>>>rt<'p-2 text-center'i><'p-2'p>";
+    options["dom"] = "<'container-fluid p-5 pt-7'<'row'<'col-12 md:col-6 text-center md:text-start'li><'col-12 md:col-6 text-center md:text-end'BRf>>>rt<'p-3 text-center'i><'p-3'p>";
     options["buttons"] = {
         buttons: [{
             text: lang('Reset'),
@@ -1472,7 +1487,7 @@ $(document).ready(function () {
             }
         }, {
             extend: "colvis",
-            className: "dropdown-toggle btn btn-sm bi-me-2 bi bi-layout-three-columns",
+            className: "pg-menu-caret btn btn-sm bi-me-2 bi bi-layout-three-columns",
             text: lang('Column Visiblity'),
             collectionLayout: "fixed two-column",
             columns: ":not(.noVis)",
@@ -1486,7 +1501,7 @@ $(document).ready(function () {
         dom: {
             container: {
                 tag: 'div',
-                className: 'dtable-button-container p-2'
+                className: 'dtable-button-container p-3'
             },
             button: {
                 tag: 'a',
@@ -1665,7 +1680,7 @@ $(document).ready(function () {
         });
 
         $button.prop("disabled", true);
-        $result.html('<div class="text-body-secondary small"><span class="spinner-border spinner-border-sm me-2"></span></div>');
+        $result.html('<div class="fg-secondary small"><span class="spinner-border spinner-border-sm me-3"></span></div>');
 
         window.fetch(action, { method: "POST", body: data, credentials: "same-origin" })
             .then(function (response) {
@@ -1673,9 +1688,9 @@ $(document).ready(function () {
             })
             .then(function (answer) {
 
-                var $alert = $("<div>").addClass("alert alert-" + (answer.tone || "secondary") + " d-flex align-items-start gap-2 mb-1");
+                var $alert = $("<div>").addClass("alert theme-" + (answer.tone || "secondary") + " d-flex align-items-start gap-3 mb-1");
 
-                $alert.append($("<i>").addClass("bi " + (answer.icon || "bi-info-circle") + " fs-5"));
+                $alert.append($("<i>").addClass("bi " + (answer.icon || "bi-info-circle") + " fs-lg"));
 
                 var $body = $("<div>");
 
@@ -1706,7 +1721,7 @@ $(document).ready(function () {
                 }
             })
             .catch(function (error) {
-                $result.html($("<div>").addClass("alert alert-danger mb-1").text("HTTP " + error.message));
+                $result.html($("<div>").addClass("alert theme-danger mb-1").text("HTTP " + error.message));
             })
             .then(function () {
                 $button.prop("disabled", false);
@@ -1994,23 +2009,23 @@ $(document).ready(function () {
         }
 
         var TYPE_META = {
-            page: { thumb: function (r) { return makeThumb(PAGE_ICONS[r.sub] || 'bi-file-earmark', 'text-primary-emphasis', null); }, url: function (r) { return path + software_directory + '/edit_page.php?id=' + r.id; } },
-            form: { thumb: function (_r) { return makeThumb('bi-ui-checks', 'text-primary-emphasis', null); }, url: function (r) { return path + software_directory + '/edit_page.php?id=' + r.id; } },
-            product: { thumb: function (r) { return makeThumb('bi-box-seam', 'text-success-emphasis', r.image || null); }, url: function (r) { return path + software_directory + '/edit_product.php?id=' + r.id; } },
-            product_group: { thumb: function (_r) { return makeThumb('bi-boxes', 'text-info-emphasis', null); }, url: function (r) { return path + software_directory + '/edit_product_group.php?id=' + r.id; } },
-            offer: { thumb: function (_r) { return makeThumb('bi-percent', 'text-warning-emphasis', null); }, url: function (r) { return path + software_directory + '/edit_offer.php?id=' + r.id; } },
-            menu: { thumb: function (_r) { return makeThumb('bi-menu-button', 'text-body-secondary', null); }, url: function (r) { return path + software_directory + '/edit_menu.php?id=' + r.id; } },
-            calendar: { thumb: function (_r) { return makeThumb('bi-calendar3', 'text-body-secondary', null); }, url: function (r) { return path + software_directory + '/edit_calendar.php?id=' + r.id; } },
-            email_campaign: { thumb: function (_r) { return makeThumb('bi-megaphone', 'text-danger-emphasis', null); }, url: function (r) { return path + software_directory + '/edit_email_campaign_profile.php?id=' + r.id; } },
-            style: { thumb: function (_r) { return makeThumb('bi-window', 'text-info-emphasis', null); }, url: function (r) { return path + software_directory + (r.style_type ? '/edit_' + r.style_type + '_style.php?id=' + r.id : '/view_styles.php'); } },
-            user: { thumb: function (_r) { return makeThumb('bi-person-circle', 'text-body-secondary', null); }, url: function (r) { return path + software_directory + '/edit_user.php?id=' + r.id; } },
-            file: { thumb: function (r) { var e = (r.name || '').split('.').pop().toLowerCase(); return makeThumb(FILE_ICONS[e] || (r.design ? 'bi-filetype-css' : 'bi-file-earmark'), 'text-secondary-emphasis', null); }, url: function (r) { return path + software_directory + '/edit_file.php?id=' + r.id; } },
-            contact: { thumb: function (r) { return makeThumb('bi-person-vcard', 'text-body-secondary', r.image || null); }, url: function (r) { return path + software_directory + '/edit_contact.php?id=' + r.id; } },
-            common_region: { thumb: function (_r) { return makeThumb('bi-columns-gap', 'text-primary-emphasis', null); }, url: function (r) { return path + software_directory + '/edit_common_region.php?id=' + r.id; } },
-            design_region: { thumb: function (_r) { return makeThumb('bi-code-square', 'text-warning-emphasis', null); }, url: function (r) { return path + software_directory + '/edit_designer_region.php?id=' + r.id; } },
-            login_region: { thumb: function (_r) { return makeThumb('bi-shield-lock', 'text-info-emphasis', null); }, url: function (r) { return path + software_directory + '/edit_login_region.php?id=' + r.id; } },
-            short_link: { thumb: function (_r) { return makeThumb('bi-link-45deg', 'text-success-emphasis', null); }, url: function (r) { return path + software_directory + '/edit_short_link.php?id=' + r.id; } },
-            order: { thumb: function (_r) { return makeThumb('bi-receipt', 'text-success-emphasis', null); }, url: function (r) { return path + software_directory + '/view_order.php?id=' + r.id; } }
+            page: { thumb: function (r) { return makeThumb(PAGE_ICONS[r.sub] || 'bi-file-earmark', 'fg-emphasis-primary', null); }, url: function (r) { return path + software_directory + '/edit_page.php?id=' + r.id; } },
+            form: { thumb: function (_r) { return makeThumb('bi-ui-checks', 'fg-emphasis-primary', null); }, url: function (r) { return path + software_directory + '/edit_page.php?id=' + r.id; } },
+            product: { thumb: function (r) { return makeThumb('bi-box-seam', 'fg-emphasis-success', r.image || null); }, url: function (r) { return path + software_directory + '/edit_product.php?id=' + r.id; } },
+            product_group: { thumb: function (_r) { return makeThumb('bi-boxes', 'fg-emphasis-info', null); }, url: function (r) { return path + software_directory + '/edit_product_group.php?id=' + r.id; } },
+            offer: { thumb: function (_r) { return makeThumb('bi-percent', 'fg-emphasis-warning', null); }, url: function (r) { return path + software_directory + '/edit_offer.php?id=' + r.id; } },
+            menu: { thumb: function (_r) { return makeThumb('bi-menu-button', 'fg-secondary', null); }, url: function (r) { return path + software_directory + '/edit_menu.php?id=' + r.id; } },
+            calendar: { thumb: function (_r) { return makeThumb('bi-calendar3', 'fg-secondary', null); }, url: function (r) { return path + software_directory + '/edit_calendar.php?id=' + r.id; } },
+            email_campaign: { thumb: function (_r) { return makeThumb('bi-megaphone', 'fg-emphasis-danger', null); }, url: function (r) { return path + software_directory + '/edit_email_campaign_profile.php?id=' + r.id; } },
+            style: { thumb: function (_r) { return makeThumb('bi-window', 'fg-emphasis-info', null); }, url: function (r) { return path + software_directory + (r.style_type ? '/edit_' + r.style_type + '_style.php?id=' + r.id : '/view_styles.php'); } },
+            user: { thumb: function (_r) { return makeThumb('bi-person-circle', 'fg-secondary', null); }, url: function (r) { return path + software_directory + '/edit_user.php?id=' + r.id; } },
+            file: { thumb: function (r) { var e = (r.name || '').split('.').pop().toLowerCase(); return makeThumb(FILE_ICONS[e] || (r.design ? 'bi-filetype-css' : 'bi-file-earmark'), 'fg-emphasis-secondary', null); }, url: function (r) { return path + software_directory + '/edit_file.php?id=' + r.id; } },
+            contact: { thumb: function (r) { return makeThumb('bi-person-vcard', 'fg-secondary', r.image || null); }, url: function (r) { return path + software_directory + '/edit_contact.php?id=' + r.id; } },
+            common_region: { thumb: function (_r) { return makeThumb('bi-columns-gap', 'fg-emphasis-primary', null); }, url: function (r) { return path + software_directory + '/edit_common_region.php?id=' + r.id; } },
+            design_region: { thumb: function (_r) { return makeThumb('bi-code-square', 'fg-emphasis-warning', null); }, url: function (r) { return path + software_directory + '/edit_designer_region.php?id=' + r.id; } },
+            login_region: { thumb: function (_r) { return makeThumb('bi-shield-lock', 'fg-emphasis-info', null); }, url: function (r) { return path + software_directory + '/edit_login_region.php?id=' + r.id; } },
+            short_link: { thumb: function (_r) { return makeThumb('bi-link-45deg', 'fg-emphasis-success', null); }, url: function (r) { return path + software_directory + '/edit_short_link.php?id=' + r.id; } },
+            order: { thumb: function (_r) { return makeThumb('bi-receipt', 'fg-emphasis-success', null); }, url: function (r) { return path + software_directory + '/view_order.php?id=' + r.id; } }
         };
 
         $(document).on('keydown', function (e) {
@@ -2066,11 +2081,11 @@ $(document).ready(function () {
             $.each(results, function (_i, r) {
                 var meta = TYPE_META[r.type];
                 if (!meta) return;
-                var $btn = $('<button type="button" class="btn btn-link d-flex align-items-center w-100 link-body-emphasis text-decoration-none py-1 ps-1 gap-2 text-start border-bottom border-opacity-10"></button>');
+                var $btn = $('<button type="button" class="btn btn-link d-flex align-items-center w-100 pg-link-body-emphasis text-decoration-none py-1 ps-1 gap-3 text-start border-bottom"></button>');
                 $btn.append(meta.thumb(r));
                 var $wrap = $('<span class="d-flex flex-column overflow-hidden"></span>');
                 $wrap.append($('<span class="text-truncate lh-sm fw-medium"></span>').text(r.name));
-                if (r.sub) { $wrap.append($('<span class="text-truncate small text-muted lh-sm"></span>').text(r.sub)); }
+                if (r.sub) { $wrap.append($('<span class="text-truncate small fg-secondary lh-sm"></span>').text(r.sub)); }
                 $btn.append($wrap);
                 $btn.on('click', function () { pgUI.dialog.hide($modal); leave(meta.url(r)); });
                 $results.append($btn);
@@ -2086,10 +2101,10 @@ $(document).ready(function () {
 
             if (offset === 0) {
                 $results.empty().addClass('show').append(
-                    '<div class="text-center py-2 text-muted"><span class="spinner-border spinner-border-sm me-1"></span>' + t('Please Wait') + '</div>'
+                    '<div class="text-center py-3 fg-secondary"><span class="spinner-border spinner-border-sm me-1"></span>' + t('Please Wait') + '</div>'
                 );
             } else {
-                $results.append('<div class="srch-load-more text-center py-2 text-muted"><span class="spinner-border spinner-border-sm"></span></div>');
+                $results.append('<div class="srch-load-more text-center py-3 fg-secondary"><span class="spinner-border spinner-border-sm"></span></div>');
             }
 
             $.ajax({
@@ -2104,7 +2119,7 @@ $(document).ready(function () {
                     if (offset === 0) {
                         $results.empty();
                         if (resp.status !== 'success') {
-                            $results.append('<p class="text-danger my-2">' + t('An error occurred.') + '</p>');
+                            $results.append('<p class="fg-danger my-3">' + t('An error occurred.') + '</p>');
                             return;
                         }
                         if (resp.actions) cachedActions = resp.actions;
@@ -2112,9 +2127,9 @@ $(document).ready(function () {
                         var q = query.toLowerCase();
                         var matched = actions.filter(function (a) { return actionMatches(q, a.keys); });
                         if (matched.length) {
-                            var $actRow = $('<div class="d-flex flex-wrap gap-1 mb-2 pb-2 border-bottom"></div>');
+                            var $actRow = $('<div class="d-flex flex-wrap gap-1 mb-3 pb-3 border-bottom"></div>');
                             $.each(matched, function (_i, a) {
-                                var $a = $('<a class="btn btn-sm btn-outline-secondary no-popover" href="' + a.url + '"><span class="bi ' + a.icon + ' me-1"></span>' + a.label + '</a>');
+                                var $a = $('<a class="btn btn-sm btn-outline theme-secondary no-popover" href="' + a.url + '"><span class="bi ' + a.icon + ' me-1"></span>' + a.label + '</a>');
 
                                 if (inToolbar) {
                                     $a.attr('target', '_parent');
@@ -2187,7 +2202,7 @@ $(document).ready(function () {
                             $results.append($actRow);
                         }
                         if (!resp.results || resp.results.length === 0) {
-                            $results.append('<p class="text-danger my-2">' + t('No Search Result') + '.</p>');
+                            $results.append('<p class="fg-danger my-3">' + t('No Search Result') + '.</p>');
                             return;
                         }
                     }
@@ -2197,7 +2212,7 @@ $(document).ready(function () {
                     }
 
                     if (resp.has_more) {
-                        var $more = $('<button type="button" class="srch-load-more btn btn-sm btn-outline-secondary w-100 mt-2 mb-1"><span class="bi bi-chevron-down me-1"></span>' + t('Load More') + '</button>');
+                        var $more = $('<button type="button" class="srch-load-more btn btn-sm btn-outline theme-secondary w-100 mt-3 mb-1"><span class="bi bi-chevron-down me-1"></span>' + t('Load More') + '</button>');
                         $more.on('click', function () {
                             currentOffset += 20;
                             runSearch(currentQuery, currentOffset);
@@ -2208,7 +2223,7 @@ $(document).ready(function () {
                 error: function () {
                     loading = false;
                     $results.find('.srch-load-more').remove();
-                    if (offset === 0) $results.empty().append('<p class="text-danger my-2">' + t('An error occurred.') + '</p>');
+                    if (offset === 0) $results.empty().append('<p class="fg-danger my-3">' + t('An error occurred.') + '</p>');
                 }
             });
         }
@@ -2288,9 +2303,9 @@ function software_image_picker(properties) {
                     <div class="item col">\
                         <div class="card bg-transparent border-0 shadow-none cursor-pointer image">\
                             <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent">\
-                                <button type="button" class="btn btn-link link-danger bi bi-x-lg p-0" title="remove" onclick=" $(this).closest(\'.item\').remove();"></button>\
+                                <button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="remove" onclick=" $(this).closest(\'.item\').remove();"></button>\
                             </div>\
-                            <div class="card-body overflow-hidden position-relative rounded ratio ratio-2x1 w-100" style="--bs-aspect-ratio: 80%;background: radial-gradient(transparent, #00000024);" title="' + properties.image_name + '">\
+                            <div class="card-body overflow-hidden position-relative rounded-4 ratio ratio-2x1 w-100" style="--bs-aspect-ratio: 80%;background: radial-gradient(transparent, #00000024);" title="' + properties.image_name + '">\
                                 <input type="hidden" name="' + $output_input_name + '" value="' + $output_input_value + '"/>\
                                 <img class="object-fit-contain w-100 h-100" src="' + _img_src + '" />\
                             </div>\
@@ -2765,7 +2780,7 @@ function pg_quick_note_init() {
     function say(message, note_id) {
 
         status.textContent = '';
-        status.className = 'small ms-auto ' + (note_id ? 'text-success' : 'text-danger');
+        status.className = 'small ms-auto ' + (note_id ? 'fg-success' : 'fg-danger');
         status.appendChild(document.createTextNode(message));
 
         if (note_id) {
@@ -2887,7 +2902,7 @@ function pg_push_paint($subscribed)
     $('.pg-push-toggle').prop('disabled', false);
     $('.pg-push-label').text($subscribed ? (pg_push.strings.on || '') : (pg_push.strings.off || ''));
 
-    $('#push_toggle').toggleClass('btn-outline-secondary', !$subscribed).toggleClass('btn-secondary', $subscribed);
+    $('#push_toggle').toggleClass('btn-outline', !$subscribed).toggleClass('btn-solid', $subscribed);
 
     $('#push_widget_note').text($subscribed ? (pg_push.strings.state_on || '') : (pg_push.strings.state_off || ''));
     $('#push_widget_row').removeClass('d-none');
@@ -3130,11 +3145,11 @@ function check_unread_notifications(refresh_type) {
                             $output_unreads = $unreads;
                         }
                         //everything is allright, and there is new notifications. We output notificationn button with notices and badges.
-                        $('#notification_toggle').addClass('text-success');
+                        $('#notification_toggle').addClass('fg-success');
                         $('#notification_toggle .has-notification-icon').html($output_unreads);
                     } else {
                         // we check but there is no notifications so we output only notification button.
-                        $('#notification_toggle').removeClass('text-success');
+                        $('#notification_toggle').removeClass('fg-success');
                         $('#notification_toggle .has-notification-icon').html('');
                     }
                     // we set callback equal to unreads we need this for check to new notifications is really new one or we seen old one.
@@ -3191,7 +3206,7 @@ function get_notifications($read_mark) {
 
     notifications_empty.addClass('d-none');
 
-    var spinner_content = '<div class="spinner text-center p-3"><div class="spinner-border text-success" role="status"><span class="visually-hidden">' + lang('Loading...') + '</span></div></div>';
+    var spinner_content = '<div class="spinner text-center p-5"><div class="spinner-border fg-success" role="status"><span class="visually-hidden">' + lang('Loading...') + '</span></div></div>';
     notifications_content.remove();
 
     //first of all we put a loading spinner while processing.
@@ -3200,7 +3215,7 @@ function get_notifications($read_mark) {
     var spinner = $('#notifications .spinner');
     // we will get new notifications that user can access and this notifications will set readed so we remove badges from notification button.
     $('#notification_toggle .has-notification-icon').html('');
-    $('#notification_toggle').removeClass('text-success');
+    $('#notification_toggle').removeClass('fg-success');
 
     // we check notifications from api.php with ajax.
     $.ajax({
@@ -3252,13 +3267,13 @@ function get_notifications($read_mark) {
                         notification_time = String(response.data[i].time || '');
                         notification_type = h(String(response.data[i].type || ''));
 
-                        response.data[i].description = '<div class="notification-description bg-body-secondary" style="--bs-bg-opacity: 0.2;">' + response.data[i].description + '</div>';
+                        response.data[i].description = '<div class="notification-description bg-2" style="--bs-bg-opacity: 0.2;">' + response.data[i].description + '</div>';
                         response.data[i].details = '<div notification-details>' + response.data[i].details + '</div>';
                         if (response.data[i].action != 'custom') {
-                            output_button_bar = '<button type="button" class="dropdown-item bi bi-link bi-me-2 text-primary-emphasis notification-go" data-url="' + h(String(response.data[i].url || '')) + '">' + lang('Go to the relevant page') + '</button>';
+                            output_button_bar = '<button type="button" class="menu-item bi bi-link bi-me-2 fg-emphasis-primary notification-go" data-url="' + h(String(response.data[i].url || '')) + '">' + lang('Go to the relevant page') + '</button>';
 
 
-                            output_button_bar += '<button type="button" class="fs-smaller dropdown-item bi bi-check-square bi-me-2 text-secondary-emphasis" onclick="edit_notification(\'' + notification_id + '\', \'mark_unread\'); this.remove();">' + lang('Mark as unread') + '</button>';
+                            output_button_bar += '<button type="button" class="fs-smaller menu-item bi bi-check-square bi-me-2 fg-emphasis-secondary" onclick="edit_notification(\'' + notification_id + '\', \'mark_unread\'); this.remove();">' + lang('Mark as unread') + '</button>';
 
                             output_data_title = '<small class="notification-title" title="' + response.data[i].title + '">' + response.data[i].title + '</small>';
                         } else {
@@ -3284,14 +3299,14 @@ function get_notifications($read_mark) {
                         <li notification-id="' + notification_id + '" class="software_notification custom-contextmenu position-relative list-group-item border-0 p-0 viewed bg-transparent ' + notification_readed + ' ' + notification_type + '">\
                             <div class="container-fluid">\
                             <div class="row notification-card ' + $output_border_classes + '" style="--bs-border-opacity:0.08;">\
-                                    <div class="col-12 ps-4 p-2 border-bottom border-secondary " style="--bs-border-opacity:0.04;">\
+                                    <div class="col-12 ps-7 p-3 border-bottom border-secondary " style="--bs-border-opacity:0.04;">\
                                         <div class="d-flex w-100 justify-content-between">\
                                             ' + output_data_title + '\
                                         </div>\
                                         <small>' + response.data[i].description + response.data[i].details + '</small>\
                                         <div class="d-flex w-100 justify-content-between">\
-                                            <span class="me-auto badge bg-transparent text-reset fw-light text-overflow-hidden">' + notification_user + '</span>\
-                                            <span class="ms-auto badge bg-transparent text-reset fw-light">' + notification_time + '</span>\
+                                            <span class="me-auto badge bg-transparent fg-reset fw-light text-overflow-hidden">' + notification_user + '</span>\
+                                            <span class="ms-auto badge bg-transparent fg-reset fw-light">' + notification_time + '</span>\
                                         </div>\
                                     </div>\
                                     ' + output_button_bar + '\
@@ -3303,7 +3318,7 @@ function get_notifications($read_mark) {
                     output_notifications += '</ul>';
 
                     if (data_length > 1) {
-                        output_notifications += '<a href="#!" onclick="remove_all_notifications();" title="' + lang('Delete All Notifications') + '" class="dropdown-item notification-remove-btn text-danger border-top"><span class="bi bi-trash me-2"></span>' + lang('Delete All Notifications') + '</a></li>';
+                        output_notifications += '<a href="#!" onclick="remove_all_notifications();" title="' + lang('Delete All Notifications') + '" class="menu-item notification-remove-btn fg-danger border-top"><span class="bi bi-trash me-3"></span>' + lang('Delete All Notifications') + '</a></li>';
                     }
 
                     notifications_body.append(output_notifications);
@@ -3656,9 +3671,9 @@ function init_product_groups(properties) {
 
         $('.group_list').append(
             '<div class="col-12">\
-                <div class="input-group my-2 group group_' + id + '" >\
-                    <select name="product_group" class="form-select product_group" data-pg-combobox data-allow-clear="true"><option value=""></option>' + group_options + '</select>\
-                    <a href="javascript:void(0)" title="' + label['Remove'] + '" class="remove btn btn-danger no-popover">x</a>\
+                <div class="input-group my-3 group group_' + id + '" >\
+                    <select name="product_group" class="form-control product_group" data-pg-combobox data-allow-clear="true"><option value=""></option>' + group_options + '</select>\
+                    <a href="javascript:void(0)" title="' + label['Remove'] + '" class="remove btn btn-solid theme-danger no-popover">x</a>\
                 </div>\
             </div>');
 
@@ -3736,16 +3751,16 @@ function init_product_group_attributes(properties) {
         });
 
         $('.attributes').append(
-            '<div class="col-12 my-2 attribute attribute_' + attribute.id + '" data-attribute-id="' + attribute.id + '">\
+            '<div class="col-12 my-3 attribute attribute_' + attribute.id + '" data-attribute-id="' + attribute.id + '">\
                 <label class="form-label">' + h(attribute.name) + '</label>\
                 <div class="input-group">\
                     <label class="input-group-text">' + label['Default Option'] + ':</label>\
-                    <select class="default_option_id form-select">\
+                    <select class="default_option_id form-control">\
                         <option value="">-' + label['None'] + '-</option>\
                         ' + output_options + '\
                     </select>\
-                    <a href="javascript:void(0)" class="move move_up btn btn-secondary material-icons border no-popover" title="' + label['Move Up'] + '">north</a>\
-                    <a href="javascript:void(0)" class="move move_down btn btn-primary material-icons border no-popover" title="' + label['Move Down'] + '">south</a>\
+                    <a href="javascript:void(0)" class="move move_up btn btn-solid theme-secondary material-icons border no-popover" title="' + label['Move Up'] + '">north</a>\
+                    <a href="javascript:void(0)" class="move move_down btn btn-solid theme-primary material-icons border no-popover" title="' + label['Move Down'] + '">south</a>\
                 </div>\
             </div>');
 
@@ -3869,18 +3884,18 @@ function init_product_attribute_options(properties) {
         }
 
         $('.option_list').append(
-            '<div class="col-12 col-lg-7 my-2 option option_' + current_id + '">\
-                <div class="p-2 border rounded">\
+            '<div class="col-12 lg:col-7 my-3 option option_' + current_id + '">\
+                <div class="p-3 border rounded-4">\
                     <input type="hidden" name="option_id" value="' + id + '" class="option_id">\
                     <div class="input-group">\
                         <input type="text" name="option_label" maxlength="255" class="option_label form-control">\
-                        <a href="javascript:void(0)" class="move move_up btn btn-primary material-icons no-popover" title="' + label['Move Up'] + '">north</a>\
-                        <a href="javascript:void(0)" class="move move_down btn btn-primary material-icons no-popover" title="' + label['Move Down'] + '">south</a>\
-                        <a href="javascript:void(0)" class="remove btn btn-danger material-icons no-popover" title="' + label['Remove'] + '">delete</a>\
+                        <a href="javascript:void(0)" class="move move_up btn btn-solid theme-primary material-icons no-popover" title="' + label['Move Up'] + '">north</a>\
+                        <a href="javascript:void(0)" class="move move_down btn btn-solid theme-primary material-icons no-popover" title="' + label['Move Down'] + '">south</a>\
+                        <a href="javascript:void(0)" class="remove btn btn-solid theme-danger material-icons no-popover" title="' + label['Remove'] + '">delete</a>\
                     </div>\
-                    <div class="form-check form-text m-2">\
-                      <input class="form-check-input option_no_value" type="checkbox" id="option_no_value_' + current_id + '" name="option_no_value" value="1">\
-                      <label class="form-check-label" for="option_no_value_' + current_id + '">' + label['\u0027No Thanks\u0027 Option'] + '</label>\
+                    <div class="form-field form-text m-3">\
+                      <input class="check option_no_value" type="checkbox" id="option_no_value_' + current_id + '" name="option_no_value" value="1">\
+                      <label class="" for="option_no_value_' + current_id + '">' + label['\u0027No Thanks\u0027 Option'] + '</label>\
                     </div>\
                 </div>\
             </div>');
@@ -3985,10 +4000,10 @@ function init_product_attributes(properties) {
         });
 
         $('.attribute_list').append(
-            '<div class="col-12 col-sm-auto ">\
-                <div class="input-group my-2 attribute attribute_' + id + '" >\
-                    <select name="attribute_id" class="form-select attribute_id">' + output_options + '</select>\
-                    <a href="javascript:void(0)" class="remove btn btn-danger no-popover" title="' + label['Remove'] + '">x</a>\
+            '<div class="col-12 sm:col-auto ">\
+                <div class="input-group my-3 attribute attribute_' + id + '" >\
+                    <select name="attribute_id" class="form-control attribute_id">' + output_options + '</select>\
+                    <a href="javascript:void(0)" class="remove btn btn-solid theme-danger no-popover" title="' + label['Remove'] + '">x</a>\
                 </div>\
             </div>');
 
@@ -4014,7 +4029,7 @@ function init_product_attributes(properties) {
                     output_options += '<option value="' + option.id + '">' + h(option.label) + '</option>';
                 });
 
-                $('.attribute_' + id + ' .attribute_id').after(' <select name="option_id" class="form-select option_id">' + output_options + '</select>');
+                $('.attribute_' + id + ' .attribute_id').after(' <select name="option_id" class="form-control option_id">' + output_options + '</select>');
 
                 // If this attribute is an existing attribute for the product,
                 // then select correct option in pick list.
@@ -4084,15 +4099,11 @@ function open_dialog(properties) {
     var iframe = $('<iframe id="message_iframe" src="' + h(url) + '" frameBorder="0" style="display: block; margin: 0;width:100%;height:100%;" allowfullscreen></iframe>');
 
     $('body').append('\
-    <div id="message_modal_id_' + id + '" class="modal fade" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">\
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">\
-            <div class="modal-content">\
-                <div class="modal-header"><h5 class="modal-title">' + title + '</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>\
-                <div class="modal-body p-0" style="height:100vh"></div>\
-            </div>\
-        </div>\
-    </div>');
-    $('body #message_modal_id_' + id + ' .modal-body').append(iframe);
+    <dialog id="message_modal_id_' + id + '" class="dialog dialog-lg dialog-scrollable" data-bs-backdrop="static" data-bs-keyboard="false">\
+                <div class="dialog-header"><h5 class="dialog-title">' + title + '</h5><button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button></div>\
+                <div class="dialog-body p-0" style="height:100vh"></div>\
+    </dialog>');
+    $('body #message_modal_id_' + id + ' .dialog-body').append(iframe);
 
     pgUI.dialog.show(document.getElementById("message_modal_id_" + id));
 
@@ -4157,7 +4168,7 @@ function product_submit_form_add_field(properties) {
     output = '<div class="input-group w-100">\
     <span class="input-group-text my-1">\
     <label for="submit_form_' + action + '_field_' + field_number + '_form_field_id" class="form-label">Set &nbsp;</label>\
-    <select class="form-select my-1" id="submit_form_' + action + '_field_' + field_number + '_form_field_id" name="submit_form_' + action + '_field_' + field_number + '_form_field_id"><option value=""></option>';
+    <select class="form-control my-1" id="submit_form_' + action + '_field_' + field_number + '_form_field_id" name="submit_form_' + action + '_field_' + field_number + '_form_field_id"><option value=""></option>';
 
     // Assume that the selected field type is "text box" until we find out otherwise.
     // We use this to determine if a text box or text area should be displayed for the value field.
@@ -4189,7 +4200,7 @@ function product_submit_form_add_field(properties) {
     }
 
     output += '<span class="input-group-text my-1">\
-    <button type="button" class="btn btn-danger material-icons" onclick="this.parentNode.parentNode.parentNode.removeChild(this.parentNode.parentNode)">delete</button>\
+    <button type="button" class="btn btn-solid theme-danger material-icons" onclick="this.parentNode.parentNode.parentNode.removeChild(this.parentNode.parentNode)">delete</button>\
     </span>\
     </div>';
     container.append(output);
@@ -4859,7 +4870,7 @@ function create_filter(properties) {
 
     // prepare content for field cell
     var field_cell_html =
-        '<select class="form-select" id="filter_' + filter_number + '_field" name="filter_' + filter_number + '_field" onchange="update_value_cell(' + filter_number + '); update_dynamic_value(' + filter_number + ')">\n\
+        '<select class="form-control" id="filter_' + filter_number + '_field" name="filter_' + filter_number + '_field" onchange="update_value_cell(' + filter_number + '); update_dynamic_value(' + filter_number + ')">\n\
             <option value=""></option>';
 
     // loop through all field options in order to prepare field options for pick list
@@ -4892,7 +4903,7 @@ function create_filter(properties) {
     td_1.innerHTML = field_cell_html;
 
     // prepare content for operator cell
-    var operator_cell_html = '<select  class="form-select" name="filter_' + filter_number + '_operator">';
+    var operator_cell_html = '<select  class="form-control" name="filter_' + filter_number + '_operator">';
 
     // create array for operator options
     var operators = new Array(
@@ -4927,7 +4938,7 @@ function create_filter(properties) {
     var dynamic_value_cell_html =
         '<div class="input-group">\
             <input class="form-control" id="filter_' + filter_number + '_dynamic_value_attribute" name="filter_' + filter_number + '_dynamic_value_attribute" type="text" value="' + prepare_content_for_html(properties['dynamic_value_attribute']) + '" size="2" maxlength="10" style="display: none" />\
-            <select class="form-select" id="filter_' + filter_number + '_dynamic_value" name="filter_' + filter_number + '_dynamic_value" style="display: none" onchange="update_dynamic_value_attribute(' + filter_number + '); clear_value(' + filter_number + ')"></select>\
+            <select class="form-control" id="filter_' + filter_number + '_dynamic_value" name="filter_' + filter_number + '_dynamic_value" style="display: none" onchange="update_dynamic_value_attribute(' + filter_number + '); clear_value(' + filter_number + ')"></select>\
         </div>';
 
     // insert content into dynamic value cell
@@ -4935,7 +4946,7 @@ function create_filter(properties) {
     td_4.innerHTML = dynamic_value_cell_html;
 
     // prepare content for delete cell
-    var delete_cell_html = '<button type="button" class="btn btn-danger material-icons" onclick="delete_filter(this.parentNode.parentNode)" >delete</button>';
+    var delete_cell_html = '<button type="button" class="btn btn-solid theme-danger material-icons" onclick="delete_filter(this.parentNode.parentNode)" >delete</button>';
 
     var td_5 = document.createElement('td');
     td_5.innerHTML = delete_cell_html;
@@ -4981,7 +4992,7 @@ function update_value_cell(filter_number, value) {
             // if there are value options for the field, then create HTML for pick list of value options
             if (field_options[i]['value_options']) {
                 value_cell_html =
-                    '<select class="form-select" id="filter_' + filter_number + '_value" name="filter_' + filter_number + '_value">\n\
+                    '<select class="form-control" id="filter_' + filter_number + '_value" name="filter_' + filter_number + '_value">\n\
                         <option value=""></option>';
 
                 // loop through all value options in order to prepare values options for pick list
@@ -6116,7 +6127,7 @@ function create_shipping_cutoff(properties) {
 
     // prepare content for shipping method id cell
     var shipping_method_id_cell_html =
-        '<select id="shipping_cutoff_' + shipping_cutoff_number + '_shipping_method_id" name="shipping_cutoff_' + shipping_cutoff_number + '_shipping_method_id" class="form-select">\n\
+        '<select id="shipping_cutoff_' + shipping_cutoff_number + '_shipping_method_id" name="shipping_cutoff_' + shipping_cutoff_number + '_shipping_method_id" class="form-control">\n\
             <option value=""></option>';
 
     // loop through all shipping method id options in order to prepare options for pick list
@@ -6143,7 +6154,7 @@ function create_shipping_cutoff(properties) {
 
     // prepare content for delete cell
     var td_3 = document.createElement('td');
-    td_3.innerHTML = '<button type="button" class="btn btn-danger material-icons" onclick="delete_shipping_cutoff(this.parentNode.parentNode)" >delete</button>';
+    td_3.innerHTML = '<button type="button" class="btn btn-solid theme-danger material-icons" onclick="delete_shipping_cutoff(this.parentNode.parentNode)" >delete</button>';
 
     tr.appendChild(td_1);
     tr.appendChild(td_2);
@@ -6941,28 +6952,24 @@ function editBarcodeTemplate(opts) {
     // ── Build modal HTML once ──────────────────────────────────────────
     if (!$modal.length) {
         $('body').append(
-            '<div class="modal fade" id="' + MODAL_ID + '" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">' +
-            '<div class="modal-dialog modal-xl">' +
-            '<div class="modal-content">' +
-            '<div class="modal-header py-2">' +
-            '<h5 class="modal-title fs-6 fw-semibold"><i class="bi bi-upc-scan me-2"></i>' + _L('Label Designer') + '</h5>' +
-            '<button type="button" class="btn-close" data-bs-dismiss="modal"></button>' +
+            '<dialog class="dialog dialog-xl" id="' + MODAL_ID + '" data-bs-backdrop="static">' +
+            '<div class="dialog-header py-3">' +
+            '<h5 class="dialog-title fs-md fw-semibold"><i class="bi bi-upc-scan me-3"></i>' + _L('Label Designer') + '</h5>' +
+            '<button type="button" class="btn-close" data-bs-dismiss="dialog"></button>' +
             '</div>' +
-            '<div class="modal-body">' +
-            '<div class="mb-3">' +
-            '<small class="text-muted d-block mb-2">' + _L('Drag fields to canvas') + ':</small>' +
-            '<div id="pg-bc-field-sources" class="d-flex flex-wrap gap-2"></div>' +
+            '<div class="dialog-body">' +
+            '<div class="mb-5">' +
+            '<small class="fg-secondary d-block mb-3">' + _L('Drag fields to canvas') + ':</small>' +
+            '<div id="pg-bc-field-sources" class="d-flex flex-wrap gap-3"></div>' +
             '</div>' +
             '<div id="pg-bc-editor-wrap"></div>' +
             '</div>' +
-            '<div class="modal-footer py-2 gap-2">' +
-            '<button id="pg-bc-reset-btn" type="button" class="btn btn-outline-secondary btn-sm">' + _L('Reset to Default') + '</button>' +
-            '<button data-bs-dismiss="modal" type="button" class="btn btn-secondary btn-sm">' + _L('Cancel') + '</button>' +
-            '<button id="pg-bc-save-btn" type="button" class="btn btn-primary btn-sm">' + _L('Save Template') + '</button>' +
+            '<div class="dialog-footer py-3 gap-3">' +
+            '<button id="pg-bc-reset-btn" type="button" class="btn btn-outline theme-secondary btn-sm">' + _L('Reset to Default') + '</button>' +
+            '<button data-bs-dismiss="dialog" type="button" class="btn btn-solid theme-secondary btn-sm">' + _L('Cancel') + '</button>' +
+            '<button id="pg-bc-save-btn" type="button" class="btn btn-solid theme-primary btn-sm">' + _L('Save Template') + '</button>' +
             '</div>' +
-            '</div>' +
-            '</div>' +
-            '</div>'
+            '</dialog>'
         );
         $modal = $('#' + MODAL_ID);
     }
@@ -6976,7 +6983,7 @@ function editBarcodeTemplate(opts) {
         { key: 'product_image', label: _L('Product Image'), icon: 'bi-image' }
     ];
     fieldDefs.forEach(function (f) {
-        var $chip = $('<span class="badge border border-secondary-subtle text-secondary-emphasis fw-normal px-2 py-1 d-inline-flex align-items-center gap-1" draggable="true" style="cursor:grab;user-select:none;">' +
+        var $chip = $('<span class="badge border border-subtle-secondary fg-emphasis-secondary fw-normal px-3 py-1 d-inline-flex align-items-center gap-1" draggable="true" style="cursor:grab;user-select:none;">' +
             '<i class="bi ' + f.icon + '"></i>' + f.label + '</span>');
         $chip[0].addEventListener('dragstart', function (e) {
             e.dataTransfer.setData('pg-field', f.key);
@@ -7788,7 +7795,7 @@ function initSeoCounters(rules) {
         var $input = $(input);
         var $counter = $("#" + counterId);
         if (!$counter.length) {
-            $counter = $("<div class='d-flex align-items-center gap-2 mt-1'></div>")
+            $counter = $("<div class='d-flex align-items-center gap-3 mt-1'></div>")
                 .attr("id", counterId)
                 .insertAfter($input);
         }
@@ -7800,7 +7807,7 @@ function initSeoCounters(rules) {
         else { cls = "danger"; icon = " \u2717"; }
         var pct = Math.min(100, Math.round(len / (max * 1.25) * 100));
         $counter.html(
-            "<small class='text-" + cls + " fw-semibold' style='min-width:60px'>" +
+            "<small class='fg-" + cls + " fw-semibold' style='min-width:60px'>" +
             len + "/" + max + icon +
             "</small>" +
             "<div class='progress flex-grow-1' style='height:3px'>" +
@@ -8283,7 +8290,7 @@ function bindPageRenameRedirect(ids) {
             const addBtn = (label, icon, action) => {
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.className = 'btn btn-outline-secondary btn-sm';
+                btn.className = 'btn btn-outline theme-secondary btn-sm';
                 btn.innerHTML = `<i class="bi ${icon}"></i> ${label}`;
                 btn.addEventListener('click', action);
                 toolbar.appendChild(btn);
@@ -8298,7 +8305,7 @@ function bindPageRenameRedirect(ids) {
                 if (el.type !== 'barcode') {
                     const rotBtn = document.createElement('button');
                     rotBtn.type = 'button';
-                    rotBtn.className = 'btn btn-outline-secondary btn-sm';
+                    rotBtn.className = 'btn btn-outline theme-secondary btn-sm';
                     rotBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i>';
                     rotBtn.title = pgLang('Rotate 90\u00b0');
                     rotBtn.addEventListener('click', () => {
@@ -8311,7 +8318,7 @@ function bindPageRenameRedirect(ids) {
                 // Bring to front
                 const frontBtn = document.createElement('button');
                 frontBtn.type = 'button';
-                frontBtn.className = 'btn btn-outline-secondary btn-sm';
+                frontBtn.className = 'btn btn-outline theme-secondary btn-sm';
                 frontBtn.innerHTML = '<i class="bi bi-arrow-bar-up"></i>';
                 frontBtn.title = pgLang('Bring to Front');
                 frontBtn.addEventListener('click', () => this._bringToFront(el.id));
@@ -8320,7 +8327,7 @@ function bindPageRenameRedirect(ids) {
                 // Send to back
                 const backBtn = document.createElement('button');
                 backBtn.type = 'button';
-                backBtn.className = 'btn btn-outline-secondary btn-sm';
+                backBtn.className = 'btn btn-outline theme-secondary btn-sm';
                 backBtn.innerHTML = '<i class="bi bi-arrow-bar-down"></i>';
                 backBtn.title = pgLang('Send to Back');
                 backBtn.addEventListener('click', () => this._sendToBack(el.id));
@@ -8329,7 +8336,7 @@ function bindPageRenameRedirect(ids) {
                 // Delete
                 const delBtn = document.createElement('button');
                 delBtn.type = 'button';
-                delBtn.className = 'btn btn-outline-danger btn-sm ms-auto';
+                delBtn.className = 'btn btn-outline theme-danger btn-sm ms-auto';
                 delBtn.innerHTML = '<i class="bi bi-trash"></i>';
                 delBtn.title = pgLang('Delete');
                 delBtn.addEventListener('click', () => this._deleteEl(el.id));
@@ -8398,7 +8405,7 @@ function bindPageRenameRedirect(ids) {
                 if (el.field === 'product_image') {
                     const note = document.createElement('div');
                     note.style.cssText = 'margin-top:6px;font-size:12px;color:#6c757d;padding:4px 0;';
-                    note.innerHTML = `<i class="bi bi-image me-1"></i>${pgLang('Product Image')} <span class="text-muted fst-italic">(${pgLang('Dynamic (changes per product)')})</span>`;
+                    note.innerHTML = `<i class="bi bi-image me-1"></i>${pgLang('Product Image')} <span class="fg-secondary fst-italic">(${pgLang('Dynamic (changes per product)')})</span>`;
                     props.appendChild(note);
                     this.panel.appendChild(props);
                     return;
@@ -8416,7 +8423,7 @@ function bindPageRenameRedirect(ids) {
 
                 // File picker button — uses Pinegrap system picker if available
                 const pick = document.createElement('button');
-                pick.type = 'button'; pick.className = 'btn btn-outline-secondary btn-sm mt-1';
+                pick.type = 'button'; pick.className = 'btn btn-outline theme-secondary btn-sm mt-1';
                 pick.innerHTML = `<i class="bi bi-folder2-open"></i> ${pgLang('Browse')}`;
                 pick.addEventListener('click', () => {
                     const self = this;
@@ -8825,13 +8832,13 @@ window.onload = function() {
 
         // Shared save — always inserts a new barcode row
         function saveBarcode(barcode, type, triggerBtn) {
-            if (!barcode) { setStatus(pgLang('Barcode value is required.'), 'text-danger'); return; }
+            if (!barcode) { setStatus(pgLang('Barcode value is required.'), 'fg-danger'); return; }
             if (triggerBtn) triggerBtn.disabled = true;
-            setStatus(pgLang('Saving...'), 'text-muted');
+            setStatus(pgLang('Saving...'), 'fg-secondary');
             api('save_product_barcode', { product_id: productId, barcode, barcode_type: type, token })
                 .then(res => {
                     setStatus(res.message || (res.status === 'success' ? pgLang('Barcode saved.') : pgLang('Error.')),
-                        res.status === 'success' ? 'text-success' : 'text-danger');
+                        res.status === 'success' ? 'fg-success' : 'fg-danger');
                     if (res.status === 'success') {
                         currentBarcode = barcode;
                         currentType = type;
@@ -8840,7 +8847,7 @@ window.onload = function() {
                             if (r.status === 'success') updateCount(r.barcodes.length);
                         });
                     }
-                }).catch(() => setStatus(pgLang('Network error.'), 'text-danger'))
+                }).catch(() => setStatus(pgLang('Network error.'), 'fg-danger'))
                 .finally(() => { if (triggerBtn) triggerBtn.disabled = false; });
         }
 
@@ -8848,7 +8855,7 @@ window.onload = function() {
         if (btnGenerate) {
             btnGenerate.addEventListener('click', () => {
                 btnGenerate.disabled = true;
-                setStatus(pgLang('Generating...'), 'text-muted');
+                setStatus(pgLang('Generating...'), 'fg-secondary');
                 api('generate_product_barcode', {
                     product_id: productId,
                     barcode_type: barcodeTypeEl ? barcodeTypeEl.value : currentType,
@@ -8860,9 +8867,9 @@ window.onload = function() {
                         renderPreview(res.barcode, res.barcode_type);
                         saveBarcode(res.barcode, res.barcode_type, null);
                     } else {
-                        setStatus(res.message || pgLang('Error generating barcode.'), 'text-danger');
+                        setStatus(res.message || pgLang('Error generating barcode.'), 'fg-danger');
                     }
-                }).catch(() => setStatus(pgLang('Network error.'), 'text-danger'))
+                }).catch(() => setStatus(pgLang('Network error.'), 'fg-danger'))
                     .finally(() => { btnGenerate.disabled = false; });
             });
         }
@@ -8893,12 +8900,12 @@ window.onload = function() {
             let $modal = $('#' + BLIST_ID);
             if (!$modal.length) {
                 $('body').append(
-                    '<div class="modal fade" id="' + BLIST_ID + '" tabindex="-1"><div class="modal-dialog">' +
-                    '<div class="modal-content"><div class="modal-header py-2">' +
-                    '<h6 class="modal-title"><i class="bi bi-upc-scan me-2"></i>' + pgLang('Barcodes') + '</h6>' +
-                    '<button type="button" class="btn-close" data-bs-dismiss="modal"></button>' +
-                    '</div><div class="modal-body" id="pg-blist-body"><div class="text-center py-3"><div class="spinner-border spinner-border-sm"></div></div></div>' +
-                    '</div></div></div>'
+                    '<dialog class="dialog" id="' + BLIST_ID + '">' +
+                    '<div class="dialog-header py-3">' +
+                    '<h6 class="dialog-title"><i class="bi bi-upc-scan me-3"></i>' + pgLang('Barcodes') + '</h6>' +
+                    '<button type="button" class="btn-close" data-bs-dismiss="dialog"></button>' +
+                    '</div><div class="dialog-body" id="pg-blist-body"><div class="text-center py-5"><div class="spinner-border spinner-border-sm"></div></div></div>' +
+                    '</dialog>'
                 );
                 $modal = $('#' + BLIST_ID);
             }
@@ -8910,20 +8917,20 @@ window.onload = function() {
             const body = document.getElementById('pg-blist-body');
             if (!body) return;
             api('get_product_barcodes', { product_id: productId, token }).then(res => {
-                if (res.status !== 'success') { body.innerHTML = '<p class="text-danger p-2">' + (res.message || pgLang('Error.')) + '</p>'; return; }
+                if (res.status !== 'success') { body.innerHTML = '<p class="fg-danger p-3">' + (res.message || pgLang('Error.')) + '</p>'; return; }
                 if (!res.barcodes.length) {
-                    body.innerHTML = '<p class="text-muted p-3 mb-0">' + pgLang('No barcodes assigned to this product.') + '</p>';
+                    body.innerHTML = '<p class="fg-secondary p-5 mb-0">' + pgLang('No barcodes assigned to this product.') + '</p>';
                     updateCount(0);
                     return;
                 }
                 updateCount(res.barcodes.length);
                 let html = '<ul class="list-group list-group-flush">';
                 res.barcodes.forEach(bc => {
-                    html += '<li class="list-group-item d-flex align-items-center gap-2 py-2" data-bc-id="' + bc.id + '">' +
+                    html += '<li class="list-group-item d-flex align-items-center gap-3 py-3" data-bc-id="' + bc.id + '">' +
                         '<span class="font-monospace small flex-grow-1">' + h(bc.barcode) + '</span>' +
-                        '<span class="badge bg-secondary">' + h(bc.barcode_type) + '</span>' +
-                        '<button type="button" class="btn btn-sm btn-outline-success py-0 px-1 pg-bc-print" title="' + pgLang('Print') + '" data-bc="' + h(bc.barcode) + '" data-type="' + h(bc.barcode_type) + '"><i class="bi bi-printer"></i></button>' +
-                        '<button type="button" class="btn btn-sm btn-outline-danger py-0 px-1 pg-bc-del" title="' + pgLang('Delete') + '" data-id="' + bc.id + '"><i class="bi bi-trash"></i></button>' +
+                        '<span class="badge theme-secondary">' + h(bc.barcode_type) + '</span>' +
+                        '<button type="button" class="btn btn-sm btn-outline theme-success py-0 px-1 pg-bc-print" title="' + pgLang('Print') + '" data-bc="' + h(bc.barcode) + '" data-type="' + h(bc.barcode_type) + '"><i class="bi bi-printer"></i></button>' +
+                        '<button type="button" class="btn btn-sm btn-outline theme-danger py-0 px-1 pg-bc-del" title="' + pgLang('Delete') + '" data-id="' + bc.id + '"><i class="bi bi-trash"></i></button>' +
                         '</li>';
                 });
                 html += '</ul>';
@@ -8945,7 +8952,7 @@ window.onload = function() {
                 body.querySelectorAll('.pg-bc-print').forEach(btn => {
                     btn.addEventListener('click', () => printBarcode(btn.dataset.bc, btn.dataset.type));
                 });
-            }).catch(() => { if (body) body.innerHTML = '<p class="text-danger p-2">' + pgLang('Network error.') + '</p>'; });
+            }).catch(() => { if (body) body.innerHTML = '<p class="fg-danger p-3">' + pgLang('Network error.') + '</p>'; });
         }
 
         function h(str) { return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -8955,7 +8962,7 @@ window.onload = function() {
 
         // Print helper (shared by card print btn and list modal)
         function printBarcode(barcode, type) {
-            if (!barcode) { setStatus(pgLang('Save a barcode first before printing.'), 'text-danger'); return; }
+            if (!barcode) { setStatus(pgLang('Save a barcode first before printing.'), 'fg-danger'); return; }
             const tmpWrap = document.createElement('div');
             tmpWrap.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
             document.body.appendChild(tmpWrap);
@@ -8982,7 +8989,7 @@ window.onload = function() {
         if (btnPrint) {
             btnPrint.addEventListener('click', () => {
                 const barcode = barcodeInput ? barcodeInput.value.trim() : currentBarcode;
-                if (!barcode) { setStatus(pgLang('Save a barcode first before printing.'), 'text-danger'); return; }
+                if (!barcode) { setStatus(pgLang('Save a barcode first before printing.'), 'fg-danger'); return; }
                 printBarcode(barcode, barcodeTypeEl ? barcodeTypeEl.value : currentType);
             });
         }
@@ -9156,7 +9163,7 @@ function pg_background_calls_allowed() {
         if (!c) {
             c = document.createElement('div');
             c.id = 'pg-toast-container';
-            c.className = 'toast-container position-fixed top-0 end-0 p-3';
+            c.className = 'toast-container position-fixed top-0 end-0 p-5';
             c.style.zIndex = '1090';
             c.setAttribute('aria-live', 'polite');
             c.setAttribute('aria-atomic', 'true');
@@ -9193,10 +9200,10 @@ function pg_background_calls_allowed() {
         el.innerHTML =
             '<div class="d-flex">' +
                 '<div class="toast-body">' +
-                    '<i class="bi ' + iconMap[variant] + ' me-2" aria-hidden="true"></i>' +
+                    '<i class="bi ' + iconMap[variant] + ' me-3" aria-hidden="true"></i>' +
                     escapeHtml(message) +
                 '</div>' +
-                '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>' +
+                '<button type="button" class="btn-close fg-white me-3 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>' +
             '</div>';
         container.appendChild(el);
 
@@ -9228,26 +9235,22 @@ function pg_background_calls_allowed() {
         var variant = variantWhitelist[opts.variant] ? opts.variant : 'danger';
 
         return new Promise(function (resolve) {
-            var modalEl = document.createElement('div');
-            modalEl.className = 'modal fade';
+            var modalEl = document.createElement('dialog');
+            modalEl.className = 'dialog pg-dialog-centered';
             modalEl.tabIndex = -1;
             modalEl.setAttribute('aria-labelledby', 'pg-confirm-title');
             modalEl.setAttribute('aria-modal', 'true');
             modalEl.setAttribute('role', 'dialog');
             modalEl.innerHTML =
-                '<div class="modal-dialog modal-dialog-centered">' +
-                    '<div class="modal-content">' +
-                        '<div class="modal-header">' +
-                            '<h5 class="modal-title" id="pg-confirm-title">' + escapeHtml(title) + '</h5>' +
-                            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>' +
+                '<div class="dialog-header">' +
+                            '<h5 class="dialog-title" id="pg-confirm-title">' + escapeHtml(title) + '</h5>' +
+                            '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>' +
                         '</div>' +
-                        '<div class="modal-body">' + escapeHtml(message) + '</div>' +
-                        '<div class="modal-footer">' +
-                            '<button type="button" class="btn btn-secondary" data-pg-action="cancel" data-bs-dismiss="modal">' + escapeHtml(cancelText) + '</button>' +
-                            '<button type="button" class="btn btn-' + variant + '" data-pg-action="confirm">' + escapeHtml(confirmText) + '</button>' +
-                        '</div>' +
-                    '</div>' +
-                '</div>';
+                        '<div class="dialog-body">' + escapeHtml(message) + '</div>' +
+                        '<div class="dialog-footer">' +
+                            '<button type="button" class="btn btn-solid theme-secondary" data-pg-action="cancel" data-bs-dismiss="dialog">' + escapeHtml(cancelText) + '</button>' +
+                            '<button type="button" class="btn btn-solid theme-' + variant + '" data-pg-action="confirm">' + escapeHtml(confirmText) + '</button>' +
+                        '</div>';
             document.body.appendChild(modalEl);
 
             var resolved = false;
@@ -9374,7 +9377,7 @@ function pg_background_calls_allowed() {
             }
             if (label && !label.querySelector('.pg-required-marker')) {
                 var span = document.createElement('span');
-                span.className = 'pg-required-marker text-danger ms-1';
+                span.className = 'pg-required-marker fg-danger ms-1';
                 span.setAttribute('aria-hidden', 'true');
                 span.textContent = '*';
                 label.appendChild(span);
@@ -9988,7 +9991,7 @@ function initSettingsFilter() {
 // slot instead, the toggle's own instance is refused ("doesn't allow more than
 // one instance per element") and the menu it opens can never be closed by the
 // document click handler. Those toggles keep the native title tooltip.
-var _pgNoTitlePopover = ':not([data-bs-toggle="dropdown"]):not([data-bs-toggle="tab"]):not([data-bs-toggle="pill"]):not([data-bs-toggle="button"]):not([data-bs-toggle="tooltip"]):not([data-bs-toggle="popover"])';
+var _pgNoTitlePopover = ':not([data-bs-toggle="menu"]):not([data-bs-toggle="tab"]):not([data-bs-toggle="pill"]):not([data-bs-toggle="button"]):not([data-bs-toggle="tooltip"]):not([data-bs-toggle="popover"])';
 
 
 /**
@@ -10049,8 +10052,15 @@ function pgSyncCollapseSwitchers(scope) {
     $scope.find('select.collapse-if-selected').each(function () {
 
         var target = $(this).attr('data-bs-target');
+        var hide = ($(this).val() === '');
 
-        $(target).collapse(($(this).val() === '') ? 'hide' : 'show');
+        $(target).each(function () {
+            var section = this;
+
+            pgUI.ready(function () {
+                pgUI[hide ? 'hide' : 'show']('collapse', section);
+            });
+        });
     });
 }
 
@@ -10149,7 +10159,7 @@ var pgSettingsModal = (function () {
 
     function working() { return busy > 0; }
 
-    // .modal-content.pg-sm -- the box the sidebar, the pane and the drawer
+    // .dialog.pg-sm -- the box the sidebar, the pane and the drawer
     // state all live on.
     function shell() { return el ? el.querySelector('.pg-sm') : null; }
 
@@ -10362,19 +10372,6 @@ var pgSettingsModal = (function () {
 
             event.preventDefault();
 
-            if (!target._pgStacked) {
-
-                target._pgStacked = true;
-
-                // Closing the inner dialog takes the body's modal-open class
-                // with it; the settings are still open and still need it, or
-                // the screen behind starts scrolling again.
-                pgUI.dialog.on(target, 'hidden', function () {
-                    if (pgUI.dialog.isOpen(el)) {
-                        document.body.classList.add('modal-open');
-                    }
-                });
-            }
 
             pgUI.dialog.show(target);
         });
@@ -10833,7 +10830,7 @@ var pgSettingsModal = (function () {
         // The code fields of a card's own dialog (the cron commands) go with it.
         window.pgReleaseEditors(byId('pg_settings_modal_extras'));
 
-        $('#pg_settings_modal_extras .modal').each(function () {
+        $('#pg_settings_modal_extras .dialog').each(function () {
 
             pgUI.dialog.dispose(this);
         });
@@ -10858,8 +10855,8 @@ var pgSettingsModal = (function () {
         // No py-* here. .alert-dismissible parks the close button absolutely at
         // the top right with a padding of its own, so a shortened alert cannot
         // contain it and the button hangs out of the box.
-        var alert = $('<div class="alert alert-dismissible show mb-3" role="alert"></div>')
-            .addClass(bad ? 'alert-danger' : 'alert-success')
+        var alert = $('<div class="alert pg-alert-dismissible show mb-5" role="alert"></div>')
+            .addClass(bad ? 'theme-danger' : 'theme-success')
             .text(said);
 
         $('<button type="button" class="btn-close no-popover" data-bs-dismiss="alert"></button>')
@@ -11713,7 +11710,7 @@ $(function () {
         style.textContent = '.pg-sort-btn{background:none;border:0;padding:0;margin:0;color:inherit;font:inherit;'
             + 'text-transform:inherit;letter-spacing:inherit;text-align:inherit;display:inline-flex;align-items:center;'
             + 'gap:.3em;cursor:pointer;white-space:nowrap}'
-            + '.pg-sort-btn:focus-visible{outline:2px solid var(--bs-primary);outline-offset:2px;border-radius:2px}'
+            + '.pg-sort-btn:focus-visible{outline:2px solid var(--pg-primary);outline-offset:2px;border-radius:2px}'
             + '.pg-sort-btn .pg-sort-icon{opacity:.35;font-size:.8em}'
             + '.pg-sort-btn .pg-sort-rank{font-size:.8em}'
             + 'th[data-pg-sort-level] .pg-sort-btn .pg-sort-icon{opacity:1}'
@@ -12111,18 +12108,18 @@ $(function () {
         var style = document.createElement('style');
         style.id = 'pg_list_edit_style';
         style.textContent = 'td[data-pg-edit]{cursor:pointer}'
-            + 'td[data-pg-edit]:focus-visible{outline:2px solid var(--bs-primary);outline-offset:-2px}'
+            + 'td[data-pg-edit]:focus-visible{outline:2px solid var(--pg-primary);outline-offset:-2px}'
             + 'td[data-pg-edit]:not([data-pg-editing]):not([data-pg-edit-busy])::after{content:"\\f4cb";font-family:bootstrap-icons;'
             + 'font-style:normal;font-weight:400;font-size:.75rem;line-height:1;margin-inline-start:.35em;vertical-align:.05em;'
-            + 'color:var(--bs-secondary-color);opacity:0}'
+            + 'color:var(--pg-fg-2);opacity:0}'
             + 'td[data-pg-edit]:hover::after,td[data-pg-edit]:focus::after{opacity:.9}'
             + '@media (hover:none){td[data-pg-edit]:not([data-pg-editing])::after{opacity:.55}}'
             + 'td[data-pg-editing]{cursor:auto}'
-            + 'td[data-pg-editing] .form-control,td[data-pg-editing] .form-select{min-width:7rem}'
+            + 'td[data-pg-editing] .form-control,td[data-pg-editing] select.form-control{min-width:7rem}'
             + 'td.pg-edit-saved{animation:pgEditSaved 1.2s ease-out}'
             + 'td.pg-edit-failed{animation:pgEditFailed 1.6s ease-out}'
-            + '@keyframes pgEditSaved{from{background-color:rgba(var(--bs-success-rgb),.3)}to{background-color:transparent}}'
-            + '@keyframes pgEditFailed{from{background-color:rgba(var(--bs-danger-rgb),.3)}to{background-color:transparent}}'
+            + '@keyframes pgEditSaved{from{background-color:color-mix(in srgb, var(--pg-success) 30%, transparent)}to{background-color:transparent}}'
+            + '@keyframes pgEditFailed{from{background-color:color-mix(in srgb, var(--pg-danger) 30%, transparent)}to{background-color:transparent}}'
             + '@media (prefers-reduced-motion:reduce){td.pg-edit-saved,td.pg-edit-failed{animation:none}}'
             + '@media print{td[data-pg-edit]::after{display:none}}';
         document.head.appendChild(style);
@@ -12278,7 +12275,7 @@ $(function () {
         cell.setAttribute('data-pg-edit-busy', '');
         cell.setAttribute('aria-busy', 'true');
         cell.textContent = shown;
-        spinner.className = 'spinner-border spinner-border-sm ms-2';
+        spinner.className = 'spinner-border spinner-border-sm ms-3';
         spinner.setAttribute('aria-hidden', 'true');
         cell.appendChild(spinner);
 
@@ -12361,7 +12358,7 @@ $(function () {
 
         if (column.type === 'select') {
             control = document.createElement('select');
-            control.className = 'form-select form-select-sm';
+            control.className = 'form-control form-control-sm';
 
             (column.options || []).forEach(function (pair) {
                 var option = document.createElement('option');

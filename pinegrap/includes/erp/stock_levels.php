@@ -178,12 +178,12 @@ function erp_stock_minimum_cells($row)
 
     return array(
         'stock' => array(
-            'html'  => h(erp_quantity_text($quantity)) . ($low ? ' <span class="badge text-bg-danger">' . lang('Low') . '</span>' : ''),
-            'class' => 'align-middle text-end' . ($low ? ' text-danger fw-bold' : ''),
+            'html'  => h(erp_quantity_text($quantity)) . ($low ? ' <span class="badge theme-danger">' . lang('Low') . '</span>' : ''),
+            'class' => 'align-middle text-end' . ($low ? ' fg-danger fw-bold' : ''),
             'sort'  => $quantity,
         ),
         'min_quantity' => array(
-            'html'  => ($minimum > 0) ? h(erp_quantity_text($minimum)) : '<span class="text-body-secondary">—</span>',
+            'html'  => ($minimum > 0) ? h(erp_quantity_text($minimum)) : '<span class="fg-secondary">—</span>',
             'class' => 'align-middle text-end',
             'sort'  => $minimum,
         ),
