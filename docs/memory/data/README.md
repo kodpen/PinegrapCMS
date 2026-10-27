@@ -30,6 +30,7 @@ Table structures and SQL pitfalls.
 - db-helpers-and-error-contract.md: The db helpers (db, db_value, db_values, db_item, db_items, e, escape_like) and what a failed query does: helpers end the request, raw mysqli_query() and db_q() return false.
 - db-q-converted-access.md: Sign-in, access check, contact merge and designer asset files converted to db_q() (fn/auth, fn/contacts, fn/designer, the forms.php clauses): PR, special cases, what stayed raw, guard test.
 - db-q-converted-catalog-forms.md: get_catalog.php, get_photo_gallery.php and custom_form.php converted to db_q() (PR #2291): how values are passed, what stayed raw and why, the guard test.
+- db-q-converted-comments-search.md: Users list, user delete, account profile, comment add/edit, site search and sitemap files converted to db_q(): PR, special cases, what stayed raw and why, guard test.
 - db-q-converted-commerce.md: Cart, checkout, form, order and product screen files converted to db_q(): PR, special cases, what stayed raw and why, guard tests.
 - db-q-converted-contacts-forms.md: Contact, contact group, form field and submitted form panel screens converted to db_q() (PRs #2299, #2316): what stayed raw and why, guard test.
 - db-q-converted-files.md: Content files converted to db_q() (get_page_content, content, seo, get_page): PR, how values are passed, what stayed raw and why, guard tests; the conversion rules.

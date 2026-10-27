@@ -68,8 +68,8 @@ $query =
         comments_submitter_email_page_id,
         comments_watcher_email_page_id
     FROM page
-    WHERE page_id = '" . escape($page_id) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE page_id = ?";
+$result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 $page_name = $row['page_name'];
@@ -187,8 +187,8 @@ $query =
         user.user_id,
         user.user_role
     FROM user
-    WHERE user.user_username = '" . escape($_SESSION['sessionusername'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE user.user_username = ?";
+$result = db_q($query, array((string) ($_SESSION['sessionusername'] ?? ''))) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 // A visitor who is not signed in has no row: no user, no role.
@@ -527,15 +527,15 @@ if (($comments_allow_file_attachments == 1) && ($_FILES['file']['name'])) {
             attachment,
             timestamp)
         VALUES (
-            '" . escape($file_name) . "',
-            '" . escape($folder_id) . "',
-            '" . escape($file_extension) . "',
-            '" . escape($file_size) . "',
-            '$user_id',
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
             '0',
             '1',
             UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $file_name, (string) $folder_id, (string) $file_extension, (string) $file_size, (string) $user_id)) or output_error('Query failed.');
     
     $file_id = mysqli_insert_id(db::$con);
 }
@@ -627,21 +627,21 @@ $query =
         last_modified_user_id,
         last_modified_timestamp$sql_review_column$sql_parent_column)
      VALUES (
-        '" . escape($page_id) . "',
-        '" . escape($item_id) . "',
-        '" . escape($item_type) . "',
-        '" . escape($name) . "',
-        '" . escape($message) . "',
-        '$file_id',
-        '" . escape($published) . "',
-        '" . $rating . "',
-        '" . e($publish_date_and_time) . "',
-        '" . e($publish_cancel) . "',
-        '" . escape($user_id) . "',
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
         UNIX_TIMESTAMP(),
-        '" . escape($user_id) . "',
+        ?,
         UNIX_TIMESTAMP()$sql_review_value$sql_parent_value)";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = db_q($query, array((string) $page_id, (string) $item_id, (string) $item_type, (string) $name, (string) $message, (string) $file_id, (string) $published, (string) $rating, (string) $publish_date_and_time, (string) $publish_cancel, (string) $user_id, (string) $user_id)) or output_error('Query failed.');
 
 // get new comment's id
 $comment_id = mysqli_insert_id(db::$con);
@@ -694,17 +694,17 @@ if (($published == '1') && ($page_type == 'form item view')) {
         "SELECT COUNT(*)
         FROM comments
         WHERE
-            (page_id = '" . escape($page_id) . "')
-            AND (item_id = '" . escape($item_id) . "')
-            AND (item_type = '" . escape($item_type) . "')
+            (page_id = ?)
+            AND (item_id = ?)
+            AND (item_type = ?)
             AND (published = '1')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $page_id, (string) $item_id, (string) $item_type)) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     $number_of_comments = $row[0];
     
     // delete the current record if one exists
-    $query = "DELETE FROM submitted_form_info WHERE (submitted_form_id = '" . escape($item_id) . "') AND (page_id = '" . escape($page_id) . "')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "DELETE FROM submitted_form_info WHERE (submitted_form_id = ?) AND (page_id = ?)";
+    $result = db_q($query, array((string) $item_id, (string) $page_id)) or output_error('Query failed.');
     
     // insert a new record
     $query = 
@@ -715,12 +715,12 @@ if (($published == '1') && ($page_type == 'form item view')) {
             number_of_comments,
             newest_comment_id)
          VALUES (
-            '" . escape($item_id) . "',
-            '" . escape($page_id) . "',
-            '$number_of_views',
-            '$number_of_comments',
-            '$comment_id')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            ?,
+            ?,
+            ?,
+            ?,
+            ?)";
+    $result = db_q($query, array((string) $item_id, (string) $page_id, (string) $number_of_views, (string) $number_of_comments, (string) $comment_id)) or output_error('Query failed.');
 }
 
 // prepare to e-mail addresses for the administrator e-mail
@@ -741,11 +741,11 @@ if ($page_type == 'form item view') {
             FROM form_field_options
             LEFT JOIN form_data ON form_field_options.form_field_id = form_data.form_field_id
             WHERE
-                (form_field_options.page_id = '" . $submitted_form['custom_form_page_id'] . "')
-                AND (form_data.form_id = '" . escape($item_id) . "')
+                (form_field_options.page_id = ?)
+                AND (form_data.form_id = ?)
                 AND (form_field_options.email_address != '')
                 AND (form_data.data = form_field_options.value)";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $submitted_form['custom_form_page_id'], (string) $item_id)) or output_error('Query failed.');
         
         // loop through results and add them to array
         while($row = mysqli_fetch_assoc($result)) {
@@ -790,8 +790,8 @@ if (count($administrator_email_addresses) > 0) {
                     contacts.last_name
                 FROM user
                 LEFT JOIN contacts ON user.user_contact = contacts.id
-                WHERE user.user_username = '" . escape($_SESSION['sessionusername']) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+                WHERE user.user_username = ?";
+            $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed');
             $row = mysqli_fetch_assoc($result);
             $first_name = $row['first_name'];
             $last_name = $row['last_name'];
@@ -981,11 +981,11 @@ if (
         "SELECT id
         FROM watchers
         WHERE
-            (user_id = '" . $user_id . "')
-            AND (page_id = '" . escape($page_id) . "')
-            AND (item_id = '" . escape($item_id) . "')
-            AND (item_type = '" . escape($item_type) . "')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            (user_id = ?)
+            AND (page_id = ?)
+            AND (item_id = ?)
+            AND (item_type = ?)";
+    $result = db_q($query, array((string) $user_id, (string) $page_id, (string) $item_id, (string) $item_type)) or output_error('Query failed.');
     
     // if the user is not already a watcher, then add the user as a watcher
     if (mysqli_num_rows($result) == 0) {
@@ -996,11 +996,11 @@ if (
                 item_id,
                 item_type)
              VALUES (
-                '" . escape($user_id) . "',
-                '" . escape($page_id) . "',
-                '" . escape($item_id) . "',
-                '" . escape($item_type) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                ?,
+                ?,
+                ?,
+                ?)";
+        $result = db_q($query, array((string) $user_id, (string) $page_id, (string) $item_id, (string) $item_type)) or output_error('Query failed.');
     }
 }
 
@@ -1009,11 +1009,11 @@ $query =
     "SELECT COUNT(*)
     FROM comments
     WHERE
-        (page_id = '" . escape($page_id) . "')
-        AND (item_id = '" . escape($item_id) . "')
-        AND (item_type = '" . escape($item_type) . "')
+        (page_id = ?)
+        AND (item_id = ?)
+        AND (item_type = ?)
         AND (featured = '1')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = db_q($query, array((string) $page_id, (string) $item_id, (string) $item_type)) or output_error('Query failed.');
 $row = mysqli_fetch_row($result);
 
 // Send the writer back to the new comment: the page they posted from,
