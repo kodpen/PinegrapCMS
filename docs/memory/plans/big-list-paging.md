@@ -10,7 +10,7 @@ description: Steps of refactor-candidates item 3: the big panel lists (users, su
 - Claim as `[plan:refactor-candidates] 3 — <screen> list paged on the server`; one step at a time.
 
 ## Which steps are there?
-- 1. Users (`view_users.php`): no export, one bulk action (delete selected), no advanced filters; per-row queries (folder rights, sign-in lock) now run for one page only. Shared builder `includes/fn/user_list.php`, generic helpers `includes/fn/list_paging.php`, action `user_list_rows`. In progress.
+- 1. Users (`view_users.php`): no export, one bulk action (delete selected), no advanced filters; per-row queries (folder rights, sign-in lock) now run for one page only. Shared builder `includes/fn/user_list.php`, generic helpers `includes/fn/list_paging.php`, action `user_list_rows` (PR #2460, `ui/server-paged-lists.md`). Done.
 
 - 2. Submitted forms (`view_submitted_forms.php`): rows are filtered in PHP with `check_edit_access()` per row and paged by 100 in PHP; the folder rule must become SQL before LIMIT. Search, advanced filters and the custom form choice already live in the session; Export Forms and Delete All Forms read the whole filtered list; delete selected posts `forms[]`.
 

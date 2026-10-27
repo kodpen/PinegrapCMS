@@ -100,6 +100,7 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     // client falls back to the English key when an entry is missing.
     $translate = array(
         'No data available in table' => lang('No data available in table'),
+        'Query failed.' => lang('Query failed.'),
         'Reset' => lang('Reset'),
         'Column Visiblity' => lang('Column Visiblity'),
         'Column Reorder and Column Visiblity reset?' => lang('Column Reorder and Column Visiblity reset?'),
