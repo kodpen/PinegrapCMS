@@ -135,7 +135,7 @@ decision questions.
    decide (product behaviour, a schema change, an entry of the decisions
    list), an architecture question, a large migration or a logic clash
    between PRs is never decided by the session that meets it. It opens an
-   issue labelled `architect` (template in `workflow/architect.md`; if its
+   issue labelled `architect` (template in `workflow/architect-asking.md`; if its
    permission check refuses that, the text goes in the PR body under
    `## Decision question` and the architect opens it), links it from its
    PR, turns the PR back to draft and ends the session

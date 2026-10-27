@@ -8,10 +8,7 @@ description: Decision questions (2026-10-27): an issue labelled architect; the a
 - Not one: what memory, the plan or the decisions list answers, an implementation choice inside the step (the session takes those and names the notable ones in its PR body), or a coordinator's choice of work (`coordinator.md`).
 
 ## How is one asked?
-- First search the open and closed `architect` issues for the plan file and the question: on 2026-10-27 six questions were opened twice within an hour. A worker opens only its own step's question; a plan's other open questions are the architect's.
-- One issue per decision (numbered questions only when one change needs them all), labelled `architect`, by `mcp__github__issue_write` (create). A refused issue (permission check): the same text in the PR body under `## Decision question`; the architect opens it.
-- Body: a `## Türkçe özet` block first (question, options in a line each, recommendation: the owner reads Turkish), then `## Context` (PR, plan step, files), `## Question`, `## Options` (what each changes, for running sites too, its cost), `## Recommendation`, `## Blocks` in English for the workers. No session or process trace (Fixed rules 2).
-- Then `Decision: #<issue>` (or the section) in the PR body, the PR back to draft and its `ready` label off unless the PR does not wait for the answer, and the session ends (`session-lifecycle.md`): nobody waits for a decision.
+- `architect-asking.md`: search first, one issue per decision, the body with a `## Türkçe özet` block, the PR back to draft, the session ends.
 
 ## What does the architect do?
 - One standing session on the model the owner chose; a 15-minute session cron on off-minutes and an hourly routine that re-creates it (`merger-wake.md`). Each check lists the open `architect` issues and the open PRs with a `## Decision question` section (it opens their issues); nothing new: no message. It re-reads the rules when they change (`working-mode.md`) and starts no sub-agents: they spend the account's quota.
@@ -29,4 +26,4 @@ description: Decision questions (2026-10-27): an issue labelled architect; the a
 - `architect`: every decision question, open until recorded; `erdal`: a big one waiting for the owner, set only by the architect (`label:erdal` is the owner's list).
 - A new session told: "You are the architect: read `CLAUDE.md` and `workflow/architect.md`, then keep the 15-minute check." First job: the plan files' open questions become issues, each named on its plan line.
 
-Related: docs/memory/workflow/coordinator-limits.md, docs/memory/workflow/session-lifecycle.md, docs/memory/workflow/working-mode.md
+Related: docs/memory/workflow/architect-asking.md, docs/memory/workflow/coordinator-limits.md, docs/memory/workflow/session-lifecycle.md

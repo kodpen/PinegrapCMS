@@ -1,6 +1,6 @@
 ---
 name: coordinator-limits
-description: Coordinator rules (2026-10-27): the usage quota guard before a worker starts, the worker cap per account shared by its coordinators, a worker card for a draft PR whose decision came after its session ended
+description: Coordinator rules (2026-10-27): quota guard before a worker starts, worker cap per account shared by its coordinators, a card for a draft PR whose decision came after its session ended
 ---
 
 ## Why?
