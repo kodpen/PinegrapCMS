@@ -13,7 +13,7 @@ description: Plan (approved 2026-10-19; done: history, writers, API read, compar
 - Step 1 (PR #681): offer rows, hourly (commerce/product-price-history-offers.md).
 - Step 4 (PR #1425): 13-month retention (commerce/product-price-history-retention.md).
 - Step 2a (PR #1803): `pg_price_history_reference()` and batched `pg_price_history_window_sql()`, no caller; window end is a parameter (commerce/product-reference-price.md).
-- Step 2c (PR #PRNUM): rule setting card in Settings › Ecommerce, `config.ecommerce_reference_price_rule` (11.0.49), read with `pg_price_reference_rule()` (commerce/product-reference-price.md).
+- Step 2c (PR #2347): rule setting card in Settings › Ecommerce, `config.ecommerce_reference_price_rule` (11.0.49), read with `pg_price_reference_rule()` (commerce/product-reference-price.md).
 
 ## What is decided?
 - Rule is a setting: `lowest_30d` (default for TR and EU), `lowest_10d`, or `manual`. Catalog widgets print `__reference_price` and `__reference_label` (text through `lang()`); legacy catalog pages get the same through `get_catalog.php` helpers without layout changes.
