@@ -734,6 +734,7 @@
     "leave blank to use the default product logo": "varsayılan ürün logosu için boş bırakın",
     "leave it empty for unlimited": "sınırsız için boş bırakın",
     "leave unselected for all product groups": "tüm ürün grupları için seçmeden bırakın",
+    "leaves on timeout at {var:1}": "{var:1} tarihinde zaman aşımıyla ilerler",
     "left": "solda",
     "legal, contract, distance sales contract, pre-information form, terms, withdrawal, consumer": "yasal, sözleşme, mesafeli satış sözleşmesi, ön bilgilendirme formu, koşullar, cayma, tüketici",
     "libraries, city council": "kütüphaneler, belediye meclisi",
