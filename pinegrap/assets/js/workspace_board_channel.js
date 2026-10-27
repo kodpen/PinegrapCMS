@@ -161,8 +161,12 @@
 
         bar.appendChild(k.el('div', 'pg-toolbar-grow'));
 
-        var searchGroup = k.el('div', 'input-group input-group-sm rounded-pill pg-toolbar-search');
-        var search = k.el('input', 'form-control');
+        var searchGroup = k.el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
+        var searchIcon = k.el('span', 'form-adorn-text');
+        searchIcon.setAttribute('aria-hidden', 'true');
+        searchIcon.appendChild(k.icon('bi-search'));
+        searchGroup.appendChild(searchIcon);
+        var search = k.el('input', 'form-ghost');
         search.type = 'search';
         search.value = self.q;
         search.placeholder = t('cb_search');
