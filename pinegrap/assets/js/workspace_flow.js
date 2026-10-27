@@ -124,6 +124,7 @@
         report: { icon: 'bi-bar-chart', name: 'fl_kind_report', into: true, out: ['done', 'failed'] },
         checkin: { icon: 'bi-person-check', name: 'fl_kind_checkin', into: true, out: ['done', 'failed'] },
         start_action: { icon: 'bi-alarm', name: 'fl_kind_start_action', into: true, out: ['done', 'failed'] },
+        start_flow: { icon: 'bi-diagram-3', name: 'fl_kind_start_flow', into: true, out: ['done', 'failed'] },
         change: { icon: 'bi-pencil-square', name: 'fl_kind_change', into: true, out: ['done', 'failed'] },
         lead: { icon: 'bi-person-vcard', name: 'fl_kind_lead', into: true, out: ['done', 'failed'] },
         approval: { icon: 'bi-patch-check', name: 'fl_kind_approval', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
@@ -172,6 +173,7 @@
         ['report', 'bi-bar-chart', 'fl_kind_report'],
         ['checkin', 'bi-person-check', 'fl_kind_checkin'],
         ['start_action', 'bi-alarm', 'fl_kind_start_action'],
+        ['start_flow', 'bi-diagram-3', 'fl_kind_start_flow'],
         ['change', 'bi-pencil-square', 'fl_kind_change'],
         ['lead', 'bi-person-vcard', 'fl_kind_lead'],
         ['approval', 'bi-patch-check', 'fl_kind_approval'],
@@ -489,6 +491,12 @@
             }
 
             return place ? t('fl_post_meta', place.name) : t('fl_post_no_channel');
+        }
+
+        if (node.kind === 'start_flow') {
+            var chained = chainTargets().filter(function (item) { return item.id === config.flow_id; })[0];
+
+            return chained ? chained.name : (config.flow_id ? '#' + config.flow_id : t('fl_chain_none'));
         }
 
         if (node.kind === 'start_action') {
@@ -2443,6 +2451,10 @@
             delayFields(box, node);
         }
 
+        if (node.kind === 'start_flow') {
+            chainFields(box, node);
+        }
+
         if (node.kind === 'approval') {
             approvalFields(box, node);
         }
@@ -2990,6 +3002,35 @@
     }
 
     // Another scheduled action, started now or some minutes later.
+    // The flows a box may start: those the person runs or changes, other
+    // than the one open; the server takes only a live one started by hand
+    // (ws_flow_chain_check()).
+    function chainTargets() {
+        var open = state.flow ? state.flow.id : 0;
+
+        return state.flows.filter(function (item) {
+            return (item.id !== open) && ((item.access === 'run') || (item.access === 'edit'));
+        });
+    }
+
+    // A box that starts another flow and goes on without waiting for it.
+    function chainFields(box, node) {
+        var config = node.config;
+        var options = [[0, t('fl_chain_pick')]].concat(chainTargets().map(function (item) { return [item.id, item.name]; }));
+
+        if (config.flow_id && !options.some(function (option) { return option[0] === config.flow_id; })) {
+            options.push([config.flow_id, '#' + config.flow_id]);
+        }
+
+        var pick = K.select(options, config.flow_id || 0);
+
+        pick.addEventListener('change', function () {
+            config.flow_id = parseInt(pick.value, 10) || 0;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_chain_flow'), pick, t('fl_chain_help')));
+    }
+
     function startFields(box, node) {
         var config = node.config;
         var options = [[0, t('fl_start_pick')]].concat(stepLists().targets.map(function (item) { return [item.id, item.name]; }));
@@ -4107,6 +4148,8 @@
             config = { rule: { type: 'workday' } };
         } else if (kind === 'delay') {
             config = { amount: 1, unit: 'hours' };
+        } else if (kind === 'start_flow') {
+            config = { flow_id: 0 };
         } else if (kind === 'approval') {
             config = { channel_id: 0, title: '', text: '', approvers: [], rule: 'any', closes_in: '' };
         } else if (kind === 'schedule') {
