@@ -181,8 +181,8 @@ function test_workspace_flow_steps_never_twice()
 // action's step is, and a box runs only while its owner is on the staff.
 function test_workspace_flow_steps_owner_rights()
 {
-	pg_assert_contains('ws_scheduled_action_input($viewer, ws_step_action($kind, $config))', ws_flow_steps_test_source('ws_step_check'));
-	pg_assert_contains('ws_step_check($viewer, $node[\'kind\'], $node[\'config\'])', ws_flow_steps_test_source('ws_flow_publish_check'));
+	pg_assert_contains('ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined)', ws_flow_steps_test_source('ws_step_check'));
+	pg_assert_contains('ws_step_check($viewer, $node[\'kind\'], $node[\'config\'], ws_flow_starts_on_join($graph))', ws_flow_steps_test_source('ws_flow_publish_check'));
 
 	$step = ws_flow_steps_test_source('ws_flow_step_run');
 
@@ -536,4 +536,76 @@ function test_workspace_flow_steps_try_refuses_assistants()
 	pg_assert_contains("api_fail(403, 'forbidden'", $api);
 	pg_assert_contains('ws_api_flow_run_reachable($viewer, $flow, $run)', $api);
 	pg_assert_true(strpos($api, 'ws_api_flow_run_reachable(') < strpos($api, 'ws_flow_box_try('), 'the run is checked before it is read');
+}
+
+// A flow that starts when somebody joins a channel, then greets them there.
+function ws_flow_steps_test_join_graph($start = 'join', $channel_id = -1)
+{
+	return ws_flow_graph_normalize(array(
+		'nodes' => array(
+			array('id' => 'start', 'kind' => $start, 'config' => ($start === 'join') ? array('channel_id' => 0) : array()),
+			array('id' => 'say', 'kind' => 'post', 'config' => array('channel_id' => $channel_id, 'body' => 'Welcome {{newcomer}}')),
+		),
+		'edges' => array(
+			array('from' => 'start', 'to' => 'say'),
+		),
+	));
+}
+
+// A post box writes in the channel joined (-1) only in a flow a join starts;
+// any other number below one is no channel.
+function test_workspace_flow_steps_post_in_the_channel_joined()
+{
+	pg_assert_same(-1, ws_step_config_normalize('post', array('channel_id' => -1))['channel_id']);
+	pg_assert_same(-1, ws_step_config_normalize('post', array('channel_id' => '-1'))['channel_id']);
+	pg_assert_same(0, ws_step_config_normalize('post', array('channel_id' => -2))['channel_id']);
+	pg_assert_same(0, ws_step_config_normalize('email', array('page_id' => -1))['page_id'], 'only a post box has the channel joined');
+
+	pg_assert_true(ws_flow_starts_on_join(ws_flow_steps_test_join_graph()));
+	pg_assert_false(ws_flow_starts_on_join(ws_flow_steps_test_join_graph('manual')));
+
+	$codes = function ($graph) {
+		return array_map(function ($problem) {
+			return $problem['code'] . ':' . $problem['node'];
+		}, ws_flow_graph_check($graph));
+	};
+
+	pg_assert_same(array(), $codes(ws_flow_steps_test_join_graph()));
+	pg_assert_same(array('bad_config:say'), $codes(ws_flow_steps_test_join_graph('manual')), 'no channel was joined');
+
+	$config = ws_step_config_normalize('post', array('channel_id' => -1, 'body' => 'Hi'));
+
+	pg_assert_same(0, count(ws_step_config_problems('post', $config, 'P', true)));
+	pg_assert_same(1, count(ws_step_config_problems('post', $config, 'P')));
+
+	// Checked with the scheduled action's own rule for the channel joined, at
+	// publish, as the box runs and as it is tried.
+	pg_assert_contains('ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined)', ws_flow_steps_test_source('ws_step_check'));
+	pg_assert_contains('ws_flow_starts_on_join($graph)', ws_flow_steps_test_source('ws_flow_publish_check'));
+	pg_assert_contains('ws_flow_starts_on_join($graph)', ws_flow_steps_test_source('ws_step_run'));
+	pg_assert_contains('ws_flow_starts_on_join(', ws_flow_steps_test_source('ws_flow_box_try'));
+}
+
+// The values of what started a run (the event and its record, the newcomer
+// and the channel joined) reach every box's texts, as they reach a scheduled
+// action's step; the flow's own keys stay out.
+function test_workspace_flow_steps_trigger_values()
+{
+	pg_assert_same(array(), ws_step_trigger_context(array('trigger' => 'manual', 'node' => 'start', 'channel_id' => 3, 'flow_name' => 'F')));
+
+	pg_assert_same(
+		array('event' => 'form.submitted', 'event_payload' => array('id' => 9)),
+		ws_step_trigger_context(array('trigger' => 'event', 'event' => 'form.submitted', 'event_payload' => array('id' => 9), 'sched_run' => 4))
+	);
+	pg_assert_same(array('event' => 'order.created'), ws_step_trigger_context(array('event' => 'order.created')), 'a payload over 8 KB was left out');
+	pg_assert_same(
+		array('newcomer' => 12, 'join_channel_id' => 5),
+		ws_step_trigger_context(array('trigger' => 'join', 'newcomer' => '12', 'join_channel_id' => '5'))
+	);
+	pg_assert_same(array(), ws_step_trigger_context(array('newcomer' => 0, 'join_channel_id' => 5)));
+
+	$run = ws_flow_steps_test_source('ws_step_run');
+
+	pg_assert_contains('$step_context += ws_step_trigger_context($context)', $run);
+	pg_assert_false(strpos($run, "if (\$kind === 'lead')") !== false, 'every box, not the lead box alone');
 }
