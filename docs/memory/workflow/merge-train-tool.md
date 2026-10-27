@@ -15,7 +15,7 @@ description: tools/merge_train.php (#2002): --start (the lock), --list (train or
 
 ## How is changelog.txt written?
 - From the `## Changelog` section of the PR body (any heading level, up to the next heading): every `[NEW] Added …` (up to a backtick or the line end) goes after the open version's `[NEW]` lines; a mention of `[FIX]` or `[SECURITY]` adds that catch-all line once; a section starting with "none" adds only those. Order kept: `[NEW]`, `[FIX]`, `[SECURITY]`, `[SCHEME]` (`release/upgrade-changelog-rules.md`).
-- A `[SCHEME]` item stops the run with the merge open: the version's one `[SCHEME]` sentence is widened by hand, then commit and `--build` again.
+- A `[SCHEME]` item stops the run with the merge open: the version's one `[SCHEME]` sentence is widened by hand, then commit and `--build` again. Only an item under a `Changelog` heading stops it: a schema PR that names its item elsewhere in the body (#2095) went through with no `[SCHEME]` change, so a train whose diff touches `includes/migrations/` is checked for the sentence before CI.
 
 ## What does it not do?
 - Review (`merge-review.md`), the PR body cleanup and footer (`pr-footer-and-trailers.md`), a bot PR's `--squash` merge and closing comment, landing a docs-only PR alone ([[merge-train]]). It pushes only its train branch and, in `--land`, `development`; GitHub goes through `gh api` (REST).
