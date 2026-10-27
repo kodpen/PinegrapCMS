@@ -967,15 +967,9 @@ function pg_passkey_register($account, $input, $name = '')
         return array('ok' => false, 'error' => 'duplicate');
     }
 
-    $values = array();
-
-    foreach ($row as $value) {
-        $values[] = "'" . e((string) $value) . "'";
-    }
-
     // Not db(): a failed statement there prints an HTML page, and the caller
-    // answers JSON.
-    if (!@mysqli_query(db::$con, "INSERT INTO user_passkeys (" . implode(', ', array_keys($row)) . ") VALUES (" . implode(', ', $values) . ")")) {
+    // answers JSON. Every value quoted, as before.
+    if (!db_q("INSERT INTO user_passkeys (" . implode(', ', array_keys($row)) . ") VALUES (" . implode(', ', array_fill(0, count($row), '?')) . ")", array_map('strval', array_values($row)))) {
         return array('ok' => false, 'error' => (mysqli_errno(db::$con) === 1062) ? 'duplicate' : 'storage');
     }
 
