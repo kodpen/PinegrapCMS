@@ -5,7 +5,7 @@
  * Tests for the calendar event form shared by add_calendar_event.php and
  * edit_calendar_event.php (includes/forms/calendar_event_form.php): the start
  * date of every repeating instance that the location check walks through, and
- * that the screens check a submitted event through the one validator.
+ * that both screens check a submitted event through the one validator.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -86,9 +86,9 @@ function test_calendar_event_form_yearly_repeat_moves_a_leap_day_to_the_month_en
 		pg_calendar_event_recurrence_dates('2024-02-29', '2', 'year', calendar_event_form_test_days(array()), ''));
 }
 
-function test_calendar_event_form_screens_validate_through_the_shared_form()
+function test_calendar_event_form_both_screens_validate_through_the_shared_form()
 {
-	foreach (array('add_calendar_event.php' => "pg_calendar_event_form_validate(\$liveform)") as $file => $call) {
+	foreach (array('add_calendar_event.php' => "pg_calendar_event_form_validate(\$liveform)", 'edit_calendar_event.php' => "pg_calendar_event_form_validate(\$liveform, \$liveform->get_field_value('id'))") as $file => $call) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 
 		pg_assert_true(strpos($source, "require_once(PG_FUNCTIONS_DIR . '/includes/forms/calendar_event_form.php');") !== false, $file . ' does not load the shared form');
