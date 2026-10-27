@@ -41,7 +41,7 @@ if (!$_POST) {
     ) {
         $output_preview_style_warning_row ='
         <div class="col-12">
-            <div class="alert alert-success" role="alert">
+            <div class="alert theme-success" role="alert">
                 <h4 class="alert-heading">' . lang('Theme Preview Mode') . '</h4>
                 <p>' . lang('You are currently previewing a Theme that is not activated, so your Page Style and Mobile Page Style selections below will update the preview Page Style, and not the activated Page Style.  The preview Page Styles that you set here will be activated when you activate the Theme.') . '</p>
             </div>
@@ -72,12 +72,12 @@ if (!$_POST) {
             <span class="navbar-text me-auto" data-bs-content="' . lang('You may update various properties below for the selected pages. You may leave a pick list unselected if you do not want to modify a property.') . '" title="' . lang('Modify Pages') . '">' . lang('Modify Pages') . '</span>
             
             <ul class="navbar-nav ms-auto">
-                <li class="nav-item dropdown no-popover"  title="' . lang('Software Theme') . '">
-                    <button class="nav-link nav-link-sm position-relative dropdown-toggle dropdown-menu-right d-none" data-bs-toggle="dropdown" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
-                    <ul aria-labelledby="bd-theme" class="dropdown-menu shadow dropdown-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-dropdown-min-width: 8rem;">
-                        <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-2"></i>' . lang('Light') . '</button></li>
-                        <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-2"></i>' . lang('Dark') . '</button></li>
-                        <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-2"></i>' . lang('Auto') . '</button></li>
+                <li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
+                    <button class="nav-link nav-link-sm position-relative pg-menu-caret d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
+                    <ul aria-labelledby="bd-theme" class="menu shadow pg-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-menu-min-width: 8rem;">
+                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i>' . lang('Light') . '</button></li>
+                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i>' . lang('Dark') . '</button></li>
+                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-3"></i>' . lang('Auto') . '</button></li>
                     </ul>
                 </li>
                 <li class="nav-item">
@@ -122,9 +122,9 @@ if (!$_POST) {
     </script>
     <main id="content" class="container-fluid">
         <div class="row">
-            <div class="col-12 col-sm-6">
-                <div class="form-floating mt-1 mb-2">
-                    <select class="form-select" id="folder"><option value=""></option>' . select_folder() . '</select>
+            <div class="col-12 sm:col-6">
+                <div class="form-floating mt-1 mb-3">
+                    <select class="form-control" id="folder"><option value=""></option>' . select_folder() . '</select>
                     <label for="folder" class="form-label">' . lang('Folder') . '</label>
                 </div>
             </div>
@@ -132,37 +132,37 @@ if (!$_POST) {
             <div class="col-12">
                 <div class="row">
                     ' . $output_preview_style_warning_row . '
-                    <div class="col-12 col-sm-6">
-                        <div class="form-floating mt-1 mb-2">
-                            <select class="form-select" id="page_style"><option value=""></option>' . select_style('', $default_style_label) . '</select>
+                    <div class="col-12 sm:col-6">
+                        <div class="form-floating mt-1 mb-3">
+                            <select class="form-control" id="page_style"><option value=""></option>' . select_style('', $default_style_label) . '</select>
                             <label for="page_style" class="form-label">' . lang('Page Style') . '</label>
                         </div>
                     </div>
-                    <div class="col-12 col-sm-6">
-                        <div class="form-floating mt-1 mb-2">
-                            <select class="form-select" id="mobile_style_id"><option value=""></option>' . get_mobile_style_options('', $default_style_label) . '</select></select>
+                    <div class="col-12 sm:col-6">
+                        <div class="form-floating mt-1 mb-3">
+                            <select class="form-control" id="mobile_style_id"><option value=""></option>' . get_mobile_style_options('', $default_style_label) . '</select></select>
                             <label for="mobile_style_id" class="form-label">' . lang('Mobile Page Style') . '</label>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="col-12 col-sm-6">
-                <div class="form-floating mt-1 mb-2">
-                    ' . $liveform->output_field(array('type'=>'select', 'id'=>'site_search','class'=>'form-select', 'options'=>$site_search_options)) . '
+            <div class="col-12 sm:col-6">
+                <div class="form-floating mt-1 mb-3">
+                    ' . $liveform->output_field(array('type'=>'select', 'id'=>'site_search','class'=>'form-control', 'options'=>$site_search_options)) . '
                     <label for="folder" class="form-label">' . lang('Site Search') . '</label>
                 </div>
             </div>
-            <div class="col-12 col-sm-6">
-                <div class="form-floating mt-1 mb-2">
-                    ' . $liveform->output_field(array('type'=>'select', 'id'=>'sitemap','class'=>'form-select', 'options'=>$sitemap_options)) . '
+            <div class="col-12 sm:col-6">
+                <div class="form-floating mt-1 mb-3">
+                    ' . $liveform->output_field(array('type'=>'select', 'id'=>'sitemap','class'=>'form-control', 'options'=>$sitemap_options)) . '
                     <label for="folder" class="form-label">sitemap.xml</label>
                 </div>
             </div>
             <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
                 <div class="container">
                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
-                        <button type="button" name="submit_save" value="Modify Pages" class="btn mb-1 mt-1  btn-primary submit-primary" onclick="edit_pages()"><span class="material-icons me-2">save</span>' . lang(array('string'=>'Modify Pages') ) . '</button>
+                        <button type="button" name="submit_save" value="Modify Pages" class="btn mb-1 mt-1  btn-solid theme-primary submit-primary" onclick="edit_pages()"><span class="material-icons me-3">save</span>' . lang(array('string'=>'Modify Pages') ) . '</button>
                     </div>
                 </div>
             </nav>

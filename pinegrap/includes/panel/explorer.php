@@ -273,7 +273,7 @@ function pg_panel_file_explorer($request, $action)
                         $parent_id = db("SELECT folder_parent FROM folder WHERE folder.folder_id = '" . escape($parent_id) . "'");
                         $parent_folder_name = db("SELECT folder_name FROM folder WHERE folder.folder_id = '" . escape($parent_id) . "'");
                         if ($parent_folder_name) {
-                            $output_parent_folder_name = '<li class="breadcrumb-item"><a class="text-body-secondary text-decoration-none btn btn-sm btn-link py-0" href="#!" onclick="get_file_explorer({folder_id:\'' . (int) $parent_id . '\'});">' . h($parent_folder_name) . '</a></li>' . $output_parent_folder_name;
+                            $output_parent_folder_name = '<li class="breadcrumb-item"><a class="fg-secondary text-decoration-none btn btn-sm btn-link py-0" href="#!" onclick="get_file_explorer({folder_id:\'' . (int) $parent_id . '\'});">' . h($parent_folder_name) . '</a></li>' . $output_parent_folder_name;
                         }
 
                     }
@@ -284,7 +284,7 @@ function pg_panel_file_explorer($request, $action)
                     '<nav class="overflow-auto" style="--bs-border-opacity: 0.05;--bs-breadcrumb-divider: url(&#34;data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'8\' height=\'8\'%3E%3Cpath d=\'M2.5 0L1 1.5 3.5 4 1 6.5 2.5 8l4-4-4-4z\' fill=\'%236c757d\'/%3E%3C/svg%3E&#34;);">
                     <ol class="breadcrumb mb-0">
                         ' . $output_parent_folder_name . '
-                        <li class="breadcrumb-item active text-body" aria-current="page">' . h($current_folder_name) . '</li>
+                        <li class="breadcrumb-item active fg-body" aria-current="page">' . h($current_folder_name) . '</li>
                     </ol>
                 </nav>';
             };
@@ -404,12 +404,12 @@ function pg_panel_file_explorer($request, $action)
                         $style = '';
                         // If the folder style is not set to zero then set the page style name.
                         if ($folder['folder_style'] != '0') {
-                            $style = '<span class="fs-5 bi bi-palette" title="' . lang('Style') . ': ' . h($folder['style_name']) . '"></span>';
+                            $style = '<span class="fs-lg bi bi-palette" title="' . lang('Style') . ': ' . h($folder['style_name']) . '"></span>';
                         }
 
                         $folder_archived = '';
                         if ($folder['folder_archived'] == '1') {
-                            $folder_archived = '<span class="fs-5 bi bi-archive" title="' . lang('Archived') . '"></span>';
+                            $folder_archived = '<span class="fs-lg bi bi-archive" title="' . lang('Archived') . '"></span>';
                         }
 
                         $folder_user = '';
@@ -464,15 +464,15 @@ function pg_panel_file_explorer($request, $action)
                         if (isset($folder_table_view_type) && $folder_table_view_type == 'grid') {
                             // output folder as grid
                             $output .=
-                                '<div class="col-6 col-sm-4 col-md-3 col-lg-3 col-xl-2 col-xxl-2">
+                                '<div class="col-6 sm:col-4 md:col-3 lg:col-3 xl:col-2 2xl:col-2">
                                     <div style="min-height:130px;" class="card h-100 hoverable border-0 bg-transparent shadow-none pointer user-select-none " folder_id="' . $folder['folder_id'] . '"  onclick="get_file_explorer({folder_id:\'' . $folder['folder_id'] . '\'});">
                                         <div class="card-header border-0 bg-transparent p-1 d-flex">
-                                            <input class="d-none form-check-input show-on-hovered" type="checkbox" name="folders[]" value="' . $folder['folder_id'] . '" class="checkbox" />
+                                            <input class="d-none check show-on-hovered" type="checkbox" name="folders[]" value="' . $folder['folder_id'] . '" class="checkbox" />
                                         </div>
                                         <div class="card-body text-center position-relative overflow-hidden p-0">
                                             <div class="text-center position-relative">
-                                                <i class="bi display-3 bi-folder ' . $access_control_type . '"></i>
-                                                <i class="bi fs-5 position-absolute top-50 start-50 translate-middle' . $get_access_control_icon_classes($access_control_type) . ' "></i>
+                                                <i class="bi pg-display-3 bi-folder ' . $access_control_type . '"></i>
+                                                <i class="bi fs-lg position-absolute top-50 start-50 translate-middle' . $get_access_control_icon_classes($access_control_type) . ' "></i>
 
                                             </div>
                                             <div class="d-none">' . h($style) . '</div>
@@ -490,9 +490,9 @@ function pg_panel_file_explorer($request, $action)
                             $output .=
                                 '<tr type="folder" folder_id="' . $folder['folder_id'] . '" class="unselectable pointer " onclick="get_file_explorer({folder_id:\'' . $folder['folder_id'] . '\'});">' .
                                 '<td class="position-relative"></td>' .
-                                '<td class="d-none select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="folders[]" value="' . $folder['folder_id'] . '" class="checkbox" /></td>' .
+                                '<td class="d-none select-all align-middle text-start"><input class="check" type="checkbox" name="folders[]" value="' . $folder['folder_id'] . '" class="checkbox" /></td>' .
                                 '<td class="position-relative">
-                                        <span class="fs-5 bi bi-folder position-relative overflow-hidden ' . $access_control_type . '" title="' . lang(ucwords($access_control_type)) . '">
+                                        <span class="fs-lg bi bi-folder position-relative overflow-hidden ' . $access_control_type . '" title="' . lang(ucwords($access_control_type)) . '">
                                             <span style="font-size:40%" class="bi position-absolute start-50 top-50 translate-middle' . $get_access_control_icon_classes($access_control_type) . ' "></span>
                                         </span>
                                         ' . $folder_archived . '
@@ -539,19 +539,19 @@ function pg_panel_file_explorer($request, $action)
                         $style = '';
                         // If the folder style is not set to zero then set the page style name.
                         if ($page['page_style'] != '0') {
-                            $style = '<span class="fs-5 bi bi-palette" title="' . lang('Style') . ': ' . h($page['style_name']) . '"></span>';
+                            $style = '<span class="fs-lg bi bi-palette" title="' . lang('Style') . ': ' . h($page['style_name']) . '"></span>';
                         }
 
                         //Check if page is homepage, if its output icon.
                         $home = '';
                         if ($page['page_home'] == 'yes') {
-                            $home = '<span class="fs-5 bi bi-house" title="' . lang('Homepage') . '"></span>';
+                            $home = '<span class="fs-lg bi bi-house" title="' . lang('Homepage') . '"></span>';
                         }
 
                         //Check if page is in archived folder.
                         $folder_archived = '';
                         if ($page['folder_archived'] == '1') {
-                            $folder_archived = '<span class="fs-5 bi bi-archive" title="' . lang('Archived') . '"></span>';
+                            $folder_archived = '<span class="fs-lg bi bi-archive" title="' . lang('Archived') . '"></span>';
                         }
 
                         //Page size from pregions.
@@ -570,15 +570,15 @@ function pg_panel_file_explorer($request, $action)
                         if (isset($folder_table_view_type) && $folder_table_view_type == 'grid') {
                             // output page as grid
                             $output .=
-                                '<div type="page" page_id="' . $page['page_id'] . '" class="col-6 col-sm-4 col-md-3 col-lg-3 col-xl-2 col-xxl-2 pointer custom-contextmenu explorer-contextmenu" onclick="preview_page({page_id:\'' . $page['page_id'] . '\',page_name:\'' . h($page['page_name']) . '\'})">
+                                '<div type="page" page_id="' . $page['page_id'] . '" class="col-6 sm:col-4 md:col-3 lg:col-3 xl:col-2 2xl:col-2 pointer custom-contextmenu explorer-contextmenu" onclick="preview_page({page_id:\'' . $page['page_id'] . '\',page_name:\'' . h($page['page_name']) . '\'})">
                                     <div style="min-height:130px;" class="card h-100 hoverable border-0 bg-transparent shadow-none" >
                                        <div class="card-header border-0 bg-transparent p-1 d-flex">
-                                            <input class="d-none form-check-input show-on-hovered" type="checkbox" name="pages[]" value="' . $page['page_id'] . '" class="checkbox" />
+                                            <input class="d-none check show-on-hovered" type="checkbox" name="pages[]" value="' . $page['page_id'] . '" class="checkbox" />
                                         </div>
                                         <div class="card-body text-center position-relative overflow-hidden p-0">
                                             <div class="text-center position-relative">
-                                                <i class="bi display-3 bi-window-fullscreen ' . $access_control_type . '"></i>
-                                                <i style="top:58%;" class="bi fs-5 position-absolute start-50 translate-middle' . $get_access_control_icon_classes($access_control_type) . ' "></i>
+                                                <i class="bi pg-display-3 bi-window-fullscreen ' . $access_control_type . '"></i>
+                                                <i style="top:58%;" class="bi fs-lg position-absolute start-50 translate-middle' . $get_access_control_icon_classes($access_control_type) . ' "></i>
                                             </div>
                                             <div class="d-none">' . h($style) . '</div>
                                             <div class="d-none">' . $home . '</div>
@@ -597,9 +597,9 @@ function pg_panel_file_explorer($request, $action)
                             $output .=
                                 '<tr type="page" page_id="' . $page['page_id'] . '" class="unselectable pointer custom-contextmenu explorer-contextmenu" onclick="preview_page({page_id:\'' . $page['page_id'] . '\',page_name:\'' . h($page['page_name']) . '\'})">' .
                                 '<td class="position-relative"></td>' .
-                                '<td class="d-none select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="pages[]" value="' . $page['page_id'] . '" class="checkbox" /></td>' .
+                                '<td class="d-none select-all align-middle text-start"><input class="check" type="checkbox" name="pages[]" value="' . $page['page_id'] . '" class="checkbox" /></td>' .
                                 '<td class="position-relative">
-                                        <span class="fs-5 position-relative  overflow-hidden bi bi-window-fullscreen ' . $access_control_type . '" title="' . $access_control_type . '">
+                                        <span class="fs-lg position-relative  overflow-hidden bi bi-window-fullscreen ' . $access_control_type . '" title="' . $access_control_type . '">
                                             <span style="font-size:40%" class="bi position-absolute start-50 top-50 translate-middle' . $get_access_control_icon_classes($access_control_type) . ' "></span>
                                         </span>
                                         ' . $folder_archived . '
@@ -684,7 +684,7 @@ function pg_panel_file_explorer($request, $action)
 
                             $folder_archived = '';
                             if ($file['folder_archived'] == '1') {
-                                $folder_archived = '<span class="fs-5 bi bi-archive" title="' . lang('Archived') . '"></span>';
+                                $folder_archived = '<span class="fs-lg bi bi-archive" title="' . lang('Archived') . '"></span>';
                             }
 
 
@@ -734,8 +734,8 @@ function pg_panel_file_explorer($request, $action)
                                 } else {
                                     $output_thumbnail = '
                                         <div class="text-center position-relative">
-                                            <i class="bi display-3 ' . $get_file_icon($file['type']) . ' ' . $access_control_type . '"></i>
-                                            <i style="top:50%;" class="bi fs-5 position-absolute start-50 translate-middle' . $get_access_control_icon_classes($access_control_type) . ' "></i>
+                                            <i class="bi pg-display-3 ' . $get_file_icon($file['type']) . ' ' . $access_control_type . '"></i>
+                                            <i style="top:50%;" class="bi fs-lg position-absolute start-50 translate-middle' . $get_access_control_icon_classes($access_control_type) . ' "></i>
                                         </div>';
                                     $output_image_dimensions = '';
                                     $output_file_access_icon = '';
@@ -743,10 +743,10 @@ function pg_panel_file_explorer($request, $action)
 
                                 // output file as grid
                                 $output .=
-                                    '<div type="file" class="col-6 col-sm-4 col-md-3 col-lg-3 col-xl-2 col-xxl-2 pointer custom-contextmenu explorer-contextmenu" file_id="' . $file['id'] . '"  onclick="preview_file({file_name:\'' . $file['name'] . '\',file_id:\'' . $file['id'] . '\',file_type:\'' . $file['type'] . '\'})">
+                                    '<div type="file" class="col-6 sm:col-4 md:col-3 lg:col-3 xl:col-2 2xl:col-2 pointer custom-contextmenu explorer-contextmenu" file_id="' . $file['id'] . '"  onclick="preview_file({file_name:\'' . $file['name'] . '\',file_id:\'' . $file['id'] . '\',file_type:\'' . $file['type'] . '\'})">
                                         <div style="min-height:130px;" class="card h-100 hoverable border-0 bg-transparent shadow-none">
                                             <div class="card-header border-0 bg-transparent p-1 d-flex">
-                                                <input class="d-none form-check-input show-on-hovered" type="checkbox" name="files[]" value="' . $file['id'] . '" class="checkbox" />
+                                                <input class="d-none check show-on-hovered" type="checkbox" name="files[]" value="' . $file['id'] . '" class="checkbox" />
                                                 <div class="ms-auto d-inline-block">
                                                     ' . $new_file_icon . '
                                                     ' . $output_file_access_icon . '
@@ -771,9 +771,9 @@ function pg_panel_file_explorer($request, $action)
                                 $output .=
                                     '<tr type="file" file_id="' . $file['id'] . '" class="unselectable pointer custom-contextmenu explorer-contextmenu" onclick="preview_file({file_name:\'' . $file['name'] . '\',file_id:\'' . $file['id'] . '\',file_type:\'' . $file['type'] . '\'})">' .
                                     '<td class="position-relative"></td>' .
-                                    '<td  class="d-none select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="files[]" value="' . $file['id'] . '" class="checkbox" /></td>' .
+                                    '<td  class="d-none select-all align-middle text-start"><input class="check" type="checkbox" name="files[]" value="' . $file['id'] . '" class="checkbox" /></td>' .
                                     '<td class="position-relative">
-                                        <span class="fs-5 position-relative overflow-hidden bi ' . $get_file_icon($file['type']) . ' ' . $access_control_type . '" title="' . $access_control_type . '">
+                                        <span class="fs-lg position-relative overflow-hidden bi ' . $get_file_icon($file['type']) . ' ' . $access_control_type . '" title="' . $access_control_type . '">
                                             <span style="font-size:40%" class="bi position-absolute top-50 start-50 translate-middle' . $get_access_control_icon_classes($access_control_type) . ' "></span>
                                         </span>
                                         ' . $new_file_icon . '
@@ -792,15 +792,15 @@ function pg_panel_file_explorer($request, $action)
                     if ($output == '') {
                         $output = '
                         <div class="container-fluid">
-                        <div class="row my-5 row-cols-1 g-3">
+                        <div class="row my-12 row-cols-1 g-5">
                             <div class="col-12 text-center">
-                                <i class="bi display-3 bi-folder2-open ' . $access_control_type . '"></i>
+                                <i class="bi pg-display-3 bi-folder2-open ' . $access_control_type . '"></i>
                                 <p>' . lang('This folder is a bit quiet.') . '</p>
                             </div>
                         </div>
                         </div>';
                     } else {
-                        $output = '<div class="container-fluid"><div class="row p-2 g-3">' . $output . '</div></div>';
+                        $output = '<div class="container-fluid"><div class="row p-3 g-5">' . $output . '</div></div>';
                     }
                     //defualt
                 } else {
@@ -819,8 +819,8 @@ function pg_panel_file_explorer($request, $action)
                             <tr>
                                 <th class="noVis"></th>
                                 <th class="noVis d-none">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" title="' . lang(array('string' => 'Select/Deselect All')) . '" type="checkbox" id="select_all">
+                                    <div class="form-field">
+                                        <div class="switch"><input class="" title="' . lang(array('string' => 'Select/Deselect All')) . '" type="checkbox" id="select_all"></div>
                                     </div>
                                 </th>
                                 <th class="noVis"><i class="bi bi-file-earmark"></i></th>

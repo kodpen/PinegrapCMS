@@ -97,27 +97,27 @@ if (!$_POST) {
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . h($_GET['id']) . '">
                         <div class="row">
-                            <div class="col-12 mb-5">
-                                <div class="card my-4 h-100">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="col-12 mb-12">
+                                <div class="card my-7 h-100">
+                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Options') . '
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
-                                                <label for="zip_code_prefix" class="form-label">' . lang('Zip Code Prefix') . ' <span class="text-muted small">' . lang('(first 3 numbers)') . '</span></label>
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
+                                                <label for="zip_code_prefix" class="form-label">' . lang('Zip Code Prefix') . ' <span class="fg-secondary small">' . lang('(first 3 numbers)') . '</span></label>
                                                 <input type="text" name="zip_code_prefix" id="zip_code_prefix" maxlength="3" value="' . h($liveform->get_field_value('zip_code_prefix')) . '" class="form-control' . ($liveform->check_field_error('zip_code_prefix') ? ' is-invalid' : '') . '" />
                                             </div>
-                                            <div class="col-12 col-md-6 col-lg-8 my-2">
+                                            <div class="col-12 md:col-6 lg:col-8 my-3">
                                                 <label for="shipping_method_id" class="form-label">' . lang('Shipping Method') . '</label>
-                                                <select name="shipping_method_id" id="shipping_method_id" class="form-select' . ($liveform->check_field_error('shipping_method_id') ? ' is-invalid' : '') . '">' . $output_shipping_method_options . '</select>
+                                                <select name="shipping_method_id" id="shipping_method_id" class="form-control' . ($liveform->check_field_error('shipping_method_id') ? ' is-invalid' : '') . '">' . $output_shipping_method_options . '</select>
                                             </div>
-                                            <div class="col-12 col-md-auto my-2">
+                                            <div class="col-12 md:col-auto my-3">
                                                 <label class="form-label">' . lang('Adjustment') . '</label>
                                                 <div class="input-group">
                                                     <input  style="width:100px;max-width:100%;" type="text" name="adjustment_days" id="adjustment_days" maxlength="3" value="' . h($liveform->get_field_value('adjustment_days')) . '" class="form-control' . ($liveform->check_field_error('adjustment_days') ? ' is-invalid' : '') . '"/>
                                                     <span class="input-group-text">' . lang('days') . '</span>
-                                                    <select style="width:100px;max-width:100%;" name="adjustment_type" id="adjustment_type" class="form-select' . ($liveform->check_field_error('adjustment_type') ? ' is-invalid' : '') . '">' . $output_adjustment_type_options . '</select>
+                                                    <select style="width:100px;max-width:100%;" name="adjustment_type" id="adjustment_type" class="form-control' . ($liveform->check_field_error('adjustment_type') ? ' is-invalid' : '') . '">' . $output_adjustment_type_options . '</select>
                                                 </div>
                                             </div>
                                         </div>
@@ -125,11 +125,11 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                             <div class="container">
                                 <div class="btn-group flex-wrap justify-content-center">
-                                    <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('ship date adjustment')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
+                                    <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('ship date adjustment')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
                                 </div>
                             </div>
                         </nav>

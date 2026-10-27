@@ -40,22 +40,22 @@ foreach (erp_invoice_recurrences(!$show_stopped) as $row) {
     $output_rows .= '
         <tr' . ($active ? '' : ' class="opacity-75"') . '>
             <td style="max-width:260px" class="text-truncate">' . h((string) $row['account_title']) . '</td>
-            <td class="text-nowrap"><a class="link-body-emphasis" href="edit_erp_invoice.php?id=' . (int) $row['source_invoice_id'] . '#erp-recurring">' . h((string) $row['source_number']) . '</a></td>
+            <td class="text-nowrap"><a class="pg-link-body-emphasis" href="edit_erp_invoice.php?id=' . (int) $row['source_invoice_id'] . '#erp-recurring">' . h((string) $row['source_number']) . '</a></td>
             <td>' . h($periods[(int) $row['every_months']] ?? '') . '</td>
             <td>' . h($modes[(string) $row['mode']] ?? '') . '</td>
-            <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $row['next_date'])) . '">' . ($active ? h(prepare_form_data_for_output((string) $row['next_date'], 'date')) : '<span class="badge text-bg-secondary">' . lang('Stopped') . '</span>')
-                . (((string) $row['end_date'] !== '0000-00-00') ? '<div class="small text-body-secondary">' . h(lang(array('string' => 'Until {var:1}.', 'vars' => prepare_form_data_for_output((string) $row['end_date'], 'date', false)))) . '</div>' : '') . '</td>
+            <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $row['next_date'])) . '">' . ($active ? h(prepare_form_data_for_output((string) $row['next_date'], 'date')) : '<span class="badge theme-secondary">' . lang('Stopped') . '</span>')
+                . (((string) $row['end_date'] !== '0000-00-00') ? '<div class="small fg-secondary">' . h(lang(array('string' => 'Until {var:1}.', 'vars' => prepare_form_data_for_output((string) $row['end_date'], 'date', false)))) . '</div>' : '') . '</td>
             <td class="text-end text-nowrap" data-sort="' . (int) $row['grand_total'] . '">' . h(erp_money_out_currency((int) $row['grand_total'], (string) $row['currency'])) . '</td>
             <td class="text-end">' . (int) $row['occurrences'] . '</td>
             <td>' . (((int) $row['last_invoice_id'] > 0)
-                ? '<a class="link-body-emphasis" href="' . (((string) $row['last_status'] === 'draft') ? 'edit_erp_invoice_draft.php' : 'edit_erp_invoice.php') . '?id=' . (int) $row['last_invoice_id'] . '">' . h(((string) $row['last_number'] !== '') ? (string) $row['last_number'] : lang('Draft')) . '</a>'
+                ? '<a class="pg-link-body-emphasis" href="' . (((string) $row['last_status'] === 'draft') ? 'edit_erp_invoice_draft.php' : 'edit_erp_invoice.php') . '?id=' . (int) $row['last_invoice_id'] . '">' . h(((string) $row['last_number'] !== '') ? (string) $row['last_number'] : lang('Draft')) . '</a>'
                 : '—')
-                . (((string) $row['last_error'] !== '') ? '<div class="small text-danger">' . h((string) $row['last_error']) . '</div>' : '') . '</td>
+                . (((string) $row['last_error'] !== '') ? '<div class="small fg-danger">' . h((string) $row['last_error']) . '</div>' : '') . '</td>
         </tr>';
 }
 
 if ($output_rows === '') {
-    $output_rows = '<tr data-pg-sort-fixed><td colspan="8" class="text-center text-body-secondary py-4">' . lang('No invoice repeats yet. Open an issued invoice typed in the ERP and use "Repeat this invoice".') . '</td></tr>';
+    $output_rows = '<tr data-pg-sort-fixed><td colspan="8" class="text-center fg-secondary py-7">' . lang('No invoice repeats yet. Open an issued invoice typed in the ERP and use "Repeat this invoice".') . '</td></tr>';
 }
 
 echo
@@ -83,7 +83,7 @@ pg_page_shell([
                 ' . pg_filter_select('all', array('' => lang('Running'), '1' => lang('All')), $show_stopped ? '1' : '', array('label' => lang('Show'), 'icon' => 'funnel', 'action' => 'erp_invoice_recurrences.php')) . '
             </nav>
 
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
@@ -101,7 +101,7 @@ pg_page_shell([
                         <tbody>' . $output_rows . '</tbody>
                     </table>
                 </div>
-                <div class="form-text px-3 pb-3">' . lang('The total is the source invoice\'s; each new one is worked out again on its day. A day in a locked period is skipped; anything else that stands in the way is retried the next day.') . '</div>
+                <div class="form-text px-5 pb-5">' . lang('The total is the source invoice\'s; each new one is worked out again on its day. A day in a locked period is skipped; anything else that stands in the way is retried the next day.') . '</div>
             </div>
         </div>
     </div>

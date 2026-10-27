@@ -90,18 +90,18 @@ if (!$_POST) {
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . h($_GET['id']) . '">
                         <div class="row">
-                            <div class="col-12 mb-5">
-                                <div class="card my-4 h-100">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="col-12 mb-12">
+                                <div class="card my-7 h-100">
+                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Options') . '
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="name" class="form-label">' . lang('Tax Zone Name') . '</label>
                                                 <input type="text" name="name" id="name" maxlength="50" value="' . h($name) . '" class="form-control" />
                                             </div>
-                                            <div class="col-12 col-md-6 col-lg-4 my-2">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="tax_rate" class="form-label">' . lang('Tax Rate') . ' (%)</label>
                                                 <input type="text" name="tax_rate" id="tax_rate" maxlength="10" value="' . h($tax_rate) . '" class="form-control" />
                                             </div>
@@ -109,42 +109,42 @@ if (!$_POST) {
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-6 mb-5">
-                                <div class="card my-4 h-100">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="col-12 md:col-6 mb-12">
+                                <div class="card my-7 h-100">
+                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Tax Zone Countries') . '
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
                                             <div class="col-12 my-1">
                                                 <label for="allowed_countries" class="form-label">' . lang('Allowed Countries') . '</label>
-                                                <select style="width:100%" data-pg-combobox class="form-select" data-placeholder="' . lang('Click to select country(s)') . '" id="allowed_countries" name="allowed_countries[]" multiple="multiple">' . $output_countries . '</select>' . pg_fields_script() . '
+                                                <select style="width:100%" data-pg-combobox class="form-control" data-placeholder="' . lang('Click to select country(s)') . '" id="allowed_countries" name="allowed_countries[]" multiple="multiple">' . $output_countries . '</select>' . pg_fields_script() . '
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-6 mb-5">
-                                <div class="card my-4 h-100">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="col-12 md:col-6 mb-12">
+                                <div class="card my-7 h-100">
+                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Tax Zone States or Provinces') . '
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
                                             <div class="col-12 my-1">
                                                 <label for="allowed_states" class="form-label">' . lang('Allowed States') . '</label>
-                                                <select style="width:100%" data-pg-combobox class="form-select" data-placeholder="' . lang('Click to select state(s)') . '" id="allowed_states" name="allowed_states[]" multiple="multiple">' . $output_states . '</select>' . pg_fields_script() . '
+                                                <select style="width:100%" data-pg-combobox class="form-control" data-placeholder="' . lang('Click to select state(s)') . '" id="allowed_states" name="allowed_states[]" multiple="multiple">' . $output_states . '</select>' . pg_fields_script() . '
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                             <div class="container">
                                 <div class="btn-group flex-wrap justify-content-center">
-                                    <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-success"><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('tax zone')))) . '"><span class="material-icons me-2">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
+                                    <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('tax zone')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
                                 </div>
                             </div>
                         </nav>

@@ -219,24 +219,24 @@ foreach ($comments as $comment) {
             //if this is custom page check referance code from forms
             $form_reference_code = $comment['reference_code'];
             if($form_reference_code != ''){
-                $output_reference_button = '<a class="m-1 btn-data-control btn btn-outline-secondary border-2 " href="' . h(OUTPUT_PATH . get_page_name($comment['page_id']) . pg_comment_view_query('?r=' . $form_reference_code, $comment['id']) . '#c-' . $comment['id']) . '" title="' . lang('Go To Comment') . '"><i class="bi bi-link"></i></a>';
+                $output_reference_button = '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " href="' . h(OUTPUT_PATH . get_page_name($comment['page_id']) . pg_comment_view_query('?r=' . $form_reference_code, $comment['id']) . '#c-' . $comment['id']) . '" title="' . lang('Go To Comment') . '"><i class="bi bi-link"></i></a>';
             }
 
         }else if($comment['item_type'] === 'product_group'){
             //if this is product group check address name from product groups
             $product_group_address_name = $comment['product_group_address_name'];
             if($product_group_address_name != ''){
-                $output_reference_button = '<a class="m-1 btn-data-control btn btn-outline-secondary border-2 " href="' . h(OUTPUT_PATH . get_page_name($comment['page_id']) . '/' . $product_group_address_name . pg_comment_view_query('', $comment['id']) . '#c-' . $comment['id']) . '" title="' . lang('Go To Comment') . '"><i class="bi bi-link"></i></a>';
+                $output_reference_button = '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " href="' . h(OUTPUT_PATH . get_page_name($comment['page_id']) . '/' . $product_group_address_name . pg_comment_view_query('', $comment['id']) . '#c-' . $comment['id']) . '" title="' . lang('Go To Comment') . '"><i class="bi bi-link"></i></a>';
             }
         
         }else if($comment['item_type'] === 'product'){
             //if this is product group check address name from product groups
             $product_address_name = $comment['product_address_name'];
             if($product_address_name != ''){
-                $output_reference_button = '<a class="m-1 btn-data-control btn btn-outline-secondary border-2 " href="' . h(OUTPUT_PATH . get_page_name($comment['page_id']) . '/' . $product_address_name . pg_comment_view_query('', $comment['id']) . '#c-' . $comment['id']) . '" title="' . lang('Go To Comment') . '"><i class="bi bi-link"></i></a>';
+                $output_reference_button = '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " href="' . h(OUTPUT_PATH . get_page_name($comment['page_id']) . '/' . $product_address_name . pg_comment_view_query('', $comment['id']) . '#c-' . $comment['id']) . '" title="' . lang('Go To Comment') . '"><i class="bi bi-link"></i></a>';
             }
         }else if($comment['item_type'] === ''){
-            $output_reference_button = '<a class="m-1 btn-data-control btn btn-outline-secondary border-2 " href="' . h(OUTPUT_PATH . get_page_name($comment['page_id']) . pg_comment_view_query('', $comment['id']) . '#c-' . $comment['id']) . '"><i class="bi bi-link" title="' . lang('Go To Comment') . '"></i></a>';
+            $output_reference_button = '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " href="' . h(OUTPUT_PATH . get_page_name($comment['page_id']) . pg_comment_view_query('', $comment['id']) . '#c-' . $comment['id']) . '"><i class="bi bi-link" title="' . lang('Go To Comment') . '"></i></a>';
         }
 
 
@@ -252,13 +252,13 @@ foreach ($comments as $comment) {
         $output_rows .= '
             <tr>
                 <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     ' . $output_reference_button . '
                 </td>
-                <td class="align-middle chart_label">' . h($comment['name']) . ((int) $comment['verified_order_id'] > 0 ? ' <span class="badge text-bg-success fw-light">' . h(lang('Verified purchase')) . '</span>' : '') . '</td>
+                <td class="align-middle chart_label">' . h($comment['name']) . ((int) $comment['verified_order_id'] > 0 ? ' <span class="badge theme-success fw-light">' . h(lang('Verified purchase')) . '</span>' : '') . '</td>
                 <td class="align-middle text-center">' . $output_published_check_mark . '</td>
                 <td class="align-middle text-center">' . $output_featured_check_mark . '</td>
-                <td class="align-middle"><span class="badge bg-primary fw-light">'.$output_date_and_time.'</span></td>
+                <td class="align-middle"><span class="badge theme-primary fw-light">'.$output_date_and_time.'</span></td>
                 <td class="align-middle text-center">' . $output_publishcancel_check_mark . '</td>
                 <td class="align-middle"><p>' . h(truncate($comment['message'], 84, $dots = "...")) . '</p></td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' =>  $comment['created_timestamp'])) . $created_username . '</td>
@@ -297,8 +297,8 @@ print
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 text-center text-md-start">
+            <div class="row mb-3  flex-wrap">
+                <div class="col-12 text-center md:text-start">
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         <div class="pg-toolbar-grow"></div>
                         ' . pg_list_sort_menu('view_comments.php', $sort_columns, $sort_levels, $sort_default) . '
@@ -307,7 +307,7 @@ print
                 </div>
             </div>
             <div class="disable_shortcut">
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <table class="chart table-hover table " style="width:100%;display:none">
                             <thead>

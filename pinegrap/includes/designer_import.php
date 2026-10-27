@@ -822,7 +822,7 @@ function pg_di_node($node, $ctx)
             'contentType' => 'image', 'src' => $src,
         ), $alt, array(
             'width' => (string)$node->getAttribute('width'), 'height' => (string)$node->getAttribute('height'),
-            'fluid' => false, 'rounded' => false, 'objectPosition' => '', 'aspectRatio' => '', 'cssClass' => $cls,
+            'fluid' => false, 'rounded-4' => false, 'objectPosition' => '', 'aspectRatio' => '', 'cssClass' => $cls,
         ), $id !== '' ? array('id' => $id) : array(), $attrs ? array('_attrs' => $attrs) : array()));
     }
     // Bootstrap Icons markup (<i class="bi bi-alarm">, the same on a <span>)

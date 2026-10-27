@@ -230,21 +230,21 @@ function pg_dashboard_widget_3($request, $user)
             <div class="pg-ec-head">
                 <div class="pg-ec-line">
                     <span class="pg-ec-val">' . $pg_money($stock_value) . '</span>
-                    <span class="pg-ec-lbl text-muted">' . lang('Stock Value') . '</span>
+                    <span class="pg-ec-lbl fg-secondary">' . lang('Stock Value') . '</span>
                 </div>
-                <div class="pg-ec-sub text-muted">' . $output_stock_sub . '</div>
+                <div class="pg-ec-sub fg-secondary">' . $output_stock_sub . '</div>
             </div>
             <div class="pg-ec-facts">
                 <div class="pg-ec-fact">
-                    <span class="text-muted">' . lang('Average order') . '</span>
+                    <span class="fg-secondary">' . lang('Average order') . '</span>
                     <b>' . $output_average_order . '</b>
                 </div>
                 <div class="pg-ec-fact">
-                    <span class="text-muted">' . lang('Last order') . '</span>
+                    <span class="fg-secondary">' . lang('Last order') . '</span>
                     <b>' . $output_last_order . '</b>
                 </div>
             </div>
-            <div class="border-top mx-2 mb-1"></div>
+            <div class="border-top mx-3 mb-1"></div>
             <div class="pg-list">' . $output_period_rows . '</div>
           </div>
           <div class="pg-split-half">

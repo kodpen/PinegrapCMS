@@ -17,7 +17,7 @@ if (!defined('PG_INIT_LOADED')) {
     exit;
 }
 ?>
-<select id="service" name="service" class="form-select">
+<select id="service" name="service" class="form-control">
 	<option value=""></option>
 	<?php // A method set up with the retired Web Tools user ID keeps its service. ?>
 	<?php if (USPS_USER_ID || pg_carrier_api_ready('usps')): ?>

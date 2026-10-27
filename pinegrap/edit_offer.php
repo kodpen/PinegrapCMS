@@ -172,7 +172,7 @@ $output_workspace_button = '';
 
 if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
     require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
-    $output_workspace_button = ws_record_button($user, 'offer', $offer_id, (string) db_value("SELECT code FROM offers WHERE id = '" . (int) $offer_id . "'"), 'btn btn-sm btn-outline-secondary');
+    $output_workspace_button = ws_record_button($user, 'offer', $offer_id, (string) db_value("SELECT code FROM offers WHERE id = '" . (int) $offer_id . "'"), 'btn btn-sm btn-outline theme-secondary');
 }
 
 echo pg_page_shell(array(
