@@ -19,5 +19,8 @@ description: Flow start boxes at a time, on an event, on a join (F4d, PR #2006, 
 - `ws_scheduled_action()` returns null for it (card, history, status, run now, API get); `ws_scheduled_list()`, `ws_scheduled_targets()` add `ws_scheduled_anchors_out()`; the API list already filtered `flow_id = 0`.
 - `ws_scheduled_report()` is silent for it; a failed start writes one Site Log line "workspace flow … did not start on its own".
 
+## What do the boxes read of the start?
+- Every step box gets the event, its payload, the newcomer and the channel joined (`ws_step_trigger_context()`, #2205), so `{{record}}`, `{{newcomer}}`, `{{channel}}` and the rest fill as in a scheduled action; a post box of a flow a join starts may write in the channel joined (`workspace-flows-steps.md`).
+
 ## Left?
-- A flow's runs do not yet read the event payload or newcomer in `{{…}}` values; a manual Run of an anchored flow is refused ("not started by hand").
+- A manual Run of an anchored flow is refused ("not started by hand").

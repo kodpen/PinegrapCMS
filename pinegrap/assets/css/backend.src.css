@@ -1457,11 +1457,14 @@ html[data-bs-theme="dark"] .accordion {
 }
 
 /* Form controls. Bootstrap hard codes #86b7fe for the focus border and
-   rgba(13,110,253,.25) for the ring on every control. */
+   rgba(13,110,253,.25) for the ring on every control. A form-adorn wrapper
+   is a label, never focused itself: it takes the look while its input has
+   focus. */
 .form-control:focus,
+.form-control.form-adorn:focus-within,
 :is(select.form-control):focus,
 :is(.check, .radio):focus,
-.tagin-wrapper.focus {
+.pg-chips:focus-within {
   border-color: var(--pg-primary);
   box-shadow: 0 0 0 var(--bs-focus-ring-width) var(--bs-focus-ring-color);
 }
@@ -1488,17 +1491,14 @@ html[data-bs-theme="dark"] .accordion {
 .switch {
   --bs-switch-checked-indicator-bg: #1a1c1e;
 }
-.form-range::-webkit-slider-thumb {
-  background-color: var(--pg-primary);
+.form-range {
+  --bs-range-thumb-bg: var(--pg-primary);
+  --bs-range-thumb-active-bg: var(--pg-primary-line);
+  --bs-range-track-fill-bg: var(--pg-primary);
 }
-.form-range::-moz-range-thumb {
-  background-color: var(--pg-primary);
-}
-.form-range::-webkit-slider-thumb:active {
-  background-color: var(--pg-primary-line);
-}
-.form-range::-moz-range-thumb:active {
-  background-color: var(--pg-primary-line);
+/* Room above a Range for its value bubble, which sits over the thumb */
+.pg-range-bubble {
+  margin-top: 1.75rem;
 }
 
 /***********/
@@ -3188,17 +3188,11 @@ body:not(.toolbar) .software-content {
   flex: 0 0 auto;
 }
 #header .pg-avatar {
-  display: block;
-  width: 28px;
-  height: 28px;
+  --bs-avatar-size: 28px;
+  display: flex;
   overflow: hidden;
-  border-radius: 50%;
 }
 #header .pg-avatar img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
   transform: scale(1.1);
 }
 /* Licence state rides on the avatar rather than on a control of its own, so it
@@ -3466,19 +3460,16 @@ body:not(.toolbar) .software-content {
   background: var(--pg-tint-hover);
   color: var(--pg-fg-body);
 }
-#header .pg-um-avatar {
-  flex: 0 0 auto;
-  width: 2.75rem;
-  height: 2.75rem;
-  overflow: hidden;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px var(--pg-border-color-translucent);
+/* A login without a name in the address book: a rounded square, so the
+   missing name shows (pg_avatar_markup()). */
+.avatar.pg-avatar-user {
+  --bs-avatar-border-radius: 25%;
 }
-#header .pg-um-avatar img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+#header .pg-um-avatar {
+  --bs-avatar-size: 2.75rem;
+  flex: 0 0 auto;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--pg-border-color-translucent);
 }
 #header .pg-um-idtext {
   display: flex;
@@ -4141,101 +4132,56 @@ table.chart thead th {
   visibility: visible;
 }
 
-/*tagin*/
+/* Chips fields (pg_fields.js): the posted input stays hidden; the Bootstrap 6
+   .chip-input box drawn after it is what people see and type in. */
 .tagin {
   display: none;
 }
 
-.tagin-wrapper {
-  display: block;
-  height: auto;
-  padding: calc(0.375rem - 2px) calc(0.75rem - 2px);
-  position: relative;
-  overflow: hidden;
+.pg-chips {
+  --bs-chip-input-padding-y: calc(0.375rem - 1px);
+  --bs-chip-input-padding-x: 0.75rem;
   cursor: text;
-  /* One unbreakable tag (a pasted URL, a blob of code) must not leak its
-     intrinsic width into the surrounding grid: the percentage max-width on
-     .tagin-tag_text clips it visually but is ignored during min-content
-     sizing, so without this a single long tag pushes the whole column onto
-     its own flex line. inline-size containment makes the wrapper's
-     intrinsic width independent of its contents; its real width still
-     comes from the column, so nothing else changes. */
+  /* One unbreakable chip (a pasted URL, a blob of code) must not leak its
+     intrinsic width into the surrounding grid and push the whole column onto
+     its own flex line. inline-size containment makes the box's intrinsic
+     width independent of its chips; its real width still comes from the
+     column. */
   contain: inline-size;
 }
 
-.tagin-wrapper.focus {
+/* The panel's focus look, as on .form-control, not Bootstrap's outline. */
+.pg-chips:focus-within {
   outline: 0;
 }
 
-.tagin.is-valid + .tagin-wrapper,
-.was-validated .tagin:valid + .tagin-wrapper {
-  border-color: var(--bs-form-valid-border-color);
+/* In an input group the box fills the room left, as .form-control does. */
+.input-group > .pg-chips {
+  flex: 1 1 auto;
+  width: 1%;
 }
 
-.tagin.is-invalid + .tagin-wrapper,
-.was-validated .tagin:invalid + .tagin-wrapper {
-  border-color: var(--bs-form-invalid-border-color);
+.pg-chips-sm {
+  --bs-chip-input-padding-y: 0.125rem;
+  --bs-chip-input-padding-x: 0.5rem;
 }
 
-.tagin-tag {
-  display: inline-flex;
-  border-radius: var(--pg-radius-sm);
-  border: var(--pg-border-width) solid var(--pg-border-color);
-  padding: 4px 2px 4px 12px;
-  min-width: 60px;
+.pg-chips > .chip {
   max-width: 100%;
-  align-items: center;
-  min-height: 24px;
-  margin: 2px;
-  font-weight: 300;
-  transition: transform 0.1s;
-  justify-content: space-between;
-}
-
-.tagin-tag_text {
-  max-width: calc(100% - 30px);
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.tagin-tag-remove {
-  margin-left: 10px;
-  min-width: 20px;
-  min-height: 20px;
-  cursor: pointer;
-  background-repeat: no-repeat;
-  background-position: right;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23a0aec0' width='18px' height='18px'%3E%3Cpath d='M0 0h24v24H0z' fill='none'/%3E%3Cpath d='M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z'/%3E%3C/svg%3E");
+.tagin.is-valid + .pg-chips,
+.was-validated .tagin:valid + .pg-chips {
+  border-color: var(--pg-success);
 }
 
-.tagin-tag-remove:hover {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23d80505' width='18px' height='18px'%3E%3Cpath d='M0 0h24v24H0z' fill='none'/%3E%3Cpath d='M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z'/%3E%3C/svg%3E");
-}
-
-.tagin-input {
-  margin-left: 2px;
-  border-color: transparent;
-  outline: 0;
-  border-width: 1px 0;
-  padding: 0 2px 0 0;
-  height: 28px;
-  color: var(--pg-fg-body);
-  background-color: inherit;
-}
-
-.tagin-input:not(.tagin-input-hidden) {
-  width: 4px;
-  min-width: 4px;
-}
-
-.tagin-input-hidden {
-  position: absolute;
-  top: 0;
-  left: -9999px;
-  overflow: hidden;
-  visibility: hidden;
-  white-space: nowrap;
+.tagin.is-invalid + .pg-chips,
+.was-validated .tagin:invalid + .pg-chips {
+  border-color: var(--pg-danger);
 }
 
 .min-height-tagin {
@@ -4246,7 +4192,7 @@ table.chart thead th {
   min-width: 150px !important;
 }
 textarea.select2-search__field:focus-visible,
-input.tagin-input:focus-visible {
+.pg-chips > .form-ghost:focus-visible {
     outline: none !important;
     box-shadow: none !important;
 }
@@ -4673,7 +4619,7 @@ a.dt-button {
 .popover,
 :is(select.form-control),
 .form-control,
-.tagin-tag,
+.pg-chips,
 .input-group-text,
 .select2-container--bootstrap-5 .select2-selection,
 .select2-container--bootstrap-5
@@ -4859,14 +4805,6 @@ table.dataTable th.dataTables_empty {
 
 .advanced_filters .header {
   height: 47px;
-}
-
-.tagin-input:not(.tagin-input-hidden),
-.tagin-wrapper.focus .tagin-input:not(.tagin-input-hidden),
-.tagin-wrapper.focus,
-.tagin-tag {
-  background: var(--pg-bg-body);
-  color: var(--pg-fg-body);
 }
 
 
@@ -7384,41 +7322,76 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
   opacity: 0.8;
 }
 
-/* ══ Dashboard clock ═══════════════════════════════════════════════════════
-   Was a centred display-3 stack that ate a fifth of the fold before the first
-   widget appeared. Left aligned with the grid and set on one baseline, the same
-   three facts cost roughly a third of the height.
+/* ══ Dashboard welcome card ════════════════════════════════════════════════
+   The greeting and the clock are one card at the top of the dashboard, as wide
+   as the widget grid under it and with the same radius and the grid's gap
+   below it. They used to be two loose pieces in a row, the brief on the left
+   and a large clock pushed to the far right, and the empty middle split the
+   row in two.
 
-   On a wide screen the brief and the clock share one row -- the sentence on
-   the left where reading starts, the clock right-aligned at the far end with
-   the next meeting under it -- so the whole bar is about as tall as the brief
-   alone. Narrower, they stack, brief first. */
+   Wide, the brief takes the room on the left and the date and time sit on the
+   right inside the card, vertically centred and set off by a hairline. Narrow,
+   the two stack, brief first, and the time and date share one baseline under
+   a hairline across. */
 .pg-clockbar {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.25rem 0 1.25rem;
+  gap: 0.75rem;
+  margin: 0.25rem 0 2rem;
+  padding: 0.85rem 1rem 0.85rem 1.1rem;
 }
-@media (min-width: 1024px) {
+/* A thin stroke of the clock's gradient down the left edge, inset from the
+   corners so it does not have to follow the radius. Positioned rather than
+   clipped: overflow on the card would also clip the mark's ring. */
+.pg-clockbar::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.75rem;
+  bottom: 0.75rem;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--clock-gradient);
+  pointer-events: none;
+}
+/* The glass card theme lays the widgets over the panel backdrop; the welcome
+   card follows them so it does not read as the one opaque sheet on the page. */
+[data-widget-theme="glass"] .pg-clockbar {
+  background: rgba(255, 255, 255, 0.58);
+}
+html[data-bs-theme="dark"] [data-widget-theme="glass"] .pg-clockbar {
+  background: rgba(255, 255, 255, 0.045);
+}
+.pg-clockbar > .pg-clockbar-now {
+  padding-top: 0.75rem;
+  border-top: 1px solid color-mix(in srgb, var(--pg-border-color) 70%, transparent);
+}
+@media (min-width: 768px) {
   .pg-clockbar {
     flex-direction: row;
     align-items: center;
-    justify-content: space-between;
     gap: 1.5rem;
+    padding: 1rem 1.5rem 1rem 1.25rem;
   }
   .pg-clockbar > .pg-brief {
-    align-self: center;
+    flex: 1 1 auto;
   }
   /* Parent-qualified: the base rules for these two come further down. */
   .pg-clockbar > .pg-clockbar-now {
     flex: 0 0 auto;
+    align-self: stretch;
+    justify-content: center;
     align-items: flex-end;
     max-width: 40%;
+    padding: 0 0 0 1.5rem;
+    border-top: 0;
+    border-left: 1px solid color-mix(in srgb, var(--pg-border-color) 70%, transparent);
     text-align: right;
   }
   .pg-clockbar .pg-clockbar-when {
     flex-direction: column;
     align-items: flex-end;
+    gap: 0.15rem;
   }
 }
 /* The briefing.
@@ -7430,44 +7403,21 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
 
    The sentence is capped at 62ch. Prose set across two thousand pixels is not
    read, it is scanned, and the whole point of writing this as a sentence is
-   that it gets read. The card around it is allowed a little more, for its
-   padding and the mark.
+   that it gets read.
 
-   A quiet card rather than bare text: a translucent surface over the panel
-   backdrop, so the line reads as one object sitting on the page instead of a
-   caption floating above the widgets. Translucent without a blur, for the
-   reason the glass cards give: the wash behind it is too soft for a blur to
-   show, and the filter was redone on every frame of a scroll. */
+   The card around it is the welcome card (.pg-clockbar); the brief itself
+   has no surface of its own. */
 .pg-brief {
   position: relative;
-  align-self: flex-start;
   display: flex;
   align-items: flex-start;
   gap: 0.6rem;
-  max-width: min(100%, 68ch);
-  padding: 0.6rem 0.9rem 0.6rem 0.7rem;
-  border: 1px solid color-mix(in srgb, var(--pg-border-color) 70%, transparent);
-  border-radius: 0.85rem;
-  background: color-mix(in srgb, var(--pg-bg-body) 72%, transparent);
+  min-width: 0;
 }
-html[data-bs-theme="dark"] .pg-brief {
-  background: color-mix(in srgb, var(--pg-bg-body) 55%, transparent);
-}
-/* A thin stroke of the clock's gradient down the left edge, inset from the
-   corners so it does not have to follow the radius. Positioned rather than
-   clipped: overflow on the card would also clip the mark's ring. */
-.pg-brief::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0.5rem;
-  bottom: 0.5rem;
-  width: 3px;
-  border-radius: 3px;
-  background: var(--clock-gradient);
-  pointer-events: none;
-}
+/* Grows, so "Say something else" sits at the card's reading end rather than
+   wherever the sentence happens to stop. */
 .pg-brief-body {
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
@@ -7708,9 +7658,6 @@ html[data-bs-theme="dark"] .pg-brief {
   font-weight: 600;
 }
 @media (max-width: 575.98px) {
-  .pg-brief {
-    padding: 0.5rem 0.65rem;
-  }
   .pg-brief-ws-text {
     max-width: 14ch;
   }
@@ -7729,7 +7676,7 @@ html[data-bs-theme="dark"] .pg-brief {
   gap: 0 0.7rem;
 }
 .pg-clockbar-time {
-  font-size: 2.25rem;
+  font-size: 1.75rem;
   line-height: 1.05;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -7840,7 +7787,7 @@ html[data-bs-theme="dark"] .pg-next {
 }
 @media (max-width: 575.98px) {
   .pg-clockbar-time {
-    font-size: 1.875rem;
+    font-size: 1.5rem;
   }
 }
 
@@ -7946,10 +7893,17 @@ textarea:focus-visible,
 .btn:focus-visible,
 .nav-link:focus-visible,
 .menu-item:focus-visible,
-.breadcrumb-item a:focus-visible {
+.breadcrumb-item a:focus-visible,
+.form-adorn:has(> .form-ghost:focus-visible) {
   outline: 2px solid var(--pg-primary-ink);
   outline-offset: 2px;
   box-shadow: 0 0 0 0.2rem rgba(var(--pg-primary-rgb), 0.35);
+}
+/* A form-adorn field wears the ring on its wrapper, the label drawn as the
+   input; the borderless input inside it shows none of its own. */
+.form-adorn > .form-ghost:focus-visible {
+  outline: 0;
+  box-shadow: none;
 }
 
 /* Some legacy admin links carry inline `outline:0` style; force visible focus. */
@@ -8112,11 +8066,33 @@ button.no-popover:focus-visible {
 [id^="pg_pb_sec_"] { scroll-margin-top: 5rem; }
 
 
-/* ── Admin screen step rail ───────────────────────────────────────────────
-   A numbered rail down the left edge of a screen whose sections are read in
-   order, top to bottom (edit_offer.php). Bootstrap has no stepper, so the
-   rail, its line and its node live here; everything inside a step is an
-   ordinary card and takes its widths from the grid and the utilities. */
+/* ── Admin screen stepper with cards ──────────────────────────────────────
+   Bootstrap's .stepper down the left edge of a screen whose sections are read
+   in order, top to bottom (edit_offer.php), each step a card. The stepper
+   sizes its rows evenly and its text column to the content, so a tall card
+   would stretch every row and a wide one overflow; here rows take their own
+   height, the card column the rest of the width, and the number sits level
+   with the card header. Every item is .active (only those are coloured);
+   its theme class carries the state, and .theme-reset on the card keeps that
+   theme out of the card's own buttons and switches. */
+
+.pg-stepper-cards {
+  --bs-stepper-size: 1.75rem;
+  --bs-stepper-gap: .75rem;
+  --bs-stepper-text-gap: 1rem;
+  --bs-stepper-align-items: start;
+  grid-auto-rows: auto;
+}
+.pg-stepper-cards > .stepper-item { grid-template-columns: var(--bs-stepper-size) minmax(0, 1fr); }
+.pg-stepper-cards > .stepper-item::before { margin-top: .6rem; }
+.pg-stepper-cards > .stepper-item::after {
+  inset-block-start: calc(.6rem + var(--bs-stepper-size) * .5);
+  height: calc(100% + var(--bs-stepper-gap));
+}
+
+/* ── Step rail of the workspace automation flow ───────────────────────────
+   The form's steps in a Workspace automation (workspace.js, .ws-sa-flow): a
+   numbered node with a line joining the nodes, a box beside it. */
 
 .pg-step { display: grid; grid-template-columns: 2.75rem minmax(0, 1fr); }
 .pg-step + .pg-step { margin-top: .75rem; }
@@ -8148,8 +8124,6 @@ button.no-popover:focus-visible {
   font-size: .8rem;
   font-weight: 700;
 }
-.pg-step-done .pg-step-node { border-color: var(--pg-success); color: var(--pg-success); }
-.pg-step-todo .pg-step-node { border-color: var(--pg-danger); color: var(--pg-danger); }
 
 @media (max-width: 575.98px) {
   .pg-step { grid-template-columns: 1.9rem minmax(0, 1fr); }
@@ -9240,7 +9214,7 @@ body.pg-side-panel-open .pg-chat-launcher {
    in a stylesheet: the screen still works, it is just plainer. */
 @supports selector(:has(*)) {
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group),
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range),
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) {
     /* The rule and the text start at the same place, which is the card's own
        content edge. A .row carries a negative horizontal margin and gives each
@@ -9295,7 +9269,7 @@ body.pg-side-panel-open .pg-chat-launcher {
      row on screen is hardly ever the last child. A card with one setting in it
      -- Sign in with Google, when it is off -- then ended with a rule under the
      only thing in it and a gap under that. */
-  .pg-set-card .row > * + [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group),
+  .pg-set-card .row > * + [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range),
   .pg-set-card .row > * + [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) {
     padding-top: .85rem;
     border-top: var(--pg-border-width) solid var(--pg-border-color-translucent);
@@ -9317,7 +9291,7 @@ body.pg-side-panel-open .pg-chat-launcher {
      the amount changed with the control, which is what made the card look
      crooked rather than merely offset. Sharing one row makes that row as tall
      as whichever of the two is taller and centres both in it, at any height. */
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group),
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range),
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(7rem, 19rem);
@@ -9333,27 +9307,28 @@ body.pg-side-panel-open .pg-chat-launcher {
   /* Anything the two columns were not expecting takes a line of its own under
      them rather than being wedged into a cell it does not belong in. Stated
      before the placements below so that the placements win. */
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > *,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > *,
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > * {
     grid-column: 1 / -1;
   }
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > .form-label,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > .form-label,
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > :is(.form-field > label) {
     grid-area: pgname;
     margin-bottom: 0;
     font-weight: 500;
   }
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > .form-text,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > .form-text,
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > .form-text {
     grid-area: pgnote;
     margin-top: .1rem;
   }
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > input.form-control,
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > :is(select.form-control),
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > .input-group {
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > input.form-control,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > :is(select.form-control),
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > .input-group,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > .form-range {
     grid-area: pgctrl;
     justify-self: end;
     width: 100%;
@@ -9371,7 +9346,7 @@ body.pg-side-panel-open .pg-chat-launcher {
      name, and the rule between settings is what keeps them apart. */
   @container (max-width: 34rem) {
 
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group),
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range),
     .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field {
       grid-template-columns: minmax(0, 1fr);
       grid-template-areas:
@@ -9382,9 +9357,10 @@ body.pg-side-panel-open .pg-chat-launcher {
       row-gap: .4rem;
     }
 
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > input.form-control,
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > :is(select.form-control),
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > .input-group,
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > input.form-control,
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > :is(select.form-control),
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > .input-group,
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > .form-range,
     .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > :is(.check, .radio, .switch) {
       justify-self: start;
     }
@@ -13075,8 +13051,9 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   letter-spacing: .04em;
   color: var(--pg-fg-2);
 }
-/* The form as a flow: its steps down the step rail (Admin screen step rail
-   above), each a box; the outline above them says in words what it will do. */
+/* The form as a flow: its steps down the step rail (Step rail of the workspace
+   automation flow above), each a box; the outline above them says in words
+   what it will do. */
 .ws-sa-flow {
   margin-top: .75rem;
 }
@@ -19844,6 +19821,21 @@ html[data-bs-theme="dark"] .wsf-node-sa-follow { --wsf-kind: #c3a8ec; }
   --bs-info-border: var(--pg-info-line);
   --bs-info-contrast: var(--pg-on-accent);
   --bs-info-focus-ring: color-mix(in srgb, var(--pg-info) 50%, transparent);
+}
+/* Unlayered: .hover-lift sits in Bootstrap 6's helpers layer, which beats
+   @layer custom, so a panel rule cannot set its tokens. They read the
+   panel's --pg-lift-* instead, set by the element's own rule: the lift
+   (1 px without one), the shadow (none without one), the duration, and
+   the element's own fades, which this transition would otherwise drop. */
+.hover-lift {
+  --bs-hover-lift-transform: translateY(var(--pg-lift-y, -1px));
+  --bs-hover-lift-box-shadow: var(--pg-lift-shadow, none);
+  --bs-hover-lift-transition-duration: var(--pg-lift-duration, 0.15s);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hover-lift {
+    transition: transform var(--bs-hover-lift-transition-duration) var(--bs-hover-lift-transition-timing), box-shadow var(--bs-hover-lift-transition-duration) var(--bs-hover-lift-transition-timing), var(--pg-lift-also, opacity 0s);
+  }
 }
 /* v6 keeps a scrollbar's gutter on the page even when nothing scrolls. */
 :root {

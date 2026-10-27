@@ -3048,6 +3048,46 @@ function validate_password_strength($password)
     // if we have gotten here, then the password is strong so return true
     return true;
 }
+// The Bootstrap 6 Strength meter for the password field with the id
+// $input_id, scored by assets/js/pg_password_strength.js (load it with
+// pg_password_strength_script()). $strict is "Require Strong Password"
+// (STRONG_PASSWORD): on, the meter reads strong only for a password
+// validate_password_strength() accepts; off, Bootstrap's default scoring only
+// advises. Panel chrome only: sites run Bootstrap 5.3.8, which has no
+// Strength. No data-bs-strength in the markup: Bootstrap's data API would
+// start its own scoring on the element; the script sets it as levels change.
+function pg_password_strength_meter($input_id, $strict)
+{
+    $messages = array(
+        'weak' => lang('Weak'),
+        'fair' => lang('Fair'),
+        'good' => lang('Good'),
+        'strong' => lang('Strong'),
+    );
+
+    return '<div class="strength" data-pg-strength'
+        . ' data-pg-strength-input="' . h('#' . $input_id) . '"'
+        . ' data-pg-strength-strict="' . ($strict ? '1' : '0') . '"'
+        . ' data-pg-strength-messages="' . h(json_encode($messages)) . '">'
+        . str_repeat('<div class="strength-segment"></div>', 4)
+        . '</div>'
+        . '<span class="strength-text" role="status" aria-live="polite"></span>';
+}
+
+// The script behind pg_password_strength_meter(), once per page.
+function pg_password_strength_script()
+{
+    static $printed = false;
+
+    if ($printed) {
+        return '';
+    }
+
+    $printed = true;
+
+    return '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_password_strength.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_password_strength.js') . '" defer></script>';
+}
+
 function get_strong_password_requirements()
 {
     return '

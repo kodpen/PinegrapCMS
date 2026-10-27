@@ -6,7 +6,7 @@
  * interface (pgChips, pgCombobox, pgDatePicker, pgDateTimeField), run under
  * Node with a small fake document and jQuery stand-in: our own date and time
  * parse and format, the posted field as the store, the native change event,
- * the hooks drawn once by the loaded engine. Also the liveform side
+ * the hooks drawn once by the loaded engine, chips on Bootstrap 6 Chips. Also the liveform side
  * that prints the hooks.
  *
  * @author      Erdal Güral (Kodpen)
@@ -82,8 +82,29 @@ function FakeElement(doc, tag, attrs) {
     this.value = this.attributes.value || '';
     this.options = [];
     this.multiple = 'multiple' in this.attributes;
+    this.className = this.attributes['class'] || '';
+    this.children = [];
+    this.parentNode = null;
+    this.textContent = '';
     doc.all.push(this);
 }
+FakeElement.prototype.appendChild = function (c) { c.parentNode = this; this.children.push(c); return c; };
+FakeElement.prototype.insertBefore = function (c, ref) {
+    var i = ref ? this.children.indexOf(ref) : -1;
+    c.parentNode = this;
+    if (i < 0) { this.children.push(c); } else { this.children.splice(i, 0, c); }
+    return c;
+};
+FakeElement.prototype.removeChild = function (c) { this.children = this.children.filter(function (x) { return x !== c; }); c.parentNode = null; return c; };
+Object.defineProperty(FakeElement.prototype, 'nextSibling', { get: function () {
+    var p = this.parentNode; return p ? (p.children[p.children.indexOf(this) + 1] || null) : null;
+} });
+// Descendants carrying a class: '.chip-dismiss'.
+FakeElement.prototype.querySelectorAll = function (sel) {
+    var cls = sel.replace(/^\./, ''), out = [];
+    (function walk(n) { (n.children || []).forEach(function (c) { if ((' ' + (c.className || '') + ' ').indexOf(' ' + cls + ' ') >= 0) { out.push(c); } walk(c); }); })(this);
+    return out;
+};
 FakeElement.prototype.hasAttribute = function (k) { return Object.prototype.hasOwnProperty.call(this.attributes, k); };
 FakeElement.prototype.getAttribute = function (k) { return this.hasAttribute(k) ? this.attributes[k] : null; };
 FakeElement.prototype.setAttribute = function (k, v) { this.attributes[k] = String(v); };
@@ -100,7 +121,12 @@ function makeDocument() {
     var doc = { all: [], readyState: 'complete' };
     doc.create = function (tag, attrs) { return new FakeElement(doc, tag, attrs); };
     doc.querySelectorAll = function (sel) { return doc.all.filter(function (el) { return el.matches(sel); }); };
-    doc.querySelector = function (sel) { return doc.all.filter(function (el) { return '#' + el.attributes.id === sel; })[0] || null; };
+    doc.querySelector = function (sel) {
+        if (sel === 'script[data-pg-remove-label]') { return doc.all.filter(function (el) { return el.tagName === 'SCRIPT' && el.hasAttribute('data-pg-remove-label'); })[0] || null; }
+        return doc.all.filter(function (el) { return '#' + el.attributes.id === sel; })[0] || null;
+    };
+    doc.createElement = function (tag) { return new FakeElement(doc, tag, {}); };
+    doc.createTextNode = function (t) { return { nodeType: 3, textContent: t }; };
     doc.addEventListener = function () {};
     return doc;
 }
@@ -125,6 +151,44 @@ function makeJQuery(calls) {
     return $;
 }
 
+// pgUI stand-in for Bootstrap 6: chips.get() makes an instance over the box
+// that reads its chips like Bootstrap does and adds a dismiss button to each;
+// add() and remove() fire the box's change listeners. Version 0 until
+// release() when opts.late.
+function makePgUI(calls, late) {
+    var version = late ? 0 : 6, waiting = [];
+    function chipsOf(box) { return box.children.filter(function (c) { return c.className === 'chip'; }); }
+    function dismiss(chip) { var b = new FakeElement(chip.parentNode.ownerDocument, 'button', {}); b.className = 'chip-dismiss'; b.setAttribute('aria-label', 'Remove'); chip.appendChild(b); }
+    var ui = {
+        version: function () { return version; },
+        ready: function (fn) { if (version) { fn(); } else { waiting.push(fn); } },
+        release: function () { version = 6; waiting.splice(0).forEach(function (fn) { fn(); }); },
+        chips: {
+            get: function (box, opts) {
+                calls.push(['chips', box.className, opts]);
+                chipsOf(box).forEach(dismiss);
+                var inst = {
+                    getValues: function () { return chipsOf(box).map(function (c) { return c.getAttribute('data-bs-chip-value'); }); },
+                    add: function (v) {
+                        var c = new FakeElement(box.ownerDocument, 'span', {}); c.className = 'chip'; c.setAttribute('data-bs-chip-value', v);
+                        box.insertBefore(c, box.children[box.children.length - 1]); dismiss(c);
+                        (box.listeners['change.bs.chips'] || []).forEach(function (f) { f({}); });
+                    },
+                    remove: function (v) {
+                        chipsOf(box).filter(function (c) { return c.getAttribute('data-bs-chip-value') === v; }).forEach(function (c) { box.removeChild(c); });
+                        (box.listeners['change.bs.chips'] || []).forEach(function (f) { f({}); });
+                    }
+                };
+                box.instance = inst;
+                return inst;
+            },
+            on: function (box, name, fn) { box.addEventListener(name + '.bs.chips', fn); return function () { box.removeEventListener(name + '.bs.chips', fn); }; },
+            dispose: function (box) { calls.push(['chips-dispose', box.className]); }
+        }
+    };
+    return ui;
+}
+
 function load(opts) {
     var doc = makeDocument();
     var win = { document: doc, Event: function (t, o) { this.type = t; this.bubbles = !!(o && o.bubbles); } };
@@ -132,8 +196,10 @@ function load(opts) {
     if (opts.jquery) { win.jQuery = makeJQuery(calls); }
     if (opts.format) { win.date_picker_format = opts.format; win.datetimepicker_options = { dateFormat: opts.format }; }
     if (opts.time) { win.timepicker_options = { timeFormat: 'h:mm TT' }; }
-    win.tagin = function (el, o) { calls.push(['tagin', el.attributes.id, o]); };
-    (opts.fields || []).forEach(function (f) { doc.create(f[0], f[1]); });
+    if (!opts.noBootstrap) { win.pgUI = makePgUI(calls, opts.late); }
+    var form = doc.create('form', {});
+    (opts.fields || []).forEach(function (f) { form.appendChild(doc.create(f[0], f[1])); });
+    if (opts.label) { doc.create('script', { 'data-pg-remove-label': opts.label }); }
     new Function('window', 'document', PG_FIELDS_SOURCE)(win, doc);
     return { win: win, doc: doc, calls: calls };
 }
@@ -155,8 +221,8 @@ function main() {
 
     // Hooks drawn once by the v5 engine, with the screen's options.
     var fields = [
-        ['input', { id: 'tags', 'data-pg-chips': '', value: 'a,b,,c' }],
-        ['input', { id: 'classes', 'data-pg-chips': '', 'data-pg-separator': ' ', value: 'one two' }],
+        ['input', { id: 'tags', 'data-pg-chips': '', value: 'a,b,,c', 'class': 'form-control tagin min-height-tagin border-subtle-danger', 'data-placeholder': 'Add tags' }],
+        ['input', { id: 'classes', 'data-pg-chips': '', 'data-pg-separator': ' ', value: 'one two', 'class': 'form-control form-control-sm tagin' }],
         ['select', { id: 'zones', 'data-pg-combobox': '', 'data-allow-clear': 'true', multiple: '' }],
         ['input', { id: 'day', 'data-pg-date': '', value: '26/10/2026' }],
         ['input', { id: 'start', 'data-pg-datetime': '', value: '26/10/2026 5:00 PM' }],
@@ -165,11 +231,11 @@ function main() {
     ];
     var a = load({ jquery: true, format: 'd/m/yy', time: true, fields: fields });
     a.win.pgFields.init();
-    out.engine = a.win.pgFields.engine();
+    out.engine = [a.win.pgFields.engine('chips'), a.win.pgFields.engine('date')];
     out.init_calls = a.calls.map(function (c) { return c[0] + ':' + c[1]; });
     out.select2_options = a.calls.filter(function (c) { return c[0] === 'select2'; })[0][2];
     out.time_options = a.calls.filter(function (c) { return c[0] === 'timepicker'; })[0][2];
-    out.chips_options = a.calls.filter(function (c) { return c[0] === 'tagin'; }).map(function (c) { return c[2]; });
+    out.chips_options = a.calls.filter(function (c) { return c[0] === 'chips'; }).map(function (c) { return c[2]; });
 
     var get = function (id) { return a.doc.querySelector('#' + id); };
     out.get = {
@@ -191,11 +257,26 @@ function main() {
     out.date_set = { value: get('day').value, heard: heard };
     a.win.pgDateTimeField.set('#start', '2026-02-01 00:30');
     a.win.pgDateTimeField.set('#cutoff', '13:45');
-    var tags = get('tags'), removed = [];
-    tags.nextElementSibling = { classList: { contains: function (c) { return c === 'tagin-wrapper'; } }, parentNode: { removeChild: function (n) { removed.push(n === tags.nextElementSibling); } } };
+    var tags = get('tags'), box = tags.nextSibling;
+    var shape = function (b) { return b.children.map(function (c) { return c.className + (c.className === 'chip' ? ':' + c.getAttribute('data-bs-chip-value') + ':' + c.querySelectorAll('.chip-dismiss').map(function (d) { return d.getAttribute('aria-label'); }).join('') : ':' + (c.getAttribute('placeholder') || '')); }); };
+    out.chips_markup = { box: box.className, children: shape(box), classes: get('classes').nextSibling.className };
+
+    // Typing a chip and removing one write the joined list into the posted
+    // input and fire its change; the new chip's button gets the label.
+    var chipsHeard = [];
+    a.win.pgFields.onChange(tags, function (e) { chipsHeard.push(tags.value + ':' + e.bubbles); });
+    box.instance.add('d');
+    box.instance.remove('a');
+    out.chips_typed = { heard: chipsHeard, children: shape(box) };
+
     a.calls.length = 0;
     a.win.pgChips.set('#tags', ['x', 'y']);
-    out.chips_redraw = { removed: removed, calls: a.calls.map(function (c) { return c[0] + ':' + c[1]; }) };
+    out.chips_redraw = {
+        calls: a.calls.map(function (c) { return c[0] + ':' + c[1]; }),
+        old_box_gone: box.parentNode === null,
+        children: shape(tags.nextSibling),
+        heard: chipsHeard.length
+    };
     a.win.pgChips.set('#classes', ['x', 'y']);
     out.texts = [get('start').value, get('cutoff').value, get('tags').value, get('classes').value];
 
@@ -209,7 +290,7 @@ function main() {
     // and the drawn ones are left alone.
     var firstApi = a.win.pgFields;
     a.calls.length = 0;
-    a.doc.create('input', { id: 'late', 'data-pg-chips': '' });
+    a.doc.all.filter(function (n) { return n.tagName === 'FORM'; })[0].appendChild(a.doc.create('input', { id: 'late', 'data-pg-chips': '' }));
     new Function('window', 'document', PG_FIELDS_SOURCE)(a.win, a.doc);
     out.reload = { same: a.win.pgFields === firstApi, calls: a.calls.map(function (c) { return c[0] + ':' + c[1]; }) };
 
@@ -248,8 +329,21 @@ function main() {
     };
 
     // Without the library the field stays a plain one; no error.
-    var b = load({ fields: [['select', { id: 's', 'data-pg-combobox': '' }]] });
-    out.no_library = { kind: b.doc.querySelector('#s').pgFieldKind || null, calls: b.calls.length };
+    var b = load({ noBootstrap: true, fields: [['select', { id: 's', 'data-pg-combobox': '' }], ['input', { id: 'c', 'data-pg-chips': '' }]] });
+    out.no_library = { kind: [b.doc.querySelector('#s').pgFieldKind || null, b.doc.querySelector('#c').pgFieldKind || null], calls: b.calls.length };
+
+    // Bootstrap's module has not run yet: the chips are drawn once it has,
+    // with the translated remove label; destroy() takes the box away.
+    var l = load({ late: true, label: 'Kaldır', fields: [['input', { id: 'k', 'data-pg-chips': '', value: 'a' }]] });
+    l.win.pgFields.init();
+    l.win.pgFields.init();
+    var before = l.calls.length;
+    l.win.pgUI.release();
+    var k = l.doc.querySelector('#k');
+    out.late = { before: before, after: l.calls.map(function (c) { return c[0]; }), kind: k.pgFieldKind, label: k.nextSibling.querySelectorAll('.chip-dismiss')[0].getAttribute('aria-label') };
+    var parent = k.parentNode;
+    l.win.pgFields.destroy(k);
+    out.late.destroyed = { children: parent.children.length, calls: l.calls.map(function (c) { return c[0]; }), value: k.value };
 
     console.log(JSON.stringify(out));
 }
@@ -304,25 +398,25 @@ function test_pg_fields_time_parse_and_format()
 	pg_assert_same(array('26/10/2026 5:00 PM', '26/10/2026 12:05 AM', ''), $r['format_datetime']);
 }
 
-function test_pg_fields_hooks_drawn_by_v5_engine()
+function test_pg_fields_hooks_drawn_by_their_engine()
 {
 	$r = pg_fields_test_result();
 	if (!$r) {
 		return;
 	}
 
-	pg_assert_same('v5', $r['engine']);
+	pg_assert_same(array('v6', 'v5'), $r['engine'], 'chips on Bootstrap 6, the other kinds still on v5');
 	pg_assert_same(
-		array('tagin:tags', 'tagin:classes', 'select2:zones', 'datepicker:day', 'datetimepicker:start', 'timepicker:cutoff'),
+		array('chips:chip-input pg-chips min-height-tagin border-subtle-danger', 'chips:chip-input pg-chips pg-chips-sm', 'select2:zones', 'datepicker:day', 'datetimepicker:start', 'timepicker:cutoff'),
 		$r['init_calls'],
 		'each hook once, the plain field untouched, a second init() draws nothing'
 	);
 	pg_assert_same(array('theme' => 'bootstrap-5', 'allowClear' => true), $r['select2_options'], 'select2 as backend.src.js drew it');
 	pg_assert_same(array('timeFormat' => 'h:mm TT'), $r['time_options'], 'time fields read timepicker_options');
-	pg_assert_same(array(array('separator' => ','), array('separator' => ' ')), $r['chips_options'], 'tagin gets the data-pg-separator, a comma without one');
+	pg_assert_same(array(array('separator' => ','), array('separator' => ' ')), $r['chips_options'], 'Chips gets the data-pg-separator, a comma without one');
 	pg_assert_same(array('chips' => array('a', 'b', 'c'), 'classes' => array('one', 'two'), 'date' => '2026-10-26', 'datetime' => '2026-10-26 17:00', 'time' => '17:00'), $r['get']);
-	pg_assert_same(array('kind' => null, 'calls' => 0), $r['no_library'], 'no library: a plain field');
-	pg_assert_same(array('same' => true, 'calls' => array('tagin:late')), $r['reload'], 'a second load draws only the new field');
+	pg_assert_same(array('kind' => array(null, null), 'calls' => 0), $r['no_library'], 'no library: a plain field');
+	pg_assert_same(array('same' => true, 'calls' => array('chips:chip-input pg-chips')), $r['reload'], 'a second load draws only the new field');
 }
 
 function test_pg_fields_switch_kind_and_destroy()
@@ -353,7 +447,16 @@ function test_pg_fields_set_writes_the_posted_field()
 		$r['date_set'],
 		'one bubbling change per set(), none to a listener after off()'
 	);
-	pg_assert_same(array('removed' => array(true), 'calls' => array('tagin:tags')), $r['chips_redraw'], 'tagin does not hear change: the old chips go and tagin draws the new value');
+	pg_assert_same(
+		array(
+			'calls' => array('chips-dispose:chip-input pg-chips min-height-tagin border-subtle-danger', 'chips:chip-input pg-chips min-height-tagin border-subtle-danger'),
+			'old_box_gone' => true,
+			'children' => array('chip:x:Remove', 'chip:y:Remove', 'form-ghost:Add tags'),
+			'heard' => 3,
+		),
+		$r['chips_redraw'],
+		'Chips reads its markup once: the old box goes, the new value is drawn without a second change'
+	);
 	pg_assert_same(array('1/2/2026 12:30 AM', '1:45 PM', 'x,y', 'x y'), $r['texts'], 'site text in the posted field');
 	pg_assert_same(
 		array('get' => array('1', '3'), 'redraw' => array(array('trigger', 'zones', 'change.select2'))),
@@ -404,5 +507,33 @@ function test_pg_fields_plain_date_and_remote_combobox()
 		),
 		$r['remote'],
 		'data-pg-source searched with q, results read from the answer, free text kept'
+	);
+}
+
+function test_pg_fields_chips_on_bootstrap_6()
+{
+	$r = pg_fields_test_result();
+	if (!$r) {
+		return;
+	}
+
+	pg_assert_same(
+		array(
+			'box' => 'chip-input pg-chips min-height-tagin border-subtle-danger',
+			'children' => array('chip:a:Remove', 'chip:b:Remove', 'chip:c:Remove', 'form-ghost:Add tags'),
+			'classes' => 'chip-input pg-chips pg-chips-sm',
+		),
+		$r['chips_markup'],
+		'a chip per stored value in the markup, the input\'s own classes but the control ones, the placeholder on the ghost input'
+	);
+	pg_assert_same(
+		array('heard' => array('a,b,c,d:true', 'b,c,d:true', 'x,y:true'), 'children' => array('chip:b:Remove', 'chip:c:Remove', 'chip:d:Remove', 'form-ghost:Add tags')),
+		$r['chips_typed'],
+		'an added or removed chip writes the posted input and fires one bubbling change; drawing fires none'
+	);
+	pg_assert_same(
+		array('before' => 0, 'after' => array('chips'), 'kind' => 'chips', 'label' => 'Kaldır', 'destroyed' => array('children' => 1, 'calls' => array('chips', 'chips-dispose'), 'value' => 'a')),
+		$r['late'],
+		'drawn once after Bootstrap\'s module ran, the remove label from pg_fields_script(), destroy() leaves the input with its value'
 	);
 }

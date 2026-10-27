@@ -161,7 +161,7 @@ if (!$_POST) {
                                         <div class="col-12 mt-5 mb-3">
                                             <label for="class" class="form-label">' . lang('Classes') . '</label>
                                             <div class="input-group input-group-sm d-flex flex-wrap border rounded-4 border-2">
-                                                <div class="input-group-text bg-reset border-0">&lt;ul class="<span class="tagin-tag" style="padding-right: 1rem;"><span class="tagin-tag_text" style="max-width:unset;">software_menu</span></span></div>
+                                                <div class="input-group-text bg-reset border-0">&lt;ul class="<span class="chip">software_menu</span></div>
                                                 ' . $liveform->output_field(array(
                                                     'type' => 'text',
                                                     'name' => 'class',

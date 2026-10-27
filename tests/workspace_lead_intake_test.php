@@ -136,5 +136,5 @@ function test_workspace_lead_runs_through_the_customer_seams()
 	pg_assert_true(strpos($run, "ws_customer_channels('contact'") < strpos($run, 'WS_SCHEDULED_LEAD_HOURLY'), 'a channel reused is not held by the cap');
 	pg_assert_same(20, WS_SCHEDULED_LEAD_HOURLY);
 
-	pg_assert_contains("'event_payload'", ws_lead_test_source('ws_step_run'));
+	pg_assert_contains('ws_step_trigger_context($context)', ws_lead_test_source('ws_step_run'));
 }

@@ -631,7 +631,7 @@
     }
 
     function card(product) {
-        var button = element('button', 'mpp-pick');
+        var button = element('button', 'mpp-pick hover-lift');
 
         button.type = 'button';
 

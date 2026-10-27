@@ -580,7 +580,7 @@ function pg_initials_avatar_url($initials, $kind = 'contact', $seed = '')
         $shape = "<rect x='1' y='1' width='62' height='62' rx='16' fill='#e9ecef' stroke='#adb5bd' stroke-width='2'/>";
         $ink = '#495057';
     } else {
-        $tone = $tones[abs(crc32((string) (($seed !== '') ? $seed : $initials))) % count($tones)];
+        $tone = $tones[pg_avatar_tone($initials, $seed)];
         $shape = "<circle cx='32' cy='32' r='32' fill='" . $tone . "'/>";
         $ink = '#ffffff';
     }
@@ -590,6 +590,112 @@ function pg_initials_avatar_url($initials, $kind = 'contact', $seed = '')
         . "<text x='32' y='32' dy='.35em' text-anchor='middle' font-family='system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif' font-size='" . $size . "' font-weight='600' fill='" . $ink . "'>" . $letters . "</text></svg>";
 
     return $cache[$key] = 'data:image/svg+xml,' . rawurlencode($svg);
+}
+
+/**
+ * The colour a person's letters are drawn in, as a place 0-7 in the list of
+ * eight tones; the seed keeps a person's colour whatever their name becomes.
+ * The picture of letters (pg_initials_avatar_url()) and the panel's Avatar
+ * (pg_avatar_markup()) take the same place, so a person has one colour in
+ * the panel, in an e-mail and on a print.
+ *
+ * @param string     $initials
+ * @param string|int $seed
+ * @return int 0-7
+ */
+function pg_avatar_tone($initials, $seed = '')
+{
+    $seed = (string) $seed;
+
+    return abs(crc32(($seed !== '') ? $seed : (string) $initials)) % 8;
+}
+
+/**
+ * A person's letters and tone, the two fields every person brief carries
+ * beside its picture address, so the panel can draw them as an Avatar.
+ *
+ * @param string     $initials
+ * @param string|int $seed
+ * @return array initials, tone
+ */
+function pg_avatar_letters($initials, $seed = '')
+{
+    $initials = (string) $initials;
+
+    return array('initials' => ($initials !== '') ? $initials : '?', 'tone' => pg_avatar_tone($initials, $seed));
+}
+
+/**
+ * The Bootstrap 6 theme class of a tone place (pg_avatar_tone()).
+ *
+ * @param int $tone
+ * @return string
+ */
+function pg_avatar_theme_class($tone)
+{
+    $themes = array('theme-primary', 'theme-info', 'theme-warning', 'theme-accent', 'theme-danger', 'theme-secondary', 'theme-success', 'theme-inverse');
+
+    return $themes[((int) $tone % 8 + 8) % 8];
+}
+
+/**
+ * A person in the panel as a Bootstrap 6 Avatar: their picture when there is
+ * one, else their letters on their tone; a login without a name is a grey
+ * rounded square, so the missing name shows. No <img> is printed without an
+ * address. Panel markup only: sites, e-mails and prints keep the picture of
+ * letters (pg_initials_avatar_url()).
+ *
+ * @param array $person initials, tone, avatar (a picture address), avatar_kind
+ *                      (photo | contact | user), presence (online | away |
+ *                      offline, empty for no dot), name (the label)
+ * @param string $size  xs | sm | lg | xl, empty for the default 2.5rem
+ * @param string $class more classes
+ * @return string
+ */
+function pg_avatar_markup($person, $size = '', $class = '')
+{
+    $kind = (string) ($person['avatar_kind'] ?? '');
+    $picture = (string) ($person['avatar'] ?? '');
+    $initials = (string) ($person['initials'] ?? '');
+
+    if ($initials === '') {
+        $initials = '?';
+    }
+
+    // A picture of letters is drawn as letters; only a photo stays a picture.
+    $photo = ($picture !== '') && (strncmp($picture, 'data:image/svg+xml', 18) !== 0) && ($kind !== 'contact') && ($kind !== 'user');
+
+    $classes = array('avatar');
+
+    if (in_array($size, array('xs', 'sm', 'lg', 'xl'), true)) {
+        $classes[] = 'avatar-' . $size;
+    }
+
+    if ($photo) {
+        $inner = '<img class="avatar-img" src="' . h($picture) . '" alt="" loading="lazy">';
+    } elseif ($kind === 'user') {
+        $classes[] = 'avatar-subtle';
+        $classes[] = 'theme-secondary';
+        $classes[] = 'pg-avatar-user';
+        $inner = h($initials);
+    } else {
+        $classes[] = pg_avatar_theme_class(isset($person['tone']) ? (int) $person['tone'] : pg_avatar_tone($initials));
+        $inner = h($initials);
+    }
+
+    if ($class !== '') {
+        $classes[] = $class;
+    }
+
+    $presence = (string) ($person['presence'] ?? '');
+
+    if (in_array($presence, array('online', 'away', 'offline'), true)) {
+        $inner .= '<span class="avatar-status status-' . $presence . '"></span>';
+    }
+
+    $name = (string) ($person['name'] ?? '');
+
+    return '<span class="' . h(implode(' ', $classes)) . '"' . (($name !== '') ? ' role="img" aria-label="' . h($name) . '"' : ' aria-hidden="true"') . '>' . $inner . '</span>';
 }
 
 /**

@@ -197,7 +197,8 @@ function ws_step_outcomes()
  * dropped. Pure: whether the owner may write in the channel, or the
  * addresses are good, is asked by ws_step_check().
  *
- * post:      channel_id, body
+ * post:      channel_id (-1 for the channel joined, in a flow a join
+ *            starts), body
  * email:     to (addresses, separated by commas or lines), subject, body,
  *            page_id (a page sent instead of the body, 0 for none)
  * notify:    user_ids (up to 50), text
@@ -245,7 +246,7 @@ function ws_step_config_normalize($kind, $config)
     switch ($kind) {
         case 'post':
             return array(
-                'channel_id' => $number($config['channel_id'] ?? 0),
+                'channel_id' => (is_numeric($config['channel_id'] ?? 0) && ((int) ($config['channel_id'] ?? 0) === -1)) ? -1 : $number($config['channel_id'] ?? 0),
                 'body'       => ws_flow_lines($config['body'] ?? '', 4000),
             );
 
@@ -407,15 +408,20 @@ function ws_step_config_normalize($kind, $config)
  * @param string $kind
  * @param array  $config ws_step_config_normalize()
  * @param string $name   the box's name in the sentences
+ * @param bool   $joined the flow starts when somebody joins a channel
+ *                       (ws_flow_starts_on_join()): a post box may write
+ *                       in the channel joined
  * @return string[]
  */
-function ws_step_config_problems($kind, $config, $name)
+function ws_step_config_problems($kind, $config, $name, $joined = false)
 {
     $problems = array();
 
     switch ($kind) {
         case 'post':
-            if ((int) $config['channel_id'] <= 0) {
+            if (((int) $config['channel_id'] === -1) && !$joined) {
+                $problems[] = lang(array('string' => 'The box {var:1} writes in the channel joined, but the flow does not start when somebody joins a channel.', 'vars' => $name));
+            } elseif (((int) $config['channel_id'] === 0) || ((int) $config['channel_id'] < -1)) {
                 $problems[] = lang(array('string' => 'The box {var:1} needs a channel to write in.', 'vars' => $name));
             }
 
@@ -552,15 +558,47 @@ function ws_step_action($kind, $config)
  * @param array  $viewer
  * @param string $kind
  * @param array  $config
+ * @param bool   $joined the flow starts when somebody joins a channel: a
+ *                       post box may write in the channel joined (-1)
  * @return array ok, error, action
  */
-function ws_step_check($viewer, $kind, $config)
+function ws_step_check($viewer, $kind, $config, $joined = false)
 {
     if (!isset(ws_step_kinds()[$kind])) {
         return array('ok' => false, 'error' => lang('This kind of box cannot run yet.'), 'action' => null);
     }
 
-    return ws_scheduled_action_input($viewer, ws_step_action($kind, $config));
+    return ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined);
+}
+
+/**
+ * What a box's step reads of what started its run, as a scheduled action's
+ * step reads it (ws_scheduled_fill(), ws_events_fill_values()): the event
+ * and its payload, the newcomer and the channel they joined. The run's
+ * other keys (its trigger box, home channel, flow name) are the flow's own.
+ * Pure.
+ *
+ * @param array $context ws_flow_run_context()
+ * @return array event, event_payload, newcomer, join_channel_id, those known
+ */
+function ws_step_trigger_context($context)
+{
+    $out = array();
+
+    if ((string) ($context['event'] ?? '') !== '') {
+        $out['event'] = (string) $context['event'];
+
+        if (is_array($context['event_payload'] ?? null)) {
+            $out['event_payload'] = $context['event_payload'];
+        }
+    }
+
+    if ((int) ($context['newcomer'] ?? 0) > 0) {
+        $out['newcomer'] = (int) $context['newcomer'];
+        $out['join_channel_id'] = max(0, (int) ($context['join_channel_id'] ?? 0));
+    }
+
+    return $out;
 }
 
 /**
@@ -822,7 +860,7 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     }
 
     $routed = ws_flow_outcome_routed($graph, $node['id'], 'failed');
-    $check = ws_step_check($owner, $kind, $node['config']);
+    $check = ws_step_check($owner, $kind, $node['config'], ws_flow_starts_on_join($graph));
 
     if (!$check['ok']) {
         $end = ws_step_settlement(false, $routed);
@@ -874,12 +912,9 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         'run_id'          => 0,
     );
 
-    // A lead box reads the form submission that started the run; the other
-    // boxes' texts are not filled from the event.
-    if ($kind === 'lead') {
-        $step_context['event'] = (string) ($context['event'] ?? '');
-        $step_context['event_payload'] = (array) ($context['event_payload'] ?? array());
-    }
+    // What started the run: the texts' {{record}}, {{newcomer}} and the
+    // rest, a post in the channel joined, a lead box's form submission.
+    $step_context += ws_step_trigger_context($context);
 
     // An approval's deadline counts from when the box runs.
     if (($kind === 'approval') && ($node['config']['closes_in'] ?? '') !== '') {
@@ -981,7 +1016,7 @@ function ws_flow_box_try($viewer, $flow, $data)
     );
 
     if (!empty(ws_flow_kinds()[$kind]['step'])) {
-        $check = ws_step_check($owner, $kind, $node['config']);
+        $check = ws_step_check($owner, $kind, $node['config'], ws_flow_starts_on_join($graph));
 
         if (!$check['ok']) {
             return array('outcome' => 'failed', 'refusal' => (string) $check['error']) + $answer;
