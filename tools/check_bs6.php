@@ -83,8 +83,9 @@ $lines = array();   // check => list of "path:line  text"
 // how many times it may appear. They are listed as 'reviewed' and do not fail
 // --strict; one more of the same text in the file does.
 $reviewed = array(
-	// Selectors no element carries any more; kept for markup a site pastes.
-	'assets/css/backend.src.css' => array('.btn-outline-light' => 3, '.btn-outline-dark' => 1, '.was-validated' => 2),
+	// Selectors no element carries any more, kept for markup a site pastes,
+	// and the shell rule giving the editor's chrome v5's light outline.
+	'assets/css/backend.src.css' => array('.btn-outline-light' => 4, '.btn-outline-dark' => 1, '.was-validated' => 2),
 	// The page designer's preview draws the site, which stays on Bootstrap 5.
 	'assets/js/page_designer.js' => array('btn-danger -> btn-solid theme-danger' => 1),
 	// The form validation script sets v5's class; panel CSS styles it.

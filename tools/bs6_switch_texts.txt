@@ -864,18 +864,22 @@ the top layer, above a picker hung off <body> whatever its z-index.
     // time it opens (the open dialog holding the field, else <body>); a
     // field's own beforeShow still runs.
     function inOverlayHost(opts) {
-        var own = opts.beforeShow;
-        return jq().extend({}, opts, {
-            beforeShow: function (input, inst) {
-                if (window.pgUI && window.pgUI.overlayHost && inst && inst.dpDiv) {
-                    var host = window.pgUI.overlayHost(input);
-                    if (host && inst.dpDiv[0].parentNode !== host) {
-                        host.appendChild(inst.dpDiv[0]);
-                    }
-                }
-                return own ? own.apply(this, arguments) : {};
+        var copy = {}, own = opts.beforeShow;
+        for (var key in opts) {
+            if (Object.prototype.hasOwnProperty.call(opts, key)) {
+                copy[key] = opts[key];
             }
-        });
+        }
+        copy.beforeShow = function (input, inst) {
+            if (window.pgUI && window.pgUI.overlayHost && inst && inst.dpDiv) {
+                var host = window.pgUI.overlayHost(input);
+                if (host && inst.dpDiv[0].parentNode !== host) {
+                    host.appendChild(inst.dpDiv[0]);
+                }
+            }
+            return own ? own.apply(this, arguments) : {};
+        };
+        return copy;
     }
 
     function removeTaginWrapper(el) {
