@@ -223,7 +223,11 @@ function get_search_results($properties) {
                     }
 
                     // get all page regions for page
-                    $db_query = "SELECT pregion_id, pregion_content FROM pregion WHERE (pregion_page = '$this_page_id') AND (collection = '$collection')";
+                    // A page whose content moved into its designer tree no
+                    // longer reads its rows.
+                    $db_query = "SELECT pregion_id, pregion_content FROM pregion
+                                 WHERE (pregion_page = '$this_page_id') AND (collection = '$collection')
+                                   AND " . pg_page_region_read_sql();
                     $result_2 = mysqli_query(db::$con, $db_query) or output_error('Query failed');
                     while($row = mysqli_fetch_array($result_2)) {
                         $pregion_content = $row['pregion_content'];
