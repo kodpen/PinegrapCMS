@@ -40317,7 +40317,8 @@ const StyleDesigner = (function () {
             '__item_gift_card_html': function (cfg) { return _sdPartOrderItemGiftCard(); },
             '__returns':             function (cfg) { return _sdPartOrderReturnsList(); },
             '__cancel_form':         function (cfg) { return _sdPartOrderCancelForm(); },
-            '__return_form':         function (cfg) { return _sdPartOrderReturnForm(); }
+            '__return_form':         function (cfg) { return _sdPartOrderReturnForm(); },
+            '__return_actions_html': function (cfg) { return _sdPartOrderReturnMoves(); }
         },
         comments: {
             '__comment_stars_html': function (cfg) { return _sdPartCommentStars(); }
@@ -41070,6 +41071,34 @@ const StyleDesigner = (function () {
         ])];
     }
 
+    // The button of a return's move (pg_sw_part_order_return_move_submit()).
+    /* @pg-site-output */
+    function _sdPartOrderReturnMoveSubmit(move) {
+        return (move === 'shipped')
+            ? _sdPartEl('button', 'btn btn-primary', _sdT('Sent button'), { text: _sdT('I have sent it'), _bindings: { action: 'order_return_submit' } })
+            : _sdPartEl('button', 'btn btn-sm btn-outline-secondary', _sdT('Withdraw button'), { text: _sdT('Withdraw the request'), _bindings: { action: 'order_return_submit' } });
+    }
+
+    // A return request's moves (pg_sw_part_order_return_moves()): the server
+    // gives each form its address and hidden fields.
+    /* @pg-site-output */
+    function _sdPartOrderReturnMoves() {
+        var sent = _sdPartWhen('__return_can_mark_sent', 'not_empty');
+        sent._bindings.action = 'order_return_shipped_form';
+        var withdraw = _sdPartWhen('__return_can_withdraw', 'not_empty');
+        withdraw._bindings.action = 'order_return_withdraw_form';
+        return [
+            _sdPartEl('form', 'mt-2', _sdT('Sent form'), sent, [
+                _sdPartEl('label', 'form-label small fw-semibold', _sdT('Label'), { text: _sdT('Tracking number of the parcel (optional)') }),
+                _sdPartEl('div', 'input-group input-group-sm', _sdT('Input group'), {}, [
+                    _sdPartEl('input', 'form-control', _sdT('Tracking number'), { _bindings: { value: 'return_tracking' } }),
+                    _sdPartOrderReturnMoveSubmit('shipped')
+                ])
+            ]),
+            _sdPartEl('form', 'mt-2', _sdT('Withdraw form'), withdraw, [_sdPartOrderReturnMoveSubmit('withdraw')])
+        ];
+    }
+
     // A return request's reason (pg_sw_part_order_return_reason()).
     /* @pg-site-output */
     function _sdPartOrderReturnReason() {
@@ -41141,7 +41170,7 @@ const StyleDesigner = (function () {
                     ]),
                     detail(_sdT('Tracking number'), '__return_tracking_number', ''),
                     detail(_sdT('Refund due by'), '__return_refund_deadline', ''),
-                    _sdPartEl('div', '', _sdT('The customer\'s moves'), _sdPartValue('__return_actions_html', ''))
+                    _sdPartEl('div', '', _sdT('The customer\'s moves'), {}, _sdPartOrderReturnMoves())
                 ])
             ])
         ])];
@@ -41803,7 +41832,7 @@ const StyleDesigner = (function () {
             }
             if (region === 'order_view') {
                 aOpts.push(['order_cancel_submit', _sdT('Cancel the order (cancellation form)')]);
-                aOpts.push(['order_return_submit', _sdT('Request a return (return request form)')]);
+                aOpts.push(['order_return_submit', _sdT('Send the return form (request, sent, withdraw)')]);
             }
             // Only a button can post a list action's form; a link bound to
             // one is dropped on the page (_pg_wishlist_wire_actions()), so a
@@ -41828,6 +41857,8 @@ const StyleDesigner = (function () {
             else if (region === 'order_view') {
                 fOpts.push(['order_cancel_form', _sdT('Cancellation form')]);
                 fOpts.push(['order_return_form', _sdT('Return request form (order.return_deliveries)')]);
+                fOpts.push(['order_return_shipped_form',  _sdT('The parcel is sent (order.returns)')]);
+                fOpts.push(['order_return_withdraw_form', _sdT('Withdraw the request (order.returns)')]);
             }
             else if (region === 'comments') {
                 fOpts.push(['comment_form',           _sdT('Add-comment form')]);
@@ -41852,6 +41883,7 @@ const StyleDesigner = (function () {
                 vOpts.push(['return_qty',    _sdT('Quantity to return (order.return_delivery_lines)')]);
                 vOpts.push(['return_reason', _sdT('Reason for the return (required)')]);
                 vOpts.push(['return_note',   _sdT('Note of the return request')]);
+                vOpts.push(['return_tracking', _sdT('Tracking number of the parcel sent back (order.returns)')]);
             }
             if (region === 'shopping_cart') {
                 vOpts.push(['cart_qty',    _sdT('Row quantity (cart_qty) — shopping_cart loop_area')]);
@@ -55845,7 +55877,9 @@ const StyleDesigner = (function () {
                 ['__return_code',               _sdT('Return code')],
                 ['__return_tracking_number',    _sdT('Tracking number')],
                 ['__return_refund_deadline',    _sdT('Refund due by')],
-                ['__return_actions_html',       _sdT('The customer\'s moves: sent, withdraw (HTML)')]
+                ['__return_actions_html',       _sdT('The customer\'s moves: sent, withdraw (HTML)')],
+                ['__return_can_mark_sent',      _sdT('The customer may say the parcel is sent (1 or empty)')],
+                ['__return_can_withdraw',       _sdT('The customer may withdraw the request (1 or empty)')]
             ]
         },
         'order.return_lines': {

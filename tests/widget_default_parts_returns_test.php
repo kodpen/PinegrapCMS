@@ -101,6 +101,7 @@ function _pret_render($tree, $returns, $flags = null)
 	$rows = pg_sw_list_order_return_rows($returns, _pret_form());
 	if ($flags === null) $flags = array('show_returns' => true, 'show_returns_card' => true, 'has_returns' => !empty($rows['order.returns']));
 	_eo_apply_visibility_bindings($tree, $flags);
+	pg_sw_order_return_form_wire($tree, _pret_form());
 	$scope = pg_sw_finish_open(array('sid' => 47, 'kind' => 'order_view'));
 	try {
 		$html = trim(_render_tree_node($tree, 0, 0));
@@ -129,7 +130,21 @@ function _pret_forms($html)
 	preg_match_all('/<form\b.*?<\/form>/s', $html, $m);
 	// A list row's ids carry the row's suffix (pg_sw_uniquify_row_ids()),
 	// the label's for with them.
-	return array_map(function ($f) { return preg_replace(array('/>\s+</', '/(_pgw\d+r\d+)+"/'), array('><', '"'), $f); }, $m[0]);
+	// Attributes in name order, the binding marks left out: the part
+	// writes them in another order.
+	$tag = function ($t) {
+		preg_match_all('/\s([a-z-]+)(?:="([^"]*)")?/', $t[2], $a, PREG_SET_ORDER);
+		$attrs = array();
+		foreach ($a as $x) if (strpos($x[1], 'data-pg-') !== 0) $attrs[$x[1]] = isset($x[2]) && $x[2] !== '' ? '="' . $x[2] . '"' : '';
+		ksort($attrs);
+		$out = '<' . $t[1];
+		foreach ($attrs as $k => $v) $out .= ' ' . $k . $v;
+		return $out . '>';
+	};
+	return array_map(function ($f) use ($tag) {
+		$f = preg_replace(array('/>\s+</', '/(_pgw\d+r\d+)+"/'), array('><', '"'), $f);
+		return preg_replace_callback('/<([a-z]+)((?:\s[^>]*)?)>/', $tag, $f);
+	}, $m[0]);
 }
 
 function test_widget_parts_returns_match_the_old_list()
@@ -227,7 +242,7 @@ function test_widget_parts_returns_editor_twin()
 		. $cut("\n    var SW_DEFAULT_LOOP_TAILS = {", "\n    };\n")
 		. $cut("\n    var SD_RETURN_BADGE_CLASSES = {", "\n    };\n");
 	foreach (array('_sdDefaultParts', '_sdPartTokenOf', '_sdPartHost', '_sdPartEl', '_sdPartWhen', '_sdPartPlaced', '_sdPartValue',
-		'_sdDefaultTails', '_sdPartOrderCard', '_sdPartOrderReturns', '_sdPartOrderReturnForm', '_sdPartSentence', '_sdPartOrderReturnQtyCell', '_sdPartOrderReturnReason', '_sdPartOrderReturnSubmit', '_sdPartOrderCancelForm', '_sdPartOrderCancelSubmit', '_sdPartOrderReturnsList', '_sdPartOrderLegal') as $fn) {
+		'_sdDefaultTails', '_sdPartOrderCard', '_sdPartOrderReturns', '_sdPartOrderReturnMoves', '_sdPartOrderReturnMoveSubmit', '_sdPartOrderReturnForm', '_sdPartSentence', '_sdPartOrderReturnQtyCell', '_sdPartOrderReturnReason', '_sdPartOrderReturnSubmit', '_sdPartOrderCancelForm', '_sdPartOrderCancelSubmit', '_sdPartOrderReturnsList', '_sdPartOrderLegal') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
 	}
 	$bare = _pret_node('root', array(), array(_pret_node('semantic', array('tag' => 'h6', 'text' => 'Order'))));

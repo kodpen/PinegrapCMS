@@ -282,10 +282,10 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-default-parts-comments.md: The comment stars default part (W16, #1908): what replaced __comment_stars_html, its conditions and tokens, the flex rule, the e-mail characters, starters, canvas
 - widget-default-parts-cross-sell.md: The catalog detail view's cross-sell default part (W16, #1973): the product.related cards that replaced __cross_sell_html, __has_related, where it is added, the variant script's server redraw
 - widget-default-parts-filter-chips.md: The catalog listing's filter chip parts (W16, #2218): the catalog.active_filters list, the six placements replaced, the clear button, the pushed chip row by pg_sw_placed()
-- widget-default-parts-order-forms.md: The order view's cancel and return request forms as parts with controls (W16): bindings the system wires, lists, restored controls, what is left
+- widget-default-parts-order-forms.md: The order view's cancel form, return request form and each return's moves as parts with controls (W16): bindings the system wires, lists, restored controls
 - widget-default-parts-order-items.md: The order view's item form and gift card parts (W16, #1863): the three item lists, their keys and tokens, the loop tail, the boxes' flags, raw tokens, what the cart keeps
 - widget-default-parts-order.md: The order view's default parts (W16): timeline, status badge, the returns and legal documents cards added after it, their flags and tokens, e-mail look
-- widget-default-parts-returns.md: The order view's returns list part (W16, #2067): order.returns and order.return_lines lists replacing __returns, tokens, badges, the customer's moves kept as server forms
+- widget-default-parts-returns.md: The order view's returns list part (W16, #2067): order.returns and order.return_lines lists replacing __returns, tokens, badges, where the customer's moves are
 - widget-default-parts.md: W16 placed beats pushed: the one placement rule (pg_sw_placed()), default parts drawing old HTML tokens with design elements, tail and lead parts, slices left
 - widget-designability-decisions-2.md: Owner's 2026-10-27 widget designability answers: OR conditions, hide-if-empty, words beside a value, converter (W22), page facts, placement settings, form parts, express lists, W12, W19.
 - widget-designability-decisions.md: The owner's 2026-10-26 answers for widget designability: W16 old blocks equal in look and behaviour (not bytes), W5 gallery sources, W8 entity fields (who sees what, secrets, yes/no, words).

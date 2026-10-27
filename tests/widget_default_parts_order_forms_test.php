@@ -210,12 +210,12 @@ function test_widget_parts_order_forms_editor_twin()
 	};
 	$src = '';
 	foreach (array('_sdPartEl', '_sdPartWhen', '_sdPartOrderCancelSubmit', '_sdPartOrderCancelForm', '_sdPartOrderReturnQtyCell', '_sdPartSentence',
-		'_sdPartOrderReturnForm', '_sdPartOrderReturnReason', '_sdPartOrderReturnSubmit') as $fn) {
+		'_sdPartOrderReturnForm', '_sdPartOrderReturnReason', '_sdPartOrderReturnSubmit', '_sdPartOrderReturnMoveSubmit', '_sdPartOrderReturnMoves') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
 	}
 	$stubs = "var _n = 0; function gid() { return 'n' + (++_n); }\nfunction _sdT(s) { return s; }\n"
 		. "function createNode(type, props, children) { return { _id: gid(), type: type, props: props || {}, children: children || [] }; }\n";
-	$script = "console.log(JSON.stringify({ cancel: _sdPartOrderCancelForm(), ret: _sdPartOrderReturnForm() }));\n";
+	$script = "console.log(JSON.stringify({ cancel: _sdPartOrderCancelForm(), ret: _sdPartOrderReturnForm(), moves: _sdPartOrderReturnMoves() }));\n";
 	$file = @tempnam(sys_get_temp_dir(), 'pgparts');
 	if ($file === false) return;
 	file_put_contents($file, $stubs . $src . $script);
@@ -228,6 +228,7 @@ function test_widget_parts_order_forms_editor_twin()
 	pg_assert_true(is_array($answer), 'Node printed JSON: ' . $printed);
 	pg_assert_same(array_map('_pof_norm', pg_sw_part_order_cancel_form()), array_map('_pof_norm', $answer['cancel']), 'the same cancel form');
 	pg_assert_same(array_map('_pof_norm', pg_sw_part_order_return_form()), array_map('_pof_norm', $answer['ret']), 'the same return form');
+	pg_assert_same(array_map('_pof_norm', pg_sw_part_order_return_moves()), array_map('_pof_norm', $answer['moves']), 'the same moves');
 }
 
 // A tree without what only one side writes: the editor's ids and names.
@@ -248,4 +249,25 @@ function _pof_norm($node)
 	}
 	ksort($node);
 	return $node;
+}
+
+// A return's moves: each form posts its own action for the row's return;
+// a form whose button was deleted gets it back.
+function test_widget_parts_order_forms_return_moves()
+{
+	$moves = pg_sw_part_order_return_moves();
+	array_pop($moves[1]['children']);
+	$tree = _pof_node('root', array(), $moves);
+	pg_sw_order_return_form_wire($tree, _pof_form());
+	$sent = $tree['children'][0];
+	pg_assert_same('order_return_shipped_form', $sent['props']['_bindings']['action']);
+	pg_assert_contains('name="action" value="shipped"', $sent['children'][0]['props']['html']);
+	pg_assert_contains('name="return_id" value="^^__return_id^^"', $sent['children'][0]['props']['html']);
+	$box = $sent['children'][2]['children'][0];
+	pg_assert_same('pg-ov-return-tracking-^^__return_id^^', $box['props']['id']);
+	pg_assert_same(array('name' => 'tracking_number', 'maxlength' => '100'), array_intersect_key(array_column($box['props']['_attrs'], 'value', 'name'), array('name' => 1, 'maxlength' => 1)));
+	pg_assert_same('pg-ov-return-tracking-^^__return_id^^', pg_sw_form_attr($sent['children'][1], 'for'), 'the label names the box in its group');
+	$withdraw = $tree['children'][1];
+	pg_assert_contains('value="withdraw"', $withdraw['children'][0]['props']['html']);
+	pg_assert_same(lang('Withdraw the request'), $withdraw['children'][1]['props']['text'], 'the deleted button comes back');
 }
