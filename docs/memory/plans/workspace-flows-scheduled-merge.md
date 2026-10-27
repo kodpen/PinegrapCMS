@@ -24,7 +24,7 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 4. New rules on the canvas; the form stays for keys still `form`; templates are starters (flow gallery, G1). Parts:
    - 4a. Done (#2292). Scheduled actions section: New flow in the toolbar, the list's New hidden (`{ add: false }`); cards keep the form.
    - 4b. The other ways in (composer insert menu, note toolbar, Duplicate): open the canvas instead of the form. Waits on questions 7 and 8.
-   - 4c. AI drafts on the canvas (F8). 4c1 done (#PR): `ws_flow_graph_from_scheduled()`, slice 5 uses it too. 4c2: a draft card opens as a new flow on the canvas.
+   - 4c. AI drafts on the canvas (F8). 4c1 done (#2306): `ws_flow_graph_from_scheduled()`, slice 5 uses it too. 4c2: a draft card opens as a new flow on the canvas.
 5. Conversion (answer 2): in the 2026.11.0 upgrade every row becomes a converted anchor, its id and every parity row kept. Schema (a mark for the two anchors): ask first.
 
 ## Which questions are answered? (owner, 2026-10-24: 1 no, 2 c, 3 a; 4-8 open)

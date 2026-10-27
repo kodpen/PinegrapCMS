@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-from-scheduled
-description: A scheduled action as a flow graph (ws_flow_graph_from_scheduled(), PR #PR): how each part maps to a box or arrow, self-retry, money, what is told in left
+description: A scheduled action as a flow graph (ws_flow_graph_from_scheduled(), PR #2306): how each part maps to a box or arrow, self-retry, money, what is told in left
 ---
 
 ## Where is it, and who uses it?
