@@ -3857,7 +3857,7 @@ function pg_designer_rebuild_page_code($after_id = 0, $seconds = 15)
  * `files` table in step. Extracted from edit_system_style.php so the
  * multi-page save can call it once per design instead of once per page.
  *
- * Errors are deliberately swallowed (@mysqli_query, not db()): this runs
+ * Errors are deliberately swallowed (db_q() returns false, not db()): this runs
  * inside an AJAX save whose JSON reply must not be polluted by an HTML error
  * page from output_error().
  */
@@ -3874,17 +3874,16 @@ function pg_designer_sync_asset_files($custom_css_json, $custom_js_json, $user_i
             if (!in_array($ext, array('css', 'js', 'json'))) continue;
             @file_put_contents(FILE_DIRECTORY_PATH . '/' . $asset['name'], $asset['content']);
             $size = (int)strlen($asset['content']);
-            $nm   = mysqli_real_escape_string(db::$con, $asset['name']);
-            $ex   = mysqli_real_escape_string(db::$con, $ext);
+            $nm   = (string) $asset['name'];
             $uid  = (int)$user_id;
-            $chk  = @mysqli_query(db::$con, "SELECT name FROM files WHERE name = '$nm' LIMIT 1");
+            $chk  = db_q("SELECT name FROM files WHERE name = ? LIMIT 1", array($nm));
             if ($chk && mysqli_num_rows($chk) === 0) {
-                @mysqli_query(db::$con,
+                db_q(
                     "INSERT INTO files (name, folder, description, type, size, user, timestamp)
-                     VALUES ('$nm', '0', '', '$ex', '$size', '$uid', UNIX_TIMESTAMP())");
+                     VALUES (?, '0', '', ?, ?, ?, UNIX_TIMESTAMP())", array($nm, (string) $ext, (string) $size, (string) $uid));
             } else {
-                @mysqli_query(db::$con,
-                    "UPDATE files SET size = '$size', timestamp = UNIX_TIMESTAMP() WHERE name = '$nm'");
+                db_q(
+                    "UPDATE files SET size = ?, timestamp = UNIX_TIMESTAMP() WHERE name = ?", array((string) $size, $nm));
             }
         }
     }
