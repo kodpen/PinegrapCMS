@@ -648,3 +648,20 @@ with --bs-form-switch-bg). The .danger switch variant is not used.
 
 
 >>>
+
+The explorer's toolbar menus are pulled inside the screen by the wrapper
+the switch renamed.
+
+@@ view_folders.php
+<<<
+        var wrap = menu.closest('.dropdown');
+===
+        var wrap = menu.closest('.pg-menu-wrap');
+>>>
+
+@@ view_folders.php
+<<<
+        var wrap = event.target.closest('.dropdown');
+===
+        var wrap = event.target.closest('.pg-menu-wrap');
+>>>
