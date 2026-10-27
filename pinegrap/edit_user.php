@@ -1508,14 +1508,14 @@ if (!$_POST) {
         }
 
         // determine if username is already in use
-        $result = mysqli_query(db::$con, "SELECT user_id FROM user WHERE ((user_username = '" . escape($_POST['username'] ?? '') . "') OR (user_email = '" . escape($_POST['username'] ?? '') . "')) AND (user_id != '" . escape($_POST['id'] ?? '') . "')") or output_error('Query failed');
+        $result = db_q("SELECT user_id FROM user WHERE ((user_username = ?) OR (user_email = ?)) AND (user_id != ?)", array((string) ($_POST['username'] ?? ''), (string) ($_POST['username'] ?? ''), (string) ($_POST['id'] ?? ''))) or output_error('Query failed');
         if (mysqli_num_rows($result) > 0)
         {
             output_error(lang('The username that you entered is already in use') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
 
         // determine if e-mail address is already in use
-        $result = mysqli_query(db::$con, "SELECT user_id FROM user WHERE ((user_email = '" . escape($_POST['email'] ?? '') . "') OR (user_username = '" . escape($_POST['email'] ?? '') . "')) AND (user_id != '" . escape($_POST['id'] ?? '') . "')") or output_error('Query failed');
+        $result = db_q("SELECT user_id FROM user WHERE ((user_email = ?) OR (user_username = ?)) AND (user_id != ?)", array((string) ($_POST['email'] ?? ''), (string) ($_POST['email'] ?? ''), (string) ($_POST['id'] ?? ''))) or output_error('Query failed');
         if (mysqli_num_rows($result) > 0) {
             output_error(lang('The email address that you entered is already in use') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
