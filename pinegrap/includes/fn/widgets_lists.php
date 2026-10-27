@@ -86,7 +86,7 @@ function pg_sw_list_sources()
             ),
         ),
     ) + pg_sw_list_product_sources() + pg_sw_list_crumb_sources() + pg_sw_list_active_filter_sources() + pg_sw_list_calendar_sources() + pg_sw_list_order_sources()
-        + pg_sw_list_cart_sources() + pg_sw_list_menu_sources() + pg_sw_list_security_sources()
+        + pg_sw_list_cart_sources() + pg_sw_list_checkout_sources() + pg_sw_list_menu_sources() + pg_sw_list_security_sources()
         + pg_sw_list_paging_sources();
 }
 
@@ -99,7 +99,8 @@ function pg_sw_list_sources()
 // grid sources in the calendar view (widgets_lists_calendar.php), the order
 // sources in the order view and the member's orders in the my account
 // widget (widgets_lists_order.php), the visitor's cart in the cart link and
-// the cart widget (widgets_lists_cart.php), the sub-items of a menu item in
+// the cart widget (widgets_lists_cart.php), the express order's offers,
+// gift cards and recipients and its cart (widgets_lists_checkout.php), the sub-items of a menu item in
 // the menu widget (widgets_lists_menu.php), the member's passkeys in the
 // account security widget (widgets_account.php), and in the form list the
 // page links too, as in the catalog listing and the search results
@@ -110,8 +111,10 @@ function pg_sw_kind_lists($kind)
     $families = array('form_list_view' => array('form_record', 'paging'), 'form_item_view' => 'form_record',
                       'catalog_item_view' => array('product', 'crumbs'), 'catalog_listing' => array('product', 'crumbs', 'filter_chips', 'paging'), 'calendar_view' => 'calendar',
                       'order_view' => 'order', 'my_account' => 'account', 'cart_link' => 'cart', 'shopping_cart' => 'cart',
+                      'express_order' => array('cart', 'checkout'),
                       'menu_region' => 'menu', 'account_security' => 'security', 'search_results' => 'paging');
-    $except   = array('catalog_listing' => array('product.related' => true), 'cart_link' => array('cart.item_gift_cards' => true));
+    $except   = array('catalog_listing' => array('product.related' => true), 'cart_link' => array('cart.item_gift_cards' => true),
+                      'express_order' => array('cart.item_gift_cards' => true));
     $kind = pg_sw_finish_kind($kind);
     if (!isset($families[$kind])) return array();
     $out = array();
@@ -333,7 +336,8 @@ function pg_sw_list_wanted($family)
 // pg_sw_list_calendar_rows() builds them; 'order' and 'account' as
 // pg_sw_list_order_rows() and pg_sw_list_account_rows() build them,
 // 'security' as pg_sw_list_passkey_rows() does, 'paging' as
-// pg_sw_list_paging_rows() does. Every
+// pg_sw_list_paging_rows() does, 'checkout' as pg_sw_list_checkout_rows()
+// does. Every
 // family but form_record publishes its rows so.
 function pg_sw_list_publish($family, $data_rows, $options = array())
 {

@@ -20,4 +20,4 @@ module: widgets_lists_cart
 - Palette "Lists in a record": Products in the cart; `_sdOrderListStarter('cart.items')` lands a flush list group: a 48px picture, the display name linked, quantity × price, a × remove link with an aria-label. Never in the cart widget's item loop (amber band there).
 
 ## What is not done yet?
-- Recipients of the cart as a list, totals per recipient, gift cards applied, the express order's lists (W24) and an update without a page load (the mini cart is drawn per request). A browser round is owed.
+- The express order offers `cart.items` too, beside its own lists ([[widget-lists-checkout]]). Totals per recipient and an update without a page load (the mini cart is drawn per request) are not done. A browser round is owed.

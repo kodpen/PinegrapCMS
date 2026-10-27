@@ -35,7 +35,7 @@ function test_widget_lists_cart_sources_and_rows()
 	pg_assert_same('__ship_to_key', $sources['cart.items']['key']);
 	pg_assert_same(array('cart.items'), array_keys(pg_sw_kind_lists('cart_link')), 'a gift card list is the cart widget\'s');
 	pg_assert_same(array('cart.items', 'cart.item_gift_cards'), array_keys(pg_sw_kind_lists('shopping_cart')));
-	pg_assert_same(array(), pg_sw_kind_lists('express_order'));
+	pg_assert_same(array('cart.items', 'checkout.offers', 'checkout.suggestions', 'checkout.gift_cards', 'checkout.recipients'), array_keys(pg_sw_kind_lists('express_order')), 'nor the express order\'s');
 
 	$rows = pg_sw_list_cart_rows(_widget_cart_items());
 	$tokens = array();
