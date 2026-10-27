@@ -474,6 +474,25 @@ function ws_flow_node_fields($node, $kinds)
 }
 
 /**
+ * The fields {{trigger.<field>}} reads of a flow: those its start box
+ * declares (ws_flow_trigger_outputs()), none without one. Pure.
+ *
+ * @param array $nodes ws_flow_graph_normalize() boxes
+ * @param array $kinds ws_flow_kinds()
+ * @return string[]
+ */
+function ws_flow_trigger_fields($nodes, $kinds)
+{
+    foreach ($nodes as $node) {
+        if (!empty($kinds[(string) $node['kind']]['trigger'])) {
+            return function_exists('ws_flow_trigger_outputs') ? array_column(ws_flow_trigger_outputs((string) $node['kind'], (array) $node['config']), 'key') : array();
+        }
+    }
+
+    return array();
+}
+
+/**
  * The boxes that have surely run, done, whenever a box runs, by box: its own
  * and those every arrow into it brings (a box runs after one arrow in was
  * taken, the box it leaves done), and the boxes before it an arrow that is
@@ -852,6 +871,7 @@ function ws_flow_reference_problems($nodes, $kinds, $next, $always)
         }
 
         $refs = array();
+        $trigger_refs = array();
 
         foreach (ws_flow_node_texts($node) as $text) {
             if (preg_match_all('/\{\{node\.([a-z][a-z0-9_]{0,31})\.([a-z_][a-z0-9_]{0,31})\}\}/', $text, $found, PREG_SET_ORDER)) {
@@ -859,13 +879,31 @@ function ws_flow_reference_problems($nodes, $kinds, $next, $always)
                     $refs[$match[0]] = array($match[1], $match[2]);
                 }
             }
+
+            if (preg_match_all('/\{\{trigger\.([a-z_][a-z0-9_]{0,31})\}\}/', $text, $found, PREG_SET_ORDER)) {
+                foreach ($found as $match) {
+                    $trigger_refs[$match[0]] = $match[1];
+                }
+            }
         }
 
-        if (empty($refs)) {
+        if (empty($refs) && empty($trigger_refs)) {
             continue;
         }
 
         $name = ws_flow_box_name($node);
+
+        // What started the run gives the values its start box declares; a
+        // flow without one has its own problem (no_trigger).
+        if (!empty($trigger_refs)) {
+            $trigger_fields = ws_flow_trigger_fields($nodes, $kinds);
+
+            foreach ($trigger_refs as $ref => $field) {
+                if (!in_array($field, $trigger_fields, true)) {
+                    $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but what starts the flow gives no value {var:3}.', 'vars' => array($name, $ref, $field))));
+                }
+            }
+        }
         $before = ws_flow_boxes_before($into, (string) $id);
 
         foreach ($refs as $ref => $parts) {
@@ -2463,6 +2501,16 @@ function ws_flow_js_config($viewer, $mode)
         $outputs[$kind] = $info['outputs'];
     }
 
+    // The values what started a run gives ({{trigger.<field>}}): each start
+    // kind's own, and an event box's by the event it waits for.
+    $trigger_outputs = array('kinds' => array(), 'events' => function_exists('ws_flow_event_outputs') ? ws_flow_event_outputs() : array());
+
+    foreach (ws_flow_kinds() as $kind => $info) {
+        if (!empty($info['trigger'])) {
+            $trigger_outputs['kinds'][$kind] = function_exists('ws_flow_trigger_outputs') ? ws_flow_trigger_outputs($kind) : array();
+        }
+    }
+
     // The ready-made flows the gallery offers to whoever builds flows
     // (flow_templates.php), filled for the person: their texts go to them.
     $templates = array();
@@ -2478,6 +2526,7 @@ function ws_flow_js_config($viewer, $mode)
         'template_categories' => function_exists('ws_flow_template_categories') ? ws_flow_template_categories() : array(),
         'steps'    => $steps,
         'outputs'  => $outputs,
+        'trigger_outputs' => $trigger_outputs,
         'subjects' => $subjects,
         'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'coord' => WS_FLOW_COORD_MAX),
     );
