@@ -30,7 +30,7 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 - `SW_TYPES` + `_swTypeDefaults`, `pg_sw_type_labels()`, renderer in `includes/fn/widgets*.php` with `_pg_inject_messages_node()` named after the classic liveform, PHP default tree and JS starter tree in lockstep, tokens and flags passing `tools/check_bindings.php`; compare against the classic page (`designer/system-widget-test-pages.md`).
 
 ## Which order did the owner give?
-- 2026-10-27, through the coordinator: "bekleyen işçilere yanıtı sen ver benim yerime", "en makul ve işlevsel seçimle", and "sorular mimari soru değilse makul seçim yap". Under that the order is: order form, folder view, photo gallery, confirmations, affiliate sign-up form.
+- 2026-10-27 (owner): order form, folder view, photo gallery, confirmations, affiliate sign-up form; a question that is not architectural takes the reasonable choice.
 - Confirmations (#2436): a next-page or message setting of the registration, membership and affiliate sign-up widgets.
 
 ## Which stay `system` nodes?
