@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Decision questions (2026-10-27): an issue labelled architect; the architect analyses and decides it, asks the owner only the big ones (label erdal, Turkish), records it, brings it to the PR
+description: Decision questions (2026-10-27): an issue labelled architect; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (label erdal, Turkish), records it, brings it to the PR
 ---
 
 ## What is a decision question?
@@ -13,8 +13,8 @@ description: Decision questions (2026-10-27): an issue labelled architect; the a
 ## What does the architect do?
 - One standing session on the model the owner chose; a 15-minute session cron on off-minutes and an hourly routine that re-creates it (`merger-wake.md`). Each check lists the open `architect` issues and the open PRs with a `## Decision question` section (it opens their issues); nothing new: no message. It re-reads the rules when they change (`working-mode.md`) and starts no sub-agents: they spend the account's quota.
 - Analyses each question from the code, memory and the decisions list and writes it on the issue: what each option changes, the risk for running sites, its recommendation. A question memory answers is closed citing the file; a duplicate is closed pointing to the decided issue.
-- Decides every other question itself (owner, 2026-10-27: only big architectural changes are asked): a `Karar:` / `Decision:` comment with the reason, a comment on the blocked PR quoting it, the decision in memory by its own docs-only PR (product and schema in `decisions-made-*.md`, technical ones in the topic file or plan), several per PR; then the issue is closed.
-- Only a big architectural change gets `erdal` and goes to the owner in the architect's window, in Turkish, blocking ones first, each with its recommendation: a large refactor of a shared path, a design with several new tables or a hot-table change, a transport, commercial or licence choice, anything that makes Kodpen a data processor. The owner answers there (every GitHub comment carries the owner's token, so no comment counts as the owner's); the architect writes it on the issue and goes on as above.
+- Decides a technical question itself (plan order, implementation shape, a library, a working rule): a `Karar:` / `Decision:` comment with the reason, a comment on the blocked PR quoting it, the decision in memory by its own docs-only PR (technical ones in the topic file or plan), several per PR; then the issue is closed.
+- A schema change or a product-behaviour change is the owner's (owner, 2026-10-27): the issue gets `erdal` and the architect asks it in its window with the AskUserQuestion tool as a selectable list in Turkish, one question per decision, the recommended option first; blocking ones first. The owner answers only there (every GitHub comment carries the owner's token, so no comment counts as the owner's); the architect writes the answer on the issue (product and schema in `decisions-made-*.md`) and goes on as above.
 - Writes no product code and merges nothing.
 
 ## What do the other sessions do?

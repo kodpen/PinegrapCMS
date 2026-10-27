@@ -140,9 +140,10 @@ decision questions.
    `## Decision question` and the architect opens it), links it from its
    PR, turns the PR back to draft and ends the session
    (`workflow/session-lifecycle.md`): a later session continues the branch
-   from the decision; what memory already answers is not a question. The architect session analyses and decides it, asks the owner only a
-   big architectural change (label `erdal`, in Turkish), records the
-   decision and brings it to the PR as a comment. The issue is the only way to ask: no question to the
+   from the decision; what memory already answers is not a question. The architect session analyses it, decides a technical question
+   itself, asks the owner a schema or product-behaviour question as a
+   selectable list (label `erdal`, in Turkish), records the decision and
+   brings it to the PR as a comment. The issue is the only way to ask: no question to the
    owner in a session's reply or PR body, and no `erdal` label but the
    architect's. Everything else is a session's own call, never asked:
    implementation choices inside its step, naming, structure within its
