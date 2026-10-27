@@ -20,17 +20,17 @@ if (!defined('PG_INIT_LOADED')) {
 <main id="content" class="container-fluid">
     <div class="row ">
         <div class="col-12">
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 col-sm-12 col-md-6 col-xl-9 text-center text-md-start">
+            <div class="row mb-3  flex-wrap">
+                <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
                     <h2 class="d-inline-block text-break" data-bs-content="<?php echo lang('Copy & paste the code below into your custom layout.')?>" title="<?php echo lang('Generate Layout')?>">[<?=h($page['name'])?>]</h2>
                 </div>
             </div>
             <div class="row">
                 <div class="col-12">
-                    <div class="card my-4">
+                    <div class="card my-7">
                         <div class="card-body">
                             <div class="row">
-                                <div class="col-12 my-2">
+                                <div class="col-12 my-3">
                                     <?=$form->field(array(
                                         'type' => 'textarea',
                                         'name' => 'layout',

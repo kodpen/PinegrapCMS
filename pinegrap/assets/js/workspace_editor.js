@@ -336,7 +336,7 @@
         return {
             markup: parts.markup,
             attach: function (win) {
-                var wrap = el('div', 'ws-block-title-field mb-2');
+                var wrap = el('div', 'ws-block-title-field mb-3');
                 var label = el('label', 'form-label small mb-1', t('block_title'));
 
                 field = el('input', 'form-control form-control-sm');
@@ -2710,9 +2710,9 @@
     // Kept in the modal when a surface is in one: its focus trap would take
     // the focus back from a box outside it.
     function floatingHost(surface) {
-        var modal = surface ? surface.closest('.modal') : null;
+        var modal = surface ? surface.closest('.dialog') : null;
 
-        return modal ? (modal.querySelector('.modal-content') || modal) : document.body;
+        return modal || document.body;
     }
 
     function place(box, rect, below) {
@@ -2867,7 +2867,7 @@
         line.appendChild(input);
         form.appendChild(line);
 
-        var save = button('btn btn-sm btn-primary', '', 'bi-check2', t('link_save'));
+        var save = button('btn btn-sm btn-solid theme-primary', '', 'bi-check2', t('link_save'));
         save.type = 'submit';
         line.appendChild(save);
 
@@ -3100,7 +3100,7 @@
             }
         };
 
-        var head = el('div', 'd-flex align-items-center justify-content-between gap-2 mb-1');
+        var head = el('div', 'd-flex align-items-center justify-content-between gap-3 mb-1');
         var close = button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('keys_close'));
 
         head.appendChild(el('strong', 'small', t('keys_title')));
@@ -4920,13 +4920,10 @@
     // ── Design windows ─────────────────────────────────────────────────
 
     function modal(title, size) {
-        var node = el('div', 'modal fade ws-designer');
-        node.tabIndex = -1;
-        node.setAttribute('aria-hidden', 'true');
-        node.innerHTML = '<div class="modal-dialog modal-dialog-scrollable modal-fullscreen-sm-down ' + (size || 'modal-lg') + '"><div class="modal-content">'
-            + '<div class="modal-header"><h5 class="modal-title"></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>'
-            + '<div class="modal-body"></div><div class="modal-footer"></div></div></div>';
-        node.querySelector('.modal-title').textContent = title;
+        var node = el('dialog', 'dialog ws-designer dialog-scrollable sm-down:dialog-fullscreen ' + (size || 'dialog-lg'));
+        node.innerHTML = '<div class="dialog-header"><h5 class="dialog-title"></h5><button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>'
+            + '<div class="dialog-body"></div><div class="dialog-footer"></div>';
+        node.querySelector('.dialog-title').textContent = title;
         node.querySelector('.btn-close').setAttribute('aria-label', t('close'));
         document.body.appendChild(node);
 
@@ -4940,8 +4937,8 @@
 
         return {
             node: node,
-            body: node.querySelector('.modal-body'),
-            footer: node.querySelector('.modal-footer'),
+            body: node.querySelector('.dialog-body'),
+            footer: node.querySelector('.dialog-footer'),
             show: function () { if (instance) { instance.show(); } },
             hide: function () { if (instance) { instance.hide(); } }
         };
@@ -4969,7 +4966,7 @@
                 return;
             }
 
-            var entry = button('btn btn-link link-body-emphasis text-start text-decoration-none ws-ctx-item' + (item.danger ? ' ws-ctx-danger' : ''), item.label, item.icon);
+            var entry = button('btn btn-link pg-link-body-emphasis text-start text-decoration-none ws-ctx-item' + (item.danger ? ' ws-ctx-danger' : ''), item.label, item.icon);
             entry.disabled = !!item.disabled;
             entry.addEventListener('mousedown', function (event) { event.preventDefault(); });
             entry.addEventListener('click', function () {
@@ -5011,10 +5008,10 @@
 
     function footerButtons(win, isNew, onSave, insertLabel) {
         var cancel = button('btn btn-sm btn-ghost', t('cancel'));
-        cancel.setAttribute('data-bs-dismiss', 'modal');
+        cancel.setAttribute('data-bs-dismiss', 'dialog');
         win.footer.appendChild(cancel);
 
-        var save = button('btn btn-sm btn-primary rounded-pill px-3', isNew ? (insertLabel || t('insert_to_message')) : t('update_block'), 'bi-check2');
+        var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', isNew ? (insertLabel || t('insert_to_message')) : t('update_block'), 'bi-check2');
         save.addEventListener('click', onSave);
         win.footer.appendChild(save);
     }
@@ -5080,7 +5077,7 @@
             model.align.push('');
         }
 
-        var win = modal(t('designer_table'), 'modal-xl');
+        var win = modal(t('designer_table'), 'dialog-xl');
 
         titling.attach(win);
         var tools = el('div', 'ws-table-tools');
@@ -5105,7 +5102,7 @@
         win.body.appendChild(sheetBar);
         win.body.appendChild(wrap);
         wrap.appendChild(table);
-        win.body.appendChild(el('div', 'form-text mt-2', t('table_hint')));
+        win.body.appendChild(el('div', 'form-text mt-3', t('table_hint')));
         win.body.appendChild(el('div', 'form-text', t('table_formula_hint')));
 
         // What a cell holds: its formula while it shows the value, its
@@ -5557,7 +5554,7 @@
                 event.preventDefault();
                 current.row = row;
                 current.column = column;
-                menu(event.clientX, event.clientY, cellMenuItems(row, column), win.node.querySelector('.modal-content'));
+                menu(event.clientX, event.clientY, cellMenuItems(row, column), win.node);
             });
 
             holder.appendChild(cell);
@@ -5648,7 +5645,7 @@
             formulas.addEventListener('click', function () {
                 var box = formulas.getBoundingClientRect();
 
-                menu(box.left, box.bottom + 4, patternItems(), win.node.querySelector('.modal-content'));
+                menu(box.left, box.bottom + 4, patternItems(), win.node);
             });
             tools.appendChild(formulas);
 
@@ -5725,7 +5722,7 @@
             items = [{ checked: false, text: '' }, { checked: false, text: '' }];
         }
 
-        var win = modal(t('designer_checklist'), 'modal-lg');
+        var win = modal(t('designer_checklist'), 'dialog-lg');
 
         titling.attach(win);
         var list = el('div', 'ws-check-edit');
@@ -5756,7 +5753,7 @@
 
         function makeRow(item) {
             var row = el('div', 'ws-check-edit-row');
-            var box = el('input', 'form-check-input');
+            var box = el('input', 'check');
 
             box.type = 'checkbox';
             box.checked = !!item.checked;
@@ -5882,10 +5879,10 @@
             code = lines.slice(1, fenceClose(lines[lines.length - 1]) ? -1 : undefined).join('\n');
         }
 
-        var win = modal(t('designer_code'), 'modal-lg');
+        var win = modal(t('designer_code'), 'dialog-lg');
 
         titling.attach(win);
-        var row = el('div', 'd-flex align-items-center gap-2 mb-2');
+        var row = el('div', 'd-flex align-items-center gap-3 mb-3');
         var label = el('label', 'form-label mb-0 small', t('code_language'));
         var input = el('input', 'form-control form-control-sm ws-code-language');
         var listId = 'ws-code-languages-' + Date.now();
@@ -6074,7 +6071,7 @@
         }
 
         var settings = calcOptions(info);
-        var win = modal(t('designer_calc'), 'modal-lg');
+        var win = modal(t('designer_calc'), 'dialog-lg');
 
         titling.attach(win);
 
@@ -6165,7 +6162,7 @@
                         }
                     }
                 };
-            }), win.node.querySelector('.modal-content'));
+            }), win.node);
         });
 
         tool('bi-plus-slash-minus', t('calc_functions'), '', function (node) {
@@ -6180,7 +6177,7 @@
                         put(entry.name + '(' + selected + ')', entry.name.length + 1 + selected.length);
                     }
                 };
-            }), win.node.querySelector('.modal-content'));
+            }), win.node);
         });
 
         gap();
@@ -6215,7 +6212,7 @@
                         put(heading + '\n' + text + close, 0, name.length);
                     }
                 };
-            }), win.node.querySelector('.modal-content'));
+            }), win.node);
         });
 
         tool('bi-eye-slash', t('calc_hide'), t('calc_hide_help'), function () {
@@ -6251,7 +6248,7 @@
 
         // How the values are shown.
         var settingsRow = el('div', 'ws-calc-settings');
-        var decimals = el('select', 'form-select form-select-sm');
+        var decimals = el('select', 'form-control form-control-sm');
         var unit = el('input', 'form-control form-control-sm');
         var decimalsId = 'ws-calc-decimals-' + Date.now();
 
@@ -6280,7 +6277,7 @@
 
         win.body.appendChild(tools);
         win.body.appendChild(settingsRow);
-        win.body.appendChild(el('div', 'form-text mt-0 mb-2', t('calc_hint')));
+        win.body.appendChild(el('div', 'form-text mt-0 mb-3', t('calc_hint')));
         win.body.appendChild(area);
         win.body.appendChild(namesRow);
         win.body.appendChild(shown);

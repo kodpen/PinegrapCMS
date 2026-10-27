@@ -1071,18 +1071,18 @@ function ws_bulk_settings_card($self_url, $viewer)
     $admin = ((int) $viewer['role'] === 0);
 
     return '
-            <form method="post" action="' . h($self_url) . '#ws-bulk" class="card mb-4" id="ws-bulk">
+            <form method="post" action="' . h($self_url) . '#ws-bulk" class="card mb-7" id="ws-bulk">
                 ' . get_token_field() . '
                 <input type="hidden" name="ws_action" value="bulk">
                 <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-collection me-1" aria-hidden="true"></i>' . h(lang('Bulk changes by the assistants')) . '</h2></div>
                 <div class="card-body">
-                    <p class="small text-body-secondary">' . h(lang('Asked to change many records at once - every product\'s price, the missing meta descriptions of the pages - Pinegrap AI and Claude propose one bulk change. It shows how many records it reaches; the person who asked applies it with their own rights, record by record.')) . '</p>
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" name="bulk_delete" value="1" id="ws_bulk_delete"' . (ws_bulk_delete_allowed() ? ' checked' : '') . ($admin ? '' : ' disabled') . '>
-                        <label class="form-check-label" for="ws_bulk_delete">' . h(lang('The assistants may propose deleting records in bulk')) . '</label>
+                    <p class="small fg-secondary">' . h(lang('Asked to change many records at once - every product\'s price, the missing meta descriptions of the pages - Pinegrap AI and Claude propose one bulk change. It shows how many records it reaches; the person who asked applies it with their own rights, record by record.')) . '</p>
+                    <div class="form-field mb-5">
+                        <div class="switch"><input class="" type="checkbox" name="bulk_delete" value="1" id="ws_bulk_delete"' . (ws_bulk_delete_allowed() ? ' checked' : '') . ($admin ? '' : ' disabled') . '></div>
+                        <label class="" for="ws_bulk_delete">' . h(lang('The assistants may propose deleting records in bulk')) . '</label>
                         <div class="form-text">' . h(lang('Off, a request such as "delete every file" is refused. Records with a Recycle Bin go there; the others are deleted for good.')) . '</div>
                     </div>
-                    ' . ($admin ? '<button type="submit" class="btn btn-sm btn-primary rounded-pill px-3"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '<div class="form-text">' . h(lang('Only an administrator can change this.')) . '</div>') . '
+                    ' . ($admin ? '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '<div class="form-text">' . h(lang('Only an administrator can change this.')) . '</div>') . '
                 </div>
             </form>';
 }

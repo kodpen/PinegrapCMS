@@ -197,8 +197,8 @@ echo pg_page_shell(array(
 
 <main id="content" class="container-fluid">
 
-	<div class="card mb-3">
-		<div class="card-body py-3">
+	<div class="card mb-5">
+		<div class="card-body py-5">
 			<div class="doc-cred">
 				<div>
 					<label class="form-label small mb-1">' . lang('Base address') . '</label>
@@ -216,21 +216,21 @@ echo pg_page_shell(array(
 							? lang('open to anyone')
 							: lang('with the key and secret, like every other call')) . '</span></div>
 				</div>
-				<div class="ms-auto d-flex align-items-end gap-2">
+				<div class="ms-auto d-flex align-items-end gap-3">
 					<div>
 						<label class="form-label small mb-1">' . lang('Try as') . '</label>
-						<select class="form-select form-select-sm" id="doc_app" style="min-width:220px">' . $app_options . '</select>
+						<select class="form-control form-control-sm" id="doc_app" style="min-width:220px">' . $app_options . '</select>
 					</div>
-					<a class="btn btn-sm btn-outline-secondary" href="api_docs.php?openapi=1" target="_blank"
+					<a class="btn btn-sm btn-outline theme-secondary" href="api_docs.php?openapi=1" target="_blank"
 						title="' . h(lang('Opens the same document through this panel, with your own session instead of a key.')) . '">
 						<i class="bi bi-braces me-1"></i>' . lang('View') . '</a>
 				</div>
 			</div>
-			<p class="small opacity-75 mb-0 mt-3">
+			<p class="small opacity-75 mb-0 mt-5">
 				<i class="bi bi-info-circle me-1"></i>'
 				. lang('Authentication is HTTP Basic: the user name is the application key, the password is its secret. Money is always a whole number of minor units - 1999 is 19.99. Times are ISO-8601 in UTC. Listings are cursor paged: follow page.next_cursor until it is null. A write can be rehearsed before it is made: send X-Dry-Run: true and the endpoint runs every check it would run and answers instead of writing.') . '
 			</p>
-			<p class="small opacity-75 mb-0 mt-2">
+			<p class="small opacity-75 mb-0 mt-3">
 				<i class="bi bi-terminal me-1"></i>'
 				. lang(array(
 					'string' => 'Developers without a panel account can use the console at {var:1}.',
@@ -241,7 +241,7 @@ echo pg_page_shell(array(
 	</div>
 
 	<div class="doc-wrap">
-		<div class="doc-nav card"><div class="card-body p-2">' . $nav . '</div></div>
+		<div class="doc-nav card"><div class="card-body p-3">' . $nav . '</div></div>
 		<div>' . $panels . '</div>
 	</div>
 

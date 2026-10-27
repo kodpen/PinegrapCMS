@@ -87,36 +87,36 @@ if (!$_POST) {
                     ' . $liveform->get_warnings() . '
                     ' . $liveform->output_notices() . '
 
-                    <div class="row mb-2 flex-wrap">
-                        <div class="col-12 text-center text-md-start">
+                    <div class="row mb-3 flex-wrap">
+                        <div class="col-12 text-center md:text-start">
                             
-                            <p class="text-muted small">' . get_relative_time(array('timestamp' => $last_modified_timestamp)) . ' ' . $output_last_modified . '</p>
+                            <p class="fg-secondary small">' . get_relative_time(array('timestamp' => $last_modified_timestamp)) . ' ' . $output_last_modified . '</p>
                         </div>
                     </div>
-                    <div class="card my-4">
+                    <div class="card my-7">
                         <div class="card-body">
                             <form action="view_system_style_source.php" method="post">
                                 ' . get_token_field() . '
                                 ' . $liveform->output_field(array('type' => 'hidden', 'name' => 'id')) . '
                                 ' . $liveform->output_field(array('type' => 'hidden', 'name' => 'send_to')) . '
 
-                                <h5 class="card-title mb-3">' . lang('Additional Head Content') . '</h5>
-                                <div class="mb-3">
+                                <h5 class="card-title mb-5">' . lang('Additional Head Content') . '</h5>
+                                <div class="mb-5">
                                     ' . $liveform->output_field(array('type' => 'textarea', 'name' => 'head', 'id' => 'head')) . '
                                 </div>
                                 ' . pg_code_editor_attach(array('id' => 'head', 'code_type' => 'mixed', 'height' => '150px', 'readonly' => false)) . '
-                                <div class="d-flex gap-2 mt-3">
-                                    <button type="submit" name="submit_save_and_return" value="Save &amp; Return" class="btn btn-primary">' . lang('Save & Return') . '</button>
-                                    <button type="submit" name="submit_save" value="Save" class="btn btn-outline-secondary">' . lang('Save') . '</button>
-                                    <button type="button" class="btn btn-outline-secondary" onclick="window.location.href=\'' . h(escape_javascript(pg_safe_back_url($liveform->get_field_value('send_to'), 'view_styles.php'))) . '\'">' . lang('Cancel') . '</button>
+                                <div class="d-flex gap-3 mt-5">
+                                    <button type="submit" name="submit_save_and_return" value="Save &amp; Return" class="btn btn-solid theme-primary">' . lang('Save & Return') . '</button>
+                                    <button type="submit" name="submit_save" value="Save" class="btn btn-outline theme-secondary">' . lang('Save') . '</button>
+                                    <button type="button" class="btn btn-outline theme-secondary" onclick="window.location.href=\'' . h(escape_javascript(pg_safe_back_url($liveform->get_field_value('send_to'), 'view_styles.php'))) . '\'">' . lang('Cancel') . '</button>
                                 </div>
                             </form>
                         </div>
                     </div>
-                    <div class="card my-4">
+                    <div class="card my-7">
                         <div class="card-body">
-                            <h5 class="card-title mb-3">' . lang('HTML Source (read-only)') . '</h5>
-                            <div class="mb-3">
+                            <h5 class="card-title mb-5">' . lang('HTML Source (read-only)') . '</h5>
+                            <div class="mb-5">
                                 ' . $liveform->output_field(array('type' => 'textarea', 'name' => 'code', 'id' => 'code')) . '
                             </div>
                             ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'mixed', 'height' => '400px', 'readonly' => true)) . '

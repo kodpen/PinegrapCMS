@@ -337,17 +337,17 @@
         var start = dates.start;
         var due = dates.due;
 
-        var wrap = el('div', 'ws-when mb-3');
+        var wrap = el('div', 'ws-when mb-5');
         var head = el('div', 'ws-when-head');
         head.appendChild(icon('bi-calendar-event'));
         head.appendChild(document.createTextNode(text('repeat_when')));
         wrap.appendChild(head);
 
-        var dateRow = el('div', 'row g-2');
+        var dateRow = el('div', 'row g-3');
         [dates.startRow, dates.dueRow].forEach(function (row) {
             var cell = el('div', 'col-6');
-            row.classList.remove('mb-3');
-            row.classList.add('mb-2');
+            row.classList.remove('mb-5');
+            row.classList.add('mb-3');
             cell.appendChild(row);
             dateRow.appendChild(cell);
         });
@@ -363,7 +363,7 @@
         label.htmlFor = id + '-choice';
         wrap.appendChild(label);
 
-        var choice = el('select', 'form-select form-select-sm');
+        var choice = el('select', 'form-control form-control-sm');
         choice.id = id + '-choice';
         var options = {};
 
@@ -390,7 +390,7 @@
         interval.setAttribute('aria-label', text('repeat_every'));
         everyGroup.appendChild(interval);
 
-        var unit = el('select', 'form-select');
+        var unit = el('select', 'form-control');
         unit.setAttribute('aria-label', text('repeat'));
 
         ['daily', 'weekly', 'monthly', 'yearly'].forEach(function (key) {
@@ -403,8 +403,8 @@
         everyGroup.appendChild(unit);
         custom.appendChild(everyGroup);
 
-        var daysBox = el('div', 'mt-2');
-        daysBox.appendChild(el('div', 'small text-body-secondary mb-1', text('repeat_on_days')));
+        var daysBox = el('div', 'mt-3');
+        daysBox.appendChild(el('div', 'small fg-secondary mb-1', text('repeat_on_days')));
         var days = el('div', 'btn-group btn-group-sm flex-wrap');
         days.setAttribute('role', 'group');
         var chosen = (active && current.frequency === 'weekly') ? (current.weekdays || []) : [];
@@ -418,7 +418,7 @@
             input.checked = chosen.indexOf(day) !== -1;
             input.autocomplete = 'off';
 
-            var toggle = el('label', 'btn btn-outline-secondary', REPEAT.weekdays[key]);
+            var toggle = el('label', 'btn btn-outline theme-secondary', REPEAT.weekdays[key]);
             toggle.htmlFor = input.id;
 
             days.appendChild(input);
@@ -435,8 +435,8 @@
         endLabel.htmlFor = id + '-ends';
         endBox.appendChild(endLabel);
 
-        var endGroup = el('div', 'd-flex gap-2');
-        var ends = el('select', 'form-select form-select-sm w-auto');
+        var endGroup = el('div', 'd-flex gap-3');
+        var ends = el('select', 'form-control form-control-sm w-auto');
         ends.id = id + '-ends';
 
         [['never', text('repeat_ends_never')], ['on', text('repeat_ends_on')]].forEach(function (item) {
@@ -469,9 +469,9 @@
             var state = el('div', 'ws-when-state');
 
             if (!active) {
-                state.appendChild(el('span', 'text-body-secondary', text('repeat_ended') + ' ' + (current.ended_label || '')));
+                state.appendChild(el('span', 'fg-secondary', text('repeat_ended') + ' ' + (current.ended_label || '')));
             } else if (older) {
-                state.appendChild(el('span', 'text-body-secondary', text('repeat_older_copy', current.latest_number || '')));
+                state.appendChild(el('span', 'fg-secondary', text('repeat_older_copy', current.latest_number || '')));
 
                 if (helpers && helpers.open && current.last_task_id) {
                     var latest = el('button', 'btn btn-sm btn-ghost');
@@ -486,7 +486,7 @@
             }
 
             if (active && editable && helpers && helpers.api) {
-                var finish = el('button', 'btn btn-sm btn-outline-success ms-auto');
+                var finish = el('button', 'btn btn-sm btn-outline theme-success ms-auto');
                 finish.type = 'button';
                 finish.textContent = text('repeat_complete');
                 finish.addEventListener('click', function () {
@@ -769,7 +769,7 @@
 
             if (next.length) {
                 var list = el('div', 'ws-when-next');
-                list.appendChild(el('span', 'text-body-secondary', text('repeat_upcoming')));
+                list.appendChild(el('span', 'fg-secondary', text('repeat_upcoming')));
 
                 var anyMoved = false;
 

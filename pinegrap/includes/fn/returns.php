@@ -1919,19 +1919,19 @@ function pg_return_actions_html($return, $form)
     $html = '';
 
     if (!empty($return['can_mark_sent'])) {
-        $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="mt-2">'
+        $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="mt-3">'
             . pg_return_action_fields($form, 'shipped', $id)
             . '<label for="pg-ov-return-tracking-' . $id . '" class="form-label small fw-semibold">' . h(lang('Tracking number of the parcel (optional)')) . '</label>'
             . '<div class="input-group input-group-sm">'
             . '<input type="text" class="form-control" id="pg-ov-return-tracking-' . $id . '" name="tracking_number" maxlength="100" autocomplete="off">'
-            . '<button type="submit" class="btn btn-primary">' . h(lang('I have sent it')) . '</button>'
+            . '<button type="submit" class="btn btn-solid theme-primary">' . h(lang('I have sent it')) . '</button>'
             . '</div></form>';
     }
 
     if (!empty($return['can_withdraw'])) {
-        $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="mt-2">'
+        $html .= '<form method="post" action="' . h((string) $form['action']) . '" class="mt-3">'
             . pg_return_action_fields($form, 'withdraw', $id)
-            . '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Withdraw the request')) . '</button>'
+            . '<button type="submit" class="btn btn-sm btn-outline theme-secondary">' . h(lang('Withdraw the request')) . '</button>'
             . '</form>';
     }
 
@@ -2915,7 +2915,7 @@ function pg_returns_panel_card_html($rows, $add_url = '')
         return '';
     }
 
-    $lines = empty($rows) ? '<p class="small text-muted mb-0">' . h(lang('No returns yet.')) . '</p>' : '';
+    $lines = empty($rows) ? '<p class="small fg-secondary mb-0">' . h(lang('No returns yet.')) . '</p>' : '';
 
     foreach ($rows as $row) {
         $quantity = 0;
@@ -2927,20 +2927,20 @@ function pg_returns_panel_card_html($rows, $add_url = '')
         $status = (string) $row['status'];
 
         $lines .= '<div class="row align-items-center mb-1">
-                        <span class="col"><a class="link-secondary" href="view_return.php?id=' . (int) $row['id'] . '">' . h(lang(array('string' => 'Return request #{var:1}', 'vars' => array((int) $row['id'])))) . '</a>'
-                        . '<span class="d-block small text-muted">' . h(pg_return_time_text($row['requested_at'])) . ' · ' . h(lang(array('string' => '{var:1} item(s)', 'vars' => array($quantity)))) . '</span></span>
+                        <span class="col"><a class="pg-link-secondary" href="view_return.php?id=' . (int) $row['id'] . '">' . h(lang(array('string' => 'Return request #{var:1}', 'vars' => array((int) $row['id'])))) . '</a>'
+                        . '<span class="d-block small fg-secondary">' . h(pg_return_time_text($row['requested_at'])) . ' · ' . h(lang(array('string' => '{var:1} item(s)', 'vars' => array($quantity)))) . '</span></span>
                         <span class="col-auto text-end"><span class="' . h(pg_return_badge_class($status)) . '">' . h(pg_return_status_label($status)) . '</span></span>
                     </div>';
     }
 
-    return '<div class="card mt-3">
+    return '<div class="card mt-5">
                 <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 text-primary fw-bold mb-0">' . h(lang('Returns')) . '</span>
-                    <a class="btn btn-sm btn-outline-secondary" href="view_returns.php?status=all">' . h(lang('All Returns')) . '</a>
+                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Returns')) . '</span>
+                    <a class="btn btn-sm btn-outline theme-secondary" href="view_returns.php?status=all">' . h(lang('All Returns')) . '</a>
                 </div>
                 <div class="card-body">
                     ' . $lines . '
-                    ' . (($add_url !== '') ? '<a class="btn btn-sm btn-outline-secondary mt-2" href="' . h($add_url) . '"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . h(lang('Record a Return')) . '</a>' : '') . '
+                    ' . (($add_url !== '') ? '<a class="btn btn-sm btn-outline theme-secondary mt-3" href="' . h($add_url) . '"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . h(lang('Record a Return')) . '</a>' : '') . '
                 </div>
             </div>';
 }

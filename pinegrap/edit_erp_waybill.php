@@ -89,19 +89,19 @@ $lines = erp_waybill_lines($waybill_id);
 $invoice_state = erp_waybill_invoice_state($waybill);
 $is_cancelled = ((string) $waybill['status'] === 'cancelled');
 
-$empty = '<span class="text-body-secondary">&mdash;</span>';
+$empty = '<span class="fg-secondary">&mdash;</span>';
 
 $ship_time = (string) $waybill['ship_time'];
 $ship_time = ($ship_time !== '' && $ship_time !== '00:00:00') ? substr($ship_time, 0, 5) : '';
 
 if ($is_cancelled) {
-    $output_state = '<span class="text-danger">' . lang('Cancelled') . '</span>';
+    $output_state = '<span class="fg-danger">' . lang('Cancelled') . '</span>';
 } elseif ($invoice_state === 'invoiced') {
-    $output_state = '<span class="text-success">' . lang('Invoiced') . '</span>';
+    $output_state = '<span class="fg-success">' . lang('Invoiced') . '</span>';
 } elseif ($invoice_state === 'draft') {
-    $output_state = '<span class="text-warning">' . lang('Invoice drafted') . '</span>';
+    $output_state = '<span class="fg-warning">' . lang('Invoice drafted') . '</span>';
 } else {
-    $output_state = '<span class="text-primary">' . lang('Not yet invoiced') . '</span>';
+    $output_state = '<span class="fg-primary">' . lang('Not yet invoiced') . '</span>';
 }
 
 $output_invoice = $empty;
@@ -120,8 +120,8 @@ foreach ($lines as $line) {
     $quantity = erp_quantity_text($line['quantity']);
     $output_lines .= '
                             <tr>
-                                <td class="text-body-secondary">' . (int) $line['line_no'] . '</td>
-                                <td>' . h($line['description']) . ((trim((string) $line['product_name']) !== '' && (string) $line['product_name'] !== (string) $line['description']) ? '<div class="text-body-secondary small">' . h($line['product_name']) . '</div>' : '') . '</td>
+                                <td class="fg-secondary">' . (int) $line['line_no'] . '</td>
+                                <td>' . h($line['description']) . ((trim((string) $line['product_name']) !== '' && (string) $line['product_name'] !== (string) $line['description']) ? '<div class="fg-secondary small">' . h($line['product_name']) . '</div>' : '') . '</td>
                                 <td class="text-end" data-sort="' . (float) $line['quantity'] . '">' . h($quantity) . '</td>
                                 <td>' . h(erp_waybill_unit_label($line['unit_code'])) . '</td>
                             </tr>';
@@ -168,60 +168,60 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                        <a class="btn btn-sm btn-outline-secondary" href="get_erp_waybill_pdf.php?id=' . $waybill_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>' . lang('PDF') . '</a>
-                        <a class="btn btn-sm btn-outline-secondary" href="get_erp_waybill_pdf.php?id=' . $waybill_id . '&amp;download=1"><i class="bi bi-download me-1"></i>' . lang('Download') . '</a>
+                        <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_waybill_pdf.php?id=' . $waybill_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>' . lang('PDF') . '</a>
+                        <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_waybill_pdf.php?id=' . $waybill_id . '&amp;download=1"><i class="bi bi-download me-1"></i>' . lang('Download') . '</a>
                         ' . $output_workspace_button . '
                     </nav>
 
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Delivery Note') . '
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-12 col-sm-6 col-lg-3 my-2">
-                            <div class="form-label text-body-secondary">' . lang('Account') . '</div>
+                        <div class="col-12 sm:col-6 lg:col-3 my-3">
+                            <div class="form-label fg-secondary">' . lang('Account') . '</div>
                             <div><a href="edit_erp_account.php?id=' . (int) $waybill['account_id'] . '">' . h($waybill['account_title']) . '</a></div>
                         </div>
-                        <div class="col-6 col-sm-3 col-lg-2 my-2">
-                            <div class="form-label text-body-secondary">' . lang('Date') . '</div>
+                        <div class="col-6 sm:col-3 lg:col-2 my-3">
+                            <div class="form-label fg-secondary">' . lang('Date') . '</div>
                             <div>' . h(prepare_form_data_for_output($waybill['issue_date'], 'date')) . '</div>
                         </div>
-                        <div class="col-6 col-sm-3 col-lg-2 my-2">
-                            <div class="form-label text-body-secondary">' . lang('Shipment Date') . '</div>
-                            <div>' . h(prepare_form_data_for_output($waybill['ship_date'], 'date')) . (($ship_time !== '') ? ' <span class="text-body-secondary">' . h($ship_time) . '</span>' : '') . '</div>
+                        <div class="col-6 sm:col-3 lg:col-2 my-3">
+                            <div class="form-label fg-secondary">' . lang('Shipment Date') . '</div>
+                            <div>' . h(prepare_form_data_for_output($waybill['ship_date'], 'date')) . (($ship_time !== '') ? ' <span class="fg-secondary">' . h($ship_time) . '</span>' : '') . '</div>
                         </div>
-                        <div class="col-6 col-sm-4 col-lg-2 my-2">
-                            <div class="form-label text-body-secondary">' . lang('Status') . '</div>
+                        <div class="col-6 sm:col-4 lg:col-2 my-3">
+                            <div class="form-label fg-secondary">' . lang('Status') . '</div>
                             <div>' . $output_state . '</div>
                         </div>
-                        <div class="col-6 col-sm-4 col-lg-1 my-2">
-                            <div class="form-label text-body-secondary">' . lang('Order') . '</div>
+                        <div class="col-6 sm:col-4 lg:col-1 my-3">
+                            <div class="form-label fg-secondary">' . lang('Order') . '</div>
                             <div>' . $output_order . '</div>
                         </div>
-                        <div class="col-6 col-sm-4 col-lg-2 my-2">
-                            <div class="form-label text-body-secondary">' . lang('Invoice') . '</div>
+                        <div class="col-6 sm:col-4 lg:col-2 my-3">
+                            <div class="form-label fg-secondary">' . lang('Invoice') . '</div>
                             <div>' . $output_invoice . '</div>
                         </div>
                     </div>
-                    <div class="row border-top mt-2 pt-2">
-                        <div class="col-12 col-lg-6 my-2">
-                            <div class="form-label text-body-secondary">' . lang('Delivered to') . '</div>
+                    <div class="row border-top mt-3 pt-3">
+                        <div class="col-12 lg:col-6 my-3">
+                            <div class="form-label fg-secondary">' . lang('Delivered to') . '</div>
                             <div class="fw-bold">' . h($waybill['ship_to_title']) . '</div>
                             <div>' . h($waybill['ship_to_address']) . '</div>
                             <div>' . h($ship_to_line) . '</div>
                         </div>
-                        <div class="col-12 col-lg-6 my-2">
-                            <div class="form-label text-body-secondary">' . lang('Transport') . '</div>
-                            <div>' . ((trim((string) $waybill['carrier_title']) !== '') ? h($waybill['carrier_title']) . ((trim((string) $waybill['carrier_vkn']) !== '') ? ' <span class="text-body-secondary">' . h($waybill['carrier_vkn']) . '</span>' : '') : $empty) . '</div>
-                            <div>' . ((trim((string) $waybill['plate']) !== '') ? '<span class="text-body-secondary">' . lang('Plate') . ':</span> ' . h($waybill['plate']) : '') . ((trim((string) $waybill['driver_name']) !== '') ? ' <span class="text-body-secondary ms-2">' . lang('Driver') . ':</span> ' . h($waybill['driver_name']) . ((trim((string) $waybill['driver_tckn']) !== '') ? ' <span class="text-body-secondary">' . h($waybill['driver_tckn']) . '</span>' : '') : '') . '</div>
+                        <div class="col-12 lg:col-6 my-3">
+                            <div class="form-label fg-secondary">' . lang('Transport') . '</div>
+                            <div>' . ((trim((string) $waybill['carrier_title']) !== '') ? h($waybill['carrier_title']) . ((trim((string) $waybill['carrier_vkn']) !== '') ? ' <span class="fg-secondary">' . h($waybill['carrier_vkn']) . '</span>' : '') : $empty) . '</div>
+                            <div>' . ((trim((string) $waybill['plate']) !== '') ? '<span class="fg-secondary">' . lang('Plate') . ':</span> ' . h($waybill['plate']) : '') . ((trim((string) $waybill['driver_name']) !== '') ? ' <span class="fg-secondary ms-3">' . lang('Driver') . ':</span> ' . h($waybill['driver_name']) . ((trim((string) $waybill['driver_tckn']) !== '') ? ' <span class="fg-secondary">' . h($waybill['driver_tckn']) . '</span>' : '') : '') . '</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Lines') . '
                 </div>
                 <div class="card-body p-0 position-relative table-responsive">
@@ -240,8 +240,8 @@ pg_page_shell([
             </div>
 
             ' . ((trim((string) $waybill['notes']) !== '')
-                ? '<div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                ? '<div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Notes') . '
                 </div>
                 <div class="card-body">' . nl2br(h($waybill['notes'])) . '</div>
@@ -252,14 +252,14 @@ pg_page_shell([
                 ? '<form name="form" action="edit_erp_waybill.php" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $waybill_id . '" />
-                <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             ' . ($can_invoice
-                                ? '<button type="submit" name="erp_action" value="invoice" class="btn my-1 btn-success"><i class="bi bi-receipt me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Invoice the Delivery Note') . '</span></button>'
+                                ? '<button type="submit" name="erp_action" value="invoice" class="btn my-1 btn-solid theme-success"><i class="bi bi-receipt me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Invoice the Delivery Note') . '</span></button>'
                                 : '') . '
                             ' . ($can_cancel
-                                ? '<button type="submit" name="erp_action" value="cancel" class="btn my-1 btn-outline-danger" data-confirm-content="' . lang('Cancel this delivery note? It keeps its number and stays in the register as cancelled.') . '"><i class="bi bi-x-circle me-2" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Cancel the Document') . '</span></button>'
+                                ? '<button type="submit" name="erp_action" value="cancel" class="btn my-1 btn-outline theme-danger" data-confirm-content="' . lang('Cancel this delivery note? It keeps its number and stays in the register as cancelled.') . '"><i class="bi bi-x-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Cancel the Document') . '</span></button>'
                                 : '') . '
                         </div>
                     </div>

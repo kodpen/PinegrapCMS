@@ -973,7 +973,7 @@ function ws_screen_gate($user)
  * @param string $class the button's classes
  * @return string
  */
-function ws_record_button($user, $type, $id, $label = '', $class = 'btn btn-sm btn-outline-secondary')
+function ws_record_button($user, $type, $id, $label = '', $class = 'btn btn-sm btn-outline theme-secondary')
 {
     if (((int) $id <= 0) || !ws_ready() || !ws_enabled()) {
         return '';
@@ -989,6 +989,6 @@ function ws_record_button($user, $type, $id, $label = '', $class = 'btn btn-sm b
 
     return '<a href="#" class="' . h($class) . '" data-ws-record="' . h($type . ':' . (int) $id) . '" data-ws-label="' . h($label) . '" title="' . h(lang('Conversations and tasks about this record')) . '">'
         . '<i class="bi bi-clipboard2-check me-1" aria-hidden="true"></i>' . h(lang('Workspace'))
-        . (($count > 0) ? ' <span class="badge rounded-pill text-bg-secondary ms-1">' . (int) $count . '</span>' : '')
+        . (($count > 0) ? ' <span class="badge rounded-pill theme-secondary ms-1">' . (int) $count . '</span>' : '')
         . '</a>' . ws_screen_assets($viewer, 'record');
 }

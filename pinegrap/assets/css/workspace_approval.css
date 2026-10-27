@@ -1,3 +1,7 @@
+/* Panel rules sit in Bootstrap 6's custom layer: above its components,
+   below its helpers and utilities, which win as they did with !important. */
+@layer custom {
+
 /*
  * Pinegrap - the page an approval link leads to, for somebody outside the
  * team (workspace_approval.php).
@@ -7,7 +11,7 @@ body.pg-approval {
   min-height: 100vh;
   margin: 0;
   padding: 2rem 1rem;
-  background: var(--bs-tertiary-bg);
+  background: var(--pg-bg-1);
 }
 
 .pg-approval-card {
@@ -16,13 +20,13 @@ body.pg-approval {
   padding: 1.5rem;
   border: 1px solid var(--bs-border-color);
   border-radius: 1rem;
-  background: var(--bs-body-bg);
+  background: var(--pg-bg-body);
   box-shadow: 0 .25rem 1rem rgba(0, 0, 0, .05);
 }
 
 .pg-approval-site {
   margin-bottom: 1rem;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
   font-size: .875rem;
 }
 
@@ -34,14 +38,14 @@ body.pg-approval {
 }
 
 .pg-approval-meta {
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
 }
 
 .pg-approval-details {
   margin-bottom: 1.25rem;
   padding: 1rem;
   border-radius: .75rem;
-  background: var(--bs-tertiary-bg);
+  background: var(--pg-bg-1);
   overflow-wrap: anywhere;
 }
 
@@ -55,7 +59,7 @@ body.pg-approval {
   margin: .15rem 0 .35rem;
   padding-left: .7rem;
   border-left: 3px solid var(--bs-border-color);
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
 }
 
 .pg-approval-buttons {
@@ -67,7 +71,7 @@ body.pg-approval {
 
 .pg-approval-fine {
   margin: 1rem 0 0;
-  color: var(--bs-secondary-color);
+  color: var(--pg-fg-2);
   font-size: .8125rem;
 }
 
@@ -84,18 +88,18 @@ body.pg-approval {
 }
 
 .pg-approval-approved > .bi {
-  color: var(--bs-success);
+  color: var(--pg-success);
 }
 
 .pg-approval-rejected > .bi {
-  color: var(--bs-danger);
+  color: var(--pg-danger);
 }
 
 .pg-approval-quote {
   margin: 0 0 1rem;
   padding: .5rem .75rem;
   border-left: 3px solid var(--bs-border-color);
-  color: var(--bs-body-color);
+  color: var(--pg-fg-body);
   overflow-wrap: anywhere;
 }
 
@@ -114,4 +118,6 @@ body.pg-approval {
   .pg-approval-buttons .btn {
     flex: 1 1 auto;
   }
+}
+
 }

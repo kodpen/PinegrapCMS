@@ -211,7 +211,7 @@ function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown 
 
     return '
             <tr class="erp-line" data-erp-line>
-                <td class="text-body-secondary align-middle text-nowrap" data-erp-line-no>' . (is_int($index) ? ($index + 1) : '') . '</td>
+                <td class="fg-secondary align-middle text-nowrap" data-erp-line-no>' . (is_int($index) ? ($index + 1) : '') . '</td>
                 <td class="position-relative">
                     <input type="hidden" name="' . h($name('product_id')) . '" value="' . (int) $line['product_id'] . '" data-erp-product-id />
                     <input type="hidden" name="' . h($name('source_line')) . '" value="' . h((string) ($line['source_line'] ?? '')) . '" />
@@ -220,8 +220,8 @@ function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown 
                         'value' => h($line['product_name']),
                         'class' => 'form-control form-control-sm erp-product-search', 'maxlength' => '100', 'autocomplete' => 'off',
                         'placeholder' => lang('Search products'), 'aria-label' => lang('Product'))) . '
-                    <div class="dropdown-menu shadow-sm w-100" data-erp-product-results></div>
-                    <div class="d-flex align-items-start gap-2 mt-1">
+                    <div class="menu shadow-sm w-100" data-erp-product-results></div>
+                    <div class="d-flex align-items-start gap-3 mt-1">
                         <img class="img-thumbnail flex-shrink-0 d-none" style="width:40px;height:40px;object-fit:cover;" alt="" data-erp-product-thumb />
                         <div class="form-text small mt-0 flex-grow-1" data-erp-product-hint></div>
                     </div>
@@ -239,7 +239,7 @@ function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown 
                 <td>' . $liveform->output_field(array(
                     'type' => 'select', 'id' => $id('unit_code'), 'name' => $name('unit_code'),
                     'value' => h($unit_code),
-                    'class' => 'form-select form-select-sm', 'options' => $unit_options,
+                    'class' => 'form-control form-control-sm', 'options' => $unit_options,
                     'aria-label' => lang('Unit'))) . '</td>
                 <td>' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('unit_price'), 'name' => $name('unit_price'),
@@ -271,7 +271,7 @@ function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown 
                     'aria-label' => erp_tax2_name() . ' %')) . '</td>' : '') . '
                 <td data-erp-withholding-col' . ($withholding_shown ? '' : ' class="d-none"') . '>
                     <input type="hidden" name="' . h($name('withholding_rate')) . '" value="' . h((string) ($line['withholding_rate'] ?? '')) . '" data-erp-withholding-rate />
-                    <select name="' . h($name('withholding_code')) . '" id="' . h($id('withholding_code')) . '" class="form-select form-select-sm" aria-label="' . h(lang('VAT withholding')) . '" data-erp-withholding-code>' . $output_withholding . '</select>
+                    <select name="' . h($name('withholding_code')) . '" id="' . h($id('withholding_code')) . '" class="form-control form-control-sm" aria-label="' . h(lang('VAT withholding')) . '" data-erp-withholding-code>' . $output_withholding . '</select>
                 </td>
                 <td class="text-end align-middle text-nowrap" data-erp-line-total></td>
                 <td class="align-middle text-end">
@@ -329,13 +329,13 @@ function erp_invoice_form_cards($liveform, $options = array())
         }
 
         $output_fx = '
-                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="currency" class="form-label">' . lang('Currency') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'currency', 'name' => 'currency',
-                        'class' => 'form-select', 'options' => erp_fx_currency_options())) . '
+                        'class' => 'form-control', 'options' => erp_fx_currency_options())) . '
                 </div>
-                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="exchange_rate" class="form-label">' . lang('Exchange Rate') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'exchange_rate', 'name' => 'exchange_rate',
@@ -386,8 +386,8 @@ function erp_invoice_form_cards($liveform, $options = array())
          data-text-account-price="' . h(lang('The account\'s own price (list price {var:1})')) . '"
          data-text-account-discount="' . h(lang('The account\'s discount: {var:1}')) . '"
          data-text-max-lines="' . lang(array('string' => 'An invoice can carry at most {var:1} lines.', 'vars' => ERP_MANUAL_MAX_LINES)) . '">
-    <div class="card my-4">
-        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+    <div class="card my-7">
+        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
             ' . ($is_quote ? lang('Sales quote') : ($is_order ? lang('Purchase order') : lang('Invoice'))) . '
         </div>
         <div class="card-body">
@@ -395,20 +395,20 @@ function erp_invoice_form_cards($liveform, $options = array())
                 ' . ($is_quote ? '<input type="hidden" name="direction" value="sales" />' : '') . ($is_order
                     // The id lets the line editor read the side it prices on
                     // (the last purchase price, no campaign).
-                    ? '<input type="hidden" id="direction" name="direction" value="purchase" />' : '') . (($is_quote || $is_order) ? '' : '<div class="col-12 col-lg-3 my-2">
+                    ? '<input type="hidden" id="direction" name="direction" value="purchase" />' : '') . (($is_quote || $is_order) ? '' : '<div class="col-12 lg:col-3 my-3">
                     <label for="direction" class="form-label">' . lang('Direction') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'direction', 'name' => 'direction',
-                        'class' => 'form-select', 'options' => $direction_options)) . '
+                        'class' => 'form-control', 'options' => $direction_options)) . '
                 </div>') . '
-                <div class="col-12 ' . (($is_quote || $is_order) ? 'col-lg-9' : 'col-lg-6') . ' my-2">
+                <div class="col-12 ' . (($is_quote || $is_order) ? 'lg:col-9' : 'lg:col-6') . ' my-3">
                     <label for="account_id" class="form-label">' . ($is_order ? lang('Supplier') : lang('Account')) . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'account_id', 'name' => 'account_id',
-                        'class' => 'form-select', 'data-pg-combobox' => '', 'options' => $account_options)) . '
+                        'class' => 'form-control', 'data-pg-combobox' => '', 'options' => $account_options)) . '
                     ' . erp_account_quick_link('#account_id', 'auto') . '
                 </div>
-                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="issue_date" class="form-label">' . lang('Date') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'issue_date', 'data-pg-date' => '', 'name' => 'issue_date',
@@ -417,7 +417,7 @@ function erp_invoice_form_cards($liveform, $options = array())
                 </div>
             </div>
             <div class="row">
-                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="due_date" class="form-label">' . ($is_quote ? lang('Valid until') : ($is_order ? lang('Expected delivery') : lang('Due Date'))) . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'due_date', 'data-pg-date' => '', 'name' => 'due_date',
@@ -431,14 +431,14 @@ function erp_invoice_form_cards($liveform, $options = array())
                 ' . $output_fx . '
             </div>
             ' . ($is_order ? '' : '<div class="row' . ($is_purchase ? '' : ' d-none') . '" data-erp-purchase-only>
-                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="supplier_invoice_no" class="form-label">' . lang('Supplier Invoice Number') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'supplier_invoice_no', 'name' => 'supplier_invoice_no',
                         'class' => 'form-control', 'maxlength' => '32', 'autocomplete' => 'off')) . '
                     <div class="form-text">' . lang('The number printed on the bill the supplier sent. Our own number comes from the purchase series.') . '</div>
                 </div>
-                <div class="col-12 col-sm-6 col-lg-3 my-2">
+                <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="supplier_invoice_date" class="form-label">' . lang('Supplier Invoice Date') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'supplier_invoice_date', 'data-pg-date' => '', 'name' => 'supplier_invoice_date',
@@ -447,7 +447,7 @@ function erp_invoice_form_cards($liveform, $options = array())
                 </div>
             </div>') . '
             <div class="row">
-                <div class="col-12 my-2">
+                <div class="col-12 my-3">
                     <label for="notes" class="form-label">' . lang('Notes') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'textarea', 'id' => 'notes', 'name' => 'notes',
@@ -458,21 +458,21 @@ function erp_invoice_form_cards($liveform, $options = array())
         </div>
     </div>
     ' . get_date_picker_format() . pg_fields_script() . '
-    <div class="card my-4">
-        <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <div class="card my-7">
+        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
             <span>' . lang('Lines') . '</span>
-            <div class="d-flex flex-wrap align-items-center gap-2 ms-auto">
+            <div class="d-flex flex-wrap align-items-center gap-3 ms-auto">
                 ' . (($withholding_shown || erp_turkish_features())
-                    ? '<div class="form-check form-switch mb-0 text-body fw-normal fs-6" style="text-transform:none" title="' . h(lang('The buyer pays part of the VAT to the tax office: pick the withholding code on each line it applies to.')) . '">
-                    <input class="form-check-input" type="checkbox" role="switch" id="erp_withholding_on" data-erp-withholding-toggle' . ($withholding_shown ? ' checked' : '') . ' />
-                    <label class="form-check-label small" for="erp_withholding_on">' . lang('VAT withholding') . '</label>
+                    ? '<div class="form-field mb-0 fg-body fw-normal fs-md" style="text-transform:none" title="' . h(lang('The buyer pays part of the VAT to the tax office: pick the withholding code on each line it applies to.')) . '">
+                    <div class="switch"><input class="" type="checkbox" role="switch" id="erp_withholding_on" data-erp-withholding-toggle' . ($withholding_shown ? ' checked' : '') . ' /></div>
+                    <label class="small" for="erp_withholding_on">' . lang('VAT withholding') . '</label>
                 </div>'
                     : '') . '
                 <div class="input-group input-group-sm" style="width: 16rem;" title="' . h(lang('Scan a barcode or type a SKU and press Enter: the product lands on a line, or its quantity goes up by one.')) . '">
                     <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
                     <input type="text" class="form-control" data-erp-barcode autocomplete="off" placeholder="' . h(lang('Scan a barcode')) . '" aria-label="' . h(lang('Barcode')) . '" />
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-secondary no-submit" data-erp-add-line><i class="bi bi-plus-lg me-2"></i>' . lang('Add line') . '</button>
+                <button type="button" class="btn btn-sm btn-outline theme-secondary no-submit" data-erp-add-line><i class="bi bi-plus-lg me-3"></i>' . lang('Add line') . '</button>
             </div>
         </div>
         <div class="card-body">
@@ -504,8 +504,8 @@ function erp_invoice_form_cards($liveform, $options = array())
     </div>
 
     <div class="row">
-        <div class="col-12 col-lg-5 ms-auto">
-            <div class="card my-4" data-erp-totals>
+        <div class="col-12 lg:col-5 ms-auto">
+            <div class="card my-7" data-erp-totals>
                 <div class="card-body">
                     <div class="d-flex justify-content-between py-1">
                         <span>' . lang('Subtotal') . '</span><b data-erp-total="subtotal">&mdash;</b>
@@ -522,7 +522,7 @@ function erp_invoice_form_cards($liveform, $options = array())
                     <div class="d-flex justify-content-between py-1' . ($withholding_shown ? '' : ' d-none') . '" data-erp-withholding-total>
                         <span>' . lang('VAT withholding') . '</span><b>&minus;<span data-erp-total="withholding_total">&mdash;</span></b>
                     </div>
-                    <div class="d-flex justify-content-between py-2 border-top h5 mb-0">
+                    <div class="d-flex justify-content-between py-3 border-top h5 mb-0">
                         <span>' . lang('Total') . '</span><b data-erp-total="grand_total">&mdash;</b>
                     </div>
                     <div class="form-text text-end">' . lang('A preview; the figures are worked out again when the invoice is saved.') . '</div>

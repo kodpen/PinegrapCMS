@@ -135,8 +135,8 @@ while ($row = mysqli_fetch_assoc($result)) {
     '<tr class="unselectable ">
         
         <td class="align-middle text-start action-buttons">
-            <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-            <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+            <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+            <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
         </td>
         <td>' . h($row['order_number'] ?? '') . '</td>
         <td nowrap>' . h($row['total']) . '</td>
@@ -163,15 +163,15 @@ pg_page_shell(
 <main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 text-center text-md-start">
+            <div class="row mb-3  flex-wrap">
+                <div class="col-12 text-center md:text-start">
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         <div class="pg-toolbar-grow"></div>
                         ' . pg_list_sort_menu('view_orders_for_contact.php', $sort_columns, $sort_levels, $sort_default, $sort_query) . '
                     </nav>
                 </div>
             </div>
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none">
                         <thead>

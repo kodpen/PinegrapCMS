@@ -1829,7 +1829,7 @@ function get_system_status_checks()
     if (defined('ENVIRONMENT') && ENVIRONMENT === 'development') {
         $output .= $makeIcon(
             'bi-file-earmark-minus-fill',
-            'text-secondary',
+            'fg-secondary',
             'Directory File Integrity',
             'This feature cannot be used in development mode. For security, disable development mode if it is not required.'
         );
@@ -1840,7 +1840,7 @@ function get_system_status_checks()
             case 'unable_to_resolve_directory':
                 $output .= $makeIcon(
                     'bi-file-earmark-minus-fill',
-                    'text-warning',
+                    'fg-warning',
                     'Directory File Integrity',
                     'Unable to resolve directory for file integrity check.'
                 );
@@ -1852,7 +1852,7 @@ function get_system_status_checks()
                 // reached from this server.
                 $output .= $makeIcon(
                     'bi-file-earmark-minus-fill',
-                    'text-warning',
+                    'fg-warning',
                     'Directory File Integrity',
                     'The integrity reference for this version could not be retrieved from GitHub. The version may not be released yet, or GitHub may be unreachable from this server.'
                 );
@@ -1861,7 +1861,7 @@ function get_system_status_checks()
             case 'missing_or_tampered_files':
                 $output .= $makeIcon(
                     'bi-file-earmark-x-fill',
-                    'text-danger',
+                    'fg-danger',
                     'Directory File Integrity',
                     'Warning: Missing or tampered files detected!',
                     '',
@@ -1872,7 +1872,7 @@ function get_system_status_checks()
             case 'success':
                 $output .= $makeIcon(
                     'bi-file-earmark-check-fill',
-                    'text-success',
+                    'fg-success',
                     'Directory File Integrity',
                     'All files are intact.'
                 );
@@ -1886,7 +1886,7 @@ function get_system_status_checks()
     if ($ssl_status === 'success' && $url_scheme !== 'https://') {
         $output .= $makeIcon(
             'bi-lock-fill',
-            'text-warning',
+            'fg-warning',
             'SSL Status',
             'SSL is active but URL scheme is not HTTPS. Please enable Security Mode from Site Settings.'
         );
@@ -1894,14 +1894,14 @@ function get_system_status_checks()
     } elseif ($ssl_status === 'success') {
         $output .= $makeIcon(
             'bi-lock-fill',
-            'text-success',
+            'fg-success',
             'SSL Status',
             'Secure connection: SSL is active.'
         );
     } else {
         $output .= $makeIcon(
             'bi-unlock-fill',
-            'text-danger',
+            'fg-danger',
             'SSL Status',
             'SSL is not active. Your connection may not be secure.'
         );
@@ -1955,7 +1955,7 @@ function get_system_status_checks()
             // outbound verification starts failing for no visible reason.
             if ($ca_bundle_months > 24) {
                 $ca_bundle_icon = 'bi-patch-exclamation-fill';
-                $ca_bundle_color = 'text-danger';
+                $ca_bundle_color = 'fg-danger';
                 $ca_bundle_message = array(
                     'string' => 'The bundled CA certificate file is more than two years old: Mozilla data as of {var:1}, {var:2} months old. Outbound TLS verification may fail against current certificates; update cacert.pem.',
                     'vars'   => array($ca_bundle_date, $ca_bundle_months),
@@ -1963,7 +1963,7 @@ function get_system_status_checks()
                 $score -= $weights['ca_bundle'];
             } elseif ($ca_bundle_months > 12) {
                 $ca_bundle_icon = 'bi-patch-exclamation-fill';
-                $ca_bundle_color = 'text-warning';
+                $ca_bundle_color = 'fg-warning';
                 $ca_bundle_message = array(
                     'string' => 'The bundled CA certificate file is more than a year old: Mozilla data as of {var:1}, {var:2} months old. Update cacert.pem.',
                     'vars'   => array($ca_bundle_date, $ca_bundle_months),
@@ -1971,7 +1971,7 @@ function get_system_status_checks()
                 $score -= $weights['ca_bundle'] * 0.5;
             } else {
                 $ca_bundle_icon = 'bi-patch-check-fill';
-                $ca_bundle_color = 'text-success';
+                $ca_bundle_color = 'fg-success';
                 $ca_bundle_message = array(
                     'string' => 'The bundled CA certificate file is current: Mozilla data as of {var:1}, {var:2} months old.',
                     'vars'   => array($ca_bundle_date, $ca_bundle_months),
@@ -2000,7 +2000,7 @@ function get_system_status_checks()
         if ($ca_setting['state'] === 'broken') {
             $output .= $makeIcon(
                 'bi-plug-fill',
-                'text-danger',
+                'fg-danger',
                 'CA Bundle Setting',
                 array(
                     'string' => 'CURL_CA_BUNDLE in data/config.php points at a file that does not exist ({var:1}). Outbound HTTPS calls - updates, Pinegrap AI, payments, webhooks - cannot verify certificates and fail.',
@@ -2012,7 +2012,7 @@ function get_system_status_checks()
         } elseif ($ca_setting['state'] === 'needed') {
             $output .= $makeIcon(
                 'bi-plug-fill',
-                'text-danger',
+                'fg-danger',
                 'CA Bundle Setting',
                 'This server cannot verify HTTPS certificates with its own certificate store, and CURL_CA_BUNDLE in data/config.php is empty. Outbound calls - updates, Pinegrap AI, payments, webhooks - fail. Point it at the bundled data/cacert.pem.',
                 lang('Not set')
@@ -2033,7 +2033,7 @@ function get_system_status_checks()
         if (PASSWORD_HINT) {
             $output .= $makeIcon(
                 'bi-eye-fill',
-                'text-danger',
+                'fg-danger',
                 'Password Hint',
                 'Password hint is enabled. This may reduce security.'
             );
@@ -2041,7 +2041,7 @@ function get_system_status_checks()
         } else {
             $output .= $makeIcon(
                 'bi-eye-slash-fill',
-                'text-success',
+                'fg-success',
                 'Password Hint',
                 'Password hint is disabled.'
             );
@@ -2053,14 +2053,14 @@ function get_system_status_checks()
         if (CAPTCHA) {
             $output .= $makeIcon(
                 'bi-person-check-fill',
-                'text-success',
+                'fg-success',
                 'CAPTCHA Protection',
                 'CAPTCHA protection is enabled.'
             );
         } else {
             $output .= $makeIcon(
                 'bi-person-x-fill',
-                'text-danger',
+                'fg-danger',
                 'CAPTCHA Protection',
                 'CAPTCHA protection is disabled.'
             );
@@ -2073,14 +2073,14 @@ function get_system_status_checks()
         if (STRONG_PASSWORD) {
             $output .= $makeIcon(
                 'bi-key-fill',
-                'text-success',
+                'fg-success',
                 'Strong Password',
                 'Strong password enforcement is enabled.'
             );
         } else {
             $output .= $makeIcon(
                 'bi-key',
-                'text-danger',
+                'fg-danger',
                 'Strong Password',
                 'Strong password enforcement is disabled.'
             );
@@ -2095,7 +2095,7 @@ function get_system_status_checks()
     if ($waf_current_mode === 'block') {
         $output .= $makeIcon(
             'bi-shield-fill-check',
-            'text-success',
+            'fg-success',
             'Web Application Firewall',
             'The firewall is enabled and blocking malicious requests.'
         );
@@ -2104,7 +2104,7 @@ function get_system_status_checks()
         // so it must not be scored as full protection.
         $output .= $makeIcon(
             'bi-shield-fill-exclamation',
-            'text-warning',
+            'fg-warning',
             'Web Application Firewall',
             'The firewall is in monitor mode: it records attacks but does not block them.'
         );
@@ -2112,7 +2112,7 @@ function get_system_status_checks()
     } else {
         $output .= $makeIcon(
             'bi-shield-slash-fill',
-            'text-danger',
+            'fg-danger',
             'Web Application Firewall',
             'The firewall is disabled. No requests are being filtered.'
         );
@@ -2126,7 +2126,7 @@ function get_system_status_checks()
     if ($waf_current_mode === 'off') {
         $output .= $makeIcon(
             'bi-robot',
-            'text-danger',
+            'fg-danger',
             'Unknown Bot Filtering',
             'Unknown bots are not being blocked, because the firewall is disabled.'
         );
@@ -2134,14 +2134,14 @@ function get_system_status_checks()
     } elseif (defined('BLOCK_UNKNOWN_BOTS') && BLOCK_UNKNOWN_BOTS) {
         $output .= $makeIcon(
             'bi-robot',
-            'text-success',
+            'fg-success',
             'Unknown Bot Filtering',
             'Unknown bots are being blocked.'
         );
     } else {
         $output .= $makeIcon(
             'bi-robot',
-            'text-warning',
+            'fg-warning',
             'Unknown Bot Filtering',
             'Unknown bots are not being blocked.'
         );
@@ -2161,14 +2161,14 @@ function get_system_status_checks()
         if (file_exists($key_file_path)) {
             $output .= $makeIcon(
                 'bi-broadcast-pin',
-                'text-success',
+                'fg-success',
                 'IndexNow',
                 'IndexNow configuration is successful.'
             );
         } else {
             $output .= $makeIcon(
                 'bi-broadcast',
-                'text-warning',
+                'fg-warning',
                 'IndexNow',
                 'Warning: IndexNow key is set but the verification file is missing.'
             );
@@ -2177,7 +2177,7 @@ function get_system_status_checks()
     } else {
         $output .= $makeIcon(
             'bi-broadcast',
-            'text-warning',
+            'fg-warning',
             'IndexNow',
             'Warning: IndexNow has not been configured yet.'
         );
@@ -2191,7 +2191,7 @@ function get_system_status_checks()
     if (version_compare($php_version, '7.1.0', '<')) {
         $output .= $makeIcon(
             'bi-terminal-x',
-            'text-danger',
+            'fg-danger',
             'PHP Version',
             'Your PHP version is outdated and insecure. Upgrade to PHP 8.3 or higher immediately.'
         );
@@ -2199,7 +2199,7 @@ function get_system_status_checks()
     } elseif (version_compare($php_version, '8.3.0', '<')) {
         $output .= $makeIcon(
             'bi-terminal-dash',
-            'text-warning',
+            'fg-warning',
             'PHP Version',
             'Your PHP version is supported but may lack full compatibility. Please upgrade to PHP 8.3 or higher.'
         );
@@ -2207,7 +2207,7 @@ function get_system_status_checks()
     } else {
         $output .= $makeIcon(
             'bi-terminal-fill',
-            'text-success',
+            'fg-success',
             'PHP Version',
             'Your PHP version is fully compatible.'
         );
@@ -2228,7 +2228,7 @@ function get_system_status_checks()
     if ($php2shell['state'] === 'missing') {
         $output .= $makeIcon(
             'bi-bug-fill',
-            'text-danger',
+            'fg-danger',
             'PHP Security Fixes',
             lang(array(
                 'string' => 'PHP {var:1} does not have the fixes for the PHP2Shell flaws (CVE-2026-109618, CVE-2026-109619): anyone who can reach the site can run code on the server. Update PHP to {var:2} or later.',
@@ -2239,7 +2239,7 @@ function get_system_status_checks()
     } elseif ($php2shell['state'] === 'unknown') {
         $output .= $makeIcon(
             'bi-bug-fill',
-            'text-warning',
+            'fg-warning',
             'PHP Security Fixes',
             lang(array(
                 'string' => 'Whether PHP {var:1} has the fixes for the PHP2Shell flaws (CVE-2026-109618, CVE-2026-109619) cannot be told from here; without them anyone who can reach the site can run code on the server. php.net ships them from {var:2}, and Linux distributions add them to their own packages without changing the number: ask your host, and update PHP to {var:2} or later if this one does not have them.',
@@ -2254,7 +2254,7 @@ function get_system_status_checks()
         // yellow chip would sit on every patched Ubuntu 24.04.
         $output .= $makeIcon(
             'bi-bug-fill',
-            'text-secondary',
+            'fg-secondary',
             'PHP Security Fixes',
             lang(array(
                 'string' => 'PHP {var:1} is numbered before {var:2}, the release with the fixes for the PHP2Shell flaws (CVE-2026-109618, CVE-2026-109619), but it was built on {var:3}, after they were published: Linux distributions add such fixes to their own packages without changing the number. Confirm with your host that this one has them.',
@@ -2271,7 +2271,7 @@ function get_system_status_checks()
     } else {
         $output .= $makeIcon(
             'bi-bug-fill',
-            'text-success',
+            'fg-success',
             'PHP Security Fixes',
             'This PHP has the fixes for the PHP2Shell flaws (CVE-2026-109618, CVE-2026-109619).'
         );
@@ -2292,7 +2292,7 @@ function get_system_status_checks()
     if ($issues > 0) {
         $output .= $makeIcon(
             'bi-database-x',
-            'text-danger',
+            'fg-danger',
             'Database Health',
             lang(array('string' => 'Database issues detected in {var:1} table(s).', 'vars' => array($issues)))
         );
@@ -2300,7 +2300,7 @@ function get_system_status_checks()
     } elseif ($repairs > 0) {
         $output .= $makeIcon(
             'bi-database-exclamation',
-            'text-warning',
+            'fg-warning',
             'Database Health',
             lang(array('string' => '{var:1} table(s) had issues but were repaired.', 'vars' => array($repairs)))
         );
@@ -2308,7 +2308,7 @@ function get_system_status_checks()
     } else {
         $output .= $makeIcon(
             'bi-database-check',
-            'text-success',
+            'fg-success',
             'Database Health',
             'All database tables are healthy.'
         );
@@ -2328,7 +2328,7 @@ function get_system_status_checks()
         if (!$engine_capability['ok']) {
             $output .= $makeIcon(
                 'bi-database-gear',
-                'text-secondary',
+                'fg-secondary',
                 'Storage Engine',
                 'The database server does not support the InnoDB row format the software needs; tables stay on MyISAM.',
                 'MyISAM'
@@ -2339,7 +2339,7 @@ function get_system_status_checks()
             if (count($engine_pending) == 0) {
                 $output .= $makeIcon(
                     'bi-database-gear',
-                    'text-success',
+                    'fg-success',
                     'Storage Engine',
                     'All tables are on InnoDB.',
                     'InnoDB',
@@ -2387,7 +2387,7 @@ function get_system_status_checks()
 
                 $output .= $makeIcon(
                     'bi-database-gear',
-                    'text-warning',
+                    'fg-warning',
                     'Storage Engine',
                     lang(array(
                         'string' => '{var:1} table(s) are still on MyISAM ({var:2}). Convert them from the Database Engine screen when the site is quiet.',
@@ -2436,7 +2436,7 @@ function get_system_status_checks()
 
             $output .= $makeIcon(
                 'bi-person-lines-fill',
-                pg_visitor_table_is_large($visitor_row) ? 'text-warning' : 'text-success',
+                pg_visitor_table_is_large($visitor_row) ? 'fg-warning' : 'fg-success',
                 'Visitor Records',
                 $visitor_figures . ' ' . $visitor_kept,
                 $visitor_size,
@@ -2507,7 +2507,7 @@ function get_system_status_checks()
     if (!empty($missing_ext)) {
         $output .= $makeIcon(
             'bi-puzzle-fill',
-            'text-danger',
+            'fg-danger',
             'PHP Extensions',
             rtrim(lang('Missing extension(s): ')) . ' ' . implode(', ', $missing_ext)
         );
@@ -2519,7 +2519,7 @@ function get_system_status_checks()
         // as the old memcache penalty, in a softer shade.
         $output .= $makeIcon(
             'bi-puzzle-fill',
-            'text-secondary',
+            'fg-secondary',
             'PHP Extensions',
             rtrim(lang('All required PHP extensions are loaded.')) . ' '
                 . rtrim(lang('Optional extension(s) not installed:')) . ' '
@@ -2528,7 +2528,7 @@ function get_system_status_checks()
     } else {
         $output .= $makeIcon(
             'bi-puzzle-fill',
-            'text-success',
+            'fg-success',
             'PHP Extensions',
             'All required PHP extensions are loaded.'
         );
@@ -2549,14 +2549,14 @@ function get_system_status_checks()
     if (empty($disabled)) {
         $output .= $makeIcon(
             'bi-sliders',
-            'text-success',
+            'fg-success',
             'PHP Directives',
             'All critical php.ini directives are enabled.'
         );
     } else {
         $output .= $makeIcon(
             'bi-sliders',
-            'text-danger',
+            'fg-danger',
             'PHP Directives',
             'Disabled directive(s): ' . implode(', ', $disabled)
         );
@@ -2617,7 +2617,7 @@ function get_system_status_checks()
         // to fix something this software cannot see or reach.
         $output .= $makeIcon(
             'bi-file-earmark-code',
-            'text-secondary',
+            'fg-secondary',
             'Web Server Rules',
             'This server is nginx, which reads no configuration file from the web root. The rules have to be pasted into the server block by hand; the tile writes a sample to copy.',
             lang('nginx'),
@@ -2628,7 +2628,7 @@ function get_system_status_checks()
     } elseif (!$server_rules['exists']) {
         $output .= $makeIcon(
             'bi-file-earmark-x',
-            'text-danger',
+            'fg-danger',
             'Web Server Rules',
             'The web server configuration file is missing from the web root, so no address other than a real file can be reached and nothing is blocked.',
             lang('Missing'),
@@ -2642,7 +2642,7 @@ function get_system_status_checks()
         // repair refuses to touch it, and so does this: the number says so.
         $output .= $makeIcon(
             'bi-file-earmark-x',
-            'text-danger',
+            'fg-danger',
             'Web Server Rules',
             'The web server configuration file is not valid XML. It has to be repaired by hand — nothing here will write to a file it cannot read.',
             lang('Invalid'),
@@ -2654,7 +2654,7 @@ function get_system_status_checks()
     } elseif ($server_rules_required > 0 || $server_rules_core > 0 || $server_rules['stale_path']) {
         $output .= $makeIcon(
             'bi-file-earmark-excel',
-            'text-danger',
+            'fg-danger',
             'Web Server Rules',
             'The web server configuration file is missing rules that keep private folders from being downloaded. Open the panel to see which, and use the tile below to add them.',
             lang(array(
@@ -2670,7 +2670,7 @@ function get_system_status_checks()
         // Nothing is exposed; a header is absent. Worth a nudge, not a red tile.
         $output .= $makeIcon(
             'bi-file-earmark-text',
-            'text-warning',
+            'fg-warning',
             'Web Server Rules',
             'The private folders are protected. Some recommended rules are not in the file yet — open the panel to see which.',
             lang(array(
@@ -2685,7 +2685,7 @@ function get_system_status_checks()
     } else {
         $output .= $makeIcon(
             'bi-file-earmark-check',
-            'text-success',
+            'fg-success',
             'Web Server Rules',
             'The web server configuration file carries every rule this version expects.',
             $server_rules['name'],
@@ -2732,7 +2732,7 @@ function get_system_status_checks()
     if ($permissions['directories_count'] > 0) {
         $output .= $makeIcon(
             'bi-folder-x',
-            'text-danger',
+            'fg-danger',
             'Write Permissions',
             'The web server cannot write into some folders of the software, so an update cannot add or replace files there and the site keeps old code next to new. Open the panel to see which; Fix sets them writable (0777 folders, 0666 files).',
             lang(array(
@@ -2749,7 +2749,7 @@ function get_system_status_checks()
         // these itself. Worth knowing, not worth red.
         $output .= $makeIcon(
             'bi-folder-symlink',
-            'text-warning',
+            'fg-warning',
             'Write Permissions',
             'Every folder is writable, but some files are not. The updater replaces such a file by deleting it first, so an update still lands; Fix makes them writable outright.',
             lang(array(
@@ -2764,7 +2764,7 @@ function get_system_status_checks()
     } else {
         $output .= $makeIcon(
             'bi-folder-check',
-            'text-success',
+            'fg-success',
             'Write Permissions',
             'The web server can write to every folder and file of the software, so an update can replace all of it.',
             lang(array(
@@ -2795,7 +2795,7 @@ function get_system_status_checks()
 
     if ($backup_newest < 1) {
         $backup_icon = 'bi-hdd-network-fill';
-        $backup_color = 'text-danger';
+        $backup_color = 'fg-danger';
         $backup_value = lang('Never');
         $backup_message = 'No backup has ever been taken of this site.';
         $score -= $weights['backup'];
@@ -2807,15 +2807,15 @@ function get_system_status_checks()
         // Two days covers a daily schedule that missed one run; a week means
         // the schedule itself has stopped.
         if ($backup_age > 604800) {
-            $backup_color = 'text-danger';
+            $backup_color = 'fg-danger';
             $backup_message = 'The most recent backup is more than a week old.';
             $score -= $weights['backup'];
         } elseif ($backup_age > 172800) {
-            $backup_color = 'text-warning';
+            $backup_color = 'fg-warning';
             $backup_message = 'The most recent backup is more than two days old.';
             $score -= $weights['backup'] * 0.5;
         } else {
-            $backup_color = 'text-success';
+            $backup_color = 'fg-success';
             $backup_message = 'A recent backup exists.';
         }
     }
@@ -2823,9 +2823,9 @@ function get_system_status_checks()
     // A switched-off schedule is not a stale backup. Scoring it as one would
     // train the operator who turned it off deliberately to ignore the number,
     // so it costs half and reads grey rather than red.
-    if ($auto_backup_off && ($backup_color == 'text-danger')) {
+    if ($auto_backup_off && ($backup_color == 'fg-danger')) {
         $score += $weights['backup'] * 0.5;
-        $backup_color = 'text-secondary';
+        $backup_color = 'fg-secondary';
         $backup_message = 'Automatic backup is turned off.';
     }
 
@@ -2848,11 +2848,11 @@ function get_system_status_checks()
                 'when'  => lang('Remote copy'),
             );
 
-            if ($backup_color == 'text-success') {
-                $backup_color = 'text-warning';
+            if ($backup_color == 'fg-success') {
+                $backup_color = 'fg-warning';
                 $backup_message = 'The last remote backup copy failed.';
                 $score -= $weights['backup'] * 0.5;
-            } elseif ($backup_color == 'text-warning') {
+            } elseif ($backup_color == 'fg-warning') {
                 $backup_message = rtrim(lang($backup_message)) . ' ' . lang('The last remote backup copy failed.');
                 $score -= $weights['backup'] * 0.5;
             }
@@ -2882,7 +2882,7 @@ function get_system_status_checks()
     if ($update_available) {
         $output .= $makeIcon(
             'bi-arrow-up-circle-fill',
-            'text-warning',
+            'fg-warning',
             'Software Update',
             'A software update is available.',
             lang('New version'),
@@ -2892,7 +2892,7 @@ function get_system_status_checks()
     } elseif ($update_checked < 1) {
         $output .= $makeIcon(
             'bi-arrow-up-circle',
-            'text-warning',
+            'fg-warning',
             'Software Update',
             'The software has never been checked for updates, so it is not known whether one is waiting.',
             lang('Not checked'),
@@ -2902,7 +2902,7 @@ function get_system_status_checks()
     } else {
         $output .= $makeIcon(
             'bi-check-circle-fill',
-            'text-success',
+            'fg-success',
             'Software Update',
             'The software is up to date.',
             defined('VERSION') ? VERSION : lang('OK'),
@@ -2976,7 +2976,7 @@ function get_system_status_checks()
         if ($cron_stalled) {
             $output .= $makeIcon(
                 'bi-clock-fill',
-                'text-danger',
+                'fg-danger',
                 'Scheduled Tasks',
                 rtrim(lang('Scheduled task(s) that have stopped running:')) . ' ' . implode(', ', $cron_stalled),
                 lang(array(
@@ -2990,7 +2990,7 @@ function get_system_status_checks()
         } elseif ($cron_ok > 0) {
             $output .= $makeIcon(
                 'bi-clock-fill',
-                'text-success',
+                'fg-success',
                 'Scheduled Tasks',
                 'Scheduled tasks are running on time.',
                 lang(array(
@@ -3003,7 +3003,7 @@ function get_system_status_checks()
         } else {
             $output .= $makeIcon(
                 'bi-clock',
-                'text-secondary',
+                'fg-secondary',
                 'Scheduled Tasks',
                 'No scheduled task has run yet. Set up cron jobs if you want them.',
                 // Shorter than 'Never' on purpose: this tile carries a chevron
@@ -3129,7 +3129,7 @@ function get_system_status_checks()
 
                 $output .= $makeIcon(
                     'bi-send-fill',
-                    'text-danger',
+                    'fg-danger',
                     'Webhooks',
                     'An event notification address stopped answering and is no longer being tried. The system it feeds is not hearing about orders.',
                     lang(array(
@@ -3146,7 +3146,7 @@ function get_system_status_checks()
 
                 $output .= $makeIcon(
                     'bi-send-fill',
-                    'text-warning',
+                    'fg-warning',
                     'Webhooks',
                     'Some event notifications could not be delivered and were given up on. The address is answering again, so the ones that follow will arrive.',
                     lang(array(
@@ -3163,7 +3163,7 @@ function get_system_status_checks()
 
                 $output .= $makeIcon(
                     'bi-send-fill',
-                    'text-success',
+                    'fg-success',
                     'Webhooks',
                     'Event notifications are being delivered.',
                     lang(array(
@@ -3184,7 +3184,7 @@ function get_system_status_checks()
                 // nothing looks in the wrong place for the rest of the day.
                 $output .= $makeIcon(
                     'bi-send',
-                    'text-secondary',
+                    'fg-secondary',
                     'Webhooks',
                     'Every event subscription is switched off, or the application that registered it is gone. Nothing is being delivered.',
                     lang(array(
@@ -3217,7 +3217,7 @@ function get_system_status_checks()
 
             $output .= $makeIcon(
                 'bi-bell-slash',
-                'text-secondary',
+                'fg-secondary',
                 'Operations Alerts',
                 'Operations alerts are switched off: a failed backup or a stopped scheduled task is not told to anyone.',
                 lang('Off'),
@@ -3241,7 +3241,7 @@ function get_system_status_checks()
             if ($alerts_detail) {
                 $output .= $makeIcon(
                     'bi-bell-fill',
-                    'text-warning',
+                    'fg-warning',
                     'Operations Alerts',
                     'Alerts were sent in the last seven days. Each problem is told at most once a day while it lasts.',
                     lang(array(
@@ -3254,7 +3254,7 @@ function get_system_status_checks()
             } else {
                 $output .= $makeIcon(
                     'bi-bell-fill',
-                    'text-success',
+                    'fg-success',
                     'Operations Alerts',
                     'No operations alert was sent in the last seven days.',
                     lang('None'),
@@ -3280,7 +3280,7 @@ function get_system_status_checks()
 
             $output .= $makeIcon(
                 'bi-cone-striped',
-                'text-warning',
+                'fg-warning',
                 'Maintenance Mode',
                 'Maintenance mode is on: visitors see the maintenance screen.',
                 ($maintenance['until'] > 0)
@@ -3293,7 +3293,7 @@ function get_system_status_checks()
 
             $output .= $makeIcon(
                 'bi-cone-striped',
-                'text-secondary',
+                'fg-secondary',
                 'Maintenance Mode',
                 'The end time of maintenance mode has passed, so visitors see the site again. Switch it off, or set a new end time.',
                 lang('Ended'),
@@ -3340,7 +3340,7 @@ function get_system_status_checks()
 
                 $output .= $makeIcon(
                     'bi-rss-fill',
-                    'text-danger',
+                    'fg-danger',
                     'Product Feeds',
                     'A product feed could not be built. Platforms still read the file built before, which no longer follows the shop. The reason is on the Product Feeds card.',
                     lang(array('string' => '{var:1} failing', 'vars' => pg_format_number($feeds_health['failing'], 0))),
@@ -3352,7 +3352,7 @@ function get_system_status_checks()
 
                 $output .= $makeIcon(
                     'bi-rss',
-                    'text-warning',
+                    'fg-warning',
                     'Product Feeds',
                     'A product feed has not been built for more than two days. Check that the scheduled tasks run, or build it from the Product Feeds card.',
                     lang(array('string' => '{var:1} not built', 'vars' => pg_format_number($feeds_health['stale'], 0))),
@@ -3364,7 +3364,7 @@ function get_system_status_checks()
 
                 $output .= $makeIcon(
                     'bi-rss-fill',
-                    'text-success',
+                    'fg-success',
                     'Product Feeds',
                     'The product feeds that are on were built in the last two days.',
                     lang(array('string' => '{var:1} on', 'vars' => pg_format_number($feeds_health['on'], 0))),
@@ -3419,7 +3419,7 @@ function get_system_status_checks()
                 if ($efatura['worst'] === 'reached') {
                     $output .= $makeIcon(
                         'bi-receipt-cutoff',
-                        'text-danger',
+                        'fg-danger',
                         'e-Fatura Threshold',
                         'This year\'s sales reached an e-Fatura threshold: the store must issue e-Fatura from the date shown. Ask your accountant and set up an e-document provider.',
                         lang(array('string' => 'From {var:1}', 'vars' => array(date('d.m.Y', strtotime($efatura_deadline))))),
@@ -3429,7 +3429,7 @@ function get_system_status_checks()
                 } else {
                     $output .= $makeIcon(
                         'bi-receipt-cutoff',
-                        'text-warning',
+                        'fg-warning',
                         'e-Fatura Threshold',
                         'This year\'s sales are near an e-Fatura threshold. A store that reaches it must issue e-Fatura from the seventh month of the next year.',
                         lang('Near'),
@@ -3470,7 +3470,7 @@ function get_system_status_checks()
 
             $output .= $makeIcon(
                 'bi-truck',
-                'text-success',
+                'fg-success',
                 'Default Shipping Carrier',
                 'Parcels whose shipping method does not name a courier are linked to this one.',
                 $known_carriers[$default_carrier_key]['name']
@@ -3480,7 +3480,7 @@ function get_system_status_checks()
 
             $output .= $makeIcon(
                 'bi-truck',
-                'text-warning',
+                'fg-warning',
                 'Default Shipping Carrier',
                 lang(array(
                     'string' => 'ECOMMERCE_DEFAULT_TRACKING_PROVIDER is set to {var:1}, which is not a carrier this software knows, so no parcel is linked through it. Accepted values: {var:2}.',
@@ -3796,22 +3796,22 @@ function pg_changelog_tag_class($tag)
     $tag = mb_strtoupper($tag, 'UTF-8');
 
     if ($tag == 'GÜVENLIK' || $tag == 'GÜVENLİK' || $tag == 'SECURITY') {
-        return 'text-bg-danger';
+        return 'theme-danger';
     }
     if ($tag == 'ŞEMA' || $tag == 'SEMA' || $tag == 'SCHEMA' || $tag == 'SCHEME') {
-        return 'text-bg-warning';
+        return 'theme-warning';
     }
     if ($tag == 'DÜZELTME' || $tag == 'FIX') {
-        return 'text-bg-primary';
+        return 'theme-primary';
     }
     if ($tag == 'HIZ' || $tag == 'SPEED' || $tag == 'PERFORMANCE') {
-        return 'text-bg-info';
+        return 'theme-info';
     }
     if ($tag == 'NOT' || $tag == 'NOTE') {
-        return 'text-bg-secondary';
+        return 'theme-secondary';
     }
 
-    return 'text-bg-success';
+    return 'theme-success';
 }
 
 /**

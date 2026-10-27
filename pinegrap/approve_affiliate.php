@@ -58,17 +58,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 ),
             )
         ) . '
-        <main class="container mb-5" style="min-height:calc(100vh - 175px)" id="content">
+        <main class="container mb-12" style="min-height:calc(100vh - 175px)" id="content">
             <div class="row">
-                <div class="col-12 col-md-8 col-lg-6">
+                <div class="col-12 md:col-8 lg:col-6">
                     <div class="card">
                         <div class="card-body">
                             <p>' . lang(array('string' => 'Approve {var:1} as an affiliate? The affiliate code is created if there is none yet, and a welcome e-mail is sent to the contact.', 'vars' => '<strong>' . h($email_address) . '</strong>')) . '</p>
                             <form method="post" action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/approve_affiliate.php" class="disable_shortcut">
                                 ' . get_token_field() . '
                                 <input type="hidden" name="id" value="' . $contact_id . '">
-                                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>' . lang('Approve Affiliate') . '</button>
-                                <a href="' . $contact_url . '" class="btn btn-outline-secondary">' . lang('Cancel') . '</a>
+                                <button type="submit" class="btn btn-solid theme-primary"><i class="bi bi-check-lg me-1"></i>' . lang('Approve Affiliate') . '</button>
+                                <a href="' . $contact_url . '" class="btn btn-outline theme-secondary">' . lang('Cancel') . '</a>
                             </form>
                         </div>
                     </div>

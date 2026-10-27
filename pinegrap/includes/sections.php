@@ -203,7 +203,7 @@ function pg_section_nav_slot($section_nav)
     // control can answer both.
     return '
         <div class="pg-settings-menu" id="pg_section_rail" hidden>
-            <button type="button" class="pg-settings-toggle d-xl-none" aria-expanded="false" aria-controls="pg_section_nav">
+            <button type="button" class="pg-settings-toggle xl:d-none" aria-expanded="false" aria-controls="pg_section_nav">
                 <i class="bi pg-settings-toggle-icon ' . h($nav['icon']) . '" aria-hidden="true"></i>
                 <span class="pg-settings-toggle-text">' . h(lang('Sections')) . '</span>
                 <i class="bi bi-chevron-down pg-settings-toggle-chev" aria-hidden="true"></i>

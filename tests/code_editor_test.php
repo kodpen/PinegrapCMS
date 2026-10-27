@@ -296,7 +296,7 @@ function test_code_editor_escape_it_used_stays_in_the_editor()
 	$modal = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/codemirror_modal.js');
 
 	pg_assert_contains("{ key: 'Escape', run: _leaveFullscreen }", $modal, 'Escape leaves the full window first');
-	pg_assert_contains("if (!dlg || !dlg.classList.contains('modal-fullscreen')) return false;", $modal, 'outside the full window it is the dialog\'s');
+	pg_assert_contains("if (!_modalEl || !_modalEl.classList.contains('dialog-fullscreen')) return false;", $modal, 'outside the full window it is the dialog\'s');
 }
 
 // Runs PgCodeEditor.findAll() under Node: the function cut from the facade
