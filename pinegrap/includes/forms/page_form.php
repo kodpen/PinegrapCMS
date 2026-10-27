@@ -1931,8 +1931,8 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 form_list_view_name,
                 subject_form_field_id
             FROM form_view_directories_form_list_views_xref
-            WHERE form_view_directory_page_id = '" . escape($page_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE form_view_directory_page_id = ?";
+        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
         
         // create selected form list views array
         $selected_form_list_views = array();
@@ -2613,9 +2613,9 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     "SELECT calendar_id
                     FROM calendar_views_calendars_xref
                     WHERE
-                        (calendar_id = '" . escape($calendar['id']) . "')
-                        AND (page_id = '" . escape($page_id) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        (calendar_id = ?)
+                        AND (page_id = ?)";
+                $result = db_q($query, array((string) $calendar['id'], (string) $page_id)) or output_error('Query failed.');
                 
                 $checked = '';
                 
@@ -2631,9 +2631,9 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     "SELECT calendar_id
                     FROM calendar_event_views_calendars_xref
                     WHERE
-                        (calendar_id = '" . escape($calendar['id']) . "')
-                        AND (page_id = '" . escape($page_id) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        (calendar_id = ?)
+                        AND (page_id = ?)";
+                $result = db_q($query, array((string) $calendar['id'], (string) $page_id)) or output_error('Query failed.');
                 
                 $checked = '';
                 

@@ -2,20 +2,16 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Static checks on the contact and submitted form screens (edit_contact.php,
- * view_contacts.php, edit_submitted_form.php, view_submitted_forms.php,
- * edit_field.php, edit_contact_group.php, edit_contacts.php,
- * add_contact.php, import_contacts.php, add_field.php, delete_fields.php,
- * add_submitted_form.php, import_submitted_forms.php): their raw queries
- * with values run through db_q() placeholders, not escape()/e()
- * concatenated into the SQL text, and every
- * db_q() call passes one value per '?'. The raw queries left are those
- * without values (the bare column $date_type_column included) and those
- * completed by a clause built elsewhere with escaped values, which may hold
- * a '?' ($sql_affiliate, $sql_file_id, $sql_image, $where,
- * $my_contacts_where, $sql_form_editor, $sql_data_joins,
- * $form_type_filter, $sql_upload_folder_id, $sql_translate_values,
- * $sql_upload_folder_id_value, $sql_translate_values_value, $data_list).
+ * Static checks on the panel screens listed in
+ * db_q_contacts_forms_test_files() (contacts, contact groups, form fields,
+ * submitted forms, theme and file editors, custom styles, the explorer
+ * panel, the page form and the firewall log): their raw queries with values
+ * run through db_q() placeholders, not escape()/e() concatenated into the
+ * SQL text, and every db_q() call passes one value per '?'. The raw queries
+ * left are those without values (the bare column $date_type_column and the
+ * bare insert id $theme_id included) and those completed by a clause built
+ * elsewhere with escaped values, which may hold a '?'; their variables are
+ * listed in db_q_contacts_forms_test_built().
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -28,13 +24,13 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 // Each mysqli_query() / db_q() call of a file with the text of its
-// arguments, its first argument and, when the SQL is $query, the text of
-// that variable's last assignment before the call.
+// arguments, its SQL argument and, when the SQL is a variable named $query
+// or $…_query, the text of that variable's last assignment before the call.
 function db_q_contacts_forms_test_calls($path)
 {
 	$tokens = token_get_all(file_get_contents(PG_FUNCTIONS_DIR . '/' . $path));
 	$count = count($tokens);
-	$query = '';
+	$queries = array();
 	$calls = array();
 
 	for ($i = 0; $i < $count; $i++) {
@@ -44,7 +40,7 @@ function db_q_contacts_forms_test_calls($path)
 			continue;
 		}
 
-		if ($token[0] === T_VARIABLE && $token[1] === '$query') {
+		if ($token[0] === T_VARIABLE && preg_match('/^\$(\w+_)?query$/', $token[1])) {
 			$j = $i + 1;
 
 			while ($j < $count && is_array($tokens[$j]) && $tokens[$j][0] === T_WHITESPACE) {
@@ -52,10 +48,10 @@ function db_q_contacts_forms_test_calls($path)
 			}
 
 			if ($j < $count && $tokens[$j] === '=') {
-				$query = '';
+				$queries[$token[1]] = '';
 
 				for ($k = $j + 1; $k < $count && $tokens[$k] !== ';'; $k++) {
-					$query .= is_array($tokens[$k]) ? $tokens[$k][1] : $tokens[$k];
+					$queries[$token[1]] .= is_array($tokens[$k]) ? $tokens[$k][1] : $tokens[$k];
 				}
 			}
 
@@ -104,17 +100,19 @@ function db_q_contacts_forms_test_calls($path)
 		}
 
 		$arguments = array_map('trim', $arguments);
+		$sql_argument = ($token[1] === 'mysqli_query') ? (isset($arguments[1]) ? $arguments[1] : '') : $arguments[0];
 		$sql = $text;
 
-		if (preg_match('/\(\s*(db::\$con\s*,\s*)?\$query\b/', $text)) {
-			$sql .= $query;
+		if (isset($queries[$sql_argument])) {
+			$sql .= $queries[$sql_argument];
+			$sql_argument = $queries[$sql_argument];
 		}
 
 		$calls[] = array(
 			'line' => $token[2],
 			'call' => $token[1],
 			'text' => $sql,
-			'sql' => ($token[1] === 'db_q' && $arguments[0] === '$query') ? $query : $arguments[0],
+			'sql' => $sql_argument,
 			'values' => isset($arguments[1]) ? $arguments[1] : '',
 		);
 	}
@@ -122,15 +120,42 @@ function db_q_contacts_forms_test_calls($path)
 	return $calls;
 }
 
+// Each file with the number of its queries that run through db_q().
+function db_q_contacts_forms_test_files()
+{
+	return array(
+		'edit_contact.php' => 18,
+		'view_contacts.php' => 7,
+		'edit_submitted_form.php' => 18,
+		'view_submitted_forms.php' => 11,
+		'edit_field.php' => 14,
+		'edit_contact_group.php' => 10,
+		'edit_contacts.php' => 8,
+		'add_contact.php' => 6,
+		'import_contacts.php' => 4,
+		'add_field.php' => 7,
+		'delete_fields.php' => 8,
+		'add_submitted_form.php' => 6,
+		'import_submitted_forms.php' => 7,
+		'edit_theme_file.php' => 9,
+		'add_theme_file.php' => 5,
+		'edit_file.php' => 7,
+		'edit_custom_style.php' => 6,
+		'includes/panel/explorer.php' => 9,
+		'includes/forms/page_form.php' => 3,
+		'view_waf_log.php' => 5,
+	);
+}
+
 // Clause variables a raw query may still be completed by.
 function db_q_contacts_forms_test_built($text)
 {
-	return (bool) preg_match('/\$(sql_affiliate|sql_file_id|sql_image|where|my_contacts_where|sql_form_editor|sql_data_joins|form_type_filter|sql_upload_folder_id|sql_translate_values|sql_upload_folder_id_value|sql_translate_values_value|data_list|date_type_column)\b/', $text);
+	return (bool) preg_match('/\$(sql_affiliate|sql_file_id|sql_image|where|my_contacts_where|sql_form_editor|sql_data_joins|form_type_filter|sql_upload_folder_id|sql_translate_values|sql_upload_folder_id_value|sql_translate_values_value|data_list|sql_design|sql_size|sql_social_networking_position|system_theme_properties_for_sql|in_list|quoted_v4|date_type_column)\b/', $text);
 }
 
 function test_db_q_contacts_forms_value_queries_use_db_q()
 {
-	$expected = array('edit_contact.php' => 18, 'view_contacts.php' => 7, 'edit_submitted_form.php' => 18, 'view_submitted_forms.php' => 11, 'edit_field.php' => 14, 'edit_contact_group.php' => 10, 'edit_contacts.php' => 8, 'add_contact.php' => 6, 'import_contacts.php' => 4, 'add_field.php' => 7, 'delete_fields.php' => 8, 'add_submitted_form.php' => 6, 'import_submitted_forms.php' => 7);
+	$expected = db_q_contacts_forms_test_files();
 
 	foreach ($expected as $path => $minimum) {
 		$db_q = 0;
@@ -162,7 +187,7 @@ function test_db_q_contacts_forms_value_queries_use_db_q()
 // elements as the SQL text has placeholders.
 function test_db_q_contacts_forms_values_fit_placeholders()
 {
-	foreach (array('edit_contact.php', 'view_contacts.php', 'edit_submitted_form.php', 'view_submitted_forms.php', 'edit_field.php', 'edit_contact_group.php', 'edit_contacts.php', 'add_contact.php', 'import_contacts.php', 'add_field.php', 'delete_fields.php', 'add_submitted_form.php', 'import_submitted_forms.php') as $path) {
+	foreach (array_keys(db_q_contacts_forms_test_files()) as $path) {
 		foreach (db_q_contacts_forms_test_calls($path) as $call) {
 			if ($call['call'] !== 'db_q' || strpos($call['values'], 'array(') !== 0) {
 				continue;
