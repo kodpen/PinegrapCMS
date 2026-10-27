@@ -1436,8 +1436,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
     // variant with the time wording.
     $form_info['picker_scripts'] = '';
     if (isset($picker_kinds['date and time'])) {
-        $form_info['picker_scripts'] = '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
-        ' . get_date_time_picker_format();
+        $form_info['picker_scripts'] = get_date_time_picker_format();
     } elseif (isset($picker_kinds['date'])) {
         $form_info['picker_scripts'] = get_date_picker_format();
     }
