@@ -1133,6 +1133,14 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_order_form($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'folder_view' — the classic folder view: the pages and files
+            // of the page's folder and the folders below it
+            // (widgets_folder_view.php).
+            if ($region_type === 'folder_view') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_folder_view($tree_json, $sid, $cfg, $mode);
+            }
+
             // 'menu_region' — one of the site's menus, its items kept in
             // the menu screen (widgets_menu.php).
             if ($region_type === 'menu_region') {
