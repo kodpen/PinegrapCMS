@@ -2817,10 +2817,10 @@ body.sd-resizing * { cursor: col-resize !important; }
 #styleSettingsModal :is(.check, .radio) { background-color: #0d1117; border-color: #484f58; cursor: pointer; }
 #styleSettingsModal :is(.check, .radio):checked { background-color: #1f6feb; border-color: #1f6feb; }
 #styleSettingsModal :is(.check, .radio):disabled { opacity: .35; cursor: default; }
-/* The tag field's typing box sits inside the dark box, not on white. */
-#styleSettingsModal .tagin-input { background: transparent; color: #c9d1d9; }
-#styleSettingsModal .tagin-input::placeholder { color: #6e7681; }
-#styleSettingsModal .tagin-tag { background: #21262d; border-color: #30363d; color: #c9d1d9; }
+/* The chips field sits in the dark box, not on white. */
+#styleSettingsModal .pg-chips { background: #0d1117; border-color: #30363d; color: #c9d1d9; }
+#styleSettingsModal .pg-chips > .form-ghost::placeholder { color: #6e7681; }
+#styleSettingsModal .pg-chips > .chip { background: #21262d; border-color: #30363d; color: #c9d1d9; }
 #styleSettingsModal .btn-outline-light {
     --bs-btn-color: #c9d1d9;
     --bs-btn-border-color: #30363d;

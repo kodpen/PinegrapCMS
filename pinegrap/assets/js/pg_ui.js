@@ -12,8 +12,9 @@
  * the markup, not every caller.
  *
  * Components are named by their Bootstrap 6 kind: 'dialog', 'drawer', 'menu',
- * 'tooltip', 'popover', 'collapse', 'tab', 'toast'. A target is an element, a
- * jQuery object or a selector.
+ * 'tooltip', 'popover', 'collapse', 'tab', 'toast', 'chips' (Bootstrap 6 only:
+ * under 5 its get() answers null). A target is an element, a jQuery object or
+ * a selector.
  *
  *   pgUI.ready(fn)                    after Bootstrap's script has run
  *   pgUI.show('dialog', el[, opts])   a promise, settled when it is shown
@@ -50,6 +51,9 @@
 
     // Kinds whose show() and hide() end with a shown/hidden event.
     var EVENTFUL = { dialog: true, drawer: true, menu: true, collapse: true, toast: true, tooltip: true, popover: true };
+
+    // Bootstrap 6 only: under 5 there is no constructor and get() is null.
+    KINDS.chips = { v5: 'Chips', v6: 'Chips', ev5: 'chips', ev6: 'chips' };
 
     // A v5 transition that never reports back (an element removed while it
     // was opening) must not leave a caller's promise pending for good.
