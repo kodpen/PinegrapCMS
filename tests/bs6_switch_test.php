@@ -180,4 +180,10 @@ function test_bs6_switch_pins()
 	pg_assert_same(array('source' => "a('theme-warning'); b('theme-warning');", 'status' => 'applied'), $result);
 	pg_assert_same('done', bs6_switch_pins($result['source'], $pairs)['status']);
 	pg_assert_same('missing', bs6_switch_pins('changed', $pairs)['status']);
+
+	$insert = array(array('var options = {};', "init();\nvar options = {};"));
+	$once = bs6_switch_pins('var options = {};', $insert);
+	pg_assert_same(array('source' => "init();\nvar options = {};", 'status' => 'applied'), $once);
+	pg_assert_same($once['source'], bs6_switch_pins($once['source'], $insert)['source']);
+	pg_assert_same('done', bs6_switch_pins($once['source'], $insert)['status']);
 }
