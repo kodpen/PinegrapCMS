@@ -24,4 +24,4 @@ description: product_price_history keeps 13 months (396 days, PR #1425): the gen
 - `tests/price_history_test.php`: cutoff, marker, timing, the four statements.
 - MariaDB 10.11 with the migration's table: writer rows, a lone old row, offer rows with an older writer row, two rows in one second, rows out of time order, two channels, 12,001 old offer rows (three deletes), young rows untouched, 1,200 one-row products over three chunks, a resumed marker, a rerun removing nothing, the recorder writing nothing for unchanged prices after the trim; 300,000 rows of one product with a 1 s budget went in three ticks. Not run through `job.php` on a running site.
 
-Related: docs/memory/commerce/product-price-history.md, docs/memory/plans/price-history-reference-price.md
+Related: docs/memory/commerce/product-price-history.md, docs/memory/commerce/product-reference-price-decisions.md

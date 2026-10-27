@@ -549,3 +549,82 @@ function test_price_reference_rule_from_input()
 	pg_assert_same('lowest_30d', pg_price_reference_rule_from_input('lowest_7d'), 'unknown rule');
 	pg_assert_same('lowest_30d', pg_price_reference_rule_from_input(array('manual')), 'not a string');
 }
+
+// While a reduced price runs, the window ends where it began: the newest row
+// is lower than the one before it. Otherwise it ends now.
+function test_price_history_reference_window_end()
+{
+	$now = 1760000000;
+	$day = 86400;
+	$offer = array(
+		price_history_test_row(1, $now - 60 * $day, 1000, 'initial'),
+		price_history_test_row(2, $now - 5 * $day, 800, 'offer'),
+	);
+
+	pg_assert_same($now - 5 * $day, pg_price_history_reference_window_end($offer, $now), 'reduced price runs');
+	pg_assert_same($now - 5 * $day, pg_price_history_reference_window_end(array_reverse($offer), $now), 'any order');
+
+	$raised = array(
+		price_history_test_row(1, $now - 60 * $day, 800, 'initial'),
+		price_history_test_row(2, $now - 5 * $day, 1000, 'panel'),
+	);
+
+	pg_assert_same($now, pg_price_history_reference_window_end($raised, $now), 'a raise is no reduction');
+	pg_assert_same($now, pg_price_history_reference_window_end(array(price_history_test_row(1, $now - $day, 800)), $now), 'one row');
+	pg_assert_same($now, pg_price_history_reference_window_end(array(), $now), 'no history');
+
+	// A row stamped after now (a clock ahead) is not the current price.
+	$ahead = array_merge($offer, array(price_history_test_row(3, $now + 60, 500, 'panel')));
+
+	pg_assert_same($now - 5 * $day, pg_price_history_reference_window_end($ahead, $now), 'row after now');
+
+	// Same second: the higher id is the newer row.
+	$tie = array(
+		price_history_test_row(4, $now - $day, 900, 'panel'),
+		price_history_test_row(3, $now - $day, 1000, 'panel'),
+	);
+
+	pg_assert_same($now - $day, pg_price_history_reference_window_end($tie, $now), 'same second');
+}
+
+// The offer is not its own reference: the window ending where it began reads
+// the lowest of the 30 days before the reduction.
+function test_price_history_reference_before_reduction()
+{
+	$now = 1760000000;
+	$day = 86400;
+	$rows = array(
+		price_history_test_row(1, $now - 90 * $day, 1200, 'initial'),
+		price_history_test_row(2, $now - 20 * $day, 1000, 'panel'),
+		price_history_test_row(3, $now - 2 * $day, 700, 'offer'),
+	);
+	$end = pg_price_history_reference_window_end($rows, $now);
+
+	pg_assert_same(array('price' => 1000, 'kind' => 'lowest', 'days' => 30), pg_price_history_reference($rows, 700, 'lowest_30d', $end));
+	pg_assert_same(array('price' => 700, 'kind' => 'lowest', 'days' => 30), pg_price_history_reference($rows, 700, 'lowest_30d', $now), 'a window ending now holds the offer');
+}
+
+// The page's oldest current price, which the one window query reads from.
+function test_price_history_page_since_sql()
+{
+	$sql = pg_price_history_page_since_sql(array(4, '9', 'x'), 'web', 1760000000);
+
+	pg_assert_contains('MIN(latest.changed_at)', $sql);
+	pg_assert_contains('(product_id IN (4,9))', $sql);
+	pg_assert_contains("(changed_at <= '1760000000')", $sql);
+	pg_assert_contains('GROUP BY product_id', $sql);
+	pg_assert_same('', pg_price_history_page_since_sql(array(), 'web', 1760000000), 'no product');
+	pg_assert_same('', pg_price_history_page_since_sql(array(4), 'shop', 1760000000), 'not a channel');
+}
+
+// The label by kind, through lang(); nothing for none.
+function test_price_reference_label()
+{
+	pg_assert_same(lang(array('string' => 'Lowest price of the last {var:1} days', 'vars' => array(30))), pg_price_reference_label(array('price' => 900, 'kind' => 'lowest', 'days' => 30)));
+	pg_assert_same(lang('Current price'), pg_price_reference_label(array('price' => 900, 'kind' => 'current', 'days' => 30)));
+	pg_assert_same(lang('Regular price'), pg_price_reference_label(array('price' => 1500, 'kind' => 'manual', 'days' => 0)));
+	pg_assert_same('', pg_price_reference_label(array('price' => null, 'kind' => 'none', 'days' => 0)));
+	pg_assert_same('', pg_price_reference_label(null));
+	pg_assert_same(array('__reference_price' => '', '__reference_label' => ''), pg_price_reference_tokens(null, '$'));
+	pg_assert_same('', pg_price_reference_html(array('price' => null, 'kind' => 'none', 'days' => 0)));
+}

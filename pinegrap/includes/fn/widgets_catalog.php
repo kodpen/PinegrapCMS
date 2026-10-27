@@ -1726,6 +1726,17 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         ? get_discounted_product_prices() : array();
     if (!is_array($_pg_disc_prices)) $_pg_disc_prices = array();
 
+    // The price before the discount of every card, read for the whole page
+    // at once (pg_price_reference_page()): the price each card shows and
+    // whether an offer reduces it.
+    $_pg_ref_items = array();
+    foreach ($products as $p) {
+        $_ref_pid = (int)$p['id'];
+        $_ref_cents = isset($_pg_disc_prices[$_ref_pid]) ? (int)round($_pg_disc_prices[$_ref_pid]) : (int)$p['price'];
+        $_pg_ref_items[$_ref_pid] = array('price' => $_ref_cents, 'reduced' => $_ref_cents < (int)$p['price']);
+    }
+    $_pg_references = pg_price_reference_page($_pg_ref_items);
+
     $loop_output = '';
     foreach ($products as $p) {
         $pid = (int)$p['id'];
@@ -1792,6 +1803,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                                 ? (int)round(($disc_save_cents / $original_price_cents) * 100) : 0;
         $price_block_html     = _pg_format_price_with_discount($original_price_cents, $price_cents, $currency_symbol);
 
+        $ref_tokens = pg_price_reference_tokens(isset($_pg_references[$pid]) ? $_pg_references[$pid] : null, $currency_symbol);
+
         $rating = _pg_catalog_rating_values(
             isset($p['rating_avg']) ? $p['rating_avg'] : 0,
             isset($p['rating_count']) ? $p['rating_count'] : 0
@@ -1850,6 +1863,11 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             '__discount_amount'          => $disc_save_cents > 0 ? number_format($disc_save_cents / 100, 2, '.', '') : '',
             '__discount_amount_formatted'=> $disc_save_cents > 0 ? pg_visitor_money($disc_save_cents / 100, $currency_symbol) : '',
             '__discount_percent'         => $disc_save_pct > 0 ? (string)$disc_save_pct : '',
+            // The price before the discount the shop's rule names
+            // (Settings › Ecommerce › Reference Price); both empty when
+            // there is none to show.
+            '__reference_price'          => $ref_tokens['__reference_price'],
+            '__reference_label'          => $ref_tokens['__reference_label'],
 
             // Image
             '__image_url'           => $image_url,
@@ -4898,6 +4916,20 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                 . _civ_expand_variant_attr_markers($_civ_synth_marker, $vattrs, $default_selection)
                 . '</div>';
         }
+        // The price before the discount of every variant, in one read for
+        // the group (pg_price_reference_page()); the variant script swaps
+        // reference_price / reference_label with the rest.
+        $_civ_ref_items = array();
+        foreach ($vproducts as $_pid => $_vp) {
+            $_civ_ref_items[$_pid] = array('price' => (int)$_vp['price_cents'], 'reduced' => (int)$_vp['price_cents'] < (int)$_vp['original_price_cents']);
+        }
+        $_civ_references = pg_price_reference_page($_civ_ref_items);
+        foreach ($vproducts as $_pid => &$_vp_ref3) {
+            $_vp_ref_tokens = pg_price_reference_tokens(isset($_civ_references[$_pid]) ? $_civ_references[$_pid] : null, $currency_symbol);
+            $_vp_ref3['reference_price'] = $_vp_ref_tokens['__reference_price'];
+            $_vp_ref3['reference_label'] = $_vp_ref_tokens['__reference_label'];
+        }
+        unset($_vp_ref3);
         // Build the JS payload — embedded as a script tag at the end of
         // the widget's HTML. Loaded by pg_civ_variants.js (separate file)
         // which wires the attribute selects to DOM update logic.
@@ -5043,6 +5075,8 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__discount_amount'          => '',
             '__discount_amount_formatted'=> '',
             '__discount_percent'         => '',
+            '__reference_price'          => '',
+            '__reference_label'          => '',
         );
     } else {
         $p_id = (int)$p['id'];
@@ -5195,6 +5229,12 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $original_price_formatted = pg_visitor_money($original_price_decimal, $currency_symbol);
         $has_discount             = ($price_cents < $original_price_cents) ? 1 : 0;
         $discount_save_cents      = $original_price_cents - $price_cents;
+        // The variant read above already holds the product shown; a plain
+        // product is read alone.
+        if (!isset($_civ_ref_items[$p_id])) {
+            $_civ_references = pg_price_reference_page(array($p_id => array('price' => $price_cents, 'reduced' => (bool)$has_discount)));
+        }
+        $_civ_ref_tokens = pg_price_reference_tokens(isset($_civ_references[$p_id]) ? $_civ_references[$p_id] : null, $currency_symbol);
         $discount_save_pct        = ($original_price_cents > 0 && $discount_save_cents > 0)
                                     ? (int)round(($discount_save_cents / $original_price_cents) * 100) : 0;
 
@@ -5259,6 +5299,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__discount_amount'          => $discount_save_cents > 0 ? number_format($discount_save_cents / 100, 2, '.', '') : '',
             '__discount_amount_formatted'=> $discount_save_cents > 0 ? pg_visitor_money($discount_save_cents / 100, $currency_symbol) : '',
             '__discount_percent'         => $discount_save_pct > 0 ? (string)$discount_save_pct : '',
+            // The price before the discount the shop's rule names; the
+            // variant payload carries the same per variant.
+            '__reference_price'          => $_civ_ref_tokens['__reference_price'],
+            '__reference_label'          => $_civ_ref_tokens['__reference_label'],
             // Pre-rendered strike+new HTML — the unified discount visual
             // across catalog/cart/cross-sell/upsell. Drop this single
             // token in place of __price_formatted to get the discount

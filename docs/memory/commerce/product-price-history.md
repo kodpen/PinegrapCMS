@@ -35,4 +35,4 @@ description: product_price_history (2026.11.0, 11.0.2, PR #545): one row per cha
 ## How was it verified?
 - `tests/price_history_test.php`; MariaDB 10.11: step twice, MyISAM fallback, fresh install, each writer (dry runs wrote nothing).
 
-Related: docs/memory/plans/price-history-reference-price.md, docs/memory/commerce/variant-price-rules.md, docs/memory/commerce/product-compare-at-price.md
+Related: docs/memory/commerce/product-reference-price-decisions.md, docs/memory/commerce/variant-price-rules.md, docs/memory/commerce/product-compare-at-price.md
