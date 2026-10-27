@@ -762,3 +762,15 @@ small text-body-secondary\"
 ===
 small fg-secondary\"
 >>>
+
+The file manager's upload dialog: the design-file switch's wrapper class
+holds a PHP block, which the check fix does not read.
+
+@@ view_folders.php
+<<<
+                    <div class="form-field form-switch<?php echo (($user['role'] <= 1) ? '' : ' d-none'); ?>">
+                        <input class="check" type="checkbox" id="upload_design" />
+===
+                    <div class="form-field<?php echo (($user['role'] <= 1) ? '' : ' d-none'); ?>">
+                        <div class="switch"><input class="" type="checkbox" id="upload_design" /></div>
+>>>
