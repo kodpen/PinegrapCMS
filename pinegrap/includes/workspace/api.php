@@ -205,6 +205,7 @@ function ws_openapi_objects()
         'WorkspaceFlowRun'          => 'ws_api_flow_run_schema',
         'WorkspaceFlowRunStep'      => 'ws_api_flow_run_step_schema',
         'WorkspaceFlowShare'        => 'ws_api_flow_share_schema',
+        'WorkspaceFlowBoxTry'       => 'ws_api_flow_box_try_schema',
         'WorkspaceMcpConnector'     => 'ws_api_mcp_connector_schema',
         'WorkspaceMcpServer'        => 'ws_api_mcp_server_schema',
         'WorkspaceMcpTool'          => 'ws_api_mcp_tool_schema',
@@ -2042,6 +2043,25 @@ function ws_api_routes()
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'share_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        // A box tried reads the draft and looks at counts and records with
+        // the flow owner's rights: offered to no MCP client as a tool.
+        array(
+            'id'          => 'workspace.flows.box_try',
+            'method'      => 'GET',
+            'path'        => '/workspace/flows/{id}/boxes/{node}/try',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_flows_box_try',
+            'mcp'         => false,
+            'returns'     => 'WorkspaceFlowBoxTry',
+            'summary'     => 'Try one box of a flow\'s draft',
+            'description' => 'What one box of the draft of a flow of the owner of the application\'s own would do, in words, without doing it: nothing is sent, written or called. The box is checked with the rights the flow\'s owner holds now, as publishing and the run check it. A step box answers said, what it would do, and texts, its texts with the {{node.ID.FIELD}} values of the run named by run_id filled in (a run of this flow the owner of the application reaches); empty lists the values that run does not give, or all of them without run_id, which are filled in empty. {{date}} and the other placeholders are filled when the box runs. A condition box is looked at now and answers outcome yes or no with its reason in said; a start box at a time names its next times in next. outcome is the arrow the box would leave on (null when it would fail or waits for a task); refusal, when set, is why the box would fail. A box not in the draft, or a run of another flow, is a 404. Only the flow\'s owner tries its boxes, as only they publish it: a colleague it is shared with at edit is refused with 403, since the box is looked at with the owner\'s rights. An MCP client is offered no tool for it, and the application an assistant works through (Claude, Pinegrap AI) is refused with 403 forbidden.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'node', 'in' => 'path', 'type' => 'string', 'max_length' => 32, 'required' => true, 'description' => 'The id of the box in the draft.'),
+                array('name' => 'run_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'A run of this flow whose settled boxes give the {{node.*}} values.'),
             ),
         ),
 

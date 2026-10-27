@@ -709,6 +709,7 @@
     "It will be able to:": "Şunları yapabilecek:",
     "It will help you to decrease the amount of product stock with the barcode device.": "Barkod cihazı ile ürün stok miktarını azaltmanıza yardımcı olacaktır.",
     "It will help you to increase the amount of product stock with the barcode device.": "Barkod cihazı ile ürün stok miktarını arttırmanıza yardımcı olacaktır.",
+    "It would fail: {var:1}": "Başarısız olurdu: {var:1}",
     "Italic": "İtalik",
     "Italic (Ctrl+I)": "İtalik (Ctrl+I)",
     "Item": "Öğe",
