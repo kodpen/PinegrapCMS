@@ -4,7 +4,7 @@ description: Tax zone, state, currency, add, order edit and payment job screens 
 ---
 
 ## Which files are converted, and how?
-- `edit_tax_zone.php` 6, `edit_state.php` 6, `edit_currency.php` 5, `update_currency.php` 3, `add_zone.php` 3, `add_shipping_method.php` 3, `add_arrival_date.php` 3, `add_product_group.php` 2, `edit_orders.php` 4, `view_orders_for_contact.php` 3, `membership_job.php` 6, `recurring_payment_job.php` 4 calls with values (PR #PRNUM).
+- `edit_tax_zone.php` 6, `edit_state.php` 6, `edit_currency.php` 5, `update_currency.php` 3, `add_zone.php` 3, `add_shipping_method.php` 3, `add_arrival_date.php` 3, `add_product_group.php` 2, `edit_orders.php` 4, `view_orders_for_contact.php` 3, `membership_job.php` 6, `recurring_payment_job.php` 4 calls with values (PR #2344).
 - `(string)` where the SQL quoted, also where a value was written unescaped into quotes (row and contact ids of the jobs, dates, `$user['id']`, the `MEMBERSHIP_*` page and group ids, the session order id of `update_currency.php`: now escaped). Rates and prices stay the text they were (`pg_normalize_amount()` strings).
 - `(int)` where the SQL wrote a bare number: the new zone and shipping method ids (`mysqli_insert_id()`), the new arrival date id, the `user` column of the zone and shipping method INSERTs.
 - `view_orders_for_contact.php` builds `$where` with one `?`; both its queries bind the contact id.
