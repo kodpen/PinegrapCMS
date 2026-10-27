@@ -187,6 +187,7 @@ function ws_openapi_objects()
         'WorkspaceMessageSender'    => 'ws_api_message_sender_schema',
         'WorkspaceMessageFile'      => 'ws_api_message_file_schema',
         'WorkspaceMessageThread'    => 'ws_api_message_thread_schema',
+        'WorkspaceMessageNoteCard'  => 'ws_api_message_note_card_schema',
         'WorkspaceApprovalRecord'   => 'ws_api_approval_record_schema',
         'WorkspaceChannelGroupMemberships'  => 'ws_api_channel_group_memberships_schema',
         'WorkspaceChannelGroupChange'       => 'ws_api_channel_group_change_schema',
