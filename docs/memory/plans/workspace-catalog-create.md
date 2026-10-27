@@ -33,4 +33,4 @@ None needs schema.
 4. Answered (same answer): (a) `product.created` per row, as AI bulk updates.
 
 ## Where to start?
-- Slice 3b after #2266 merges, then 3c.
+- Slice 3b (open PR: `includes/workspace/bulk_sources.php`, panel action, the channel's Make products), then 3c.
