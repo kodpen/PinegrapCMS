@@ -37,6 +37,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 require_once(__DIR__ . '/bs6_rules.php');
+require_once(__DIR__ . '/bs6_switch_fields.php');
 
 $verbose = in_array('--verbose', $argv, true);
 $strict = in_array('--strict', $argv, true);
@@ -93,6 +94,12 @@ foreach (bs6_scope_files($product) as $path => $kind) {
 		continue;
 	}
 
+	// A shared file's panel functions are panel code; the rest of it is read
+	// as site output (bs6_shared_panel_functions()).
+	if ($kind === 'shared' && bs6_codemod_converts($path)) {
+		$kind = 'panel';
+	}
+
 	$source = (string) file_get_contents($product . '/' . $path);
 	$ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 	bs6_current_path($path);
@@ -141,6 +148,16 @@ foreach (bs6_scope_files($product) as $path => $kind) {
 			}
 
 			$add($check, $kind, $path, bs6_line_of($source, $match[1]), $match[0]);
+		}
+	}
+
+	// On a switched tree a liveform select, checkbox or radio that names no
+	// Bootstrap class gets v5's default class (bs6_switch_fields.php).
+	if ($converted && $ext === 'php' && bs6_codemod_converts($path) && strpos($source, 'output_field') !== false) {
+		foreach (bs6_field_calls($source) as $call) {
+			if (bs6_field_needs_class($call) && !($site_output && bs6_in_ranges($call['offset'], $site_output))) {
+				$add('liveform field with no v6 class (liveform adds a v5 default)', $kind, $path, bs6_line_of($source, $call['offset']), 'output_field ' . ($call['type'] !== null ? $call['type'] : '?'));
+			}
 		}
 	}
 }
