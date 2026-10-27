@@ -243,3 +243,26 @@ function test_curl_run_http_version_only_when_asked()
 
 	pg_assert_false(isset($options['CURLOPT_HTTP_VERSION']), 'no version by default');
 }
+
+// 'headers' already names the request's header lines, so the response's own
+// header block is asked for with 'response_headers'.
+function test_curl_run_response_headers_only_when_asked()
+{
+	$options = pg_curl_run_options('POST', 'https://example.com/', array('body' => '{}', 'headers' => array('Accept: application/json'), 'response_headers' => true), curl_run_test_env());
+
+	pg_assert_same(true, $options['CURLOPT_HEADER']);
+	pg_assert_same(array('Accept: application/json'), $options['CURLOPT_HTTPHEADER']);
+
+	$options = pg_curl_run_options('GET', 'https://example.com/', array('headers' => array('Accept: application/json')), curl_run_test_env());
+
+	pg_assert_false(isset($options['CURLOPT_HEADER']), 'request headers do not ask for the response headers');
+}
+
+function test_curl_run_split_cuts_at_the_header_size()
+{
+	$head = "HTTP/1.1 429 Too Many Requests\r\nRetry-After: 120\r\n\r\n";
+
+	pg_assert_same(array($head, '{"a":1}'), pg_curl_run_split($head . '{"a":1}', strlen($head)));
+	pg_assert_same(array($head, ''), pg_curl_run_split($head, strlen($head)));
+	pg_assert_same(array('', 'body'), pg_curl_run_split('body', 0));
+}

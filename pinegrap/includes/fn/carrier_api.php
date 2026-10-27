@@ -393,40 +393,32 @@ function pg_carrier_api_http($method, $url, $headers, $body = '')
         return array('status' => 0, 'body' => '', 'data' => null, 'error' => 'cURL is not installed.');
     }
 
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-    curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-    // FedEx may compress its answers; curl inflates whatever it offered.
-    curl_setopt($ch, CURLOPT_ENCODING, '');
-    pg_curl_tls($ch);
+    $options = array(
+        'headers'         => $headers,
+        'timeout'         => 10,
+        'connect_timeout' => 10,
+        'forbid_reuse'    => true,
+        // FedEx may compress its answers; curl inflates whatever it offered.
+        'encoding'        => true,
+    );
 
     if ($body !== '') {
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        $options['body'] = $body;
     }
 
-    $response = curl_exec($ch);
-    $errno = curl_errno($ch);
-    $error = curl_error($ch);
-    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    unset($ch);
+    $answer = pg_curl_run($method, $url, $options);
 
-    if ($errno) {
+    if ($answer['errno']) {
         return array(
             'status' => 0,
             'body'   => '',
             'data'   => null,
-            'error'  => 'cURL error ' . $errno . ': ' . $error . '.' . pg_curl_tls_hint($errno),
+            'error'  => 'cURL error ' . $answer['errno'] . ': ' . $answer['error'] . '.' . pg_curl_tls_hint($answer['errno']),
         );
     }
 
-    $response = (string) $response;
+    $status = $answer['status'];
+    $response = $answer['body'];
 
     // A gzip body sent without saying so.
     if ((strncmp($response, "\x1f\x8b", 2) === 0) && function_exists('gzdecode')) {

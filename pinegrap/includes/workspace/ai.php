@@ -334,14 +334,10 @@ function ws_ai_http($method, $path, $payload = null, $timeout = 15)
     }
 
     $options = array(
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HEADER         => true,
-        CURLOPT_FOLLOWLOCATION => false,
-        CURLOPT_CONNECTTIMEOUT => 8,
-        CURLOPT_TIMEOUT        => max(5, (int) $timeout),
-        CURLOPT_SSL_VERIFYPEER => true,
-        CURLOPT_SSL_VERIFYHOST => 2,
-        CURLOPT_USERAGENT      => 'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (workspace-ai)',
+        'response_headers' => true,
+        'connect_timeout'  => 8,
+        'timeout'          => max(5, (int) $timeout),
+        'user_agent'       => 'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (workspace-ai)',
     );
 
     if ($method === 'POST') {
@@ -353,34 +349,21 @@ function ws_ai_http($method, $path, $payload = null, $timeout = 15)
             return $out;
         }
 
-        $options[CURLOPT_POST] = true;
-        $options[CURLOPT_POSTFIELDS] = $json;
+        $options['body'] = $json;
         $headers[] = 'Content-Type: application/json';
     }
 
-    $options[CURLOPT_HTTPHEADER] = $headers;
+    $options['headers'] = $headers;
 
-    $curl = curl_init(WS_AI_ENDPOINT . $path);
+    $answer = pg_curl_run($method, WS_AI_ENDPOINT . $path, $options);
 
-    curl_setopt_array($curl, $options);
+    $out['http'] = $answer['status'];
+    $out['errno'] = $answer['errno'];
+    $out['error'] = $answer['error'];
 
-    // The root certificate list the operator set for every outgoing call.
-    if (defined('CURL_CA_BUNDLE') && (CURL_CA_BUNDLE !== '') && is_file(CURL_CA_BUNDLE)) {
-        curl_setopt($curl, CURLOPT_CAINFO, CURL_CA_BUNDLE);
-    }
-
-    $raw = curl_exec($curl);
-    $header_size = (int) curl_getinfo($curl, CURLINFO_HEADER_SIZE);
-
-    $out['http'] = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
-    $out['errno'] = (int) curl_errno($curl);
-    $out['error'] = (string) curl_error($curl);
-
-    unset($curl);
-
-    if (is_string($raw)) {
-        $out['headers'] = substr($raw, 0, $header_size);
-        $out['body'] = (string) substr($raw, $header_size);
+    if ($answer['errno'] === 0) {
+        $out['headers'] = $answer['headers'];
+        $out['body'] = $answer['body'];
         $out['json'] = json_decode($out['body'], true);
     }
 

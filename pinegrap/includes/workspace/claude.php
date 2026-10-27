@@ -701,20 +701,13 @@ function ws_claude_fire($test = false, $queue = 'workspace')
     // Only the site and the queue: the routine's own prompt says what to do.
     $payload = json_encode(array('text' => 'site: ' . ws_claude_api_base() . ' · queue: ' . $queue . ($test ? ' · test' : '')), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-    $curl = curl_init($config['routine_url']);
-
-    curl_setopt_array($curl, array(
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => $payload,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HEADER         => true,
-        CURLOPT_FOLLOWLOCATION => false,
-        CURLOPT_CONNECTTIMEOUT => 5,
-        CURLOPT_TIMEOUT        => 10,
-        CURLOPT_SSL_VERIFYPEER => true,
-        CURLOPT_SSL_VERIFYHOST => 2,
-        CURLOPT_USERAGENT      => 'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (workspace)',
-        CURLOPT_HTTPHEADER     => array(
+    $answer = pg_curl_run('POST', $config['routine_url'], array(
+        'body'             => $payload,
+        'response_headers' => true,
+        'connect_timeout'  => 5,
+        'timeout'          => 10,
+        'user_agent'       => 'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (workspace)',
+        'headers'          => array(
             'Authorization: Bearer ' . $token,
             'anthropic-beta: ' . WS_CLAUDE_BETA,
             'anthropic-version: 2023-06-01',
@@ -722,21 +715,11 @@ function ws_claude_fire($test = false, $queue = 'workspace')
         ),
     ));
 
-    // The root certificate list the operator set for every outgoing call
-    // (the same setting webhooks and the update channel read).
-    if (defined('CURL_CA_BUNDLE') && (CURL_CA_BUNDLE !== '') && is_file(CURL_CA_BUNDLE)) {
-        curl_setopt($curl, CURLOPT_CAINFO, CURL_CA_BUNDLE);
-    }
-
-    $raw = curl_exec($curl);
-    $errno = (int) curl_errno($curl);
-    $status = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
-    $header_size = (int) curl_getinfo($curl, CURLINFO_HEADER_SIZE);
-    $network = curl_error($curl);
-    unset($curl);
-
-    $headers = is_string($raw) ? substr($raw, 0, $header_size) : '';
-    $body = is_string($raw) ? substr($raw, $header_size) : '';
+    $errno = $answer['errno'];
+    $status = $answer['status'];
+    $network = $answer['error'];
+    $headers = $answer['headers'];
+    $body = $answer['body'];
     $json = json_decode($body, true);
     $now = time();
 

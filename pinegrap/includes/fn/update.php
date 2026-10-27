@@ -101,6 +101,8 @@ function pg_curl_tls($ch)
  *   userpwd          "user:password" for HTTP basic authentication
  *   http_version     '1.0' or '1.1' to hold the request to that HTTP
  *                    version (default: libcurl's choice)
+ *   response_headers true to keep the answer's header block: pg_curl_run()
+ *                    then answers it as 'headers', apart from 'body'
  *   allow_http       true to accept http as well as https for this request
  *                    (never for a redirect): only for an address the
  *                    operator types and the site reaches itself, such as a
@@ -168,6 +170,10 @@ function pg_curl_run_options($method, $url, $options, $env)
         $out['CURLOPT_FORBID_REUSE'] = true;
     }
 
+    if (!empty($options['response_headers'])) {
+        $out['CURLOPT_HEADER'] = true;
+    }
+
     if (isset($options['userpwd']) && (string) $options['userpwd'] !== '') {
         $out['CURLOPT_USERPWD'] = (string) $options['userpwd'];
     }
@@ -209,6 +215,21 @@ function pg_curl_run_pin($url, $ip)
 }
 
 /**
+ * A raw answer read with CURLOPT_HEADER cut into its header block and its
+ * body, at CURLINFO_HEADER_SIZE (which counts every header block, those of a
+ * followed redirect included).
+ *
+ * @return array array(headers, body)
+ */
+function pg_curl_run_split($raw, $header_size)
+{
+    $raw = (string) $raw;
+    $header_size = max(0, min((int) $header_size, strlen($raw)));
+
+    return array((string) substr($raw, 0, $header_size), (string) substr($raw, $header_size));
+}
+
+/**
  * One request to a fixed vendor host (update server, CA bundle source,
  * Cloudflare, GitHub): this installation's User-Agent, pg_curl_tls(), the
  * proxy when PROXY_ADDRESS is set, no redirect unless 'follow' asks for one.
@@ -227,11 +248,17 @@ function pg_curl_run_pin($url, $ip)
  * request_size the bytes of request headers written (0 when nothing went
  * out); together they tell whether a failed request can have reached the
  * other side. content_length is the Content-Length the server announced (-1
- * when it sent none), against which a caller can tell a body cut short.
+ * when it sent none), against which a caller can tell a body cut short. With
+ * 'response_headers' the answer also has 'headers', the raw header block
+ * ('' when no answer came), and 'body' holds only the body.
  */
 function pg_curl_run($method, $url, $options = array())
 {
     $result = array('ok' => false, 'status' => 0, 'body' => '', 'errno' => 0, 'error' => '', 'connect' => 0, 'request_size' => 0, 'content_length' => -1);
+
+    if (!empty($options['response_headers'])) {
+        $result['headers'] = '';
+    }
 
     if (!function_exists('curl_init')) {
         $result['error'] = 'cURL is not available on this server.';
@@ -288,6 +315,11 @@ function pg_curl_run($method, $url, $options = array())
     } else {
         $result['status'] = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $result['body'] = (string) $body;
+
+        if (!empty($options['response_headers'])) {
+            list($result['headers'], $result['body']) = pg_curl_run_split($body, curl_getinfo($ch, CURLINFO_HEADER_SIZE));
+        }
+
         $result['content_length'] = (int) curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD);
         $result['ok'] = ($result['status'] >= 200 && $result['status'] < 300);
     }
