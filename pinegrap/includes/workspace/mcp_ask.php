@@ -204,7 +204,7 @@ function ws_mcp_boot()
  * One server as the @ picker draws it.
  *
  * @param array $server ws_mcp_servers row
- * @return array alias, name, agent, avatar, icon
+ * @return array alias, name, agent, avatar, initials, tone, icon
  */
 function ws_mcp_boot_entry($server)
 {
@@ -215,6 +215,8 @@ function ws_mcp_boot_entry($server)
         'name'   => (string) $server['name'],
         'agent'  => function_exists('ws_mcp_agent_mode') && ws_mcp_agent_mode($server),
         'avatar' => $identity['avatar'],
+        'initials' => (string) ($identity['initials'] ?? ''),
+        'tone'   => (int) ($identity['tone'] ?? 0),
         'icon'   => $identity['icon'],
     );
 }

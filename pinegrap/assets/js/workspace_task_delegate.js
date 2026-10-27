@@ -55,9 +55,10 @@
         return node;
     }
 
-    function face(h, src, className) {
-        var img = h.avatar({ avatar: src }, '');
-        img.className = className;
+    // who: a delegate or an assistant ({avatar, initials, tone, name}).
+    function face(h, who, className) {
+        var img = h.avatar(who || {}, '');
+        img.classList.add(className);
         return img;
     }
 
@@ -379,7 +380,7 @@
             var main = h.el('div', 'ws-task-note-main');
             var meta = h.el('div', 'ws-task-note-meta');
 
-            row.appendChild(face(h, item.assistant.avatar, 'ws-task-note-avatar'));
+            row.appendChild(face(h, item.assistant, 'ws-task-note-avatar'));
 
             meta.appendChild(h.el('b', '', item.assistant.name));
 
@@ -558,7 +559,7 @@
 
             if (state.delegate) {
                 var badge = h.el('div', 'ws-task-delegate-with');
-                badge.appendChild(face(h, state.delegate.avatar, 'ws-task-delegate-face'));
+                badge.appendChild(face(h, state.delegate, 'ws-task-delegate-face'));
 
                 var who = h.el('div', 'ws-grow');
                 who.appendChild(h.el('div', 'fw-semibold', h.t('dg_with', state.delegate.name)));

@@ -104,7 +104,7 @@
             var row = el('li', 'ws-approval-person ws-approval-' + person.decision);
             var face = h.avatar(person);
 
-            face.className = 'ws-approval-face';
+            face.classList.add('ws-approval-face');
             row.appendChild(face);
             row.appendChild(el('span', 'ws-approval-name', person.name));
 
