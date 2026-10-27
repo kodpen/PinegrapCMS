@@ -22,7 +22,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - Show a screen change with `tools/screenshots/shoot.js` on a sandbox, images on a private page the PR links, never committed (`panel-screenshots.md`).
 - Panel CSS sits in `@layer custom` and reads `--pg-*` tokens, never `--bs-*` variables; colour with alpha is `color-mix(in srgb, var(--pg-…) N%, transparent)`, not `rgba(var(--bs-…-rgb))`; a missing name goes into the token block of backend.src.css (`panel-css-tokens.md`).
 - A button's label span is `<span class="pg-btn-label">`, never `btn-text`; a flyout menu inside a menu is `.pg-submenu`, never `.submenu`: Bootstrap 6 owns `.btn-text`, `.submenu` and `.menu` (`bootstrap-6.md`).
-- Mark a chips, select2, date or time field with its `data-pg-*` hook and print `pg_fields_script()`; read and write it through `pgChips`/`pgCombobox`/`pgDatePicker`/`pgDateTimeField`, never call tagin, select2 or the jQuery UI pickers from a panel screen (`pg-field-wrappers.md`).
+- Mark a chips, select2, date or time field with its `data-pg-*` hook and print `pg_fields_script()`; read and write it through `pgChips`/`pgCombobox`/`pgDatePicker`/`pgDateTimeField`, never call Chips, select2 or the jQuery UI pickers from a panel screen (`pg-field-wrappers.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -76,7 +76,8 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
 - panel-times-user-time-zone.md: Which time zone get_relative_time() and get_absolute_time() draw in (the person's or the site's, pg_time_in_user_zone()), and how stored zone names are read (pg_timezone_canonical(), old IANA links)
 - password-strength-js.md: assets/js/pg_password_strength.js, the panel copy of validate_password_strength() for the password meter (PR #1698): API, the PHP traps it copies, the shared test
-- pg-field-wrappers.md: pgChips, pgCombobox, pgDatePicker, pgDateTimeField (pg_fields.js): data-pg-* hooks, the posted field as store, own date parse, change event, v5 engine, screens
+- pg-chips.md: Chips fields (data-pg-chips) on Bootstrap 6 Chips since B9a (#2208): the box drawn after the hidden input, silent fill, change back into the input, the translated Remove label, init timing
+- pg-field-wrappers.md: pgChips, pgCombobox, pgDatePicker, pgDateTimeField (pg_fields.js): data-pg-* hooks, the posted field as store, own date parse, change event, engines, screens
 - pg-ui-adapter.md: pgUI (assets/js/pg_ui.js), the panel's one door to Bootstrap's JavaScript on 5.3 and 6: kinds, promises, both event names, dialog markup, overlay host, readiness, the Bootstrap 6 bridge
 - product-edit-vs-set-edit.md: Why product editing (edit_product.php) and variant set editing (edit_product_group.php) are separate screens, and why the product screen has no variant matrix.
 - rich-text-source-dialog.md: The rich text editor's Source dialog with the code editor: isolated in a shadow root (the dialog resets every element), sized like its textarea, Enter, Tab and used keys kept from the dialog

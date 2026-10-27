@@ -1,10 +1,10 @@
 ---
 name: pg-field-wrappers
-description: pgChips, pgCombobox, pgDatePicker, pgDateTimeField (pg_fields.js): data-pg-* hooks, the posted field as store, own date parse, change event, v5 engine, screens
+description: pgChips, pgCombobox, pgDatePicker, pgDateTimeField (pg_fields.js): data-pg-* hooks, the posted field as store, own date parse, change event, engines, screens
 ---
 
 ## Why do panel fields go through these wrappers?
-- Bootstrap 6 Chips, Combobox and Datepicker replace tagin, select2 and the jQuery UI pickers at B9a-B9c (`plans/bootstrap-6-components.md`). A screen that marks its field with a hook and reads it through the wrapper keeps working when the engine in `pg_fields.js` changes; the screens stay as they are.
+- Bootstrap 6 Chips, Combobox and Datepicker replace tagin, select2 and the jQuery UI pickers at B9a-B9c (`plans/bootstrap-6-components.md`); chips moved at B9a (#2208). A screen that marks its field with a hook and reads it through the wrapper keeps working when the engine in `pg_fields.js` changes; the screens stay as they are.
 
 ## How does a screen use them?
 - Hook on the field: `data-pg-chips` (input; keep class `tagin`, the CSS hides it; `data-pg-separator=" "` for a class list, comma without it), `data-pg-combobox` (native `<select>`, no `select2` class; `data-pg-source="url"` searches the server: GET `q`, answer `{results:[{id,text}]}`, with `data-pg-min-length`, `data-pg-free-text`, `data-placeholder`; a stored value is an `<option selected>`), `data-pg-date` (`="plain"`: only the date format, the picker's English names, for `view_order.php` ship and delivery dates), `data-pg-datetime`, `data-pg-time`. liveform's `output_field()` prints any lower-case `data-pg-*` key (`'data-pg-date' => ''` gives a bare hook).
@@ -18,7 +18,8 @@ description: pgChips, pgCombobox, pgDatePicker, pgDateTimeField (pg_fields.js): 
 - Listen with `pgFields.onChange(el, fn)` or jQuery `.on('change')`: select2 announces a pick only through jQuery, so a bare `addEventListener('change')` misses it under v5.
 
 ## What is the engine today?
-- `v5` only: tagin (`set()` drops the `.tagin-wrapper` and calls tagin again: tagin never hears a change), select2 (theme bootstrap-5, `data-allow-clear`, `dropdownParent` from `pgUI.overlayHost()`), jQuery UI datepicker, datetimepicker and timepicker addon. A field whose library is not on the screen stays a plain field.
+- Chips: `v6`, Bootstrap 6 Chips (`pg-chips.md`).
+- The other kinds `v5`: select2 (theme bootstrap-5, `data-allow-clear`, `dropdownParent` from `pgUI.overlayHost()`), jQuery UI datepicker, datetimepicker and timepicker addon. A field whose library is not on the screen stays a plain field.
 - `pg_fields.js` is served as written (no twin, no bundle). Tested under Node by `tests/pg_fields_test.php`.
 
 ## Which screens use them?
