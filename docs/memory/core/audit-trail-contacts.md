@@ -1,14 +1,14 @@
 ---
 name: audit-trail-contacts
-description: Contacts in audit_log (PR #2170, #NNNN): which panel, API, import, İYS and Workspace paths write a contact line, the label, the writers not hooked, how erasure clears the lines
+description: Contacts in audit_log (PR #2170, #2246): which panel, API, import, İYS and Workspace paths write a contact line, the label, the writers not hooked, how erasure clears the lines
 ---
 
 ## Which paths write a contact line?
 - Type `contact`, table `contacts` in `pg_audit_tables()` (`user` column left out), PR #2170. Before #2170 no contact change was traced.
 - Panel: `add_contact.php` (create), `edit_contact.php` (save; delete), `edit_contacts.php` opt-in, opt-out and delete (one line per contact; a contact already in that state writes none).
-- Same-address opt-in sync of `add_contact.php` and `edit_contact.php` (`UPDATE … WHERE email_address`): `pg_audit_fetch_by('contacts', 'email_address', …)` before, the edited or new contact taken out (its own line covers it), `pg_audit_record_many()` after; a contact already in that state writes none (PR #NNNN).
-- `import_contacts.php`: one `create` line per contact made, after the import's own opt-out of a new contact whose address is opted out elsewhere (one line, the final row); batched by 200 through `pg_audit_created_rows()` + `pg_audit_record_many()` (PR #NNNN).
-- İYS sync (`includes/iys/client.php`): `pg_iys_push()` (`iys_email_status` after an accepted push) and `pg_iys_apply_change()` (refusal opt-out and status, one line per contact with both) by address as above. `pg_iys_run()` runs under `pg_audit_as_job(true)`, so the source is `job` also when a manager starts `iys_job.php` from the panel (PR #NNNN).
+- Same-address opt-in sync of `add_contact.php` and `edit_contact.php` (`UPDATE … WHERE email_address`): `pg_audit_fetch_by('contacts', 'email_address', …)` before, the edited or new contact taken out (its own line covers it), `pg_audit_record_many()` after; a contact already in that state writes none (PR #2246).
+- `import_contacts.php`: one `create` line per contact made, after the import's own opt-out of a new contact whose address is opted out elsewhere (one line, the final row); batched by 200 through `pg_audit_created_rows()` + `pg_audit_record_many()` (PR #2246).
+- İYS sync (`includes/iys/client.php`): `pg_iys_push()` (`iys_email_status` after an accepted push) and `pg_iys_apply_change()` (refusal opt-out and status, one line per contact with both) by address as above. `pg_iys_run()` runs under `pg_audit_as_job(true)`, so the source is `job` also when a manager starts `iys_job.php` from the panel (PR #2246).
 - API `customers.php`: create, update, delete, each after `api_dry_run_stop()`.
 - Workspace: `ws_change_audit_target()` maps contact to `contacts`; its writer deletes for good, so a delete is `delete` (`core/audit-trail-workspace.md`). The kind's registry `audit` is `contacts`.
 - The screen links a line to `edit_contact.php?id=`.
