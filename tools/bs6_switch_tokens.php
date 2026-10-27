@@ -229,9 +229,13 @@ function bs6_switch_token_bridge_block()
  */
 function bs6_switch_drawer_variables($source)
 {
-	$source = preg_replace('/--bs-drawer-(inset|border-radius|width|height)(\s*:)/', '--pg-drawer-$1$2', $source, -1, $count);
+	// The bridge itself, unlayered, is where the v6 names are set.
+	$bridge = strpos($source, BS6_SWITCH_BRIDGE_NOTE);
+	$head = $bridge === false ? $source : substr($source, 0, $bridge);
+	$tail = $bridge === false ? '' : substr($source, $bridge);
+	$head = preg_replace('/--bs-drawer-(inset|border-radius|width|height)(\s*:)/', '--pg-drawer-$1$2', $head, -1, $count);
 
-	return bs6_switch_result($source, $count > 0 ? 'applied' : 'done');
+	return bs6_switch_result($head . $tail, $count > 0 ? 'applied' : 'done');
 }
 
 // Panel stylesheets and files with style blocks that may size a drawer.
