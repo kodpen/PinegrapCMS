@@ -1175,11 +1175,13 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
     return preg_replace_callback(
         '/(?:<!--pg-placement:([A-Za-z0-9_-]*)-->)?<!--pg-system-widget:(\d+)-->/',
         function ($m) use ($render, $email, $configs) {
-            $sid   = (int)$m[2];
+            $sid       = (int)$m[2];
+            $placement = ($m[1] !== '') ? pg_sw_placement_decode($m[1]) : array();
+            $m         = array($m[0], $sid);
             $kind  = (isset($configs[$sid]['regionType']) && is_string($configs[$sid]['regionType'])) ? $configs[$sid]['regionType'] : '';
             $scope = pg_sw_finish_open(array('sid' => $sid, 'kind' => $kind, 'email' => $email));
             try {
-                $out = $render(array($m[0], $sid), $m[1] !== '' ? pg_sw_placement_decode($m[1]) : array());
+                $out = $render($m, $placement);
             } finally {
                 pg_sw_finish_close();
             }
