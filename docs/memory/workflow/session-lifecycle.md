@@ -21,9 +21,8 @@ description: A session from green CI to its next step: the ready label, staying 
 - The merging session fixes a small blocker on the branch itself and says so in a comment; nothing is needed from you.
 - A larger one gets one comment naming it, and the PR stays out of the train: push the fix and mark it ready again. If you have ended, a new session does it (nobody else is on the branch).
 
-## What if I need the owner's answer?
-- Write the question under `## Questions for the owner` in the PR body and ask it in your reply too, in Turkish: the owner reads the session windows, not PR bodies. Then turn the PR back to draft (`gh pr ready <n> --undo`; in a cloud session `mcp__github__update_pull_request` with `draft: true`) and take its `ready` label off (`gh api -X DELETE repos/kodpen/pinegrapcms/issues/<n>/labels/ready`). A PR waiting on the owner cannot go into a train, so it gives its place in the queue to work that can.
-- The answer comes in your window or as a PR comment (from the account's coordinator, `coordinator.md`), which wakes you: finish the work, mark the PR ready again and label it once CI is green.
-- Record the answer in your next PR (the same one while it is open), never in a PR of its own: the question marked answered with the owner's words, the plan file's open question turned into the decision with its reason (`CLAUDE.md`, Fixed rules 6).
+## What if I need a decision?
+- Open an issue labelled `architect` (template in `architect.md`) and name it in the PR body (`Decision: #<issue>`). Then turn the PR back to draft (`gh pr ready <n> --undo`; in a cloud session `mcp__github__update_pull_request` with `draft: true`) and take its `ready` label off (`gh api -X DELETE repos/kodpen/pinegrapcms/issues/<n>/labels/ready`). A PR waiting on the owner cannot go into a train, so it gives its place in the queue to work that can.
+- The architect decides it with the owner and brings the decision to the PR as a comment, which wakes you: follow it, note "decided in #<issue>" in the PR body, mark the PR ready again and label it once CI is green. The architect records the decision in memory; you do not.
 
-Related: docs/memory/workflow/working-mode.md, docs/memory/workflow/merge-review.md, docs/memory/workflow/coordinator.md
+Related: docs/memory/workflow/working-mode.md, docs/memory/workflow/merge-review.md, docs/memory/workflow/architect.md

@@ -1,6 +1,6 @@
 ---
 name: working-mode
-description: Working rules (2026-10-25) for every session: why they exist, one open PR, no stacked branches, no issues, PR size, queue limit, the changelog through the PR body, docs-only PRs outside the train
+description: Working rules (2026-10-25) for every session: why, one open PR, no stacked branches, issues only for decisions, PR size, queue limit, changelog through the PR body, docs-only PRs alone
 ---
 
 ## Why these rules?
@@ -12,7 +12,7 @@ description: Working rules (2026-10-25) for every session: why they exist, one o
 - From green CI to the next step: `session-lifecycle.md`.
 
 ## Are issues used?
-- No: no claim, hand-off, decision request or follow-up issue. A claim is a draft PR, a hand-off is the PR itself, and a question for the owner is asked in the session's reply and under `## Questions for the owner` in the PR body (`session-lifecycle.md`), kept in the plan file's open questions until the session's next PR records the answer.
+- Only for decision questions: an issue labelled `architect`, which the architect session decides with the owner (`architect.md`). No claim, hand-off or follow-up issue: a claim is a draft PR and a hand-off is the PR itself.
 
 ## How much checking, how many agents?
 - The tests of your area and what the change touches, no sandbox without a reason, no sub-agents or review chains: `session-checks.md`.
