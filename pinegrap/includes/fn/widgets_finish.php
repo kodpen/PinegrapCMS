@@ -429,6 +429,31 @@ function pg_sw_finish_positions($html, $nonce)
     return ($out === null) ? $html : $out;
 }
 
+// The kinds whose renderer judges pg-hide-if-empty itself
+// (pg_sw_hide_empty_fields() over its rows and its whole markup): the pass
+// judges again only around a cut.
+function pg_sw_finish_judged_kinds()
+{
+    return array('form_list_view', 'form_item_view', 'comments', 'comments_recent');
+}
+
+// pg-hide-if-empty in a kind whose renderer does not judge it: every marked
+// element that came out empty goes, with its heading, its words and its
+// frame. On a product page whose variant picker redraws the bound values
+// (pg_civ_variants.js), an empty element holding one of them waits hidden
+// instead, and the script shows it when a variant fills it, or hides one a
+// variant empties; the rule printed before them keeps a design's display
+// utility (Bootstrap's d-flex is !important) from showing a hidden one.
+function pg_sw_finish_hide_empty($html, $kind)
+{
+    if (!is_string($html) || strpos($html, 'pg-hide-if-empty') === false) return $html;
+    $wait = ($kind === 'catalog_item_view' && strpos($html, 'pgCivVariants.push(') !== false);
+    $out  = pg_sw_hide_empty_fields($html, null, $wait);
+    $rule = '<style>[data-pg-empty-wait][hidden]{display:none!important}</style>';
+    if ($wait && strpos($out, 'pg-hide-if-empty') !== false && strpos($out, $rule) === false) $out = $rule . $out;
+    return $out;
+}
+
 // The finish pass of one widget's markup. What the renderer published for
 // its lists is taken first, so nothing outlives the pass. Its stages, in
 // order:
@@ -440,26 +465,33 @@ function pg_sw_finish_positions($html, $nonce)
 //   3. conditions (pg_sw_finish_resolve()), then the values in attributes
 //      (pg_sw_attr_resolve(), widgets_attrs.php) of the elements kept, and
 //      a link waiting for a list row no row filled (pg_sw_page_link_settle());
-//   4. when a span was cut or a list came out empty, pg-hide-if-empty again
-//      in the kinds whose renderer honours it, on the elements around a cut
-//      point only, so a row whose value left and a box whose last row left
-//      go with it, and an element no cut touched is judged as the renderer
-//      judged it;
+//   4. pg-hide-if-empty: in the kinds whose renderer judges it
+//      (pg_sw_finish_judged_kinds()), again when a span was cut or a list
+//      came out empty, on the elements around a cut point only, so a row
+//      whose value left and a box whose last row left go with it, and an
+//      element no cut touched is judged as the renderer judged it; in every
+//      other kind here for the first time, on every marked element
+//      (pg_sw_finish_hide_empty());
 //   5. every marker, carrier and cut point of this request still standing
 //      taken out;
 //   6. each record's edit pencil put in the first element the record kept
 //      (pg_sw_finish_place_chips()), then any pencil marker left taken out.
 // Markup that holds neither a marker of this request nor a position token
-// comes back as it was; markup without a marker ends after stage 1.
+// comes back as it was, but for stage 4 outside the judged kinds; markup
+// without a marker ends after stage 1 (and that stage 4).
 function pg_sw_finish_widget_html($html, $scope)
 {
     $published = pg_sw_list_take($scope);
     if (!is_string($html) || $html === '') return $html;
-    $nonce = pg_sw_marker_nonce();
-    if (strpos($html, $nonce) === false && strpos($html, '^^__loop_') === false) return $html;
+    $nonce  = pg_sw_marker_nonce();
+    $kind   = (is_array($scope) && isset($scope['kind'])) ? pg_sw_finish_kind($scope['kind']) : '';
+    $judged = in_array($kind, pg_sw_finish_judged_kinds(), true);
+    if (strpos($html, $nonce) === false && strpos($html, '^^__loop_') === false) {
+        return $judged ? $html : pg_sw_finish_hide_empty($html, $kind);
+    }
 
     $html = pg_sw_finish_positions($html, $nonce);
-    if (strpos($html, $nonce) === false) return $html;
+    if (strpos($html, $nonce) === false) return $judged ? $html : pg_sw_finish_hide_empty($html, $kind);
 
     $cut  = false;
     $html = pg_sw_lists_expand($html, $nonce, $scope, $published, $cut);
@@ -467,9 +499,10 @@ function pg_sw_finish_widget_html($html, $scope)
     $html = pg_sw_attr_resolve($html, $nonce);
     $html = pg_sw_page_link_settle($html, $nonce);
 
-    $kind = (is_array($scope) && isset($scope['kind'])) ? pg_sw_finish_kind($scope['kind']) : '';
-    if ($cut && in_array($kind, array('form_list_view', 'form_item_view', 'comments'), true)) {
-        $html = pg_sw_hide_empty_fields($html, pg_sw_finish_cut_mark($nonce));
+    if ($judged) {
+        if ($cut) $html = pg_sw_hide_empty_fields($html, pg_sw_finish_cut_mark($nonce));
+    } else {
+        $html = pg_sw_finish_hide_empty($html, $kind);
     }
 
     $html = pg_sw_finish_strip_carriers($html, $nonce);
