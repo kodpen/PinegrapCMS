@@ -22,7 +22,7 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 
 - D5 trigger values: done (#2341), see workspace/workspace-flows-trigger-values.md.
 
-- D6 value picker: done (#PRNUM), see workspace/workspace-flows-value-picker.md. Threads, fork, value boxes: workspace-flows-data-threads.md.
+- D6 value picker: done (#2461), see workspace/workspace-flows-value-picker.md. Threads, fork, value boxes: workspace-flows-data-threads.md.
 
 - D7 conditions on values: a condition rule `value` compares an upstream output or trigger value, the input typed by the output's type.
 
