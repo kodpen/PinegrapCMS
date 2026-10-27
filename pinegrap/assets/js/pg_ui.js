@@ -44,12 +44,14 @@
         popover: { v5: 'Popover', v6: 'Popover', ev5: 'popover', ev6: 'popover' },
         collapse: { v5: 'Collapse', v6: 'Collapse', ev5: 'collapse', ev6: 'collapse' },
         tab: { v5: 'Tab', v6: 'Tab', ev5: 'tab', ev6: 'tab' },
-        toast: { v5: 'Toast', v6: 'Toast', ev5: 'toast', ev6: 'toast' },
-        chips: { v5: 'Chips', v6: 'Chips', ev5: 'chips', ev6: 'chips' }
+        toast: { v5: 'Toast', v6: 'Toast', ev5: 'toast', ev6: 'toast' }
     };
 
     // Kinds whose show() and hide() end with a shown/hidden event.
     var EVENTFUL = { dialog: true, drawer: true, menu: true, collapse: true, toast: true, tooltip: true, popover: true };
+
+    // Bootstrap 6 only: under 5 there is no constructor and get() is null.
+    KINDS.chips = { v5: 'Chips', v6: 'Chips', ev5: 'chips', ev6: 'chips' };
 
     // A v5 transition that never reports back (an element removed while it
     // was opening) must not leave a caller's promise pending for good.
