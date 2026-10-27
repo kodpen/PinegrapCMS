@@ -2487,12 +2487,12 @@ function workspace_flows_parity_table()
 		),
 		'outcomes' => array(
 			array(array('done'), 3, 'arrow on done'),
-			array(array('failed', 'skipped', 'always'), 3, 'arrows on failed, skipped and always'),
+			array(array('failed', 'skipped', 'always'), 3, 'arrows on failed (a step box\'s own), skipped (a condition box\'s no) and always (ws_flow_edge_takes(): any end of the box)'),
 		),
 		'limits' => array(
 			array(array('WS_SCHEDULED_CHAIN_DEPTH=8'), 3, 'depth through flow runs and their events: at most 8 follow one another'),
 			array(array('WS_SCHEDULED_CHAIN_HOURLY=60'), 3, 'anchor: 60 starts an hour (chain, join, event)'),
-			array(array('WS_SCHEDULED_MAX_FOLLOW=5'), 3, 'at most 5 outcome arrows, done in order; one failing fails a good run'),
+			array(array('WS_SCHEDULED_MAX_FOLLOW=5'), 3, 'outcome arrows: a box has as many as it needs, each box after it a box of the run; one that fails without an arrow on failed or always fails the run'),
 			array(array('WS_SCHEDULED_MIN_MINUTES=5'), 3, 'schedule trigger box: every 5 minutes at the most'),
 			array(array('WS_SCHEDULED_MAX_RECIPIENTS=20'), 3, 'email box and report box: 20 addresses'),
 			array(array('WS_SCHEDULED_LOCK=600'), 3, 'anchor: a run holds it 10 minutes (running_at)'),
@@ -2524,7 +2524,7 @@ function workspace_flows_parity_table()
 			array(array('WS_SCHEDULED_CHAIN_HOURLY in ws_events_start'), 3, 'event trigger box: 60 starts an hour'),
 			array(array('WS_SCHEDULED_CHAIN_HOURLY in ws_scheduled_joined'), 3, 'join trigger box: 60 starts an hour'),
 			array(array('WS_SCHEDULED_CHAIN_HOURLY in ws_scheduled_start'), 3, 'start box: 60 starts an hour'),
-			array(array('WS_SCHEDULED_MAX_FOLLOW in ws_scheduled_input'), 3, 'at most 5 outcome arrows'),
+			array(array('WS_SCHEDULED_MAX_FOLLOW in ws_scheduled_input'), 3, 'outcome arrows: no cap of 5 in a flow, whose boxes are bounded by WS_FLOW_MAX_NODES'),
 			array(array('WS_SCHEDULED_CHAIN_DEPTH in ws_scheduled_js_config', 'WS_SCHEDULED_MAX_FOLLOW in ws_scheduled_js_config'), 'form', 'what the form tells about the limits; the canvas has its own (WS_FLOW_*)'),
 			array(array('ws_event_depth in ws_scheduled_execute'), 3, 'depth through flow runs: a run hands its depth to the events it causes'),
 			array(array('ws_event_depth in ws_event'), 3, 'depth through events: a Workspace event carries the depth of the run that caused it'),

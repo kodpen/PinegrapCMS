@@ -205,17 +205,33 @@ function ws_flow_trigger_node($graph)
 }
 
 /**
- * Does an arrow leave the box on this outcome?
+ * Is an arrow on this outcome taken by a box that ended on that one? An
+ * arrow on always is taken by any outcome, as a scheduled action's follow-up
+ * on always. Pure.
+ *
+ * @param string $on      the arrow's outcome
+ * @param string $outcome the box's
+ * @return bool
+ */
+function ws_flow_edge_takes($on, $outcome)
+{
+    return ((string) $outcome !== '') && (((string) $on === 'always') || ((string) $on === (string) $outcome));
+}
+
+/**
+ * Does an arrow leave the box on this outcome, or on always?
  *
  * @param array  $graph
  * @param string $node_id
  * @param string $outcome
+ * @param bool   $always  an arrow on always counts (false: one drawn on this
+ *                        outcome itself)
  * @return bool
  */
-function ws_flow_outcome_routed($graph, $node_id, $outcome)
+function ws_flow_outcome_routed($graph, $node_id, $outcome, $always = true)
 {
     foreach ((array) ($graph['edges'] ?? array()) as $edge) {
-        if (((string) $edge['from'] === (string) $node_id) && ((string) $edge['on'] === (string) $outcome)) {
+        if (((string) $edge['from'] === (string) $node_id) && ($always ? ws_flow_edge_takes($edge['on'], $outcome) : ((string) $edge['on'] === (string) $outcome))) {
             return true;
         }
     }
@@ -313,7 +329,7 @@ function ws_flow_walk($graph, $steps)
 
                 if (isset($blocked[(string) $edge['from']])) {
                     $failed = true;
-                } elseif (((string) $from['status'] === 'done') && ((string) $from['outcome'] === (string) $edge['on'])) {
+                } elseif (((string) $from['status'] === 'done') && ws_flow_edge_takes($edge['on'], $from['outcome'])) {
                     $taken = true;
                 }
             }
