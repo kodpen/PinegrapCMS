@@ -588,7 +588,10 @@ function ws_step_node_values($rows)
 /**
  * Fills the {{node.<id>.<field>}} of a text; one the run has no value for
  * becomes empty. The other double braces are left for ws_scheduled_fill().
- * Pure.
+ * Every "{" of a value is followed by a word joiner (U+2060), so nothing a
+ * box gave (a visitor's words, a webhook's answer) is read again as a
+ * placeholder by ws_scheduled_fill(), not even with a brace of the text
+ * around it. Values without braces are inserted as they are. Pure.
  *
  * @param string $text
  * @param array  $values ws_step_node_values()
@@ -603,7 +606,7 @@ function ws_step_fill_nodes($text, $values)
     }
 
     return (string) preg_replace_callback('/\{\{node\.([a-z][a-z0-9_]{0,31})\.([a-z_][a-z0-9_]{0,31})\}\}/', function ($match) use ($values) {
-        return (string) ($values[$match[1]][$match[2]] ?? '');
+        return str_replace('{', "{\u{2060}", (string) ($values[$match[1]][$match[2]] ?? ''));
     }, $text);
 }
 
