@@ -4,7 +4,7 @@ description: pg_explorer_handle() after the split: the prelude and the dispatch,
 ---
 
 ## What is left in `pg_explorer_handle()`?
-- The prelude (short links refused to role 3, ERP documents read-only for `pg_explorer_file_id_actions()`) and the switch. Each `case 'explorer_…':` calls `pg_explorer_handle_<action>($type, $request, $user)` and then `break;`, so a handler that returns without `respond()` still ends in "Invalid request.". A `// ── title` line stays above each case; the longer comment sits above the handler.
+- Since the split (#2109 to #2351): the prelude (short links refused to role 3, ERP documents read-only for `pg_explorer_file_id_actions()`) and the switch. Each `case 'explorer_…':` calls `pg_explorer_handle_<action>($type, $request, $user)` and then `break;`, so a handler that returns without `respond()` still ends in "Invalid request.". A `// ── title` line stays above each case; the longer comment sits above the handler.
 - Handlers that filter by folder rights also take `$folders_that_user_has_access_to` (listing, shared, file usage, folder options).
 
 ## Where does a new sub-action go?
