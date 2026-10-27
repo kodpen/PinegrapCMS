@@ -138,3 +138,96 @@ function test_ws_flow_api_template_routes()
 	pg_assert_same('object', $params['answers']['type']);
 	pg_assert_true(empty($params['name']['required']), 'a template names the flow');
 }
+
+// The source of a function, comments taken out.
+function ws_flow_api_templates_test_source($name)
+{
+	$function = new ReflectionFunction($name);
+	$lines = file($function->getFileName());
+	$source = implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+
+	return preg_replace('#//[^\n]*|/\*.*?\*/#s', '', $source);
+}
+
+// The template is turned into boxes only for somebody who may build flows,
+// before the save check, and both before the rehearsal stops: a dry run
+// meets every refusal a real call meets, and nothing is written before.
+function test_ws_flow_api_templates_create_order()
+{
+	$source = ws_flow_api_templates_test_source('ws_api_flows_create');
+	$gate = strpos($source, 'ws_can_schedule($viewer)');
+	$template = strpos($source, 'ws_api_flow_from_template(ws_flow_templates_for($viewer)');
+	$check = strpos($source, 'ws_flow_save_check(');
+	$stop = strpos($source, 'api_dry_run_stop(');
+	$save = strpos($source, 'ws_flow_save($viewer, $data)');
+
+	pg_assert_true($gate !== false && $template !== false && $check !== false && $stop !== false && $save !== false, 'every step is there');
+	pg_assert_true($gate < $template, 'only a builder gets a template');
+	pg_assert_true($template < $check, 'the template feeds the save check');
+	pg_assert_true($check < $stop && $stop < $save, 'checked, rehearsed, then written');
+	pg_assert_true(strpos($source, 'ws_flow_publish(') === false, 'a draft from the API is never published');
+}
+
+// The listing reads as the owner of the application, once the tables are
+// there, and offers only what the gallery offers them.
+function test_ws_flow_api_templates_list_handler()
+{
+	$source = ws_flow_api_templates_test_source('ws_api_flow_templates_list');
+
+	pg_assert_true(strpos($source, 'ws_api_viewer()') < strpos($source, 'ws_api_flows_ready()'));
+	pg_assert_contains('ws_flow_templates_for($viewer)', $source);
+}
+
+// The create tool still rehearses, writes, and takes template and answers;
+// name is no longer one it must be sent.
+function test_ws_flow_api_templates_create_tool()
+{
+	$route = null;
+
+	foreach (ws_api_routes() as $item) {
+		if ($item['id'] === 'workspace.flows.create') {
+			$route = $item;
+		}
+	}
+
+	pg_assert_true(!empty($route['dry_run']), 'create rehearses');
+	pg_assert_true(pg_mcp_route_is_offered($route), 'create is a tool');
+
+	$tool = pg_mcp_tool_from_route($route);
+	$properties = (array) $tool['inputSchema']['properties'];
+
+	pg_assert_same('string', $properties['template']['type'] ?? null);
+	pg_assert_same('object', $properties['answers']['type'] ?? null);
+	pg_assert_same('boolean', $properties['dry_run']['type'] ?? null);
+	pg_assert_false(in_array('name', (array) ($tool['inputSchema']['required'] ?? array()), true), 'name is not required');
+	pg_assert_false($tool['annotations']['readOnlyHint'], 'create writes');
+
+	$list = null;
+
+	foreach (ws_api_routes() as $item) {
+		if ($item['id'] === 'workspace.flow_templates.list') {
+			$list = $item;
+		}
+	}
+
+	pg_assert_true(pg_mcp_tool_from_route($list)['annotations']['readOnlyHint'], 'the listing only reads');
+}
+
+// A template with no settings takes an empty answers object; a template
+// whose answers are all given passes every setting type it asks for.
+function test_ws_flow_api_from_template_every_setting()
+{
+	$values = array('channel' => 4, 'person' => array(6), 'time' => '07:30', 'url' => 'https://example.com/health', 'address' => 'a@example.com');
+
+	foreach (ws_flow_api_templates_test_list() as $template) {
+		$answers = array();
+
+		foreach ($template['settings'] as $setting) {
+			$answers[$setting['type']] = $values[$setting['type']];
+		}
+
+		$made = ws_api_flow_from_template(array($template), array('template' => $template['key'], 'answers' => $answers), array());
+		pg_assert_true($made['ok'], $template['key'] . ' takes its answers');
+		pg_assert_same(ws_flow_template_apply($template, $template['graph'], ws_flow_template_answers_check($template, $answers)['values']), $made['data']['graph'], $template['key']);
+	}
+}
