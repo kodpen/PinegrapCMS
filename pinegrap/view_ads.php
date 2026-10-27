@@ -94,8 +94,8 @@ foreach ($ad_regions as $ad_region) {
     }
     
     // get the number of ads that are assigned to this ad region
-    $query = "SELECT COUNT(*) FROM ads WHERE ad_region_id = '" . $ad_region['id'] . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT COUNT(*) FROM ads WHERE ad_region_id = ?";
+    $result = db_q($query, array((string) $ad_region['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     $number_of_ads = $row[0];
     

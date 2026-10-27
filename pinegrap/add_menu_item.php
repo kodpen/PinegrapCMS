@@ -29,8 +29,8 @@ $query =
     "SELECT
         name
     FROM menus
-    WHERE id = '" . escape($_REQUEST['menu_id'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE id = ?";
+$result = db_q($query, array((string) ($_REQUEST['menu_id'] ?? ''))) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 // Opened without a menu, or for one that no longer exists (stale link,
@@ -212,11 +212,11 @@ if (!$_POST) {
     $query = "SELECT sort_order
              FROM menu_items
              WHERE 
-                 (menu_id = '" . escape($menu_id) . "')
-                 AND (parent_id = '" . escape($_POST['parent_id'] ?? '')  . "')
+                 (menu_id = ?)
+                 AND (parent_id = ?)
              ORDER BY sort_order DESC
              LIMIT 1";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $menu_id, (string) ($_POST['parent_id'] ?? ''))) or output_error('Query failed.');
     
     $row = mysqli_fetch_assoc($result);
     $new_sort_order = $row['sort_order'] + 1;
@@ -238,20 +238,20 @@ if (!$_POST) {
             last_modified_user_id,
             last_modified_timestamp)
         VALUES
-            ('" . escape($_POST['name'] ?? '') . "',
-            '" . escape($menu_id) . "',
-            '" . escape($_POST['parent_id'] ?? '') . "',
-            '" . $new_sort_order . "',
-            '" . escape($link_page_id) . "',
-            '" . escape($link_url) . "',
-            '" . escape($_POST['link_target'] ?? '') . "',
-            '" . escape($_POST['security'] ?? '') . "',
-            '" . escape($_POST['class'] ?? '') . "',
-            '" . $user['id'] . "',
+            (?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
             UNIX_TIMESTAMP(),
-            '" . $user['id'] . "',
+            ?,
             UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) $menu_id, (string) ($_POST['parent_id'] ?? ''), (string) $new_sort_order, (string) $link_page_id, (string) $link_url, (string) ($_POST['link_target'] ?? ''), (string) ($_POST['security'] ?? ''), (string) ($_POST['class'] ?? ''), (string) $user['id'], (string) $user['id'])) or output_error('Query failed.');
     
     log_activity(lang(array('string'=>'menu item ({var:1}) on menu ({var:2}) was created','vars'=>array($_POST['name'],$menu_name) )), $_SESSION['sessionusername']);
     
@@ -259,10 +259,10 @@ if (!$_POST) {
     $query =
         "UPDATE menus
         SET
-            last_modified_user_id = '" . $user['id'] . "',
+            last_modified_user_id = ?,
             last_modified_timestamp = UNIX_TIMESTAMP()
-        WHERE id = '" . escape($menu_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $user['id'], (string) $menu_id)) or output_error('Query failed.');
 
     include_once('liveform.class.php');
     $liveform_view_menu_items = new liveform('view_menu_items');

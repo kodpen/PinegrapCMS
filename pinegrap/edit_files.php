@@ -312,8 +312,8 @@ if (!$_POST) {
                         // if a folder was selected to move the files(s) to, then output message for log
                         if ($_POST['move_to_folder']) {
                             // get folder name for log
-                            $query = "SELECT folder_name FROM folder WHERE folder_id = '" . escape($_POST['move_to_folder'] ?? '') . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $query = "SELECT folder_name FROM folder WHERE folder_id = ?";
+                            $result = db_q($query, array((string) ($_POST['move_to_folder'] ?? ''))) or output_error('Query failed.');
                             $row = mysqli_fetch_assoc($result);
                             
                             // output message for log
@@ -377,8 +377,8 @@ if (!$_POST) {
                             design,
                             folder AS folder_id
                         FROM files
-                        WHERE id = '" . escape($file_id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        WHERE id = ?";
+                    $result = db_q($query, array((string) $file_id)) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
 
                     $name = $row['name'];
@@ -402,14 +402,14 @@ if (!$_POST) {
 
                     $audit_before = pg_audit_fetch('files', $file_id);
 
-                    $query = "DELETE FROM files WHERE id = '" . escape($file_id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $query = "DELETE FROM files WHERE id = ?";
+                    $result = db_q($query, array((string) $file_id)) or output_error('Query failed.');
 
                     pg_audit_record('delete', 'files', $file_id, $audit_before);
 
                     // delete file's system css properties in case any exist
-                    $query = "DELETE FROM system_theme_css_rules WHERE file_id = '" . escape($file_id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $query = "DELETE FROM system_theme_css_rules WHERE file_id = ?";
+                    $result = db_q($query, array((string) $file_id)) or output_error('Query failed.');
 
                     db("DELETE FROM preview_styles WHERE theme_id = '" . escape($file_id) . "'");
                     

@@ -35,8 +35,8 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM menus WHERE id = '" . $id
 }
 
 // get menu name
-$query = "SELECT name FROM menus WHERE id = '" . escape($_GET['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$query = "SELECT name FROM menus WHERE id = ?";
+$result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 // Set Variables
@@ -79,8 +79,8 @@ if (($_GET['from'] ?? '') == 'pages') {
 function build_sortable_html($menu_id, $grouped_items = null, $parent_id = 0, $level = 0)
 {
     if ($grouped_items === null) {
-        $query = "SELECT id, name, parent_id FROM menu_items WHERE menu_id = '" . escape($menu_id) . "' ORDER BY sort_order";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT id, name, parent_id FROM menu_items WHERE menu_id = ? ORDER BY sort_order";
+        $result = db_q($query, array((string) $menu_id)) or output_error('Query failed.');
         $grouped_items = array();
         while ($row = mysqli_fetch_assoc($result)) {
             $grouped_items[$row['parent_id']][] = $row;
@@ -126,10 +126,10 @@ function get_menu_items($menu_id, $parent_id = 0, $level = 1)
          LEFT JOIN user ON menu_items.created_user_id = user.user_id
          LEFT JOIN user as user2 ON menu_items.last_modified_user_id = user2.user_id
          WHERE
-            (menu_id = '" . escape($menu_id) . "')
-            AND (parent_id = '" . escape($parent_id) . "')
+            (menu_id = ?)
+            AND (parent_id = ?)
          ORDER BY menu_items.sort_order";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $menu_id, (string) $parent_id)) or output_error('Query failed.');
     
     $current_menu_items = array();
     
@@ -145,8 +145,8 @@ function get_menu_items($menu_id, $parent_id = 0, $level = 1)
         $menu_items[] = $menu_item;
         
         // determine if there is a sub menu
-        $query = "SELECT COUNT(*) FROM menu_items WHERE parent_id = '" . $menu_item['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT COUNT(*) FROM menu_items WHERE parent_id = ?";
+        $result = db_q($query, array((string) $menu_item['id'])) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         
         // if there is a sub menu, then get menu items for sub menu
