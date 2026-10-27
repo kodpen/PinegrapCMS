@@ -51,6 +51,16 @@ function pg_test_form_adorn_cases()
 		array($root . 'workspace_template.php', 'id="ws_tpl_icon"', 'for="ws_tpl_icon"', '', 'id="ws_tpl_icon_preview"'),
 		array($root . 'includes/workspace/mcp_catalogue.php', 'id="ws_mcp_probe_alias"', 'for="ws_mcp_probe_alias"', 'form-control-sm', '>@</span>'),
 		array($root . 'includes/workspace/mcp.php', 'id="\' . $prefix . \'alias"', 'for="\' . $prefix . \'alias"', 'form-control-sm', '>@</span>'),
+		array($root . 'add_ad_region.php', "'id'=>'transition_duration'", '<label class="form-label" for="transition_duration"', 'form-adorn-end', "lang('milliseconds')"),
+		array($root . 'edit_ad_region.php', "'id'=>'transition_duration'", '<label class="form-label" for="transition_duration"', 'form-adorn-end', "lang('milliseconds')"),
+		array($root . 'add_ad_region.php', "'id'=>'slideshow_interval'", '<label class="form-label" for="slideshow_interval"', 'form-adorn-end', "lang('seconds')"),
+		array($root . 'edit_ad_region.php', "'id'=>'slideshow_interval'", '<label class="form-label" for="slideshow_interval"', 'form-adorn-end', "lang('seconds')"),
+		// Toolbar search fields: the input names itself with aria-label.
+		array($root . 'view_folders.php', 'id="filter_input"', '', 'form-control-sm', 'bi bi-search'),
+		array($root . 'view_folders.php', 'id="transfer_filter"', '', 'form-control-sm', 'bi bi-search'),
+		array($root . 'view_folders.php', 'id="ws_send_filter"', '', 'form-control-sm', 'bi bi-search'),
+		array($root . 'view_audit_log.php', 'name="q"', '', 'form-control-sm', 'bi bi-search'),
+		array($root . 'view_not_found_log.php', 'id="pg_404_search"', '', 'form-control-sm', 'bi bi-search'),
 	);
 }
 
@@ -77,7 +87,11 @@ function test_bs6_form_adorn_wraps_the_single_add_on_fields()
 		}
 
 		// The field keeps its own name: the add-on is hidden from it.
-		pg_assert_contains($label, substr($source, 0, (int) strpos($source, $block)), $name);
+		if ($label !== '') {
+			pg_assert_contains($label, substr($source, 0, (int) strpos($source, $block)), $name);
+		} else {
+			pg_assert_contains('aria-label="', $block, $name . ': a search field without a <label for> names itself');
+		}
 	}
 }
 
@@ -91,4 +105,19 @@ function test_bs6_form_adorn_keeps_the_input_attributes()
 	pg_assert_contains("'class' => 'form-ghost text-end', 'maxlength'=>'12', 'inputmode'=>'numeric', 'required'=>'required') + pg_money_mask_attributes()", $gift);
 	pg_assert_contains('pattern="[A-Za-z][A-Za-z0-9_\-]{1,31}" required autocomplete="off"\' . $disabled . \'>', $mcp);
 	pg_assert_contains('pattern="[A-Za-z][A-Za-z0-9_\-]{1,31}" required autocomplete="off">', $catalogue);
+}
+
+function test_bs6_form_adorn_toolbar_search_keeps_its_toolbar_class()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+
+	foreach (array('view_folders.php' => 'id="filter_input"', 'view_audit_log.php' => 'name="q"', 'view_not_found_log.php' => 'id="pg_404_search"') as $file => $id) {
+		$source = (string) file_get_contents($root . $file);
+		$at = (int) strpos($source, $id);
+		$before = substr($source, max(0, $at - 600), 600);
+
+		// The .pg-toolbar-search width and narrow-screen order stay on the field.
+		pg_assert_contains('pg-toolbar-search', $before, $file);
+		pg_assert_contains('rounded-pill', $before, $file);
+	}
 }
