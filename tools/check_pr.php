@@ -147,12 +147,27 @@ function check_pr_product_lines(array $files)
 	return $lines;
 }
 
+// One argument quoted for a Windows command line that starts a program
+// without cmd.exe, as the program's C runtime splits the line back into
+// arguments: in double quotes, with a double quote escaped by a backslash and
+// the backslashes before it, or before the closing quote, doubled. % and !
+// stay as they are: escapeshellarg() turns them and " into spaces for cmd.exe.
+function check_pr_windows_arg($arg)
+{
+	return '"' . preg_replace_callback('/(\\\\*)("|\z)/', function ($match) {
+		return $match[1] . $match[1] . (($match[2] === '"') ? '\\"' : '');
+	}, (string) $arg) . '"';
+}
+
 // Runs git in the current directory and returns its stdout, or false when it
-// fails (its stderr then goes to ours). On Windows git starts without cmd.exe,
-// which would expand the % signs of a --format.
+// fails (its stderr then goes to ours). On Windows git starts without cmd.exe
+// (bypass_shell), which would expand the % signs of a --format, so its
+// arguments are quoted for git itself; the argument list form of proc_open()
+// that would do this needs PHP 7.4.
 function check_pr_git(array $args)
 {
-	$command = 'git ' . implode(' ', array_map('escapeshellarg', $args));
+	$quote = (DIRECTORY_SEPARATOR === '\\') ? 'check_pr_windows_arg' : 'escapeshellarg';
+	$command = 'git ' . implode(' ', array_map($quote, $args));
 	$process = proc_open($command, array(1 => array('pipe', 'w'), 2 => array('pipe', 'w')), $pipes, null, null, array('bypass_shell' => true));
 
 	if (!is_resource($process)) {
