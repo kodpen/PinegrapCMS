@@ -45,6 +45,8 @@
     var _titleEl   = null;
     var _saveBtn   = null;
     var _formatBtn = null;
+    var _minimapBtn = null;
+    var _minimap   = null;   // the toggle's last choice on this page; null: page default
     var _opts      = null;   // current call's options
     var _didSave   = false;  // guard: distinguish Save click from dismiss
     var _opening   = 0;      // the call the bundle is being fetched for
@@ -73,7 +75,10 @@
                             '<div id="pgCodeEditorHost" class="pg-code-editor" style="flex:1 1 auto;min-height:0;"></div>' +
                         '</div>' +
                         '<div class="modal-footer">' +
-                            '<button type="button" class="btn btn-outline-secondary me-auto d-none" id="pgCodeEditorFormat" title="Shift+Alt+F">' + _h(_t('Format code')) + '</button>' +
+                            '<div class="me-auto d-flex gap-2">' +
+                                '<button type="button" class="btn btn-outline-secondary d-none" id="pgCodeEditorFormat" title="Shift+Alt+F">' + _h(_t('Format code')) + '</button>' +
+                                '<button type="button" class="btn btn-outline-secondary" id="pgCodeEditorMinimap" aria-pressed="false">' + _h(_t('Minimap')) + '</button>' +
+                            '</div>' +
                             '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">' + _h(_t('Cancel')) + '</button>' +
                             '<button type="button" class="btn btn-primary" id="pgCodeEditorSave">' + _h(_t('Save')) + '</button>' +
                         '</div>' +
@@ -90,10 +95,21 @@
         _titleEl  = _modalEl.querySelector('#pgCodeEditorTitle');
         _saveBtn  = _modalEl.querySelector('#pgCodeEditorSave');
         _formatBtn = _modalEl.querySelector('#pgCodeEditorFormat');
+        _minimapBtn = _modalEl.querySelector('#pgCodeEditorMinimap');
 
         _formatBtn.addEventListener('click', function () {
             if (!_editor) return;
             _editor.format();
+            _editor.focus();
+        });
+
+        // The choice holds for the next opens on this page as well: each open
+        // builds a fresh editor.
+        _minimapBtn.addEventListener('click', function () {
+            if (!_editor) return;
+            _minimap = !_editor.hasMinimap();
+            _editor.setMinimap(_minimap);
+            _syncMinimap();
             _editor.focus();
         });
 
@@ -138,6 +154,13 @@
     // The facade formats CSS, JavaScript and JSON only.
     function _formats(mode) {
         return _language(mode) !== 'html';
+    }
+
+    // The toggle shows the editor's state: pressed while the minimap is on.
+    function _syncMinimap() {
+        var on = !!(_editor && _editor.hasMinimap());
+        _minimapBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        _minimapBtn.classList.toggle('active', on);
     }
 
     function _toggleFullscreen() {
@@ -192,12 +215,14 @@
                 placeholder: opts.placeholder || '',
                 phrases: window.PgCodeEditorPhrases || null,
                 labels: { syntaxError: _t('Syntax error') },
+                minimap: _minimap,
                 keys: [
                     { key: 'Mod-s', run: function () { _saveBtn.click(); return true; } },
                     { key: 'F11', run: _toggleFullscreen },
                     { key: 'Escape', run: _leaveFullscreen }
                 ]
             });
+            _syncMinimap();
             setTimeout(function () { if (_editor && !opts.readonly) _editor.focus(); }, 50);
         };
         var onShown = function () {
