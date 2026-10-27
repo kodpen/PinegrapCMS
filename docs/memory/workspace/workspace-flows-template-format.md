@@ -9,7 +9,7 @@ description: Flow templates (G1, PR #2161, flow_templates.php): format, which sc
 
 ## What is a template?
 - key (the scheduled template's), category, title, help (one line), icon, start (kind of the first box), graph (`ws_flow_graph_normalize()` shape, boxes in columns of 256, follow-ups stacked 112 apart), boxes, threads (count of `{{node.ID.FIELD}}` in its configs), settings `[{type, targets: [[node, key], …]}]`.
-- Setting types: channel (id), person (id list), time (HH:MM), url, address. G2's setup panel asks these; G1 places the graph as filled.
+- Setting types: channel (id), person (id list), time (HH:MM), url, address; the setup panel asks them (`workspace-flows-template-setup.md`). Each template also carries `motion`.
 
 ## Which came over, and how?
 - From `saTemplates()`: task_mail, morning, digest, uptime, ssl, overdue, stock, invoices, monthly. Titles and texts are the same `sa_tpl_*` sentences (a test compares them with `ws_scheduled_js_strings()`); help lines were added for the seven that had none.
@@ -24,4 +24,4 @@ description: Flow templates (G1, PR #2161, flow_templates.php): format, which sc
 
 ## How does the canvas use it?
 - "New flow" with templates opens `showGallery(null)` in place of the canvas: Empty canvas, then the cards by category; Use creates a flow named after the template with its graph. The AI start comes with AI drafts (F8).
-- The box list shows "Start from a template" while the flow has no boxes; Use opens that flow again and places the graph (a flow that got boxes meanwhile gets a new flow instead), saved as any change. No motion, no setup panel: G2.
+- The box list shows "Start from a template" while the flow has no boxes; Use opens that flow again and places the graph (a flow that got boxes meanwhile gets a new flow instead), saved as any change; then the motion and the setup panel (`workspace-flows-template-setup.md`).
