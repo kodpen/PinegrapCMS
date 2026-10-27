@@ -11,6 +11,9 @@
  *   tokens   a token declared from a v5 variable (`--pg-bg-1:
  *            var(--bs-tertiary-bg)`) takes its v6 value; a rule that still
  *            reads a v5 variable reads the panel's token instead
+ *   rgb      a v5 RGB triple read with an alpha becomes color-mix() on the
+ *            panel token; the panel's own body and navbar triples are
+ *            renamed --pg-*-rgb
  *   bridge   Bootstrap 6's own variables take the panel's palette and the
  *            v5 neutrals, so its theme classes, badges, buttons, menus and
  *            dialogs keep the panel's colours and radii
@@ -168,7 +171,7 @@ function bs6_switch_tokens($source)
 function bs6_switch_token_bridge_block()
 {
 	$lines = array(
-		'  --bs-bg-body: rgb(var(--bs-body-bg-rgb));',
+		'  --bs-bg-body: rgb(var(--pg-body-bg-rgb));',
 		'  --bs-bg-1: light-dark(#f8f9fa, #2b3035);',
 		'  --bs-bg-2: light-dark(#e9ecef, #343a40);',
 		'  --bs-fg-body: light-dark(#212529, #dee2e6);',
@@ -229,4 +232,56 @@ function bs6_switch_token_bridge($source)
 	}
 
 	return bs6_switch_result(rtrim($source) . "\n\n" . bs6_switch_token_bridge_block(), 'applied');
+}
+
+// Panel files that read a v5 RGB triple (`rgba(var(--bs-primary-rgb), .3)`),
+// or the panel's own body and navbar triples.
+function bs6_switch_rgb_files($root)
+{
+	$paths = bs6_switch_token_files($root);
+	$paths[] = 'includes/fn/output.php';
+	$paths[] = 'includes/fn/design_themes.php';
+	$paths[] = 'assets/js/page_designer.js';
+	// Its in-panel SEO block reads the admin bar's navbar triple.
+	$paths[] = 'toolbar.php';
+
+	return array_values(array_unique($paths));
+}
+
+/**
+ * Bootstrap 6 has no `--bs-*-rgb` triples. A colour of the palette read
+ * with an alpha becomes `color-mix(in srgb, var(--pg-<colour>) N%,
+ * transparent)` (`rgb(var(…))` the token itself); the body and navbar
+ * triples the panel declares itself are renamed `--pg-body-bg-rgb` and
+ * `--pg-navbar-bg-rgb`, declarations and reads alike.
+ */
+function bs6_switch_rgb_variables($source)
+{
+	$tokens = array('emphasis-color' => 'fg-emphasis', 'body-color' => 'fg-body');
+	foreach (bs6_switch_token_colours() as $colour) {
+		$tokens[$colour] = $colour;
+	}
+
+	$alternation = implode('|', array_map(function ($key) {
+		return preg_quote($key, '/');
+	}, array_keys($tokens)));
+	$count = 0;
+
+	$source = preg_replace_callback('/rgba?\(\s*var\(--bs-(' . $alternation . ')-rgb\)\s*(?:,\s*([0-9]*\.?[0-9]+)(%?)\s*)?\)/', function ($m) use ($tokens, &$count) {
+		$count++;
+		$token = 'var(--pg-' . $tokens[$m[1]] . ')';
+
+		if (!isset($m[2]) || $m[2] === '') {
+			return $token;
+		}
+
+		$percent = $m[3] === '%' ? (float) $m[2] : (float) $m[2] * 100;
+
+		return 'color-mix(in srgb, ' . $token . ' ' . round($percent, 2) . '%, transparent)';
+	}, $source);
+
+	$source = preg_replace('/--bs-(body-bg|navbar-bg)-rgb(?![a-z0-9-])/', '--pg-$1-rgb', $source, -1, $renamed);
+	$count += $renamed;
+
+	return bs6_switch_result($source, $count > 0 ? 'applied' : 'done');
 }
