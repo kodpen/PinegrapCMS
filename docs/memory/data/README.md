@@ -32,6 +32,7 @@ Table structures and SQL pitfalls.
 - db-q-converted-campaigns-visitor-report.md: E-mail campaign files and the visitor report converted to db_q() (PR #2331): how values are passed, what stayed raw and why, the guard test.
 - db-q-converted-catalog-forms.md: get_catalog.php, get_photo_gallery.php and custom_form.php converted to db_q() (PR #2291): how values are passed, what stayed raw and why, the guard test.
 - db-q-converted-comments-search.md: Users list, user delete, account profile, comment add/edit, site search and sitemap files converted to db_q(): PR, special cases, what stayed raw and why, guard test.
+- db-q-converted-commerce-tail.md: Commerce panel tail screens, add to cart, private label, widgets 5, 21, 22 and the iyzico 3-D Secure row on db_q() (PR #2369): special cases, what stayed raw, guard test.
 - db-q-converted-commerce.md: Cart, checkout, form, order and product screen files converted to db_q(): PR, special cases, what stayed raw and why, guard tests.
 - db-q-converted-contacts-forms.md: Contact, contact group, form field and submitted form panel screens converted to db_q() (PRs #2299, #2316): what stayed raw and why, guard test.
 - db-q-converted-core-logs.md: Price history, core callers, calendar, mail, not-found log, db maintenance and backup restore functions converted to db_q(): PR, special cases, what stayed raw, guard test.
