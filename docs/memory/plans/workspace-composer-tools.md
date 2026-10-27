@@ -1,6 +1,6 @@
 ---
 name: workspace-composer-tools
-description: Plan (2026-10-23; 1, 2, 6, 7, 8, 11, 9a done, 4, 5 partly; answers open): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
+description: Plan (2026-10-23; 1, 2, 6, 7, 8, 9, 11 done, 4, 5 partly; answers open): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -26,7 +26,7 @@ description: Plan (2026-10-23; 1, 2, 6, 7, 8, 11, 9a done, 4, 5 partly; answers 
 6. Slash inserts in notes, done: #2009 (workspace/workspace-notes-slash-inserts.md).
 7. Smart paste, no schema, done: #2018 (workspace/workspace-editor-smart-paste.md).
 8. Small aids, no schema, done: unsent draft #2034 (workspace/workspace-unsent-draft.md), meter near `WS_MESSAGE_MAX` #2073 (workspace/workspace-message-meter.md), `:` emoji #2115 (workspace/workspace-colon-emoji.md).
-9. Objects, no schema. 9a lone tag as a card, done: #2150 (workspace/workspace-tag-card.md). 9b checklist item to task (`ws_command_parse_task()`).
+9. Objects, no schema, done. 9a lone tag as a card: #2150 (workspace/workspace-tag-card.md). 9b checklist item to task: #2158 (workspace/workspace-checklist-to-task.md).
 10. Saved replies with `{customer}`, `{order}`, schema, ask first: `;` picker, API with dry run; team ones need a right column (five ladder files, `pg_user_has_ws_columns()`).
 11. Rewrite with AI, no schema, done: #2141, target `ws_message` (workspace/workspace-ai-rewrite.md).
 12. Later: callouts, toggles, dictation, mermaid, find/replace; no GIF, video.
@@ -39,5 +39,4 @@ description: Plan (2026-10-23; 1, 2, 6, 7, 8, 11, 9a done, 4, 5 partly; answers 
 5. Dictation (Chrome sends audio to Google): (a) offer, privacy line, (b) not now → owner.
 
 ## Where to start?
-- Step 9a is done. Next, needing no answer: 9b (checklist item to task). 3 waits for question 1, the "Aa" box of 5 for question 2.
-- Step 4 left: autoformat (`==x==`, also "- " at a line's start) after question 3.
+- Every step that needs no answer is done. Left: 3 after question 1, the "Aa" box of 5 after question 2, autoformat of 4 (`==x==`, also "- " at a line's start) after question 3, and 10 (schema) after question 4 and the owner's yes to the schema change.
