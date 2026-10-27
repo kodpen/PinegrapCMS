@@ -1217,6 +1217,7 @@
     "Active Offers": "Aktif Teklifler",
     "Active Users": "Aktif Kullanıcı",
     "Active Visitors": "Aktif Ziyaretçiler",
+    "Active Visitor{suffix:1}": "Aktif Ziyaretçi",
     "Active accounts with a valid VKN or TCKN that {var:1} does not have. The walk-in account and accounts without a number are not listed: their invoices go out with the final-consumer number.": "Geçerli VKN ya da TCKN'si olan ve {var:1} tarafında bulunmayan etkin cariler. Sıcak satış carisi ve numarası olmayan cariler listelenmez: onların faturaları nihai tüketici numarasıyla gider.",
     "Active accounts with a valid tax number that {var:1} does not have. The walk-in account and accounts without a tax number are not listed.": "Geçerli vergi numarası olan ve {var:1} tarafında bulunmayan etkin cariler. Sıcak satış carisi ve vergi numarası olmayan cariler listelenmez.",
     "Active attribute filter chips HTML (legacy)": "Aktif attribute filtre chipleri HTML (legacy)",

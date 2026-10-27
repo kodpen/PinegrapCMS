@@ -32,6 +32,23 @@ if (!defined('PG_OFFER_OPEN_END_DATE')) {
     define('PG_OFFER_OPEN_END_DATE', '2099-12-31');
 }
 
+/**
+ * Whole days from $today until an offer's end date, never below 0; null for
+ * an open-ended offer, which has no last day to count down to.
+ *
+ * @param string $end_date Y-m-d.
+ * @param string $today    Y-m-d.
+ * @return int|null
+ */
+function _pg_offer_days_left($end_date, $today)
+{
+    if ((string) $end_date === PG_OFFER_OPEN_END_DATE) {
+        return null;
+    }
+
+    return max(0, (int) ceil((strtotime($end_date) - strtotime($today)) / 86400));
+}
+
 // ── Type registries ──────────────────────────────────────────────────────
 //
 // The "add condition" and "add result" menus in the editor are built from

@@ -135,6 +135,11 @@ function pg_dashboard_brief($user, $changelog_sections)
     // because that is true; it does not say sales are strong, because that is not.
     $greeting_now = time();
 
+    // "This week" is today and the six days before it from midnight, the
+    // window the E-Commerce Summary card counts as its last week, so a sentence
+    // and the card beside it never give two numbers for the same week.
+    $greeting_week_start = strtotime(date('Y-m-d', $greeting_now)) - (6 * 86400);
+
     $sig = array(
         'orders_today'    => null,
         'orders_before'   => null,
@@ -218,8 +223,7 @@ function pg_dashboard_brief($user, $changelog_sections)
         // both of its own bounds. Without the lower bound the "yesterday" figure
         // would quietly swallow the days behind it, and the basket count would
         // grow to a fortnight the moment the scan did.
-        $greeting_week_start = $greeting_now - 604800;
-        $greeting_prev_week_start = $greeting_now - 1209600;
+        $greeting_prev_week_start = $greeting_week_start - 604800;
 
         $greeting_orders = db_item(
             "SELECT
@@ -251,8 +255,8 @@ function pg_dashboard_brief($user, $changelog_sections)
 
         require_once PG_FUNCTIONS_DIR . '/includes/sales_map.php';
 
-        $greeting_map_week  = $greeting_now - 604800;
-        $greeting_map_month = $greeting_now - 2592000;
+        $greeting_map_week  = $greeting_week_start;
+        $greeting_map_month = $greeting_week_start - 1814400;
 
         $greeting_map_rows = db_items(
             "SELECT
@@ -327,7 +331,7 @@ function pg_dashboard_brief($user, $changelog_sections)
 
     if (($user['role'] < 3) || ($user['manage_contacts'] == true)) {
         $sig['new_contacts'] = (int) db_value(
-            "SELECT COUNT(*) FROM contacts WHERE timestamp >= " . (int) ($greeting_now - 604800));
+            "SELECT COUNT(*) FROM contacts WHERE timestamp >= " . (int) $greeting_week_start);
     }
 
     if ($user['role'] < 3) {
@@ -534,7 +538,7 @@ function pg_dashboard_brief($user, $changelog_sections)
                 SUM(CASE WHEN submitted_timestamp >= " . (int) ($greeting_now - 86400) . " THEN 1 ELSE 0 END) AS forms_today,
                 COUNT(*) AS forms_week
              FROM forms
-             WHERE complete = '1' AND submitted_timestamp >= " . (int) ($greeting_now - 604800));
+             WHERE complete = '1' AND submitted_timestamp >= " . (int) $greeting_week_start);
 
         $sig['forms_today'] = (int) ($greeting_forms['forms_today'] ?? 0);
         $sig['forms_week']  = (int) ($greeting_forms['forms_week'] ?? 0);

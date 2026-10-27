@@ -357,13 +357,13 @@ function pg_dashboard_widget_4($request, $user)
                     <div class="pg-eg-stat" style="--pg-eg-ink:#10b981">
                         <i class="bi bi-people-fill"></i>
                         <span class="pg-eg-stat-value">' . pg_format_number($eg_active_visitors, 0) . '</span>
-                        <span class="pg-eg-stat-label">' . lang('Active Visitors') . '</span>
+                        <span class="pg-eg-stat-label">' . lang(array('string' => 'Active Visitor{suffix:1}', 'suffix' => ($eg_active_visitors == 1 ? '' : 's'))) . '</span>
                         <span class="pg-eg-stat-window">' . lang('Last 20 min') . '</span>
                     </div>
                     <div class="pg-eg-stat" style="--pg-eg-ink:#3b82f6">
                         <i class="bi bi-person-gear"></i>
                         <span class="pg-eg-stat-value">' . pg_format_number($eg_online_users_count, 0) . '</span>
-                        <span class="pg-eg-stat-label">' . lang('Online Users') . '</span>
+                        <span class="pg-eg-stat-label">' . lang(array('string' => 'Online User{suffix:1}', 'suffix' => ($eg_online_users_count == 1 ? '' : 's'))) . '</span>
                         <span class="pg-eg-stat-window">' . lang('Last 20 min') . '</span>
                     </div>
                 </div>

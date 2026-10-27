@@ -223,7 +223,7 @@ function test_a11y_report_html()
 	$html = pg_a11y_report_html(
 		array('a11y_img_alt' => array('pages' => 2, 'occurrences' => 5)),
 		array(array('page_id' => 3, 'page_name' => 'urunler', 'code' => 'a11y_img_alt', 'severity' => 'error', 'occurrences' => 4, 'detail' => '<b>x.png</b>')),
-		12, 0, 'ornek.com');
+		12, 1761600000, 'ornek.com');
 
 	pg_assert_same(0, strpos($html, '<!DOCTYPE html><html><head><meta charset="utf-8">'));
 	pg_assert_same(count(pg_a11y_rules()) + 3, substr_count($html, '<tr>'), 'a row per check, two header rows and one finding');
@@ -232,4 +232,19 @@ function test_a11y_report_html()
 	pg_assert_true(strpos($html, 'ornek.com') !== false);
 	pg_assert_true(strpos($html, '&lt;b&gt;x.png&lt;/b&gt;') !== false, 'detail escaped');
 	pg_assert_same(1, substr_count(pg_a11y_report_html(array(), array(), 0, 0, 'x'), '<table>'), 'no findings table without findings');
+}
+
+function test_a11y_result_state_unchecked_before_a_full_pass()
+{
+	pg_assert_same('unchecked', pg_a11y_result_state(null, 0));
+	pg_assert_same('ok', pg_a11y_result_state(null, 1761600000));
+	pg_assert_same('found', pg_a11y_result_state(array('pages' => 1, 'occurrences' => 2), 0));
+}
+
+function test_a11y_report_pdf_never_reads_compliant_before_a_full_pass()
+{
+	$html = pg_a11y_report_html(array(), array(), 3, 0, 'example.com');
+
+	pg_assert_same(count(pg_a11y_rules()), substr_count($html, 'class="muted">' . h(lang('Not checked yet'))));
+	pg_assert_same(0, substr_count($html, 'class="ok"'));
 }

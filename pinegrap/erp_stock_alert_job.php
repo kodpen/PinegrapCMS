@@ -43,7 +43,9 @@ if (function_exists('pg_cron_ran')) {
     pg_cron_ran('erp_stock_alert_job');
 }
 
-if (php_sapi_name() === 'cli') {
+// The summary is for a person running the script by hand; under the general
+// job's dispatcher printed text goes to the site log (pg_cron_dispatch_output()).
+if ((php_sapi_name() === 'cli') && !defined('PG_CRON_DISPATCH')) {
     print 'low stock notices: ' . ($result['ran'] ? ((int) $result['count'] . ' product(s) announced') : 'off') . "\n";
     print 'quote notices: ' . ($quotes['ran'] ? ((int) $quotes['count'] . ' quote(s) announced') : 'off') . "\n";
     print 'quote follow-ups: ' . ((defined('ERP_QUOTE_EXPIRY_FOLLOWUP') && ERP_QUOTE_EXPIRY_FOLLOWUP) ? ((int) ($quotes['followups'] ?? 0) . ' opened') : 'off') . "\n";
