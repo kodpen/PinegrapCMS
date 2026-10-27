@@ -9,18 +9,19 @@ description: Cutting pg_explorer_handle() (view_folder_and_files_f.php, ~7k line
 - Source-reading tests that looked for the moved code are pointed at the new file.
 
 ## What is done?
-- Slice 1, short links (556 lines, #2109): `handle_short_links.php`, seven handlers, destination columns; tests `explorer_handle_short_links_test.php`, `short_link_requests_test.php`.
-- Slice 2, backups (625 lines, #2118): `handle_backups.php`, six handlers (rename, copy, delete share one, as they shared a case), breadcrumb, entry segments; test `explorer_handle_backups_test.php`.
-- Slice 3, zip, Office preview and rotate (451 lines, #2132): `handle_zip.php` (two handlers, archive and entry names) and `handle_files_media.php` (office_preview, rotate, `pg_explorer_rotatable()`); test `explorer_handle_zip_test.php`.
-- Slice 4, upload, optimize and webp (986 lines, #2145): `handle_upload.php` (upload, image options) and `handle_files_media.php` (optimize, webp, batch status, WebP name); test `explorer_handle_upload_test.php`.
-- Slice 5, catalog list, tree, create group, rename, membership remove and pages (941 lines, #2154): `handle_catalog.php`, six handlers, `pg_explorer_catalog_bin_entries()` and `pg_explorer_catalog_short_description_follows_name()` (test `explorer_handle_catalog_test.php`).
-- Slice 6, catalog paste, recycle, restore, purge and enable (1,196 lines, #2164): `handle_catalog.php` (1,105 lines now), five handlers, `pg_explorer_catalog_*()` bin item type and recycle message (test `explorer_handle_catalog_test.php`; `catalog_bin_test.php` reads it). A later catalog slice goes in a new `handle_catalog_*.php`.
-- Slice 7, bulk product options and products bulk edit (1,032 lines, #2172): `handle_products_bulk.php`, two handlers, `pg_explorer_bulk_product_*()` (group options, new price, new quantity) (test `explorer_handle_products_bulk_test.php`; `product_stock_events_test.php` reads it).
-- Slice 8, catalog quick edit, commerce access, file usage (1,189 lines, #2192): `handle_catalog_edit.php` (three handlers, quick price, quantity, column width) and `handle_file_usage.php` (takes `$folders_that_user_has_access_to` too; setting hits); tests `explorer_handle_catalog_edit_test.php`, `explorer_handle_file_usage_test.php`.
-- Slice 9, tree, new folder, new file, rename, move (459 lines, #2223): `handle_items.php`, five handlers, `pg_explorer_new_file_name()`, `pg_explorer_move_status()` (test `explorer_handle_items_test.php`; `file_withheld_test.php` reads it).
+Each slice has its tests in `tests/explorer_handle_<file>_test.php`.
+- 1, short links (556 lines, #2109): `handle_short_links.php`; `short_link_requests_test.php` too.
+- 2, backups (625, #2118): `handle_backups.php` (rename, copy, delete share one handler, as they shared a case).
+- 3, zip, Office preview, rotate (451, #2132): `handle_zip.php`, `handle_files_media.php`.
+- 4, upload, optimize, webp (986, #2145): `handle_upload.php`, `handle_files_media.php`.
+- 5, catalog list, tree, group, rename, membership, pages (941, #2154): `handle_catalog.php`.
+- 6, catalog paste, recycle, restore, purge, enable (1,196, #2164): `handle_catalog.php` (1,105 lines; `catalog_bin_test.php` reads it). A later catalog slice goes in a new `handle_catalog_*.php`.
+- 7, bulk product options and edit (1,032, #2172): `handle_products_bulk.php`; `product_stock_events_test.php` reads it.
+- 8, catalog quick edit, commerce access, file usage (1,189, #2192): `handle_catalog_edit.php`, `handle_file_usage.php` (takes `$folders_that_user_has_access_to`).
+- 9, tree, new folder, new file, rename, move (459, #2223): `handle_items.php`; `file_withheld_test.php` reads it.
+- 10, paste, delete files, design flag, folder options, folder settings (430, #2265): `handle_files.php`, `handle_folders.php` (options take `$folders_that_user_has_access_to`); test `explorer_handle_files_test.php`; `file_withheld_test.php` reads `handle_files.php`.
 
 ## In which order are the rest cut? (lines in the switch)
-10. paste (163), delete_files (61), folder_options (55), folder_settings_get/set (86), files_design (69).
 11. file_get/file_save (194), erp_tree/erp_list (111), shared_list (125).
 12. bulk page options/apply (184), bulk file options/apply (135), folder_access_get/set (213).
 13. delete_check (135), recycle_delete (203), recycle_restore (211), hard_delete (58).
