@@ -18,9 +18,9 @@ description: Cutting pg_explorer_handle() (view_folder_and_files_f.php, ~7k line
 - Slice 7, bulk product options and products bulk edit (1,032 lines, #2172): `handle_products_bulk.php`, two handlers, `pg_explorer_bulk_product_*()` (group options, new price, new quantity) (test `explorer_handle_products_bulk_test.php`; `product_stock_events_test.php` reads it).
 - Slice 8, catalog quick edit, commerce access, file usage (1,189 lines, #2192): `handle_catalog_edit.php` (three handlers, quick price, quantity, column width) and `handle_file_usage.php` (takes `$folders_that_user_has_access_to` too; setting hits); tests `explorer_handle_catalog_edit_test.php`, `explorer_handle_file_usage_test.php`.
 - Slice 9, tree, new folder, new file, rename, move (459 lines, #2223): `handle_items.php`, five handlers, `pg_explorer_new_file_name()`, `pg_explorer_move_status()` (test `explorer_handle_items_test.php`; `file_withheld_test.php` reads it).
+- Slice 10, paste, delete files, design flag, upload folder choices, folder settings (430 lines, #2265): `handle_files.php` (paste, delete_files, files_design, `pg_explorer_files_design_flag()`) and `handle_folders.php` (folder_options with `$folders_that_user_has_access_to`, folder_settings_get/set, `pg_explorer_folder_archived_value()`); test `explorer_handle_files_test.php`; `file_withheld_test.php` reads `handle_files.php`.
 
 ## In which order are the rest cut? (lines in the switch)
-10. paste (163), delete_files (61), folder_options (55), folder_settings_get/set (86), files_design (69).
 11. file_get/file_save (194), erp_tree/erp_list (111), shared_list (125).
 12. bulk page options/apply (184), bulk file options/apply (135), folder_access_get/set (213).
 13. delete_check (135), recycle_delete (203), recycle_restore (211), hard_delete (58).
