@@ -11,6 +11,7 @@ description: Plan (2026-10-26, issue #1989): legitimate traffic must not end in 
 - Target branch `development`; no 2026.4.x patch; files without a view stay refused; no script is served to a banned address (owner, 2026-10-26/27; `…-questions.md`).
 - A sub-resource fetch of a protected file answers 403, never the sign-in redirect; such a fetch of a sign-in screen is not counted as sensitive (`waf/waf-subresource-sign-in-fetches.md`).
 - Thresholds stay; a `concurrent` refusal is no offence; a rate ban stays off the x4 ladder (owner, 2026-10-27, Q2; `workflow/decisions-made-waf.md`).
+- The global limit stays counted at the router stage, before the session: its signed-in exemption reaches only directly requested scripts, and the texts say so (owner, 2026-10-27, Q5; `workflow/decisions-made-waf.md`).
 
 ## What are the steps (one PR each)?
 1. Sub-resource fetches answer 403 and stay off the sensitive allowance and the in-flight cap. Done (#2011).
@@ -24,7 +25,7 @@ description: Plan (2026-10-26, issue #1989): legitimate traffic must not end in 
 
 ## What is left?
 - `status=429` on the DENY line of `pg_cf_throttle_log()` (`includes/fn/custom_form.php` ~4166), the one `data/firewall.log` writer without it: one line, held by #1997 while that PR edits the file.
-- Two owner questions, asked 2026-10-27, open: (a) a release action for the sign-in throttle's address lock beside Unlock Sign-in on `edit_user.php` (today `pg_login_unlock()` clears the account subjects only; the address lock ends by itself or needs the allow list); (b) the global limit's signed-in exemption never applies to a routed request (`waf_handle_rate_global()` runs at the router stage, before the session, and latches), so a designer previewing a media-heavy page can meet the 300/min wall: leave and say so in the comment, or spare sub-resource fetches (`…-findings-lockout.md`).
+- One owner question, asked 2026-10-27 (#2238), open: a release action for the sign-in throttle's address lock beside Unlock Sign-in on `edit_user.php` (today `pg_login_unlock()` clears the account subjects only; the address lock ends by itself or needs the allow list).
 
 ## Where to start?
-- Nothing to claim until #1997 lands or an answer comes; then `[plan:waf-legit-traffic-auto-ban] leftover — <topic>`. With the line in and both answered, the plan's lasting content is in `waf/` and `workflow/` and the plan files are deleted.
+- Nothing to claim until #1997 lands or the answer comes; then `[plan:waf-legit-traffic-auto-ban] leftover — <topic>`. With the line in and the question answered, the plan's lasting content is in `waf/` and `workflow/` and the plan files are deleted.
