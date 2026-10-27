@@ -22,4 +22,4 @@ description: Shop view of marketplace_products.php (#1931): shop products with p
 - Quantity: 0 when stock is not tracked, the product is off or flagged out of stock, as `mp_product_row()` sends.
 - Tests: `tests/marketplace_product_matches_test.php`; the old card's source tests moved to the new files (`marketplace_trendyol_listing_status_test.php`, `catalog_bin_test.php`).
 
-Related: docs/memory/commerce/marketplace-bulk-matching.md, docs/memory/plans/marketplace-product-matching.md
+Related: docs/memory/commerce/marketplace-bulk-matching.md

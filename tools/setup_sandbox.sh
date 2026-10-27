@@ -134,7 +134,14 @@ say "Starting PHP's built-in server on $BASE_URL"
 # and the panel lives under /pinegrap/. Serving pinegrap/ itself would make the
 # built-in server answer /staff-home with the login page, which redirects back
 # to /staff-home in a loop as soon as someone signs in.
-php -S "127.0.0.1:$PORT" -t "$ROOT" >/tmp/pinegrap-server.log 2>&1 &
+#
+# The built-in server has no rewrite rules, so tools/sandbox_router.php plays
+# the part of the root .htaccess: files that exist are served as they are, the
+# data and includes folders are refused, and everything else (theme CSS, logos
+# and other files from the files table, friendly URLs) runs
+# pinegrap/router.php. Without it those files answer 404 and the site's pages
+# open unstyled.
+php -S "127.0.0.1:$PORT" -t "$ROOT" "$ROOT/tools/sandbox_router.php" >/tmp/pinegrap-server.log 2>&1 &
 SERVER_PID=$!
 
 for _ in $(seq 1 20); do
