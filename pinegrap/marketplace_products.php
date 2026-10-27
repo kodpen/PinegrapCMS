@@ -24,6 +24,11 @@
 // on the account (product_matches.php), a code typed in the row, and steps on
 // the ticked ones.
 //
+// The listings view, where the connector reads the marketplace's categories:
+// the shop's articles as cards with their pictures, the category each is filed
+// under, found by any words of its path and given to many at once, and what
+// that category asks, required answers first (listing_articles.php).
+//
 // GET draws the screen; every POST is the screen's script asking for one step
 // and is answered in JSON.
 
@@ -33,7 +38,7 @@ $user = validate_user();
 validate_area_access($user, 'manager');
 validate_ecommerce_access($user);
 
-require_once(dirname(__FILE__) . '/includes/api/outbound/product_matches.php');
+require_once(dirname(__FILE__) . '/includes/api/outbound/listing_articles.php');
 
 $account_id = (isset($_REQUEST['account']) && is_scalar($_REQUEST['account'])) ? (int) $_REQUEST['account'] : 0;
 
@@ -75,6 +80,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	if (strpos($action, 'shop_') === 0) {
 
 		mp_products_shop_step($account, $action, $id, $user);
+
+	}
+
+	if ((strpos($action, 'list_') === 0) && mp_can($account['provider'], 'category_tree')) {
+
+		mp_products_listing_step($account, $action, $id, $user);
 
 	}
 
@@ -954,6 +965,444 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 }
 
 /* ---------------------------------------------------------------------------
+   The listings view: the shop's articles, their categories and answers
+   --------------------------------------------------------------------------- */
+
+// One step of the listings view, answered with the cards it changed drawn
+// again, the filters' counts and a sentence for the operator.
+function mp_products_listing_step($account, $action, $id, $user) {
+
+	$ids = isset($_POST['ids']) ? mp_matches_ids($_POST['ids']) : ($id ? array($id) : array());
+
+	$answer = array('ok' => true, 'message' => '', 'error' => '');
+
+	if ($action === 'list_categories') {
+
+		$found = array();
+
+		foreach (mp_articles_category_search($account['provider'], (isset($_POST['q']) && is_string($_POST['q'])) ? mb_substr($_POST['q'], 0, 200) : '') as $row) {
+
+			$label = mp_articles_category_label($row['path']);
+
+			$found[] = array('id' => (string) $row['remote_id'], 'parents' => $label[0], 'name' => $label[1]);
+
+		}
+
+		mp_products_respond(array('ok' => true, 'categories' => $found));
+
+	}
+
+	if ($action === 'list_fetch_categories') {
+
+		$result = mp_categories_refresh($account);
+
+		mp_products_respond($result['ok']
+			? array('ok' => true, 'message' => lang(array('string' => '{var:1} categories are up to date.', 'vars' => array(pg_format_number((int) $result['data']['count'], 0)))))
+			: array('ok' => false, 'error' => $result['error']));
+
+	}
+
+	if ($action === 'list_form') {
+
+		$article = mp_articles_list($account, array($id));
+
+		if (!$article || ($article[0]['remote_category_id'] === '')) {
+
+			mp_products_respond(array('ok' => false, 'error' => lang('This article has no marketplace category yet.')));
+
+		}
+
+		// Read from the marketplace when the cache does not have them.
+		$loaded = mp_category_attributes($account, $article[0]['remote_category_id']);
+
+		if (!$loaded['ok']) {
+
+			mp_products_respond(array('ok' => false, 'error' => $loaded['error']));
+
+		}
+
+		mp_products_respond(array('ok' => true, 'html' => mp_products_article_form($article[0], (array) $loaded['data']['attributes'])));
+
+	}
+
+	if ($action === 'list_category') {
+
+		$set = mp_articles_set_category($account, $ids, (isset($_POST['category']) && is_string($_POST['category'])) ? $_POST['category'] : '');
+
+		if (!$set['ok']) {
+
+			mp_products_respond(array('ok' => false, 'error' => $set['error']));
+
+		}
+
+		$answer['message'] = lang(array('string' => 'The category of {var:1} article(s) was saved.', 'vars' => array($set['count'])));
+
+		$answer['error'] = $set['warning'];
+
+		// One article filed under a category that asks for something opens
+		// its answers next.
+		$filed = (($set['count'] === 1) && ($set['warning'] === '')) ? mp_articles_list($account, $ids) : array();
+
+		$answer['ask'] = (count($filed) === 1) && ($filed[0]['state'] !== 'ready');
+
+	} elseif ($action === 'list_attributes') {
+
+		$saved = mp_articles_save_attributes($account, $id, (isset($_POST['attribute']) && is_array($_POST['attribute'])) ? $_POST['attribute'] : array());
+
+		$answer['message'] = $saved ? lang('Saved.') : '';
+
+		$answer['error'] = $saved ? '' : lang('This article has no marketplace category yet.');
+
+	} elseif (($action === 'list_now') && mp_can($account['provider'], 'create_listings')) {
+
+		$done = mp_articles_list_now($account, $ids);
+
+		$answer['message'] = $done['queued']
+			? lang(array('string' => '{var:1} product(s) queued for listing. They go out on the next run.', 'vars' => array($done['queued'])))
+			: ($done['refused'] ? '' : lang('Already queued.'));
+
+		$answer['error'] = implode(' ', array_unique($done['refused']));
+
+		if ($done['queued']) {
+
+			log_activity(lang(array('string' => '{var:1} product(s) queued for listing on {var:2}.', 'vars' => array($done['queued'], $account['name']))), $user['username']);
+
+		}
+
+	} else {
+
+		mp_products_respond(array('ok' => false, 'error' => lang('Unknown request.')), 400);
+
+	}
+
+	$rows = array();
+
+	foreach (mp_articles_list($account, $ids) as $article) {
+
+		$rows[(int) $article['id']] = mp_products_article_html($account, $article);
+
+	}
+
+	$answer['ok'] = ($answer['error'] === '');
+
+	$answer['rows'] = (object) $rows;
+
+	$answer['counts'] = mp_articles_counts(mp_articles_list($account));
+
+	mp_products_respond($answer);
+
+}
+
+// One article as a card: its picture, code and title, how many products it
+// lists, its category and where it stands.
+function mp_products_article_html($account, $article) {
+
+	$id = (int) $article['id'];
+
+	$title = ((string) $article['title'] !== '') ? (string) $article['title'] : (string) $article['name'];
+
+	$thumb = mp_products_thumb($article['image']);
+
+	$pills = array(
+		'none'    => array('secondary', 'bi-folder2', lang('No category')),
+		'unread'  => array('secondary', 'bi-list-check', lang('Attributes not read yet')),
+		'missing' => array('warning', 'bi-exclamation-circle', lang('Answers needed')),
+		'ready'   => array('success', 'bi-check-circle', lang('Ready to list')),
+		'error'   => array('danger', 'bi-x-circle', lang('Refused'))
+	);
+
+	$pill = $pills[$article['state']];
+
+	$output = '<div class="mpa-card is-' . h($article['state']) . '" data-mp-row="' . $id . '" data-mp-article="1" data-mp-title="' . h($title) . '">'
+		. '<input class="form-check-input mpa-check" type="checkbox" data-mp-select="' . $id . '" aria-label="' . h(lang('Select')) . '">'
+		. mp_products_picture($thumb, ($thumb !== '') ? PATH . encode_url_path($article['image']) : '', $title, 'mpa-' . $id, 0, false)
+		. '<div class="mpa-body">'
+		. '<a class="mpp-title" href="edit_product_group.php?id=' . $id . '" target="_blank" rel="noopener">' . h($title) . '</a>'
+		. '<div class="mpp-meta"><code>' . h($article['name']) . '</code><span>'
+		. h(lang(array('string' => '{var:1} products', 'vars' => array((int) $article['variants'])))) . '</span></div>';
+
+	if ($article['remote_category_id'] !== '') {
+
+		$label = mp_articles_category_label((string) $article['category_path']);
+
+		$output .= '<div class="mpa-cat" title="' . h((string) $article['category_path']) . '">'
+			. (($label[0] !== '') ? '<small>' . h($label[0]) . '</small>' : '')
+			. '<b>' . h(($label[1] !== '') ? $label[1] : $article['remote_category_id']) . '</b></div>';
+
+	}
+
+	$output .= '<div><span class="mpp-pill ' . $pill[0] . '"><i class="bi ' . $pill[1] . ' me-1" aria-hidden="true"></i>' . h($pill[2]) . '</span></div>';
+
+	if ($article['missing']) {
+
+		$output .= '<div class="small text-body-secondary">' . h(lang('Still needed')) . ': ' . h(implode(', ', $article['missing'])) . '</div>';
+
+	}
+
+	if ($article['last_error'] !== '') {
+
+		$output .= '<div class="mpp-err">' . h(mb_substr($article['last_error'], 0, 200)) . '</div>';
+
+	}
+
+	$buttons = '<button type="button" class="btn btn-sm btn-outline-secondary" data-mp-act="list_pick"><i class="bi bi-folder2-open me-1" aria-hidden="true"></i>'
+		. h(($article['remote_category_id'] !== '') ? lang('Change category') : lang('Choose category')) . '</button>';
+
+	if ($article['remote_category_id'] !== '') {
+
+		$buttons .= '<button type="button" class="btn btn-sm ' . (in_array($article['state'], array('missing', 'unread'), true) ? 'btn-primary' : 'btn-outline-secondary')
+			. '" data-mp-act="list_form"><i class="bi bi-list-check me-1" aria-hidden="true"></i>' . h(lang('Attributes')) . '</button>';
+
+		if (mp_can($account['provider'], 'create_listings')) {
+
+			$buttons .= '<button type="button" class="btn btn-sm ' . (($article['state'] === 'ready') ? 'btn-primary' : 'btn-outline-secondary')
+				. '" data-mp-act="list_now"><i class="bi bi-upload me-1" aria-hidden="true"></i>' . h(lang('List on the marketplace')) . '</button>';
+
+		}
+
+	}
+
+	return $output . '</div><div class="mpa-actions">' . $buttons . '</div></div>';
+
+}
+
+// One attribute field of the answers form.
+function mp_products_attribute_field($group_id, $attribute, $value, $required) {
+
+	$id = (string) $attribute['attribute_id'];
+
+	$field = 'attr_' . $group_id . '_' . $id;
+
+	$variant = !empty($attribute['is_variant']);
+
+	$output = '<div class="col-12 col-md-6"><label class="form-label small mb-1" for="' . h($field) . '">' . h((string) $attribute['name'])
+		. ($required ? ' <span class="text-danger">*</span>' : '') . '</label>';
+
+	if (!empty($attribute['values'])) {
+
+		$output .= '<select class="form-select form-select-sm" id="' . h($field) . '" name="attribute[' . h($id) . ']">'
+			. '<option value="">' . h($required ? lang('Choose') : lang('Leave empty')) . '</option>';
+
+		foreach ((array) $attribute['values'] as $option) {
+
+			$output .= '<option value="' . h((string) $option['id']) . '"' . (((string) $option['id'] === $value) ? ' selected' : '') . '>'
+				. h((string) $option['value']) . '</option>';
+
+		}
+
+		$output .= '</select>';
+
+	} else {
+
+		$output .= '<input type="text" class="form-control form-control-sm" id="' . h($field) . '" name="attribute[' . h($id) . ']" value="' . h($value) . '" autocomplete="off">';
+
+	}
+
+	return $output . ($variant ? '<div class="form-text">'
+		. h(lang('Taken from each product\'s own option. This value is used only for a product whose options do not match this attribute; two products that would end up the same refuse the article.')) . '</div>' : '')
+		. '</div>';
+
+}
+
+// The answers an article's category asks for: the required ones first, then
+// the ones its variants answer, the optional ones folded away.
+function mp_products_article_form($article, $definitions) {
+
+	$group_id = (int) $article['id'];
+
+	$chosen = json_decode((string) $article['attributes_json'], true);
+
+	$chosen = is_array($chosen) ? $chosen : array();
+
+	if (!$definitions) {
+
+		return '<p class="mb-0">' . h(lang('This category asks for nothing else. The article is ready to list.')) . '</p>';
+
+	}
+
+	$sections = mp_products_article_sections($group_id, mp_articles_sections($definitions), $chosen);
+
+	return '<form class="mpa-form" data-mp-form="' . $group_id . '">'
+		. '<div class="small text-body-secondary mb-2" title="' . h((string) $article['category_path']) . '">' . h((string) $article['category_path']) . '</div>'
+		. $sections . '</form>';
+
+}
+
+function mp_products_article_sections($group_id, $sections, $chosen) {
+
+	$output = '';
+
+	$headings = array(
+		'required' => lang('Required'),
+		'variant'  => lang('From the variants'),
+		'optional' => lang('Optional')
+	);
+
+	foreach ($sections as $key => $definitions) {
+
+		if (!$definitions) {
+
+			continue;
+
+		}
+
+		$fields = '';
+
+		foreach ($definitions as $definition) {
+
+			$id = (string) $definition['attribute_id'];
+
+			$fields .= mp_products_attribute_field($group_id, $definition, isset($chosen[$id]) ? (string) $chosen[$id] : '', $key === 'required');
+
+		}
+
+		$fields = '<div class="row g-2 mb-3">' . $fields . '</div>';
+
+		$output .= ($key === 'optional')
+			? '<details class="mpa-optional"><summary>' . h($headings[$key]) . ' (' . count($definitions) . ')</summary><div class="mt-2">' . $fields . '</div></details>'
+			: '<h3 class="h6">' . h($headings[$key]) . '</h3>' . $fields;
+
+	}
+
+	return $output;
+
+}
+
+// The listings view: totals, filters, the article cards and the bar of steps
+// for the ticked ones.
+function mp_products_listings_view($account, $counts, $category_count, $view, $search, $page, $per_page, $list) {
+
+	$account_id = (int) $account['id'];
+
+	$ready_share = $counts['all'] ? (int) round(100 * $counts['ready'] / $counts['all']) : 0;
+
+	$query = function ($changes) use ($account_id, $view, $search) {
+
+		$params = array_merge(array('account' => $account_id, 'mode' => 'listings', 'view' => $view, 'q' => $search), $changes);
+
+		return 'marketplace_products.php?' . http_build_query(array_filter($params, function ($value) { return $value !== '' && $value !== null; }));
+
+	};
+
+	$filters = array(
+		'all'     => lang('All'),
+		'none'    => lang('No category'),
+		'missing' => lang('Answers needed'),
+		'ready'   => lang('Ready to list'),
+		'errors'  => lang('Refused')
+	);
+
+	echo '
+	<div class="card mb-3">
+		<div class="card-body">
+			<div class="mpp-hero">
+				<div class="flex-grow-1">
+					<div class="mpp-stats">
+						<div class="mpp-stat"><b data-mp-count="all">' . pg_format_number($counts['all'], 0) . '</b><span>' . h(lang('articles')) . '</span></div>
+						<div class="mpp-stat good"><b data-mp-count="ready">' . pg_format_number($counts['ready'], 0) . '</b><span>' . h(lang('ready to list')) . '</span></div>
+						<div class="mpp-stat"><b data-mp-count="none">' . pg_format_number($counts['none'], 0) . '</b><span>' . h(lang('without a category')) . '</span></div>
+						<div class="mpp-stat' . ($counts['errors'] ? ' bad' : '') . '"><b data-mp-count="errors">' . pg_format_number($counts['errors'], 0) . '</b><span>' . h(lang('refused')) . '</span></div>
+					</div>
+					<div class="mpp-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' . $ready_share . '"'
+						. ' aria-label="' . h(lang('Ready to list')) . '"><i style="width:' . $ready_share . '%"></i></div>
+					<div class="small mt-2">' . h(lang('An article is listed once, with its products as options. Pick its category and answer what the category asks.')) . '</div>
+				</div>
+				<div class="mpp-hero-actions">
+					<button type="button" class="btn ' . ($category_count ? 'btn-outline-secondary' : 'btn-primary') . '" id="mpa-fetch">'
+						. '<i class="bi bi-download me-1" aria-hidden="true"></i>' . h(lang('Fetch categories')) . '</button>
+					<small>' . ($category_count
+						? h(lang(array('string' => '{var:1} categories', 'vars' => array(pg_format_number($category_count, 0)))))
+						: h(lang('No categories yet'))) . '</small>
+				</div>
+			</div>
+		</div>
+	</div>';
+
+	if (!$category_count || !$counts['all']) {
+
+		echo '
+	<div class="card"><div class="text-center text-body-secondary py-5">'
+		. h(!$category_count
+			? lang('Fetch the marketplace category list first. It is downloaded once and kept.')
+			: lang('This shop has no product group with products in it, so there is no article to list.')) . '</div></div>';
+
+		return;
+
+	}
+
+	echo '
+	<div class="card">
+		<div class="mpp-list-head">
+			<div class="mpp-tabs" role="tablist">';
+
+	foreach ($filters as $key => $label) {
+
+		echo '
+				<a class="mpp-tab' . ($key === $view ? ' active' : '') . '" href="' . h($query(array('view' => $key, 'page' => null))) . '"'
+					. ($key === $view ? ' aria-current="page"' : '') . '>' . h($label)
+					. '<span class="mpp-n" data-mp-count="' . h($key) . '">' . pg_format_number($counts[$key], 0) . '</span></a>';
+
+	}
+
+	echo '
+			</div>
+			<div class="flex-grow-1"></div>
+			<form method="get" action="marketplace_products.php" class="d-flex gap-2 disable_shortcut" role="search">
+				<input type="hidden" name="account" value="' . $account_id . '">
+				<input type="hidden" name="mode" value="listings">
+				<input type="hidden" name="view" value="' . h($view) . '">
+				<input type="search" name="q" value="' . h($search) . '" class="form-control form-control-sm" style="min-width:220px"'
+					. ' placeholder="' . h(lang('Search by code or title')) . '" aria-label="' . h(lang('Search')) . '">
+				<button type="submit" class="btn btn-sm btn-outline-secondary" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
+			</form>
+		</div>'
+		. ($list['rows'] ? '
+		<div class="mpp-list-head pt-0 small">
+			<label class="form-check mb-0"><input class="form-check-input" type="checkbox" id="mpp-select-all"> ' . h(lang('Select all on this page')) . '</label>
+		</div>' : '') . '
+		<div id="mpp-list" class="mpa-grid">';
+
+	foreach ($list['rows'] as $article) {
+
+		echo mp_products_article_html($account, $article);
+
+	}
+
+	echo '
+		</div>'
+		. (!$list['rows'] ? '
+		<div class="text-center text-body-secondary py-5 border-top">' . h(lang('Nothing found.')) . '</div>' : '');
+
+	$pages = (int) ceil($list['total'] / $per_page);
+
+	if ($pages > 1) {
+
+		echo '
+		<nav class="d-flex justify-content-center align-items-center gap-2 py-3 border-top" aria-label="' . h(lang('Pages')) . '">
+			<a class="btn btn-sm btn-outline-secondary' . ($page <= 1 ? ' disabled' : '') . '" href="' . h($query(array('page' => max(1, $page - 1)))) . '">'
+				. '<i class="bi bi-chevron-left" aria-hidden="true"></i></a>
+			<span class="small">' . h(lang(array('string' => 'Page {var:1} of {var:2}', 'vars' => array($page, $pages)))) . '</span>
+			<a class="btn btn-sm btn-outline-secondary' . ($page >= $pages ? ' disabled' : '') . '" href="' . h($query(array('page' => min($pages, $page + 1)))) . '">'
+				. '<i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+		</nav>';
+
+	}
+
+	echo '
+	</div>
+	<div class="mpp-bulk d-none" id="mpp-bulk">
+		<span class="small"><b id="mpp-bulk-n">0</b> ' . h(lang('selected')) . '</span>
+		<div class="flex-grow-1"></div>
+		<button type="button" class="btn btn-sm btn-ghost" id="mpp-bulk-clear">' . h(lang('Clear')) . '</button>
+		<button type="button" class="btn btn-sm btn-primary" data-mp-bulk="list_pick"><i class="bi bi-folder2-open me-1" aria-hidden="true"></i>' . h(lang('Choose category')) . '</button>'
+		. (mp_can($account['provider'], 'create_listings')
+			? '<button type="button" class="btn btn-sm btn-outline-secondary" data-mp-bulk="list_now"><i class="bi bi-upload me-1" aria-hidden="true"></i>' . h(lang('List on the marketplace')) . '</button>'
+			: '') . '
+	</div>';
+
+}
+
+/* ---------------------------------------------------------------------------
    Reads
    --------------------------------------------------------------------------- */
 
@@ -978,9 +1427,14 @@ $supported = $account && mp_can($account['provider'], 'remote_products');
 
 $ready = mp_remote_products_ready();
 
+// The listings view, where the connector reads the marketplace's categories.
+$can_listings = $account && mp_can($account['provider'], 'category_tree');
+
 // Which view: the marketplace's catalogue where the connector lists it, the
-// shop's products otherwise or when asked for.
-$mode = ($supported && !(isset($_GET['mode']) && $_GET['mode'] === 'shop')) ? 'remote' : 'shop';
+// shop's products otherwise or when asked for, the listings when asked for.
+$asked = (isset($_GET['mode']) && is_string($_GET['mode'])) ? $_GET['mode'] : '';
+
+$mode = ($can_listings && ($asked === 'listings')) ? 'listings' : (($supported && ($asked !== 'shop')) ? 'remote' : 'shop');
 
 $shop_filters = array(
 	'all'       => lang('All'),
@@ -1008,6 +1462,29 @@ if ($account && ($mode === 'shop')) {
 	}
 
 	$list = mp_matches_page($account_id, $view, $search, $page, $per_page);
+
+}
+
+$category_count = 0;
+
+$article_counts = array();
+
+if ($account && ($mode === 'listings')) {
+
+	$articles = mp_articles_list($account);
+
+	$article_counts = mp_articles_counts($articles);
+
+	$category_count = (int) db_value("SELECT COUNT(*) FROM marketplace_categories
+		WHERE (provider = '" . e($account['provider']) . "') AND (is_leaf = '1')");
+
+	if (mp_articles_filter_states($view) === null) {
+
+		$view = 'all';
+
+	}
+
+	$list = mp_articles_page($articles, $view, $search, $page, $per_page);
 
 }
 
@@ -1140,6 +1617,28 @@ a.mpp-title:hover { text-decoration: underline; }
 .mpp-code-edit { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; width: 100%; }
 .mpp-code-edit .form-control { flex: 1 1 160px; min-width: 0; }
 .mpp-code-edit small { flex-basis: 100%; color: var(--pg-fg-2); }
+.mpa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; padding: 14px 16px; border-top: 1px solid var(--pg-border-color); }
+.mpa-card { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--pg-border-color);
+	border-radius: var(--pg-radius-lg); background: var(--pg-card-bg); transition: border-color .15s, opacity .2s; }
+.mpa-card:has(.mpa-check:checked) { border-color: var(--pg-primary); box-shadow: 0 0 0 1px var(--pg-primary); }
+.mpa-card.is-busy { opacity: .55; pointer-events: none; }
+.mpa-card.is-ready { border-left: 3px solid var(--pg-success); }
+.mpa-card.is-error { border-left: 3px solid var(--pg-danger); }
+.mpa-card.is-missing { border-left: 3px solid var(--pg-warning); }
+.mpa-check { position: absolute; top: 18px; left: 18px; z-index: 1; width: 1.2em; height: 1.2em; }
+.mpa-card .mpp-img-btn, .mpa-card > .mpp-img { width: 100%; }
+.mpa-card .mpp-img { width: 100%; height: auto; aspect-ratio: 4 / 3; flex: none; }
+.mpa-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1 1 auto; }
+.mpa-cat { font-size: 12.5px; line-height: 1.35; }
+.mpa-cat small { display: block; color: var(--pg-fg-2); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mpa-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.mpp-pill.warning { color: var(--pg-warning-fg-emphasis); background: var(--pg-warning-bg-subtle); border-color: var(--pg-warning-border-subtle); }
+.mpa-results { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.mpa-result { display: block; width: 100%; text-align: left; padding: 8px 12px; color: inherit; background: var(--pg-card-bg);
+	border: 1px solid var(--pg-border-color); border-radius: var(--pg-radius-lg); }
+.mpa-result:hover, .mpa-result:focus-visible { border-color: var(--pg-primary); }
+.mpa-result small { display: block; color: var(--pg-fg-2); }
+.mpa-optional > summary { cursor: pointer; font-weight: 600; margin-bottom: 8px; }
 @media (max-width: 1199.98px) {
 	.mpp-row { grid-template-columns: 22px minmax(0, 1fr) 96px minmax(0, 1fr); }
 	.mpp-actions { grid-column: 2 / -1; justify-content: flex-start; }
@@ -1164,17 +1663,38 @@ a.mpp-title:hover { text-decoration: underline; }
 	</nav>
 	<div id="mpp-flash" aria-live="polite"></div>';
 
-// The two views, where the connector lists the store's products there.
-if ($account && $supported) {
+// The views this account has: the catalogue where the connector lists the
+// store's products there, the listings where it reads the categories.
+if ($account && ($supported || $can_listings)) {
+
+	$modes = array();
+
+	if ($supported) {
+
+		$modes['remote'] = array('', 'bi-cloud', lang(array('string' => 'Catalogue on {var:1}', 'vars' => array($provider_name))));
+
+	}
+
+	$modes['shop'] = array('&amp;mode=shop', 'bi-shop', lang('Products in this shop'));
+
+	if ($can_listings) {
+
+		$modes['listings'] = array('&amp;mode=listings', 'bi-tags', lang('Listings'));
+
+	}
 
 	echo '
-	<nav class="mpp-modes" aria-label="' . h(lang('View')) . '">
-		<a class="mpp-mode' . ($mode === 'remote' ? ' active' : '') . '" href="marketplace_products.php?account=' . $account_id . '"'
-			. ($mode === 'remote' ? ' aria-current="page"' : '') . '><i class="bi bi-cloud" aria-hidden="true"></i>'
-			. h(lang(array('string' => 'Catalogue on {var:1}', 'vars' => array($provider_name)))) . '</a>
-		<a class="mpp-mode' . ($mode === 'shop' ? ' active' : '') . '" href="marketplace_products.php?account=' . $account_id . '&amp;mode=shop"'
-			. ($mode === 'shop' ? ' aria-current="page"' : '') . '><i class="bi bi-shop" aria-hidden="true"></i>'
-			. h(lang('Products in this shop')) . '</a>
+	<nav class="mpp-modes" aria-label="' . h(lang('View')) . '">';
+
+	foreach ($modes as $key => $item) {
+
+		echo '
+		<a class="mpp-mode' . ($mode === $key ? ' active' : '') . '" href="marketplace_products.php?account=' . $account_id . $item[0] . '"'
+			. ($mode === $key ? ' aria-current="page"' : '') . '><i class="bi ' . $item[1] . '" aria-hidden="true"></i>' . h($item[2]) . '</a>';
+
+	}
+
+	echo '
 	</nav>';
 
 }
@@ -1183,6 +1703,10 @@ if (!$account) {
 
 	echo '
 	<div class="alert alert-warning">' . h(lang('That marketplace account no longer exists.')) . '</div>';
+
+} elseif ($mode === 'listings') {
+
+	mp_products_listings_view($account, $article_counts, $category_count, $view, $search, $page, $per_page, $list);
 
 } elseif ($mode === 'shop') {
 
@@ -1377,7 +1901,14 @@ if ($account) {
 			'cancel'       => lang('Cancel'),
 			'code'         => lang(array('string' => 'Code on {var:1}', 'vars' => array($provider_name))),
 			'code_hint'    => lang('Left empty, its own code is used: {var:1}'),
-			'confirm_remove' => lang('Remove the match of {var:1} product(s)? Nothing is changed on the marketplace.')
+			'confirm_remove' => lang('Remove the match of {var:1} product(s)? Nothing is changed on the marketplace.'),
+			'category_title' => lang(array('string' => 'Category on {var:1}', 'vars' => array($provider_name))),
+			'category_for'   => lang('For {var:1} article(s)'),
+			'category_search' => lang('Type words of the category, e.g. car bulb'),
+			'category_hint'  => lang('Only the deepest categories can hold a product. Any words of the path find it.'),
+			'attributes'     => lang('Attributes'),
+			'fetching'       => lang('Fetching categories…'),
+			'confirm_list'   => lang('Queue {var:1} article(s) for listing?')
 		)
 	);
 

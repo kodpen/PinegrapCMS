@@ -202,11 +202,28 @@ function mp_category_attributes_decode($rows) {
 //
 // So the attribute cross-reference is what decides, the same test the API's
 // product-groups endpoint calls variants_only.
-function mp_listing_articles($account_id, $limit = 300) {
+//
+// $group_ids narrows the answer to those groups (a card drawn again after a
+// step). The picture is the group's own, else its first product's that has
+// one; GROUP_CONCAT leaves the NULLs out and a cut at its length limit only
+// loses names after the first.
+function mp_listing_articles($account_id, $limit = 300, $group_ids = null) {
 
 	$account_id = (int) $account_id;
 
+	$only = '';
+
+	if ($group_ids !== null) {
+
+		$group_ids = array_map('intval', (array) $group_ids);
+
+		$only = " AND product_groups.id IN ('" . implode("','", $group_ids ?: array(0)) . "')";
+
+	}
+
 	$groups = (array) db_items("SELECT product_groups.id, product_groups.name, product_groups.title,
+			product_groups.image_name AS group_image,
+			SUBSTRING_INDEX(GROUP_CONCAT(NULLIF(products.image_name, '') ORDER BY products.id SEPARATOR '\\n'), '\\n', 1) AS product_image,
 			COUNT(products_groups_xref.product) AS variants,
 			marketplace_category_map.remote_category_id, marketplace_category_map.attributes_json,
 			marketplace_category_map.last_error,
@@ -220,7 +237,7 @@ function mp_listing_articles($account_id, $limit = 300) {
 		LEFT JOIN marketplace_categories
 			ON  (marketplace_categories.remote_id = marketplace_category_map.remote_category_id)
 			AND (marketplace_categories.provider = (SELECT provider FROM marketplace_accounts WHERE id = '" . e($account_id) . "'))
-		WHERE product_groups.id IN (SELECT product_group_id FROM product_groups_attributes_xref)"
+		WHERE product_groups.id IN (SELECT product_group_id FROM product_groups_attributes_xref)" . $only
 			. pg_catalog_bin_live_sql('products') . "
 		GROUP BY product_groups.id
 		ORDER BY product_groups.name ASC

@@ -53,6 +53,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - marketplace-api-and-events.md: GET /products/{id}/marketplaces (manager role only, never credentials) and the marketplace.order.imported, .cancelled and .shipped webhook events: where each is announced and what it carries (#1667)
 - marketplace-bulk-matching.md: Bulk matching of marketplace products to the shop's (marketplace_products.php, #1880): remote catalogue table, paged read, suggestion scores, sure rule, what a match writes
 - marketplace-commission-and-invoice-columns.md: marketplace_product_map.commission and marketplace_order_map.invoice_sent (2026.11.0, 11.0.37): what each holds, NULL vs 0, the probes code reads them through (#1687)
+- marketplace-listing-view.md: Listings view of marketplace_products.php (#2066): article cards with pictures, category search by path words, one category for many articles, required attributes first
 - marketplace-listings.md: Rules for opening products on a marketplace (listings.php): product_group as article, category/attribute caching and unread attributes, SET order, Recycle Bin, stock tracking, n11 VAT.
 - marketplace-order-import.md: Rules for importing marketplace orders (includes/api/outbound/orders.php): package as unit, map row first, side effects excluded, product matching, unmatched lines and their retry, relay emails.
 - marketplace-order-money.md: Amounts of an imported marketplace order: per-unit price/tax/discount, the line's discount_total, mp_order_totals(), n11 line discounts that do not divide by the quantity.

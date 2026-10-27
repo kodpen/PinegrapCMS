@@ -54,6 +54,7 @@
     "Questions from {var:1}": "{var:1} soruları",
     "Queue active": "Kuyruk etkin",
     "Queue inactive": "Kuyruk devre dışı",
+    "Queue {var:1} article(s) for listing?": "{var:1} ürün grubu ilan için sıraya alınsın mı?",
     "Queued": "Sırada",
     "Quick Actions": "Hızlı İşlemler",
     "Quick Add": "Hızlı Ekle",
