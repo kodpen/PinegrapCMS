@@ -51,12 +51,12 @@ foreach ($cash_accounts as $till) {
 
     $movements = (int) db_value("SELECT COUNT(*) FROM erp_cash_transactions WHERE cash_account_id = '" . $id . "'");
 
-    $name_class = ((int) $till['is_active'] === 1) ? '' : ' text-body-secondary text-decoration-line-through';
+    $name_class = ((int) $till['is_active'] === 1) ? '' : ' fg-secondary text-decoration-line-through';
 
     $output_rows .=
         '<tr>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_erp_till.php?id=' . $id . '\'"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_erp_till.php?id=' . $id . '\'"><i class="bi bi-pencil"></i></button>
             </td>
             <td class="text-nowrap align-middle chart_label' . $name_class . '">' . h($till['name']) . '</td>
             <td class="align-middle">' . h($kind_labels[$till['kind']] ?? $till['kind']) . '</td>
@@ -64,7 +64,7 @@ foreach ($cash_accounts as $till) {
             <td style="max-width:220px" class="text-nowrap text-truncate align-middle">' . h($till['iban']) . '</td>
             <td class="align-middle">' . h($till['currency']) . '</td>
             <td class="align-middle text-end" data-order="' . $movements . '">' . number_format($movements) . '</td>
-            <td class="align-middle text-end fw-bold ' . (($balance < 0) ? 'text-danger' : '') . '" data-order="' . $balance . '">' . h(erp_fx_enabled() ? erp_money_out_currency($balance, $till_currency) : erp_money_out($balance)) . '</td>
+            <td class="align-middle text-end fw-bold ' . (($balance < 0) ? 'fg-danger' : '') . '" data-order="' . $balance . '">' . h(erp_fx_enabled() ? erp_money_out_currency($balance, $till_currency) : erp_money_out($balance)) . '</td>
         </tr>';
 }
 
@@ -85,21 +85,21 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                        <a class="btn btn-sm btn-primary rounded-pill px-3" href="add_erp_receipt.php?direction=collection"><i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>' . lang('Record a Receipt') . '</a>
-                        <a class="btn btn-sm btn-outline-secondary" href="add_erp_receipt.php?direction=payment"><i class="bi bi-box-arrow-up me-1" aria-hidden="true"></i>' . lang('Record a Payment') . '</a>
-                        <a class="btn btn-sm btn-outline-secondary" href="add_erp_transfer.php"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>' . lang('Transfer') . '</a>
-                        <a class="btn btn-sm btn-outline-secondary" href="add_erp_till.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('Open a Till') . '</a>
-                        <a class="btn btn-sm btn-outline-secondary" href="erp_cashflow.php"><i class="bi bi-graph-up-arrow me-1" aria-hidden="true"></i>' . lang('Cash flow') . '</a>
+                        <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_receipt.php?direction=collection"><i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>' . lang('Record a Receipt') . '</a>
+                        <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_receipt.php?direction=payment"><i class="bi bi-box-arrow-up me-1" aria-hidden="true"></i>' . lang('Record a Payment') . '</a>
+                        <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_transfer.php"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>' . lang('Transfer') . '</a>
+                        <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_till.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('Open a Till') . '</a>
+                        <a class="btn btn-sm btn-outline theme-secondary" href="erp_cashflow.php"><i class="bi bi-graph-up-arrow me-1" aria-hidden="true"></i>' . lang('Cash flow') . '</a>
                     </nav>
 
-            <div class="card my-4">
-                <div class="card-body d-flex flex-wrap align-items-baseline gap-3">
-                    <span class="text-uppercase text-body-secondary">' . lang('Total in Active Tills') . '</span>
-                    <span class="h4 mb-0 ' . (($total < 0) ? 'text-danger' : 'text-success') . '">' . h(erp_money_out($total)) . '</span>
+            <div class="card my-7">
+                <div class="card-body d-flex flex-wrap align-items-baseline gap-5">
+                    <span class="text-uppercase fg-secondary">' . lang('Total in Active Tills') . '</span>
+                    <span class="h4 mb-0 ' . (($total < 0) ? 'fg-danger' : 'fg-success') . '">' . h(erp_money_out($total)) . '</span>
                 </div>
             </div>
 
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none;">
                         <thead>

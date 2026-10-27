@@ -1,3 +1,7 @@
+/* Panel rules sit in Bootstrap 6's custom layer: above its components,
+   below its helpers and utilities, which win as they did with !important. */
+@layer custom {
+
 /**
  * Pinegrap - Enterprise Website Platform
  *
@@ -241,4 +245,6 @@ body.pg-tour-open { overflow: hidden; }
 @media (max-width: 575.98px) {
 
     .pg-tour-art { max-height: 30vh; }
+}
+
 }

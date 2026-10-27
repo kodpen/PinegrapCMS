@@ -1745,7 +1745,7 @@ function pg_chat_render_backend_launcher()
     $js_url = PATH . SOFTWARE_DIRECTORY . '/' . $js_file . '?v=' . @filemtime(dirname(__FILE__) . '/' . $js_file);
 
     $output = '
-        <div id="pg-chat-root" class="d-print-none"></div>
+        <div id="pg-chat-root" class="pg-print-none"></div>
         <style>
             #pg-chat-root .pg-chat-launcher { position: fixed; right: 24px; bottom: 24px; z-index: 1080; width: 58px; height: 58px; border-radius: 50%; border: 0; color: #fff; background: linear-gradient(135deg, var(--bs-primary, #0d6efd), #6f42c1); box-shadow: 0 8px 24px rgba(13,110,253,.35); font-size: 22px; transition: transform .15s ease, box-shadow .15s ease; }
             #pg-chat-root .pg-chat-launcher:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 12px 28px rgba(13,110,253,.45); }

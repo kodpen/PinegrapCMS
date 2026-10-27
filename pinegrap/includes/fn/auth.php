@@ -3008,7 +3008,7 @@ function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders 
                     . '</span>'
                     . '</span>';
             }
-            $output .= '<div class="form-check"><input type="checkbox" name="' . $type . '_' . $folder['id'] . '" id="' . $type . '_' . $folder['id'] . '" value="1" class="form-check-input  multiselect-checkbox"' . $checked . $output_onclick . ' /><label class="form-check-label" for="' . $type . '_' . $folder['id'] . '">' . $indentation . h($folder['name']) . '</label>' . $output_expiration_date_container . '</div>';
+            $output .= '<div class="form-field"><input type="checkbox" name="' . $type . '_' . $folder['id'] . '" id="' . $type . '_' . $folder['id'] . '" value="1" class="check  multiselect-checkbox"' . $checked . $output_onclick . ' /><label class="" for="' . $type . '_' . $folder['id'] . '">' . $indentation . h($folder['name']) . '</label>' . $output_expiration_date_container . '</div>';
         }
         // get lines for child folders
         $output .= get_acl_folder_tree($type, $folder['id'], $next_level, $folders, $folders_that_user_has_access_to, $user_id);
@@ -3996,6 +3996,37 @@ function pg_login_throttle_limits()
 }
 
 /**
+ * What a sign-in failure from this address is counted against: the address,
+ * or the /64 for IPv6 (waf_ip_subject()); nothing for an address that is not
+ * counted or that the firewall's allow list covers.
+ *
+ * The allow list is the operator's own office or server: a shared address
+ * whose other users fail fifty times would otherwise lock the operator out
+ * for an hour, with the firewall off too, and no screen releases the address
+ * lock. The account subject still counts there, so guessing at one account
+ * from an allowed address is still stopped.
+ *
+ * @param string $ip      the visitor's address (waf_client_ip())
+ * @param bool   $counted waf_ip_is_counted() for it
+ * @param array  $allowed the allow list's entries (waf_ip_lists())
+ * @return string the subject, or '' when the address is not counted
+ */
+function pg_login_throttle_address_subject($ip, $counted, array $allowed)
+{
+    $ip = (string) $ip;
+
+    if (($ip === '') || !$counted) {
+        return '';
+    }
+
+    if (function_exists('waf_ip_in_any') && waf_ip_in_any($ip, $allowed)) {
+        return '';
+    }
+
+    return function_exists('waf_ip_subject') ? waf_ip_subject($ip) : $ip;
+}
+
+/**
  * The two things a sign-in attempt is counted against.
  *
  * The address catches one machine working through a password list. The
@@ -4023,8 +4054,11 @@ function pg_login_throttle_subjects($identifier)
         ? waf_ip_is_counted($ip)
         : (!function_exists('waf_ip_is_infrastructure') || !waf_ip_is_infrastructure($ip));
 
-    if ($ip !== '' && $address_counted) {
-        $subjects['a'] = function_exists('waf_ip_subject') ? waf_ip_subject($ip) : $ip;
+    $allowed = function_exists('waf_ip_lists') ? waf_ip_lists() : array('allow' => array());
+    $address_subject = pg_login_throttle_address_subject($ip, $address_counted, $allowed['allow']);
+
+    if ($address_subject !== '') {
+        $subjects['a'] = $address_subject;
     }
 
     $identifier = trim((string) $identifier);
@@ -4447,7 +4481,7 @@ function pg_login_captcha_screen($identifier, $liveform, $screen, $message)
     }
 
     if ($message !== '') {
-        $messages .= '<div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>' . h($message) . '</div>';
+        $messages .= '<div class="alert theme-danger" role="alert"><i class="bi bi-exclamation-triangle-fill me-3" aria-hidden="true"></i>' . h($message) . '</div>';
     }
 
     if (!headers_sent()) {
@@ -4455,28 +4489,28 @@ function pg_login_captcha_screen($identifier, $liveform, $screen, $message)
     }
 
     echo output_header_secure(array('title' => lang('One More Step')))
-        . '<main class="container py-4 py-md-5">
+        . '<main class="container py-7 md:py-12">
             <div class="card mx-auto shadow-sm" style="max-width: 28rem;">
-                <div class="card-body p-4">
-                    <h1 class="h4 mb-2"><i class="bi bi-shield-lock me-2" aria-hidden="true"></i>' . lang('One More Step') . '</h1>
-                    <p class="text-muted mb-3">' . lang('There have been several failed sign-in attempts for this account or from this address. Please sign in again and answer the question below.') . '</p>
+                <div class="card-body p-7">
+                    <h1 class="h4 mb-3"><i class="bi bi-shield-lock me-3" aria-hidden="true"></i>' . lang('One More Step') . '</h1>
+                    <p class="fg-secondary mb-5">' . lang('There have been several failed sign-in attempts for this account or from this address. Please sign in again and answer the question below.') . '</p>
                     ' . $messages . '
                     <form name="login_captcha" action="' . h($screen['action']) . '" method="post" autocomplete="on">
                         ' . get_token_field() . '
                         ' . $hidden . '
-                        <div class="mb-3">
+                        <div class="mb-5">
                             <label for="' . h($screen['identifier']) . '" class="form-label">' . lang('Email') . '</label>
                             <input type="text" id="' . h($screen['identifier']) . '" name="' . h($screen['identifier']) . '" value="' . h((string) $identifier) . '" class="form-control" required="required" autocomplete="username" spellcheck="false"/>
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-5">
                             <label for="' . h($screen['password']) . '" class="form-label">' . lang('Password') . '</label>
                             <input type="password" id="' . h($screen['password']) . '" name="' . h($screen['password']) . '" class="form-control" required="required" autocomplete="current-password" autofocus="autofocus"/>
                         </div>
-                        <div class="mb-4">
+                        <div class="mb-7">
                             <label for="login_captcha_answer" class="form-label fw-semibold">' . h($question) . '</label>
                             <input type="number" id="login_captcha_answer" name="login_captcha_answer" class="form-control" style="max-width: 8rem;" min="0" max="18" required="required" autocomplete="off" inputmode="numeric"/>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100">' . lang('Login') . '</button>
+                        <button type="submit" class="btn btn-solid theme-primary w-100">' . lang('Login') . '</button>
                     </form>
                 </div>
             </div>

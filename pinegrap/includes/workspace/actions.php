@@ -712,7 +712,31 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(($action === 'ws_flow_bin') ? array() : array('flow' => ws_flow_detail($viewer, ws_flow_for($viewer, $flow['id'], 'edit'))));
 
-        // The runs of a flow (includes/workspace/flow_runs.php), shown on the
+        // The setup panel of a template just placed (flow_templates.php): its
+        // answers checked here, written into the draft and, with publish,
+        // published through Publish's own checks.
+        case 'ws_flow_template_setup':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'edit');
+
+            if (!$flow) {
+                return ws_action_error(lang('Only the owner of a flow can change it.'));
+            }
+
+            $result = ws_flow_template_setup($viewer, $flow, array(
+                'key'       => (string) ($request['key'] ?? ''),
+                'answers'   => is_array($request['answers'] ?? null) ? $request['answers'] : array(),
+                'draft_rev' => (int) ($request['draft_rev'] ?? 0),
+                'publish'   => !empty($request['publish']),
+            ));
+
+            if (!$result['ok']) {
+                return ws_action_flow_refused($result);
+            }
+
+            return ws_action_ok(array('flow' => ws_flow_detail($viewer, ws_flow_for($viewer, $flow['id'], 'edit')),
+                'published' => $result['published'], 'publish_error' => $result['publish_error']));
+
+
         // canvas: started, listed, read and cancelled through the runner's
         // own checks, the ones the API's run routes make, and answered in
         // the shape those routes give.

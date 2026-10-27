@@ -1529,34 +1529,34 @@ function pg_update_permissions_block($user)
     $permissions_rows = '';
 
     foreach (array_slice($permissions['directories'], 0, 12, true) as $permissions_path => $permissions_mode) {
-        $permissions_rows .= '<li><code>' . h($permissions_path) . '/</code> <span class="text-body-secondary">' . h($permissions_mode) . '</span></li>';
+        $permissions_rows .= '<li><code>' . h($permissions_path) . '/</code> <span class="fg-secondary">' . h($permissions_mode) . '</span></li>';
     }
 
     if ($permissions['directories_count'] > 12) {
-        $permissions_rows .= '<li class="text-body-secondary">' . h(lang(array('string' => 'and {var:1} more', 'vars' => pg_format_number($permissions['directories_count'] - 12, 0)))) . '</li>';
+        $permissions_rows .= '<li class="fg-secondary">' . h(lang(array('string' => 'and {var:1} more', 'vars' => pg_format_number($permissions['directories_count'] - 12, 0)))) . '</li>';
     }
 
     if ((int) $user['role'] === 0) {
         $permissions_action = '
-                <button type="button" class="btn btn-danger" id="write_permissions_fix"
+                <button type="button" class="btn btn-solid theme-danger" id="write_permissions_fix"
                         data-busy-label="' . h(lang('Fixing')) . '"
                         data-idle-label="' . h(lang('Set the file permissions')) . '"
                         data-failed-label="' . h(lang('The permissions could not be changed.')) . '">
                     <i class="bi bi-wrench-adjustable me-1"></i><span id="write_permissions_fix_state">' . h(lang('Set the file permissions')) . '</span>
                 </button>
-                <span class="form-text d-block mt-2">' . h(lang('Sets these folders to 0777 and the files in them that refuse to 0666, so that both the web server and your FTP or file manager user can replace them. Folders that belong to another system user cannot be changed from here and are listed afterwards.')) . '</span>
-                <div class="form-text mt-2 d-none" id="write_permissions_fix_result"></div>';
+                <span class="form-text d-block mt-3">' . h(lang('Sets these folders to 0777 and the files in them that refuse to 0666, so that both the web server and your FTP or file manager user can replace them. Folders that belong to another system user cannot be changed from here and are listed afterwards.')) . '</span>
+                <div class="form-text mt-3 d-none" id="write_permissions_fix_result"></div>';
     } else {
-        $permissions_action = '<span class="form-text d-block mt-2">' . h(lang('An administrator can open them from this screen, or set them writable over FTP.')) . '</span>';
+        $permissions_action = '<span class="form-text d-block mt-3">' . h(lang('An administrator can open them from this screen, or set them writable over FTP.')) . '</span>';
     }
 
     $block['html'] = '
-            <div class="alert alert-danger">
-                <p class="form-text mb-2"><i class="bi bi-folder-x me-1"></i>' . h(lang(array(
+            <div class="alert theme-danger">
+                <p class="form-text mb-3"><i class="bi bi-folder-x me-1"></i>' . h(lang(array(
                     'string' => 'The web server cannot write into {var:1} folder(s) of the software. The update cannot add or replace files there, so it does not start until they are opened:',
                     'vars' => pg_format_number($permissions['directories_count'], 0)
                 ))) . '</p>
-                <ul class="mb-2 small">' . $permissions_rows . '</ul>
+                <ul class="mb-3 small">' . $permissions_rows . '</ul>
                 ' . $permissions_action . '
             </div>';
 

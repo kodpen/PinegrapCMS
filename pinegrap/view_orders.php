@@ -539,42 +539,38 @@ $output_generate_xlsl_button = '';
 $output_xlsl_setup_modal = '';
 if(defined('ENABLE_PARASUT') && ENABLE_PARASUT != 0){
     $output_xlsl_setup_modal = 
-    '<div id="xlsl_setup_modal" class="modal fade" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">' . lang('Options & Confirmation') . '</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    '<dialog id="xlsl_setup_modal" class="dialog">
+                <div class="dialog-header">
+                    <h5 class="dialog-title">' . lang('Options & Confirmation') . '</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
+                <div class="dialog-body">
                     <div class="row">
-                        <div class="col-12 my-2">
+                        <div class="col-12 my-3">
                             <label class="form-label" for="tax_rate_included_for_parasut">' . lang('Product Tax Type') . '</label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="tax_rate_included_for_parasut" name="tax_rate_included_for_parasut" value="1" />
-                                <label class="form-check-label" for="tax_rate_included_for_parasut">' . lang('Product taxes included in the product price') . '</label>
-                                <div class="form-text text-info">' . lang('If you are determining product prices by adding tax amounts, select this checkbox.') . '</div>
+                            <div class="form-field">
+                                <input class="check" type="checkbox" id="tax_rate_included_for_parasut" name="tax_rate_included_for_parasut" value="1" />
+                                <label class="" for="tax_rate_included_for_parasut">' . lang('Product taxes included in the product price') . '</label>
+                                <div class="form-text fg-info">' . lang('If you are determining product prices by adding tax amounts, select this checkbox.') . '</div>
                             </div>
                         </div>
                         <div class="col-12 my-1">
                             <label class="form-label" for="tax_rate_for_parasut">' . lang('Products Tax Rate') . '</label>
                             <div class="input-group w-auto">
-                                <input type="number" id="tax_rate_for_parasut" name="tax_rate_for_parasut" class="form-control text-end pe-3" value="20" placeholder="18" />
+                                <input type="number" id="tax_rate_for_parasut" name="tax_rate_for_parasut" class="form-control text-end pe-5" value="20" placeholder="18" />
                                 <div class="input-group-text"> %</div>
                             </div>
                             <div class="form-text text-end">' . lang('Each product is processed at its tax-deducted price and tax rates are processed in a separate column.') . '</div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
+                <div class="dialog-footer">
                 <p>' . lang('Do you approve to create 2 excel files suitable for using the selected orders in Paraşut application?') . '</p>
-                    <button type="button" class="no-submit btn btn-secondary" data-bs-dismiss="modal">' . lang('Close') . '</button>
-                    <button type="button" name="submit_data" value="Export Orders For Parasut" class="btn btn-success"><span class="material-icons me-2">done</span>' . lang(array('string'=>'Confirm') ) . '</button>
+                    <button type="button" class="no-submit btn btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Close') . '</button>
+                    <button type="button" name="submit_data" value="Export Orders For Parasut" class="btn btn-solid theme-success"><span class="material-icons me-3">done</span>' . lang(array('string'=>'Confirm') ) . '</button>
                 </div>
-            </div>
-        </div>
-    </div>';
-    $output_generate_xlsl_button = '<button type="button" class="no-submit btn mb-1 mt-1 btn-success disabled" data-bs-toggle="modal" data-bs-target="#xlsl_setup_modal"><span class="material-icons me-2">file_present</span>' . lang(array('string'=>'Export for Parasut Selected') ) . '</button>';
+    </dialog>';
+    $output_generate_xlsl_button = '<button type="button" class="no-submit btn mb-1 mt-1 btn-solid theme-success disabled" data-bs-toggle="dialog" data-bs-target="#xlsl_setup_modal"><span class="material-icons me-3">file_present</span>' . lang(array('string'=>'Export for Parasut Selected') ) . '</button>';
 }
 
 // if user requested to export orders, export orders
@@ -2545,9 +2541,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 foreach ($shipping_tracking_numbers as $shipping_tracking_number) {
                         $i++;
                         $output_shipping_tracking_icons = '
-                        <button type="button" class="btn-data-control m-1 btn btn-outline-success border-2 position-relative" title="' . lang('Shipment Tracking') . '" onclick="window.location.href=\'' . $output_link_url . '#trackin_number_from_view_orders\'">
+                        <button type="button" class="btn-data-control m-1 btn btn-outline theme-success border-2 position-relative" title="' . lang('Shipment Tracking') . '" onclick="window.location.href=\'' . $output_link_url . '#trackin_number_from_view_orders\'">
                             <i class="bi bi-truck"></i>
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-white opacity-75 text-success">
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-white opacity-75 fg-success">
                                 ' . $i . '
                             </span>
                         </button>';
@@ -2590,14 +2586,14 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $output_cancel_button = '';
         if ($status !== 'cancelled' && $status !== 'canceled' && $status !== 'incomplete') {
             $output_cancel_button =
-                '<button type="button" class="btn-data-control m-1 btn btn-outline-danger border-2 pg-admin-cancel-btn no-submit" data-order-id="' . $id . '" data-order-number="' . h($order_number) . '" title="' . lang('Cancel Order') . '"><i class="bi bi-x-octagon"></i></button>';
+                '<button type="button" class="btn-data-control m-1 btn btn-outline theme-danger border-2 pg-admin-cancel-btn no-submit" data-order-id="' . $id . '" data-order-number="' . h($order_number) . '" title="' . lang('Cancel Order') . '"><i class="bi bi-x-octagon"></i></button>';
         }
 
         $output_rows .=
             '<tr id="' . $id . '">
-                <td class="select-all align-middle text-start"><input class="form-check-input " type="checkbox" name="orders[]" value="' . $id . '" class="checkbox" /></td>
+                <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="orders[]" value="' . $id . '" class="checkbox" /></td>
                 <td class="align-middle text-start col-reorder-none action-buttons">
-                    <button type="button" class="btn-data-control m-1 btn btn-outline-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                    <button type="button" class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     ' . $output_cancel_button . '
                     ' . $output_shipping_tracking_cell . '
                 </td>
@@ -2657,7 +2653,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
         if (AFFILIATE_PROGRAM == true) {
             $output_affiliate ='
-                <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Affiliate') . '</h5></div>
+                <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Affiliate') . '</h5></div>
                 <div class="col-12">
                     <label class="form-label">' . lang('Affiliate Code') . '</label>
                     <input class="form-control" type="text" name="affiliate_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['affiliate_code'] ?? '')) . '" />
@@ -2685,9 +2681,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         // if multi currency is enabled, output miscellaneous fieldset with currency pick list
         if (ECOMMERCE_MULTICURRENCY === true) {
             $output_currency_row =
-                '<div class="col-12 col-sm-6 col-md-12 my-1">
+                '<div class="col-12 sm:col-6 md:col-12 my-1">
                     <label class="form-label">' . lang('Currency') . '</label>
-                    <select class="form-select" name="currency_code"><option value="">' . lang('Any') . '</option>' . get_currency_options(($_SESSION['software']['ecommerce']['view_orders']['currency_code'] ?? '')) . '</select>
+                    <select class="form-control" name="currency_code"><option value="">' . lang('Any') . '</option>' . get_currency_options(($_SESSION['software']['ecommerce']['view_orders']['currency_code'] ?? '')) . '</select>
                 </div>';
         } else {
             $output_currency_row = '';
@@ -2726,236 +2722,236 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 $date_type_ship_date_selected = ' selected="selected"';
             }
 
-            $output_date_type_field = '<select class="form-select" name="date_type"><option value="order_date"' . $date_type_order_date_selected . '>' . lang('Order Date') . '</option><option value="ship_date"' . $date_type_ship_date_selected . '>' . lang('Ship Date') . '</option></select>';
+            $output_date_type_field = '<select class="form-control" name="date_type"><option value="order_date"' . $date_type_order_date_selected . '>' . lang('Order Date') . '</option><option value="ship_date"' . $date_type_ship_date_selected . '>' . lang('Ship Date') . '</option></select>';
         }
 
         $output_advanced_filters =
             '<div class="advanced_filters advanced-filter-bar  position-fixed-md"  id="advanced_filters" >
-                <div class="p-2 border justify-content-between d-flex flex-wrap header">
+                <div class="p-3 border justify-content-between d-flex flex-wrap header">
                     <p class="m-0"><span class="material-icons pe-1">filter_list</span>' . lang('Filters') . '</p>
                     <a class="btn btn-close " title="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '" ></a>
                 </div>
-                <form class="advanced-filter-body p-2 pt-0 disable_shortcut" id="search_advanced" action="view_orders.php" method="get">
+                <form class="advanced-filter-body p-3 pt-0 disable_shortcut" id="search_advanced" action="view_orders.php" method="get">
                     <div class="row">
-                        <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Order') . '</h5></div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Order') . '</h5></div>
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Order Number') . '</label>
                             <input class="form-control" type="text" name="order_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['order_number'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Transaction ID') . '</label>
                             <input class="form-control" type="text" name="transaction_id" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['transaction_id'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Authorization Code') . '</label>
                             <input class="form-control" type="text" name="authorization_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['authorization_code'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Special Offer Code') . '</label>
                             <input class="form-control" type="text" name="special_offer_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['special_offer_code'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Referral Source Code') . '</label>
                             <input class="form-control" type="text" name="referral_source_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['referral_source_code'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Reference Code') . '</label>
                             <input class="form-control" type="text" name="reference_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['reference_code'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Tracking Code') . '</label>
                             <input class="form-control" type="text" name="tracking_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['tracking_code'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Referring URL') . '</label>
                             <input class="form-control" type="text" name="http_referer" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['http_referer'] ?? '')) . '" />
                         </div>
                         ' . $output_currency_row . '
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Customer\'s IP Address') . '</label>
                             <input class="form-control" type="text" name="ip_address" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['ip_address'] ?? '')) . '" />
                         </div>
-                        <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Product') . '</h5></div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Product') . '</h5></div>
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Product Name') . '</label>
                             <input class="form-control" type="text" name="product_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? '')) . '" />
                         </div>
-                        <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Payment') . '</h5></div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Payment') . '</h5></div>
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Payment Method') . '</label>
-                            <select class="form-select" name="payment_method"><option value="any"' . $payment_method_any_selected . '>' . lang('Any') . '</option><option value=""' . $payment_method_none_selected . '>' . lang('None') . '</option><option value="Credit/Debit Card"' . $payment_method_credit_debit_card_selected . '>' . lang('Credit/Debit Card') . '</option><option value="PayPal Express Checkout"' . $payment_method_paypal_express_checkout_selected . '>' . lang('PayPal Express Checkout') . '</option><option value="Offline Payment"' . $payment_method_offline_selected . '>' . lang('Offline Payment') . '</option>' . $output_payment_method_driver_options . '</select>
+                            <select class="form-control" name="payment_method"><option value="any"' . $payment_method_any_selected . '>' . lang('Any') . '</option><option value=""' . $payment_method_none_selected . '>' . lang('None') . '</option><option value="Credit/Debit Card"' . $payment_method_credit_debit_card_selected . '>' . lang('Credit/Debit Card') . '</option><option value="PayPal Express Checkout"' . $payment_method_paypal_express_checkout_selected . '>' . lang('PayPal Express Checkout') . '</option><option value="Offline Payment"' . $payment_method_offline_selected . '>' . lang('Offline Payment') . '</option>' . $output_payment_method_driver_options . '</select>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Card Type') . '</label>
                             <input class="form-control" type="text" name="card_type" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['card_type'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Cardholder') . '</label>
                             <input class="form-control" type="text" name="cardholder" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['cardholder'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Card Number') . '</label>
                             <input class="form-control" type="text" name="card_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['card_number'] ?? '')) . '" />
                         </div>
                         ' . $output_affiliate . '
-                        <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Billing') . '</h5></div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Billing') . '</h5></div>
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Custom Field') . '  #1</label>
                             <input class="form-control" type="text" name="custom_field_1" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['custom_field_1'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Custom Field') . '  #2</label>
                             <input class="form-control" type="text" name="custom_field_2" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['custom_field_2'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Salutation') . '</label>
                             <input class="form-control" type="text" name="billing_salutation" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_salutation'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('First Name') . '</label>
                             <input class="form-control" type="text" name="billing_first_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_first_name'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Last Name') . '</label>
                             <input class="form-control" type="text" name="billing_last_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_last_name'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Company') . '</label>
                             <input class="form-control" type="text" name="billing_company" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_company'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Address') . ' 1</label>
                             <input class="form-control" type="text" name="billing_address_1" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_address_1'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Address') . ' 2</label>
                             <input class="form-control" type="text" name="billing_address_2" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_address_2'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('City') . '</label>
                             <input class="form-control" type="text" name="billing_city" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_city'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('State') . '</label>
                             <input class="form-control" type="text" name="billing_state" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_state'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Zip Code') . '</label>
                             <input class="form-control" type="text" name="billing_zip_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_zip_code'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Country') . '</label>
                             <input class="form-control" type="text" name="billing_country" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Phone') . '</label>
                             <input class="form-control" type="text" name="billing_phone_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_phone_number'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Fax') . '</label>
                             <input class="form-control" type="text" name="billing_fax_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_fax_number'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Email') . '</label>
                             <input class="form-control" type="text" name="billing_email_address" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_email_address'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Opt-In Status') . '</label>
-                            <select class="form-select" name="opt_in_status"><option value="any"' . $opt_in_status_any_selected . '>' . lang('Any') . '</option><option value="opt_in"' . $opt_in_status_opt_in_selected . '>' . lang('Opt-In') . '</option><option value="opt_out"' . $opt_in_status_opt_out_selected . '>' . lang('Opt-Out') . '</option></select>
+                            <select class="form-control" name="opt_in_status"><option value="any"' . $opt_in_status_any_selected . '>' . lang('Any') . '</option><option value="opt_in"' . $opt_in_status_opt_in_selected . '>' . lang('Opt-In') . '</option><option value="opt_out"' . $opt_in_status_opt_out_selected . '>' . lang('Opt-Out') . '</option></select>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('PO Number') . '</label>
                             <input class="form-control" type="text" name="po_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['po_number'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Tax Status') . '</label>
-                            <select class="form-select" name="tax_status"><option value="any"' . $tax_status_any_selected . '>' . lang('Any') . '</option><option value="tax_exempt"' . $tax_status_tax_exempt_selected . '>' . lang('Tax-Exempt') . '</option><option value="not_tax_exempt"' . $tax_status_not_tax_exempt_selected . '>' . lang('Not Tax-Exempt') . '</option></select>
+                            <select class="form-control" name="tax_status"><option value="any"' . $tax_status_any_selected . '>' . lang('Any') . '</option><option value="tax_exempt"' . $tax_status_tax_exempt_selected . '>' . lang('Tax-Exempt') . '</option><option value="not_tax_exempt"' . $tax_status_not_tax_exempt_selected . '>' . lang('Not Tax-Exempt') . '</option></select>
                         </div>
-                        <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Shipping') . '</h5></div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Shipping') . '</h5></div>
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Salutation') . '</label>
                             <input class="form-control" type="text" name="shipping_salutation" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_salutation'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('First Name') . '</label>
                             <input class="form-control" type="text" name="shipping_first_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_first_name'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Last Name') . '</label>
                             <input class="form-control" type="text" name="shipping_last_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_last_name'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Company') . '</label>
                             <input class="form-control" type="text" name="shipping_company" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_company'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Address') . ' 1</label>
                             <input class="form-control" type="text" name="shipping_address_1" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_address_1'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Address') . ' 2</label>
                             <input class="form-control" type="text" name="shipping_address_2" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_address_2'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('City') . '</label>
                             <input class="form-control" type="text" name="shipping_city" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_city'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('State') . '</label>
                             <input class="form-control" type="text" name="shipping_state" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_state'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Zip Code') . '</label>
                             <input class="form-control" type="text" name="shipping_zip_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_zip_code'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Country') . '</label>
                             <input class="form-control" type="text" name="shipping_country" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Address Type') . '</label>
-                            <select class="form-select" name="address_type"><option value="any"' . $address_type_any_selected . '>' . lang('Any') . '</option><option value=""' . $address_type_none_selected . '>' . lang('None') . '</option><option value="residential"' . $address_type_residential_selected . '>' . lang('Residential') . '</option><option value="business"' . $address_type_business_selected . '>' . lang('Business') . '</option></select>
+                            <select class="form-control" name="address_type"><option value="any"' . $address_type_any_selected . '>' . lang('Any') . '</option><option value=""' . $address_type_none_selected . '>' . lang('None') . '</option><option value="residential"' . $address_type_residential_selected . '>' . lang('Residential') . '</option><option value="business"' . $address_type_business_selected . '>' . lang('Business') . '</option></select>
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Phone') . '</label>
                             <input class="form-control" type="text" name="shipping_phone_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_phone_number'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Ship to Name') . '</label>
                             <input class="form-control" type="text" name="ship_to_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['ship_to_name'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Arrival Date Code') . '</label>
                             <input class="form-control" type="text" name="arrival_date_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['arrival_date_code'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Shipping Method Code') . '</label>
                             <input class="form-control" type="text" name="shipping_method_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_method_code'] ?? '')) . '" />
                         </div>
-                        <div class="col-12 col-sm-6 col-md-12 my-1">
+                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label class="form-label">' . lang('Shipping Status') . '</label>
-                            <select class="form-select" name="shipping_status"><option value="any"' . $shipping_status_any_selected . '>' . lang('Any') . '</option><option value="unshipped"' . $shipping_status_unshipped_selected . '>' . lang('Unshipped') . '</option><option value="shipped"' . $shipping_status_shipped_selected . '>' . lang('Shipped') . '</option></select>
+                            <select class="form-control" name="shipping_status"><option value="any"' . $shipping_status_any_selected . '>' . lang('Any') . '</option><option value="unshipped"' . $shipping_status_unshipped_selected . '>' . lang('Unshipped') . '</option><option value="shipped"' . $shipping_status_shipped_selected . '>' . lang('Shipped') . '</option></select>
                         </div>
-                        <div class="col-12"><h5 class="text-success fw-bold mt-4 mb-2">' . lang('Date Range') . '</h5></div>
+                        <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Date Range') . '</h5></div>
                         <div class="col-12">' . $output_date_type_field . '</div>
                         <div class="col-12">
                             <label class="form-label">' . lang('From') . '</label>
-                            <select class="form-select my-1" name="start_month">' . select_month(($_SESSION['software']['ecommerce']['view_orders']['start_month'] ?? '')) . '</select>
+                            <select class="form-control my-1" name="start_month">' . select_month(($_SESSION['software']['ecommerce']['view_orders']['start_month'] ?? '')) . '</select>
                             <div class="input-group input-group-sm">
-                                <select class="form-select my-1" name="start_day">' . select_day(($_SESSION['software']['ecommerce']['view_orders']['start_day'] ?? '')) . '</select>
-                                <select class="form-select my-1" name="start_year">' . select_year($years, ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? '')) . '</select>
+                                <select class="form-control my-1" name="start_day">' . select_day(($_SESSION['software']['ecommerce']['view_orders']['start_day'] ?? '')) . '</select>
+                                <select class="form-control my-1" name="start_year">' . select_year($years, ($_SESSION['software']['ecommerce']['view_orders']['start_year'] ?? '')) . '</select>
                             </div>
                         </div>
                         <div class="col-12">
                             <label class="form-label">' . lang('To') . '</label>
-                            <select class="form-select my-1" name="stop_month">' . select_month(($_SESSION['software']['ecommerce']['view_orders']['stop_month'] ?? '')) . '</select>
+                            <select class="form-control my-1" name="stop_month">' . select_month(($_SESSION['software']['ecommerce']['view_orders']['stop_month'] ?? '')) . '</select>
                             <div class="input-group input-group-sm">
-                                <select class="form-select my-1" name="stop_day">' . select_day(($_SESSION['software']['ecommerce']['view_orders']['stop_day'] ?? '')) . '</select>
-                                <select class="form-select my-1" name="stop_year">' . select_year($years, ($_SESSION['software']['ecommerce']['view_orders']['stop_year'] ?? '')) . '</select>
+                                <select class="form-control my-1" name="stop_day">' . select_day(($_SESSION['software']['ecommerce']['view_orders']['stop_day'] ?? '')) . '</select>
+                                <select class="form-control my-1" name="stop_year">' . select_year($years, ($_SESSION['software']['ecommerce']['view_orders']['stop_year'] ?? '')) . '</select>
                             </div>
                         </div>
-                        <div class="col-12 text-center position-sticky my-2" style="bottom:.5rem;">
-                            <button type="submit" name="submit_data" value="Update" class="btn btn-primary my-1"><i class="material-icons me-2">sync</i>' . lang('Update') . '</button>
+                        <div class="col-12 text-center position-sticky my-3" style="bottom:.5rem;">
+                            <button type="submit" name="submit_data" value="Update" class="btn btn-solid theme-primary my-1"><i class="material-icons me-3">sync</i>' . lang('Update') . '</button>
                         </div>
                                 
                     </div>
@@ -2974,7 +2970,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             $output_payment_mode = 'merchant';
 		}
         
-		$output_gateway_buttons = '<button type="button" class="btn btn-sm btn-secondary m-1" title="' . ECOMMERCE_PAYMENT_GATEWAY . '" onclick="window.open(\'https://' . $output_payment_mode . '.iyzipay.com/dashboard\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\');"><span class="material-icons me-2">account_balance</span>' . lang(array('string'=>'View Orders') ) . '</button>';
+		$output_gateway_buttons = '<button type="button" class="btn btn-sm btn-solid theme-secondary m-1" title="' . ECOMMERCE_PAYMENT_GATEWAY . '" onclick="window.open(\'https://' . $output_payment_mode . '.iyzipay.com/dashboard\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\');"><span class="material-icons me-3">account_balance</span>' . lang(array('string'=>'View Orders') ) . '</button>';
 	}
 
 
@@ -3136,10 +3132,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
     $stat_card = function ($icon, $value, $label, $canvas, $value_class = '') {
         return '
-                    <div class="col-6 col-lg-3">
+                    <div class="col-6 lg:col-3">
                         <div class="card h-100 shadow-sm border-0">
-                            <div class="card-body p-3 pb-2">
-                                <div class="d-flex align-items-center gap-2 small text-body-secondary mb-1"><i class="bi ' . $icon . '" aria-hidden="true"></i><span class="text-truncate">' . $label . '</span></div>
+                            <div class="card-body p-5 pb-3">
+                                <div class="d-flex align-items-center gap-3 small fg-secondary mb-1"><i class="bi ' . $icon . '" aria-hidden="true"></i><span class="text-truncate">' . $label . '</span></div>
                                 <div class="h5 mb-1 text-nowrap' . $value_class . '">' . $value . '</div>
                                 ' . (($canvas !== '') ? '<div class="pg-orders-spark"><canvas id="' . $canvas . '" aria-hidden="true"></canvas></div>' : '') . '
                             </div>
@@ -3148,30 +3144,30 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     };
 
     $output_order_stats = '
-                <div class="row g-2 mb-2">'
+                <div class="row g-3 mb-3">'
                     . $stat_card('bi-bank', $online_orders_total_all, h(lang('Total Sales Amount')) . ' (' . h(lang('Online')) . ')', '')
                     . $stat_card('bi-funnel', $filter_totals, h(lang('Total Sales Amount')) . ' (' . h(lang('Current filter')) . ')', 'pg_orders_spark_total')
                     . $stat_card('bi-receipt', h(pg_format_number((int) $number_of_results, 0)), h(lang('Orders')) . ' (' . h(lang('Current filter')) . ')', 'pg_orders_spark_count')
-                    . $stat_card('bi-arrow-counterclockwise', $refund_pending_total_all, h(lang('Refund Pending')), '', ($refund_pending_total > 0) ? ' text-danger' : '') . '
+                    . $stat_card('bi-arrow-counterclockwise', $refund_pending_total_all, h(lang('Refund Pending')), '', ($refund_pending_total > 0) ? ' fg-danger' : '') . '
                 </div>
-                <div class="row g-2 mb-2">
-                    <div class="col-12 col-lg-6">
+                <div class="row g-3 mb-3">
+                    <div class="col-12 lg:col-6">
                         <div class="card h-100 shadow-sm border-0">
-                            <div class="card-body p-3">
-                                <div class="small text-body-secondary mb-2"><i class="bi bi-trophy me-1" aria-hidden="true"></i>' . h(lang('Top 5 products')) . '</div>
+                            <div class="card-body p-5">
+                                <div class="small fg-secondary mb-3"><i class="bi bi-trophy me-1" aria-hidden="true"></i>' . h(lang('Top 5 products')) . '</div>
                                 ' . (!empty($top_products)
                                     ? '<div class="pg-orders-chart"><canvas id="pg_orders_top" role="img" aria-label="' . h(lang('Top 5 products')) . '"></canvas></div>'
-                                    : '<div class="text-muted small">' . h(lang('No orders in this range.')) . '</div>') . '
+                                    : '<div class="fg-secondary small">' . h(lang('No orders in this range.')) . '</div>') . '
                             </div>
                         </div>
                     </div>
-                    <div class="col-12 col-lg-6">
+                    <div class="col-12 lg:col-6">
                         <div class="card h-100 shadow-sm border-0">
-                            <div class="card-body p-3">
-                                <div class="small text-body-secondary mb-2"><i class="bi bi-credit-card me-1" aria-hidden="true"></i>' . h(lang('Payment methods')) . '</div>
+                            <div class="card-body p-5">
+                                <div class="small fg-secondary mb-3"><i class="bi bi-credit-card me-1" aria-hidden="true"></i>' . h(lang('Payment methods')) . '</div>
                                 ' . (!empty($payment_split)
                                     ? '<div class="pg-orders-chart"><canvas id="pg_orders_payments" role="img" aria-label="' . h(lang('Payment methods')) . '"></canvas></div>'
-                                    : '<div class="text-muted small">' . h(lang('No orders in this range.')) . '</div>') . '
+                                    : '<div class="fg-secondary small">' . h(lang('No orders in this range.')) . '</div>') . '
                             </div>
                         </div>
                     </div>
@@ -3196,7 +3192,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                 <nav id="button_bar" class="pg-toolbar navigation" aria-label="Button Bar">
-                    <a class="btn btn-sm btn-primary rounded-pill px-3" href="add_order.php"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang(array('string' => 'Add {var:1}', 'vars' => array(lang('Order')))) . '</a>
+                    <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_order.php"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang(array('string' => 'Add {var:1}', 'vars' => array(lang('Order')))) . '</a>
                     <form id="search" action="view_orders.php" class="disable_shortcut" method="get">
                         ' . get_token_field() . '
                         <button type="submit" name="submit_data" value="Export Orders (multiple files)" title="' . lang('Multiple files') . '" class="btn btn-sm btn-ghost"><i class="bi bi-file-earmark-zip me-1" aria-hidden="true"></i>' . lang(array('string'=>'Export') ) . '</button>
@@ -3212,7 +3208,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     ' . $output_period_navigator . '
                 </nav>
                 ' . $output_order_stats . '
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <form name="form"  action="edit_orders.php" method="post" class="view_orders"> 
                             ' . get_token_field() . ' 
@@ -3221,8 +3217,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                 <thead>
                                     <tr>
                                         <th class="noVis">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all">
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
                                             </div>
                                         </th>
                                         <th class="noVis">' . lang('Action') . '</th> 
@@ -3248,10 +3244,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                 <div class="container">
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                                         ' . $output_generate_xlsl_button . '
-                                        <button type="button" value="Remove Card Data for Selected" class="btn mb-1 mt-1 btn-primary disabled" data-confirm-content="' . lang(array('string'=>'WARNING: {var:1} will be permanently removed from the selected order(s).','vars'=>array(lang('Card Data')))) . '"><span class="material-icons me-2">credit_card_off</span>' . lang(array('string'=>'Remove Card Data for Selected') ) . '</button>
-                                        <button type="button" value="Mark Shipped Selected" class="btn mb-1 mt-1 btn-success disabled" data-confirm-content="' . h(lang('The selected order(s) will be marked shipped today and their customers sent the shipping e-mail. Orders that already have a tracking number are skipped.')) . '"><i class="bi bi-truck me-2" aria-hidden="true"></i>' . lang('Mark Shipped Selected') . '</button>
-                                        <button type="button" value="Cancel Selected" class="btn mb-1 mt-1 btn-warning disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected order(s) will be cancelled. This cannot be undone.')) . '"><i class="bi bi-x-octagon me-2"></i>' . lang('Cancel Selected') . '</button>
-                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('orders')))) . '"><span class="material-icons me-2">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                        <button type="button" value="Remove Card Data for Selected" class="btn mb-1 mt-1 btn-solid theme-primary disabled" data-confirm-content="' . lang(array('string'=>'WARNING: {var:1} will be permanently removed from the selected order(s).','vars'=>array(lang('Card Data')))) . '"><span class="material-icons me-3">credit_card_off</span>' . lang(array('string'=>'Remove Card Data for Selected') ) . '</button>
+                                        <button type="button" value="Mark Shipped Selected" class="btn mb-1 mt-1 btn-solid theme-success disabled" data-confirm-content="' . h(lang('The selected order(s) will be marked shipped today and their customers sent the shipping e-mail. Orders that already have a tracking number are skipped.')) . '"><i class="bi bi-truck me-3" aria-hidden="true"></i>' . lang('Mark Shipped Selected') . '</button>
+                                        <button type="button" value="Cancel Selected" class="btn mb-1 mt-1 btn-solid theme-warning disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected order(s) will be cancelled. This cannot be undone.')) . '"><i class="bi bi-x-octagon me-3"></i>' . lang('Cancel Selected') . '</button>
+                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('orders')))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                     </div>
                                 </div>
                             </nav>

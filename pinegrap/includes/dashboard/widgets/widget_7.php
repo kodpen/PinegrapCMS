@@ -720,7 +720,7 @@ function pg_dashboard_activity_orders($limit)
             'tile'  => $cancelled ? '#dc3545' : null,
             'name'  => h(($who !== '') ? $who : '[' . lang('Visitor') . ']'),
             'meta'  => '#' . h($row['order_number']) . ' &middot; ' . prepare_amount($row['total'] / 100)
-                . ($cancelled ? ' &middot; <span class="text-danger">' . lang('Canceled') . '</span>' : ''),
+                . ($cancelled ? ' &middot; <span class="fg-danger">' . lang('Canceled') . '</span>' : ''),
         );
     }
 
@@ -828,7 +828,7 @@ function pg_dashboard_activity_comments($limit)
             'href'  => 'edit_comment.php?id=' . (int) $row['id'] . '&amp;send_to=' . h(urlencode(PATH . SOFTWARE_DIRECTORY . '/welcome.php')),
             'badge' => '<i class="bi ' . ($waiting ? 'bi-hourglass-split' : 'bi-chat-square-quote') . '"></i>',
             'name'  => h(((string) $row['name'] !== '') ? $row['name'] : lang('Anonymous')),
-            'meta'  => ($waiting ? '<span class="text-warning-emphasis">' . lang('Awaiting approval') . '</span> &middot; ' : '')
+            'meta'  => ($waiting ? '<span class="fg-emphasis-warning">' . lang('Awaiting approval') . '</span> &middot; ' : '')
                 . h($preview !== '' ? $preview : (string) $row['page_name']),
         );
     }

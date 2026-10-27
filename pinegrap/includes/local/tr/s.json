@@ -915,6 +915,7 @@
     "Set how far in the past to sync orders. Leave blank to sync all historical orders.": "Siparişleri senkronize etmek için ne kadar geçmişe gidileceğini ayarlayın. Tüm geçmiş siparişleri senkronize etmek için boş bırakın.",
     "Set in Page Properties": "Sayfa Özelliklerinden Ayarla",
     "Set it to repeat every week to ask the same question each time.": "Her hafta aynı soruyu sormak için haftalık tekrar seçin.",
+    "Set it up": "Ayarlayın",
     "Set it with this link: {var:1}": "Bu bağlantıyla belirleyin: {var:1}",
     "Set live without a publication time, so readers do not see them yet. Give each one a time.": "Yayın zamanı verilmeden yayına alınmış, bu yüzden okurlar henüz görmüyor. Her birine bir zaman verin.",
     "Set on a quote the customer signed, empty otherwise; show a block with {{#signature}} ... {{/signature}}": "Müşterinin imzaladığı teklifte dolu, aksi hâlde boş; bloğu {{#signature}} ... {{/signature}} ile gösterin",

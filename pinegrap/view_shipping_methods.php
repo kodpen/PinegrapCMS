@@ -140,11 +140,11 @@ while ($row = mysqli_fetch_array($result)) {
     
     // if the shipping method is active, use green status color
     if (($status == 'enabled') && ($start_time <= $current_time) && ($end_time >= $current_time)) {
-        $status_color_class = ' text-success';
+        $status_color_class = ' fg-success';
     
     // else shipping method is inactive, so use red status color
     } else {
-        $status_color_class = ' text-danger';
+        $status_color_class = ' fg-danger';
     }
 
     $realtime_rate = '';
@@ -207,12 +207,12 @@ while ($row = mysqli_fetch_array($result)) {
     $output_rows .=
         '<tr>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
+                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+                <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td style="max-width:100px" class="text-nowrap text-truncate align-middle chart_label ' . $status_color_class . '">' . h($name) . '</td>
             <td style="max-width:200px" class="text-nowrap text-truncate align-middle">' . h($description) . '</td>
-            <td class="align-middle"><span class="badge text-dark fw-light">' . h($code) . '</span></td>
+            <td class="align-middle"><span class="badge fg-black fw-light">' . h($code) . '</span></td>
             <td class="align-middle">' . h(get_shipping_service_name($service)) . '</td>
             <td class="align-middle text-center">' . $realtime_rate . '</td>
             <td class="' . $list_cells['base_rate']['class'] . '"' . ($row['variable_base_rate'] ? '' : pg_list_edit_cell($quick_edit, 'base_rate', $id, pg_format_input_amount($row['base_rate'] / 100))) . '>' . $list_cells['base_rate']['html'] . '</td>
@@ -240,17 +240,17 @@ pg_page_shell([
 <main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <div class="row mb-2  flex-wrap">
-                <div class="col-12 text-center text-md-start">
+            <div class="row mb-3  flex-wrap">
+                <div class="col-12 text-center md:text-start">
                     
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
-                        <a class="btn btn-sm btn-primary m-1 " href="add_shipping_method.php"><span class="bi bi-plus-circle me-2"></span>' . lang(array('string'=>'Create') ) . '</a>
+                        <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_shipping_method.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                         <div class="pg-toolbar-grow"></div>
                         ' . pg_list_sort_menu('view_shipping_methods.php', $sort_columns, $sort_levels, $sort_default) . '
                     </nav>
                 </div>
             </div>
-            <div class="card my-4">
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none;"' . pg_list_edit_table('view_shipping_methods.php', $quick_edit) . '>
                         <thead>

@@ -107,7 +107,7 @@ function pg_dashboard_widget_8($request, $user)
                     'name'  => h($name),
                     'aside' => prepare_amount($order['total'] / 100),
                     'meta'  => h($order['order_number'])
-                        . ($order_canceled ? ' &mdash; <span class="text-danger">' . lang('Canceled') . '</span>' : '')
+                        . ($order_canceled ? ' &mdash; <span class="fg-danger">' . lang('Canceled') . '</span>' : '')
                         . ' &middot; ' . get_relative_time(array('timestamp' => $order['timestamp'])),
                 ));
             }

@@ -122,17 +122,17 @@ foreach ($items as $item) {
 
     $output_rows .= '
         <tr>
-            <td>' . h($name) . ((trim((string) $item['product_sku']) !== '' && trim((string) $item['product_sku']) !== trim($name)) ? '<div class="small text-body-secondary font-monospace">' . h((string) $item['product_sku']) . '</div>' : '') . '</td>
+            <td>' . h($name) . ((trim((string) $item['product_sku']) !== '' && trim((string) $item['product_sku']) !== trim($name)) ? '<div class="small fg-secondary font-monospace">' . h((string) $item['product_sku']) . '</div>' : '') . '</td>
             <td class="text-end" data-sort="' . $system . '">' . $system . '</td>
             <td style="width:9rem" data-sort="' . (int) $item['counted'] . '">' . ($open
                 ? '<input type="text" class="form-control form-control-sm text-end" name="counted[' . (int) $item['product_id'] . ']" value="' . (int) $item['counted'] . '" inputmode="numeric" maxlength="7" aria-label="' . h(lang('Counted')) . '" />'
                 : '<span class="d-block text-end">' . (int) $item['counted'] . '</span>') . '</td>
-            <td class="text-end fw-semibold ' . (($diff < 0) ? 'text-danger' : (($diff > 0) ? 'text-success' : 'text-body-secondary')) . '" data-sort="' . $diff . '">' . (($diff > 0) ? '+' : '') . $diff . '</td>
+            <td class="text-end fw-semibold ' . (($diff < 0) ? 'fg-danger' : (($diff > 0) ? 'fg-success' : 'fg-secondary')) . '" data-sort="' . $diff . '">' . (($diff > 0) ? '+' : '') . $diff . '</td>
         </tr>';
 }
 
 if ($output_rows === '') {
-    $output_rows = '<tr data-pg-sort-fixed><td colspan="4" class="text-center text-body-secondary py-4">' . lang('Nothing counted yet. Scan a barcode or type a product code above.') . '</td></tr>';
+    $output_rows = '<tr data-pg-sort-fixed><td colspan="4" class="text-center fg-secondary py-7">' . lang('Nothing counted yet. Scan a barcode or type a product code above.') . '</td></tr>';
 }
 
 $form_action = function ($action, $label, $class, $icon, $confirm) use ($count_id) {
@@ -146,7 +146,7 @@ pg_page_shell([
     'title' => (string) $count['title'],
     'extra classes' => 'erp erp_stock',
     'icon' => 'erp',
-    'heading' => h((string) $count['title']) . ' <span class="badge text-bg-' . h($status[1]) . ' ms-1 align-middle fs-6">' . h($status[0]) . '</span>',
+    'heading' => h((string) $count['title']) . ' <span class="badge theme-' . h($status[1]) . ' ms-1 align-middle fs-md">' . h($status[0]) . '</span>',
     'heading_description' => $applied
         ? lang('Applied: the stock of the products below was set to what was counted. The stock column is what the store had before.')
         : lang('Scan each piece, or type a code and a quantity. The stock column is what the store has now; applying sets it to what was counted.'),
@@ -158,33 +158,33 @@ pg_page_shell([
 ]) . '
 <main id="content" class="container-fluid">
     <div class="row">
-        <div class="col-12 col-xxl-9">
+        <div class="col-12 2xl:col-9">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            ' . ($open ? '<form method="post" action="erp_stock_count.php" class="card my-4" autocomplete="off">
+            ' . ($open ? '<form method="post" action="erp_stock_count.php" class="card my-7" autocomplete="off">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $count_id . '" />
                 <input type="hidden" name="erp_action" value="scan" />
-                <div class="card-body row g-2 align-items-end">
-                    <div class="col-12 col-md-6">
+                <div class="card-body row g-3 align-items-end">
+                    <div class="col-12 md:col-6">
                         <label class="form-label" for="code">' . lang('Barcode or product code') . '</label>
                         <div class="input-group input-group-lg">
                             <span class="input-group-text"><i class="bi bi-upc-scan" aria-hidden="true"></i></span>
                             <input type="text" class="form-control" id="code" name="code" maxlength="100" autofocus required />
                         </div>
                     </div>
-                    <div class="col-6 col-md-2">
+                    <div class="col-6 md:col-2">
                         <label class="form-label" for="quantity">' . lang('Quantity') . '</label>
                         <input type="text" class="form-control form-control-lg text-end" id="quantity" name="quantity" inputmode="numeric" maxlength="7" placeholder="1" />
                     </div>
-                    <div class="col-6 col-md-4">
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="set" name="set" value="1" />
-                            <label class="form-check-label" for="set">' . lang('Set the count to this quantity') . '</label>
+                    <div class="col-6 md:col-4">
+                        <div class="form-field mb-3">
+                            <input class="check" type="checkbox" id="set" name="set" value="1" />
+                            <label class="" for="set">' . lang('Set the count to this quantity') . '</label>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100">' . lang('Add to the count') . '</button>
+                        <button type="submit" class="btn btn-solid theme-primary w-100">' . lang('Add to the count') . '</button>
                     </div>
                 </div>
             </form>' : '') . '
@@ -192,7 +192,7 @@ pg_page_shell([
             <form method="post" action="erp_stock_count.php">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $count_id . '" />
-                <div class="card my-4">
+                <div class="card my-7">
                     <div class="card-body p-0 table-responsive">
                         <table class="table table-hover align-middle mb-0" data-pg-sort>
                             <thead>
@@ -206,20 +206,20 @@ pg_page_shell([
                             <tbody>' . $output_rows . '</tbody>
                         </table>
                     </div>
-                    <div class="form-text px-3 pb-3">' . h(lang(array('string' => '{var:1} product(s) on the count; {var:2} piece(s) of difference in all. Products not on the count are left as they are.', 'vars' => array(count($items), $total_diff)))) . '</div>
+                    <div class="form-text px-5 pb-5">' . h(lang(array('string' => '{var:1} product(s) on the count; {var:2} piece(s) of difference in all. Products not on the count are left as they are.', 'vars' => array(count($items), $total_diff)))) . '</div>
                 </div>
-                ' . ($open ? '<nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons">
+                ' . ($open ? '<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="erp_action" value="save" class="btn my-1 btn-outline-secondary"' . (empty($items) ? ' disabled' : '') . '><i class="bi bi-save me-2" aria-hidden="true"></i>' . lang('Save the counts') . '</button>
-                            <button type="submit" name="erp_action" value="apply" class="btn my-1 btn-success"' . (empty($items) ? ' disabled' : '') . ' data-confirm-content="' . h(lang('Set the stock of every product on the count to what was counted? What it had before is kept on the count.')) . '"><i class="bi bi-check2-all me-2" aria-hidden="true"></i>' . lang('Apply the count') . '</button>
+                            <button type="submit" name="erp_action" value="save" class="btn my-1 btn-outline theme-secondary"' . (empty($items) ? ' disabled' : '') . '><i class="bi bi-save me-3" aria-hidden="true"></i>' . lang('Save the counts') . '</button>
+                            <button type="submit" name="erp_action" value="apply" class="btn my-1 btn-solid theme-success"' . (empty($items) ? ' disabled' : '') . ' data-confirm-content="' . h(lang('Set the stock of every product on the count to what was counted? What it had before is kept on the count.')) . '"><i class="bi bi-check2-all me-3" aria-hidden="true"></i>' . lang('Apply the count') . '</button>
                         </div>
                     </div>
                 </nav>' : '') . '
             </form>
 
-            ' . ($open ? '<div class="d-flex flex-wrap gap-2 justify-content-end mb-4">
-                ' . $form_action('cancel', lang('Cancel the count'), 'btn-outline-secondary', 'bi-x-circle', lang('Cancel this count? No stock is changed.')) . '
+            ' . ($open ? '<div class="d-flex flex-wrap gap-3 justify-content-end mb-7">
+                ' . $form_action('cancel', lang('Cancel the count'), 'btn-outline theme-secondary', 'bi-x-circle', lang('Cancel this count? No stock is changed.')) . '
             </div>' : '') . '
         </div>
     </div>

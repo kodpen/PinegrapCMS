@@ -16,12 +16,12 @@ description: Plan (owner request 2026-10-27, draft): a flow template gallery tha
 ## Which steps? (one PR each)
 - G1 template format (graph, settings list, category) and the gallery from the scheduled templates. Done (#2161): `workspace/workspace-flows-template-format.md`; welcome, event, forms, orders and chain wait (why there). The AI start of "New flow" waits for F8.
 
-- G2 animated placement and the setup panel.
+- G2 animated placement and the setup panel. Done (#2173): `workspace/workspace-flows-template-setup.md`.
 
 - G3 flow-only templates once their boxes exist (approval needs F5).
 
 ## Where to start?
-- G2: settings in each template (`settings` of `ws_flow_templates()`) are what the setup panel asks.
+- G3: flow-only templates; their settings go through the same setup panel (`workspace/workspace-flows-template-setup.md`).
 
 ## Open questions
 1. May staff save their own flow as a template for the site, and move templates between sites through the API?

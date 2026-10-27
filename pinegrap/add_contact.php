@@ -54,14 +54,14 @@ if (!$_POST) {
         if ($contact_group['email_subscription'] == 1) {
             $contact_group_target = ' data-bs-target="#contact_group_opt_in_cell_' . $contact_group['id'] . '"';
             $output_opt_in = '
-            <div class="collapse popover  fade bs-popover-bottom p-0 mb-2" id="contact_group_opt_in_cell_' . $contact_group['id'] . '">
+            <div class="collapse popover  fade bs-popover-bottom p-0 mb-3" id="contact_group_opt_in_cell_' . $contact_group['id'] . '">
                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(45px, 0px);"></div>
                 <div class="popover-body py-0">
                     <div class="row">
-                        <div class="col-12 my-2">
-                            <div class="form-check form-switch">
-                                <input type="checkbox" name="contact_group_opt_in_' . $contact_group['id'] . '" id="contact_group_opt_in_' . $contact_group['id'] . '" value="1" checked="checked" class="form-check-input" />
-                                <label class="form-check-label" for="contact_group_opt_in_' . $contact_group['id'] . '"> ' . lang('Opt-In Status') . '</label>
+                        <div class="col-12 my-3">
+                            <div class="form-field">
+                                <div class="switch"><input type="checkbox" name="contact_group_opt_in_' . $contact_group['id'] . '" id="contact_group_opt_in_' . $contact_group['id'] . '" value="1" checked="checked" class="" /></div>
+                                <label class="" for="contact_group_opt_in_' . $contact_group['id'] . '"> ' . lang('Opt-In Status') . '</label>
                             </div>
                         </div>
                     </div>
@@ -73,10 +73,10 @@ if (!$_POST) {
         }
         
         $output_contact_groups .=
-            '<div class="col-12 col-md-4 my-2">
-                <div class="form-check form-switch">
-                    <input type="checkbox" name="contact_group_' . $contact_group['id'] . '" id="contact_group_' . $contact_group['id'] . '" value="1" class="collapse-switcher form-check-input"' . $contact_group_target . '/>
-                    <label class="form-check-label" for="contact_group_' . $contact_group['id'] . '"> ' . h($contact_group['name']) . '</label>
+            '<div class="col-12 md:col-4 my-3">
+                <div class="form-field">
+                    <div class="switch"><input type="checkbox" name="contact_group_' . $contact_group['id'] . '" id="contact_group_' . $contact_group['id'] . '" value="1" class="collapse-switcher"' . $contact_group_target . '/></div>
+                    <label class="" for="contact_group_' . $contact_group['id'] . '"> ' . h($contact_group['name']) . '</label>
                 </div>
                 ' . $output_opt_in . '
             </div>';
@@ -87,29 +87,29 @@ if (!$_POST) {
     if (AFFILIATE_PROGRAM == true) {
         $output_affiliate =
             '<div class="col-12">
-                <div class="card my-4">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Affiliate Information') . '
                     </div>
                     <div class="card-body">
                         <div class="row">
                         
                             <div class="col-12 my-1">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="affiliate_approved" name="affiliate_approved" value="1">
-                                    <label class="form-check-label" for="affiliate_approved">' . lang('Approved') . '</label>
+                                <div class="form-field">
+                                    <div class="switch"><input class="" type="checkbox" id="affiliate_approved" name="affiliate_approved" value="1"></div>
+                                    <label class="" for="affiliate_approved">' . lang('Approved') . '</label>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-3 my-2">
+                            <div class="col-12 md:col-3 my-3">
                                 <label for="affiliate_name" class="form-label">' . lang('Affiliate Name') . '</label>
                                 <input type="text" name="affiliate_name" id="affiliate_name" class="form-control" maxlength="100" />
                             </div>
-                            <div class="col-12 col-md-6 my-2">
+                            <div class="col-12 md:col-6 my-3">
                                 <label for="affiliate_code" class="form-label">' . lang('Affiliate Code') . '</label>
                                 <input type="text" name="affiliate_code" id="affiliate_code" class="form-control" maxlength="100" />
                                 <div class="form-text text-end">' . lang('leave blank to automatically generate code') . '</div>
                             </div>
-                            <div class="col-12 col-md-3 my-2">
+                            <div class="col-12 md:col-3 my-3">
                                 <label for="affiliate_commission_rate" class="form-label">' . lang('Commission Rate') . '</label>
                                 <div class="input-group">
                                     <input type="text" name="affiliate_commission_rate" id="affiliate_commission_rate" class="form-control" size="3" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" style="text-align: right;">
@@ -146,30 +146,30 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
                     <div class="row justify-content-center">
-                        <div class="col-12 col-sm order-sm-2 align-self-end">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 sm:col sm:order-2 align-self-end">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('New Contact\'s Name') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="salutation" class="form-label">' . lang('Salutation') . '</label>
                                             <input type="text" name="salutation" id="salutation" class="form-control" size="30" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="first_name" class="form-label">' . lang('First Name') . '</label>
                                             <input type="text" name="first_name" id="first_name" class="form-control" size="30" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="last_name" class="form-label">' . lang('Last Name') . '</label>
                                             <input type="text" name="last_name" id="last_name" class="form-control" size="30" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="suffix" class="form-label">' . lang('Suffix') . '</label>
                                             <input type="text" name="suffix" id="suffix" class="form-control" size="30" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="nickname" class="form-label">' . lang('Nickname') . '</label>
                                             <input type="text" name="nickname" id="nickname" class="form-control" size="30" maxlength="50" />
                                         </div>
@@ -177,31 +177,31 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-auto order-sm-1 ">
-                            <div class="card my-4 display-on-hover overflow-hidden position-relative" style="width:200px;height:auto;">
-                                <div id="software_image_picker_container" ondblclick="software_image_picker({initialize:true,SingleImage:true});" class="user-select-none sortable-list img-list bg-body-tertiary rounded p-2 row g-4"></div>
+                        <div class="col-auto sm:order-1 ">
+                            <div class="card my-7 display-on-hover overflow-hidden position-relative" style="width:200px;height:auto;">
+                                <div id="software_image_picker_container" ondblclick="software_image_picker({initialize:true,SingleImage:true});" class="user-select-none sortable-list img-list bg-1 rounded-4 p-3 row g-7"></div>
                                 <div class="card-footer border-0 bg-transparent">
-                                    <button type="button" class="btn"  onclick="software_image_picker({initialize:true,SingleImage:true});"><span class="material-icons me-2">image_search</span>' . lang('Change Image') . '</button>
+                                    <button type="button" class="btn"  onclick="software_image_picker({initialize:true,SingleImage:true});"><span class="material-icons me-3">image_search</span>' . lang('Change Image') . '</button>
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('New Contact\'s Subscriber Information') . '
                                 </div>
                                 <div class="card-body" >
                                     <div class="row">
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="email_address" class="form-label">' . lang('Email') . '</label>
                                             <input type="text" name="email_address" autocomplete="off" id="email_address" class="form-control text-end" maxlength="100" inputmode="email" data-inputmask-alias="email" />
                                         </div>
                                         <div class="col-12 my-1">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="opt_in" name="opt_in" value="1" checked="checked">
-                                                <label class="form-check-label" for="opt_in">' . lang('Opt-In Status') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" type="checkbox" id="opt_in" name="opt_in" value="1" checked="checked"></div>
+                                                <label class="" for="opt_in">' . lang('Opt-In Status') . '</label>
                                             </div>
                                         </div>
                                     </div>
@@ -212,72 +212,72 @@ if (!$_POST) {
 
                     <div class="row">
                         <div class="col-12 ">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('New Contact\'s Work Information') . '
                                 </div>
                                 <div class="card-body" >
                                     <div class="row">
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="company" class="form-label">' . lang('Company') . '</label>
                                             <input type="text" name="company" id="company" class="form-control" maxlength="50"/>
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="title" class="form-label">' . lang('Title') . '</label>
                                             <input type="text" name="title" id="title" class="form-control" maxlength="50"/>
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="department" class="form-label">' . lang('Department') . '</label>
                                             <input type="text" name="department" id="department" class="form-control" maxlength="50"/>
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="office_location" class="form-label">' . lang('Office Location') . '</label>
                                             <input type="text" name="office_location" id="office_location" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="website" class="form-label">' . lang('Website') . '</label>
                                             <input type="text" name="website" id="website" class="form-control" maxlength="255" />
                                         </div>
                                     </div>
                                     <div class="row">
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="business_address_1" class="form-label">' . lang('Business Address') . ' 1</label>
                                             <input type="text" name="business_address_1" id="business_address_1" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="business_address_2" class="form-label">' . lang('Business Address') . ' 2</label>
                                             <input type="text" name="business_address_2" id="business_address_2" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="business_city" class="form-label">' . lang('Business City') . '</label>
                                             <input type="text" name="business_city" id="business_city" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="business_state" class="form-label">' . lang('Business State') . '</label>
                                             <input type="text" name="business_state" id="business_state" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="business_country" class="form-label">' . lang('Business Country') . '</label>
                                             <input type="text" name="business_country" id="business_country" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="business_zip_code" class="form-label">' . lang('Business Zip Code') . '</label>
                                             <input type="text" name="business_zip_code" id="business_zip_code" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="business_phone" class="form-label">' . lang('Business Phone') . '</label>
                                             <input type="text" name="business_phone" id="business_phone" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="business_fax" class="form-label">' . lang('Business Fax') . '</label>
                                             <input type="text" name="business_fax" id="business_fax" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="tax_number" class="form-label">VKN / TCKN</label>
                                             <input type="text" name="tax_number" id="tax_number" class="form-control" maxlength="11" inputmode="numeric" />
                                             <div class="form-text">' . lang('11-digit TCKN for individuals, 10-digit VKN for companies.') . '</div>
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="tax_office" class="form-label">' . lang('Tax Office') . '</label>
                                             <input type="text" name="tax_office" id="tax_office" class="form-control" maxlength="100" />
                                         </div>
@@ -286,45 +286,45 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('New Contact\'s Home Information') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="home_address_1" class="form-label">' . lang('Home Address') . ' 1</label>
                                             <input type="text" name="home_address_1" id="home_address_1" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="home_address_2" class="form-label">' . lang('Home Address') . ' 2</label>
                                             <input type="text" name="home_address_2" id="home_address_2" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="home_city" class="form-label">' . lang('Home City') . '</label>
                                             <input type="text" name="home_city" id="home_city" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="home_state" class="form-label">' . lang('Home State') . '</label>
                                             <input type="text" name="home_state" id="home_state" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="home_country" class="form-label">' . lang('Home Country') . '</label>
                                             <input type="text" name="home_country" id="home_country" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="home_zip_code" class="form-label">' . lang('Home Zip Code') . '</label>
                                             <input type="text" name="home_zip_code" id="home_zip_code" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="home_phone" class="form-label">' . lang('Home Phone') . '</label>
                                             <input type="text" name="home_phone" id="home_phone" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="home_fax" class="form-label">' . lang('Home Fax') . '</label>
                                             <input type="text" name="home_fax" id="home_fax" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="mobile_phone" class="form-label">' . lang('Mobile Phone') . '</label>
                                             <input type="text" name="mobile_phone" id="mobile_phone" class="form-control" maxlength="255" />
                                         </div>
@@ -333,19 +333,19 @@ if (!$_POST) {
                             </div>
                         </div>
 
-                        <div class="col-12 col-md-6">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Membership Access') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             <label for="member_id" class="form-label">' . h(MEMBER_ID_LABEL) . '</label>
                                             <input type="text" name="member_id" id="member_id" class="form-control" />
                                             <div class="form-text text-end">' . lang('leave blank for no membership') . '</div>
                                         </div>
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             <label for="expiration_date" class="form-label">' . lang('Expiration Date') . '</label>
                                             <input type="text" name="expiration_date" id="expiration_date" class="form-control" data-pg-date />
                                             <div class="form-text text-end">' . lang('leave blank for lifetime membership') . '</div>
@@ -355,18 +355,18 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-md-6">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                        <div class="col-12 md:col-6">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Additional Notes') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             <label for="lead_source" class="form-label">' . lang('Lead Source') . '</label>
                                             <input type="text" name="lead_source" id="lead_source" class="form-control" maxlength="50" />
                                         </div>
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             <label for="description" class="form-label">' . lang('Description') . '</label>
                                             <textarea type="text" name="description" id="description" class="form-control" maxlength="50" ></textarea>
                                         </div>
@@ -377,8 +377,8 @@ if (!$_POST) {
                         ' . $output_affiliate . '
 
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Contact Groups & Subscriptions') . '
                                 </div>
                                 <div class="card-body">
@@ -389,10 +389,10 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

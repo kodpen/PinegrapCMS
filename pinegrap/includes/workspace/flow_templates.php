@@ -24,6 +24,8 @@
  *   settings  what the person is asked before it runs, each a type
  *             (ws_flow_template_setting_types()) and the box settings it
  *             fills, [node id, key]
+ *   motion    when each box, arrow and thread appears as the template is
+ *             placed (ws_flow_template_motion())
  *
  * Templates whose counts the person may not read, or whose texts a flow
  * cannot fill yet (a newcomer, an event's record, a count "since the last
@@ -284,15 +286,6 @@ function ws_flow_template_build($spec)
     }
 
     $graph = ws_flow_graph_normalize(array('v' => 1, 'nodes' => $nodes, 'edges' => $edges, 'notes' => array()));
-    $threads = 0;
-
-    foreach ($graph['nodes'] as $node) {
-        array_walk_recursive($node['config'], function ($value) use (&$threads) {
-            if (is_string($value)) {
-                $threads += preg_match_all('/\{\{node\.[a-z][a-z0-9_]*\.[a-z_][a-z0-9_]*\}\}/', $value);
-            }
-        });
-    }
 
     return array(
         'key'      => $spec['key'],
@@ -303,7 +296,300 @@ function ws_flow_template_build($spec)
         'start'    => $graph['nodes'][0]['kind'],
         'graph'    => $graph,
         'boxes'    => count($graph['nodes']),
-        'threads'  => $threads,
+        'threads'  => count(ws_flow_template_threads($graph)),
         'settings' => array_values($settings),
+        'motion'   => ws_flow_template_motion($graph),
     );
+}
+
+/**
+ * The values a template's boxes read from earlier boxes: one thread for
+ * each {{node.<id>.<field>}} of a box's setting, from the box it names to
+ * the box and setting that read it, in the graph's order. Pure.
+ *
+ * @param array $graph ws_flow_graph_normalize()
+ * @return array[] from, to, key
+ */
+function ws_flow_template_threads($graph)
+{
+    $ids = array_column($graph['nodes'], 'id');
+    $out = array();
+
+    foreach ($graph['nodes'] as $node) {
+        foreach ($node['config'] as $key => $value) {
+            $texts = array();
+
+            if (is_array($value)) {
+                array_walk_recursive($value, function ($item) use (&$texts) {
+                    $texts[] = $item;
+                });
+            } else {
+                $texts[] = $value;
+            }
+
+            foreach ($texts as $text) {
+                if (!is_string($text) || !preg_match_all('/\{\{node\.([a-z][a-z0-9_]*)\.[a-z_][a-z0-9_]*\}\}/', $text, $matches)) {
+                    continue;
+                }
+
+                foreach ($matches[1] as $from) {
+                    $thread = array('from' => $from, 'to' => $node['id'], 'key' => (string) $key);
+
+                    if (in_array($from, $ids, true) && !in_array($thread, $out, true)) {
+                        $out[] = $thread;
+                    }
+                }
+            }
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * When the parts of a template appear as it is placed, in milliseconds from
+ * the start: the boxes one after another, 150 apart, each in 420; an arrow
+ * grows in 200 once both its boxes are in; the threads draw after the last
+ * arrow, 200 apart, each in 650; then the setup panel. Pure.
+ *
+ * @param array $graph ws_flow_graph_normalize()
+ * @return array boxes [id, at, ms], arrows [edge (its index), at, ms],
+ *               threads [from, to, key, at, ms], panel
+ */
+function ws_flow_template_motion($graph)
+{
+    $box_ms = 420;
+    $box_gap = 150;
+    $arrow_ms = 200;
+    $thread_ms = 650;
+    $thread_gap = 200;
+
+    $boxes = array();
+    $in = array();
+    $end = 0;
+
+    foreach ($graph['nodes'] as $n => $node) {
+        $boxes[] = array('id' => $node['id'], 'at' => $n * $box_gap, 'ms' => $box_ms);
+        $in[$node['id']] = $n * $box_gap + $box_ms;
+        $end = max($end, $in[$node['id']]);
+    }
+
+    $arrows = array();
+
+    foreach ($graph['edges'] as $index => $edge) {
+        $at = max($in[$edge['from']] ?? 0, $in[$edge['to']] ?? 0);
+        $arrows[] = array('edge' => $index, 'at' => $at, 'ms' => $arrow_ms);
+        $end = max($end, $at + $arrow_ms);
+    }
+
+    $threads = array();
+    $first = $end;
+
+    foreach (ws_flow_template_threads($graph) as $n => $thread) {
+        $at = $first + $n * $thread_gap;
+        $threads[] = $thread + array('at' => $at, 'ms' => $thread_ms);
+        $end = max($end, $at + $thread_ms);
+    }
+
+    return array('boxes' => $boxes, 'arrows' => $arrows, 'threads' => $threads, 'panel' => $end);
+}
+
+/**
+ * The setup panel's answers checked, one for each setting of the template,
+ * and given back as the boxes keep them: a channel id, people ids (at most
+ * 20, each once), a time HH:MM, a web address, e-mail addresses joined by
+ * ", ". Answers to settings the template does not have are dropped. Pure
+ * but for the address check (validate_email_address()).
+ *
+ * @param array $template ws_flow_templates() entry
+ * @param array $answers  setting type => value
+ * @return array ok, error, field (the setting refused), values (type => value)
+ */
+function ws_flow_template_answers_check($template, $answers)
+{
+    $answers = is_array($answers) ? $answers : array();
+    $values = array();
+
+    foreach ((array) ($template['settings'] ?? array()) as $setting) {
+        $type = (string) $setting['type'];
+        $given = $answers[$type] ?? null;
+        $error = '';
+        $value = null;
+
+        switch ($type) {
+            case 'channel':
+                $value = is_scalar($given) ? (int) $given : 0;
+                $error = ($value > 0) ? '' : lang('Choose the channel it writes in.');
+                break;
+
+            case 'person':
+                $value = array();
+
+                foreach ((is_array($given) ? $given : array()) as $id) {
+                    $id = is_scalar($id) ? (int) $id : 0;
+
+                    if ($id > 0 && !in_array($id, $value, true)) {
+                        $value[] = $id;
+                    }
+                }
+
+                if (empty($value)) {
+                    $error = lang('Choose at least one person.');
+                } elseif (count($value) > 20) {
+                    $error = lang(array('string' => 'Choose at most {var:1} people.', 'vars' => 20));
+                }
+                break;
+
+            case 'time':
+                $error = lang('Give a time of day, such as 09:00.');
+
+                if (is_string($given) && preg_match('/^([01]?\d|2[0-3]):([0-5]\d)$/', trim($given), $match)) {
+                    $value = sprintf('%02d:%02d', (int) $match[1], (int) $match[2]);
+                    $error = '';
+                }
+                break;
+
+            case 'url':
+                $value = is_string($given) ? trim($given) : '';
+                $error = ((strlen($value) <= 2000) && preg_match('#^https?://[^\s/?\#]+#i', $value) && (filter_var($value, FILTER_VALIDATE_URL) !== false))
+                    ? '' : lang('Give a web address that starts with http:// or https://.');
+                break;
+
+            case 'address':
+                $addresses = ws_scheduled_addresses(is_string($given) ? $given : '');
+                $value = implode(', ', $addresses['to']);
+                $error = $addresses['error'];
+                break;
+
+            default:
+                continue 2;
+        }
+
+        if ($error !== '') {
+            return array('ok' => false, 'error' => $error, 'field' => $type, 'values' => array());
+        }
+
+        $values[$type] = $value;
+    }
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'values' => $values);
+}
+
+/**
+ * A flow's graph with the setup panel's values written into the box
+ * settings the template names. Only a box that is still the template's (the
+ * same id and kind) is written; anything changed meanwhile on the canvas
+ * stays as it is. Pure.
+ *
+ * @param array $template ws_flow_templates() entry
+ * @param array $graph    the flow's draft (ws_flow_graph_normalize())
+ * @param array $values   ws_flow_template_answers_check() values
+ * @return array the graph, normalized
+ */
+function ws_flow_template_apply($template, $graph, $values)
+{
+    $kinds = array_column($template['graph']['nodes'], 'kind', 'id');
+
+    foreach ((array) ($template['settings'] ?? array()) as $setting) {
+        if (!array_key_exists($setting['type'], $values)) {
+            continue;
+        }
+
+        foreach ($setting['targets'] as $target) {
+            foreach ($graph['nodes'] as $n => $node) {
+                if (($node['id'] === $target[0]) && (($kinds[$node['id']] ?? '') === $node['kind'])) {
+                    $graph['nodes'][$n]['config'][$target[1]] = $values[$setting['type']];
+                }
+            }
+        }
+    }
+
+    return ws_flow_graph_normalize($graph);
+}
+
+/**
+ * The templates offered to the person, filled for them as the gallery fills
+ * them: their texts go to them, no channel open.
+ *
+ * @param array      $viewer
+ * @param array|null $scheduled ws_scheduled_js_config() of the person, when at hand
+ * @return array[]
+ */
+function ws_flow_templates_for($viewer, $scheduled = null)
+{
+    if ($scheduled === null && function_exists('ws_scheduled_js_config')) {
+        $scheduled = ws_scheduled_js_config($viewer);
+    }
+
+    if (!is_array($scheduled)) {
+        return array();
+    }
+
+    return ws_flow_templates(array(
+        'me'       => (int) $viewer['id'],
+        'channel'  => 0,
+        'site'     => (string) $scheduled['site'],
+        'email'    => (string) $scheduled['email'],
+        'today'    => date('Y-m-d'),
+        'metrics'  => array_keys((array) $scheduled['metrics']),
+        'recap_ai' => !empty($scheduled['recap_ai']),
+    ));
+}
+
+/**
+ * The setup panel's answers for a template placed on a flow: checked here,
+ * whatever the screen checked, written into the flow's draft (a save, with
+ * its draft_rev), and with publish the draft published, through the same
+ * checks Publish makes (rights on each box's channel, people, addresses).
+ * The draft keeps the answers when the publish is refused.
+ *
+ * @param array $viewer
+ * @param array $flow    ws_flow_for() at edit
+ * @param array $data    key (the template's), answers (type => value),
+ *                       draft_rev, publish (bool)
+ * @return array ok, error, status, field, draft_rev, problems, published,
+ *               publish_error
+ */
+function ws_flow_template_setup($viewer, $flow, $data)
+{
+    $none = array('draft_rev' => 0, 'problems' => array(), 'published' => false, 'publish_error' => '');
+    $template = null;
+
+    foreach (ws_flow_templates_for($viewer) as $item) {
+        if ($item['key'] === (string) ($data['key'] ?? '')) {
+            $template = $item;
+        }
+    }
+
+    if ($template === null) {
+        return ws_flow_refusal(lang('That template is not offered to you.'), 404, 'key') + $none;
+    }
+
+    $check = ws_flow_template_answers_check($template, $data['answers'] ?? array());
+
+    if (!$check['ok']) {
+        return ws_flow_refusal($check['error'], 422, $check['field']) + $none;
+    }
+
+    $graph = ws_flow_template_apply($template, ws_flow_graph_of($flow), $check['values']);
+    $saved = ws_flow_save($viewer, array('graph' => $graph, 'draft_rev' => (int) ($data['draft_rev'] ?? 0)), $flow);
+
+    if (!$saved['ok']) {
+        return $saved + $none;
+    }
+
+    $out = array('ok' => true, 'error' => '', 'status' => 200, 'field' => '', 'draft_rev' => $saved['draft_rev'], 'problems' => $saved['problems'],
+        'published' => false, 'publish_error' => '');
+
+    if (empty($data['publish'])) {
+        return $out;
+    }
+
+    $fresh = ws_flow_for($viewer, (int) $flow['id'], 'edit');
+    $published = $fresh ? ws_flow_publish($viewer, $fresh, array('draft_rev' => $saved['draft_rev'])) : ws_flow_refusal(lang('The flow could not be published.'));
+
+    $out['published'] = !empty($published['ok']);
+    $out['publish_error'] = $out['published'] ? '' : (string) $published['error'];
+
+    return $out;
 }

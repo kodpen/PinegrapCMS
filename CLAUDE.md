@@ -47,7 +47,7 @@ finding: it lists decisions already made.
 
 ## Project in two lines
 
-PHP CMS (PHP 7.1–8.5, MySQL/MariaDB via `mysqli`, Bootstrap 5 + jQuery). Code
+PHP CMS (PHP 7.1–8.5, MySQL/MariaDB via `mysqli`, Bootstrap 6 in the panel, 5.3.8 on sites, + jQuery). Code
 lives under `pinegrap/`; paths in memory are relative to it. Open version
 **2026.11.0** (`docs/memory/release/release-status.md`); versions are
 `YYYY.M.PATCH`, month without a leading zero (`release/version-numbering.md`).
@@ -191,6 +191,7 @@ php tools/check_bindings.php    # designer dropdown tokens against renderer
 php tools/check_api_schema.php  # external API fields against the schema
 php tools/test.php [filter]     # tests/*_test.php (pure functions)
 php tools/check_copies.php      # only the intended get_file.php copies
+php tools/check_bs6.php --strict  # no Bootstrap 5 left in panel markup
 php tools/build_js.php --check  # .min.js bundles match their sources
 php tools/build_code_editor.php --check  # code editor bundle matches tools/code_editor/
 php tools/memory_index.php --check  # memory index matches its files

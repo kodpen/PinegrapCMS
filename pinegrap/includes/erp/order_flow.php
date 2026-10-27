@@ -957,12 +957,12 @@ function erp_order_flow_card($order_id, $state = null)
 
     $actions = erp_order_flow_actions();
     $tones = array(
-        'done' => array('bi-check-circle-fill', 'text-success'),
-        'ready' => array('bi-circle', 'text-primary'),
-        'waiting' => array('bi-hourglass-split', 'text-primary'),
-        'blocked' => array('bi-exclamation-triangle-fill', 'text-warning'),
-        'unavailable' => array('bi-dash-circle', 'text-body-secondary'),
-        'later' => array('bi-circle', 'text-body-secondary'),
+        'done' => array('bi-check-circle-fill', 'fg-success'),
+        'ready' => array('bi-circle', 'fg-primary'),
+        'waiting' => array('bi-hourglass-split', 'fg-primary'),
+        'blocked' => array('bi-exclamation-triangle-fill', 'fg-warning'),
+        'unavailable' => array('bi-dash-circle', 'fg-secondary'),
+        'later' => array('bi-circle', 'fg-secondary'),
     );
 
     $form_id = 'erp_order_flow_form';
@@ -971,7 +971,7 @@ function erp_order_flow_card($order_id, $state = null)
         if ($label !== '') {
             $words[0] = $label;
         }
-        return '<button type="submit" form="' . $form_id . '" name="erp_step" value="' . h($action) . '" class="btn btn-sm ' . ($primary ? 'btn-primary rounded-pill px-3' : 'btn-outline-secondary') . '"><i class="bi ' . $words[1] . ' me-1" aria-hidden="true"></i>' . h($words[0]) . '</button>';
+        return '<button type="submit" form="' . $form_id . '" name="erp_step" value="' . h($action) . '" class="btn btn-sm ' . ($primary ? 'btn-solid theme-primary rounded-pill px-5' : 'btn-outline theme-secondary') . '"><i class="bi ' . $words[1] . ' me-1" aria-hidden="true"></i>' . h($words[0]) . '</button>';
     };
 
     $output_steps = '';
@@ -988,11 +988,11 @@ function erp_order_flow_card($order_id, $state = null)
         $facts = '';
         foreach ($step['facts'] as $fact) {
             if (is_array($fact) && isset($fact['badge'])) {
-                $facts .= ' <span class="badge text-bg-' . h($fact['badge'][1]) . '">' . h($fact['badge'][0]) . '</span>';
+                $facts .= ' <span class="badge theme-' . h($fact['badge'][1]) . '">' . h($fact['badge'][0]) . '</span>';
             } elseif (is_array($fact) && isset($fact['text'])) {
-                $facts .= '<div class="small text-body-secondary text-break">' . h($fact['text']) . '</div>';
+                $facts .= '<div class="small fg-secondary text-break">' . h($fact['text']) . '</div>';
             } else {
-                $facts .= ' <span class="text-body-secondary">' . h((string) $fact) . '</span>';
+                $facts .= ' <span class="fg-secondary">' . h((string) $fact) . '</span>';
             }
         }
 
@@ -1001,7 +1001,7 @@ function erp_order_flow_card($order_id, $state = null)
         // do, the way the step's action does.
         $links = '';
         foreach ($step['links'] as $link) {
-            $links .= '<a href="' . h($link['url']) . '" class="btn btn-sm btn-outline-secondary"' . (!empty($link['blank']) ? ' target="_blank" rel="noopener"' : '') . '>' . h($link['label']) . '</a>';
+            $links .= '<a href="' . h($link['url']) . '" class="btn btn-sm btn-outline theme-secondary"' . (!empty($link['blank']) ? ' target="_blank" rel="noopener"' : '') . '>' . h($link['label']) . '</a>';
         }
 
         // A step that cannot run yet still shows its button, greyed, with the
@@ -1010,24 +1010,24 @@ function erp_order_flow_card($order_id, $state = null)
         $disabled = '';
         if (!empty($step['disabled_action']) && ($step['action'] === '') && isset($actions[$step['disabled_action']])) {
             $words = $actions[$step['disabled_action']];
-            $disabled = '<div class="text-nowrap"><span class="d-inline-block" tabindex="0" title="' . h($step['reason']) . '"><button type="button" class="btn btn-sm btn-outline-secondary" disabled><i class="bi ' . $words[1] . ' me-1" aria-hidden="true"></i>' . h($words[0]) . '</button></span></div>';
+            $disabled = '<div class="text-nowrap"><span class="d-inline-block" tabindex="0" title="' . h($step['reason']) . '"><button type="button" class="btn btn-sm btn-outline theme-secondary" disabled><i class="bi ' . $words[1] . ' me-1" aria-hidden="true"></i>' . h($words[0]) . '</button></span></div>';
         }
 
         $output_steps .= '
-                <li class="list-group-item d-flex gap-3 align-items-start' . ($is_next ? ' bg-body-tertiary' : '') . '">
-                    <i class="bi ' . $tone[0] . ' ' . $tone[1] . ' fs-5 mt-1" aria-hidden="true"></i>
+                <li class="list-group-item d-flex gap-5 align-items-start' . ($is_next ? ' bg-1' : '') . '">
+                    <i class="bi ' . $tone[0] . ' ' . $tone[1] . ' fs-lg mt-1" aria-hidden="true"></i>
                     <div class="flex-grow-1 min-w-0">
-                        <div class="d-flex flex-wrap align-items-baseline gap-2">
+                        <div class="d-flex flex-wrap align-items-baseline gap-3">
                             <span class="fw-semibold">' . $number . '. ' . h($step['label']) . '</span>
                             ' . (($step['title'] !== '') ? '<span class="text-nowrap">' . h($step['title']) . '</span>' : '') . $facts . '
                         </div>
-                        ' . (($step['reason'] !== '') ? '<div class="small ' . ((($step['state'] === 'blocked') || $warn) ? 'text-warning-emphasis' : 'text-body-secondary') . '">' . h($step['reason']) . '</div>' : '') . '
-                        ' . (($links !== '') ? '<div class="d-flex flex-wrap gap-2 mt-2">' . $links . '</div>' : '') . '
+                        ' . (($step['reason'] !== '') ? '<div class="small ' . ((($step['state'] === 'blocked') || $warn) ? 'fg-emphasis-warning' : 'fg-secondary') . '">' . h($step['reason']) . '</div>' : '') . '
+                        ' . (($links !== '') ? '<div class="d-flex flex-wrap gap-3 mt-3">' . $links . '</div>' : '') . '
                     </div>
-                    ' . (!empty($step['print']) ? '<div class="text-nowrap"><a class="btn btn-sm btn-outline-primary" href="' . h($step['print']['url']) . '" target="_blank" rel="noopener"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . h($step['print']['label']) . '</a></div>' : '') . '
+                    ' . (!empty($step['print']) ? '<div class="text-nowrap"><a class="btn btn-sm btn-outline theme-primary" href="' . h($step['print']['url']) . '" target="_blank" rel="noopener"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . h($step['print']['label']) . '</a></div>' : '') . '
                     ' . ((($step['action'] !== '') && !$is_next) ? '<div class="text-nowrap">' . $button($step['action'], false, (string) ($step['action_label'] ?? '')) . '</div>' : '') . '
                     ' . (($is_next && ($step['action'] !== '')) ? '<div class="text-nowrap">' . $button($step['action'], true, (string) ($step['action_label'] ?? '')) . '</div>' : '') . '
-                    ' . (!empty($step['goto']) ? '<div class="text-nowrap"><a href="' . h($step['goto']['url']) . '" class="btn btn-sm ' . ($is_next ? 'btn-primary rounded-pill px-3' : 'btn-outline-secondary') . '"><i class="bi ' . h($step['goto']['icon']) . ' me-1" aria-hidden="true"></i>' . h($step['goto']['label']) . '</a></div>' : '') . '
+                    ' . (!empty($step['goto']) ? '<div class="text-nowrap"><a href="' . h($step['goto']['url']) . '" class="btn btn-sm ' . ($is_next ? 'btn-solid theme-primary rounded-pill px-5' : 'btn-outline theme-secondary') . '"><i class="bi ' . h($step['goto']['icon']) . ' me-1" aria-hidden="true"></i>' . h($step['goto']['label']) . '</a></div>' : '') . '
                     ' . $disabled . '
                 </li>';
     }
@@ -1040,10 +1040,10 @@ function erp_order_flow_card($order_id, $state = null)
     }
 
     return '
-<div class="card mb-4 d-print-none" id="erp_order_documents">
+<div class="card mb-7 pg-print-none" id="erp_order_documents">
     <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-        <span class="text-uppercase h5 text-primary fw-bold mb-0">' . lang('Invoice and delivery documents') . '</span>
-        ' . ($all_done ? '<span class="small text-success"><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . lang('Every document is done.') : '') . '
+        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Invoice and delivery documents') . '</span>
+        ' . ($all_done ? '<span class="small fg-success"><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . lang('Every document is done.') : '') . '
     </div>
     <ul class="list-group list-group-flush">' . $output_steps . '
     </ul>

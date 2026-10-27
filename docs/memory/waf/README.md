@@ -21,6 +21,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - Register a rate refusal with the burst flag (`waf_register_offence($ip, $score, $blocking, true)`: one offence per subject and minute) and a signature hit, an attack tool or a wrong key without it; never auto-ban an address staff signed in from (`waf-offence-fold-and-staff-address.md`).
 - Gate a new per-address counter or ban on `waf_ip_is_counted()` (not infrastructure, not a private or reserved address; the lists still apply), and go by `waf_script_name()`, never `basename(SCRIPT_NAME)`: the web root's `index.php` is the router (`waf-counter-subjects-and-endpoints.md`).
 - Never send mail or touch `functions.php` from `waf.php`: queue the operator's ban notice with `waf_ban_notice_queue()`; `pg_waf_ban_notice_send()` mails it after `waf_run('init')` (`waf-ban-notice.md`).
+- Serve nothing to a banned address, token or not: the rescue is the command-line `waf_unban.php`, and a Settings save whose block entries cover the operator's own address is refused (`waf-self-rescue.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -57,4 +58,5 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - waf-score-calibration-and-bot-order.md: WAF signature score bands (thresholds 15/10/6, dead zone 7-9), targets key, and the fixed bot classification order with token-boundary residual signal.
 - waf-secure-mode-enable-guard.md: firewall.save.php refuses to enable Secure Mode from a request not seen as HTTPS: predicate, messages, early return, why disabling is unchecked.
 - waf-security-headers-hsts.md: Security headers are sent outside waf_run(), independent of the firewall switch; HSTS default off and its https gating; Permissions-Policy; nosniff and Referrer-Policy never doubled by server rules.
+- waf-self-rescue.md: CLI waf_unban.php lifts a ban from the server, Settings refuses a block entry covering your own address, the sign-in lock spares allow-listed addresses (#2187)
 - waf-subresource-sign-in-fetches.md: A sub-resource fetch (image, style, script, font, media) of a protected file answers 403, never the sign-in redirect; such a fetch of a sign-in screen is not counted as sensitive (#1989)

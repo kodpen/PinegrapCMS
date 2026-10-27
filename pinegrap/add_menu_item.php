@@ -84,8 +84,8 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-2  flex-wrap">
-                    <div class="col-12 col-sm-12 text-center text-md-start">
+                <div class="row mb-3  flex-wrap">
+                    <div class="col-12 sm:col-12 text-center md:text-start">
 
                         <p>' . lang('Menu') . ': ' . h($menu_name) . '</p>
                     </div>
@@ -97,48 +97,48 @@ if (!$_POST) {
                     <input type="hidden" id="menu_id" name="menu_id" value="' . $menu_id . '" />
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Options') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-6 col-lg-4 my-2">
+                                        <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="name" class="form-label">' . lang('Menu Item Name') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
-                                        <div class="col-12 col-md-6 col-lg-4 my-2">
+                                        <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="link_target" class="form-label">' . lang('Link Target') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_target', 'id'=>'link_target', 'class'=>'form-select', 'options'=>$link_target_options)) . '
+                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_target', 'id'=>'link_target', 'class'=>'form-control', 'options'=>$link_target_options)) . '
                                         </div>
-                                        <div class="col-12 col-md-6 col-lg-4 my-2">
+                                        <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="parent_id" class="form-label">' . lang('Parent Menu Item') . '</label>
-                                            <select name="parent_id" id="parent_id" class="form-select">' . $parent_id_options . '</select>
+                                            <select name="parent_id" id="parent_id" class="form-control">' . $parent_id_options . '</select>
                                         </div>
-                                        <div class="col-12 mt-4"><h5>' . lang('Link Menu Item To') . '</h5></div>
-                                        <div class="col-12 col-md-12 col-lg-5 my-2">
+                                        <div class="col-12 mt-7"><h5>' . lang('Link Menu Item To') . '</h5></div>
+                                        <div class="col-12 md:col-12 lg:col-5 my-3">
                                             <label for="link_page_id" class="form-label">' . lang('Page') . '</label>
                                             <div class="input-group flex-wrap">
-                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_page_id', 'id'=>'link_page_id', 'class'=>'form-select', 'style'=>'min-width:100px', 'options'=>$page_options, 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'link_url\').value = \'\'}')) . '
+                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_page_id', 'id'=>'link_page_id', 'class'=>'form-control', 'style'=>'min-width:100px', 'options'=>$page_options, 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'link_url\').value = \'\'}')) . '
                                                 <div class="input-group-text">
-                                                    <div class="form-check form-switch">
-                                                        ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'security', 'id'=>'security', 'value'=>'1', 'class'=>'form-check-input')) . '
-                                                        <label class="form-check-label" for="security" title="' . lang('Enable Security') . '" data-bs-content="' . lang('only show Menu Item if Visitor has access to view Page') . '">' . lang('Enable Security') . ' (?)</label>
+                                                    <div class="form-field">
+                                                        <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'security', 'id'=>'security', 'value'=>'1', 'class'=>'no-bs')) . '</div>
+                                                        <label class="" for="security" title="' . lang('Enable Security') . '" data-bs-content="' . lang('only show Menu Item if Visitor has access to view Page') . '">' . lang('Enable Security') . ' (?)</label>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-12 col-md-12 col-lg-2  my-2 text-lg-center">
+                                        <div class="col-12 md:col-12 lg:col-2  my-3 lg:text-center">
                                             <label class="form-label">-' . lang('or') . '-</label>
                                         </div>
-                                        <div class="col-12 col-md-6 col-lg-5 my-2">
+                                        <div class="col-12 md:col-6 lg:col-5 my-3">
                                             <label for="link_url" class="form-label">' . lang('URL') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'link_url', 'id'=>'link_url', 'class'=>'form-control', 'maxlength'=>'255')) . '
                                         </div>
-                                        <div class="col-12 mt-3 mb-2">
+                                        <div class="col-12 mt-5 mb-3">
                                             <label for="item_class" class="form-label">' . lang('Classes') . '</label>
-                                            <div class="input-group input-group-sm d-flex flex-wrap border rounded border-2">
+                                            <div class="input-group input-group-sm d-flex flex-wrap border rounded-4 border-2">
                                                 <div class="input-group-text bg-reset border-0">&lt;li class="</div>
                                                 ' . $liveform->output_field(array(
                                                     'type' => 'text',
@@ -166,10 +166,10 @@ if (!$_POST) {
                         </div>
                     </div>
                     
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-success "><span class="bi bi-plus-circle me-2"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
