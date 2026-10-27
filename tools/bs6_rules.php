@@ -147,12 +147,17 @@ function bs6_map_plain_token($token)
 	}
 
 	if (preg_match('/^(m|mt|mb|ms|me|mx|my)-n([1-5])$/', $token, $m)) {
-		// v6 keeps two negative margins, and only inline: ms--1/-2, me--1/-2.
+		// v6 keeps two negative margins, and only inline: ms--1/-2, me--1/-2;
+		// the others become the panel's own pg-<side>-n<key> (v5's sizes).
 		if (in_array($m[1], array('ms', 'me'), true) && in_array($m[2], array('1', '2'), true)) {
 			return array('tokens' => array($m[1] . '--' . $m[2]), 'review' => null);
 		}
 
-		return array('tokens' => array($token), 'review' => 'negative margin with no v6 class (only ms--1/-2, me--1/-2 exist)');
+		return array('tokens' => array('pg-' . $token), 'review' => null);
+	}
+
+	if (preg_match('/^display-([1-6])$/', $token, $m)) {
+		return array('tokens' => array('pg-display-' . $m[1]), 'review' => null);
 	}
 
 	if (preg_match('/^fs-([1-6])$/', $token, $m)) {
@@ -203,6 +208,20 @@ function bs6_map_plain_token($token)
 		'mw-100' => array('max-w-100'),
 		'valid-tooltip' => array('tooltip', 'valid-tooltip'),
 		'invalid-tooltip' => array('tooltip', 'invalid-tooltip'),
+		// v6 neutrals the panel's token bridge sets to v5's values.
+		'text-reset' => array('fg-reset'),
+		'text-body-tertiary' => array('fg-3'),
+		'bg-body-tertiary' => array('bg-1'),
+		'bg-body-secondary' => array('bg-2'),
+		// v6's close icon is drawn in currentcolor.
+		'btn-close-white' => array('fg-white'),
+		// A Bootstrap 4 class: neither v5 nor v6 draws it.
+		'dropdown-menu-right' => array(),
+		// No v6 class: the panel's own, drawn as v5 did (the switch's shell
+		// rules in backend.src.css).
+		'text-body-emphasis' => array('pg-fg-emphasis'),
+		'table-light' => array('pg-table-light'),
+		'lead' => array('pg-lead'),
 	);
 
 	if (isset($renames[$token])) {
@@ -275,8 +294,7 @@ function bs6_map_plain_token($token)
 		'/^link-(underline-)?opacity-(0|25|75)(-hover)?$/' => 'link opacity step with no v6 class',
 		'/^opacity-\d+-hover$/' => 'hover opacity with no v6 class in 6.0.0-alpha.1',
 		'/^d-print-/' => 'print display utility with no v6 class in 6.0.0-alpha.1',
-		'/^(display-[1-6]|lead)$/' => 'removed: compose with fs-* and fw-*',
-		'/^(btn-close-white|alert-dismissible|navbar-light|navbar-dark)$/' => 'removed in v6',
+		'/^(alert-dismissible|navbar-light|navbar-dark)$/' => 'removed in v6',
 		'/^(needs-validation|was-validated)$/' => 'validation: data-bs-validate on the form, :user-invalid instead of the JS class',
 		'/^modal(-.+)?$/' => 'modal becomes a <dialog class="dialog">: structural',
 		'/^offcanvas(-.+)?$/' => 'offcanvas becomes a <dialog class="drawer">: structural',
@@ -640,7 +658,7 @@ function bs6_reads_class_strings($path)
  */
 function bs6_find_class_strings($source)
 {
-	$bare = array('btn', 'badge', 'small', 'row', 'col', 'card', 'border', 'rounded', 'shadow', 'active', 'disabled', 'show', 'fade', 'container', 'table', 'alert', 'lead', 'collapse', 'clearfix', 'invisible', 'visible');
+	$bare = array('btn', 'badge', 'small', 'row', 'col', 'card', 'border', 'rounded', 'shadow', 'active', 'disabled', 'show', 'fade', 'container', 'table', 'alert', 'collapse', 'clearfix', 'invisible', 'visible');
 	$found = array();
 
 	if (!preg_match_all('/([\'"])([A-Za-z][A-Za-z0-9:-]*(?: [A-Za-z][A-Za-z0-9:-]*)*)\1/', $source, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
@@ -648,6 +666,12 @@ function bs6_find_class_strings($source)
 	}
 
 	foreach ($matches as $m) {
+		// An attribute value other than class (`id="modal-contact"`) or an
+		// element id in code names no class.
+		if (preg_match('/(?:\s(?:id|for|name|form|list|role|type|value|href|src|target|rel|title|alt|placeholder|aria-[\w-]+)=\\\\?|getElementById\(\s*)$/', substr($source, max(0, $m[0][1] - 40), min(40, $m[0][1])))) {
+			continue;
+		}
+
 		$tokens = explode(' ', $m[2][0]);
 		$v5 = false;
 
