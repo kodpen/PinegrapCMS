@@ -1012,8 +1012,8 @@ echo
 #explorer_app { --pg-tile: 136px; --pg-tile-thumb: 84px; --pg-tile-icon: 3rem; }
 #explorer_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--pg-tile), 1fr)); gap: .45rem; }
 .explorer-item { cursor: default; }
-#explorer_grid .item-card { position: relative; border-radius: .8rem; padding: .55rem .4rem .5rem; text-align: center; transition: background .12s ease, box-shadow .12s ease, transform .12s ease; }
-#explorer_grid .item-card:hover { background: var(--pg-bg-2); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,.08); }
+#explorer_grid .item-card { position: relative; border-radius: .8rem; padding: .55rem .4rem .5rem; text-align: center; --pg-lift-shadow: 0 4px 14px color-mix(in srgb, #000 8%, transparent); --pg-lift-duration: .12s; --pg-lift-also: background .12s ease; }
+#explorer_grid .item-card:hover { background: var(--pg-bg-2); }
 .explorer-item.selected .item-card { background: var(--pg-primary-bg-subtle) !important; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--pg-primary) 55%, transparent); }
 tr.explorer-item.selected > td { background: var(--pg-primary-bg-subtle) !important; }
 .explorer-item.cut-ghost { opacity: .45; }
@@ -4928,7 +4928,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             state.ordered.forEach(function (item, index) {
                 var classes = itemClasses(item);
                 html += '<div class="explorer-item' + classes + (catalogSubName(item) !== '' ? ' has-subname' : '') + '" draggable="true" data-kind="' + item.kind + '" data-id="' + item.id + '" data-index="' + index + '">' +
-                    '<div class="item-card" title="' + esc(item.name + (catalogSubName(item) !== '' ? ' — ' + catalogSubName(item) : '')) + '">' +
+                    '<div class="item-card hover-lift" title="' + esc(item.name + (catalogSubName(item) !== '' ? ' — ' + catalogSubName(item) : '')) + '">' +
                     '<span class="sel-dot" data-role="sel"><span class="bi bi-check-lg"></span></span>' +
                     stockDotHtml(item) +
                     seoChipHtml(item) +
