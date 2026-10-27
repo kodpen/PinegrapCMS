@@ -35,7 +35,7 @@ description: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in wid
 - W15 done (#1734). W16 default parts: #1808 #1824 #1863 #1908 #1945 #1973 #2067 #2218, cart gift card #2260, schedule #2311, cancel and return forms #2330; left: each return's moves, then the product order form.
 - W17 Parts anywhere, record values outside widgets. W18 done #2308 #2334 ([[page-conditions]]).
 - W19 done #1904 #1914 #1928, opening state #2232 ([[widget-condition-canvas]]).
-- W20 Parts palette, starter library. W21 done #2326 #2345. W22 done: #2317, W22b #PR ([[layout-form-converter]]). W23 done #2225 #2307. W24 done #2259 #2304 ([[widget-lists-checkout]]).
+- W20 Parts palette, starter library. W21 done #2326 #2345. W22 done: #2317, W22b #2368 ([[layout-form-converter]]). W23 done #2225 #2307. W24 done #2259 #2304 ([[widget-lists-checkout]]).
 - W25 done (#2221, [[widget-condition-rows]]).
 - W26 done #2264 ([[sentence-with-values]]); order view's ended line left.
 
