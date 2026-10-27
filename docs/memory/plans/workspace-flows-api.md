@@ -17,7 +17,7 @@ description: Plan (owner request 2026-10-27, draft): flow API beyond the removed
 
 - A3 `POST /{id}/validate`: the publish check's problems without publishing (D4); `POST /{id}/dry-run` (F4e, PR #2024).
 
-- A4 done (PR #PRNUM): `/{id}/resume` (own session); `/{id}/versions` list, `/{n}` read, `/{n}/restore` into the draft (workspace-flows-versions.md).
+- A4 done (PR #2234): `/{id}/resume` (own session); `/{id}/versions` list, `/{n}` read, `/{n}/restore` into the draft (workspace-flows-versions.md).
 
 - A5 run values: `GET /workspace/flow-runs/{id}` gives each box's threads in, outputs, the flag and its result; `/steps/{node}/retry` and `/skip` (F5).
 
