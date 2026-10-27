@@ -1089,6 +1089,41 @@ function pg_sw_list_passkey_rows($user_id, $passkeys, $date_format)
     return array('security.passkeys' => array((int)$user_id => $rows));
 }
 
+// Whether the widget's tree holds the field of the code e-mailed for adding
+// a passkey (a control named email_code). An account without two-step
+// verification adds one only with that code; a tree saved before the field
+// existed keeps offering two-step verification first.
+function _pg_sec_tree_has_email_code($node)
+{
+    if (!is_array($node)) return false;
+    foreach ((isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array() as $a) {
+        if (is_array($a) && isset($a['name'], $a['value']) && strtolower((string)$a['name']) === 'name'
+            && (string)$a['value'] === 'email_code') return true;
+    }
+    if (!empty($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as $child) {
+            if (_pg_sec_tree_has_email_code($child)) return true;
+        }
+    }
+    return false;
+}
+
+// The add a passkey flags of the account security widget, by the rules of
+// pg_passkey_account_section(): $live (shown, not signed in as the member),
+// $site_ok (pg_passkey_ready()), $mfa_ready (the two-step tables exist),
+// $mfa_enabled, $email_field (_pg_sec_tree_has_email_code()), $count (the
+// account's passkeys).
+function pg_sw_passkey_add_state($live, $site_ok, $mfa_ready, $mfa_enabled, $email_field, $count)
+{
+    $open = $live && $site_ok && $mfa_ready;
+    $may  = $open && ($mfa_enabled || $email_field);
+    return array(
+        'passkey_can_add'   => $may && (int)$count < PG_PASSKEYS_MAX,
+        'passkey_needs_mfa' => $open && !$mfa_enabled && !$email_field,
+        'passkey_limit'     => $may && (int)$count >= PG_PASSKEYS_MAX,
+    );
+}
+
 // Wire the account security widget from its bindings. Every block is its own
 // form, so a required code field only holds back the form it is in and Enter
 // in a field submits that form's own button:
@@ -1233,7 +1268,7 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
             'has_devices' => false, 'no_devices' => false, 'mfa_ready' => false,
             'passkeys_shown' => false, 'has_passkeys' => false, 'no_passkeys' => false, 'passkey_can_change' => false,
             'passkey_can_add' => false, 'passkey_needs_mfa' => false, 'passkey_limit' => false, 'passkey_unavailable' => false,
-            'passkey_asks_password' => false, 'passkey_asks_code' => false,
+            'passkey_asks_password' => false, 'passkey_asks_code' => false, 'passkey_asks_email_code' => false,
         );
         return _pg_acct_render_signed_out($tree, $cfg, $sec_no_state, array(), 'my_account_profile');
     }
@@ -1314,8 +1349,8 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
     $pk_site  = $pk_table ? pg_passkey_ready() : array('ok' => false, 'error' => 'unavailable');
     $pk_shown = $pk_table && ($pk_site['ok'] || $pk_count > 0 || $pk_site['error'] === 'host');
     $pk_live  = $pk_shown && !$impersonated;
-    $pk_add   = $pk_live && $pk_site['ok'] && $enabled;
-    $pk_proofs = pg_passkey_reauth_fields($algo, $enabled);
+    $pk_proofs = pg_passkey_reauth_fields($algo, $enabled, true);
+    $pk_state  = pg_sw_passkey_add_state($pk_live, $pk_site['ok'], $mfa_ready, $enabled, _pg_sec_tree_has_email_code($tree), $pk_count);
 
     $codes_text = implode("\n", $codes);
     $codes_download = $show_codes ? 'data:text/plain;charset=utf-8,' . rawurlencode($codes_text . "\n") : '';
@@ -1360,12 +1395,13 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
         'has_passkeys'          => $pk_live && $pk_count > 0,
         'no_passkeys'           => $pk_live && $pk_count === 0,
         'passkey_can_change'    => $pk_live,
-        'passkey_can_add'       => $pk_add && $pk_count < PG_PASSKEYS_MAX,
-        'passkey_needs_mfa'     => $pk_live && $pk_site['ok'] && !$enabled,
-        'passkey_limit'         => $pk_add && $pk_count >= PG_PASSKEYS_MAX,
+        'passkey_can_add'       => $pk_state['passkey_can_add'],
+        'passkey_needs_mfa'     => $pk_state['passkey_needs_mfa'],
+        'passkey_limit'         => $pk_state['passkey_limit'],
         'passkey_unavailable'   => $pk_live && !$pk_site['ok'],
         'passkey_asks_password' => $pk_proofs['password'],
         'passkey_asks_code'     => $pk_proofs['code'],
+        'passkey_asks_email_code' => $pk_proofs['email'],
     ));
 
     $rows = '';

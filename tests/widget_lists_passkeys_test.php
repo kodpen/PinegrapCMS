@@ -133,3 +133,28 @@ function test_widget_lists_passkeys_end_to_end()
 	$out = _widget_pk_finished(_widget_pk_tree(), $flags, 7, 8);
 	pg_assert_same(array(), _widget_pk_texts($out, 'pkname'));
 }
+
+// Adding without two-step verification needs the e-mailed code's field in
+// the tree; a tree saved before it keeps saying two-step comes first.
+function test_widget_passkeys_add_state()
+{
+	$state = function ($mfa, $email_field, $count = 0, $live = true, $site_ok = true, $mfa_ready = true) {
+		return pg_sw_passkey_add_state($live, $site_ok, $mfa_ready, $mfa, $email_field, $count);
+	};
+	pg_assert_same(array('passkey_can_add' => true, 'passkey_needs_mfa' => false, 'passkey_limit' => false), $state(true, false));
+	pg_assert_same(array('passkey_can_add' => true, 'passkey_needs_mfa' => false, 'passkey_limit' => false), $state(false, true), 'the e-mailed code');
+	pg_assert_same(array('passkey_can_add' => false, 'passkey_needs_mfa' => true, 'passkey_limit' => false), $state(false, false), 'an older tree');
+	pg_assert_same(array('passkey_can_add' => false, 'passkey_needs_mfa' => false, 'passkey_limit' => true), $state(false, true, PG_PASSKEYS_MAX));
+	pg_assert_same(array('passkey_can_add' => false, 'passkey_needs_mfa' => false, 'passkey_limit' => false), $state(false, true, 0, false), 'signed in as the member');
+	pg_assert_same(array('passkey_can_add' => false, 'passkey_needs_mfa' => false, 'passkey_limit' => false), $state(true, true, 0, true, false), 'not on this site');
+	pg_assert_same(array('passkey_can_add' => false, 'passkey_needs_mfa' => false, 'passkey_limit' => false), $state(false, true, 0, true, true, false), 'before the upgrade');
+}
+
+function test_widget_passkeys_tree_has_email_code()
+{
+	$field = _widget_pk_box('input', 'ec', array(), array('_attrs' => array(array('name' => 'type', 'value' => 'text'), array('name' => 'name', 'value' => 'email_code'))));
+	pg_assert_true(!_pg_sec_tree_has_email_code(_widget_pk_tree()), 'the older tree');
+	$tree = _widget_pk_tree();
+	$tree['children'][1]['children'][] = $field;
+	pg_assert_true(_pg_sec_tree_has_email_code($tree), 'a field named email_code');
+}
