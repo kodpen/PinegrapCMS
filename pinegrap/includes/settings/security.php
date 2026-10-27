@@ -224,10 +224,10 @@ if ($audit_retention_ready) {
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
                 <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Audit Trail') . '</span>
-                <a class="btn btn-sm btn-outline-secondary" href="view_audit_log.php">' . lang('Open') . '</a>
+                <a class="btn btn-sm btn-outline theme-secondary" href="view_audit_log.php">' . lang('Open') . '</a>
             </div>
             <div class="card-body">
-                <div class="row gy-5">
+                <div class="row gy-12">
                                         <div class="col-12">
                                             <label for="audit_log_retention_years" class="form-label">' . lang('Keep audit trail lines for') . '</label>
                                             <div class="input-group pg-f-sm">
