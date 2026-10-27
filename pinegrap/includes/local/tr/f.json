@@ -146,6 +146,7 @@
     "Fields changed": "Değişen alanlar",
     "Fields marked with * are required.": "* ile işaretli alanların doldurulması zorunludur.",
     "Fields of the product form": "Ürün formunun alanları",
+    "Fields the layout did not draw were added at the end of the form: {var}": "Düzenin çizmediği alanlar formun sonuna eklendi: {var}",
     "Fields to change": "Değişecek alanlar",
     "Fields you can use in a template": "Şablonda kullanabileceğiniz alanlar",
     "Fields: {var:1}": "Alanlar: {var:1}",

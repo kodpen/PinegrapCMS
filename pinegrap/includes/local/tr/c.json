@@ -1563,6 +1563,7 @@
     "Convert this image to .webp format": "Bu görseli .webp formatına dönüştür",
     "Convert to Shared Component": "Ortak Bileşene Dönüştür",
     "Convert to WebP": "WebP'ye Dönüştür",
+    "Convert to design elements": "Tasarım öğelerine dönüştür",
     "Convert to metric system": "Metrik sisteme dönüştür",
     "Convert {var:1} to InnoDB now? Writes to the table wait until the conversion ends.": "{var:1} şimdi InnoDB'ye dönüştürülsün mü? Dönüşüm bitene kadar tabloya yazma işlemleri bekler.",
     "Converted amount": "Çevrilen tutar",

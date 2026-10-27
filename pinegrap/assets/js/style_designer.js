@@ -46481,12 +46481,84 @@ const StyleDesigner = (function () {
                     '</button>' +
                 '</div>';
         }
+        if ((_design.layoutFormPages || []).indexOf(p.page_id) !== -1) {
+            h += '<div class="sd-prop-row">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-layout-convert">' +
+                        '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) +
+                    '</button>' +
+                '</div>';
+        }
         h += '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
                 esc(_design.layoutReadOnly
                     ? _sdT('This site draws the generated layout; a custom layout cannot be saved here.')
                     : _sdT('This page draws its system region with a custom layout. Saved unchanged from the generated one, it keeps following the form\'s fields.')) +
             '</div></div>';
         return h;
+    }
+
+    // What the converter left out of the widget, by its code (layout_code
+    // convert, pg_layout_form_convert()).
+    var SD_LAYOUT_DROPPED = {
+        watcher:   function () { return _sdT('the box to be told about new comments'); },
+        save:      function () { return _sdT('the Save for Later button'); },
+        condition: function () { return _sdT('parts shown only under a condition'); },
+        php:       function () { return _sdT('PHP code'); },
+        signature: function () { return _sdT('the signature field'); }
+    };
+
+    // A custom form page's layout as a Custom Form widget of design
+    // elements, placed after the system region; the region stays until the
+    // designer deletes it. One undo step; the page save writes the form's
+    // fields from the widget.
+    function _sdLayoutConvert(regionNode) {
+        var p = _pgActivePage();
+        if (!p || !(p.page_id > 0) || !regionNode) return;
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (!window.confirm(_sdT('Put a Custom Form widget built from this layout after the region? The region stays until you delete it.'))) return;
+        var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
+        fetch(url, { method: 'POST', credentials: 'same-origin',
+                     body: JSON.stringify({ action: 'layout_code', sub_action: 'convert', page_id: p.page_id, token: _pgToken() }),
+                     headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data || data.status !== 'success' || !data.tree) {
+                    sdToast(esc((data && data.message) || _sdT('The operation failed.')), 'error');
+                    return;
+                }
+                var tree = data.tree;
+                _backfillIds(tree);
+                var cfg = _swTypeDefaults({}, 'custom_form');
+                cfg.form_source = 'page';
+                var start = _sdAnyParent(regionNode);
+                var name = _swAutoName('custom_form', null, { target: start ? start.parent : null });
+                _swCreateRow(name, cfg, tree, function (newId, newName) {
+                    // The region may have gone meanwhile; the widget is then
+                    // listed in the design, unplaced.
+                    var hit = _sdAnyParent(regionNode);
+                    var parent = hit ? hit.parent : null;
+                    var idx = (parent && Array.isArray(parent.children)) ? parent.children.indexOf(regionNode) : -1;
+                    if (idx === -1) {
+                        if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
+                        return;
+                    }
+                    saveState();
+                    if (hit.sid) _sharedDirty[hit.sid] = true;
+                    var ref = { _id: gid(), type: 'shared_ref', props: { sharedId: newId, sharedName: newName }, children: [] };
+                    parent.children.splice(idx + 1, 0, ref);
+                    selectedNode  = ref;
+                    selectedNodes = [];
+                    if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
+                    render();
+                    if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
+                    sdToast(esc(_sdT('"{var}" was built from the layout; save the page to keep it. The form\'s fields are then written from the widget.', newName)), 'success', 9000);
+                    var missing = parseInt(data.missing, 10) || 0;
+                    if (missing > 0) sdToast(esc(_sdT('Fields the layout did not draw were added at the end of the form: {var}', missing)), 'info', 9000);
+                    var left = (Array.isArray(data.dropped) ? data.dropped : []).filter(function (c) { return SD_LAYOUT_DROPPED[c]; })
+                        .map(function (c) { return SD_LAYOUT_DROPPED[c](); });
+                    if (left.length) sdToast(esc(_sdT('Left out of the widget, still drawn by the region: {var}', left.join(', '))), 'warning', 12000);
+                });
+            })
+            .catch(function () { sdToast(esc(_sdT('Network error')), 'error'); });
     }
 
     function needsName(t) { return ['ad','common','designer','dynamic','login','menu','menu_sequence','tag_cloud','system'].indexOf(t) !== -1; }
@@ -49174,6 +49246,8 @@ const StyleDesigner = (function () {
         if (layoutCodeBtn) layoutCodeBtn.addEventListener('click', function () { _sdLayoutCodeOpen(_pgActivePage(), false); });
         var layoutRegenBtn = document.getElementById('sd-layout-regenerate');
         if (layoutRegenBtn) layoutRegenBtn.addEventListener('click', function () { _sdLayoutCodeOpen(_pgActivePage(), true); });
+        var layoutConvertBtn = document.getElementById('sd-layout-convert');
+        if (layoutConvertBtn) layoutConvertBtn.addEventListener('click', function () { _sdLayoutConvert(selectedNode); });
 
         // Spacing toggle — expand/collapse responsive breakpoint rows
         document.querySelectorAll('#sd-properties .sd-sp-toggle').forEach(function(btn) {
