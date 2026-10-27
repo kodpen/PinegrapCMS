@@ -1330,6 +1330,7 @@ function ws_bulk_guide($asker)
         . 'operation set (value), percent (value such as 50 or -10), add (value; money in minor units, so 200 TL is 20000), generate (instruction: Pinegrap AI writes the text of field for each record; field may name up to three text fields separated by commas, such as title,meta_description) or values (values: a JSON object of id => new value). '
         . 'only_empty names a text field the records must have empty ("fill in the missing ones"). round whole rounds money to whole units. '
         . (ws_bulk_delete_allowed() ? 'action delete deletes the records reached (they go to the Recycle Bin where there is one). ' : 'Deleting in bulk is switched off on this site: do not propose it, say an administrator can allow it in the Workspace Settings. ')
+        . (in_array('product', $kinds, true) ? 'To make many new products at once (a list in the request, or products written from a description), call propose_bulk_change once with type product, action create and rows: a JSON list of at most ' . WS_BULK_CREATE_MAX . ' objects of the fields a new product takes, each with a name (its code, unique) and usually short_description and price in minor units; they are made off sale unless a row sets enabled. More than that goes through the product import, so say so. ' : '')
         . 'The person who asked sees how many records it reaches and applies it with one click.';
 }
 
