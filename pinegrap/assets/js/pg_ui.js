@@ -43,7 +43,9 @@
         popover: { v5: 'Popover', v6: 'Popover', ev5: 'popover', ev6: 'popover' },
         collapse: { v5: 'Collapse', v6: 'Collapse', ev5: 'collapse', ev6: 'collapse' },
         tab: { v5: 'Tab', v6: 'Tab', ev5: 'tab', ev6: 'tab' },
-        toast: { v5: 'Toast', v6: 'Toast', ev5: 'toast', ev6: 'toast' }
+        toast: { v5: 'Toast', v6: 'Toast', ev5: 'toast', ev6: 'toast' },
+        // Bootstrap 6 only: under 5 there is no constructor and get() is null.
+        range: { v5: 'Range', v6: 'Range', ev5: 'range', ev6: 'range' }
     };
 
     // Kinds whose show() and hide() end with a shown/hidden event.
@@ -348,6 +350,38 @@
         return window.pgBootstrapReady.then(fn);
     }
 
+    // Wrappers given to bubbleRange(), so a redrawn inspector disposes the
+    // instances of the markup it replaced (Bootstrap keeps every instance in
+    // a Map keyed by its element until dispose()).
+    var ranges = [];
+
+    // A Bootstrap 6 Range on a .form-range wrapper, with the value bubble.
+    // Bootstrap starts only the ranges present at DOMContentLoaded, and
+    // without a formatter, so an instance already there is replaced; markup
+    // drawn later comes here too. format(value) gives the bubble's text.
+    // Returns a promise of the instance (null under Bootstrap 5).
+    function bubbleRange(target, format) {
+        var el = node(target);
+        return ready(function () {
+            ranges = ranges.filter(function (r) {
+                if (r.isConnected === false) {
+                    dispose('range', r);
+                    return false;
+                }
+                return r !== el;
+            });
+            if (!el) {
+                return null;
+            }
+            dispose('range', el);
+            var inst = get('range', el, { bubble: true, formatter: format || null });
+            if (inst) {
+                ranges.push(el);
+            }
+            return inst;
+        });
+    }
+
     var pgUI = {
         version: version,
         names: names,
@@ -379,6 +413,7 @@
         };
     });
     pgUI.dialog.build = buildDialog;
+    pgUI.range.bubble = bubbleRange;
 
     window.pgUI = pgUI;
 })(window, document);

@@ -1491,17 +1491,14 @@ html[data-bs-theme="dark"] .accordion {
 .switch {
   --bs-switch-checked-indicator-bg: #1a1c1e;
 }
-.form-range::-webkit-slider-thumb {
-  background-color: var(--pg-primary);
+.form-range {
+  --bs-range-thumb-bg: var(--pg-primary);
+  --bs-range-thumb-active-bg: var(--pg-primary-line);
+  --bs-range-track-fill-bg: var(--pg-primary);
 }
-.form-range::-moz-range-thumb {
-  background-color: var(--pg-primary);
-}
-.form-range::-webkit-slider-thumb:active {
-  background-color: var(--pg-primary-line);
-}
-.form-range::-moz-range-thumb:active {
-  background-color: var(--pg-primary-line);
+/* Room above a Range for its value bubble, which sits over the thumb */
+.pg-range-bubble {
+  margin-top: 1.75rem;
 }
 
 /***********/
@@ -9259,7 +9256,7 @@ body.pg-side-panel-open .pg-chat-launcher {
    in a stylesheet: the screen still works, it is just plainer. */
 @supports selector(:has(*)) {
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group),
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range),
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) {
     /* The rule and the text start at the same place, which is the card's own
        content edge. A .row carries a negative horizontal margin and gives each
@@ -9314,7 +9311,7 @@ body.pg-side-panel-open .pg-chat-launcher {
      row on screen is hardly ever the last child. A card with one setting in it
      -- Sign in with Google, when it is off -- then ended with a rule under the
      only thing in it and a gap under that. */
-  .pg-set-card .row > * + [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group),
+  .pg-set-card .row > * + [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range),
   .pg-set-card .row > * + [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) {
     padding-top: .85rem;
     border-top: var(--pg-border-width) solid var(--pg-border-color-translucent);
@@ -9336,7 +9333,7 @@ body.pg-side-panel-open .pg-chat-launcher {
      the amount changed with the control, which is what made the card look
      crooked rather than merely offset. Sharing one row makes that row as tall
      as whichever of the two is taller and centres both in it, at any height. */
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group),
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range),
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(7rem, 19rem);
@@ -9352,27 +9349,28 @@ body.pg-side-panel-open .pg-chat-launcher {
   /* Anything the two columns were not expecting takes a line of its own under
      them rather than being wedged into a cell it does not belong in. Stated
      before the placements below so that the placements win. */
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > *,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > *,
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > * {
     grid-column: 1 / -1;
   }
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > .form-label,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > .form-label,
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > :is(.form-field > label) {
     grid-area: pgname;
     margin-bottom: 0;
     font-weight: 500;
   }
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > .form-text,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > .form-text,
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > .form-text {
     grid-area: pgnote;
     margin-top: .1rem;
   }
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > input.form-control,
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > :is(select.form-control),
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > .input-group {
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > input.form-control,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > :is(select.form-control),
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > .input-group,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > .form-range {
     grid-area: pgctrl;
     justify-self: end;
     width: 100%;
@@ -9390,7 +9388,7 @@ body.pg-side-panel-open .pg-chat-launcher {
      name, and the rule between settings is what keeps them apart. */
   @container (max-width: 34rem) {
 
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group),
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range),
     .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field {
       grid-template-columns: minmax(0, 1fr);
       grid-template-areas:
@@ -9401,9 +9399,10 @@ body.pg-side-panel-open .pg-chat-launcher {
       row-gap: .4rem;
     }
 
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > input.form-control,
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > :is(select.form-control),
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group) > .input-group,
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > input.form-control,
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > :is(select.form-control),
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > .input-group,
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > .form-range,
     .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > :is(.check, .radio, .switch) {
       justify-self: start;
     }
