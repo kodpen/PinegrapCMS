@@ -327,3 +327,34 @@ function test_ai_fields_scripts_agree()
 	pg_assert_contains('editor.onKeyUp.add(update)', $marks, 'TinyMCE typing');
 	pg_assert_contains('editor.onChange.add(update)', $marks, 'TinyMCE changes');
 }
+
+// The visual designer posts each page's marked columns as a list beside its
+// settings; the API and the page assistant save pages without one.
+function test_ai_fields_designer_page_save()
+{
+	$values = array('page_title' => 'Home', 'page_meta_description' => 'Our shop');
+	$stored = '{"page_title":"' . pg_ai_fields_fingerprint('Home') . '"}';
+	$both = '{"page_title":"' . pg_ai_fields_fingerprint('Home') . '","page_meta_description":"' . pg_ai_fields_fingerprint('Our shop') . '"}';
+
+	pg_assert_same($both, pg_ai_fields_page_save(array('ai_fields' => array('page_meta_description', 'page_title')), null, $values), 'drafts used in the designer');
+	pg_assert_same(null, pg_ai_fields_page_save(array('ai_fields' => array()), $stored, $values), 'mark removed or text edited');
+	pg_assert_same($stored, pg_ai_fields_page_save(array('page_title' => 'Home'), $stored, $values), 'no list: unchanged text keeps its mark');
+	pg_assert_same(null, pg_ai_fields_page_save(array(), $stored, array('page_title' => 'Start') + $values), 'no list: edited text loses it');
+	pg_assert_same($stored, pg_ai_fields_page_save(array('ai_fields' => 'page_title'), $stored, $values), 'not a list: as none sent');
+	pg_assert_same(null, pg_ai_fields_page_save(null, null, $values), 'nothing');
+}
+
+// The designer's page settings draw a marker beside the title and the meta
+// description and follow the draft panel's event the way the panel's own
+// script does.
+function test_ai_fields_designer_agrees()
+{
+	$screen = file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+	$designer = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+
+	pg_assert_contains("pg_ai_fields_marker('page_title', 'pg_page_title'", $screen, 'title marker');
+	pg_assert_contains("pg_ai_fields_marker('page_meta_description', 'pg_page_meta_description'", $screen, 'description marker');
+	pg_assert_contains("'pg:ai-write-used'", $designer, 'event');
+	pg_assert_contains("'.pg-ai-mark-remove'", $designer, 'remove button');
+	pg_assert_contains("'page_canonical_url', 'page_noarchive', 'page_max_snippet', 'ai_fields'", $designer, 'saved with the page settings');
+}
