@@ -12997,6 +12997,21 @@ a.ws-chip:hover {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+/* The length meter near the message limit, before Send; empty while the
+   text is short. */
+.ws-composer-meter {
+  font-size: .72rem;
+  color: var(--pg-fg-2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.ws-composer-meter:empty {
+  display: none;
+}
+.ws-composer-meter.is-over {
+  color: var(--bs-danger-text-emphasis);
+  font-weight: 600;
+}
 /* A mark the caret or the selection has, on a button of a box's row of
    tools: the tint of the bar over a selection. Undo and redo with nothing to
    take back draw no frame: .btn-ghost sets no disabled border colour, so the

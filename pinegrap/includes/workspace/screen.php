@@ -572,6 +572,11 @@ function ws_editor_js_strings()
         'tool_calc'                 => lang('Calculation'),
         'tool_codeblock'            => lang('Code block'),
         'slash_inserts'             => lang('Insert into the note'),
+        // The composer's length meter near WS_MESSAGE_MAX, spoken to screen
+        // readers, and the server's own refusal past it.
+        'meter_near'                => ws_js_template('{var:1} characters left', 1),
+        'meter_over'                => ws_js_template('{var:1} characters over the limit of {var:2}', 2),
+        'msg_too_long'              => ws_js_template('A message can be at most {var:1} characters long.', 1),
     );
 }
 
@@ -736,6 +741,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'meetings'     => ws_meetings_ready(),
         'poll'         => array('active' => 4),
         'open_channel' => 0,
+        // The longest message body the server takes (the composer's meter).
+        'message_max'  => WS_MESSAGE_MAX,
         'urls'         => array(
             'workspace' => $base . 'workspace.php',
             'tasks'     => $base . 'workspace_tasks.php',
