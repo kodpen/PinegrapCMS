@@ -42,6 +42,7 @@ Table structures and SQL pitfalls.
 - db-q-converted-panel-menus-calendars.md: Region, menu, form list view and calendar panel screens converted to db_q(): PR, optional SQL pieces with their values, what stayed raw, guard test.
 - db-q-converted-panel.md: Panel screens converted to db_q() (user screens edit_user, add_user, import_users; page screens edit_pages, edit_page): PR, special cases, what stayed raw and why, guard test.
 - db-q-converted-shipping-import.md: Shipping, zone, arrival date, commission, commerce settings and product import files converted to db_q() (PR #2314): how values are passed, what stayed raw and why, the guard test.
+- db-q-converted-visitor-settings.md: Visitor text, retention and partition functions, InnoDB checks, output, comment counters, settings and widgets 8 and 23 on db_q(): PR, special cases, what stayed raw, test.
 - db-q-placeholder-helper.md: db_q($sql, $params) and its binder pg_db_bind(): how each ? is filled, what is refused, why it returns false like mysqli_query() instead of ending the request, the new-code rule.
 - files-type-column-width.md: files.type is four characters wide, so long extensions are stored cut (webmanifest as webm); the file manager reads the kind from the name instead; which views still read the column
 - menu-tree-queries.md: Classic menus (get_menu_content(), get_menu_sequence()) read a menu once per request through pg_menu_tree(): two queries, printing order, children counted across menus, what the output must keep

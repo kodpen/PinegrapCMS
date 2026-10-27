@@ -353,11 +353,11 @@ function pg_visitor_partition_rows($table)
         return $rows;
     }
 
-    $result = @mysqli_query(db::$con,
+    $result = db_q(
         "SELECT PARTITION_NAME, PARTITION_METHOD, PARTITION_EXPRESSION, PARTITION_DESCRIPTION
         FROM information_schema.PARTITIONS
-        WHERE (TABLE_SCHEMA = DATABASE()) AND (TABLE_NAME = '" . mysqli_real_escape_string(db::$con, (string) $table) . "')
-        ORDER BY PARTITION_ORDINAL_POSITION");
+        WHERE (TABLE_SCHEMA = DATABASE()) AND (TABLE_NAME = ?)
+        ORDER BY PARTITION_ORDINAL_POSITION", array((string) $table));
 
     while ($result && ($row = mysqli_fetch_assoc($result))) {
         $rows[] = $row;
@@ -429,11 +429,11 @@ function pg_visitor_partition_primary($table)
 {
     $columns = array();
 
-    $result = @mysqli_query(db::$con,
+    $result = db_q(
         "SELECT COLUMN_NAME
         FROM information_schema.STATISTICS
-        WHERE (TABLE_SCHEMA = DATABASE()) AND (TABLE_NAME = '" . mysqli_real_escape_string(db::$con, (string) $table) . "') AND (INDEX_NAME = 'PRIMARY')
-        ORDER BY SEQ_IN_INDEX");
+        WHERE (TABLE_SCHEMA = DATABASE()) AND (TABLE_NAME = ?) AND (INDEX_NAME = 'PRIMARY')
+        ORDER BY SEQ_IN_INDEX", array((string) $table));
 
     while ($result && ($row = mysqli_fetch_row($result))) {
         $columns[] = strtolower((string) $row[0]);

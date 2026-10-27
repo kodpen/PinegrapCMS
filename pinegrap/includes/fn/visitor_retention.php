@@ -836,9 +836,9 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
 
             $chunk_started = microtime(true);
 
-            $deleted = @mysqli_query(db::$con,
+            $deleted = db_q(
                 "DELETE FROM visitors
-                WHERE (id > " . $cursor . ") AND (id <= " . $upper . ") AND (start_timestamp < " . (int) $delete_before . ")");
+                WHERE (id > ?) AND (id <= ?) AND (start_timestamp < ?)", array((int) $cursor, (int) $upper, (int) $delete_before));
 
             if (!$deleted) {
                 // A lock wait timeout or a deadlock with a live write: give
@@ -2735,11 +2735,11 @@ function pg_visitor_shrink_hour_views()
         return array();
     }
 
-    $result = @mysqli_query(db::$con,
+    $result = db_q(
         "SELECT stat_hour, SUM(page_views)
         FROM visitor_stats_hourly
-        WHERE stat_date >= '" . date('Y-m-d', strtotime('-14 days')) . "'
-        GROUP BY stat_hour");
+        WHERE stat_date >= ?
+        GROUP BY stat_hour", array(date('Y-m-d', strtotime('-14 days'))));
 
     $views = array();
 

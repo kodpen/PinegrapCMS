@@ -411,13 +411,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 $query = "INSERT INTO banned_ip_addresses
                             (ip_address, list_type, source, created_at)
                           VALUES
-                            ('" . escape($entry) . "', '" . escape($list_type) . "', 'manual', " . time() . ")
+                            (?, ?, 'manual', ?)
                           ON DUPLICATE KEY UPDATE created_at = VALUES(created_at)";
+                $query_values = array((string) $entry, (string) $list_type, time());
             } else {
-                $query = "INSERT INTO banned_ip_addresses (ip_address) VALUES('" . escape($entry) . "')";
+                $query = "INSERT INTO banned_ip_addresses (ip_address) VALUES(?)";
+                $query_values = array((string) $entry);
             }
 
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, $query_values) or output_error('Query failed.');
         }
     }
 
