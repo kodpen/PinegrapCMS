@@ -190,6 +190,24 @@ function pg_layout_tab_param($page_id, array $layout_page_ids, $role, $hosted)
     return in_array($page_id, array_map('intval', $layout_page_ids), true) ? '&layout=1' : '';
 }
 
+// Where the form screen's "Edit Layout" link goes for a page that draws a
+// custom layout. A page whose own style is a visual design opens the style
+// designer on that page and, as Ctrl+G does (pg_layout_tab_param()), on its
+// layout tab; a page on a classic style keeps the classic page designer.
+// $page_path is the page's site path; the URL is returned unescaped.
+function pg_layout_edit_url($page_id, $page_path, $style_id, $designed, $role, $hosted)
+{
+    $page_id = (int) $page_id;
+    $style_id = (int) $style_id;
+
+    if ($designed && ($style_id > 0)) {
+        return 'edit_system_style.php?id=' . $style_id . '&page=' . $page_id
+            . pg_layout_tab_param($page_id, array($page_id), $role, $hosted);
+    }
+
+    return 'page_designer.php?url=' . urlencode((string) $page_path) . '&type=layout&id=' . $page_id;
+}
+
 // The page whose layout tab the designer opens on load (?layout=1): the page
 // it lands on, when that page draws a custom layout; 0 otherwise.
 function pg_layout_open_page_id($flag, $page_id, array $layout_page_ids)

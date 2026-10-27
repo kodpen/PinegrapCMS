@@ -44,7 +44,8 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
         "SELECT
             page_type,
             page_folder,
-            page_name
+            page_name,
+            page_style
         FROM page
         WHERE page_id = '" . escape($_GET['page_id']) . "'";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -178,9 +179,20 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
 
         // If this page has a custom layout type then output generate layout button.
         if ($layout_type == 'custom') {
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
+
+            // A page of a visual design opens the designer's layout tab.
+            $edit_layout_url = pg_layout_edit_url(
+                $_GET['page_id'],
+                PATH . encode_url_path($page_name),
+                $row['page_style'],
+                pg_page_is_visual_design(array('page_style' => $row['page_style'])),
+                USER_ROLE,
+                pg_hosted());
+
             $output_layout_buttons =
             '<div class=" btn-group btn-group-sm flex-wrap ">
-                <a class="btn btn-link link-secondary py-0 mb-2 " href="page_designer.php?url=' . h(urlencode(PATH . encode_url_path($page_name))) . '&amp;type=layout&amp;id=' . h($_GET['page_id']) . '"><span class="material-icons me-1">code</span>' . lang('Edit Layout') . '</a>
+                <a class="btn btn-link link-secondary py-0 mb-2 " href="' . h($edit_layout_url) . '"><span class="material-icons me-1">code</span>' . lang('Edit Layout') . '</a>
                 <a class="btn btn-link link-secondary py-0 mb-2 " href="generate_layout.php?page_id=' . h($_GET['page_id']) . '"><span class="material-icons me-1">plagiarism</span>' . lang('Generate Layout') . '</a>
             </div>';
         }
