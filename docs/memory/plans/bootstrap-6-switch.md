@@ -9,11 +9,11 @@ description: Step B8 of plans/bootstrap-6-panel.md (claim #1866): building a reh
 
 ## What is still on the hand-fix list (rehearsal 5, 2026-10-27)?
 - `check_bs6.php` on the converted tree: 13 panel findings, each reviewed and left: `bg-`/`text-` stems whose values are theme colours or `start`/`end` (v6 has the same classes), a `removeClass` naming two themes, `page_designer.js`'s `addClass('btn-danger open')` (site preview), `.was-validated`/`was-validated` (no panel form uses `.needs-validation`), `.btn-outline-light/-dark` selectors (no panel element carries them).
-- Look: v6 has no 1400 px breakpoint (`xxl` classes become `2xl`, 1536), so 1400–1535 px screens take the `xl` layout; a few px of height on cards and phone form rows.
+- Look: v6 has no 1400 px breakpoint (`xxl` classes become `2xl`, 1536), so 1400–1535 px screens take the `xl` layout (product screen); a few px of height elsewhere.
 - The visual editor's canvas-facing code in `style_designer.js` stays v5 on purpose; `forms.php` and the other shared files (`bs6_scope_kind()`, 77 check findings) are not converted.
 
 ## Where does the next rehearsal start?
-- Rebuild as above. The browser probe (open every dialog, drawer and menu toggle of the screenshot screens, light and dark) is in the rehearsal 5 comment; continue with what it lists, then the shared files.
+- Rebuild as above, then `open_toggles.js` on both servers (`ui/panel-screenshots.md`). Rehearsal 5 opened 184 toggles with no script error; left: the files sort menu sits 40 px right of v5's, the search and new-design dialogs are 12 px taller, the offer editor's add menus 12-16 px lower. Then dialogs opened from code (settings categories, pickers) and the shared files.
 - Open owner questions in #1866's body: own media queries on 1024/1280 (keep until answered) and the lost 1400 px breakpoint.
 
 ## What does the owner check?
