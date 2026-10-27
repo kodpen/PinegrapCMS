@@ -9,7 +9,7 @@ description: Cutting pg_explorer_handle() (view_folder_and_files_f.php, ~7k line
 - Source-reading tests that looked for the moved code in `view_folder_and_files_f.php` are pointed at the new file.
 
 ## What is done?
-- Slice 1, short links (556 lines, #PRNUM): `handle_short_links.php`, seven handlers and `pg_explorer_short_link_destination_columns()` (tests `explorer_handle_short_links_test.php`, `short_link_requests_test.php`).
+- Slice 1, short links (556 lines, #2109): `handle_short_links.php`, seven handlers and `pg_explorer_short_link_destination_columns()` (tests `explorer_handle_short_links_test.php`, `short_link_requests_test.php`).
 
 ## In which order are the rest cut? (lines in the switch)
 2. Backups: list, chmod, extract, upload, rename/copy/delete, zip (625).
