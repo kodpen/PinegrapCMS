@@ -6,6 +6,8 @@ description: Panel sliders as the Bootstrap 6 Range with a value bubble (step B9
 ## What does a panel slider look like?
 - A `.form-range` wrapper around `<input type="range" class="form-range-input">`, plus `.pg-range-bubble` (1.75rem of room above for the bubble, which sits over the thumb and would cover the row above). The wrapper carries the tokens; `backend.src.css` sets thumb and fill to `--pg-primary`. The input keeps `name`, `id`, `min`, `max`, `step`: it is still what the form posts.
 - No separate value label next to the slider: the bubble shows the value.
+- Settings rows: `.form-range` is a control of the two-column row (`backend.src.css`, the `:has()` list with `.input-group`), so it sits on the right like a number field.
+- Editor inspector (`style_designer.css`): the input is not boxed like the other inspector inputs, and the bubble takes `--sd-accent` (the dark tooltip vanishes on the dark panel).
 
 ## How is it started?
 - Bootstrap starts every `.form-range` only at DOMContentLoaded and without a formatter. `pgUI.range.bubble(wrapper, format)` (`pg_ui.js`) disposes that instance and makes one with `bubble: true` and `format(value)` as the bubble text; it waits for `pgUI.ready()` and returns a promise (null under Bootstrap 5).
