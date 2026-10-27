@@ -69540,6 +69540,9 @@ const StyleDesigner = (function () {
                 pg_comments_attachments: sp.pg_comments_attachments ? 1 : 0, pg_comments_select_name: sp.pg_comments_select_name ? 1 : 0,
                 pg_comments_message: sp.pg_comments_message || '', pg_comments_closed_message: sp.pg_comments_closed_message || '',
                 pg_comments_watchers_managed: sp.pg_comments_watchers_managed ? 1 : 0,
+                // A page of a classic style just opened in the editor: its
+                // tree is not saved yet, so it starts unsaved.
+                converted: sp.converted ? 1 : 0,
                 tree: sp.tree || null, undoStack: [], redoStack: [], nodeIdCounter: 0,
                 baseline: null, treeLoadWarning: !!sp.treeLoadWarning,
                 // The page's form-level settings, as stored; written back
@@ -69573,7 +69576,7 @@ const StyleDesigner = (function () {
         _pgTabGroupRevealActive();
         var a = _pgActivePage();
         tree = a.tree; undoStack = []; redoStack = []; nodeIdCounter = a.nodeIdCounter || reindex(tree);
-        _pages.forEach(function (p) { p.baseline = (p.page_id === 0) ? null : _pgBaselineOf(p); });
+        _pages.forEach(function (p) { p.baseline = (p.page_id === 0 || p.converted) ? null : _pgBaselineOf(p); });
 
         _pgLoadPageIntoFields(a);
         _pgTabsRender();

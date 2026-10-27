@@ -3134,6 +3134,7 @@
     "The style has been saved.": "Stil kaydedildi.",
     "The style has no code to open.": "Stilin açılacak kodu yok.",
     "The style is missing the <meta_tags></meta_tags> placeholder, so the title, description, canonical link and sharing tags are never written": "Şablonda <meta_tags></meta_tags> yer tutucusu yok; bu yüzden başlık, açıklama, canonical bağlantısı ve paylaşım etiketleri hiç yazılmıyor",
+    "The style opened in the visual designer. Its code is now the shared component that frames its pages. Nothing changes on the site until you save; saving makes the style a visual design.": "Stil görsel tasarımcıda açıldı. Kodu artık sayfalarını çerçeveleyen ortak bileşen. Kaydedene kadar sitede hiçbir şey değişmez; kaydetmek stili görsel tasarıma çevirir.",
     "The style was created successfully.": "Stil başarıyla oluşturuldu.",
     "The style was deleted successfully.": "Stil başarıyla silindi.",
     "The style was edited successfully.": "Stil başarıyla düzenlendi.",

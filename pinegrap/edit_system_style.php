@@ -98,15 +98,39 @@ $style = array(
     'meta_tags'                         => isset($row['style_meta_tags']) ? (string)$row['style_meta_tags'] : '',
 );
 
-// Every page on this design, in creation order. Also performs the legacy
-// name-match link for designs saved by the single-page editor.
-$pages = pg_designer_load_pages($style_id, $style['name']);
+// ?classic=1: a classic style opened from the style list. Its code becomes
+// one shared component framing every page that names the style, each with a
+// tree placing it; nothing is written to the pages or the style until Save,
+// which makes the style a visual design (includes/fn/classic_style_design.php).
+$classic = null;
+if (!$_POST && !$component && !empty($_GET['classic'])) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/classic_style_design.php');
+    $classic = pg_classic_style_design_open($style_id, $user);
+    if ($classic['error'] !== '') {
+        output_error(h($classic['error']) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 403);
+    }
+    // The theme is not written for the designer's Bootstrap 5, and the
+    // style's head files are the design's files now.
+    $style['framework']          = 'custom';
+    $style['style_custom_css']   = $classic['css'];
+    $style['style_custom_js']    = $classic['js'];
+    $style['style_custom_fonts'] = $classic['fonts'];
+    $pages = $classic['pages'];
+    $liveform->add_notice(h(lang('The style opened in the visual designer. Its code is now the shared component that frames its pages. Nothing changes on the site until you save; saving makes the style a visual design.')));
+    foreach ($classic['warnings'] as $classic_warning) {
+        $liveform->add_warning(h($classic_warning));
+    }
+} else {
+    // Every page on this design, in creation order. Also performs the legacy
+    // name-match link for designs saved by the single-page editor.
+    $pages = pg_designer_load_pages($style_id, $style['name']);
+}
 
 // Bridge for designs that pre-date the migration AND have not been opened
 // since: the assets are still on the (first) page. Read them from there so
 // the assets panel is not empty on first open; the save writes them to the
 // style and clears the page copies.
-if ($style['style_custom_css'] === '' && $style['style_custom_js'] === '' && $style['style_custom_fonts'] === '' && !empty($pages)) {
+if (!$classic && $style['style_custom_css'] === '' && $style['style_custom_js'] === '' && $style['style_custom_fonts'] === '' && !empty($pages)) {
     $legacy = db_item(
         "SELECT page_custom_css, page_custom_js, page_custom_fonts FROM page
          WHERE page_id = '" . (int)$pages[0]['page_id'] . "' LIMIT 1");
