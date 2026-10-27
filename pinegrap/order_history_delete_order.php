@@ -29,8 +29,8 @@ $query =
         user_id,
         status
     FROM orders
-    WHERE id = '" . escape($order_id) . "'";
-$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    WHERE id = ?";
+$result = db_q($query, array((string) $order_id)) or output_error(lang('Query failed.'));
 
 // if the order was not found, output error
 if (mysqli_num_rows($result) == 0) {
@@ -42,8 +42,8 @@ $order_user_id = $row['user_id'];
 $status = $row['status'];
 
 // get user id for user
-$query = "SELECT user_id FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+$query = "SELECT user_id FROM user WHERE user_username = ?";
+$result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error(lang('Query failed.'));
 $row = mysqli_fetch_assoc($result);
 $user_id = $row['user_id'];
 

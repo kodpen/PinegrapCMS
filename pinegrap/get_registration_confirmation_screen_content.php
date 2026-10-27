@@ -24,8 +24,8 @@ function get_registration_confirmation_screen_content()
     // if the user is logged in, then get user's e-mail address and username
     if (isset($_SESSION['sessionusername']) == true) {
         // get e-mail address
-        $query = "SELECT user_email FROM user WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT user_email FROM user WHERE user_username = ?";
+        $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $email_address = $row['user_email'];
         

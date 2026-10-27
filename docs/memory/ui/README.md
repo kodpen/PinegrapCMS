@@ -46,6 +46,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - chart-destroy-before-markup-change.md: Destroy Chart.js charts (destroy_widget_charts in welcome.php) before .html()/.remove()/.append() replaces markup with canvases, or instances leak.
 - code-editor-escape-in-dialogs.md: Escape inside a code editor that sits in a dialog: an Escape the editor used (completion list, search panel, full window) stops at the editor; only a free one closes the dialog
 - command-palette.md: Panel search box (Ctrl+K): where the chips come from, how text is matched, why every key must be a string (the "503" crash), chips that open a dialog
+- contact-shared-form.md: The contact create and edit screens share includes/forms/contact_form.php: what it holds, what stays in the screens
 - currency-exchange-rate-box.md: Exchange rate box on add/edit currency: five decimals like currencies.exchange_rate and the rate updater, filled and stored with five; 0,0285 no longer saved as 0,03 (#1335, PR #1341)
 - dashboard-sales-map-data.md: Dashboard sales map widget 1 data side: files, map assets, adding a country, region-name resolution, matching, opening view, number definition, quantile steps.
 - dashboard-sales-map-panel.md: Dashboard sales map widget 1 panel behavior: corner menu with fixed Popper, card colour, permission gates, link gating, brief line signals, reused id 1.
@@ -55,6 +56,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - edit-screen-wide-layout.md: Owner decision for panel edit screens: a wide screen is not spent on one column of stacked cards; form column, sticky status column, sticky save bar, modeled on product_builder.php.
 - email-campaign-profile-shared-form.md: The campaign profile create and edit screens share includes/forms/email_campaign_profile_form.php
 - explorer-grid-tiles.md: Explorer grid tiles (view_folders.php, catalog and files): the tile size scale, picture vs glyph, the missing-picture plate sized from --pg-tile-icon, the narrow pill it fixed (PR #2200)
+- field-shared-form.md: The form field screens share includes/forms/field_form.php; add_field.php uses it, edit_field.php is the next step
 - flex-overflow-hidden-pitfall.md: CSS pitfall - any overflow value other than visible zeroes a flex item's automatic minimum size (min-height: auto), collapsing panels on narrow screens.
 - form-adorn.md: Bootstrap 6 form-adorn in the panel (step B9f): which input-groups become a label wrapper with the add-on inside the border, the markup, the panel focus rules, the pilot places
 - form-item-view-variables.md: Variables a form item view layout (and form e-mail subject/body) can use: ^^field^^, conditional blocks, date and check box formats, and where the edit screen's clickable list comes from

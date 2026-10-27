@@ -207,6 +207,7 @@
         saveError: '',
         conflict: '',
         refocus: '',
+        startFilter: '',    // the list narrowed to one way of starting, '' for all
         space: false,
         drag: null,
         pointers: {},
@@ -722,8 +723,14 @@
     function drawList() {
         K.clear(ui.listCol);
 
+        if (state.flows.length) {
+            ui.listCol.appendChild(startFilter());
+        }
+
         [[true, 'fl_list_mine'], [false, 'fl_list_shared']].forEach(function (part) {
-            var flows = state.flows.filter(function (flow) { return flow.mine === part[0]; });
+            var flows = state.flows.filter(function (flow) {
+                return flow.mine === part[0] && (!state.startFilter || flow.start === state.startFilter);
+            });
 
             if (!flows.length && !part[0]) {
                 return;
@@ -734,7 +741,7 @@
             var list = el('ul', 'list-unstyled mb-5');
 
             if (!flows.length) {
-                list.appendChild(el('li', 'small fg-secondary px-3', t('fl_none')));
+                list.appendChild(el('li', 'small fg-secondary px-3', t(state.startFilter ? 'fl_none_start' : 'fl_none')));
             }
 
             flows.forEach(function (flow) {
@@ -800,6 +807,33 @@
         }
     }
 
+    // The select that narrows the list to the flows started one way: at a
+    // time, by hand, on an event or when somebody joins a channel.
+    function startFilter() {
+        var wrap = el('div', 'px-3 mb-3');
+        var select = el('select', 'form-control form-control-sm');
+
+        [['', 'fl_start_all'], ['time', 'fl_kind_schedule'], ['manual', 'fl_kind_manual'], ['event', 'fl_kind_event'], ['join', 'fl_kind_join']].forEach(function (choice) {
+            var option = el('option', '', t(choice[1]));
+
+            option.value = choice[0];
+            option.selected = (choice[0] === state.startFilter);
+            select.appendChild(option);
+        });
+
+        select.setAttribute('aria-label', t('fl_start_filter'));
+        select.setAttribute('data-refocus', 'start-filter');
+        select.addEventListener('change', function () {
+            state.startFilter = select.value;
+            state.refocus = 'start-filter';
+            drawList();
+            refocus();
+        });
+        wrap.appendChild(select);
+
+        return wrap;
+    }
+
     function statusBadge(flow, small) {
         var text = t('fl_status_draft');
         var tone = 'secondary';
@@ -816,7 +850,7 @@
     }
 
     function listEntry(flow) {
-        var brief = { id: flow.id, name: flow.name, status: flow.status, access: flow.access, mine: flow.mine, channel_id: flow.channel_id, draft_rev: flow.draft_rev, version: flow.version };
+        var brief = { id: flow.id, name: flow.name, status: flow.status, access: flow.access, mine: flow.mine, channel_id: flow.channel_id, draft_rev: flow.draft_rev, version: flow.version, start: flow.start };
         var found = false;
 
         state.flows = state.flows.map(function (item) {

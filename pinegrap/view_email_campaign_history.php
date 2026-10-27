@@ -143,8 +143,8 @@ if ($email_campaigns) {
         }
         
         // get total number of recipients
-        $query = "SELECT COUNT(*) FROM email_recipients WHERE email_campaign_id = '" . $email_campaign['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT COUNT(*) FROM email_recipients WHERE email_campaign_id = ?";
+        $result = db_q($query, array((string) $email_campaign['id'])) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         $number_of_email_recipients = $row[0];
 
@@ -168,8 +168,8 @@ if ($email_campaigns) {
         }
 
         // get total number of complete recipients
-        $query = "SELECT COUNT(*) FROM email_recipients WHERE (email_campaign_id = '" . $email_campaign['id'] . "') AND (complete = '1')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT COUNT(*) FROM email_recipients WHERE (email_campaign_id = ?) AND (complete = '1')";
+        $result = db_q($query, array((string) $email_campaign['id'])) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         $number_of_completed_email_recipients = $row[0];
 

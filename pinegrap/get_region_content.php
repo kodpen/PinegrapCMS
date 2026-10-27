@@ -34,8 +34,8 @@ switch ($_GET['region_type'] ?? '') {
                 page.page_folder as folder_id
             FROM pregion
             LEFT JOIN page ON pregion.pregion_page = page.page_id
-            WHERE pregion.pregion_id = '" . escape($_GET['region_id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE pregion.pregion_id = ?";
+        $result = db_q($query, array((string) ($_GET['region_id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         $pregion_content = $row['pregion_content'];
@@ -88,8 +88,8 @@ switch ($_GET['region_type'] ?? '') {
                 system_region_header,
                 page_folder as folder_id
             FROM page
-            WHERE page_id = '" . escape($_GET['region_id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE page_id = ?";
+        $result = db_q($query, array((string) ($_GET['region_id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         $system_region_header = $row['system_region_header'];
@@ -115,8 +115,8 @@ switch ($_GET['region_type'] ?? '') {
                 system_region_footer,
                 page_folder as folder_id
             FROM page
-            WHERE page_id = '" . escape($_GET['region_id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE page_id = ?";
+        $result = db_q($query, array((string) ($_GET['region_id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         $system_region_footer = $row['system_region_footer'];

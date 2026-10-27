@@ -304,10 +304,10 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 sm:col-4 lg:col-3 xl:col-2 my-3">
                                             <label for="balance" class="form-label">' . lang('Balance') . '</label>
-                                            <div class="input-group">
-                                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'balance', 'name' => 'balance', 'class' => 'form-control text-end', 'maxlength'=>'12', 'inputmode'=>'numeric', 'required'=>'required') + pg_money_mask_attributes()) . '
-                                                <label class="input-group-text" for="balance">' . BASE_CURRENCY_SYMBOL . '</label>
-                                            </div>
+                                            <label class="form-control form-adorn form-adorn-end">
+                                                <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
+                                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'balance', 'name' => 'balance', 'class' => 'form-ghost text-end', 'maxlength'=>'12', 'inputmode'=>'numeric', 'required'=>'required') + pg_money_mask_attributes()) . '
+                                            </label>
                                             <div class="form-text text-end">' . lang(array('string'=>'Original Amount: {var:1}','vars'=>array(pg_format_money($gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) ))) . '</div>
                                         </div>
                                         <div class="col-12 sm:col-4 xl:col-3 my-3">

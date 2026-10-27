@@ -1193,8 +1193,8 @@ if ($pages) {
                 // if a style was found, then get style name
                 if ($style_id != 0) {
                     // get inherited style name
-                    $query = "SELECT style_name FROM style WHERE style_id = '$style_id'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $query = "SELECT style_name FROM style WHERE style_id = ?";
+                    $result = db_q($query, array((string) $style_id)) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
 
                     $output_style_name = lang(array('string' => 'Default: {var:1}', 'vars' => h($row['style_name'])));

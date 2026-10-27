@@ -190,8 +190,8 @@ if (!$_POST) {
         $query =
             "SELECT id
             FROM menus
-            WHERE (name = '" . escape($liveform->get_field_value('name')) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE (name = ?)";
+        $result = db_q($query, array((string) $liveform->get_field_value('name'))) or output_error('Query failed.');
         
         // if name is already in use by a different menu, prepare error
         if (mysqli_num_rows($result) > 0) {
@@ -219,17 +219,26 @@ if (!$_POST) {
             last_modified_user_id,
             last_modified_timestamp)
         VALUES (
-            '" . e($liveform->get_field_value('name')) . "',
-            '" . e($liveform->get_field_value('effect')) . "',
-            '" . e($liveform->get_field_value('first_level_popup_position')) . "',
-            '" . e($liveform->get_field_value('second_level_popup_position')) . "',
-            '" . e($liveform->get('class')) . "',
-            '" . e($liveform->get('active_item_class')) . "',
-            '" . $user['id'] . "',
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
             UNIX_TIMESTAMP(),
-            '" . $user['id'] . "',
+            ?,
             UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array(
+        (string) $liveform->get_field_value('name'),
+        (string) $liveform->get_field_value('effect'),
+        (string) $liveform->get_field_value('first_level_popup_position'),
+        (string) $liveform->get_field_value('second_level_popup_position'),
+        (string) $liveform->get('class'),
+        (string) $liveform->get('active_item_class'),
+        (string) $user['id'],
+        (string) $user['id'],
+    )) or output_error('Query failed.');
 
     log_activity(lang(array('string'=>'{var:1} ({var:2}) was created','vars'=>array(lang('menu'),$liveform->get_field_value('name')))), $_SESSION['sessionusername']);
 

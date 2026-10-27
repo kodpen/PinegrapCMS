@@ -322,20 +322,30 @@ function pg_page_revision_seed($page_id)
     $errno = 0;
 
     for ($attempt = 1; ; $attempt++) {
-        $ok = @mysqli_query(db::$con,
+        $ok = db_q(
             "INSERT INTO page_revisions
                 (page_id, style_id, revision_no, page_tree_json, tree_hash, tree_code_hash, settings_json, user_id, source, created_at)
              VALUES (
-                '$page_id',
-                '" . (int) $values['style_id'] . "',
+                ?,
+                ?,
                 1,
-                '" . e($values['tree_json']) . "',
-                '" . e($values['tree_hash']) . "',
-                '" . e($values['code_hash']) . "',
-                '" . e($values['settings_json']) . "',
-                '" . (int) $values['user_id'] . "',
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
                 'publish',
-                '" . (int) $values['created_at'] . "')");
+                ?)",
+            array(
+                (string) $page_id,
+                (string) (int) $values['style_id'],
+                (string) $values['tree_json'],
+                (string) $values['tree_hash'],
+                (string) $values['code_hash'],
+                (string) $values['settings_json'],
+                (string) (int) $values['user_id'],
+                (string) (int) $values['created_at'],
+            ));
 
         if ($ok) {
             return 1;
@@ -402,22 +412,34 @@ function pg_page_revision_record($page_id, $style_id, $tree_json, $tree_code, $u
     // on the unique key or on the first one's locks and is tried again
     // (pg_page_revision_retry_delay()); the next try reads the next number.
     for ($attempt = 1; ; $attempt++) {
-        $ok = @mysqli_query(db::$con,
+        $ok = db_q(
             "INSERT INTO page_revisions
                 (page_id, style_id, revision_no, page_tree_json, tree_hash, tree_code_hash, settings_json, user_id, source, created_at)
              SELECT
-                '$page_id',
-                '" . (int) $style_id . "',
+                ?,
+                ?,
                 COALESCE(MAX(revision_no), 0) + 1,
-                '" . e($tree_json) . "',
-                '" . e($tree_hash) . "',
-                '" . e($code_hash) . "',
-                '" . e($settings_json) . "',
-                '" . (int) $user_id . "',
-                '" . e($source) . "',
-                '" . time() . "'
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?
              FROM page_revisions
-             WHERE page_id = '$page_id'");
+             WHERE page_id = ?",
+            array(
+                (string) $page_id,
+                (string) (int) $style_id,
+                (string) $tree_json,
+                (string) $tree_hash,
+                (string) $code_hash,
+                (string) $settings_json,
+                (string) (int) $user_id,
+                (string) $source,
+                (string) time(),
+                (string) $page_id,
+            ));
 
         if ($ok) {
             // The row this INSERT wrote, by its own id: MAX() could already be

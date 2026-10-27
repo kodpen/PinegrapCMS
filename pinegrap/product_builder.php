@@ -1650,10 +1650,9 @@ function pg_pb_clear_form_template($group_id)
  * it survives Google renaming a category.
  *
  * The taxonomy is ~5,595 categories. Rendering it as <option> elements is about
- * 785 KB of markup and 5,595 DOM nodes, and select2 copies every one of them
- * into its own results list and rescans them on each keystroke. So the list
- * never reaches the browser: the field is a select2 in AJAX mode and the search
- * happens here.
+ * 785 KB of markup and 5,595 DOM nodes for a field that shows a handful of
+ * matches. So the list never reaches the browser: the field is a combobox that
+ * searches the server (data-pg-source) and the search happens here.
  *
  * The files are shipped with the software and edited by hand — Google last
  * revised the taxonomy in 2021, so there is nothing to keep in sync and no

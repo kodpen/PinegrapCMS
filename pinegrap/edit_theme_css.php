@@ -190,16 +190,24 @@ if (!$_POST) {
                 user,
                 timestamp)
             VALUES (
-                '" . escape($new_file_name) . "',
-                '" . escape($row['folder']) . "',
-                '" . escape($row['description']) . "',
-                '" . escape($file_extension) . "',
-                '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $new_file_name)) . "',
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
                 '1',
-                '" . $row['theme'] . "',
-                '$user[id]',
+                ?,
+                ?,
                 UNIX_TIMESTAMP())";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array(
+            (string) $new_file_name,
+            (string) $row['folder'],
+            (string) $row['description'],
+            (string) $file_extension,
+            (string) filesize(FILE_DIRECTORY_PATH . '/' . $new_file_name),
+            (string) $row['theme'],
+            (string) $user['id'],
+        )) or output_error('Query failed.');
         $new_theme_id = mysqli_insert_id(db::$con);
 
         // Duplicate preview style records.
@@ -266,11 +274,15 @@ if (!$_POST) {
         $query =
             "UPDATE files 
             SET 
-                size = '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $file_name)) . "',
+                size = ?,
                 timestamp = UNIX_TIMESTAMP(), 
-                user = '" . $user['id'] . "' 
-            WHERE id = '" . $id . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                user = ? 
+            WHERE id = ?";
+        $result = db_q($query, array(
+            (string) filesize(FILE_DIRECTORY_PATH . '/' . $file_name),
+            (string) $user['id'],
+            (string) $id,
+        )) or output_error('Query failed.');
         
         // log the change and add a notice that the file was modified
         log_activity(lang(array('string'=>'the css for theme file ({var:1}) was modified','vars'=>$file_name)), $_SESSION['sessionusername']);

@@ -35,8 +35,8 @@ $query =
         form_name,
         form_label_column_width
     FROM products
-    WHERE id = '" . escape($_GET['product_id'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE id = ?";
+$result = db_q($query, array((string) ($_GET['product_id'] ?? ''))) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 // Opened without a product, or for one that no longer exists (stale link,
