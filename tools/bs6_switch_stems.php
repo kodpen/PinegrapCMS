@@ -187,7 +187,13 @@ function bs6_switch_stems($source)
 		return array('source' => $source, 'status' => 'done');
 	}
 
+	$site_output = bs6_site_output_ranges($source);
+
 	foreach ($matches as $m) {
+		if ($site_output && bs6_in_ranges($m[0][1], $site_output)) {
+			continue;
+		}
+
 		$stem = $m[1][0];
 		$join = $m[2][0];
 		$suffix = isset($m[4]) && $m[4][1] >= 0 ? $m[4][0] : '';
