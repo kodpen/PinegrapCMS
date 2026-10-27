@@ -92,7 +92,7 @@ function test_output_period_nav_steps_by_the_unit()
 	pg_assert_contains('href="view_orders.php?start_month=10&amp;start_day=09&amp;start_year=2026&amp;stop_month=10&amp;stop_day=09&amp;stop_year=2026"', $html, 'previous day');
 	pg_assert_contains('href="view_orders.php?start_month=10&amp;start_day=11&amp;start_year=2026&amp;stop_month=10&amp;stop_day=11&amp;stop_year=2026"', $html, 'next day');
 	pg_assert_contains('href="view_orders.php?start_month=01&amp;start_day=01&amp;start_year=2026&amp;stop_month=12&amp;stop_day=31&amp;stop_year=2026"', $html, 'this year in the menu');
-	pg_assert_same(1, substr_count($html, 'dropdown-item link-body-emphasis active'), 'one unit marked');
+	pg_assert_same(1, substr_count($html, 'menu-item pg-link-body-emphasis active'), 'one unit marked');
 	pg_assert_contains('Oct 10 &amp; on', $html, 'range text as given');
 	pg_assert_contains('class="d-inline-block d-none"', $html, 'extra class');
 }

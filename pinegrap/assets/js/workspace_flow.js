@@ -536,7 +536,7 @@
         K.clear(root);
 
         if (!FL.ready) {
-            root.appendChild(el('div', 'alert alert-warning', t('fl_not_ready')));
+            root.appendChild(el('div', 'alert theme-warning', t('fl_not_ready')));
             return;
         }
 
@@ -573,11 +573,11 @@
 
     function layout(root) {
         ui.root = root;
-        ui.bar = el('nav', 'pg-toolbar navigation mb-2 wsf-bar');
+        ui.bar = el('nav', 'pg-toolbar navigation mb-3 wsf-bar');
         ui.bar.setAttribute('aria-label', t('fl_toolbar'));
         ui.problemBox = el('div', 'wsf-problems d-none');
         ui.problemBox.id = 'wsf-problems';
-        ui.conflictBox = el('div', 'alert alert-warning d-flex flex-wrap align-items-center gap-2 py-2 d-none');
+        ui.conflictBox = el('div', 'alert theme-warning d-flex flex-wrap align-items-center gap-3 py-3 d-none');
         // While a run is shown: which, and the way back to the flow.
         ui.runBox = el('div', 'wsf-run-bar d-none');
         ui.app = el('div', 'wsf-app');
@@ -679,10 +679,10 @@
 
             ui.listCol.appendChild(el('div', 'wsf-list-title', t(part[1])));
 
-            var list = el('ul', 'list-unstyled mb-3');
+            var list = el('ul', 'list-unstyled mb-5');
 
             if (!flows.length) {
-                list.appendChild(el('li', 'small text-body-secondary px-2', t('fl_none')));
+                list.appendChild(el('li', 'small fg-secondary px-3', t('fl_none')));
             }
 
             flows.forEach(function (flow) {
@@ -726,7 +726,7 @@
         if (FL.scheduled) {
             var item = el('li');
             var link = el('button', 'wsf-list-item' + ((state.section === 'scheduled') ? ' active' : ''));
-            var list = el('ul', 'list-unstyled mb-3 pt-2 border-top');
+            var list = el('ul', 'list-unstyled mb-5 pt-3 border-top');
 
             link.type = 'button';
             link.appendChild(K.icon('bi-alarm'));
@@ -854,7 +854,7 @@
             ui.empty.classList.add('d-none');
             ui.stage.classList.add('d-none');
             ui.scheduled.classList.remove('d-none');
-            ui.scheduled.appendChild(el('h2', 'h5 mb-3', t('sa_title')));
+            ui.scheduled.appendChild(el('h2', 'h5 mb-5', t('sa_title')));
             K.scheduledList(ui.scheduled, ui.bar);
             listToggle();
             drawList();
@@ -911,17 +911,17 @@
         ui.bar.appendChild(el('span', 'pg-toolbar-grow'));
 
         if (options.edit) {
-            var edit = K.button('btn btn-sm btn-outline-secondary', t('edit'), 'bi-pencil');
+            var edit = K.button('btn btn-sm btn-outline theme-secondary', t('edit'), 'bi-pencil');
             edit.addEventListener('click', options.edit);
             ui.bar.appendChild(edit);
         }
 
         ui.scheduled.appendChild(el('h2', 'h5 mb-1', item.name));
-        ui.scheduled.appendChild(el('p', 'small text-body-secondary', t('sa_canvas_help')));
+        ui.scheduled.appendChild(el('p', 'small fg-secondary', t('sa_canvas_help')));
 
         var chipRow = el('div', 'ws-sa-graph-chips');
         var chip = function (iconName, text) {
-            var part = el('span', 'badge rounded-pill text-bg-light border ws-sa-graph-chip');
+            var part = el('span', 'badge rounded-pill badge-subtle theme-secondary border ws-sa-graph-chip');
 
             part.appendChild(K.icon(iconName, 'me-1'));
             part.appendChild(document.createTextNode(text));
@@ -1126,7 +1126,7 @@
             return;
         }
 
-        var create = K.button('btn btn-sm btn-primary rounded-pill px-3', t('fl_new'), 'bi-plus-lg');
+        var create = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('fl_new'), 'bi-plus-lg');
 
         create.setAttribute('data-refocus', 'new');
         create.addEventListener('click', createFlow);
@@ -1134,7 +1134,7 @@
     }
 
     function listToggle() {
-        var toggle = K.button('btn btn-sm btn-ghost d-md-none', t('fl_nav'), 'bi-list-ul');
+        var toggle = K.button('btn btn-sm btn-ghost md:d-none', t('fl_nav'), 'bi-list-ul');
 
         toggle.setAttribute('aria-expanded', ui.app.classList.contains('wsf-show-list') ? 'true' : 'false');
         toggle.addEventListener('click', function () {
@@ -1160,7 +1160,7 @@
             return;
         }
 
-        var run = K.button(primary ? 'btn btn-sm btn-primary rounded-pill px-3' : 'btn btn-sm btn-outline-secondary', t('fl_run'), 'bi-play-fill');
+        var run = K.button(primary ? 'btn btn-sm btn-solid theme-primary rounded-pill px-5' : 'btn btn-sm btn-outline theme-secondary', t('fl_run'), 'bi-play-fill');
 
         run.title = t('fl_run_help');
         run.setAttribute('data-refocus', 'run');
@@ -1249,7 +1249,7 @@
         ui.status.setAttribute('data-refocus', 'status');
         ui.bar.appendChild(ui.status);
 
-        ui.unpublished = el('span', 'small text-body-secondary wsf-unpublished d-none', t('fl_unpublished'));
+        ui.unpublished = el('span', 'small fg-secondary wsf-unpublished d-none', t('fl_unpublished'));
         ui.bar.appendChild(ui.unpublished);
         ui.save = el('span', 'small wsf-save');
         ui.save.setAttribute('role', 'status');
@@ -1279,7 +1279,7 @@
         // A run shown says so in its own bar above the canvas.
         if (!state.edit) {
             if (!state.run) {
-                ui.bar.appendChild(el('span', 'small text-body-secondary', t('fl_read_only')));
+                ui.bar.appendChild(el('span', 'small fg-secondary', t('fl_read_only')));
             }
 
             moreMenu();
@@ -1304,16 +1304,16 @@
         // rights, so a colleague shared at edit changes the draft and the
         // server refuses them a publish (ws_flow_publish_check()).
         if (flow.manage) {
-            ui.publish = K.button('btn btn-sm btn-outline-secondary', t('fl_publish'), 'bi-send');
+            ui.publish = K.button('btn btn-sm btn-outline theme-secondary', t('fl_publish'), 'bi-send');
             ui.publish.addEventListener('click', publish);
             ui.bar.appendChild(ui.publish);
         } else {
             ui.publish = null;
-            ui.bar.appendChild(el('span', 'small text-body-secondary wsf-publish-owner', t('fl_publish_owner')));
+            ui.bar.appendChild(el('span', 'small fg-secondary wsf-publish-owner', t('fl_publish_owner')));
         }
 
         if (flow.status === 'live') {
-            var pause = K.button('btn btn-sm btn-outline-secondary', t('fl_pause'), 'bi-pause-circle');
+            var pause = K.button('btn btn-sm btn-outline theme-secondary', t('fl_pause'), 'bi-pause-circle');
             pause.addEventListener('click', function () { act('ws_flow_pause', pause, t('fl_paused')); });
             ui.bar.appendChild(pause);
         }
@@ -1326,12 +1326,13 @@
     // owner, to read for the others), and deleting it for its owner alone.
     function moreMenu() {
         var flow = state.flow;
-        var more = el('div', 'dropdown');
+        var more = el('div', 'pg-menu-wrap');
         var moreButton = K.button('btn btn-sm btn-ghost', '', 'bi-three-dots', t('fl_more'));
-        var menu = el('ul', 'dropdown-menu dropdown-menu-end');
-        var share = K.button('dropdown-item link-body-emphasis', flow.manage ? t('fl_share') : t('fl_shared_with'), flow.manage ? 'bi-share' : 'bi-people');
+        var menu = el('ul', 'menu pg-menu-end');
+        var share = K.button('menu-item pg-link-body-emphasis', flow.manage ? t('fl_share') : t('fl_shared_with'), flow.manage ? 'bi-share' : 'bi-people');
 
-        moreButton.setAttribute('data-bs-toggle', 'dropdown');
+        moreButton.setAttribute('data-bs-toggle', 'menu');
+        moreButton.setAttribute('data-bs-placement', 'bottom-end');
         moreButton.setAttribute('aria-expanded', 'false');
         moreButton.setAttribute('data-refocus', 'more');
         share.setAttribute('data-wsf-share', '');
@@ -1339,7 +1340,7 @@
         menu.appendChild(el('li')).appendChild(share);
 
         if (flow.manage && state.edit) {
-            var bin = K.button('dropdown-item link-body-emphasis', t('fl_bin'), 'bi-trash');
+            var bin = K.button('menu-item pg-link-body-emphasis', t('fl_bin'), 'bi-trash');
 
             bin.addEventListener('click', binFlow);
             menu.appendChild(el('li')).appendChild(bin);
@@ -1370,8 +1371,8 @@
 
         ui.save.textContent = text;
         ui.save.title = state.saveError || '';
-        ui.save.classList.toggle('text-danger', !!(state.saveError || state.conflict));
-        ui.save.classList.toggle('text-body-secondary', !(state.saveError || state.conflict));
+        ui.save.classList.toggle('fg-danger', !!(state.saveError || state.conflict));
+        ui.save.classList.toggle('fg-secondary', !(state.saveError || state.conflict));
 
         if (state.saveError && !state.saving) {
             var retry = K.button('btn btn-sm btn-link p-0 ms-1 align-baseline', t('fl_retry'));
@@ -1384,7 +1385,7 @@
         }
 
         K.clear(ui.problemButton);
-        ui.problemButton.className = 'btn btn-sm ' + (count ? 'btn-outline-danger' : 'btn-ghost');
+        ui.problemButton.className = 'btn btn-sm ' + (count ? 'btn-outline theme-danger' : 'btn-ghost');
         ui.problemButton.appendChild(K.icon(count ? 'bi-exclamation-triangle' : 'bi-check2-circle', 'me-1'));
         ui.problemButton.appendChild(document.createTextNode(count ? t('fl_problems', count) : t('fl_no_problems')));
         ui.problemButton.disabled = !count;
@@ -1720,7 +1721,7 @@
     // ── Settings ───────────────────────────────────────────────────────
 
     function field(label, control, help) {
-        var wrap = el('div', 'mb-3');
+        var wrap = el('div', 'mb-5');
         var id = 'wsf-f' + (++uid);
         var caption = el('label', 'form-label small fw-semibold mb-1', label);
 
@@ -1838,14 +1839,14 @@
         box.appendChild(field(t('fl_home'), home, (state.edit && !state.flow.manage) ? t('fl_home_owner_only') : t('fl_home_help')));
 
         var keys = el('details', 'small wsf-keys');
-        var list = el('ul', 'mb-0 ps-3 text-body-secondary');
+        var list = el('ul', 'mb-0 ps-5 fg-secondary');
 
         keys.appendChild(el('summary', 'fw-semibold', t('fl_keys')));
         ['tab', 'arrows', 'connect', 'delete', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
             list.appendChild(el('li', '', t('fl_key_' + key)));
         });
         keys.appendChild(list);
-        box.appendChild(el('p', 'small text-body-secondary', state.edit ? t('fl_flow_help') : t('fl_read_only')));
+        box.appendChild(el('p', 'small fg-secondary', state.edit ? t('fl_flow_help') : t('fl_read_only')));
         box.appendChild(keys);
 
         return box;
@@ -1950,7 +1951,7 @@
 
             box.appendChild(connections(node));
 
-            var remove = K.button('btn btn-sm btn-outline-warning', t('fl_remove_box'), 'bi-trash');
+            var remove = K.button('btn btn-sm btn-outline theme-warning', t('fl_remove_box'), 'bi-trash');
             remove.addEventListener('click', function () { removeSelected({ type: 'node', id: node.id }); });
             box.appendChild(remove);
         }
@@ -1964,10 +1965,10 @@
     // {{node.*}} values from are listed when the list is first opened.
     function tryField(box, node) {
         var flow = state.flow;
-        var wrap = el('div', 'wsf-try border-top pt-3 mb-3');
+        var wrap = el('div', 'wsf-try border-top pt-5 mb-5');
         var runs = K.select([['0', t('fl_try_no_run')]], '0');
-        var go = K.button('btn btn-sm btn-outline-secondary', t('fl_try'), 'bi-eye');
-        var out = el('div', 'wsf-try-out small mt-2');
+        var go = K.button('btn btn-sm btn-outline theme-secondary', t('fl_try'), 'bi-eye');
+        var out = el('div', 'wsf-try-out small mt-3');
         var listed = false;
 
         go.title = t('fl_try_help');
@@ -2001,7 +2002,7 @@
             }).then(function (data) {
                 drawTry(out, data.try || {});
             }).catch(function (error) {
-                out.appendChild(el('div', 'text-danger', (error && error.message) || t('error_generic')));
+                out.appendChild(el('div', 'fg-danger', (error && error.message) || t('error_generic')));
             }).then(function () {
                 go.disabled = false;
             });
@@ -2022,18 +2023,18 @@
         }
 
         if (tried.refusal) {
-            out.appendChild(el('div', 'text-danger', t('fl_try_fails', tried.refusal)));
+            out.appendChild(el('div', 'fg-danger', t('fl_try_fails', tried.refusal)));
         }
 
         (tried.texts || []).forEach(function (text) {
-            var shown = el('div', 'border rounded p-2 mt-1 text-break', text.text);
+            var shown = el('div', 'border rounded-4 p-3 mt-1 text-break', text.text);
 
             shown.style.whiteSpace = 'pre-wrap';
             out.appendChild(shown);
         });
 
         if ((tried.empty || []).length) {
-            out.appendChild(el('div', 'text-body-secondary mt-1', t('fl_try_empty', tried.empty.join(', '))));
+            out.appendChild(el('div', 'fg-secondary mt-1', t('fl_try_empty', tried.empty.join(', '))));
         }
 
         if ((tried.next || []).length) {
@@ -2041,7 +2042,7 @@
         }
 
         if (tried.outcome && OUTCOMES[tried.outcome]) {
-            out.appendChild(el('div', 'text-body-secondary mt-1', t('fl_try_outcome', t(OUTCOMES[tried.outcome]))));
+            out.appendChild(el('div', 'fg-secondary mt-1', t('fl_try_outcome', t(OUTCOMES[tried.outcome]))));
         }
     }
 
@@ -2060,7 +2061,7 @@
         }
 
         var who = K.select(options, current);
-        var people = el('div', 'wsf-people mt-2');
+        var people = el('div', 'wsf-people mt-3');
 
         // The team's ticks are built once "The people I pick" is chosen: a
         // box given by a rule does not carry one tick per member in the DOM.
@@ -2270,7 +2271,7 @@
             })));
             more.appendChild(field(t('fl_check_max_ms'), numberInput(config.max_ms, 0, 60000, function (value) { config.max_ms = value; }), t('fl_check_max_ms_help')));
 
-            var redirect = el('input', 'form-check-input');
+            var redirect = el('input', 'check');
 
             redirect.type = 'checkbox';
             redirect.checked = !!config.redirect;
@@ -2319,7 +2320,7 @@
 
     // A tick whose state goes to config[key].
     function tickField(box, node, key, label, onChange) {
-        var tick = el('input', 'form-check-input');
+        var tick = el('input', 'check');
 
         tick.type = 'checkbox';
         tick.checked = !!node.config[key];
@@ -2391,7 +2392,7 @@
         list.setAttribute('aria-label', t('fl_report_counts'));
         stepLists().metrics.forEach(function (metric) {
             var row = el('label', 'wsf-person');
-            var check = el('input', 'form-check-input m-0');
+            var check = el('input', 'check m-0');
 
             check.type = 'checkbox';
             check.checked = chosen.indexOf(metric.key) !== -1;
@@ -2436,7 +2437,7 @@
     // it opens is private, and who is put in it.
     function leadFields(box, node) {
         var config = node.config;
-        var closed = el('input', 'form-check-input');
+        var closed = el('input', 'check');
 
         closed.type = 'checkbox';
         closed.checked = !!config.private;
@@ -2528,7 +2529,7 @@
             days.setAttribute('aria-label', t('fl_cond_weekdays'));
             [1, 2, 3, 4, 5, 6, 7].forEach(function (day) {
                 var row = el('label', 'wsf-person');
-                var check = el('input', 'form-check-input m-0');
+                var check = el('input', 'check m-0');
 
                 check.type = 'checkbox';
                 check.checked = (config.days || []).indexOf(day) !== -1;
@@ -2689,7 +2690,7 @@
             days.setAttribute('aria-label', t('fl_cond_weekdays'));
             [1, 2, 3, 4, 5, 6, 7].forEach(function (day) {
                 var row = el('label', 'wsf-person');
-                var check = el('input', 'form-check-input m-0');
+                var check = el('input', 'check m-0');
 
                 check.type = 'checkbox';
                 check.checked = (rule.days || []).indexOf(day) !== -1;
@@ -3109,7 +3110,7 @@
 
         team.forEach(function (member) {
             var row = el('label', 'wsf-person');
-            var check = el('input', 'form-check-input m-0');
+            var check = el('input', 'check m-0');
 
             check.type = 'checkbox';
             check.checked = chosen.indexOf(member.id) !== -1;
@@ -3162,11 +3163,11 @@
 
     // The arrows of a box, and the way to add one without dragging.
     function connections(node) {
-        var box = el('div', 'wsf-links mb-3');
+        var box = el('div', 'wsf-links mb-5');
         var into = state.graph.edges.filter(function (edge) { return edge.to === node.id && nodeById(edge.from); });
 
         if (kindOf(node).into) {
-            var after = el('div', 'small text-body-secondary mb-2', into.length ? '' : t('fl_after_none'));
+            var after = el('div', 'small fg-secondary mb-3', into.length ? '' : t('fl_after_none'));
 
             into.forEach(function (edge, index) {
                 if (index) {
@@ -3186,7 +3187,7 @@
 
         box.appendChild(el('div', 'form-label small fw-semibold mb-1', t('fl_then')));
 
-        var list = el('ul', 'list-unstyled mb-2');
+        var list = el('ul', 'list-unstyled mb-3');
 
         state.graph.edges.forEach(function (edge, index) {
             if ((edge.from !== node.id) || !nodeById(edge.to)) {
@@ -3215,7 +3216,7 @@
         });
 
         if (!list.children.length) {
-            list.appendChild(el('li', 'small text-body-secondary', t('fl_then_none')));
+            list.appendChild(el('li', 'small fg-secondary', t('fl_then_none')));
         }
 
         box.appendChild(list);
@@ -3223,7 +3224,7 @@
         var targets = candidates(node);
         var group = el('div', 'input-group input-group-sm');
         var pick = K.select([['', t('fl_connect_pick')]].concat(targets.map(function (target) { return [target.id, nameOf(target)]; })), '');
-        var add = K.button('btn btn-outline-secondary', t('fl_connect_add'), 'bi-plus-lg');
+        var add = K.button('btn btn-outline theme-secondary', t('fl_connect_add'), 'bi-plus-lg');
 
         pick.classList.add('wsf-connect');
         nameLabel(pick, 'fl_connect_title', node);
@@ -3246,7 +3247,7 @@
         var from = nodeById(edge.from);
         var pick = K.select((from ? kindOf(from).out : [edge.on]).map(function (on) { return [on, t(OUTCOMES[on] || 'fl_on_done')]; }), edge.on);
 
-        pick.className = 'form-select form-select-sm w-auto';
+        pick.className = 'form-control form-control-sm w-auto';
         pick.setAttribute('aria-label', onLabel(from));
         pick.setAttribute('data-refocus', 'on-' + edge.from + '-' + edge.to);
         pick.disabled = !state.edit;
@@ -3269,14 +3270,14 @@
         var edge = state.graph.edges[index];
         var box = el('div', 'wsf-form');
 
-        box.appendChild(el('p', 'small mb-2', t('fl_arrow_text', nameOf(nodeById(edge.from)), nameOf(nodeById(edge.to)))));
+        box.appendChild(el('p', 'small mb-3', t('fl_arrow_text', nameOf(nodeById(edge.from)), nameOf(nodeById(edge.to)))));
 
         if (nodeById(edge.from) && (kindOf(nodeById(edge.from)).out.length > 1)) {
             box.appendChild(field(onLabel(nodeById(edge.from)), outcomeSelect(edge)));
         }
 
         if (state.edit) {
-            var remove = K.button('btn btn-sm btn-outline-warning', t('fl_remove_arrow'), 'bi-trash');
+            var remove = K.button('btn btn-sm btn-outline theme-warning', t('fl_remove_arrow'), 'bi-trash');
             remove.addEventListener('click', function () { removeSelected({ type: 'edge', id: index }); });
             box.appendChild(remove);
         }
@@ -3302,7 +3303,7 @@
 
         // A run shown is read only: the bar over it says so, not this help.
         if (!state.run) {
-            ui.outlineBox.appendChild(el('p', 'small text-body-secondary', t('fl_outline_help')));
+            ui.outlineBox.appendChild(el('p', 'small fg-secondary', t('fl_outline_help')));
         }
 
         var list = el('ol', 'wsf-outline-list');
@@ -3334,17 +3335,17 @@
         });
 
         if (!list.children.length) {
-            list.appendChild(el('li', 'small text-body-secondary', state.edit ? t('fl_empty_canvas') : ''));
+            list.appendChild(el('li', 'small fg-secondary', state.edit ? t('fl_empty_canvas') : ''));
         }
 
         ui.outlineBox.appendChild(list);
 
         if (state.edit) {
-            var adds = el('div', 'd-flex flex-wrap gap-2 mb-3');
+            var adds = el('div', 'd-flex flex-wrap gap-3 mb-5');
 
             adds.setAttribute('role', 'group');
             adds.setAttribute('aria-label', t('fl_palette'));
-            paletteButtons('btn btn-sm btn-outline-secondary', false).forEach(function (add) {
+            paletteButtons('btn btn-sm btn-outline theme-secondary', false).forEach(function (add) {
                 adds.appendChild(add);
             });
             ui.outlineBox.appendChild(adds);
@@ -3543,7 +3544,7 @@
 
         var pick = K.select(targets.map(function (target) { return [target.id, t(kindOf(target).name) + ': ' + nameOf(target)]; }), targets[0].id);
 
-        pick.className = 'form-select';
+        pick.className = 'form-control';
         pick.setAttribute('aria-label', t('fl_connect_title', nameOf(node)));
 
         K.ask(t('fl_connect_title', nameOf(node)), t('fl_connect_add'), false, pick).then(function (yes) {
@@ -3741,7 +3742,7 @@
         ui.conflictBox.appendChild(K.icon('bi-exclamation-triangle'));
         ui.conflictBox.appendChild(el('span', 'flex-grow-1', state.conflict));
 
-        var reload = K.button('btn btn-sm btn-outline-secondary', t('fl_reload'), 'bi-arrow-clockwise');
+        var reload = K.button('btn btn-sm btn-outline theme-secondary', t('fl_reload'), 'bi-arrow-clockwise');
 
         reload.addEventListener('click', function () {
             state.dirty = false;
@@ -3895,13 +3896,12 @@
             return ui.shareModal;
         }
 
-        var modal = el('div', 'modal fade wsf-share-modal');
-        var dialog = el('div', 'modal-dialog modal-dialog-centered modal-dialog-scrollable');
-        var content = el('div', 'modal-content');
-        var head = el('div', 'modal-header');
-        var title = el('h2', 'modal-title fs-6');
+        var modal = el('dialog', 'dialog dialog-scrollable wsf-share-modal');
+        var content = modal;
+        var head = el('div', 'dialog-header');
+        var title = el('h2', 'dialog-title fs-md');
         var cross = el('button', 'btn-close');
-        var foot = el('div', 'modal-footer');
+        var foot = el('div', 'dialog-footer');
         var close = K.button('btn btn-sm btn-ghost', t('fl_share_close'));
 
         modal.id = 'wsf-share';
@@ -3910,16 +3910,14 @@
         title.id = 'wsf-share-title';
         cross.type = 'button';
         cross.setAttribute('aria-label', t('fl_share_close'));
-        cross.setAttribute('data-bs-dismiss', 'modal');
-        close.setAttribute('data-bs-dismiss', 'modal');
+        cross.setAttribute('data-bs-dismiss', 'dialog');
+        close.setAttribute('data-bs-dismiss', 'dialog');
         head.appendChild(title);
         head.appendChild(cross);
         foot.appendChild(close);
         content.appendChild(head);
-        content.appendChild(el('div', 'modal-body wsf-share-body'));
+        content.appendChild(el('div', 'dialog-body wsf-share-body'));
         content.appendChild(foot);
-        dialog.appendChild(content);
-        modal.appendChild(dialog);
         document.body.appendChild(modal);
 
         pgUI.dialog.on(modal, 'hidden', function () {
@@ -3950,7 +3948,7 @@
             var modal = shareModal();
 
             state.share = { flow: flow, data: data, busy: false };
-            modal.querySelector('.modal-title').textContent = t('fl_share_title', flow.name);
+            modal.querySelector('.dialog-title').textContent = t('fl_share_title', flow.name);
             drawShares();
             pgUI.dialog.show(modal);
         }).catch(K.fail);
@@ -4076,7 +4074,7 @@
     // share it with next.
     function drawShares(focus) {
         var share = state.share;
-        var body = ui.shareModal ? ui.shareModal.querySelector('.modal-body') : null;
+        var body = ui.shareModal ? ui.shareModal.querySelector('.dialog-body') : null;
 
         if (!share || !body) {
             return;
@@ -4088,17 +4086,17 @@
         var owner = person(data.owner_id);
 
         K.clear(body);
-        body.appendChild(el('p', 'small text-body-secondary', manage ? t('fl_share_help') : t('fl_share_read_help')));
+        body.appendChild(el('p', 'small fg-secondary', manage ? t('fl_share_help') : t('fl_share_read_help')));
         body.appendChild(el('div', 'wsf-side-title', t('fl_share_list')));
 
-        var list = el('ul', 'list-unstyled wsf-share-list mb-3');
+        var list = el('ul', 'list-unstyled wsf-share-list mb-5');
         var first = el('li', 'wsf-share-row');
         var who = el('span', 'wsf-share-who');
 
         who.appendChild(owner ? K.avatar(owner, '1.5rem') : K.icon('bi-person-circle'));
         who.appendChild(el('span', 'text-truncate', owner ? owner.name : '#' + data.owner_id));
         first.appendChild(who);
-        first.appendChild(el('span', 'wsf-share-level small text-body-secondary', t('fl_share_owner')));
+        first.appendChild(el('span', 'wsf-share-level small fg-secondary', t('fl_share_owner')));
         list.appendChild(first);
 
         shares.forEach(function (item) {
@@ -4108,7 +4106,7 @@
         body.appendChild(list);
 
         if (!shares.length) {
-            body.appendChild(el('p', 'small text-body-secondary', t('fl_share_none')));
+            body.appendChild(el('p', 'small fg-secondary', t('fl_share_none')));
         }
 
         if (manage) {
@@ -4129,7 +4127,7 @@
     // team but the owner and the people it is shared with already, and the
     // level they all get.
     function sharePeople(shares, ownerId) {
-        var box = el('div', 'wsf-share-add mb-3');
+        var box = el('div', 'wsf-share-add mb-5');
         var taken = {};
 
         shares.forEach(function (item) {
@@ -4149,9 +4147,9 @@
         }
 
         var picker = K.peoplePicker([], others);
-        var row = el('div', 'd-flex flex-wrap align-items-center gap-2 mt-2');
+        var row = el('div', 'd-flex flex-wrap align-items-center gap-3 mt-3');
         var level = K.select(Object.keys(LEVELS).map(function (key) { return [key, t(LEVELS[key])]; }), 'run');
-        var add = K.button('btn btn-sm btn-primary rounded-pill px-3', t('fl_share'), 'bi-share');
+        var add = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('fl_share'), 'bi-share');
 
         picker.setAttribute('role', 'group');
         picker.setAttribute('aria-label', t('fl_share_people'));
@@ -4224,16 +4222,16 @@
             return box;
         }
 
-        var row = el('div', 'd-flex flex-wrap align-items-center gap-2');
+        var row = el('div', 'd-flex flex-wrap align-items-center gap-3');
         var choice = K.select(channels.map(function (channel) {
             return [channel.id, (channel.kind === 'private' ? '🔒 ' : '#') + channel.name];
         }), channels[0].id);
-        var add = K.button('btn btn-sm btn-outline-secondary', t('fl_share'), 'bi-hash');
+        var add = K.button('btn btn-sm btn-outline theme-secondary', t('fl_share'), 'bi-hash');
 
-        choice.classList.add('w-auto', 'mw-100');
+        choice.classList.add('w-auto', 'max-w-100');
         choice.setAttribute('aria-label', t('fl_share_channel'));
         row.appendChild(choice);
-        row.appendChild(el('span', 'small text-body-secondary', t(LEVELS.view)));
+        row.appendChild(el('span', 'small fg-secondary', t(LEVELS.view)));
         add.setAttribute('data-share-focus', 'add-channel');
         add.addEventListener('click', function () {
             var id = parseInt(choice.value, 10) || 0;
@@ -4477,7 +4475,7 @@
         // way to load the list again. The redraw shows "Loading…" at once,
         // which loadRuns() itself does not draw.
         if (!list.items.length && list.error && !list.loading) {
-            var failed = el('p', 'small text-danger', t('fl_runs_failed') + ' ' + list.error);
+            var failed = el('p', 'small fg-danger', t('fl_runs_failed') + ' ' + list.error);
             var retry = K.button('btn btn-sm btn-link p-0 ms-1 align-baseline', t('fl_retry'));
 
             retry.setAttribute('data-refocus', 'runs-retry');
@@ -4492,11 +4490,11 @@
         }
 
         if (!list.items.length) {
-            ui.side.appendChild(el('p', 'small text-body-secondary', list.loading ? t('loading') : t('fl_runs_none')));
+            ui.side.appendChild(el('p', 'small fg-secondary', list.loading ? t('loading') : t('fl_runs_none')));
             return;
         }
 
-        var rows = el('ul', 'list-unstyled mb-2 wsf-run-list');
+        var rows = el('ul', 'list-unstyled mb-3 wsf-run-list');
 
         rows.setAttribute('aria-labelledby', head.id);
 
@@ -4509,7 +4507,7 @@
             item.setAttribute('data-refocus', 'run-' + run.id);
             top.appendChild(runBadge(RUN_STATES, run.status));
             top.appendChild(el('span', 'fw-semibold', t('fl_run_name', run.id)));
-            top.appendChild(el('span', 'ms-auto small text-body-secondary', t('fl_run_version', run.version)));
+            top.appendChild(el('span', 'ms-auto small fg-secondary', t('fl_run_version', run.version)));
             item.appendChild(top);
             item.appendChild(el('span', 'wsf-run-item-line', t('fl_run_by', personName(run.started_by))));
             item.appendChild(el('span', 'wsf-run-item-line', t('fl_run_at', when(run.started_at))));
@@ -4672,7 +4670,7 @@
             return;
         }
 
-        var close = K.button('btn btn-sm btn-outline-secondary', t('fl_run_close'), 'bi-x-lg');
+        var close = K.button('btn btn-sm btn-outline theme-secondary', t('fl_run_close'), 'bi-x-lg');
 
         ui.runBox.appendChild(runBadge(RUN_STATES, run.status));
         ui.runBox.appendChild(el('span', 'flex-grow-1', t('fl_run_shown', run.id, run.version)));
@@ -4693,7 +4691,7 @@
             return;
         }
 
-        var line = el('div', 'w-100 small ' + (note.lost ? 'text-danger' : 'text-body-secondary'), note.lost ? (note.text + ' ' + t('fl_run_lost')) : note.text);
+        var line = el('div', 'w-100 small ' + (note.lost ? 'fg-danger' : 'fg-secondary'), note.lost ? (note.text + ' ' + t('fl_run_lost')) : note.text);
 
         if (!note.lost) {
             var retry = K.button('btn btn-sm btn-link p-0 ms-1 align-baseline', t('fl_retry'));
@@ -4713,8 +4711,8 @@
     function runSide() {
         var run = state.run;
         var head = el('div', 'wsf-side-title', t('fl_run_name', run.id));
-        var facts = el('ul', 'list-unstyled small text-body-secondary my-2 wsf-run-facts');
-        var tools = el('div', 'd-flex flex-wrap gap-2 mb-3');
+        var facts = el('ul', 'list-unstyled small fg-secondary my-3 wsf-run-facts');
+        var tools = el('div', 'd-flex flex-wrap gap-3 mb-5');
         // A run the server no longer answers for (pollFailed()) is not said
         // to be still going: it shows as it was last read.
         var lost = !!(state.poll.note && state.poll.note.lost);
@@ -4731,7 +4729,7 @@
         ui.side.appendChild(facts);
 
         if (run.can_cancel) {
-            var cancel = K.button('btn btn-sm btn-outline-warning', t('fl_run_cancel'), 'bi-x-circle');
+            var cancel = K.button('btn btn-sm btn-outline theme-warning', t('fl_run_cancel'), 'bi-x-circle');
 
             cancel.setAttribute('data-refocus', 'run-cancel');
             cancel.addEventListener('click', function () { cancelRun(cancel); });
@@ -4763,7 +4761,7 @@
         var step = stepOf(node.id);
         var wrap = el('div', 'wsf-run-step');
         var title = el('div', 'wsf-side-title', t(kindOf(node).name));
-        var facts = el('ul', 'list-unstyled small text-body-secondary my-2 wsf-run-facts');
+        var facts = el('ul', 'list-unstyled small fg-secondary my-3 wsf-run-facts');
 
         title.tabIndex = -1;
         title.setAttribute('data-refocus', 'step');
@@ -4784,16 +4782,16 @@
         }
 
         if (step && step.task_id) {
-            wrap.appendChild(taskLink(step, node, 'btn btn-sm btn-outline-secondary', 'step-task'));
+            wrap.appendChild(taskLink(step, node, 'btn btn-sm btn-outline theme-secondary', 'step-task'));
         }
 
         // A failed box (one that stopped half way too) is tried again or
         // skipped by the flow's owner, in whose name it runs; a run done or
         // cancelled takes neither.
         if (state.flow && state.flow.manage && step && (step.status === 'failed') && (['done', 'cancelled'].indexOf(state.run.status) < 0)) {
-            var mend = el('div', 'd-flex flex-wrap gap-2 mt-2');
-            var retry = K.button('btn btn-sm btn-outline-primary', t('fl_step_retry'), 'bi-arrow-repeat');
-            var skip = K.button('btn btn-sm btn-outline-secondary', t('fl_step_skip'), 'bi-skip-forward');
+            var mend = el('div', 'd-flex flex-wrap gap-3 mt-3');
+            var retry = K.button('btn btn-sm btn-outline theme-primary', t('fl_step_retry'), 'bi-arrow-repeat');
+            var skip = K.button('btn btn-sm btn-outline theme-secondary', t('fl_step_skip'), 'bi-skip-forward');
 
             retry.setAttribute('data-refocus', 'step-retry');
             skip.setAttribute('data-refocus', 'step-skip');
@@ -4847,7 +4845,7 @@
         var wrap = el('div');
         var list = el('ul', 'list-unstyled wsf-run-steps');
 
-        wrap.appendChild(el('p', 'small text-body-secondary mb-2', t('fl_run_pick')));
+        wrap.appendChild(el('p', 'small fg-secondary mb-3', t('fl_run_pick')));
         list.setAttribute('aria-label', t('fl_run_boxes'));
 
         orderedNodes().forEach(function (node) {
@@ -4877,7 +4875,7 @@
         box.appendChild(el('p', 'mb-1')).appendChild(runBadge(STEP_STATES, step ? step.status : 'none'));
 
         if (meta) {
-            box.appendChild(el('p', 'small text-body-secondary mb-1', meta));
+            box.appendChild(el('p', 'small fg-secondary mb-1', meta));
         }
 
         if (step && step.result) {
@@ -4885,7 +4883,7 @@
         }
 
         if (step && (step.status === 'waiting') && step.task_id) {
-            box.appendChild(taskLink(step, node, 'btn btn-sm btn-outline-secondary', 'run-otask-' + node.id));
+            box.appendChild(taskLink(step, node, 'btn btn-sm btn-outline theme-secondary', 'run-otask-' + node.id));
         }
 
         return box;

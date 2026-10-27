@@ -240,12 +240,12 @@ function test_ai_fields_marker()
 
 	pg_assert_contains('data-pg-ai-mark="title"', $html, 'column');
 	pg_assert_contains('data-pg-ai-field="title"', $html, 'element');
-	pg_assert_contains('class="pg-ai-mark badge rounded-pill bg-primary-subtle text-primary-emphasis border border-primary-subtle fw-normal d-inline-flex align-items-center gap-1"', $html, 'classes');
+	pg_assert_contains('class="pg-ai-mark badge rounded-pill bg-subtle-primary fg-emphasis-primary border border-subtle-primary fw-normal d-inline-flex align-items-center gap-1"', $html, 'classes');
 	pg_assert_contains('data-bs-toggle="tooltip" title="' . h(lang('Written with AI')) . '"', $html, 'tooltip');
 	pg_assert_contains('no-popover', $html, 'no popover');
 	pg_assert_contains('<span class="visually-hidden">' . h(lang('Written with AI')) . '</span>', $html, 'screen readers');
 	pg_assert_contains('<i class="bi bi-stars" aria-hidden="true"></i> <span aria-hidden="true">' . h(lang('AI')) . '</span>', $html, 'icon and the short word');
-	pg_assert_contains('class="btn btn-link btn-sm p-0 border-0 lh-1 text-reset pg-ai-mark-remove no-popover"', $html, 'remove button');
+	pg_assert_contains('class="btn btn-link btn-sm p-0 border-0 lh-1 fg-reset pg-ai-mark-remove no-popover"', $html, 'remove button');
 	pg_assert_contains('aria-label="' . h(lang('Remove the AI mark')) . '"', $html, 'remove label');
 	pg_assert_contains('type="button"', $html, 'not a submit');
 	pg_assert_false(strpos($html, 'd-none') !== false, 'shown');
@@ -265,8 +265,8 @@ function test_ai_fields_input()
 // The marker sits beside the label, with or without the button.
 function test_ai_fields_label_row_with_marker()
 {
-	pg_assert_same('<div class="d-flex flex-wrap align-items-baseline column-gap-2"><label>A</label><span>M</span></div>', pg_ai_write_label_row('<label>A</label>', '', '<span>M</span>'), 'no button');
-	pg_assert_same('<div class="d-flex flex-wrap align-items-baseline justify-content-between column-gap-2"><div class="d-flex flex-wrap align-items-baseline column-gap-2"><label>A</label><span>M</span></div><button></button></div>', pg_ai_write_label_row('<label>A</label>', '<button></button>', '<span>M</span>'), 'with button');
+	pg_assert_same('<div class="d-flex flex-wrap align-items-baseline column-gap-3"><label>A</label><span>M</span></div>', pg_ai_write_label_row('<label>A</label>', '', '<span>M</span>'), 'no button');
+	pg_assert_same('<div class="d-flex flex-wrap align-items-baseline justify-content-between column-gap-3"><div class="d-flex flex-wrap align-items-baseline column-gap-3"><label>A</label><span>M</span></div><button></button></div>', pg_ai_write_label_row('<label>A</label>', '<button></button>', '<span>M</span>'), 'with button');
 	pg_assert_same('<label>A</label>', pg_ai_write_label_row('<label>A</label>', '', ''), 'neither');
 }
 

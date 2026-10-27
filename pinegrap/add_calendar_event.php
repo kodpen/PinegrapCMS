@@ -88,7 +88,7 @@ if (!$_POST) {
     foreach ($calendars as $calendar) {
         // if user has access to calendar, then include this calendar
         if (validate_calendar_access($calendar['id']) == true) {
-            $output_calendars .= '<div class="form-check">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'calendar_' . $calendar['id'], 'id'=>'calendar_' . $calendar['id'], 'value'=>'1', 'class'=>'form-check-input multiselect-checkbox')) . '<label class="form-check-label" for="calendar_' . $calendar['id'] . '">' . h($calendar['name']) . '</label></div>';
+            $output_calendars .= '<div class="form-field">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'calendar_' . $calendar['id'], 'id'=>'calendar_' . $calendar['id'], 'value'=>'1', 'class'=>'check multiselect-checkbox')) . '<label class="" for="calendar_' . $calendar['id'] . '">' . h($calendar['name']) . '</label></div>';
 
         }
     }
@@ -98,19 +98,19 @@ if (!$_POST) {
     // If the user has access to publish calendar events then output publish rows.
     if (($user['role'] < 3) || ($user['publish_calendar_events'] == 'yes')) {
         $output_publish_rows =
-            '<div class="col-12 my-3">
-                <div class="form-check form-switch">' .
+            '<div class="col-12 my-5">
+                <div class="form-field"><div class="switch">' .
                     $liveform->output_field(array(
                         'type' => 'checkbox',
                         'name' => 'published',
                         'id' => 'published',
                         'value' => '1',
                         'checked' => '',
-                        'class' => 'form-check-input collapse-switcher',
-                        'data-bs-target'=>'#unpublish_days_row')) . '
-                        <label class="form-check-label" for="published">' . lang('Publish to Calendar Pages') . '</label>
+                        'class' => 'collapse-switcher no-bs',
+                        'data-bs-target'=>'#unpublish_days_row')) . '</div>
+                        <label class="" for="published">' . lang('Publish to Calendar Pages') . '</label>
                 </div>
-                <div class="collapse popover fade bs-popover-bottom p-0 mb-2" id="unpublish_days_row">
+                <div class="collapse popover fade bs-popover-bottom p-0 mb-3" id="unpublish_days_row">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
@@ -200,17 +200,17 @@ if (!$_POST) {
         
         // loop through all calendar event locations in order to prepare to output list of calendar event locations
         foreach ($calendar_event_locations as $calendar_event_location) {
-            $output_calendar_event_locations .= '<div class="form-check">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'calendar_event_location_' . $calendar_event_location['id'], 'id'=>'calendar_event_location_' . $calendar_event_location['id'], 'value'=>'1', 'class'=>'form-check-input multiselect-checkbox')) . '<label class="form-check-label" for="calendar_event_location_' . $calendar_event_location['id'] . '">' . h($calendar_event_location['name']) . '</label></div>';
+            $output_calendar_event_locations .= '<div class="form-field">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'calendar_event_location_' . $calendar_event_location['id'], 'id'=>'calendar_event_location_' . $calendar_event_location['id'], 'value'=>'1', 'class'=>'check multiselect-checkbox')) . '<label class="" for="calendar_event_location_' . $calendar_event_location['id'] . '">' . h($calendar_event_location['name']) . '</label></div>';
         }
 
         $output_locations = '
-            <div class="col-12 my-2">
+            <div class="col-12 my-3">
                 <h5>' . lang('Available Event Location(s)') . '</h5>
                 <div class="card multiselect-checkbox-container rounded-0 mb-1">
                     <div class="card-header border-0 bg-reset">
-                        <div class="form-check form-switch">
-                            <input id="multiselect-checkbox-checker-0" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                            <label for="multiselect-checkbox-checker-0" class="form-check-label">' . lang('Select All') . '</label>
+                        <div class="form-field">
+                            <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox"></div>
+                            <label for="multiselect-checkbox-checker-0" class="">' . lang('Select All') . '</label>
                         </div>
                     </div>
                     <div class="card-body overflow-auto" style="max-height:300px">
@@ -218,7 +218,7 @@ if (!$_POST) {
                     </div>
                 </div>
             </div>
-            <div class="col-12 col-sm-auto my-1">
+            <div class="col-12 sm:col-auto my-1">
                 <label for="location" class="form-label">' . lang('Or enter special Location') . '</label>
                 ' . $liveform->output_field(array('type'=>'text', 'name'=>'location', 'id'=>'location', 'class'=>'form-control', 'maxlength'=>'100')) . '
             </div>';
@@ -226,7 +226,7 @@ if (!$_POST) {
         
     } else {
         $output_locations = '
-        <div class="col-12 col-sm-auto my-1">
+        <div class="col-12 sm:col-auto my-1">
             <label for="location" class="form-label">' . lang('Enter special Location') . '</label>
             ' . $liveform->output_field(array('type'=>'text', 'name'=>'location', 'id'=>'location', 'class'=>'form-control', 'maxlength'=>'100')) . '
         </div>';
@@ -261,27 +261,27 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <div class="row">
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Main Informations') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 col-md-4 my-2">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Event'))) . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
-                                        <div class="col-12 col-md-8 my-2">
+                                        <div class="col-12 md:col-8 my-3">
                                             <label for="short_description" class="form-label">' . lang('Short Description') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'short_description', 'id'=>'short_description', 'class'=>'form-control', 'maxlength'=>'255')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
-                                        <div class="col-12 my-3">
+                                        <div class="col-12 my-5">
                                             <label for="full_description" class="form-label">' . lang('Full Description') . '</label>
                                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'full_description', 'id'=>'full_description', 'class'=>'form-control')) . '
                                         </div>
-                                        <div class="col-12 my-3">
+                                        <div class="col-12 my-5">
                                             <label for="notes" class="form-label">' . lang('Special Event Notes for display on any Calendar Event Pages') . '</label>
                                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'notes', 'id'=>'notes', 'class'=>'form-control')) . '
                                         </div>
@@ -290,50 +290,50 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Event Schedule') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-1">
-                                            <div class="form-check form-switch">
-                                                ' . $liveform->output_field(array('type'=>'checkbox', 'id' => 'all_day', 'name'=>'all_day', 'value'=>'1', 'class'=>'form-check-input', 'onclick' => 'toggle_calendar_event_all_day()')) . '
-                                                <label class="form-check-label" for="all_day">' . lang('All Day Event') . '</label>
+                                            <div class="form-field">
+                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'id' => 'all_day', 'name'=>'all_day', 'value'=>'1', 'class'=>'no-bs', 'onclick' => 'toggle_calendar_event_all_day()')) . '</div>
+                                                <label class="" for="all_day">' . lang('All Day Event') . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 col-md-6 my-2">
-                                            <div class="border-1 border p-2 my-2 rounded">
+                                        <div class="col-12 md:col-6 my-3">
+                                            <div class="border-1 border p-3 my-3 rounded-4">
                                                 <label for="start_time" class="form-label">' . lang('Start Date') . '<span id="start_time_label"> ' . lang('& Time') . '</span></label>
                                                 ' . $liveform->output_field(array('type'=>'text', 'id'=>'start_time', 'name'=>'start_time', 'value'=>$default_start_date_and_time, 'class'=>'form-control', 'maxlength'=>'19', 'data-pg-datetime' => '')) . '
                                                 <span id="show_start_time_container">
-                                                    <div class="form-check form-switch ms-1 mt-2">
-                                                        ' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'show_start_time', 'name' => 'show_start_time', 'value' => '1', 'class' => 'form-check-input')) . '
-                                                        <label class="form-check-label" for="show_start_time">' . lang('Show Start Time') . '</label>
+                                                    <div class="form-field ms-1 mt-3">
+                                                        <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'show_start_time', 'name' => 'show_start_time', 'value' => '1', 'class' => 'no-bs')) . '</div>
+                                                        <label class="" for="show_start_time">' . lang('Show Start Time') . '</label>
                                                     </div>
                                                 </span>
                                             </div>
                                         </div>
-                                        <div class="col-12 col-md-6 my-2">
-                                            <div class="border-1 border p-2 my-2 rounded">
+                                        <div class="col-12 md:col-6 my-3">
+                                            <div class="border-1 border p-3 my-3 rounded-4">
                                                 <label for="end_time" class="form-label">' . lang('End Date') . '<span id="end_time_label"> ' . lang('& Time') . '</span></label>
                                                 ' . $liveform->output_field(array('type'=>'text', 'id'=>'end_time', 'name'=>'end_time', 'value'=>$default_end_date_and_time, 'class'=>'form-control', 'maxlength'=>'19', 'data-pg-datetime' => '')) . '
                                                 <span id="show_end_time_container">
-                                                    <div class="form-check form-switch ms-1 mt-2">
-                                                        ' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'show_end_time', 'name' => 'show_end_time', 'value' => '1', 'class' => 'form-check-input')) . '
-                                                        <label class="form-check-label" for="show_end_time">' . lang('Show End Time') . '</label>
+                                                    <div class="form-field ms-1 mt-3">
+                                                        <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'show_end_time', 'name' => 'show_end_time', 'value' => '1', 'class' => 'no-bs')) . '</div>
+                                                        <label class="" for="show_end_time">' . lang('Show End Time') . '</label>
                                                     </div>
                                                 </span>
                                             </div>
                                         </div>
                                         ' . pg_fields_script() . '
                                         <script>toggle_calendar_event_all_day()</script>
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                ' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'recurrence', 'name' => 'recurrence', 'value' => '1', 'class' => 'form-check-input  collapse-switcher', 'onclick' => 'toggle_calendar_event_recurrence()', 'data-bs-target'=>'#show_or_hide_calendar_event_recurrence_row')) . '
-                                                <label class="form-check-label" for="recurrence">' . lang('Repeat') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'recurrence', 'name' => 'recurrence', 'value' => '1', 'class' => 'collapse-switcher no-bs', 'onclick' => 'toggle_calendar_event_recurrence()', 'data-bs-target'=>'#show_or_hide_calendar_event_recurrence_row')) . '</div>
+                                                <label class="" for="recurrence">' . lang('Repeat') . '</label>
                                             </div>
-                                            <div class="collapse popover  fade bs-popover-bottom p-0 mb-2" id="show_or_hide_calendar_event_recurrence_row">
+                                            <div class="collapse popover  fade bs-popover-bottom p-0 mb-3" id="show_or_hide_calendar_event_recurrence_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                 <div class="popover-body">
                                                     <div class="row">
@@ -341,100 +341,100 @@ if (!$_POST) {
                                                             <div class="input-group">
                                                                 <div class="input-group-text">' . lang('Up To') . ':</div>
                                                                 ' . $liveform->output_field(array('type'=>'text', 'id'=>'total_recurrence_number', 'name'=>'total_recurrence_number', 'size'=>'5', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'decimal')) . ' 
-                                                                ' . $liveform->output_field(array('type'=>'select', 'id'=>'recurrence_type', 'name'=>'recurrence_type', 'class' => 'form-select', 'options'=>$recurrence_type_options, 'onchange'=>'change_calendar_event_recurrence_type()')) . '
+                                                                ' . $liveform->output_field(array('type'=>'select', 'id'=>'recurrence_type', 'name'=>'recurrence_type', 'class' => 'form-control', 'options'=>$recurrence_type_options, 'onchange'=>'change_calendar_event_recurrence_type()')) . '
                                                             </div>
                                                         </div>
-                                                        <div class="col-12 my-2" id="recurrence_days_of_the_week_row"' . $output_recurrence_days_of_the_week_row_style . '>
-                                                            <h5 class="text-muted">' . lang('On') . '</h5>
-                                                            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-auto">
+                                                        <div class="col-12 my-3" id="recurrence_days_of_the_week_row"' . $output_recurrence_days_of_the_week_row_style . '>
+                                                            <h5 class="fg-secondary">' . lang('On') . '</h5>
+                                                            <div class="row row-cols-1 sm:row-cols-2 md:row-cols-3 lg:row-cols-auto">
                                                                 <div class="col">
-                                                                    <div class="form-check">
+                                                                    <div class="form-field">
                                                                     ' . $liveform->output_field(array(
                                                                         'type' => 'checkbox',
                                                                         'id' => 'recurrence_day_mon',
                                                                         'name' => 'recurrence_day_mon',
                                                                         'value' => '1',
-                                                                        'class' => 'form-check-input')) . '
-                                                                        <label class="form-check-label" for="recurrence_day_mon">' . lang('Monday') . '</label>
+                                                                        'class' => 'check')) . '
+                                                                        <label class="" for="recurrence_day_mon">' . lang('Monday') . '</label>
                                                                     </div>
                                                                 </div>
                                                                 <div class="col">
-                                                                    <div class="form-check">
+                                                                    <div class="form-field">
                                                                     ' . $liveform->output_field(array(
                                                                         'type' => 'checkbox',
                                                                         'id' => 'recurrence_day_tue',
                                                                         'name' => 'recurrence_day_tue',
                                                                         'value' => '1',
-                                                                        'class' => 'form-check-input')) . '
-                                                                        <label class="form-check-label" for="recurrence_day_tue">' . lang('Tuesday') . '</label>
+                                                                        'class' => 'check')) . '
+                                                                        <label class="" for="recurrence_day_tue">' . lang('Tuesday') . '</label>
                                                                     </div>
                                                                 </div>
                                                                 <div class="col">
-                                                                    <div class="form-check">
+                                                                    <div class="form-field">
                                                                     ' . $liveform->output_field(array(
                                                                         'type' => 'checkbox',
                                                                         'id' => 'recurrence_day_wed',
                                                                         'name' => 'recurrence_day_wed',
                                                                         'value' => '1',
-                                                                        'class' => 'form-check-input')) . '
-                                                                        <label class="form-check-label" for="recurrence_day_wed">' . lang('Wednesday') . '</label>
+                                                                        'class' => 'check')) . '
+                                                                        <label class="" for="recurrence_day_wed">' . lang('Wednesday') . '</label>
                                                                     </div>
                                                                 </div>
                                                                 <div class="col">
-                                                                    <div class="form-check">
+                                                                    <div class="form-field">
                                                                     ' . $liveform->output_field(array(
                                                                         'type' => 'checkbox',
                                                                         'id' => 'recurrence_day_thu',
                                                                         'name' => 'recurrence_day_thu',
                                                                         'value' => '1',
-                                                                        'class' => 'form-check-input')) . '
-                                                                        <label class="form-check-label" for="recurrence_day_thu">' . lang('Thursday') . '</label>
+                                                                        'class' => 'check')) . '
+                                                                        <label class="" for="recurrence_day_thu">' . lang('Thursday') . '</label>
                                                                     </div>
                                                                 </div>
                                                                 <div class="col">
-                                                                    <div class="form-check">
+                                                                    <div class="form-field">
                                                                     ' . $liveform->output_field(array(
                                                                         'type' => 'checkbox',
                                                                         'id' => 'recurrence_day_fri',
                                                                         'name' => 'recurrence_day_fri',
                                                                         'value' => '1',
-                                                                        'class' => 'form-check-input')) . '
-                                                                        <label class="form-check-label" for="recurrence_day_fri">' . lang('Friday') . '</label>
+                                                                        'class' => 'check')) . '
+                                                                        <label class="" for="recurrence_day_fri">' . lang('Friday') . '</label>
                                                                     </div>
                                                                 </div>
                                                                 <div class="col">
-                                                                    <div class="form-check">
+                                                                    <div class="form-field">
                                                                     ' . $liveform->output_field(array(
                                                                         'type' => 'checkbox',
                                                                         'id' => 'recurrence_day_sat',
                                                                         'name' => 'recurrence_day_sat',
                                                                         'value' => '1',
-                                                                        'class' => 'form-check-input')) . '
-                                                                        <label class="form-check-label" for="recurrence_day_sat">' . lang('Saturday') . '</label>
+                                                                        'class' => 'check')) . '
+                                                                        <label class="" for="recurrence_day_sat">' . lang('Saturday') . '</label>
                                                                     </div>
                                                                 </div>
                                                                 <div class="col">
-                                                                    <div class="form-check">
+                                                                    <div class="form-field">
                                                                         ' . $liveform->output_field(array(
                                                                             'type' => 'checkbox',
                                                                             'id' => 'recurrence_day_sun',
                                                                             'name' => 'recurrence_day_sun',
                                                                             'value' => '1',
-                                                                            'class' => 'form-check-input')) . '
-                                                                        <label class="form-check-label" for="recurrence_day_sun">' . lang('Sunday') . '</label>
+                                                                            'class' => 'check')) . '
+                                                                        <label class="" for="recurrence_day_sun">' . lang('Sunday') . '</label>
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <div class="col-12 my-3" id="recurrence_month_type_row"' . $output_recurrence_month_type_row_style . '>
-                                                            <h5 class="text-muted">' . lang('By') . '</h5>
-                                                            <div class="form-check">
-                                                                ' . $liveform->output_field(array('type' => 'radio', 'id' => 'recurrence_month_type_day_of_the_month', 'name' => 'recurrence_month_type', 'value' => 'day_of_the_month', 'checked' => 'checked', 'class' => 'form-check-input')) . '
-                                                                <label class="form-check-label" for="recurrence_month_type_day_of_the_month">' . lang('Day of the Month (e.g. 15th)') . '</label> 
+                                                        <div class="col-12 my-5" id="recurrence_month_type_row"' . $output_recurrence_month_type_row_style . '>
+                                                            <h5 class="fg-secondary">' . lang('By') . '</h5>
+                                                            <div class="form-field">
+                                                                ' . $liveform->output_field(array('type' => 'radio', 'id' => 'recurrence_month_type_day_of_the_month', 'name' => 'recurrence_month_type', 'value' => 'day_of_the_month', 'checked' => 'checked', 'class' => 'radio')) . '
+                                                                <label class="" for="recurrence_month_type_day_of_the_month">' . lang('Day of the Month (e.g. 15th)') . '</label> 
                                                             </div>
-                                                            <div class="form-check">
-                                                                ' . $liveform->output_field(array('type' => 'radio', 'id' => 'recurrence_month_type_day_of_the_week', 'name' => 'recurrence_month_type', 'value' => 'day_of_the_week', 'class' => 'form-check-input')) . '
-                                                                <label class="form-check-label" for="recurrence_month_type_day_of_the_week">' . lang('Day of the Week (e.g. second Sunday)') . '</label>
+                                                            <div class="form-field">
+                                                                ' . $liveform->output_field(array('type' => 'radio', 'id' => 'recurrence_month_type_day_of_the_week', 'name' => 'recurrence_month_type', 'value' => 'day_of_the_week', 'class' => 'radio')) . '
+                                                                <label class="" for="recurrence_month_type_day_of_the_week">' . lang('Day of the Week (e.g. second Sunday)') . '</label>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -446,8 +446,8 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Event Location(s)') . '
                                 </div>
                                 <div class="card-body">
@@ -458,19 +458,19 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Event Calendar(s)') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
+                                        <div class="col-12 my-3">
                                             <h5>' . lang('Post to any of my Calendars') . '</h5>
                                             <div class="card multiselect-checkbox-container rounded-0 mb-1">
                                                 <div class="card-header border-0 bg-reset">
-                                                    <div class="form-check form-switch">
-                                                        <input id="multiselect-checkbox-checker-1" class="form-check-input multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox">
-                                                        <label for="multiselect-checkbox-checker-1" class="form-check-label">' . lang('Select All') . '</label>
+                                                    <div class="form-field">
+                                                        <div class="switch"><input id="multiselect-checkbox-checker-1" class="multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox"></div>
+                                                        <label for="multiselect-checkbox-checker-1" class="">' . lang('Select All') . '</label>
                                                     </div>
                                                 </div>
                                                 <div class="card-body overflow-auto" style="max-height:300px">
@@ -484,41 +484,41 @@ if (!$_POST) {
                             </div>
                         </div>
                         <div class="col-12">
-                            <div class="card my-4">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Reservations') . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-2">
-                                            <div class="form-check form-switch">
-                                                ' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'reservations', 'name' => 'reservations', 'value' => '1', 'class' => 'form-check-input  collapse-switcher', 'data-bs-target'=>'#show_or_hide_reservations_row')) . '
-                                                <label class="form-check-label" for="reservations">' . lang('Accept Reservations') . '</label>
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'reservations', 'name' => 'reservations', 'value' => '1', 'class' => 'collapse-switcher no-bs', 'data-bs-target'=>'#show_or_hide_reservations_row')) . '</div>
+                                                <label class="" for="reservations">' . lang('Accept Reservations') . '</label>
                                             </div>
-                                            <div class="collapse popover  fade bs-popover-bottom p-0 mb-2" id="show_or_hide_reservations_row">
+                                            <div class="collapse popover  fade bs-popover-bottom p-0 mb-3" id="show_or_hide_reservations_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                 <div class="popover-body">
                                                     <div class="row">
-                                                        <div class="col-12 my-2" id="separate_reservations_row" style="display: none">
-                                                            <div class="form-check form-switch">
-                                                                ' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'separate_reservations', 'name' => 'separate_reservations', 'value' => '1', 'class' => 'form-check-input')) . '
-                                                                <label class="form-check-label" for="separate_reservations">' . lang('Manage Reservations Separately for each Repeating Instance') . '</label>
+                                                        <div class="col-12 my-3" id="separate_reservations_row" style="display: none">
+                                                            <div class="form-field">
+                                                                <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'separate_reservations', 'name' => 'separate_reservations', 'value' => '1', 'class' => 'no-bs')) . '</div>
+                                                                <label class="" for="separate_reservations">' . lang('Manage Reservations Separately for each Repeating Instance') . '</label>
                                                             </div>
                                                         </div>
-                                                        <div class="col-12 my-2">
-                                                            <div class="form-check form-switch">
-                                                                ' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'limit_reservations', 'name' => 'limit_reservations', 'value' => '1', 'class' => 'form-check-input  collapse-switcher', 'data-bs-target'=>'#show_or_hide_limit_reservations')) . '
-                                                                <label class="form-check-label" for="limit_reservations">' . lang('Limit Reservations') . '</label>
+                                                        <div class="col-12 my-3">
+                                                            <div class="form-field">
+                                                                <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'limit_reservations', 'name' => 'limit_reservations', 'value' => '1', 'class' => 'collapse-switcher no-bs', 'data-bs-target'=>'#show_or_hide_limit_reservations')) . '</div>
+                                                                <label class="" for="limit_reservations">' . lang('Limit Reservations') . '</label>
                                                             </div>
-                                                            <div class="collapse popover  fade bs-popover-bottom p-0 mb-2" id="show_or_hide_limit_reservations">
+                                                            <div class="collapse popover  fade bs-popover-bottom p-0 mb-3" id="show_or_hide_limit_reservations">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                                 <div class="popover-body">
                                                                     <div class="row">
-                                                                        <div class="col-12 col-sm-auto my-2" id="number_of_initial_spots_row" style="display:block;">
+                                                                        <div class="col-12 sm:col-auto my-3" id="number_of_initial_spots_row" style="display:block;">
                                                                             <label class="form-label" for="number_of_initial_spots">' . lang('Number Of Initial Spots') . '</label>
                                                                             ' . $liveform->output_field(array('type'=>'text', 'id'=>'number_of_initial_spots', 'name'=>'number_of_initial_spots', 'size'=>'3', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'decimal')) . '
                                                                         </div> 
-                                                                        <div class="col-12 my-2">
+                                                                        <div class="col-12 my-3">
                                                                             <label class="form-label" for="no_remaining_spots_message">' . lang('No Longer Available Message') . '</label>
                                                                             ' . $liveform->output_field(array('type'=>'textarea', 'id'=>'no_remaining_spots_message', 'name'=>'no_remaining_spots_message', 'class'=>'form-control')) . '
                                                                         </div> 
@@ -526,19 +526,19 @@ if (!$_POST) {
                                                                 </div> 
                                                             </div> 
                                                         </div> 
-                                                        <div class="col-12 col-md-4 my-2">
+                                                        <div class="col-12 md:col-4 my-3">
                                                             <label for="reserve_button_label" class="form-label">' . lang('Reserve Button Label') . '</label>
                                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'reserve_button_label', 'id'=>'reserve_button_label', 'class'=>'form-control', 'maxlength'=>'50')) . '
                                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                         </div>
-                                                        <div class="col-12 col-md-4 my-2">
+                                                        <div class="col-12 md:col-4 my-3">
                                                             <label for="product_id" class="form-label">' . lang('Reservation Product') . '</label>
-                                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-select', 'options'=>get_product_options())) . '
+                                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-control', 'options'=>get_product_options())) . '
                                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                         </div>
-                                                        <div class="col-12 col-md-4 my-2">
+                                                        <div class="col-12 md:col-4 my-3">
                                                             <label for="next_page_id" class="form-label">' . lang('Next Page') . '</label>
-                                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'next_page_id', 'id'=>'next_page_id', 'class'=>'form-select', 'options'=>get_page_options())) . '
+                                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'next_page_id', 'id'=>'next_page_id', 'class'=>'form-control', 'options'=>get_page_options())) . '
                                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                         </div>
                                                     </div>
@@ -551,10 +551,10 @@ if (!$_POST) {
                         </div>
                     </div>
                     <script>toggle_calendar_event_recurrence();</script>
-                    <nav class="buttons navigation text-center position-sticky mb-4" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-success "><span class="material-icons me-2">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

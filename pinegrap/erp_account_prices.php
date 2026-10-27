@@ -113,7 +113,7 @@ foreach (erp_account_price_rows($account_id) as $row) {
 }
 
 if ($output_rows === '') {
-    $output_rows = '<tr data-pg-sort-fixed><td colspan="4" class="text-center text-body-secondary py-4">' . lang('No product has a price of its own for this account yet. Find one below and add it.') . '</td></tr>';
+    $output_rows = '<tr data-pg-sort-fixed><td colspan="4" class="text-center fg-secondary py-7">' . lang('No product has a price of its own for this account yet. Find one below and add it.') . '</td></tr>';
 }
 
 // Finding a product to add: the ERP's own product search.
@@ -122,16 +122,16 @@ if (($search !== '') && $ready && !$readonly) {
     $found = '';
     foreach (erp_product_search($search, 20, 0) as $product) {
         $found .= '
-            <li class="list-group-item d-flex flex-wrap align-items-center gap-2">
-                <span class="me-auto">' . h((string) $product['name']) . ' <span class="small text-body-secondary font-monospace">' . h((string) $product['sku']) . '</span></span>
-                <span class="small text-body-secondary">' . h(erp_money_out((int) $product['price'])) . '</span>
+            <li class="list-group-item d-flex flex-wrap align-items-center gap-3">
+                <span class="me-auto">' . h((string) $product['name']) . ' <span class="small fg-secondary font-monospace">' . h((string) $product['sku']) . '</span></span>
+                <span class="small fg-secondary">' . h(erp_money_out((int) $product['price'])) . '</span>
                 <form method="post" action="erp_account_prices.php" class="d-inline">' . get_token_field() . '
                     <input type="hidden" name="account_id" value="' . $account_id . '" /><input type="hidden" name="erp_action" value="add" /><input type="hidden" name="product_id" value="' . (int) $product['id'] . '" />
-                    <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('Add') . '</button>
+                    <button type="submit" class="btn btn-sm btn-outline theme-primary"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('Add') . '</button>
                 </form>
             </li>';
     }
-    $output_found = ($found !== '') ? '<ul class="list-group list-group-flush border-top">' . $found . '</ul>' : '<div class="card-body border-top text-body-secondary">' . lang('No products match.') . '</div>';
+    $output_found = ($found !== '') ? '<ul class="list-group list-group-flush border-top">' . $found . '</ul>' : '<div class="card-body border-top fg-secondary">' . lang('No products match.') . '</div>';
 }
 
 echo
@@ -150,7 +150,7 @@ pg_page_shell([
 ]) . '
 <main id="content" class="container-fluid">
     <div class="row">
-        <div class="col-12 col-xxl-9">
+        <div class="col-12 2xl:col-9">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
@@ -159,21 +159,21 @@ pg_page_shell([
                 ' . get_token_field() . '
                 <input type="hidden" name="account_id" value="' . $account_id . '" />
                 <input type="hidden" name="erp_action" value="save" />
-                <div class="card my-4">
-                    <div class="card-body row g-2 align-items-end">
-                        <div class="col-12 col-sm-6 col-md-4">
+                <div class="card my-7">
+                    <div class="card-body row g-3 align-items-end">
+                        <div class="col-12 sm:col-6 md:col-4">
                             <label class="form-label" for="account_discount">' . lang('Discount on everything else (%)') . '</label>
                             <input type="text" class="form-control text-end" id="account_discount" name="account_discount" value="' . h(erp_account_rate_input($account['discount_rate'] ?? 0)) . '" inputmode="decimal" placeholder="—"' . (($readonly || !$ready) ? ' disabled' : '') . ' />
                         </div>
-                        ' . ((!$readonly && $ready) ? '<div class="col-12 col-sm-auto">
-                            <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-2" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
+                        ' . ((!$readonly && $ready) ? '<div class="col-12 sm:col-auto">
+                            <button type="submit" class="btn btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
                         </div>' : '') . '
-                        <div class="col-12 col-md form-text">' . lang('Applied on the list price of every product that has no line of its own below. Empty is none.') . '</div>
+                        <div class="col-12 md:col form-text">' . lang('Applied on the list price of every product that has no line of its own below. Empty is none.') . '</div>
                     </div>
                 </div>
             </form>
 
-            <div class="card my-4" id="erp_prices">
+            <div class="card my-7" id="erp_prices">
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort' . pg_list_edit_table('erp_account_prices.php?account_id=' . $account_id, $quick_edit) . '>
                         <thead>
@@ -187,17 +187,17 @@ pg_page_shell([
                         <tbody>' . $output_rows . '</tbody>
                     </table>
                 </div>
-                <div class="form-text px-3 pb-3">' . lang('A price replaces the list price; with no price, the discount applies to the list price. Clear both to take the product off the list. Prices are in the catalogue\'s basis, the way the list price is.')
+                <div class="form-text px-5 pb-5">' . lang('A price replaces the list price; with no price, the discount applies to the list price. Clear both to take the product off the list. Prices are in the catalogue\'s basis, the way the list price is.')
                     . ($quick_edit ? ' ' . h(lang('Click a price or a discount to change it; it is saved as soon as you press Enter or leave the box.')) : '') . '</div>
             </div>
 
-            ' . ((!$readonly && $ready) ? '<div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">' . lang('Add a product') . '</div>
+            ' . ((!$readonly && $ready) ? '<div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Add a product') . '</div>
                 <div class="card-body">
                     <form method="get" action="erp_account_prices.php" class="d-flex gap-1" role="search">
                         <input type="hidden" name="account_id" value="' . $account_id . '" />
                         <input type="search" class="form-control" name="search" value="' . h($search) . '" placeholder="' . h(lang('Product or code')) . '" aria-label="' . h(lang('Search')) . '" />
-                        <button type="submit" class="btn btn-outline-secondary"><i class="bi bi-search" aria-hidden="true"></i></button>
+                        <button type="submit" class="btn btn-outline theme-secondary"><i class="bi bi-search" aria-hidden="true"></i></button>
                     </form>
                 </div>
                 ' . $output_found . '

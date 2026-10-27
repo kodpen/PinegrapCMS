@@ -127,7 +127,7 @@ function api_console_endpoints_html($try_hint = '') {
 
 				$notes = array();
 
-				if (!empty($param['required'])) { $notes[] = '<b class="text-danger">' . lang('required') . '</b>'; }
+				if (!empty($param['required'])) { $notes[] = '<b class="fg-danger">' . lang('required') . '</b>'; }
 
 				if (isset($param['values'])) { $notes[] = h(implode(' | ', $param['values'])); }
 
@@ -181,7 +181,7 @@ function api_console_endpoints_html($try_hint = '') {
 			// which call takes it and which answers 400 dry_run_unsupported.
 			if (!empty($route['dry_run'])) {
 
-				$tables .= '<p class="doc-desc mb-0 mt-2"><i class="bi bi-shield-check me-1"></i>'
+				$tables .= '<p class="doc-desc mb-0 mt-3"><i class="bi bi-shield-check me-1"></i>'
 					. h(lang('Can be rehearsed: with X-Dry-Run: true, or dry_run=true in the query, it makes every check and answers without writing.')) . '</p>';
 
 			}
@@ -215,7 +215,7 @@ function api_console_endpoints_html($try_hint = '') {
 
 				}
 
-				$tables .= '<p class="doc-desc mb-0 mt-2"><i class="bi bi-reply me-1"></i>' . h($answers) . '</p>';
+				$tables .= '<p class="doc-desc mb-0 mt-3"><i class="bi bi-reply me-1"></i>' . h($answers) . '</p>';
 
 			}
 
@@ -268,7 +268,7 @@ function api_console_endpoints_html($try_hint = '') {
 					' . $tables . '
 					<div class="doc-curl"><code>' . h($curl) . '</code></div>
 					<div class="doc-try">
-						<button type="button" class="btn btn-sm btn-outline-primary doc-try-btn">
+						<button type="button" class="btn btn-sm btn-outline theme-primary doc-try-btn">
 							<i class="bi bi-play-fill me-1"></i>' . lang('Try it') . '</button>
 						' . $hint . '
 					</div>
@@ -334,7 +334,7 @@ function api_console_events_html() {
 		<div class="doc-ep-body">
 			<p class="doc-desc">' . h(lang('Rather than ask this API on a timer, an application can register an address and be told. The site posts a JSON body carrying the event name, created_at as a UTC instant, and the few fields in data that identify the thing, and signs it with the subscription secret in the X-Pinegrap-Signature header. Delivery is queued and sent by the scheduled task, so nothing an outside server does can slow down a checkout. Fetch the object itself when you need more than the identifiers.')) . '</p>
 			<div class="doc-curl"><code>{"event": "order.created", "created_at": "2026-01-25T09:14:03Z", "data": {"id": 1042}}</code></div>
-			<div class="doc-params mt-3"><span class="doc-params-h">' . h(lang('Events')) . '</span>
+			<div class="doc-params mt-5"><span class="doc-params-h">' . h(lang('Events')) . '</span>
 				<table class="table table-sm mb-0"><tbody>' . $rows . '</tbody></table></div>
 		</div>
 	</div>';
@@ -368,9 +368,9 @@ function api_console_errors_html() {
 		<div class="doc-ep-body">
 			<p class="doc-desc">' . h(lang('A failure carries the code to branch on, a message written for a person, the request_id that identifies the call in this site\'s API log, and - when the failure is about how the call was made - the address of this page. The message may be reworded or translated; the code will not be.')) . '</p>
 			<div class="doc-curl"><code>{"error": {"code": "validation_failed", "message": "...", "field": "limit", "request_id": "8f2c...", "docs": "..."}}</code></div>
-			<div class="doc-params mt-3"><span class="doc-params-h">' . h(lang('Codes')) . '</span>
+			<div class="doc-params mt-5"><span class="doc-params-h">' . h(lang('Codes')) . '</span>
 				<table class="table table-sm mb-0"><tbody>' . $rows . '</tbody></table></div>
-			<p class="doc-desc mt-3">' . h(lang('Rate limit: every answer carries X-RateLimit-Limit, X-RateLimit-Remaining and X-RateLimit-Reset, and a refused call carries Retry-After. A 409 is reported by the endpoint that can produce it and is named in that endpoint\'s description.')) . '</p>
+			<p class="doc-desc mt-5">' . h(lang('Rate limit: every answer carries X-RateLimit-Limit, X-RateLimit-Remaining and X-RateLimit-Reset, and a refused call carries Retry-After. A 409 is reported by the endpoint that can produce it and is named in that endpoint\'s description.')) . '</p>
 		</div>
 	</div>';
 
@@ -393,7 +393,7 @@ function api_console_css() {
    The index stops being sticky at the same point: pinned to the top of a narrow
    screen it would take a third of the height and leave the endpoint it links to
    with no room to be read. */
-@media (max-width: 992px) {
+@media (max-width: 1024px) {
 	.doc-wrap { grid-template-columns: 1fr; }
 	.doc-nav { position: static; max-height: 260px; }
 }
@@ -497,13 +497,13 @@ window.pgApiConsole = (function () {
 	// gets a textarea whose placeholder shows the JSON form it expects, an
 	// enumeration and a switch get a select so a typo is not possible.
 	function fieldsFor(endpoint) {
-		var html = "<div class=\'row g-2 mb-2\'>";
+		var html = "<div class=\'row g-3 mb-3\'>";
 		endpoint.querySelectorAll(".doc-params table tr").forEach(function (row) {
 			var name = row.dataset.name;
 			var type = row.dataset.type || "string";
 			var where = row.dataset.where || "query";
 			var attributes = " data-name=\'" + esc(name) + "\' data-type=\'" + esc(type) + "\' data-where=\'" + esc(where) + "\'";
-			html += "<div class=\'col-6 col-lg-4\'><label class=\'form-label small mb-1\'>" + esc(name) +
+			html += "<div class=\'col-6 lg:col-4\'><label class=\'form-label small mb-1\'>" + esc(name) +
 				" <span class=\'opacity-50\'>" + esc(where) + "</span></label>";
 			if (type === "list") {
 				html += "<textarea rows=\'2\' class=\'form-control form-control-sm doc-field\'" + attributes +
@@ -511,11 +511,11 @@ window.pgApiConsole = (function () {
 			} else if (type === "enum") {
 				var values = [];
 				try { values = JSON.parse(row.dataset.values || "[]"); } catch (e) {}
-				html += "<select class=\'form-select form-select-sm doc-field\'" + attributes + "><option value=\'\'>" + esc(T.empty) + "</option>";
+				html += "<select class=\'form-control form-control-sm doc-field\'" + attributes + "><option value=\'\'>" + esc(T.empty) + "</option>";
 				values.forEach(function (value) { html += "<option value=\'" + esc(value) + "\'>" + esc(value) + "</option>"; });
 				html += "</select>";
 			} else if (type === "bool") {
-				html += "<select class=\'form-select form-select-sm doc-field\'" + attributes + "><option value=\'\'>" + esc(T.empty) +
+				html += "<select class=\'form-control form-control-sm doc-field\'" + attributes + "><option value=\'\'>" + esc(T.empty) +
 					"</option><option value=\'true\'>true</option><option value=\'false\'>false</option></select>";
 			} else {
 				html += "<input type=\'text\' class=\'form-control form-control-sm doc-field\'" + attributes + " autocomplete=\'off\' spellcheck=\'false\'>";
@@ -547,9 +547,9 @@ window.pgApiConsole = (function () {
 	function openPanel(endpoint, panel) {
 		panel.classList.remove("d-none");
 		panel.innerHTML = fieldsFor(endpoint) +
-			"<button type=\'button\' class=\'btn btn-sm btn-primary doc-send\'>" + esc(T.send) + "</button>" +
-			"<div class=\'doc-problem text-danger mt-2 d-none\'></div>" +
-			"<pre class=\'mt-2 d-none\'></pre>";
+			"<button type=\'button\' class=\'btn btn-sm btn-solid theme-primary doc-send\'>" + esc(T.send) + "</button>" +
+			"<div class=\'doc-problem fg-danger mt-3 d-none\'></div>" +
+			"<pre class=\'mt-3 d-none\'></pre>";
 		panel.querySelector(".doc-send").addEventListener("click", function () {
 			send(endpoint, panel, this);
 		});
@@ -560,7 +560,7 @@ window.pgApiConsole = (function () {
 
 		if (!settings.hasCredential()) {
 			panel.classList.remove("d-none");
-			panel.innerHTML = "<div class=\'alert alert-warning py-2 px-3 small mb-0\'>" + esc(settings.missing) + "</div>";
+			panel.innerHTML = "<div class=\'alert theme-warning py-3 px-5 small mb-0\'>" + esc(settings.missing) + "</div>";
 			return;
 		}
 

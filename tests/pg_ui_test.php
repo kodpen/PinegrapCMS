@@ -316,7 +316,7 @@ function test_pg_ui_build_dialog()
 	), $r['v5_build']);
 
 	pg_assert_same(array(
-		'root' => 'DIALOG.dialog dialog-xl dialog-scrollable',
+		'root' => 'DIALOG.dialog dialog-xl pg-dialog-centered dialog-scrollable',
 		'header' => 'dialog-header',
 		'body' => 'dialog-body',
 		'footer' => null,

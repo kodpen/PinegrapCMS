@@ -229,7 +229,7 @@ foreach ($connected_accounts as $account) {
         . '<td class="align-middle">' . h(pg_user_role_name($account['user_role'])) . '</td>'
         . '<td class="align-middle">' . pg_connected_account_label(isset($identity_providers[$account_id]) ? $identity_providers[$account_id] : array(), $account['user_password_algo']) . '</td>'
         . '<td class="align-middle">' . (isset($session_counts[$account_id]) ? (int) $session_counts[$account_id] : 0) . '</td>'
-        . '<td class="align-middle text-end"><a href="edit_user.php?id=' . $account_id . '" class="btn btn-sm btn-outline-secondary">' . lang('Manage') . '</a></td>'
+        . '<td class="align-middle text-end"><a href="edit_user.php?id=' . $account_id . '" class="btn btn-sm btn-outline theme-secondary">' . lang('Manage') . '</a></td>'
         . '</tr>';
 }
 
@@ -289,8 +289,8 @@ $output_push_test_note = '';
 if (isset($_GET['push_test'])) {
 
     $output_push_test_note = (($_GET['push_test'] === 'ok')
-        ? '<div class="alert alert-success">' . lang('A test notification was sent to that device. It can take a few seconds to arrive, and a browser that is completely closed receives it when it is next opened.') . '</div>'
-        : '<div class="alert alert-warning">' . lang('The test notification could not be sent. The reason is on the device\'s row, under the delivery column.') . '</div>');
+        ? '<div class="alert theme-success">' . lang('A test notification was sent to that device. It can take a few seconds to arrive, and a browser that is completely closed receives it when it is next opened.') . '</div>'
+        : '<div class="alert theme-warning">' . lang('The test notification could not be sent. The reason is on the device\'s row, under the delivery column.') . '</div>');
 }
 
 $output_push_rows = '';
@@ -302,27 +302,27 @@ foreach ($push_subscriptions as $subscription) {
     $has_session = (($subscription_selector !== '') && isset($push_live_selectors[$subscription_selector]));
 
     if (((int) $subscription['fail_count']) > 0) {
-        $status = '<span class="badge bg-warning-subtle text-warning-emphasis fw-light" title="'
+        $status = '<span class="badge bg-subtle-warning fg-emphasis-warning fw-light" title="'
             . h((string) $subscription['last_error']) . '">'
             . h(lang(array('string' => '{var:1} failed attempts', 'vars' => array((int) $subscription['fail_count'])))) . '</span>';
     } elseif (((int) $subscription['last_ok_timestamp']) > 0) {
         $status = get_relative_time(array('timestamp' => (int) $subscription['last_ok_timestamp']));
     } else {
-        $status = '<span class="text-body-secondary">' . h(lang('Nothing sent yet')) . '</span>';
+        $status = '<span class="fg-secondary">' . h(lang('Nothing sent yet')) . '</span>';
     }
 
     $output_push_rows .=
         '<tr>'
         . '<td class="align-middle"><a href="edit_user.php?id=' . (int) $subscription['user_id'] . '">' . h((string) $subscription['user_username']) . '</a></td>'
         . '<td class="align-middle" title="' . h(trim((string) $subscription['user_agent'])) . '">' . h(pg_user_agent_label($subscription['user_agent']))
-        . ($is_this_device ? ' <span class="badge bg-success fw-light">' . h(lang('This device')) . '</span>' : '')
+        . ($is_this_device ? ' <span class="badge theme-success fw-light">' . h(lang('This device')) . '</span>' : '')
         . '</td>'
         . '<td class="align-middle">'
         . (($subscription_selector === '')
-            ? '<span class="text-body-secondary" title="' . h(lang('This subscription was made before the software started recording which browser a subscription belongs to, so it cannot be matched to a sign-in. Turning notifications off and on again on that device records it.')) . '">&mdash;</span>'
+            ? '<span class="fg-secondary" title="' . h(lang('This subscription was made before the software started recording which browser a subscription belongs to, so it cannot be matched to a sign-in. Turning notifications off and on again on that device records it.')) . '">&mdash;</span>'
             : ($has_session
-                ? '<span class="badge bg-success-subtle text-success-emphasis fw-light">' . h(lang('Signed in')) . '</span>'
-                : '<span class="badge bg-secondary-subtle text-body-secondary fw-light" title="' . h(lang('This browser has no live sign-in, so it can only be told that something happened - never what.')) . '">' . h(lang('Signed out')) . '</span>'))
+                ? '<span class="badge bg-subtle-success fg-emphasis-success fw-light">' . h(lang('Signed in')) . '</span>'
+                : '<span class="badge bg-subtle-secondary fg-secondary fw-light" title="' . h(lang('This browser has no live sign-in, so it can only be told that something happened - never what.')) . '">' . h(lang('Signed out')) . '</span>'))
         . '</td>'
         . '<td class="align-middle">' . h(date('Y-m-d H:i', (int) $subscription['created_timestamp'])) . '</td>'
         . '<td class="align-middle">' . $status . '</td>'
@@ -332,13 +332,13 @@ foreach ($push_subscriptions as $subscription) {
         . '<input type="hidden" name="pg_session_action" value="test_push"/>'
         . '<input type="hidden" name="pg_push_id" value="' . (int) $subscription['id'] . '"/>'
         . '<input type="hidden" name="send_back" value="' . h($self_url) . '"/>'
-        . '<button type="submit" class="btn btn-sm btn-outline-secondary" title="' . h(lang('Sends one notification to this device now, so you can see whether it arrives.')) . '">' . h(lang('Test')) . '</button>'
+        . '<button type="submit" class="btn btn-sm btn-outline theme-secondary" title="' . h(lang('Sends one notification to this device now, so you can see whether it arrives.')) . '">' . h(lang('Test')) . '</button>'
         . '</form>'
         . '<form method="post" action="view_sessions.php" style="margin:0">' . get_token_field()
         . '<input type="hidden" name="pg_session_action" value="revoke_push"/>'
         . '<input type="hidden" name="pg_push_id" value="' . (int) $subscription['id'] . '"/>'
         . '<input type="hidden" name="send_back" value="' . h($self_url) . '"/>'
-        . '<button type="submit" class="btn btn-sm btn-outline-danger" title="' . h(lang('The device stops receiving notifications. Whoever uses it can turn them on again from the bell in their own panel.')) . '">' . h(lang('Stop')) . '</button>'
+        . '<button type="submit" class="btn btn-sm btn-outline theme-danger" title="' . h(lang('The device stops receiving notifications. Whoever uses it can turn them on again from the bell in their own panel.')) . '">' . h(lang('Stop')) . '</button>'
         . '</form>'
         . '</div>'
         . '</td>'
@@ -357,14 +357,14 @@ foreach ($sessions as $s) {
     // get_relative_time() returns a <time> element, not plain text: escaping
     // it printed the markup instead of the date.
     $last = ((time() - $fresh) < 300)
-        ? '<span class="badge bg-success fw-light">' . h(lang('Online')) . '</span>'
+        ? '<span class="badge theme-success fw-light">' . h(lang('Online')) . '</span>'
         : get_relative_time(array('timestamp' => $fresh));
     $output_rows .=
         '<tr>'
         . '<td class="align-middle"><a href="edit_user.php?id=' . (int) $s['user_id'] . '">' . h((string) $s['user_username']) . '</a></td>'
         . '<td class="align-middle" title="' . h(trim((string) $s['user_agent'])) . '">' . h(pg_user_agent_label($s['user_agent']))
-        . ($is_current ? ' <span class="badge bg-success fw-light">' . h(lang('This device')) . '</span>' : '')
-        . ($is_pinned ? ' <span class="badge bg-secondary fw-light" title="' . h(lang('Locked by the site owner: the device limit cannot evict it and the member cannot sign it out.')) . '"><i class="bi bi-pin-angle-fill"></i> ' . h(lang('Locked')) . '</span>' : '')
+        . ($is_current ? ' <span class="badge theme-success fw-light">' . h(lang('This device')) . '</span>' : '')
+        . ($is_pinned ? ' <span class="badge theme-secondary fw-light" title="' . h(lang('Locked by the site owner: the device limit cannot evict it and the member cannot sign it out.')) . '"><i class="bi bi-pin-angle-fill"></i> ' . h(lang('Locked')) . '</span>' : '')
         . '</td>'
         . '<td class="align-middle">' . pg_connected_account_label(isset($identity_providers[(int) $s['user_id']]) ? $identity_providers[(int) $s['user_id']] : array(), $s['user_password_algo']) . '</td>'
         . '<td class="align-middle">' . h((string) $s['ip_address']) . '</td>'
@@ -375,13 +375,13 @@ foreach ($sessions as $s) {
         . '<div class="d-inline-flex gap-1">'
         . ($pin_column
             ? (($pin_redundant && !$is_pinned)
-                ? ('<button type="button" class="btn btn-sm btn-outline-secondary disabled" disabled title="'
+                ? ('<button type="button" class="btn btn-sm btn-outline theme-secondary disabled" disabled title="'
                     . h(lang('The setting "Refuse new sign-ins when the limit is full" already ties this account to one device, so pinning a single session adds nothing here. It becomes useful with a limit of two or more, where it stops the member freeing a slot by signing out one of their other devices.')) . '"><i class="bi bi-pin-angle-fill me-1"></i>' . h(lang('Locked')) . '</button>')
                 : ('<form method="post" action="view_sessions.php" style="margin:0">' . get_token_field()
                 . '<input type="hidden" name="pg_session_action" value="' . ($is_pinned ? 'unpin' : 'pin') . '"/>'
                 . '<input type="hidden" name="pg_selector" value="' . h((string) $s['selector']) . '"/>'
                 . '<input type="hidden" name="send_back" value="' . h($self_url) . '"/>'
-                . '<button type="submit" class="btn btn-sm btn-outline-secondary" title="' . h(lang('Pins THIS session: the device limit cannot evict it and the member cannot sign it out from their own screen. Different from the setting "Refuse new sign-ins when the limit is full", which only stops new devices - here the account is tied to this one.')) . '">'
+                . '<button type="submit" class="btn btn-sm btn-outline theme-secondary" title="' . h(lang('Pins THIS session: the device limit cannot evict it and the member cannot sign it out from their own screen. Different from the setting "Refuse new sign-ins when the limit is full", which only stops new devices - here the account is tied to this one.')) . '">'
                 . '<i class="bi ' . ($is_pinned ? 'bi-unlock' : 'bi-pin-angle') . ' me-1"></i>'
                 . h($is_pinned ? lang('Unlock') : lang('Lock')) . '</button></form>'))
             : '')
@@ -389,7 +389,7 @@ foreach ($sessions as $s) {
         . '<input type="hidden" name="pg_session_action" value="revoke"/>'
         . '<input type="hidden" name="pg_selector" value="' . h((string) $s['selector']) . '"/>'
         . '<input type="hidden" name="send_back" value="' . h($self_url) . '"/>'
-        . '<button type="submit" class="btn btn-sm btn-outline-danger">' . lang('Sign out') . '</button>'
+        . '<button type="submit" class="btn btn-sm btn-outline theme-danger">' . lang('Sign out') . '</button>'
         . '</form>'
         . '</div>'
         . '</td>'
@@ -403,7 +403,7 @@ if ($output_rows === '') {
 $output_filter_note = '';
 if ($filter_user_id > 0) {
     $output_filter_note =
-        '<p class="mb-3"><a href="view_sessions.php">' . lang('All Sessions') . '</a></p>';
+        '<p class="mb-5"><a href="view_sessions.php">' . lang('All Sessions') . '</a></p>';
 }
 
 // The trail carries real ancestry only, which this screen has just one of:
@@ -429,14 +429,14 @@ echo pg_page_shell(array(
 print '<main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <div class="row mb-2 flex-wrap">
-                <div class="col-12 text-center text-md-start">
+            <div class="row mb-3 flex-wrap">
+                <div class="col-12 text-center md:text-start">
                     <h2 class="d-inline-block">' . lang('All Sessions') . '</h2>
                 </div>
             </div>
             ' . $output_filter_note . '
-            <div class="alert alert-secondary">' . lang('Every sign-in carries a session token and is listed here. Sessions started before this feature are bound automatically on their next request.') . '</div>
-            <div class="card my-4">
+            <div class="alert theme-secondary">' . lang('Every sign-in carries a session token and is listed here. Sessions started before this feature are bound automatically on their next request.') . '</div>
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <div class="table-responsive">
                         <table class="table table-hover mb-0" style="width:100%">
@@ -458,14 +458,14 @@ print '<main id="content" class="container-fluid">
                 </div>
             </div>
 ' . (($push_available) ? '
-            <div class="row mb-2 flex-wrap mt-4">
-                <div class="col-12 text-center text-md-start">
+            <div class="row mb-3 flex-wrap mt-7">
+                <div class="col-12 text-center md:text-start">
                     <h2 class="d-inline-block">' . lang('Notification subscriptions') . '</h2>
                 </div>
             </div>
             ' . $output_push_test_note . '
-            <div class="alert alert-secondary">' . lang('Every browser an operator turned notifications on in is listed here. A subscription belongs to the browser rather than to the sign-in, so it survives a closed window; signing out of a device ends it, and so does the button below.') . '</div>
-            <div class="card my-4">
+            <div class="alert theme-secondary">' . lang('Every browser an operator turned notifications on in is listed here. A subscription belongs to the browser rather than to the sign-in, so it survives a closed window; signing out of a device ends it, and so does the button below.') . '</div>
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <div class="table-responsive">
                         <table class="table table-hover mb-0" style="width:100%">
@@ -485,13 +485,13 @@ print '<main id="content" class="container-fluid">
                 </div>
             </div>
 ' : '') . '
-            <div class="row mb-2 flex-wrap mt-4">
-                <div class="col-12 text-center text-md-start">
+            <div class="row mb-3 flex-wrap mt-7">
+                <div class="col-12 text-center md:text-start">
                     <h2 class="d-inline-block">' . lang('Connected accounts') . '</h2>
                 </div>
             </div>
-            <div class="alert alert-secondary">' . lang('Accounts that can sign in through an external provider. The connection is tied to the provider account itself, not to the email address, and it outlives any session - remove it on the user screen.') . '</div>
-            <div class="card my-4">
+            <div class="alert theme-secondary">' . lang('Accounts that can sign in through an external provider. The connection is tied to the provider account itself, not to the email address, and it outlives any session - remove it on the user screen.') . '</div>
+            <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <div class="table-responsive">
                         <table class="table table-hover mb-0" style="width:100%">

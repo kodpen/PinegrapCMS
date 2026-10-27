@@ -576,7 +576,7 @@ function test_widget_fill_editor_twins()
 	pg_assert_contains('sd-sw-bindfilter', $answer['calendarText'], 'a calendar text takes a filter');
 	pg_assert_same('', $answer['formListDate'], 'the form views draw their date row themselves');
 	pg_assert_contains('label="Format"', $answer['formList']);
-	pg_assert_contains('<select class="form-select form-select-sm sd-sw-bindfilter"', $answer['formList']);
+	pg_assert_contains('<select class="form-control form-control-sm sd-sw-bindfilter"', $answer['formList']);
 	pg_assert_contains('<option value="" selected>As it is</option>', $answer['formList'], 'no format: as it is');
 	pg_assert_contains('style="display:none"', $answer['formList'], 'no number box');
 	pg_assert_contains('<option value="number" selected>', $answer['formListNumber']);
