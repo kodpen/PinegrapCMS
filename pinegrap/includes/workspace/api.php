@@ -200,6 +200,8 @@ function ws_openapi_objects()
         'WorkspaceFlow'             => 'ws_api_flow_schema',
         'WorkspaceFlowVersion'      => 'ws_api_flow_version_schema',
         'WorkspaceFlowVersionDetail' => 'ws_api_flow_version_detail_schema',
+        'WorkspaceFlowKind'         => 'ws_api_flow_kind_schema',
+        'WorkspaceFlowValidation'   => 'ws_api_flow_validation_schema',
         'WorkspaceFlowGraph'        => 'ws_api_flow_graph_schema',
         'WorkspaceFlowProblem'      => 'ws_api_flow_problem_schema',
         'WorkspaceFlowRun'          => 'ws_api_flow_run_schema',
@@ -2030,6 +2032,35 @@ function ws_api_routes()
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'n', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The version\'s number.'),
                 array('name' => 'draft_rev', 'in' => 'body', 'type' => 'int', 'min' => 0, 'description' => 'The draft_rev the draft was read at.'),
+            ),
+        ),
+
+        // What a flow is built from and a draft looked at before it is
+        // published (flow_catalogue.php). Both write nothing, so both are
+        // tools: an assistant drafts a flow from the catalogue and checks
+        // it before the person publishes it.
+        array(
+            'id'          => 'workspace.flow_kinds.list',
+            'method'      => 'GET',
+            'path'        => '/workspace/flow-kinds',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_flow_kinds_list',
+            'returns'     => array('list' => 'WorkspaceFlowKind'),
+            'summary'     => 'The kinds of box a flow is built from',
+            'description' => 'Every kind of box the nodes of a flow (POST /workspace/flows) may have, in one page. starts says the box starts the flow (a flow has exactly one); step that it is a step a scheduled action could take too. outcomes are the values the on of an arrow leaving it may take (next for a start box; an end has none). outputs are the values it gives the boxes after it, read in their texts as {{node.ID.KEY}}: key, type (number or text) and label; a web check\'s carry mode, the one of its modes they belong to, and a report gives one more number per count it is set to send. texts are the settings that take those values. settings are the keys of its config as a save keeps them, in order: type is text, integer, boolean, list (of says of what: integer ids, or objects) or object; blank says an integer may be left empty for none; values, when set, are the words the setting takes, any other being kept as the first. A setting not sent is kept at its empty value, and a key not listed is dropped. What each setting means is said under nodes of POST /workspace/flows.',
+        ),
+
+        array(
+            'id'          => 'workspace.flows.validate',
+            'method'      => 'GET',
+            'path'        => '/workspace/flows/{id}/validate',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_flows_validate',
+            'returns'     => 'WorkspaceFlowValidation',
+            'summary'     => 'Look at a flow\'s draft before publishing it',
+            'description' => 'Looks at the saved draft of a flow the owner of the application may change as publishing would, and writes nothing. problems are what GET /workspace/flows/{id} lists (an empty list when none). To the flow\'s owner, once there is no problem, the draft is also checked with their rights now, as POST /workspace/flows/{id}/publish checks it: a channel they may not post in, an address that is not good, a time already gone, a person they may not give work to; refusal is the first such reason, null when none. checked_rights says whether that was done: a colleague the flow is shared with at edit does not publish it, so they get the problems alone and publishable is false for them. publishable is true when the owner\'s publish would pass these checks now; it still meets draft_rev and a draft saved meanwhile. Somebody who may only run the flow or look at it is refused with 403.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
 
