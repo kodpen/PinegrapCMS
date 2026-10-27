@@ -6,7 +6,7 @@ description: Numbered steps on panel screens: Bootstrap 6 .stepper (edit_offer c
 ## Which screens show numbered steps, and with what?
 - Bootstrap 6's `.stepper` (`<ol class="stepper">`, `<li class="stepper-item">`; the number is a CSS counter, never written in the markup) since step B9g (#2206):
   - `edit_offer.php` (`includes/templates/edit_offer.php`): `.stepper.pg-stepper-cards`, one card per step.
-  - The installer (`install/index.php`, `#pg_rail`): each step's text is a `button.pg-install-step` with `data-step` inside the item.
+  - The installer (`install/index.php`, `#pg_rail`): each step's text is a `button.pg-install-step` with `data-step` inside the item. Its Continue buttons are `.pg-install-next`, never `.pg-next`: that is the dashboard's next-event pill in backend.src.css (#2237), which the installer also loads, and it turned them into tiny pills.
   - ERP account import (`erp_import_steps()` in `erp_accounts_import.php`): `.stepper-horizontal`.
 - The Workspace automation flow (`workspace.js`, `.ws-sa-flow`) keeps its own `.pg-step`, `.pg-step-rail`, `.pg-step-node` rail (`backend.src.css`, block *Step rail of the workspace automation flow*); new screens use `.stepper`.
 

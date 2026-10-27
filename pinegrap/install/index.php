@@ -3242,7 +3242,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 										'name' => 'install_from_folder'
 										)) . '
 										' . $output_restore_unfinished . $output_source_warning . $output_starter_sites . $output_backup_source . $output_upload_source . '
-										<div class="text-end mt-5"><button type="button" class="btn btn-solid theme-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button></div>
+										<div class="text-end mt-5"><button type="button" class="btn btn-solid theme-primary pg-install-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button></div>
 									</div>
 								</div>
 							</div>
@@ -3273,7 +3273,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 										</div>
 										<div class="d-flex justify-content-between mt-5">
 											<button type="button" class="btn btn-outline theme-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
-											<button type="button" class="btn btn-solid theme-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
+											<button type="button" class="btn btn-solid theme-primary pg-install-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
 										</div>
 									</div>
 								</div>
@@ -3331,7 +3331,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 										</div>
 										<div class="d-flex justify-content-between mt-5">
 											<button type="button" class="btn btn-outline theme-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
-											<button type="button" class="btn btn-solid theme-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
+											<button type="button" class="btn btn-solid theme-primary pg-install-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
 										</div>
 									</div>
 								</div>
@@ -3396,7 +3396,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 										<div class="alert small d-none mt-3 mb-0" id="pg_test_result"></div>
 										<div class="d-flex justify-content-between mt-5">
 											<button type="button" class="btn btn-outline theme-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
-											<button type="button" class="btn btn-solid theme-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
+											<button type="button" class="btn btn-solid theme-primary pg-install-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
 										</div>
 									</div>
 								</div>
@@ -3615,7 +3615,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 								</div>
 										<div class="d-flex justify-content-between mt-5">
 											<button type="button" class="btn btn-outline theme-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
-											<button type="button" class="btn btn-solid theme-primary pg-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
+											<button type="button" class="btn btn-solid theme-primary pg-install-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button>
 										</div>
 									</div>
 								</div>
@@ -4530,7 +4530,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				pg_install_set_step(parseInt($(this).attr("data-step"), 10));
 			});
 
-			$(".pg-next").on("click", function() {
+			$(".pg-install-next").on("click", function() {
 				pg_install_set_step(pg_install_step + 1);
 			});
 
