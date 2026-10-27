@@ -499,6 +499,18 @@ function ws_api_flows_create($params)
 
     $data = ws_api_flow_input($params);
 
+    // A template's boxes, with the answers to its settings written in;
+    // somebody who may not build flows meets ws_flow_save_check()'s 403.
+    if (array_key_exists('template', $params) && ws_can_schedule($viewer)) {
+        $made = ws_api_flow_from_template(ws_flow_templates_for($viewer), $params, $data);
+
+        if (!$made['ok']) {
+            ws_api_flow_refused($made);
+        }
+
+        $data = $made['data'];
+    }
+
     // The checks ws_flow_save() makes, made first so that a dry run meets
     // the same refusals.
     $checked = ws_flow_save_check($viewer, $data);
@@ -771,6 +783,116 @@ function ws_api_flow_versions_restore($params)
     }
 
     api_ok(ws_api_flow_answer($viewer, $flow['id']));
+}
+
+/* ---------------------------------------------------------------------------
+   Ready-made flows (flow_templates.php)
+   --------------------------------------------------------------------------- */
+
+/**
+ * A new draft's input from a template: the template's boxes and arrows, the
+ * answers to its settings written into the boxes that ask for them, and its
+ * title for a name when none is sent. Without answers the boxes keep the
+ * template's own values (as Close on the canvas's setup panel leaves them);
+ * with them every setting must be answered, as the panel requires. Boxes
+ * sent beside a template are refused: one or the other draws the flow.
+ * Pure.
+ *
+ * @param array[] $templates ws_flow_templates_for() of the owner of the
+ *                           application
+ * @param array   $params    the call's input: template, answers
+ * @param array   $data      ws_api_flow_input() of the same call
+ * @return array ok, error, status, field, data
+ */
+function ws_api_flow_from_template($templates, $params, $data)
+{
+    $refused = function ($error, $status, $field) {
+        return array('ok' => false, 'error' => $error, 'status' => $status, 'field' => $field, 'data' => array());
+    };
+
+    if (array_intersect(array('nodes', 'edges', 'notes'), array_keys($params))) {
+        return $refused(lang('Send a template or boxes, not both.'), 422, 'template');
+    }
+
+    $template = null;
+
+    foreach ((array) $templates as $item) {
+        if ($item['key'] === (string) $params['template']) {
+            $template = $item;
+        }
+    }
+
+    if ($template === null) {
+        return $refused(lang('That template is not offered to you.'), 422, 'template');
+    }
+
+    $values = array();
+
+    if (array_key_exists('answers', $params)) {
+        $check = ws_flow_template_answers_check($template, $params['answers']);
+
+        if (!$check['ok']) {
+            return $refused($check['error'], 422, 'answers.' . $check['field']);
+        }
+
+        $values = $check['values'];
+    }
+
+    $data['graph'] = ws_flow_template_apply($template, $template['graph'], $values);
+
+    if (!array_key_exists('name', $data)) {
+        $data['name'] = (string) $template['title'];
+    }
+
+    return array('ok' => true, 'error' => '', 'status' => 200, 'field' => '', 'data' => $data);
+}
+
+// One template as GET /workspace/flow-templates answers it.
+function ws_api_flow_template_present($template)
+{
+    return array(
+        'key'      => (string) $template['key'],
+        'category' => (string) $template['category'],
+        'title'    => (string) $template['title'],
+        'help'     => (string) $template['help'],
+        'start'    => (string) $template['start'],
+        'boxes'    => (int) $template['boxes'],
+        'threads'  => (int) $template['threads'],
+        'settings' => array_values(array_map(function ($setting) {
+            return (string) $setting['type'];
+        }, (array) $template['settings'])),
+        'graph'    => ws_api_flow_graph_present($template['graph'], true),
+    );
+}
+
+// What ws_api_flow_template_present() returns.
+function ws_api_flow_template_schema()
+{
+    return array(
+        'key'      => 'string',
+        'category' => 'string',
+        'title'    => 'string',
+        'help'     => 'string',
+        'start'    => 'string',
+        'boxes'    => 'integer',
+        'threads'  => 'integer',
+        'settings' => 'string[]',
+        'graph'    => 'WorkspaceFlowGraph',
+    );
+}
+
+// The templates the canvas's gallery offers the owner of the application,
+// filled for them (their own e-mail and site name); nobody who may not
+// build flows is offered any.
+function ws_api_flow_templates_list($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $templates = array_map('ws_api_flow_template_present', ws_flow_templates_for($viewer));
+
+    api_ok_list($templates, count($templates));
 }
 
 /* ---------------------------------------------------------------------------
