@@ -6976,64 +6976,22 @@ function send_givex_request($type, $gift_card_code, $amount = 0)
             </params>
 
         </methodCall>';
-    // initialize cURL
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://' . ECOMMERCE_GIVEX_PRIMARY_HOSTNAME . ':50042');
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-        'Content-Type: text/xml'
-    ));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-    pg_curl_tls($ch);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $request);
-    curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-    curl_setopt($ch, CURLOPT_POST, 1);
-    // if there is a proxy address, then send cURL request through proxy
-    if (PROXY_ADDRESS != '') {
-        curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
-        curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-        curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
-    }
-    // get cURL response
-    $response_data = curl_exec($ch);
-    $curl_errno = curl_errno($ch);
-    $curl_error = curl_error($ch);
-    unset($ch);
-    // if there was a cURL error, then send the same request to the secondary Givex server
-    if ($curl_errno != 0) {
-        // initialize cURL
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, 'https://' . ECOMMERCE_GIVEX_SECONDARY_HOSTNAME . ':50042');
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-            'Content-Type: text/xml'
+    // send the request to the primary Givex server, and to the secondary one when cURL fails on the primary
+    foreach (array(ECOMMERCE_GIVEX_PRIMARY_HOSTNAME, ECOMMERCE_GIVEX_SECONDARY_HOSTNAME) as $hostname) {
+        $response = pg_curl_run('POST', 'https://' . $hostname . ':50042', array(
+            'body' => $request,
+            'headers' => array('Content-Type: text/xml'),
+            'timeout' => 15,
+            'forbid_reuse' => true,
         ));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 0);
-        pg_curl_tls($ch);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $request);
-        curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
-        curl_setopt($ch, CURLOPT_POST, 1);
-        // if there is a proxy address, then send cURL request through proxy
-        if (PROXY_ADDRESS != '') {
-            curl_setopt($ch, CURLOPT_HTTPPROXYTUNNEL, true);
-            curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
-            curl_setopt($ch, CURLOPT_PROXY, PROXY_ADDRESS);
-        }
-        // get cURL response
-        $response_data = curl_exec($ch);
-        $curl_errno = curl_errno($ch);
-        $curl_error = curl_error($ch);
-        unset($ch);
-        // if there was also a cURL error for the secondary Givex server, then return error
-        if ($curl_errno != 0) {
-            $result['curl_errno'] = $curl_errno;
-            $result['curl_error'] = $curl_error;
-            return $result;
+        if ($response['errno'] == 0) {
+            return pg_givex_parse_response($type, $response['body']);
         }
     }
-    return pg_givex_parse_response($type, $response_data);
+    // there was also a cURL error for the secondary Givex server, so return error
+    $result['curl_errno'] = $response['errno'];
+    $result['curl_error'] = $response['error'];
+    return $result;
 }
 // Reads a Givex reply: a list of strings, the transaction code, the result (0 for success),
 // then the balance of a balance check, or the authorization number and the new balance of a
