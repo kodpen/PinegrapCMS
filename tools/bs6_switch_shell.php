@@ -459,8 +459,9 @@ function bs6_shell_dialog_at($source, array $box)
 			return bs6_shell_open_sheet($source, $root, $root_text, $root_class, $box, $box_close, $classes, $extra);
 		}
 
+		// A size class on the root (`modal modal-lg`) set v5's width too.
 		$tokens = array('dialog');
-		foreach (bs6_shell_tokens($root_class[2]) as $token) {
+		foreach (bs6_shell_dialog_box_classes(bs6_shell_tokens($root_class[2])) as $token) {
 			if (!in_array($token, array('modal', 'fade', 'show'), true)) {
 				$tokens[] = $token;
 			}
@@ -493,7 +494,7 @@ function bs6_shell_dialog_at($source, array $box)
 
 	$call = end($calls);
 	$tokens = array('dialog');
-	foreach (bs6_shell_tokens($call[3][0]) as $token) {
+	foreach (bs6_shell_dialog_box_classes(bs6_shell_tokens($call[3][0])) as $token) {
 		if (!in_array($token, array('fade', 'show'), true)) {
 			$tokens[] = $token;
 		}
