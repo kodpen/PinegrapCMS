@@ -37,7 +37,7 @@ description: Generated from the module field of the memory files: each includes/
 - `widgets_entity_fields`: [[widget-entity-fields]]
 - `widgets_fill`: [[widget-fill-filters]]
 - `widgets_finish`: [[widget-finish-pass]], [[widget-hide-if-empty]]
-- `widgets_lists`: [[widget-lists]]
+- `widgets_lists`: [[widget-list-flags]], [[widget-lists]]
 - `widgets_lists_calendar`: [[widget-lists-calendar]]
 - `widgets_lists_cart`: [[widget-lists-cart]]
 - `widgets_lists_checkout`: [[widget-lists-checkout]]

@@ -13,7 +13,7 @@ module: widgets_lists_menu, widgets_menu
 - The renderer publishes every level at once (`pg_sw_list_menu_rows()`: parent id => rows); the list pass reads them, no query is added.
 
 ## What does a row hold?
-- `__menu_item_name` (first: A to Z sorts by it), `__menu_item_id`, `__menu_item_url`, `__menu_item_target`, `__menu_item_has_children`, `__menu_item_is_current`, `__menu_item_holds_current`; the last three are `1` or empty, for conditions (`show_if` works in the main loop and in lists alike, `eo_visible_if` only outside lists).
+- `__menu_item_name` (first: A to Z sorts by it), `__menu_item_id`, `__menu_item_url`, `__menu_item_target`, `__menu_item_has_children`, `__menu_item_is_current`, `__menu_item_holds_current`; the last three are `1` or empty, for conditions (`show_if` in the main loop and in lists alike, `eo_visible_if` in lists too: [[widget-list-flags]]).
 - Address: the page's (`OUTPUT_PATH` + page name), else the URL, else `#`. Window: `_blank` for "New Window" on an item that links somewhere. `pg_mw_stamp_targets()` puts `^^__menu_item_target^^` in the target prop of every link bound to `__menu_item_url` without one; an empty target is dropped from the main loop's markup, a list row keeps `target=""` (the same window).
 - Current item: the first item by id linking to the page shown, as the classic menu marks it; the items above it hold it. Names translated with `pg_tr_text()` on a page in another language.
 

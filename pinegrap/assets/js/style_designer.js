@@ -41521,8 +41521,10 @@ const StyleDesigner = (function () {
         // Show-only-when: any element of a widget that evaluates visibility
         // flags. A flag written by an older starter that is no longer in the
         // list is still shown, so it can be seen and cleared.
-        var visFlags = SW_VISIBILITY_FLAGS[region];
-        if (visFlags && node.type !== 'loop_area' && node.type !== 'root') {
+        // Inside a list, the flags of its rows and of the lists around it
+        // too: the row decides (pg_sw_list_flag_alias()).
+        var visFlags = (SW_VISIBILITY_FLAGS[region] || []).concat(_sdListRowFlags(node));
+        if (visFlags.length && node.type !== 'loop_area' && node.type !== 'root') {
             var vis = [['', _sdT('Always')]].concat(visFlags);
             var curVis = cur.eo_visible_if || '';
             if (curVis && !visFlags.some(function (f) { return f[0] === curVis; })) vis.push([curVis, curVis]);
@@ -55662,6 +55664,25 @@ const StyleDesigner = (function () {
     }
 
     // The sources a widget kind offers, in their order (pg_sw_kind_lists()).
+    // The flags the rows of the lists `node` is drawn in answer, nearest
+    // list first: each list's "1 or empty" row values (__menu_item_has_children
+    // as menu_item_has_children), labelled with the list's name.
+    function _sdListRowFlags(node) {
+        var out = [];
+        var seen = {};
+        _sdListsAbove(node).forEach(function (l) {
+            var src = SW_LIST_SOURCES[l.props.source];
+            if (!src) return;
+            src.rows.forEach(function (r) {
+                var name = String(r[0]).replace(/^__/, '');
+                if (seen[name] || !/_(is|has|holds)_/.test(r[0])) return;
+                seen[name] = true;
+                out.push([name, src.label + ': ' + r[1]]);
+            });
+        });
+        return out;
+    }
+
     function _sdKindLists(kind) {
         return Object.keys(SW_LIST_SOURCES).filter(function (s) { return SW_LIST_SOURCES[s].kinds.indexOf(kind) !== -1; });
     }
