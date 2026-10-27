@@ -50,8 +50,8 @@ if (!$_POST) {
             activated_desktop_theme,
             activated_mobile_theme
         FROM files
-        WHERE id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_array($result);
 
     $file_name = $row['name'];
@@ -87,8 +87,8 @@ if (!$_POST) {
                 region_type,
                 region_name
             FROM system_theme_css_rules 
-            WHERE file_id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE file_id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         while($row = mysqli_fetch_array($result)) {
             // for each value in the row
             foreach ($row as $key => $value) {
@@ -116,8 +116,8 @@ if (!$_POST) {
         }
 
         // check to see if this is a system theme
-        $query = "SELECT COUNT(id) FROM system_theme_css_rules WHERE file_id = '" . escape($_GET['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT COUNT(id) FROM system_theme_css_rules WHERE file_id = ?";
+        $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         
         // if this is a system theme then output the edit theme button
@@ -236,8 +236,8 @@ if (!$_POST) {
             activated_desktop_theme,
             activated_mobile_theme
         FROM files
-        WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     $original_name = $row['name'];
@@ -249,12 +249,12 @@ if (!$_POST) {
     // if file was selected for delete
     if (!empty($_POST['delete'])) {
         // delete file row
-        $query = "DELETE FROM files WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result=mysqli_query(db::$con, $query) or output_error('Query failed');
+        $query = "DELETE FROM files WHERE id = ?";
+        $result=db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed');
         
         // delete file's system css properties
-        $query = "DELETE FROM system_theme_css_rules WHERE file_id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result=mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM system_theme_css_rules WHERE file_id = ?";
+        $result=db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
 
         db("DELETE FROM preview_styles WHERE theme_id = '" . escape($liveform->get_field_value('id')) . "'");
         
@@ -355,8 +355,8 @@ if (!$_POST) {
                     SET activated_desktop_theme = '0'
                     WHERE
                         (activated_desktop_theme = '1')
-                        AND (id != '" . escape($liveform->get_field_value('id')) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        AND (id != ?)";
+                $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
             }
         }
 
@@ -410,8 +410,8 @@ if (!$_POST) {
                     SET activated_mobile_theme = '0'
                     WHERE
                         (activated_mobile_theme = '1')
-                        AND (id != '" . escape($liveform->get_field_value('id')) . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        AND (id != ?)";
+                $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
             }
         }
 
@@ -419,17 +419,17 @@ if (!$_POST) {
         $query =
             "UPDATE files 
             SET 
-                name = '" . escape($name) . "',
-                folder = '" . escape($liveform->get_field_value('folder')) . "', 
-                description = '" . escape($liveform->get_field_value('description')) . "',
-                type = '" . escape($file_extension) . "',
-                activated_desktop_theme = '" . escape($liveform->get_field_value('activated_desktop_theme')) . "',
-                activated_mobile_theme = '" . escape($liveform->get_field_value('activated_mobile_theme')) . "',
+                name = ?,
+                folder = ?, 
+                description = ?,
+                type = ?,
+                activated_desktop_theme = ?,
+                activated_mobile_theme = ?,
                 timestamp = UNIX_TIMESTAMP(),
-                user = '" . $user['id'] . "'
-            WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
+                user = ?
+            WHERE id = ?";
         
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $name, (string) $liveform->get_field_value('folder'), (string) $liveform->get_field_value('description'), (string) $file_extension, (string) $liveform->get_field_value('activated_desktop_theme'), (string) $liveform->get_field_value('activated_mobile_theme'), (string) $user['id'], (string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         
         // Rename the file when its name changed and it is on the disk. A theme
         // recorded here but missing from the disk has nothing to rename (that

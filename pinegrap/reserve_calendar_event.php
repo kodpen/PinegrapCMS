@@ -39,8 +39,8 @@ $query =
         page_folder as folder_id,
         page_type
     FROM page
-    WHERE page_id = '" . escape($page_id) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE page_id = ?";
+$result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 
 // if the page was not found, then log activity and output error
 if (mysqli_num_rows($result) == 0) {
@@ -76,8 +76,8 @@ if ($calendar_event['published'] == 0) {
 }
 
 // get all calendars that belong to this event
-$query = "SELECT calendar_id FROM calendar_events_calendars_xref WHERE calendar_event_id = '" . escape($calendar_event_id) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$query = "SELECT calendar_id FROM calendar_events_calendars_xref WHERE calendar_event_id = ?";
+$result = db_q($query, array((string) $calendar_event_id)) or output_error('Query failed.');
 
 $calendar_ids = array();
 
@@ -87,6 +87,7 @@ while ($row = mysqli_fetch_assoc($result)) {
 }
 
 $where_calendars = "";
+$where_calendars_values = array();
 
 // loop through each calendar id so that we can check if the calendar event is allowed to appear on the calendar event view page
 foreach ($calendar_ids as $calendar_id) {
@@ -95,7 +96,8 @@ foreach ($calendar_ids as $calendar_id) {
         $where_calendars .= " OR ";
     }
     
-    $where_calendars .= "(calendar_id = '" . escape($calendar_id) . "')";
+    $where_calendars .= "(calendar_id = ?)";
+    $where_calendars_values[] = (string) $calendar_id;
 }
 
 // check if this calendar event is in a calendar that is allowed to appear on this page
@@ -106,8 +108,8 @@ if (!$widget_page) {
         FROM calendar_event_views_calendars_xref
         WHERE
             (" . $where_calendars . ")
-            AND (page_id = '" . escape($page_id) . "')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            AND (page_id = ?)";
+    $result = db_q($query, array_merge($where_calendars_values, array((string) $page_id))) or output_error('Query failed.');
 }
 
 // if calendar event is not allowed in this view, then log activity and output error

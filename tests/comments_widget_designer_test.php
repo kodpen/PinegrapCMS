@@ -2206,11 +2206,11 @@ function test_comments_widget_designer_filter_editor_key()
 	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
 	$html = comments_widget_designer_test_js_function($js, '_swFormListFiltersHtml');
 	pg_assert_contains('function _swFormListFiltersHtml(sid, filters, fields, loading, note, withUrl, key)', $html, 'the key is a parameter');
-	pg_assert_same(3, substr_count($html, 'keyAttr'), 'set once, on the rows and on the Add button');
+	pg_assert_same(4, substr_count($html, 'keyAttr'), 'set once, on the rows and on the Add button, whose id only the default list keeps');
 	pg_assert_contains("var keyAttr = (key && key !== 'filters') ? ' data-sw-filter-key=\"' + esc(key) + '\"' : '';", $html, 'only for another key');
 	pg_assert_contains("var _swFilterKey = function (el) { return (el && el.getAttribute('data-sw-filter-key')) || 'filters'; };", $js, 'the handlers read it');
 	pg_assert_same(0, substr_count($js, 'cfg.filters = list;'), 'and never write filters by name');
-	pg_assert_same(2, substr_count($js, 'cfg[key] = list;'), 'a changed or deleted row and an added one write the key');
+	pg_assert_same(1, substr_count($js, 'cfg[key] = list;'), 'a changed, deleted or added row writes the key (_swSaveFilters)');
 }
 
 // The editor loads only the open tab's components: a tab not opened yet
