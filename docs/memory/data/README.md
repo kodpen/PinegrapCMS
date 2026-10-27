@@ -30,6 +30,7 @@ Table structures and SQL pitfalls.
 - db-helpers-and-error-contract.md: The db helpers (db, db_value, db_values, db_item, db_items, e, escape_like) and what a failed query does: helpers end the request, raw mysqli_query() and db_q() return false.
 - db-q-converted-commerce.md: Cart, checkout and form files converted to db_q() (fn/ecommerce, shopping_cart, submit_order, fn/forms, express order and checkout steps): PR, special cases, what stayed raw and why, guard tests.
 - db-q-converted-files.md: Content files converted to db_q() (get_page_content, content, seo, get_page): PR, how values are passed, what stayed raw and why, guard tests; the conversion rules.
+- db-q-converted-panel-content.md: Folder, page copy, calendar event, image editor and theme designer screens converted to db_q(): PR, optional SQL pieces with their values, what stayed raw, guard test.
 - db-q-placeholder-helper.md: db_q($sql, $params) and its binder pg_db_bind(): how each ? is filled, what is refused, why it returns false like mysqli_query() instead of ending the request, the new-code rule.
 - files-type-column-width.md: files.type is four characters wide, so long extensions are stored cut (webmanifest as webm); the file manager reads the kind from the name instead; which views still read the column
 - menu-tree-queries.md: Classic menus (get_menu_content(), get_menu_sequence()) read a menu once per request through pg_menu_tree(): two queries, printing order, children counted across menus, what the output must keep
