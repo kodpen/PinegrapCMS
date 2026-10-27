@@ -30,6 +30,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-api-endpoint-rules.md: Writing a Workspace API endpoint: Site Log lines in the owner's name (ws_api_as_owner()), bell rows, search scopes per record type, the scope ceiling, files, events, where the other rules are
 - workspace-api-forward.md: Forwarding messages over the Workspace API and MCP (POST /workspace/channels/{id}/forwards): the check shared with the panel, access, whose name it carries, why it is a tool
 - workspace-api-layout-writes.md: Workspace API layout writes the same for everybody (a channel into a group): gated like changing the channel, not ws_api_person_only(); access writes name who comes in and leaves
+- workspace-api-plan.md: GET /workspace/plan: what a cell and a row carry (task entries with their flags, plan items, the undated count) and where they come from
 - workspace-api-sync-inbox.md: Keeping a Workspace app current through the API: GET /workspace/sync cursor marks, inbox deletions and reach changes for changed_since, hidden messages and touched_at, assistants carried on
 - workspace-api-task-reminder.md: A task's due time and e-mail reminder over the Workspace API and MCP (PR #1742): due_time, remind_minutes on the task writes and answers, how null clears them, the drawer's checks they go through
 - workspace-api-task-time.md: Task time over the Workspace API (PR #2288): GET /workspace/time (own rows across tasks, range, hidden task, running timer, total) and POST /workspace/tasks/{id}/time/{entry_id}/update
