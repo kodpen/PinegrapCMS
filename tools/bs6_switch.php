@@ -859,12 +859,18 @@ function bs6_switch_test_pins()
 
 // Replaces every occurrence of each pair's first text with its second.
 // Missing when a first text is gone and its second is not there: the test
-// changed on development and its pair needs updating.
+// changed on development and its pair needs updating. A pair whose second
+// text holds its first (code inserted before a line) is done once the second
+// text is there, so a second run does not insert it again.
 function bs6_switch_pins($source, array $pairs)
 {
 	$applied = false;
 
 	foreach ($pairs as $pair) {
+		if (strpos($pair[1], $pair[0]) !== false && strpos($source, $pair[1]) !== false) {
+			continue;
+		}
+
 		if (strpos($source, $pair[0]) !== false) {
 			$source = str_replace($pair[0], $pair[1], $source);
 			$applied = true;
