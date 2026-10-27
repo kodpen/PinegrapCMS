@@ -106,3 +106,19 @@ function test_avatar_markup_presence_dot()
 	pg_assert_false(strpos(pg_avatar_markup(array('initials' => 'EG', 'presence' => 'bogus"')), 'avatar-status') !== false, 'only the three states');
 	pg_assert_false(strpos(pg_avatar_markup(array('initials' => 'EG', 'size' => 'huge'), 'huge'), 'avatar-huge') !== false, 'only the four sizes');
 }
+
+function test_avatar_workspace_twin_uses_the_same_tones()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_true((bool) preg_match('/var AVATAR_THEMES = \[([^\]]*)\]/', $source, $match), 'workspace.js lists the tones');
+
+	$themes = array();
+
+	for ($i = 0; $i < 8; $i++) {
+		$themes[] = "'" . pg_avatar_theme_class($i) . "'";
+	}
+
+	pg_assert_same(implode(', ', $themes), trim($match[1]), 'the same eight tones in the same order as pg_avatar_theme_class()');
+	pg_assert_contains("indexOf('data:image/svg+xml') !== 0", $source, 'a picture of letters is drawn as letters there too');
+}

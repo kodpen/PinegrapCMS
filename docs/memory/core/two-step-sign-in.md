@@ -8,9 +8,9 @@ description: Two-step sign-in (TOTP + recovery codes, 2026.4.8 step 8.40): where
 - Tables `user_mfa` (encrypted `totp_secret`, `last_step` against replay, `pending_secret` during setup) and `user_mfa_recovery` (SHA-256 hashes, `used_at`); `config.mfa_required_role` (99 = nobody required), constant `MFA_REQUIRED_ROLE`, card in Settings › Security.
 - `pg_mfa_table_exists()` probes both tables by exact name; before the upgrade callers treat it as off. `pg_mfa_available()` also needs `ENCRYPTION_KEY` and openssl.
 - Pre-build audit: `git show 88e7ac6d:docs/_tespit_2026_10_08/2fa_kesif_raporu.md`
-- Not built: e-mail codes, trusted devices. QR: inline SVG from `includes/fn/qr.php` (qr-code-generator.md).
+- Not built: e-mail codes at sign-in, trusted devices. QR: inline SVG from `includes/fn/qr.php` (qr-code-generator.md).
 - A passkey also answers verify mode and alone is a factor: passkey-second-factor.md.
-- `pg_mfa_reauth_refusal()`: the account page's shared proof check (TOTP off, passkey add or remove).
+- `pg_mfa_reauth_refusal()`: the account page's proof check (TOTP off, passkey add/remove).
 
 ## Where does the gate sit?
 - `pg_mfa_gate($user_id, $username, $send_to, $remember, $origin)`: after the password (or Google) was accepted and the throttle cleared, BEFORE `pg_device_limit_gate()` and before any remember-me token. A token minted earlier would sign the browser in on its next request through `initialize_user()` with no code.

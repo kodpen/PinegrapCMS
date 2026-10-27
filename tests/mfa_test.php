@@ -246,7 +246,7 @@ function test_mfa_reauth_message()
 
 	$sentences = array();
 
-	foreach (array('attempts', 'locked', 'password', 'code') as $refusal) {
+	foreach (array('attempts', 'locked', 'password', 'code', 'email_code', 'email_expired') as $refusal) {
 		$sentences[$refusal] = pg_mfa_reauth_message($refusal, 15);
 		pg_assert_true($sentences[$refusal] !== '', $refusal);
 	}

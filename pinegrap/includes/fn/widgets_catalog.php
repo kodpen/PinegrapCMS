@@ -5594,7 +5594,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $_civ_v_base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
                      . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
                      . '/assets/js/';
-        $_civ_v_v   = '7';  // bump on pg_civ_variants.js source changes
+        $_civ_v_v   = '8';  // bump on pg_civ_variants.js source changes
         $_civ_variant_script = '<script>window.pgCivVariants = window.pgCivVariants || [];'
             . 'window.pgCivVariants.push(' . json_encode($variant_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ');'
             . '</script>'

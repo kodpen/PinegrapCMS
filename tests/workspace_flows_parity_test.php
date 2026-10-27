@@ -2343,7 +2343,7 @@ function workspace_flows_parity_table()
 		),
 		'when' => array(
 			array(array('at'), 3, 'schedule trigger box on the anchor'),
-			array(array('trigger'), 3, 'by hand or chain only trigger box on the anchor (no time of its own)'),
+			array(array('trigger'), 3, 'a flow started by hand, or by another flow\'s start a flow box (ws_flow_chain_start())'),
 			array(array('join'), 3, 'join trigger box on the anchor: a start per newcomer, unarchived public or private channels (ws_scheduled_greets())'),
 			array(array('event'), 3, 'event trigger box on the anchor'),
 		),
@@ -2519,6 +2519,7 @@ function workspace_flows_parity_table()
 		'limit_uses' => array(
 			array(array('WS_SCHEDULED_CHAIN_DEPTH in ws_events_start'), 3, 'event trigger box: an event at depth 8 starts nothing'),
 			array(array('WS_SCHEDULED_CHAIN_DEPTH in ws_scheduled_start'), 3, 'start box: refused at depth 8'),
+			array(array('WS_SCHEDULED_CHAIN_DEPTH in ws_flow_chain_refusal', 'WS_SCHEDULED_CHAIN_DEPTH in ws_flow_chain_refusal_text'), 3, 'start a flow box: a run whose box starts another flow is refused at depth 8, and says so'),
 			array(array('WS_SCHEDULED_CHAIN_DEPTH in ws_scheduled_run'), 3, 'driver: rounds of starts that wait for nothing in one run'),
 			array(array('WS_SCHEDULED_CHAIN_HOURLY in ws_events_start'), 3, 'event trigger box: 60 starts an hour'),
 			array(array('WS_SCHEDULED_CHAIN_HOURLY in ws_scheduled_joined'), 3, 'join trigger box: 60 starts an hour'),
@@ -2546,7 +2547,7 @@ function workspace_flows_parity_table()
 			array(array('{{date}}', '{{time}}', '{{weekday}}', '{{name}}', '{{run}}', '{{count:<key>}}'), 3, 'every box text (ws_scheduled_fill())'),
 			array(array('{{count:<key>:<param>}}'), 3, 'every box text: a count with its channel or threshold ({{count:stock_low:5}} of the stock template)'),
 			array(array('{{result}}', '{{status}}'), 3, 'outcome arrows: what the step did and how it went'),
-			array(array('{{source}}', '{{source_result}}'), 3, 'start box: the action that started this one'),
+			array(array('{{source}}', '{{source_result}}'), 3, 'start box: the action that started this one; in a flow a start a flow box started, that flow and the sentence of the box before it (ws_step_trigger_context())'),
 			array(array('{{newcomer}}', '{{newcomer_name}}', '{{channel}}'), 3, 'join trigger box: who joined, where'),
 			array(array('{{event}}', '{{record}}', '{{record_title}}', '{{record_link}}', '{{record_status}}', '{{customer}}', '{{actor}}', '{{message}}', '{{amount}}', '{{form_fields}}'), 3, 'event trigger box: what happened, to what (ws_events_fill_values())'),
 		),

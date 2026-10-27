@@ -8,7 +8,7 @@ description: Flow start boxes at a time, on an event, on a join (F4d, PR #2006, 
 
 ## What is the anchor?
 - One `ws_scheduled_actions` row with `flow_id` = the flow: kind action, channel 0, no card or message, created_by the owner, rules `[the rule]`, action `{type: flow, flow_id}`, no follow-ups.
-- `ws_flow_publish()` → `ws_flow_anchor_sync()`: written or changed in place (id, lock, history kept), active, next time from the rule; a flow now started by hand cancels it. Pause → paused, delete → cancelled (`ws_flow_anchor_set_status()`). Only publishing makes it active again.
+- `ws_flow_publish()` → `ws_flow_anchor_sync()`: written or changed in place (id, lock, history kept), active, next time from the rule; a flow now started by hand cancels it. Pause → paused, delete → cancelled (`ws_flow_anchor_set_status()`). Publishing or resuming (`ws_flow_resume()`, `workspace-flows-versions.md`) makes it active again.
 - The engine keeps it: `ws_scheduled_run()` by time, watch.php events and `ws_scheduled_greets()` joins read every active `kind = 'action'` row, anchors included (`ws_scheduled_actions_only()` is unchanged).
 
 ## How does it start a run?

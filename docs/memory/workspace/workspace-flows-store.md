@@ -20,7 +20,7 @@ description: Workspace flows store (graph check, API; runs: workspace-flows-runn
 
 ## How do the writes work?
 - `ws_flow_save_check()` / `ws_flow_save()`: name 1-160; home public/private and readable (checked on a change only; not in the draft: changes at once, runs keep theirs); graph normalized; problems answered, not refused. UPDATE `WHERE draft_rev = ?` raises it; 0 rows → 409 `changed_meanwhile`.
-- `ws_flow_publish_check()` / `ws_flow_publish()`: no problem, task boxes with people pass `ws_task_create_check()`; n = MAX+1 via `@mysqli_query` (db() ends the request on 1062), duplicate → 409; status live. A paused flow published is live again (no resume route).
+- `ws_flow_publish_check()` / `ws_flow_publish()`: no problem, task boxes with people pass `ws_task_create_check()`; n = MAX+1 via `@mysqli_query` (db() ends the request on 1062), duplicate → 409; status live (also from paused; resume: `workspace-flows-versions.md`).
 - `ws_flow_pause*()` live → paused (open runs go on); `ws_flow_bin*()` binned, open runs cancelled. Create, publish, pause, delete write a Site Log line (API inside `ws_api_as_owner()`); draft saves do not.
 
 ## Which routes?

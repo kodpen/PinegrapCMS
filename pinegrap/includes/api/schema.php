@@ -596,7 +596,7 @@ function api_schema() {
 			'handler' => 'api_orders_list',
 			'returns' => array('list' => 'Order'),
 			'summary' => 'List orders',
-			'description' => 'Cursor paged and ordered by the order date, so updated_since walks new orders in one direction without repeating any.',
+			'description' => 'Cursor paged and ordered by the order date, so updated_since walks new orders in one direction without repeating any. Each order carries type (online, local for a counter sale, or marketplace), cancelled_at (null unless cancelled), cancellation_reason (\'\' when none) and refund_status (\'\', pending, refunded, failed or manual_required); each is null on a site whose database lacks its column.',
 			'params'  => array(
 				array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only orders placed at or after this moment.'),
 				array('name' => 'date_to',       'in' => 'query', 'type' => 'datetime'),
@@ -617,7 +617,7 @@ function api_schema() {
 			'handler' => 'api_orders_get',
 			'returns' => 'Order',
 			'summary' => 'One order, with its lines',
-			'description' => 'The order with its lines and its shipments, one per shipping address. Each shipment lists its tracking_numbers and, in parcels, every number with the carrier (a key such as yurtici, or null when none is known), carrier_name, tracking_url (the carrier\'s own page, or the one built from the carrier\'s tracking address; null when neither is known), status (created, in_transit, out_for_delivery, delivered, returned or exception) and shipped_at / delivered_at (UTC, null when not known) - the carrier and link the order screen shows. The order.shipped and order.delivered webhooks carry the same parcels for the address they are about; order.shipped from a marketplace import carries only the parcel it announces.',
+			'description' => 'The order with its lines and its shipments, one per shipping address. Each shipment lists its tracking_numbers and, in parcels, every number with the carrier (a key such as yurtici, or null when none is known), carrier_name, tracking_url (the carrier\'s own page, or the one built from the carrier\'s tracking address; null when neither is known), status (created, in_transit, out_for_delivery, delivered, returned or exception) and shipped_at / delivered_at (UTC, null when not known) - the carrier and link the order screen shows. The order.shipped and order.delivered webhooks carry the same parcels for the address they are about; order.shipped from a marketplace import carries only the parcel it announces. Like the list, the order carries type (online, local or marketplace), cancelled_at, cancellation_reason and refund_status (\'\', pending, refunded, failed or manual_required), each null on a site whose database lacks its column.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)

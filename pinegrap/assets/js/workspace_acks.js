@@ -45,8 +45,6 @@
                 list.forEach(function (person) {
                     var row = el('div', 'ws-ack-person');
                     var face = h.avatar(person, '1.6rem');
-
-                    face.style.borderRadius = '50%';
                     row.appendChild(face);
                     row.appendChild(el('span', 'flex-grow-1', person.name));
 

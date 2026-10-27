@@ -2043,6 +2043,18 @@ function ws_flow_step_run($step)
             ws_flow_step_task($run, $flow, $step, $node, $owner);
             return;
 
+        // Another flow, started with the owner's rights now.
+        case 'start_flow':
+            $owner = ws_change_viewer_for_id($run['actor_id']);
+
+            if (!is_array($owner) || !ws_can_schedule($owner)) {
+                ws_flow_step_settle($step, 'running', 'failed', '', lang('The owner of the flow is no longer on the staff, so the box did not run.'));
+                return;
+            }
+
+            ws_flow_chain_start($run, $step, $node, $owner);
+            return;
+
         // A condition, looked at with the owner's rights now.
         case 'condition':
             $owner = ws_change_viewer_for_id($run['actor_id']);
@@ -2893,4 +2905,292 @@ function ws_flow_runs_sweep($limit = 200)
     db("DELETE FROM ws_flow_runs WHERE id IN (" . implode(',', $ids) . ")");
 
     return count($ids);
+}
+
+/**
+ * The settings of a box that starts another flow: the flow it starts.
+ *
+ * @param mixed $config
+ * @return array flow_id (0 for none chosen)
+ */
+function ws_flow_chain_normalize($config)
+{
+    $flow_id = is_array($config) ? ($config['flow_id'] ?? 0) : 0;
+
+    return array('flow_id' => (is_bool($flow_id) || !is_numeric($flow_id)) ? 0 : max(0, (int) $flow_id));
+}
+
+/**
+ * Why a box may not start a flow now, '' when it may: a flow does not start
+ * itself (flows have no loops), the flow must be live and started by hand
+ * (a flow that starts on its own is not chained), and a chain stops at
+ * WS_SCHEDULED_CHAIN_DEPTH runs that follow one another, as scheduled
+ * actions do. Pure.
+ *
+ * @param int        $source_flow_id the flow whose box starts it
+ * @param array|null $flow           the flow to start
+ * @param string     $trigger_kind   the kind of its live version's start box
+ * @param int        $depth          the depth of the run whose box starts it
+ * @return string '' | self | gone | not_live | not_by_hand | depth
+ */
+function ws_flow_chain_refusal($source_flow_id, $flow, $trigger_kind, $depth)
+{
+    if (!is_array($flow)) {
+        return 'gone';
+    }
+
+    if ((int) $flow['id'] === (int) $source_flow_id) {
+        return 'self';
+    }
+
+    if (((string) $flow['status'] !== 'live') || ((int) $flow['version_id'] <= 0)) {
+        return 'not_live';
+    }
+
+    if ((string) $trigger_kind !== 'manual') {
+        return 'not_by_hand';
+    }
+
+    if ((int) $depth + 1 >= WS_SCHEDULED_CHAIN_DEPTH) {
+        return 'depth';
+    }
+
+    return '';
+}
+
+/**
+ * The refusal of ws_flow_chain_refusal() in words.
+ *
+ * @param string $refusal
+ * @return string
+ */
+function ws_flow_chain_refusal_text($refusal)
+{
+    switch ($refusal) {
+        case 'self':
+            return lang('A flow cannot start itself.');
+
+        case 'not_live':
+            return lang('The flow to start is not live.');
+
+        case 'not_by_hand':
+            return lang('The flow to start is not started by hand.');
+
+        case 'depth':
+            return lang(array('string' => 'At most {var:1} runs can start one another in a chain.', 'vars' => WS_SCHEDULED_CHAIN_DEPTH));
+    }
+
+    return lang('The flow to start could not be found, or the owner of this flow may not run it.');
+}
+
+/**
+ * The start key of the run a box starts: one per run, box and pass, so the
+ * box carried out twice finds the run it started (start_key is unique per
+ * flow, VARCHAR(64)).
+ *
+ * @param int    $run_id
+ * @param string $node_id
+ * @param int    $pass
+ * @return string
+ */
+function ws_flow_chain_key($run_id, $node_id, $pass)
+{
+    return 'flow:' . (int) $run_id . '-' . (string) $node_id . '-' . (int) $pass;
+}
+
+/**
+ * The context of a run another flow's box started: a manual run's
+ * (ws_flow_run_context_new()) as trigger chain, what started the source run
+ * carried on (the event, the newcomer: ws_step_trigger_context()), and the
+ * source for {{source}} and {{source_result}}, as a scheduled action
+ * started by another keeps them. Pure.
+ *
+ * @param array  $flow           the flow started
+ * @param array  $trigger        its start box
+ * @param array  $source_context ws_flow_run_context() of the run that started it
+ * @param string $source         the name of the flow that started it
+ * @param string $source_result  the sentence of the box that led to the start
+ * @return array
+ */
+function ws_flow_chain_context($flow, $trigger, $source_context, $source, $source_result)
+{
+    $carried = ws_step_trigger_context($source_context);
+    unset($carried['source'], $carried['source_result']);
+
+    return array('trigger' => 'chain') + ws_flow_run_context_new($flow, $trigger) + $carried + array(
+        'source'        => (string) $source,
+        'source_result' => (string) $source_result,
+    );
+}
+
+/**
+ * The sentence of the box an arrow came from into this one, done in the
+ * run: what {{source_result}} names in the run started. '' for none. Pure.
+ *
+ * @param array  $graph
+ * @param string $node_id
+ * @param array  $values ws_step_node_values()
+ * @return string
+ */
+function ws_flow_chain_source_result($graph, $node_id, $values)
+{
+    foreach ((array) ($graph['edges'] ?? array()) as $edge) {
+        $from = (string) $edge['from'];
+
+        if (((string) $edge['to'] === (string) $node_id) && (($values[$from]['status'] ?? '') === 'done')) {
+            return (string) $values[$from]['text'];
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Checks a box that starts another flow with the owner's rights, as they
+ * publish or try it: a flow they run or change, not this one, live and
+ * started by hand. Depth and limits are the run's, asked as the box runs.
+ *
+ * @param array $viewer         the flow's owner
+ * @param int   $source_flow_id the flow the box is in
+ * @param array $config         ws_flow_chain_normalize()
+ * @return array ok, error, flow (the flow to start, null when refused)
+ */
+function ws_flow_chain_check($viewer, $source_flow_id, $config)
+{
+    $flow = ws_flow((int) ws_flow_chain_normalize($config)['flow_id']);
+
+    if (!in_array(ws_flow_access($viewer, $flow), array('run', 'edit'), true)) {
+        return array('ok' => false, 'error' => ws_flow_chain_refusal_text('gone'), 'flow' => null);
+    }
+
+    $version = ((string) $flow['status'] === 'live') ? ws_flow_version($flow['version_id']) : null;
+    $trigger = is_array($version) ? ws_flow_trigger_node(ws_flow_graph_of($version)) : null;
+    $refusal = ws_flow_chain_refusal($source_flow_id, is_array($version) ? $flow : array('version_id' => 0) + $flow, $trigger ? (string) $trigger['kind'] : '', 0);
+
+    if ($refusal !== '') {
+        return array('ok' => false, 'error' => ws_flow_chain_refusal_text($refusal), 'flow' => null);
+    }
+
+    return array('ok' => true, 'error' => '', 'flow' => $flow);
+}
+
+/**
+ * A box that starts another flow: as the flow's owner, who must be able to
+ * run the flow started; never twice (the began mark, then the start key);
+ * the run started one deeper in the chain, within the started flow's open
+ * and hourly limits. The box does not wait for the run it started: it is
+ * done once the run is written, and gives its id.
+ *
+ * @param array $run   ws_flow_runs row
+ * @param array $step  ws_flow_run_steps row, running
+ * @param array $node  the box
+ * @param array $owner the flow's owner, on the staff
+ */
+function ws_flow_chain_start($run, $step, $node, $owner)
+{
+    db("UPDATE ws_flow_run_steps SET effect = '" . e(WS_STEP_BEGAN . 'start_flow') . "'
+        WHERE id = '" . (int) $step['id'] . "' AND status = 'running'");
+
+    if ((int) mysqli_affected_rows(db::$con) !== 1) {
+        return;
+    }
+
+    $graph = ws_flow_run_graph($run);
+    $routed = ws_flow_outcome_routed($graph, $node['id'], 'failed');
+    $fail = function ($text) use ($step, $routed) {
+        $end = ws_step_settlement(false, $routed);
+        ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $text);
+    };
+
+    $flow = ws_flow((int) (ws_flow_chain_normalize($node['config'] ?? array())['flow_id']));
+
+    // The owner's rights: a flow they run or change, never one they cannot
+    // reach.
+    if (!in_array(ws_flow_access($owner, $flow), array('run', 'edit'), true)) {
+        $fail(ws_flow_chain_refusal_text('gone'));
+        return;
+    }
+
+    $version = ((string) $flow['status'] === 'live') ? ws_flow_version($flow['version_id']) : null;
+    $target = is_array($version) ? ws_flow_graph_of($version) : null;
+    $trigger = $target ? ws_flow_trigger_node($target) : null;
+    $refusal = ws_flow_chain_refusal((int) $run['flow_id'], is_array($version) ? $flow : array('version_id' => 0) + $flow, $trigger ? (string) $trigger['kind'] : '', (int) $run['depth']);
+
+    if ($refusal !== '') {
+        $fail(ws_flow_chain_refusal_text($refusal));
+        return;
+    }
+
+    $flow_id = (int) $flow['id'];
+    $start_key = ws_flow_chain_key($run['id'], $step['node_id'], $step['pass'] ?? 0);
+    $started = function ($run_id) use ($step, $flow) {
+        ws_flow_step_settle($step, 'running', 'done', 'done',
+            lang(array('string' => 'flow “{var:1}” started, run {var:2}', 'vars' => array($flow['name'], (int) $run_id))), array('run_id' => (int) $run_id));
+    };
+
+    $existing = (int) db_value("SELECT id FROM ws_flow_runs WHERE flow_id = '" . $flow_id . "' AND start_key = '" . e($start_key) . "'");
+
+    if ($existing > 0) {
+        $started($existing);
+        return;
+    }
+
+    $open = (int) db_value("SELECT COUNT(*) FROM ws_flow_runs WHERE flow_id = '" . $flow_id . "' AND status IN ('running', 'waiting')");
+    $recent = (int) db_value("SELECT COUNT(*) FROM ws_flow_runs WHERE flow_id = '" . $flow_id . "' AND started_at > '" . (time() - 3600) . "'");
+
+    switch (ws_flow_start_refusal($open, $recent)) {
+        case 'open_runs':
+            $fail(lang(array('string' => 'This flow has {var:1} runs open already; it starts again once some of them end.', 'vars' => WS_FLOW_MAX_OPEN_RUNS)));
+            return;
+
+        case 'hourly':
+            $fail(lang(array('string' => 'This flow was started {var:1} times in the last hour; try again later.', 'vars' => WS_FLOW_STARTS_HOURLY)));
+            return;
+    }
+
+    $source_context = ws_flow_run_context($run);
+    $values = ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
+        WHERE run_id = '" . (int) $run['id'] . "' AND status IN ('done', 'failed', 'skipped')"));
+    $context = json_encode(ws_flow_chain_context($flow, $trigger, $source_context, (string) ($source_context['flow_name'] ?? ''),
+        ws_flow_chain_source_result($graph, $node['id'], $values)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $now = time();
+
+    // Started by the owner of the flow whose box starts it, acting as the
+    // owner of the flow started. Not db(): the duplicate start key of a box
+    // carried out twice is an answer here.
+    $written = @mysqli_query(db::$con, "INSERT INTO ws_flow_runs (flow_id, version_id, status, started_by, actor_id, start_key,
+            subject_type, subject_id, context, depth, boxes_run, started_at, updated_at, finished_at)
+        SELECT '" . $flow_id . "', '" . (int) $version['id'] . "', 'running', '" . (int) $run['actor_id'] . "', '" . (int) $flow['owner_id'] . "',
+            '" . e($start_key) . "', '', 0, '" . e((string) $context) . "', '" . ((int) $run['depth'] + 1) . "', 0, '" . $now . "', '" . $now . "', 0
+        FROM ws_flows WHERE id = '" . $flow_id . "' AND status = 'live'");
+
+    if (!$written) {
+        $existing = ((int) mysqli_errno(db::$con) === 1062)
+            ? (int) db_value("SELECT id FROM ws_flow_runs WHERE flow_id = '" . $flow_id . "' AND start_key = '" . e($start_key) . "'")
+            : 0;
+
+        if ($existing > 0) {
+            $started($existing);
+        } else {
+            $fail(lang('The run could not be started.'));
+        }
+
+        return;
+    }
+
+    if ((int) mysqli_affected_rows(db::$con) !== 1) {
+        $fail(ws_flow_chain_refusal_text('not_live'));
+        return;
+    }
+
+    $new_id = (int) mysqli_insert_id(db::$con);
+
+    db("INSERT IGNORE INTO ws_flow_run_steps (run_id, node_id, pass, status, outcome, attempt, ready_at, claimed_at, finished_at, result)
+        VALUES ('" . $new_id . "', '" . e((string) $trigger['id']) . "', 0, 'done', 'next', 1, '" . $now . "', '" . $now . "', '" . $now . "',
+            '" . e(ws_flow_result_pack(lang(array('string' => 'Started by the flow “{var:1}”.', 'vars' => (string) ($source_context['flow_name'] ?? ''))))) . "')");
+
+    log_activity(lang(array('string' => 'workspace flow ({var:1}) was started by the flow ({var:2}), run {var:3}', 'vars' => array($flow['name'], (string) ($source_context['flow_name'] ?? ''), $new_id))), (string) ($_SESSION['sessionusername'] ?? ''));
+
+    ws_flow_run_refresh($new_id);
+    $started($new_id);
 }

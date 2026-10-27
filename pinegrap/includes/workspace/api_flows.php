@@ -4,7 +4,8 @@
  *
  * Workspace - flows in the external API: the owner's flows, the live ones
  * of the channels they read and the ones shared with them, drafting a flow
- * (create and change its draft), publishing, pausing and deleting it; its
+ * (create and change its draft), publishing, pausing, resuming and deleting
+ * it, its published versions read and one brought back into the draft; its
  * runs: starting one, reading them and cancelling one; and its shares:
  * reading them, sharing it and taking a share back. The checks are the
  * store's, the runner's and the shares' own (includes/workspace/flows.php,
@@ -625,6 +626,143 @@ function ws_api_flows_pause($params)
 
     $result = ws_api_as_owner(function () use ($viewer, $flow) {
         return ws_flow_pause($viewer, $flow);
+    });
+
+    if (!$result['ok']) {
+        ws_api_flow_refused($result);
+    }
+
+    api_ok(ws_api_flow_answer($viewer, $flow['id']));
+}
+
+// A paused flow made live again opens tasks in the person's own name, as a
+// publish does, so it is their team devices session's call alone and no MCP
+// tool (flow_versions.php).
+function ws_api_flows_resume($params)
+{
+    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can resume a flow; an application key or an OAuth connection cannot do it for them.'));
+
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $flow = ws_api_flow_editable($viewer, $params['id']);
+    $checked = ws_flow_resume_check($viewer, $flow);
+
+    if (!$checked['ok']) {
+        ws_api_flow_refused($checked);
+    }
+
+    api_dry_run_stop('resumed', 'workspace_flow', array('id' => (int) $flow['id'], 'version' => (int) $checked['version']['n']));
+
+    $result = ws_api_as_owner(function () use ($viewer, $flow) {
+        return ws_flow_resume($viewer, $flow);
+    });
+
+    if (!$result['ok']) {
+        ws_api_flow_refused($result);
+    }
+
+    api_ok(ws_api_flow_answer($viewer, $flow['id']));
+}
+
+// One version with its graph, as GET /workspace/flows/{id}/versions/{n}
+// answers it.
+function ws_api_flow_version_detail_present($version, $live_id, $edit)
+{
+    return ws_api_flow_version_present($version) + array(
+        'live'  => ((int) $version['id'] === (int) $live_id),
+        'graph' => ws_api_flow_graph_present(ws_flow_graph_of($version), $edit),
+    );
+}
+
+// What ws_api_flow_version_detail_present() returns.
+function ws_api_flow_version_detail_schema()
+{
+    return ws_api_flow_version_schema() + array(
+        'live'  => 'boolean',
+        'graph' => 'WorkspaceFlowGraph',
+    );
+}
+
+// The versions are the history of what the flow ran: read by whoever may
+// change it, the draft's editors, who bring one back into the draft.
+function ws_api_flow_versions_list($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $flow = ws_api_flow_editable($viewer, $params['id']);
+    $before = 0;
+
+    if (isset($params['cursor']) && ($params['cursor'] !== '')) {
+        $cursor = api_cursor_decode($params['cursor']);
+
+        if ($cursor === null) {
+            api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+        }
+
+        $before = (int) $cursor['i'];
+    }
+
+    $limit = max(1, min(100, (int) ($params['limit'] ?? 50)));
+    $page = ws_flow_versions($flow['id'], $before, $limit);
+    $out = array();
+
+    foreach ($page['rows'] as $version) {
+        $out[] = ws_api_flow_version_present($version);
+    }
+
+    api_ok_list($out, $limit, ($page['next'] !== null) ? api_cursor_encode($page['next'], $page['next']) : null);
+}
+
+function ws_api_flow_versions_get($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $flow = ws_api_flow_editable($viewer, $params['id']);
+    $version = ws_flow_version_numbered($flow['id'], $params['n']);
+
+    if (!$version) {
+        api_fail_not_found(lang('Flow version'));
+    }
+
+    api_ok(ws_api_flow_version_detail_present($version, $flow['version_id'], true));
+}
+
+// A version brought back into the draft is a draft save: an application key
+// or an OAuth connection may do it, as it may change the draft. The flow runs
+// it only once the person publishes it.
+function ws_api_flow_versions_restore($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_flows_ready();
+
+    $flow = ws_api_flow_editable($viewer, $params['id']);
+    $data = array_key_exists('draft_rev', $params) ? array('draft_rev' => (int) $params['draft_rev']) : array();
+    $checked = ws_flow_version_restore_check($viewer, $flow, $params['n'], $data);
+
+    if (!$checked['ok']) {
+        if ((int) $checked['status'] === 404) {
+            api_fail_not_found(lang('Flow version'));
+        }
+
+        ws_api_flow_refused($checked);
+    }
+
+    api_dry_run_stop('restored', 'workspace_flow', array(
+        'id'       => (int) $flow['id'],
+        'version'  => (int) $checked['n'],
+        'boxes'    => count($checked['graph']['nodes']),
+        'problems' => count($checked['problems']),
+    ));
+
+    $result = ws_api_as_owner(function () use ($viewer, $flow, $params, $data) {
+        return ws_flow_version_restore($viewer, $flow, $params['n'], $data);
     });
 
     if (!$result['ok']) {

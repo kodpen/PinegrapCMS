@@ -1046,7 +1046,7 @@ function ws_task_card_html($viewer, $task, $assignees)
     $people = '';
 
     foreach ($brief['assignees'] as $person) {
-        $people .= '<span class="ws-task-person" title="' . h($person['name']) . '"><img src="' . h($person['avatar']) . '" alt="" loading="lazy" />' . h($person['name']) . '</span>';
+        $people .= '<span class="ws-task-person" title="' . h($person['name']) . '">' . pg_avatar_markup(array('name' => '') + $person) . h($person['name']) . '</span>';
     }
 
     if ($people === '') {

@@ -118,6 +118,12 @@ function ws_flow_kinds()
             'outputs' => array(array('key' => 'waited_until', 'type' => 'text', 'label' => lang('Waited until'))));
     }
 
+    // Another flow started, without waiting for it (flow_runs.php).
+    if (function_exists('ws_flow_chain_normalize')) {
+        $kinds['start_flow'] = array('label' => lang('Start a flow'), 'trigger' => false, 'outcomes' => array('done', 'failed'), 'step' => false,
+            'outputs' => array(array('key' => 'run_id', 'type' => 'number', 'label' => lang('Run'))));
+    }
+
     // The steps of a scheduled action, each a box of its own (steps.php).
     foreach ((function_exists('ws_step_kinds') ? ws_step_kinds() : array()) as $kind => $info) {
         $kinds[$kind] = array('label' => $info['label'], 'trigger' => false, 'outcomes' => $info['outcomes'] ?? ws_step_outcomes(), 'step' => true, 'outputs' => $info['outputs']);
@@ -238,6 +244,7 @@ function ws_flow_lines($value, $length)
  *         timeout when its task is still open by then)
  * condition: ws_flow_condition_normalize()
  * delay: ws_flow_delay_normalize()
+ * start_flow: ws_flow_chain_normalize()
  * schedule, event, join: ws_flow_anchor_normalize()
  * a step: ws_step_config_normalize()
  *
@@ -283,6 +290,9 @@ function ws_flow_config_normalize($kind, $config)
 
         case 'delay':
             return function_exists('ws_flow_delay_normalize') ? ws_flow_delay_normalize($config) : array();
+
+        case 'start_flow':
+            return function_exists('ws_flow_chain_normalize') ? ws_flow_chain_normalize($config) : array();
 
         case 'schedule':
         case 'event':
@@ -516,6 +526,10 @@ function ws_flow_graph_check($graph)
             foreach (ws_flow_delay_problems($node['config'], $name) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
+        }
+
+        if (($node['kind'] === 'start_flow') && ((int) ($node['config']['flow_id'] ?? 0) <= 0)) {
+            $problems[] = ws_flow_problem('bad_config', $id, null, lang(array('string' => 'The box {var:1} needs the flow to start.', 'vars' => $name)));
         }
     }
 
@@ -1257,6 +1271,15 @@ function ws_flow_publish_check($viewer, $flow, $data = array())
                 return ws_flow_refusal(lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(ws_flow_box_name($node), $condition['error']))));
             }
         }
+
+        // Another flow: one the owner runs, live and started by hand.
+        if ($node['kind'] === 'start_flow') {
+            $chain = ws_flow_chain_check($viewer, (int) $flow['id'], $node['config']);
+
+            if (!$chain['ok']) {
+                return ws_flow_refusal(lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(ws_flow_box_name($node), $chain['error']))));
+            }
+        }
     }
 
     foreach ($graph['nodes'] as $node) {
@@ -1750,6 +1773,11 @@ function ws_flow_js_strings()
         'fl_kind_report'      => lang('Send a summary of counts'),
         'fl_kind_checkin'     => lang('Ask for a check-in'),
         'fl_kind_start_action' => lang('Start a scheduled action'),
+        'fl_kind_start_flow'  => lang('Start a flow'),
+        'fl_chain_pick'       => lang('Choose a flow'),
+        'fl_chain_flow'       => lang('Flow to start'),
+        'fl_chain_help'       => lang('A live flow started by hand. The boxes after this one go on without waiting for it; {{source}} names this flow in its texts.'),
+        'fl_chain_none'       => lang('No flow chosen'),
         'fl_digest_mode'      => lang('Which tasks'),
         'fl_digest_mine'      => lang('Each person their own open tasks'),
         'fl_digest_channel'   => lang('The open tasks of one channel'),
