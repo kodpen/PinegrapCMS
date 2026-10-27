@@ -66,6 +66,14 @@ function pg_parasut_credentials_for_save()
 
 
 
+    // Reference price rule (11.0.49). The card is drawn only once the column
+    // exists; an unknown value is stored as the default rule.
+    $sql_reference_price_rule = '';
+
+    if (pg_price_reference_rule_ready() && (post_value('ecommerce_reference_price_rule') !== NULL)) {
+        $sql_reference_price_rule = "ecommerce_reference_price_rule = '" . e(pg_price_reference_rule_from_input(post_value('ecommerce_reference_price_rule'))) . "',";
+    }
+
     // Checkout legal documents (11.0.1). A template naming a field that does
     // not exist would print nothing where a customer expects a fact, and a
     // template past the column's size would be cut; either refuses the whole
@@ -515,6 +523,7 @@ function pg_parasut_credentials_for_save()
             " . $sql_erp_due . "
             " . $sql_erp_overdue . "
             " . $sql_legal_documents . "
+            " . $sql_reference_price_rule . "
             ecommerce_credit_debit_card = '" . escape(post_value('ecommerce_credit_debit_card')) . "',
             ecommerce_american_express = '" . escape(post_value('ecommerce_american_express')) . "',
             ecommerce_diners_club = '" . escape(post_value('ecommerce_diners_club')) . "',

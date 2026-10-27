@@ -78,6 +78,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_shipment_lookup();        // 11.0.45
 	upgrade_2026_11_0_session_passkey();        // 11.0.46
 	upgrade_2026_11_0_audit_retention();        // 11.0.47
+	upgrade_2026_11_0_reference_price_rule();   // 11.0.49
 
 }
 
@@ -2542,5 +2543,17 @@ function upgrade_2026_11_0_audit_retention() {
 function upgrade_2026_11_0_shipment_lookup() {
 
 	install_note('Shipping: customers without an account can now look up their parcels at track_shipment.php in the software folder (for example /pinegrap/track_shipment.php) with their order number and billing e-mail. It shows carrier, tracking number and status only, allows 10 lookups an hour per address, and appears where you link to it, for example from a menu item, the footer or the shipping e-mail.');
+
+}
+
+// The rule behind the "price before the discount" (2026.11.0, 11.0.49;
+// includes/fn/price_history.php, Settings › Ecommerce › Reference Price).
+// TEXT, as every new config column (no VARCHAR on config); NULL reads as the
+// 30-day lowest, so the step writes no rows.
+function upgrade_2026_11_0_reference_price_rule() {
+
+	install_add_column('config', 'ecommerce_reference_price_rule', "TEXT DEFAULT NULL");
+
+	install_note('Ecommerce: Settings › Ecommerce › Reference Price now picks which price counts as the price before a discount: the lowest price of the last 30 days (the default), of the last 10 days, or the compare-at price entered on each product.');
 
 }
