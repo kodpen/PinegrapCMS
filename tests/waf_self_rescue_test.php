@@ -137,3 +137,11 @@ function test_login_throttle_address_subject_honours_allow_list()
 	pg_assert_same('', pg_login_throttle_address_subject('', true, array()));
 	pg_assert_same('', pg_login_throttle_address_subject('10.0.0.5', false, array()));
 }
+
+// The ban e-mail names the command with the banned subject, escaped.
+function test_waf_ban_notice_names_the_unban_command()
+{
+	$entry = array('when' => 1700000000, 'ip' => '2001:db8:1:2::9', 'subject' => '2001:db8:1:2::/64', 'rule' => 'rate-sensitive', 'minutes' => 60);
+
+	pg_assert_contains('php waf_unban.php 2001:db8:1:2::/64', pg_waf_ban_notice_email_html($entry, array(), 'https://example.com/log'));
+}
