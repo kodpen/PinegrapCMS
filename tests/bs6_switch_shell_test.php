@@ -134,6 +134,7 @@ function test_bs6_shell_rules_and_selectors()
 
 	$css = ".x .dropdown .dropdown-menu.dropdown-menu-end, .y .offcanvas.offcanvas-end .modal-title { color: red; }";
 	pg_assert_same(".x .pg-menu-wrap .menu.pg-menu-end, .y .drawer.drawer-end .dialog-title { color: red; }", bs6_switch_selectors($css)['source']);
+	pg_assert_same(".r > [class]:has(> .form-field > input) { color: red; }", bs6_switch_selectors(".r > [class]:has(> .form-check > input) { color: red; }")['source'], 'no :has() inside :has()');
 }
 
 // A modal printed open becomes a scrim holding an open, non-modal dialog.
