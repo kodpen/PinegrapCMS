@@ -2105,6 +2105,7 @@
     "commission ({var:1}) was modified": "komisyon ({var:1}) düzenlendi",
     "commission, hire, freelance, work together, project": "sipariş, iş birliği, serbest çalışma, birlikte çalışmak, proje",
     "common region": "ortak bölge",
+    "common region ({var:1}) was made the shared component ({var:2})": "ortak bölge ({var:1}) paylaşılan bileşene ({var:2}) çevrildi",
     "common: work, school and personal accounts. organizations: work and school accounts only. Or the directory ID of your organization.": "common: iş, okul ve kişisel hesaplar. organizations: yalnızca iş ve okul hesapları. Ya da kurumunuzun dizin kimliği.",
     "companies we cater for": "catering yaptığımız şirket",
     "company {var:1}": "firma {var:1}",

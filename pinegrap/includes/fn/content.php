@@ -237,6 +237,90 @@ function pg_common_regions_from_rows(array $names, array $rows)
     return $regions;
 }
 
+/**
+ * The shared component category that marks a component made from a common
+ * region (pg_common_region_component()); the classic <cregion> tag of that
+ * region draws the component from then on.
+ *
+ * @param int $cregion_id
+ * @return string
+ */
+function pg_common_region_component_category($cregion_id)
+{
+    return 'common_region:' . (int) $cregion_id;
+}
+
+/**
+ * The shared components that draw converted common regions, read once per
+ * request like pg_common_regions(): one query for the ids no earlier call
+ * asked about.
+ *
+ * @param array $cregion_ids  common region ids
+ * @return array  cregion_id => shared component id, 0 for a region that is
+ *                not converted
+ */
+function pg_common_region_components(array $cregion_ids)
+{
+    static $read = array();
+
+    return pg_common_region_components_read($read, $cregion_ids, 'db_items');
+}
+
+/**
+ * pg_common_region_components() with the request's store and the query
+ * runner passed in. Of several components made from one region (a second
+ * conversion after the first row's category was changed by hand) the one
+ * with the lowest id draws it, as the conversion gives that one back.
+ *
+ * @param array    $read   cregion_id => component id or 0, filled in place
+ * @param array    $ids    common region ids
+ * @param callable $fetch  runs a SELECT and returns its rows (db_items())
+ * @return array  cregion_id => component id or 0, for every id asked for
+ */
+function pg_common_region_components_read(array &$read, array $ids, $fetch)
+{
+    $wanted = array();
+
+    foreach ($ids as $id) {
+        $id = (int) $id;
+
+        if (($id > 0) && !array_key_exists($id, $read)) {
+            $wanted[$id] = "'" . pg_common_region_component_category($id) . "'";
+        }
+    }
+
+    foreach (array_chunk($wanted, 100, true) as $chunk) {
+        foreach (array_keys($chunk) as $id) {
+            $read[$id] = 0;
+        }
+
+        $rows = call_user_func($fetch,
+            "SELECT id, category
+            FROM shared_components
+            WHERE
+                category IN (" . implode(', ', $chunk) . ")
+                AND ((system_region_config IS NULL) OR (system_region_config = ''))
+            ORDER BY id");
+
+        foreach ((is_array($rows) ? $rows : array()) as $row) {
+            $id = (int) substr((string) $row['category'], strlen('common_region:'));
+
+            if (isset($read[$id]) && ($read[$id] === 0)) {
+                $read[$id] = (int) $row['id'];
+            }
+        }
+    }
+
+    $out = array();
+
+    foreach ($ids as $id) {
+        $id = (int) $id;
+        $out[$id] = isset($read[$id]) ? $read[$id] : 0;
+    }
+
+    return $out;
+}
+
 // Outputs dynamic menu system using values from the database.
 // We don't currently support multiple menu items being set as the current menu item
 // because it causes problems for the accordion menu.  The logic for the accordion menu
