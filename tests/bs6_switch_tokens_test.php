@@ -53,6 +53,16 @@ function test_bs6_switch_rgb_variables()
 	pg_assert_same('done', bs6_switch_rgb_variables($result['source'])['status'], 'second run');
 }
 
+function test_bs6_switch_drawer_variables()
+{
+	$in = ".pg-perm-panel {\n  --bs-drawer-width: min(32rem, 100vw - 2rem);\n}\n.x { width: var(--bs-drawer-width); }\n";
+	$result = bs6_switch_drawer_variables($in);
+
+	pg_assert_same(".pg-perm-panel {\n  --pg-drawer-width: min(32rem, 100vw - 2rem);\n}\n.x { width: var(--bs-drawer-width); }\n", $result['source'], 'a declaration, not a read');
+	pg_assert_same('done', bs6_switch_drawer_variables($result['source'])['status'], 'second run');
+	pg_assert_contains('  --bs-drawer-width: var(--pg-drawer-width, 400px);', bs6_switch_token_bridge_block(), 'the bridge reads it unlayered');
+}
+
 function test_bs6_switch_token_bridge()
 {
 	$sheet = BS6_SWITCH_LAYER_NOTE . "\n@layer custom {\n\n.x {}\n\n}\n";
