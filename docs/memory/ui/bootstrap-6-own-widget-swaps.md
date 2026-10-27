@@ -12,5 +12,11 @@ description: Own panel widgets replaced by Bootstrap 6 components with the same 
 - Before/after screenshots of the chips (rest and hover, light and dark) and the progress bar were pixel-identical. The toast is transient and was not shot.
 - The translations filter's current chip carried `.active`, which `.pg-chip` never styled: it now shows as selected.
 
-## What is left of B9k?
-- `.btn-ghost` (285) to `.btn-text.theme-secondary`, own theme tokens and focus ring, pills and `.ws-chip` to `.badge-subtle`, role cards to `form-field-card`, status choice to `label.btn-check.btn-subtle`, the editor's own toast (`sdToast`), the guest page's toast; only where screenshots show no change, else in B11 (`plans/bootstrap-6-components.md`).
+## What is left of B9k, and why does the rest wait?
+- Next slice: `.btn-ghost` (285 places) to `.btn-text.theme-secondary`; own theme tokens and focus ring.
+- Editor toast (`sdToast` in `style_designer.js`): a Toast swap fits, waiting only for no open PR to hold `style_designer.js` (#1997 did when slice 2 was looked at).
+- Wait for B11, since no swap keeps the screen as it is:
+  - Guest page toast (`workspace_guest.js`): the page loads Bootstrap's CSS but none of its JavaScript; a Toast would add the whole bundle for one notice.
+  - `.ws-chip` to `.badge-subtle`: equal only by overriding every badge token (min-height, weight, line-height, gap, radius), and chips inside saved message HTML keep needing `.ws-chip`, so nothing is removed.
+  - Role cards (`.pg-role-card`, `user_permissions.php`) to `form-field-card`: v6 shows the radio and puts it inside the card; today the radio is hidden (`btn-check`) and the label is the card.
+  - Status choice (`.ws-status-choice`, `workspace_status.js`) to `label.btn-check.btn-subtle`: v6 fills the checked button; today it gets an outline in its own colour.
