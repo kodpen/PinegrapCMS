@@ -413,6 +413,104 @@ function pg_field_form_folder_exists($folder_id)
 }
 
 /**
+ * One stored choice as a line of the choices text (the format
+ * pg_field_form_parse_option_line() reads). Each part is written only when it
+ * or a later part has a value.
+ *
+ * @param array $option         label, value, default_selected,
+ *                              target_form_field_name, upload_folder_id,
+ *                              email_address
+ * @param array $target_values  the options the trigger shows
+ * @return string
+ */
+function pg_field_form_option_line($option, $target_values)
+{
+    $target_name = isset($option['target_form_field_name']) ? (string) $option['target_form_field_name'] : '';
+    $has_folder = ($option['upload_folder_id'] != 0);
+
+    $line = $option['label'];
+
+    if (($option['value'] != $option['label']) || ($option['default_selected'] == 1) || ($target_name != '') || $has_folder) {
+        $line .= '|' . $option['value'];
+    }
+
+    if (($option['default_selected'] == 1) || ($target_name != '') || $has_folder) {
+        $line .= '|' . (($option['default_selected'] == 1) ? 'on' : '');
+    }
+
+    if (($target_name != '') || $has_folder) {
+        $line .= '|';
+
+        if ($target_name != '') {
+            $line .= $target_name . '=' . implode(',', $target_values);
+        }
+    }
+
+    if ($has_folder) {
+        $line .= '|' . $option['upload_folder_id'];
+    }
+
+    if ($option['email_address'] != '') {
+        $line .= ' ^^' . $option['email_address'] . '^^';
+    }
+
+    return $line;
+}
+
+/**
+ * The stored choices of a field as the choices text, one line per choice,
+ * each line starting with a new line as the edit screen always printed it.
+ *
+ * @param int $field_id
+ * @param string $type
+ * @return string
+ */
+function pg_field_form_options_text($field_id, $type)
+{
+    $sql_trigger_select = '';
+    $sql_trigger_join = '';
+
+    // Only a pick list has trigger targets.
+    if ($type == 'pick list') {
+        $sql_trigger_select = ", form_fields.name AS target_form_field_name";
+        $sql_trigger_join = "LEFT JOIN form_fields ON form_field_options.target_form_field_id = form_fields.id";
+    }
+
+    $result = db_q(
+        "SELECT
+            form_field_options.id,
+            form_field_options.label,
+            form_field_options.value,
+            form_field_options.email_address,
+            form_field_options.upload_folder_id,
+            form_field_options.default_selected
+            $sql_trigger_select
+        FROM form_field_options
+        $sql_trigger_join
+        WHERE form_field_options.form_field_id = ?
+        ORDER BY form_field_options.sort_order",
+        array((string) $field_id)) or output_error('Query failed.');
+
+    $text = '';
+
+    while ($option = mysqli_fetch_assoc($result)) {
+        $target_values = array();
+
+        if (isset($option['target_form_field_name']) && ($option['target_form_field_name'] != '')) {
+            $targets = db_q("SELECT value FROM target_options WHERE trigger_option_id = ?", array((string) $option['id'])) or output_error('Query failed.');
+
+            while ($target = mysqli_fetch_assoc($targets)) {
+                $target_values[] = $target['value'];
+            }
+        }
+
+        $text .= "\n" . pg_field_form_option_line($option, $target_values);
+    }
+
+    return $text;
+}
+
+/**
  * The field ids of a form in their new order, with $field_id placed after
  * $position ('top' for first).
  *
