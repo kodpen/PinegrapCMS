@@ -120,7 +120,7 @@ function ws_flow_kinds()
 
     // The steps of a scheduled action, each a box of its own (steps.php).
     foreach ((function_exists('ws_step_kinds') ? ws_step_kinds() : array()) as $kind => $info) {
-        $kinds[$kind] = array('label' => $info['label'], 'trigger' => false, 'outcomes' => ws_step_outcomes(), 'step' => true, 'outputs' => $info['outputs']);
+        $kinds[$kind] = array('label' => $info['label'], 'trigger' => false, 'outcomes' => $info['outcomes'] ?? ws_step_outcomes(), 'step' => true, 'outputs' => $info['outputs']);
     }
 
     return $kinds;
@@ -1755,6 +1755,20 @@ function ws_flow_js_strings()
         'fl_delay_minute'     => lang('1 minute'),
         'fl_delay_hour'       => lang('1 hour'),
         'fl_delay_day'        => lang('1 day'),
+        'fl_kind_approval'    => lang('Ask for approval'),
+        'fl_on_approved'      => lang('Approved'),
+        'fl_on_rejected'      => lang('Rejected'),
+        'fl_on_expired'       => lang('Expired'),
+        'fl_on_withdrawn'     => lang('Closed without a decision'),
+        'fl_approval_channel' => lang('Channel to ask in'),
+        'fl_approval_no_channel' => lang('No channel to ask in'),
+        'fl_approval_who'     => lang('People asked to approve'),
+        'fl_approval_who_help' => lang('People of the channel who may write in it.'),
+        'fl_approval_rule'    => lang('Settled by'),
+        'fl_approval_any'     => lang('Any one of them'),
+        'fl_approval_all'     => lang('All of them'),
+        'fl_approval_closes'  => lang('Hours to decide'),
+        'fl_approval_closes_help' => lang('Empty for no deadline; at most 720 hours (30 days). A request with no decision by then expires.'),
         'fl_kind_change'      => lang('Change a record'),
         'fl_kind_lead'        => lang('Bring a customer into a channel'),
         'fl_lead_meta'        => lang('The customer of the submitted form'),

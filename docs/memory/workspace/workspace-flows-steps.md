@@ -1,13 +1,13 @@
 ---
 name: workspace-flows-steps
-description: Step boxes of a flow (steps.php, F4a #1835, F4b #1857, F4b2 #1923, F4b3 #1957): twelve step kinds run by ws_scheduled_do(), outcomes, owner rights, {{node.ID.FIELD}}, never twice, Idempotency-Key
+description: Step boxes of a flow (steps.php, F4a #1835, F4b #1857, F4b2 #1923, F4b3 #1957): thirteen step kinds run by ws_scheduled_do(), outcomes, owner rights, {{node.ID.FIELD}}, never twice, Idempotency-Key
 ---
 
 ## Where is it?
 - `includes/workspace/steps.php` (loaded after flow_runs.php); tests `tests/workspace_flow_steps_test.php`. Canvas forms `postFields()`, `emailFields()`, `notifyFields()`, `taskOpenFields()`, `urlFields()`, `digestFields()`, `reportFields()`, `checkinFields()`, `startFields()`, `changeFields()` in `assets/js/workspace_flow.js`.
 
 ## What is a step box?
-- A scheduled action's step as a box kind of its own: `ws_step_kinds()` gives each its step `type`: post, email, notify, `task_open` (type task: opened without waiting; the kind `task` is the box that waits), webhook, web_check, task_digest, report, checkin, `start_action` (type trigger; source action 0, the run's depth counts), change (`workspace-flows-change-box.md`), lead (`workspace-crm-lead-intake.md`). `ws_flow_kinds()` merges them with `step => true`, outcomes `ws_step_outcomes()` (done, failed).
+- A scheduled action's step as a box kind of its own: `ws_step_kinds()` gives each its step `type`: post, email, notify, `task_open` (type task: opened without waiting; the kind `task` is the box that waits), webhook, web_check, task_digest, report, checkin, `start_action` (type trigger; source action 0, the run's depth counts), change (`workspace-flows-change-box.md`), lead (`workspace-crm-lead-intake.md`), approval (waits for its request, `workspace-flows-approval-box.md`). `ws_flow_kinds()` merges them with `step => true`, outcomes the kind's own `outcomes` or `ws_step_outcomes()` (done, failed).
 - Config as the step keeps it (`ws_step_config_normalize()`, keys listed in its docblock); email `to` is one text, commas. `ws_step_config_problems()` gives `bad_config` lines in `ws_flow_graph_check()`.
 - `ws_step_action()` turns config into the step array, so `ws_scheduled_action_input()` and `ws_scheduled_do()` run unchanged.
 

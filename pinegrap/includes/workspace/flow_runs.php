@@ -36,7 +36,8 @@
  * waiting box needs and wakes the box with it (ws_flow_wake()). An event that
  * was lost is made up for: a waiting box looks at its task again every
  * WS_FLOW_RECHECK seconds. A delay box waits the same way, with its next
- * look at the moment its time is up.
+ * look at the moment its time is up; an approval box waits for its request
+ * as a task box waits for its task.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -86,6 +87,9 @@ define('WS_FLOW_TOKEN_MAX', 56);
 
 /** The event a task box waits for (ws_event(), tasks.php). */
 define('WS_FLOW_TASK_WAIT', 'workspace.task.status_changed');
+
+/** The event an approval box waits for (ws_event(), approvals.php). */
+define('WS_FLOW_APPROVAL_WAIT', 'workspace.approval.decided');
 
 /** The longest a delay box waits, in minutes: a scheduled action's start delay (a week). */
 define('WS_FLOW_DELAY_MAX', 10080);
@@ -408,9 +412,17 @@ function ws_flow_task_settlement($task_status, $cancel_routed)
  */
 function ws_flow_wake_key($event, $payload)
 {
-    $task_id = (int) ($payload['id'] ?? 0);
+    $id = (int) ($payload['id'] ?? 0);
 
-    return (((string) $event === WS_FLOW_TASK_WAIT) && ($task_id > 0)) ? 'task:' . $task_id : '';
+    if ($id <= 0) {
+        return '';
+    }
+
+    if ((string) $event === WS_FLOW_APPROVAL_WAIT) {
+        return ws_flow_approval_key($id);
+    }
+
+    return ((string) $event === WS_FLOW_TASK_WAIT) ? 'task:' . $id : '';
 }
 
 /**
@@ -433,6 +445,12 @@ function ws_flow_effect_task_id($effect)
  */
 function ws_flow_effect_wait($effect)
 {
+    $approval_id = ws_flow_effect_approval_id($effect);
+
+    if ($approval_id > 0) {
+        return array('event' => WS_FLOW_APPROVAL_WAIT, 'key' => ws_flow_approval_key($approval_id));
+    }
+
     $task_id = ws_flow_effect_task_id($effect);
 
     return ($task_id > 0) ? array('event' => WS_FLOW_TASK_WAIT, 'key' => 'task:' . $task_id) : null;
@@ -617,6 +635,61 @@ function ws_flow_delay_settlement($key, $now)
     }
 
     return array('status' => 'done', 'outcome' => 'done', 'data' => array('waited_until' => ws_flow_time($until)));
+}
+
+/* ---------------------------------------------------------------------------
+   The approval box (pure)
+   --------------------------------------------------------------------------- */
+
+/**
+ * The key an approval box waits on (effect and wait_key): approval:<id>.
+ *
+ * @param int $approval_id
+ * @return string
+ */
+function ws_flow_approval_key($approval_id)
+{
+    return 'approval:' . (int) $approval_id;
+}
+
+/**
+ * The approval request a box's effect names (approval:<id>), 0 for none.
+ *
+ * @param string $effect
+ * @return int
+ */
+function ws_flow_effect_approval_id($effect)
+{
+    return preg_match('/^approval:([1-9][0-9]{0,9})$/', (string) $effect, $match) ? (int) $match[1] : 0;
+}
+
+/**
+ * How the way a request ended settles the approval box that asked it.
+ * Approved and rejected are decisions: the box is done on them, and a
+ * decision no arrow leaves on ends the branch. Expired and withdrawn
+ * decided nothing: the box leaves on them where an arrow does, and fails
+ * where none does, as a cancelled task fails a task box. A request that is
+ * gone counts as withdrawn; one still open keeps the box waiting
+ * (status '').
+ *
+ * @param string|null $outcome what the request ended with ('' while open,
+ *                             null when it is gone)
+ * @param bool        $routed  an arrow leaves the box on that outcome
+ * @return array status (done | failed | ''), outcome
+ */
+function ws_flow_approval_settlement($outcome, $routed)
+{
+    if ($outcome === '') {
+        return array('status' => '', 'outcome' => '');
+    }
+
+    if (in_array($outcome, array('approved', 'rejected'), true)) {
+        return array('status' => 'done', 'outcome' => $outcome);
+    }
+
+    $outcome = ($outcome === 'expired') ? 'expired' : 'withdrawn';
+
+    return array('status' => $routed ? 'done' : 'failed', 'outcome' => $outcome);
 }
 
 /**
@@ -2096,6 +2169,10 @@ function ws_flow_step_recheck($step)
         return ws_flow_delay_recheck($step);
     }
 
+    if (ws_flow_effect_approval_id($step['wait_key']) > 0) {
+        return ws_flow_approval_recheck($step);
+    }
+
     $task_id = ws_flow_effect_task_id($step['wait_key']);
     $run = ($task_id > 0) ? ws_flow_run($step['run_id']) : null;
 
@@ -2204,6 +2281,111 @@ function ws_flow_delay_recheck($step)
     }
 
     return ws_flow_step_settle($step, 'waiting', 'done', 'done', lang(array('string' => 'Waited until {var:1}.', 'vars' => ws_scheduled_moment($until))), $settled['data']);
+}
+
+/**
+ * An approval box whose request is out (steps.php, ws_step_run()) waits for
+ * it: in one conditional write it keeps the request (effect and wait_key,
+ * ws_flow_approval_key()), waits for its decision (WS_FLOW_APPROVAL_WAIT)
+ * and has its next look in WS_FLOW_RECHECK seconds, in case the event is
+ * lost. A step that gave no request fails. A box that ended while its
+ * request was being asked (the run cancelled at that moment) still names
+ * the request, which stays as it is.
+ *
+ * @param array  $step        ws_flow_run_steps row, running
+ * @param int    $approval_id the request asked
+ * @param string $text        the step's sentence
+ * @param array  $data        ws_step_result_data()
+ */
+function ws_flow_approval_wait($step, $approval_id, $text, $data)
+{
+    if ((int) $approval_id <= 0) {
+        ws_flow_step_settle($step, 'running', 'failed', '', lang('The approval request could not be asked.'), $data);
+        return;
+    }
+
+    $key = ws_flow_approval_key($approval_id);
+
+    db("UPDATE ws_flow_run_steps SET effect = '" . e($key) . "', status = 'waiting',
+            wait_event = '" . e(WS_FLOW_APPROVAL_WAIT) . "', wait_key = '" . e($key) . "', wake_at = '" . (time() + WS_FLOW_RECHECK) . "',
+            result = '" . e(ws_flow_result_pack($text, $data)) . "'
+        WHERE id = '" . (int) $step['id'] . "' AND status = 'running'");
+
+    if ((int) mysqli_affected_rows(db::$con) === 1) {
+        // The awaited events this request read may predate the wait: read
+        // again, so a decision later in the same request is kept for it.
+        ws_events_awaited(true);
+        ws_flow_run_refresh((int) $step['run_id']);
+
+        return;
+    }
+
+    db("UPDATE ws_flow_run_steps SET effect = '" . e($key) . "'
+        WHERE id = '" . (int) $step['id'] . "' AND effect = '" . e(WS_STEP_BEGAN . 'approval') . "' AND status IN ('skipped', 'failed')");
+}
+
+/**
+ * A waiting approval box looks at its request: ended, it settles
+ * (ws_flow_approval_settlement()) with the request and its message as its
+ * values; still open, it goes on waiting. The request as it stands now is
+ * what counts, not what an event said. A box of a run that ended is let go;
+ * its request stays as it is.
+ *
+ * @param array $step ws_flow_run_steps row, waiting
+ * @return bool whether this request settled it
+ */
+function ws_flow_approval_recheck($step)
+{
+    $approval_id = ws_flow_effect_approval_id($step['wait_key']);
+    $run = ws_flow_run($step['run_id']);
+
+    if (!$run) {
+        return false;
+    }
+
+    if (!ws_flow_run_open($run['status'])) {
+        return ws_flow_step_settle($step, 'waiting', 'skipped', '', lang('The run ended before this box did; its approval request stays as it is.'));
+    }
+
+    $approval = function_exists('ws_approval') ? ws_approval($approval_id) : null;
+    $outcome = $approval ? (((int) $approval['closed_at'] > 0) ? (string) $approval['outcome'] : '') : null;
+
+    // Closed with no outcome written: nobody decided.
+    if (($outcome === '') && $approval && ((int) $approval['closed_at'] > 0)) {
+        $outcome = 'withdrawn';
+    }
+
+    $routed = ($outcome !== '') && ws_flow_outcome_routed(ws_flow_run_graph($run), $step['node_id'], ($outcome === 'expired') ? 'expired' : 'withdrawn');
+    $settled = ws_flow_approval_settlement($outcome, $routed);
+
+    if ($settled['status'] === '') {
+        return false;
+    }
+
+    $title = $approval ? (string) $approval['title'] : '';
+
+    switch ($settled['outcome']) {
+        case 'approved':
+            $text = lang(array('string' => 'The approval request “{var:1}” was approved.', 'vars' => $title));
+            break;
+
+        case 'rejected':
+            $text = lang(array('string' => 'The approval request “{var:1}” was rejected.', 'vars' => $title));
+            break;
+
+        case 'expired':
+            $text = lang(array('string' => 'The approval request “{var:1}” expired without a decision.', 'vars' => $title));
+            break;
+
+        default:
+            $text = $approval
+                ? lang(array('string' => 'The approval request “{var:1}” was closed without a decision.', 'vars' => $title))
+                : lang('The approval request is gone.');
+    }
+
+    $data = array('approval_id' => $approval_id, 'message_id' => $approval ? (((int) $approval['message_id'] > 0) ? (int) $approval['message_id'] : null) : null);
+
+    return ws_flow_step_settle($step, 'waiting', $settled['status'], $settled['outcome'], $text, $data);
 }
 
 /**

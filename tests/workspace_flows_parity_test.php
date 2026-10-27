@@ -2449,6 +2449,7 @@ function workspace_flows_parity_table()
 			array(array('trigger.delay'), 3, 'delay box, the flows\' own: minutes before the start'),
 			array(workspace_flows_parity_prefixed('change', 'record action id fields'), 3, 'change box: kind, update or delete, record, fields'),
 			array(workspace_flows_parity_prefixed('approval', 'channel_id title text approvers rule'), 3, 'approval box: channel, title, text, people asked, rule'),
+			array(array('approval.closes_at'), 3, 'approval box: its deadline, closes_in hours from when the box runs (the flows\' own; the scheduled form sets none)'),
 			array(workspace_flows_parity_prefixed('checkin', 'channel_id question'), 3, 'check-in box: channel, question'),
 			array(workspace_flows_parity_prefixed('lead', 'private user_ids'), 3, 'lead box: a private channel, the people put in a channel it opens'),
 		),

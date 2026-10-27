@@ -124,6 +124,7 @@
         start_action: { icon: 'bi-alarm', name: 'fl_kind_start_action', into: true, out: ['done', 'failed'] },
         change: { icon: 'bi-pencil-square', name: 'fl_kind_change', into: true, out: ['done', 'failed'] },
         lead: { icon: 'bi-person-vcard', name: 'fl_kind_lead', into: true, out: ['done', 'failed'] },
+        approval: { icon: 'bi-patch-check', name: 'fl_kind_approval', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
         condition: { icon: 'bi-signpost-split', name: 'fl_kind_condition', into: true, out: ['yes', 'no'] },
         delay: { icon: 'bi-hourglass', name: 'fl_kind_delay', into: true, out: ['done'] },
         end: { icon: 'bi-flag', name: 'fl_kind_end', into: true, out: [] }
@@ -135,7 +136,11 @@
         cancelled: 'fl_on_cancelled',
         failed: 'fl_on_failed',
         yes: 'fl_on_yes',
-        no: 'fl_on_no'
+        no: 'fl_on_no',
+        approved: 'fl_on_approved',
+        rejected: 'fl_on_rejected',
+        expired: 'fl_on_expired',
+        withdrawn: 'fl_on_withdrawn'
     };
 
     // What a share lets its holder do (ws_flow_share_levels()), lowest first.
@@ -166,6 +171,7 @@
         ['start_action', 'bi-alarm', 'fl_kind_start_action'],
         ['change', 'bi-pencil-square', 'fl_kind_change'],
         ['lead', 'bi-person-vcard', 'fl_kind_lead'],
+        ['approval', 'bi-patch-check', 'fl_kind_approval'],
         ['end', 'bi-flag', 'fl_add_end']
     ];
 
@@ -255,7 +261,7 @@
     }
 
     function titleOf(node) {
-        return ((node.kind === 'task') || (node.kind === 'task_open')) ? (node.config.title || node.label || '') : (node.label || '');
+        return ((node.kind === 'task') || (node.kind === 'task_open') || (node.kind === 'approval')) ? (node.config.title || node.label || '') : (node.label || '');
     }
 
     function nameOf(node) {
@@ -487,6 +493,16 @@
 
         if (node.kind === 'delay') {
             return delayText(config);
+        }
+
+        if (node.kind === 'approval') {
+            var asked = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];
+
+            if (!asked) {
+                return t('fl_approval_no_channel');
+            }
+
+            return (config.approvers || []).length ? t('fl_post_meta', asked.name) + ' · ' + peopleText(config.approvers) : t('fl_post_meta', asked.name);
         }
 
         if (node.kind === 'schedule') {
@@ -1861,7 +1877,7 @@
         var box = el('div', 'wsf-form');
         var config = node.config;
 
-        var titled = (node.kind === 'task') || (node.kind === 'task_open');
+        var titled = (node.kind === 'task') || (node.kind === 'task_open') || (node.kind === 'approval');
         var title = textInput(titleOf(node), titled ? 200 : 160, function (value) {
             if (titled) {
                 config.title = value;
@@ -1938,6 +1954,10 @@
 
         if (node.kind === 'delay') {
             delayFields(box, node);
+        }
+
+        if (node.kind === 'approval') {
+            approvalFields(box, node);
         }
 
         if (node.kind === 'schedule') {
@@ -2528,6 +2548,37 @@
         });
         box.appendChild(field(t('fl_delay_amount'), amount, t('fl_delay_help')));
         box.appendChild(field(t('fl_delay_unit'), unit));
+    }
+
+    // An approval box: the channel it asks in, the people asked, the text,
+    // whether one approval or all of them settle it, and the hours it gives
+    // them (WS_STEP_APPROVAL_CLOSES_MAX); the title is the box's.
+    function approvalFields(box, node) {
+        var config = node.config;
+        var rule = K.select([['any', t('fl_approval_any')], ['all', t('fl_approval_all')]], config.rule || 'any');
+        var closes = el('input', 'form-control form-control-sm wsf-number');
+
+        channelField(box, node, t('fl_approval_channel'), t('fl_post_pick'));
+        box.appendChild(field(t('fl_approval_who'), peopleList(node, el('div', 'wsf-people'), 'approvers', 50), t('fl_approval_who_help')));
+        box.appendChild(field(t('fl_description'), textInput(config.text, 4000, function (value) {
+            config.text = value;
+            refreshNode(node);
+        }, true), t('fl_values_help')));
+        rule.addEventListener('change', function () {
+            config.rule = rule.value;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_approval_rule'), rule));
+
+        closes.type = 'number';
+        closes.min = '1';
+        closes.max = '720';
+        closes.value = (config.closes_in === '' || config.closes_in === undefined || config.closes_in === null) ? '' : String(config.closes_in);
+        closes.addEventListener('input', function () {
+            config.closes_in = (closes.value === '') ? '' : clamp(parseInt(closes.value, 10) || 1, 1, 720);
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_approval_closes'), closes, t('fl_approval_closes_help')));
     }
 
     // A time the flow starts at: its first day and time, how it repeats, the
@@ -3540,6 +3591,8 @@
             config = { rule: { type: 'workday' } };
         } else if (kind === 'delay') {
             config = { amount: 1, unit: 'hours' };
+        } else if (kind === 'approval') {
+            config = { channel_id: 0, title: '', text: '', approvers: [], rule: 'any', closes_in: '' };
         } else if (kind === 'schedule') {
             config = { date: new Date().toISOString().slice(0, 10), time: '09:00', repeat: 'none', every: 1, days: [], until: '' };
         } else if (kind === 'event') {
