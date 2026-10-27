@@ -16,7 +16,7 @@ description: Plan (2026-10-26, issue #1989): legitimate traffic must not end in 
 
 2a. Refusals and the ban (findings-counting): a rate-limit refusal (`rate-sensitive`, `rate-api`, `concurrent`, the password-reset ceiling) registers at most one offence per subject per minute window; an address with a staff session or a staff sign-in in `auth_tokens` within the last day is never auto-banned (a `would-ban` row instead); Release and Allow clear the offence bucket. Thresholds and the ladder go to the owner (Q2). Claimed by #2071.
 
-2b. The counters' subjects and endpoints: the `api.php` allowance exempts staff, not any session; a private or reserved visitor address is infrastructure; `workspace_guest.php` and `shipworks.php` get the credential-endpoint allowance; the web root's `index.php` told from the panel sign-in. Claimed.
+2b. The counters' subjects and endpoints: the `api.php` allowance exempts staff, not any session; a private or reserved visitor address is infrastructure; `workspace_guest.php` and `shipworks.php` get the credential-endpoint allowance; the web root's `index.php` told from the panel sign-in. Claimed by #2108.
 
 3. What a ban writes (findings-writes): the shield answers the HTML page `waf_deny()` draws, as a twin in `includes/db_guard.php`, naming the firewall and the ban's end (`B <ip> <expires>` lines, expired lines skipped, a refresh from the general job), with a reference stored through `waf_shield_drain()`; the ban note and the `ban` row name the rule (`waf_last_rule()`); `path=` on every DENY and BAN line of `data/firewall.log`, `status=` on the four rule-only callers.
 
