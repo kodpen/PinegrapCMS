@@ -988,7 +988,7 @@ if (!empty($_SERVER['HTTP_HOST'])) {
     // screen re-issues it as None for a payment gateway's return
     // (pg_session_cookie_allow_cross_site()). The setting exists from 7.3.
     if (version_compare(PHP_VERSION, '7.3.0', '>=')) {
-        ini_set('session.cookie_samesite', 'Lax');
+        ini_set('session.cookie_samesite', 'Lax'); // phpcs:ignore PHPCompatibility.IniDirectives.NewIniDirectives.session_cookie_samesiteFound -- guarded by version_compare() above
     }
 
     // The id in the cookie must be one this server issued: with strict mode

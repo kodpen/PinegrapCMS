@@ -345,7 +345,7 @@ function ws_ai_http($method, $path, $payload = null, $timeout = 15)
     );
 
     if ($method === 'POST') {
-        $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0);
+        $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0); // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined()
         $json = json_encode($payload, $flags);
 
         if ($json === false) {
@@ -2073,7 +2073,7 @@ function ws_ai_text_answer($content)
  */
 function ws_ai_save($row, $state, $steps)
 {
-    $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0);
+    $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0); // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined()
 
     db("UPDATE ws_ai_requests SET ai_state = '" . e((string) json_encode($state, $flags)) . "', ai_steps = '" . (int) $steps . "',
             ai_attempts = 0, sent_at = '" . time() . "'
@@ -2118,7 +2118,7 @@ function ws_ai_tool_message($call_id, $data, $note = '')
     }
 
     if ($data !== null) {
-        $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0);
+        $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (defined('JSON_INVALID_UTF8_SUBSTITUTE') ? JSON_INVALID_UTF8_SUBSTITUTE : 0); // phpcs:ignore PHPCompatibility.Constants.NewConstants.json_invalid_utf8_substituteFound -- guarded by defined()
         $text = is_string($data) ? $data : (string) json_encode($data, $flags);
 
         if (mb_strlen($text) > 12000) {
