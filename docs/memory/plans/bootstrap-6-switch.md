@@ -7,14 +7,14 @@ description: Step B8 of plans/bootstrap-6-panel.md (claim #1866): building a reh
 - Rebuild `feature/bootstrap-6` (#1866, a draft until the owner says go) on the latest `development`, comment the result there. Tool commits first, the generated commit last, pushed only when every check passes: drop it (`git rebase --onto <gen>~1 <gen>`), `git rebase origin/development`, `php tools/bs6_migrate.php --all --write`, `--switch --write`, `php tools/build_js.php`, every CI check, commit; then `git merge -s ours origin/feature/bootstrap-6` (keeps the old history, the tree stays the rebuild) and a plain `git push`. Never commit the sandbox's `data/config.php`.
 - Scriptable hand fixes are code in `tools/bs6_switch.php`, `bs6_switch_shell.php`, `bs6_switch_tokens.php`, `bs6_switch_stems.php` (tests `tests/bs6_switch*_test.php`); a fix found by its exact text goes into `tools/bs6_switch_texts.txt`. Never a patch file. What each fix does: the file headers and `ui/bootstrap-6-codemod.md`.
 
-## What is still on the hand-fix list (rehearsal 6, 2026-10-27)?
-- `check_bs6.php`: 13 panel findings, each reviewed and left (theme or `start`/`end` stems, a `removeClass` naming two themes, `page_designer.js`'s site preview, `.was-validated`, `.btn-outline-light/-dark` selectors no element carries).
-- Look: no 1400 px breakpoint (`xxl` to `2xl`, 1536: owner question); the official `fs-1` to `fs-4xl` makes the search and new-design dialogs' empty-state icon 8 px larger (dialog 12 px taller).
-- Shared renderers that print on both sides need a run-time choice: `get_calendar()` (calendar screen, dashboard widget: v5 buttons and selects), liveform's notices (their colours come from shell rules). The visual editor's canvas code stays v5 on purpose.
+## What is still on the hand-fix list (rehearsal 7, 2026-10-27)?
+- `check_bs6.php`: 13 panel findings, each reviewed and left (theme or `start`/`end` stems, a `removeClass` naming two themes, `page_designer.js`'s site preview, `.was-validated`, `.btn-outline-light/-dark` selectors no element carries). Shared: `get_login()` and liveform's own fields (site output).
+- Look: no 1400 px breakpoint (`xxl` to `2xl`, 1536: owner question); the official `fs-1` to `fs-4xl` makes the search and new-design dialogs' empty-state icon 8 px larger.
+- `sweep.js` on all 262 panel screens: only `dropdown-toggle` (DataTables Buttons adds it to the column button, which also carries `pg-menu-caret`) and `collapsed` (a state class) are left undrawn; both harmless. The visual editor's canvas code stays v5 on purpose.
 
 ## Where does the next rehearsal start?
-- Rebuild as above. Open states on both servers with `open_toggles.js` (1440, `--width=834`, `--width=390`), `open_dialogs.js` and `settings_panes.js` (`ui/panel-screenshots.md`); rehearsal 6: every toggle, pane and dialog opens with no script error and no v5 class left inside.
-- Left: `get_calendar()` run-time classes; screens outside the screenshot list; dev.pinegrap.com.
+- Rebuild as above; run `sweep.js`, `open_toggles.js` (1440, `--width=834`, `--width=390`), `open_dialogs.js` and `settings_panes.js` on both servers (`ui/panel-screenshots.md`) and compare.
+- Not reachable in the sandbox: the image editor (licensed plugin), marketplace pickers (no marketplace rows), the barcode list (barcodes off). Ready for the owner's check: dev.pinegrap.com, then the owner says go.
 - Open owner questions in #1866's body: own media queries on 1024/1280 (keep until answered) and the lost 1400 px breakpoint.
 
 ## What does the owner check?
