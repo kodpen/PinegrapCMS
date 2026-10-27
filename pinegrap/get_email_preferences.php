@@ -35,8 +35,8 @@ function get_email_preferences($properties = array()) {
                 user_email,
                 user_contact
             FROM user
-            WHERE user_username = '" . escape($_SESSION['sessionusername']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE user_username = ?";
+        $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $email_address = $row['user_email'];
         $contact_id = $row['user_contact'];
@@ -45,8 +45,8 @@ function get_email_preferences($properties = array()) {
         $query =
             "SELECT opt_in
             FROM contacts
-            WHERE id = '" . $contact_id . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         // A user without a contact record (an administrator created in the control
@@ -82,8 +82,8 @@ function get_email_preferences($properties = array()) {
                 id,
                 opt_in
             FROM contacts
-            WHERE email_address = '" . escape($email_address) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE email_address = ?";
+        $result = db_q($query, array((string) $email_address)) or output_error('Query failed.');
         
         // if a contact was not found for the e-mail address, then output error
         if (mysqli_num_rows($result) == 0) {
@@ -142,9 +142,9 @@ function get_email_preferences($properties = array()) {
                 "SELECT contact_id
                 FROM contacts_contact_groups_xref
                 WHERE
-                    (contact_id = '" . $contact_id . "')
-                    AND (contact_group_id = '" . $contact_group['id'] . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    (contact_id = ?)
+                    AND (contact_group_id = ?)";
+            $result = db_q($query, array((string) $contact_id, (string) $contact_group['id'])) or output_error('Query failed.');
             
             // if contact is in this contact group, then we should output contact group
             if (mysqli_num_rows($result) > 0) {
@@ -168,9 +168,9 @@ function get_email_preferences($properties = array()) {
                 "SELECT contact_id
                 FROM contacts_contact_groups_xref
                 WHERE
-                    (contact_id = '" . $contact_id . "')
-                    AND (contact_group_id = '" . $contact_group['id'] . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    (contact_id = ?)
+                    AND (contact_group_id = ?)";
+            $result = db_q($query, array((string) $contact_id, (string) $contact_group['id'])) or output_error('Query failed.');
             
             // if contact is in this contact group
             if (mysqli_num_rows($result) > 0) {
@@ -179,9 +179,9 @@ function get_email_preferences($properties = array()) {
                     "SELECT opt_in
                     FROM opt_in
                     WHERE
-                        (contact_id = '" . $contact_id . "')
-                        AND (contact_group_id = '" . $contact_group['id'] . "')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        (contact_id = ?)
+                        AND (contact_group_id = ?)";
+                $result = db_q($query, array((string) $contact_id, (string) $contact_group['id'])) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 
                 // if an opt-in record was not found or opt-in is 1, then contact is opted-in

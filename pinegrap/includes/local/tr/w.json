@@ -697,6 +697,7 @@
     "Who can see it": "Kimler görebilir",
     "Who carries the work": "İşi kim taşıyor",
     "Who changed what in the panel, through the API or in a scheduled job, with each changed field before and after. Secrets are kept as changed, never with their value.": "Panelde, API üzerinden veya zamanlanmış bir işte kimin neyi değiştirdiği; değişen her alanın önceki ve sonraki değeriyle. Gizli değerlerin yalnızca değiştiği kaydedilir, değeri asla.",
+    "Who changed what, with the values before and after. Older lines are removed by the general job once a day. 0 keeps every line; otherwise {var:1} to {var:2} years. The consent log keeps its history for {var:3} years, and always the answer in force.": "Kimin neyi değiştirdiği, önceki ve sonraki değerleriyle. Daha eski satırları genel iş günde bir kez siler. 0 her satırı saklar; aksi halde {var:1} ile {var:2} yıl arası. Rıza kaydı geçmişini {var:3} yıl saklar, geçerli yanıtı ise her zaman saklar.",
     "Who chooses the books?": "Kitapları kim seçiyor?",
     "Who connects": "Kim bağlanıyor",
     "Who decides": "Kim karar veriyor",
