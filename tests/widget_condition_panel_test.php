@@ -171,12 +171,12 @@ function test_widget_condition_operand_is_a_translatable_field()
 function test_widget_condition_render_translates_before_it_reads()
 {
 	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
-	$from = strpos($src, "isset(\$node['props']['_bindings']['show_if'])");
+	$from = strpos($src, "pg_sw_cond_present(isset(\$node['props'])");
 	pg_assert_true($from !== false, 'the condition block is found');
 	if ($from === false) return;
 	$block = substr($src, $from, 1200);
 	$tr = strpos($block, 'pg_tr_condition_props(');
-	$spec = strpos($block, 'pg_sw_cond_spec(');
+	$spec = strpos($block, 'pg_sw_cond_specs(');
 	pg_assert_true($tr !== false && $spec !== false && $tr < $spec, 'translated before it is read');
 }
 
@@ -196,7 +196,10 @@ function _widget_cond_panel_run_js($script)
 
 	$js = _widget_cond_panel_js();
 	$cut = _widget_cond_panel_js_var($js, 'SW_COND_OPS') . _widget_cond_panel_js_var($js, 'SW_COND_DENY');
-	foreach (array('_sdT', '_sdCondTokenAllowed', '_sdCondOp', '_sdCondHoldsRequired', '_sdCondTokenOptions', '_sdCondWrite', '_sdCondSentence', '_sdNodeSetBinding') as $name) {
+	$names = strpos($js, "\n    var SD_COND_NAMES = ");
+	$cut .= substr($js, $names, strpos($js, ";\n", $names) + 2 - $names);
+	foreach (array('_sdT', '_sdCondTokenAllowed', '_sdCondOp', '_sdCondHoldsRequired', '_sdCondTokenOptions', '_sdCondRowsOf', '_sdCondJoin',
+		'_sdCondWriteRows', '_sdCondWrite', '_sdCondSentence', '_sdNodeSetBinding') as $name) {
 		$fn = _widget_cond_panel_js_function($js, $name);
 		pg_assert_true($fn !== '', $name . ' is found');
 		$cut .= $fn;
@@ -293,4 +296,49 @@ JS;
 	pg_assert_same(array(true, true, false), $a['required']);
 	pg_assert_same(array('multiple_of', 'is a multiple of', true), $a['op']);
 	pg_assert_same(null, $a['noOp']);
+}
+
+// Several conditions: each row writes its own name, a removed row lets the
+// ones after it move up, the join stays on the first row only while there
+// are several, and the chip names every row.
+function test_widget_condition_panel_rows()
+{
+	$script = <<<'JS'
+var answer = {};
+var n = { type: 'content', props: { _bindings: { text: '__name' } } };
+_sdCondWrite(n, '__name', 'eq', 'Chair', 0);
+_sdCondWrite(n, '__inventory_quantity', 'gt', '0', 1);
+_sdCondWrite(n, '__name', 'empty', 'x', 5);
+answer.three = JSON.parse(JSON.stringify(n.props));
+answer.allSentence = _sdCondSentence(n);
+_sdCondWriteRows(n, _sdCondRowsOf(n), 'any');
+answer.join = n.props._bindParams.show_if.join;
+answer.anySentence = _sdCondSentence(n);
+_sdCondWrite(n, '', 'eq', '', 0);
+answer.moved = JSON.parse(JSON.stringify(n.props));
+_sdCondWrite(n, '', 'eq', '', 1);
+answer.one = JSON.parse(JSON.stringify(n.props));
+_sdCondWrite(n, '__name', 'eq', 'Desk', 1);
+answer.joinBack = _sdCondJoin(n);
+_sdCondWriteRows(n, [{ token: '__name' }, { token: '' }, { token: '__inventory_quantity', op: 'lt', value: 3 }, { token: '__name' }], 'all');
+answer.kept = JSON.parse(JSON.stringify(n.props));
+console.log(JSON.stringify(answer));
+JS;
+	$a = _widget_cond_panel_run_js($script);
+	if ($a === null) {
+		return;
+	}
+	pg_assert_same(array('text' => '__name', 'show_if' => '__name', 'show_if_2' => '__inventory_quantity', 'show_if_3' => '__name'), $a['three']['_bindings']);
+	pg_assert_same(array('show_if' => array('op' => 'eq', 'value' => 'Chair'), 'show_if_2' => array('op' => 'gt', 'value' => '0'),
+		'show_if_3' => array('op' => 'empty')), $a['three']['_bindParams']);
+	pg_assert_same('Only when: Product name is equal to Chair and Stock quantity is greater than 0 and Product name is empty', $a['allSentence']);
+	pg_assert_same('any', $a['join']);
+	pg_assert_same('Only when: Product name is equal to Chair or Stock quantity is greater than 0 or Product name is empty', $a['anySentence']);
+	pg_assert_same(array('text' => '__name', 'show_if' => '__inventory_quantity', 'show_if_2' => '__name'), $a['moved']['_bindings'], 'the rows move up');
+	pg_assert_same(array('show_if' => array('op' => 'gt', 'value' => '0', 'join' => 'any'), 'show_if_2' => array('op' => 'empty')), $a['moved']['_bindParams']);
+	pg_assert_same(array('show_if' => array('op' => 'gt', 'value' => '0')), $a['one']['_bindParams'], 'one row keeps no join');
+	pg_assert_same('all', $a['joinBack']);
+	pg_assert_same(array('text' => '__name', 'show_if' => '__name', 'show_if_2' => '__inventory_quantity', 'show_if_3' => '__name'), $a['kept']['_bindings'], 'empty rows dropped, three at most');
+	pg_assert_same(array('op' => 'lt', 'value' => '3'), $a['kept']['_bindParams']['show_if_2']);
+	pg_assert_same(array(), pg_sw_cond_specs($a['kept']) === false ? array('invalid') : array(), 'the server reads what the panel writes');
 }

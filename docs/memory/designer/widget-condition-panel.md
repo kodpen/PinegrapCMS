@@ -7,6 +7,7 @@ description: The Bind Data row "Show only when a value…" (#1665): token, opera
 - Bind Data, row "Show only when a value…" (`_sdConditionRows()` in `style_designer.js`), on any element inside a system widget but its root and its loops (`root`, `loop_area`, `recipient_loop_area`). It writes the server's shape ([[widget-conditions]]): `_bindings.show_if` through `_sdNodeSetBinding()` (marks the widget dirty) and `_bindParams.show_if = {op, value}` (`_sdCondWrite()`). "Always" clears both; an operator without a value keeps none.
 - The value list is the element's Bind Data tokens (`_swBindTokenOptions()`, the row position group inside a list) minus the refused ones (`_sdCondTokenAllowed()`). The flag row "Show only when" stays where a kind has one; both must pass.
 - A new value redraws the panel; the operator and the compared text change in place (one undo step per choice and per word typed).
+- Up to three rows with an All/Any switch ([[widget-condition-rows]]).
 
 ## What does the canvas show?
 - A chip at the element's top left: "Only when: <value> <operator> <compared text>" (`_sdCondSentence()`, three numbered parts so Turkish orders them `{var:1} {var:3} {var:2}`). It names the condition; whether the canvas draws the element is the band's state ([[widget-condition-canvas]]). Hidden on `.sd-fx-flat` wrappers and while the element's text is edited.

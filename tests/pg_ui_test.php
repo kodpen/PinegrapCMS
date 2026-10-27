@@ -158,6 +158,7 @@ function makeBootstrap(v) {
         b.Drawer = makeComponent('Drawer', 'drawer', true);
         b.Menu = makeComponent('Menu', 'menu', true);
         b.Chips = makeComponent('Chips', 'chips', true);
+        b.Combobox = makeComponent('Combobox', 'combobox', true);
     }
     ['Tooltip', 'Popover', 'Collapse', 'Tab', 'Toast'].forEach(function (n) { b[n] = makeComponent(n, n.toLowerCase(), v === 6); });
     if (v === 6) { b.Range = makeComponent('Range', 'range', true); }
@@ -219,7 +220,7 @@ async function main() {
     dlg.className = 'dialog';
     out.v6_ctor = ui6.get('dialog', dlg).name;
     out.v6_menu_ctor = ui6.get('menu', d6.createElement('button')).name;
-    out.chips_ctor = [ui6.get('chips', d6.createElement('div')).name, ui.get('chips', d5.createElement('div'))];
+    out.chips_ctor = [ui6.get('chips', d6.createElement('div')).name, ui.get('chips', d5.createElement('div')), ui6.get('combobox', d6.createElement('button')).name, ui.get('combobox', d5.createElement('button'))];
     out.v6_options = ui6.options('tooltip', { popperConfig: { strategy: 'fixed' }, placement: 'auto' });
     out.v6_collapse_options = ui6.options('collapse', { toggle: false, parent: '#a' });
     var v6Types = [];
@@ -288,7 +289,7 @@ function test_pg_ui_names_and_options()
 	pg_assert_same(6, $r['v6_version']);
 	pg_assert_same('Dialog', $r['v6_ctor'], 'dialog is Dialog under 6');
 	pg_assert_same('Menu', $r['v6_menu_ctor'], 'menu is Menu under 6');
-	pg_assert_same(array('Chips', null), $r['chips_ctor'], 'chips only under 6');
+	pg_assert_same(array('Chips', null, 'Combobox', null), $r['chips_ctor'], 'chips and combobox only under 6');
 	pg_assert_same(array('popperConfig' => array('strategy' => 'fixed')), $r['v5_options'], 'floatingConfig read as popperConfig by 5');
 	pg_assert_same(array('placement' => 'auto', 'floatingConfig' => array('strategy' => 'fixed')), $r['v6_options'], 'popperConfig read as floatingConfig by 6');
 	pg_assert_same(array('parent' => '#a'), $r['v6_collapse_options'], 'v6 Collapse has no toggle option');

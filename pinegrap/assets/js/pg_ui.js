@@ -12,8 +12,8 @@
  * the markup, not every caller.
  *
  * Components are named by their Bootstrap 6 kind: 'dialog', 'drawer', 'menu',
- * 'tooltip', 'popover', 'collapse', 'tab', 'toast', 'chips' (Bootstrap 6 only:
- * under 5 its get() answers null). A target is an element, a jQuery object or
+ * 'tooltip', 'popover', 'collapse', 'tab', 'toast', 'chips', 'combobox' (the
+ * last two Bootstrap 6 only: under 5 their get() answers null). A target is an element, a jQuery object or
  * a selector.
  *
  *   pgUI.ready(fn)                    after Bootstrap's script has run
@@ -54,6 +54,7 @@
 
     // Bootstrap 6 only: under 5 there is no constructor and get() is null.
     KINDS.chips = { v5: 'Chips', v6: 'Chips', ev5: 'chips', ev6: 'chips' };
+    KINDS.combobox = { v5: 'Combobox', v6: 'Combobox', ev5: 'combobox', ev6: 'combobox' };
 
     // A v5 transition that never reports back (an element removed while it
     // was opening) must not leave a caller's promise pending for good.

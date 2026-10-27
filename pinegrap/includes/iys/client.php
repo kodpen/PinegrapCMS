@@ -581,8 +581,10 @@ function pg_iys_push($app, $limit = 500)
 
             if ($answer['outcome'] === 'ok') {
                 $result['pushed']++;
+                $audit_before = pg_audit_fetch_by('contacts', 'email_address', $consent['recipient']);
                 db("UPDATE contacts SET iys_email_status = '" . (($consent['status'] === 'ONAY') ? 'approved' : 'refused') . "'
                     WHERE email_address = '" . e($consent['recipient']) . "'");
+                pg_audit_record_many('update', 'contacts', $audit_before);
             } else {
                 $result['rejected']++;
 
@@ -669,6 +671,7 @@ function pg_iys_pull($app, $pages = 10)
 function pg_iys_apply_change($change)
 {
     $where = "email_address = '" . e($change['email']) . "'";
+    $audit_before = pg_audit_fetch_by('contacts', 'email_address', $change['email']);
 
     if ($change['status'] === 'refused') {
         $contact_id = (int) db_value("SELECT id FROM contacts WHERE " . $where . " AND (opt_in = '1') ORDER BY id LIMIT 1");
@@ -691,6 +694,9 @@ function pg_iys_apply_change($change)
     }
 
     db("UPDATE contacts SET iys_email_status = '" . e($change['status']) . "' WHERE " . $where);
+
+    // One line per contact with the address, the opt-out and the status together.
+    pg_audit_record_many('update', 'contacts', $audit_before);
 }
 
 /**
@@ -712,9 +718,14 @@ function pg_iys_run()
         return array('ran' => false, 'reason' => 'schema', 'push' => null, 'pull' => null);
     }
 
+    // The contact changes are the sync's own, also when a manager starts the
+    // run from the panel.
+    $was = pg_audit_as_job(true);
     $push = pg_iys_push($app);
 
     if (!$app['live']) {
+        pg_audit_as_job($was);
+
         if ($push['pushed'] > 0) {
             log_activity('İYS dry run: ' . $push['pushed'] . ' e-mail consent answer(s) would be pushed (consent log rows ' . ($app['push_id'] + 1) . '-' . $push['last_id'] . ').', 'UNKNOWN');
         }
@@ -723,6 +734,7 @@ function pg_iys_run()
     }
 
     $pull = pg_iys_pull($app);
+    pg_audit_as_job($was);
 
     if ($push['rejected'] || ($push['error'] !== '') || ($pull['error'] !== '')) {
         log_activity('İYS: ' . $push['pushed'] . ' consent(s) pushed, ' . $push['rejected'] . ' refused by İYS, '

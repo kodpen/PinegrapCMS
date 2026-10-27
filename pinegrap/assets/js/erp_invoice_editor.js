@@ -1001,9 +1001,6 @@
 
     if (accountSelect) {
         accountSelect.addEventListener('change', refreshZoneRates);
-        if (window.jQuery) {
-            window.jQuery(accountSelect).on('select2:select', refreshZoneRates);
-        }
     }
 
     /* ------------------------------------------------------ exchange rate */

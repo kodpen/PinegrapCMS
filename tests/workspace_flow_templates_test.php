@@ -241,6 +241,44 @@ function test_workspace_flow_templates_tell_the_channel_or_the_person()
 	pg_assert_same('2026-10-28', $alone['morning']['graph']['nodes'][0]['config']['date']);
 }
 
+// The start dates are days of the calendar whatever PHP's own timezone: east
+// of UTC "next monday" is not the Sunday before, nor a day that has begun
+// east of UTC and not yet in it moved on. Without a day given it is the
+// site's own today, the day the scheduler reads the start date in.
+function test_workspace_flow_templates_dates_ignore_the_default_timezone()
+{
+	// today => next Monday, first of next month, tomorrow
+	$days = array(
+		'2026-10-27' => array('2026-11-02', '2026-11-01', '2026-10-28'),
+		'2026-11-01' => array('2026-11-02', '2026-12-01', '2026-11-02'),
+		'2026-11-02' => array('2026-11-09', '2026-12-01', '2026-11-03'),
+		'2026-12-31' => array('2027-01-04', '2027-01-01', '2027-01-01'),
+	);
+	$zone = date_default_timezone_get();
+
+	try {
+		foreach (array('UTC', 'Asia/Kuwait', 'Pacific/Kiritimati', 'America/New_York', 'Pacific/Pago_Pago') as $name) {
+			date_default_timezone_set($name);
+
+			foreach ($days as $today => $expected) {
+				$templates = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('today' => $today))), null, 'key');
+				$at = $name . ', ' . $today . ': ';
+
+				pg_assert_same($expected[0], $templates['task_mail']['graph']['nodes'][0]['config']['date'], $at . 'tasks by e-mail on the next Monday');
+				pg_assert_same($expected[0], $templates['ssl']['graph']['nodes'][0]['config']['date'], $at . 'certificate check on the next Monday');
+				pg_assert_same($expected[1], $templates['monthly']['graph']['nodes'][0]['config']['date'], $at . 'the first of next month');
+				pg_assert_same($expected[2], $templates['morning']['graph']['nodes'][0]['config']['date'], $at . 'tomorrow');
+				pg_assert_same($today, $templates['uptime']['graph']['nodes'][0]['config']['date'], $at . 'today');
+			}
+
+			$templates = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('today' => ''))), null, 'key');
+			pg_assert_same(date('Y-m-d'), $templates['uptime']['graph']['nodes'][0]['config']['date'], $name . ': the site\'s today without a day given');
+		}
+	} finally {
+		date_default_timezone_set($zone);
+	}
+}
+
 // The canvas is handed the list, its texts, and draws the gallery.
 function test_workspace_flow_templates_reach_the_canvas()
 {

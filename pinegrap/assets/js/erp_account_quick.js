@@ -185,14 +185,13 @@
             target.appendChild(option);
         }
         target.value = id;
-        // Native listeners (the invoice editor refreshes the zone rates) hear
-        // only a native event. select2 hears it too, through jQuery; the
-        // namespaced trigger refreshes its view without running the other
-        // jQuery change handlers a second time.
-        target.dispatchEvent(new Event('change', { bubbles: true }));
-        if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
-            window.jQuery(target).trigger('change.select2');
+        // The combobox draws its items from the options once: drawn again,
+        // it shows the new account as chosen. The native change reaches the
+        // invoice editor, which refreshes the zone rates.
+        if (window.pgCombobox) {
+            window.pgCombobox.refresh(target);
         }
+        target.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
     form.addEventListener('submit', function (event) {

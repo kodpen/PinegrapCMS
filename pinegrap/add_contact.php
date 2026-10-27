@@ -589,9 +589,16 @@ if (!$_POST) {
     // If this contact has an email address, then update opt-in status for other contacts
     // with this same email address, so the opt-in status is the same for all.
     if ($_POST['email_address']) {
+        // The other contacts with the address, as they were before the sync;
+        // the new contact's create line is already written.
+        $audit_address = pg_audit_fetch_by('contacts', 'email_address', $_POST['email_address']);
+        unset($audit_address[(int) $contact_id]);
+
         db(
             "UPDATE contacts SET opt_in = '" . e($_POST['opt_in'] ?? '') . "'
             WHERE email_address = '" . e($_POST['email_address'] ?? '') . "'");
+
+        pg_audit_record_many('update', 'contacts', $audit_address);
     }
     
     // loop through all contact groups
