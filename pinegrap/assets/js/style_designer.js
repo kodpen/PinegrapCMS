@@ -56112,6 +56112,7 @@ const StyleDesigner = (function () {
     }
 
     // Adds `token` to the words of `n` (_sdSentenceRow()).
+    /* @pg-site-output */
     function _sdSentenceAdd(n, token) {
         if (!n || !token) return;
         if (!n.children) n.children = [];
