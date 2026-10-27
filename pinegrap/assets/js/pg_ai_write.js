@@ -37,6 +37,13 @@
  * (announce()); the screens that mark the texts written with AI listen for
  * it (assets/js/pg_ai_fields.js).
  *
+ * A box that is no form field (the Workspace writing box) gives its button
+ * an adapter, button.pgAiWrite: context() the values to send, place(panel)
+ * puts the panel on the screen, use(text) takes the draft in through the
+ * box's own change path. Such buttons are drawn by a script after this one
+ * has run: window.PinegrapAiWrite.ready says a model writes in this browser,
+ * and pg:ai-write-ready is sent on the document when it becomes true.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -234,6 +241,7 @@
 
         panel._pgAi = {
             button: button, settings: settings, seq: 0, over: 0, result: null, held: [],
+            adapter: button.pgAiWrite || null,
             tone: tone, hint: hint, body: body, use: use, again: again
         };
 
@@ -294,9 +302,15 @@
 
         var panel = buildPanel(button, settings);
 
-        // Under the label row the button sits in, right above the field.
-        var row = button.parentNode;
-        row.parentNode.insertBefore(panel, row.nextSibling);
+        // Under the label row the button sits in, right above the field;
+        // where the box's adapter says.
+        if (button.pgAiWrite && (typeof button.pgAiWrite.place === 'function')) {
+            button.pgAiWrite.place(panel);
+        } else {
+            var row = button.parentNode;
+            row.parentNode.insertBefore(panel, row.nextSibling);
+        }
+
         button.setAttribute('aria-expanded', 'true');
 
         ask(panel);
@@ -415,7 +429,7 @@
             record: settings.record,
             record_id: recordIdOf(settings),
             field_id: settings.field_id || 0,
-            context: contextOf(settings),
+            context: (state.adapter && (typeof state.adapter.context === 'function')) ? state.adapter.context() : contextOf(settings),
             tone: state.tone.value,
             hint: state.hint.value
         };
@@ -874,6 +888,12 @@
             return;
         }
 
+        if (state.adapter && (typeof state.adapter.use === 'function')) {
+            closePanel(panel, false);
+            state.adapter.use(String(result.text || ''));
+            return;
+        }
+
         var editor = editorOf(settings.field);
         var tiny = editor ? null : tinyOf(settings.field);
         var field = document.getElementById(settings.field);
@@ -938,6 +958,15 @@
         }
     });
 
+    // Tells the buttons drawn later by a script that a model writes here.
+    function ready() {
+        cfg.ready = true;
+
+        try {
+            document.dispatchEvent(new CustomEvent('pg:ai-write-ready'));
+        } catch (e) { /* no CustomEvent: such a button stays hidden */ }
+    }
+
     // The buttons come hidden for the browser's AI: shown where it writes.
     if (engine === 'browser') {
         planBrowser().then(function (mode) {
@@ -947,11 +976,18 @@
                 return;
             }
 
+            ready();
+
             var buttons = document.querySelectorAll('.pg-ai-write-btn.d-none');
 
+            // A button with an adapter is shown by its own box.
             for (var i = 0; i < buttons.length; i++) {
-                buttons[i].classList.remove('d-none');
+                if (!buttons[i].pgAiWrite) {
+                    buttons[i].classList.remove('d-none');
+                }
             }
         });
+    } else {
+        ready();
     }
 }());

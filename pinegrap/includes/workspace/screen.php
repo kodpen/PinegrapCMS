@@ -585,6 +585,8 @@ function ws_editor_js_strings()
         'meter_near'                => ws_js_template('{var:1} characters left', 1),
         'meter_over'                => ws_js_template('{var:1} characters over the limit of {var:2}', 2),
         'msg_too_long'              => ws_js_template('A message can be at most {var:1} characters long.', 1),
+        // The composer's "Rewrite with AI" (the ai_write panel action).
+        'tool_ai_rewrite'           => lang('Rewrite with AI'),
     );
 }
 
@@ -605,6 +607,18 @@ function ws_screen_board_from()
 
     // The week the day falls in, from its Monday.
     return date('Y-m-d', strtotime('monday this week', $time));
+}
+
+/**
+ * The model that rewrites a message in the composer of the channel screen,
+ * '' where the screen has no composer or the site writes no drafts.
+ *
+ * @param string $mode
+ * @return string pinegrap | browser | ''
+ */
+function ws_screen_ai_rewrite($mode)
+{
+    return (($mode === 'channels') && function_exists('pg_ai_write_engine')) ? pg_ai_write_engine() : '';
 }
 
 /**
@@ -751,6 +765,10 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'open_channel' => 0,
         // The longest message body the server takes (the composer's meter).
         'message_max'  => WS_MESSAGE_MAX,
+        // Which model rewrites a message in the composer (pg_ai_write_engine():
+        // pinegrap | browser), '' for no button. The screen's gate has
+        // already let only the team in (pg_ai_write_user_may()'s rule).
+        'ai_rewrite'   => ws_screen_ai_rewrite($mode),
         'urls'         => array(
             'workspace' => $base . 'workspace.php',
             'tasks'     => $base . 'workspace_tasks.php',
@@ -858,6 +876,13 @@ function ws_screen_assets($viewer, $mode, $extra = array())
 
     if ($mode === 'record') {
         return $output . ws_record_loader(pg_js_bundle_urls('assets/js/workspace.min.js'));
+    }
+
+    // "Rewrite with AI" in the composer: the draft panel's script and words
+    // (assets/js/pg_ai_write.js), before the composer is drawn.
+    if (ws_screen_ai_rewrite($mode) !== '') {
+        pg_ai_write_buttons_drawn(true);
+        $output .= pg_ai_write_assets();
     }
 
     $output .= pg_js_bundle_tags('assets/js/workspace.min.js')

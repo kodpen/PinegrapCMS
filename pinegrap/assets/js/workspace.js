@@ -1703,6 +1703,17 @@
         return first.concat(found.filter(function (emoji) { return first.indexOf(emoji) === -1; })).slice(0, limit);
     }
 
+    // ── "Rewrite with AI" in the composer ──
+    // The draft keeps the tags of the person's text (<@user:12>); one the
+    // model made up names nobody the person picked, so it is dropped.
+    function aiRewriteTokens(text, known) {
+        return String(text || '').replace(/<[@#][a-z_]+:[0-9]{1,10}>/g, function (token) {
+            return (known.indexOf(token) !== -1) ? token : '';
+        });
+    }
+
+    var aiRewriteSeq = 0;
+
     // ── How near the composer's text is to the server's limit ──
     // WS_MESSAGE_MAX (CFG.message_max) counts the posted body after trim()
     // in characters as mb_strlen() does: code points, so a surrogate pair is
@@ -11547,6 +11558,12 @@
             // still formats there.
             parts.push(['bold', 'italic', 'strike'], ['bullets', 'numbers', 'quote'], ['undo', 'redo']);
 
+            self.aiRewrite = self.rich ? self.aiRewriteButton(wrap, box) : null;
+
+            if (self.aiRewrite) {
+                parts.push(self.aiRewrite);
+            }
+
             parts.push(el('span', 'ws-grow ws-composer-hint d-none d-lg-inline', t('composer_hint')));
 
             // The count near the message limit (drawMeter()), empty while
@@ -11810,8 +11827,66 @@
             }
 
             this.voiceSwap();
+            this.aiRewriteSwap();
             this.drawMeter();
             this.fit();
+        },
+
+        // "Rewrite with AI" (assets/js/pg_ai_write.js, the ai_write panel
+        // action, target ws_message): the draft panel opens over the box with
+        // the tone, "Try again" and "Use this text". The person's text and
+        // the channel's name are all the model reads. null where the screen
+        // offers no model (CFG.ai_rewrite) or the box is the plain one.
+        aiRewriteButton: function (wrap, box) {
+            var self = this;
+
+            if (!CFG.ai_rewrite || !window.PinegrapAiWrite) {
+                return null;
+            }
+
+            var id = 'ws_ai_rewrite_' + (++aiRewriteSeq);
+            var node = button('btn btn-sm btn-ghost pg-ai-write-btn ws-ai-rewrite d-none', '', 'bi-stars', t('tool_ai_rewrite'));
+
+            node.setAttribute('data-pg-ai-write', JSON.stringify({ target: 'ws_message', record: 'message', record_id: 0, field: id, format: 'message' }));
+            node.setAttribute('aria-expanded', 'false');
+            node.setAttribute('aria-controls', 'pg_ai_draft_' + id);
+            node.pgAiWrite = {
+                context: function () {
+                    return { text: self.inputText(), channel: self.channel ? String(self.channel.name || '') : '' };
+                },
+                place: function (panel) {
+                    wrap.insertBefore(panel, box);
+                },
+                use: function (text) {
+                    self.aiRewriteUse(text);
+                }
+            };
+
+            // The browser's model is found after the box is drawn.
+            document.addEventListener('pg:ai-write-ready', function () { self.aiRewriteSwap(); }, { once: true });
+
+            return node;
+        },
+
+        // Shown while the box holds text and a model writes in this browser.
+        aiRewriteSwap: function () {
+            if (this.aiRewrite) {
+                this.aiRewrite.classList.toggle('d-none', !window.PinegrapAiWrite.ready || this.inputEmpty());
+            }
+        },
+
+        // The draft in place of the text, as one step Ctrl+Z takes back; the
+        // tags keep the names they were picked with. The meter, the draft
+        // and the size follow from the box's input event.
+        aiRewriteUse: function (text) {
+            var labels = {};
+
+            Array.prototype.forEach.call(this.rich.node.querySelectorAll('[data-token]'), function (chip) {
+                labels[chip.getAttribute('data-token')] = String(chip.textContent || '').trim();
+            });
+
+            this.rich.focus();
+            this.rich.setMarkup(aiRewriteTokens(text, Object.keys(labels)), labels, true);
         },
 
         // The text as it is posted against the server's limit
