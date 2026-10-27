@@ -642,6 +642,18 @@ function pg_chat_avatar_src($image, $image_file_id, $image_file_name, $first_nam
     return PATH . SOFTWARE_DIRECTORY . '/assets/images/person1.png';
 }
 
+// What a chat person's picture is: their own (photo), the letters of their
+// name (contact), or the letters of a login without a name (user), the kinds
+// ws_avatar_kind() gives.
+function pg_chat_avatar_kind($image, $image_file_id, $image_file_name, $first_name, $last_name)
+{
+    if ((((int) $image_file_id > 0) && ($image_file_name != '')) || ($image != '')) {
+        return 'photo';
+    }
+
+    return ((trim((string) $first_name) !== '') || (trim((string) $last_name) !== '')) ? 'contact' : 'user';
+}
+
 function pg_chat_display_name($first_name, $last_name, $username)
 {
     $name = trim($first_name . ' ' . $last_name);
@@ -695,6 +707,7 @@ function pg_chat_user_brief($row)
         'role' => (int) $row['role'],
         'role_label' => pg_chat_role_label($row['role']),
         'avatar' => pg_chat_avatar_src($image, $image_file_id, $image_file_name, $first_name, $last_name, $row['username'], $row['id']),
+        'avatar_kind' => pg_chat_avatar_kind($image, $image_file_id, $image_file_name, $first_name, $last_name),
         'initials' => pg_initials($first_name, $last_name, $row['username']),
         'tone' => pg_avatar_tone(pg_initials($first_name, $last_name, $row['username']), $row['id']),
         'presence' => pg_chat_presence(isset($row['online_timestamp']) ? $row['online_timestamp'] : 0),
@@ -1336,6 +1349,7 @@ function pg_chat_conversation_list()
                     $row['peer_username'],
                     $row['peer_id']
                 ),
+                'avatar_kind' => pg_chat_avatar_kind(isset($row['image']) ? $row['image'] : '', isset($row['image_file_id']) ? $row['image_file_id'] : 0, isset($row['image_file_name']) ? $row['image_file_name'] : '', $first_name, $last_name),
                 'initials' => pg_initials($first_name, $last_name, $row['peer_username']),
                 'tone' => pg_avatar_tone(pg_initials($first_name, $last_name, $row['peer_username']), $row['peer_id']),
                 'presence' => pg_chat_presence($row['peer_online_timestamp']),
@@ -1771,9 +1785,8 @@ function pg_chat_render_backend_launcher()
             #pg-chat-root .pg-chat-row-side { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
             #pg-chat-root .pg-chat-row-time { font-size: 10.5px; color: var(--bs-secondary-color, #6c757d); white-space: nowrap; }
             #pg-chat-root .pg-chat-row-dot { width: 9px; height: 9px; border-radius: 50%; background: #dc3545; }
-            #pg-chat-root .pg-chat-letter { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--bs-secondary-bg, #e9ecef); color: var(--bs-secondary-color, #6c757d); font-size: 14px; font-weight: 700; }
+            #pg-chat-root .pg-chat-face { --bs-avatar-size: 34px; flex-shrink: 0; }
             #pg-chat-root .pg-chat-chip { flex-shrink: 0; font-size: 9.5px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: var(--bs-secondary-color, #6c757d); border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 5px; padding: 0 4px; line-height: 15px; }
-            #pg-chat-root .pg-chat-avatar { width: 34px; height: 34px; object-fit: cover; }
             #pg-chat-root .pg-chat-ai-avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; background: linear-gradient(135deg, #20c997, #0dcaf0); font-size: 16px; }
             #pg-chat-root .pg-chat-ai-frame { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
             #pg-chat-root .pg-chat-ai-frame chat-page-snippet { display: block; height: 100%; }

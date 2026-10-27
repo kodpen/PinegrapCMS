@@ -107,18 +107,31 @@ function test_avatar_markup_presence_dot()
 	pg_assert_false(strpos(pg_avatar_markup(array('initials' => 'EG', 'size' => 'huge'), 'huge'), 'avatar-huge') !== false, 'only the four sizes');
 }
 
-function test_avatar_workspace_twin_uses_the_same_tones()
+function test_avatar_javascript_twins_use_the_same_tones()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
-
-	pg_assert_true((bool) preg_match('/var AVATAR_THEMES = \[([^\]]*)\]/', $source, $match), 'workspace.js lists the tones');
-
 	$themes = array();
 
 	for ($i = 0; $i < 8; $i++) {
 		$themes[] = "'" . pg_avatar_theme_class($i) . "'";
 	}
 
-	pg_assert_same(implode(', ', $themes), trim($match[1]), 'the same eight tones in the same order as pg_avatar_theme_class()');
-	pg_assert_contains("indexOf('data:image/svg+xml') !== 0", $source, 'a picture of letters is drawn as letters there too');
+	foreach (array('workspace.js', 'chat_backend.src.js', 'workspace_guest.js') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/' . $file);
+
+		pg_assert_true((bool) preg_match('/var AVATAR_THEMES = \[([^\]]*)\]/', $source, $match), $file . ' lists the tones');
+		pg_assert_same(implode(', ', $themes), trim($match[1] ?? ''), $file . ': the same eight tones in the same order as pg_avatar_theme_class()');
+		pg_assert_contains("indexOf('data:image/svg+xml') !== 0", $source, $file . ': a picture of letters is drawn as letters');
+	}
+	// The chat's served twin is kept by hand (core/important-files-and-js-twins.md).
+	$min = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/chat_backend.min.js');
+	pg_assert_contains('"avatar pg-chat-face"', $min, 'chat_backend.min.js draws the Avatar too');
+	pg_assert_contains('["theme-primary","theme-info","theme-warning","theme-accent","theme-danger","theme-secondary","theme-success","theme-inverse"]', $min, 'with the same tones');
+}
+
+function test_avatar_markup_for_follows_the_name()
+{
+	pg_assert_contains(pg_avatar_theme_class(pg_avatar_tone('EG', '9')), pg_avatar_markup_for('Erdal', 'Güral', '', 9));
+	pg_assert_contains('>EG<', pg_avatar_markup_for('Erdal', 'Güral', '', 9));
+	pg_assert_contains('pg-avatar-user', pg_avatar_markup_for('', '', 'Kodpen Ltd', 9), 'no name: the grey square of the username');
+	pg_assert_contains('pg-avatar-50', pg_avatar_markup_for('A', 'B', '', 1, 'pg-avatar-50'));
 }

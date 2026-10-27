@@ -531,31 +531,45 @@
         return link;
     }
 
-    // A person's picture with their presence on it, or - for a visitor who
-    // has no account and therefore no picture - the first letter of the
-    // name they gave.
+    // The eight tones a person's letters are drawn on, in the order
+    // pg_avatar_theme_class() gives them (includes/fn/contacts.php).
+    var AVATAR_THEMES = ['theme-primary', 'theme-info', 'theme-warning', 'theme-accent', 'theme-danger', 'theme-secondary', 'theme-success', 'theme-inverse'];
+
+    // A person as a Bootstrap 6 Avatar with their presence dot: the photo, or
+    // their letters on their tone (a login without a name: a grey rounded
+    // square); a visitor who has no account, the first letter of the name
+    // they gave. A picture of letters is drawn as letters, never as an <img>.
     function avatarNode(user, fallbackName) {
-        var wrap = el('div', 'position-relative flex-shrink-0');
+        var face = el('span', 'avatar pg-chat-face');
+        var src = (user && user.avatar) ? String(user.avatar) : '';
 
-        if (user && user.avatar) {
-            var avatar = el('img', 'rounded-circle pg-chat-avatar');
-            avatar.src = user.avatar;
-            avatar.alt = '';
-            wrap.appendChild(avatar);
+        if (src && (src.indexOf('data:image/svg+xml') !== 0)) {
+            var img = el('img', 'avatar-img');
+            img.src = src;
+            img.alt = '';
+            face.appendChild(img);
+        } else if (user && user.initials) {
+            if (user.avatar_kind === 'user') {
+                face.classList.add('avatar-subtle', 'theme-secondary', 'pg-avatar-user');
+            } else {
+                face.classList.add(AVATAR_THEMES[((parseInt(user.tone, 10) || 0) % 8 + 8) % 8]);
+            }
 
-            var dot = el('span', 'position-absolute rounded-circle border border-2 border-white pg-chat-dot pg-chat-dot-' + user.presence);
-            dot.title = presenceLabel(user.presence);
-            wrap.appendChild(dot);
+            face.textContent = String(user.initials);
+        } else {
+            var source = (user && user.name) ? user.name : (fallbackName || '');
 
-            return wrap;
+            face.classList.add('avatar-subtle', 'theme-secondary');
+            face.textContent = source.replace(/^\s+/, '').charAt(0).toUpperCase() || '?';
         }
 
-        var source = (user && user.name) ? user.name : (fallbackName || '');
-        var initial = source.replace(/^\s+/, '').charAt(0).toUpperCase();
+        if (user && (['online', 'away', 'offline'].indexOf(user.presence) !== -1)) {
+            var dot = el('span', 'avatar-status status-' + user.presence);
+            dot.title = presenceLabel(user.presence);
+            face.appendChild(dot);
+        }
 
-        wrap.appendChild(el('div', 'pg-chat-letter', initial || '?'));
-
-        return wrap;
+        return face;
     }
 
     function userRow(user, onClick) {

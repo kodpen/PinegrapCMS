@@ -3460,7 +3460,14 @@ body:not(.toolbar) .software-content {
   background: var(--pg-tint-hover);
   color: var(--pg-fg-body);
 }
-/* An Avatar the size of the old 28px rounded picture (Workspace settings). */
+/* Avatars the size of the old 50px, 34px and 28px pictures (contacts list
+   and order, dashboard Who is Online, Workspace settings). */
+.avatar.pg-avatar-50 {
+  --bs-avatar-size: 50px;
+}
+.avatar.pg-avatar-34 {
+  --bs-avatar-size: 34px;
+}
 .avatar.pg-avatar-28 {
   --bs-avatar-size: 28px;
   flex: 0 0 auto;
@@ -5331,6 +5338,11 @@ div#software_image_picker_container {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+/* A person's Avatar fills the tile; the tile's corners round it. */
+.pg-row-badge > .avatar {
+  --bs-avatar-size: 34px;
+  --bs-avatar-border-radius: 0;
 }
 .pg-row-text {
   flex: 1 1 auto;

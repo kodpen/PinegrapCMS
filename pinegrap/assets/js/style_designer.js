@@ -66768,12 +66768,14 @@ const StyleDesigner = (function () {
     function _collabAvatarEl(person, editing) {
         var el = document.createElement('span');
         el.className = 'sd-presence-avatar' + (editing ? ' is-editing' : '');
-        if (person.avatar) {
+        // A picture of letters (data:image/svg+xml) is drawn as the letters
+        // themselves, the way the panel's Avatar draws them.
+        if (person.avatar && String(person.avatar).indexOf('data:image/svg+xml') !== 0) {
             var img = document.createElement('img');
             img.src = person.avatar; img.alt = '';
             el.appendChild(img);
         } else {
-            el.appendChild(document.createTextNode(_collabInitial(person.name || person.username)));
+            el.appendChild(document.createTextNode(person.initials ? String(person.initials) : _collabInitial(person.name || person.username)));
         }
         var dot = document.createElement('span');
         dot.className = 'sd-presence-dot';

@@ -18,14 +18,11 @@ module: contacts
 ## Which tones?
 - In place order: `theme-primary`, `theme-info`, `theme-warning`, `theme-accent`, `theme-danger`, `theme-secondary`, `theme-success`, `theme-inverse`, near the old hex list (blue, teal, orange, violet, pink, sky, green, amber).
 
-## What keeps the picture of letters?
-- `pg_initials_avatar_url()` stays for e-mail, PDF and print (`print_order.php`), and for site output (Bootstrap 5.3.8, `widgets_account.php`), which has no `.avatar`. The account menu's quick-form preview `img[data-pg-contact-preview]` keeps it too: the chosen file replaces its `src`.
-
 ## How does the Workspace draw one?
 - `avatar(person, size, presence)` in `workspace.js` (also `PGWsKit.avatar`) is the JavaScript twin: a `span.avatar`, the tone list `AVATAR_THEMES` kept equal to `pg_avatar_theme_class()` by `tests/avatar_test.php`. Without `initials` it takes the first letters of `name`, a leading `@` or `#` left out. `size` sets `--bs-avatar-size` inline; `presence` true adds the dot (the members lists).
 - A screen sizes it with `<its class> .avatar { --bs-avatar-size: … }`; a class added to the face goes on with `classList.add()`, never `className =`, which drops `avatar`.
 - Overlapping faces: `avatarStack(className, people, max)` (`PGWsKit.avatarStack`) builds `span.avatar-stack.ws-avatars`. The stack is row-reverse, so the faces go in backwards; anything that should sit after the faces (the board's "+3") is inserted first.
 - The @ picker draws `item.face` (the member, or an MCP server's `avatar`/`initials`/`tone`), the palette its person item's `initials`/`tone` (`palette.php`); MCP boot entries and senders carry both (`ws_mcp_boot_entry()`, `ws_mcp_agent_face()`).
 
-## Which sites are converted?
-- The header account button and the account menu's identity row (#2216); the Workspace screens, the task card's people (`tasks.php`) and the Workspace settings people table. The rest is listed under B9j in `plans/bootstrap-6-panel-steps.md`.
+## Where is it used, and where not?
+- `ui/panel-avatar-sites.md`.
