@@ -13,6 +13,6 @@ description: Decisions list, workspace part: how the channel commands read what 
 
 ## How big is a bulk product card, and what does it announce?
 - At most 200 rows (`WS_BULK_CREATE_MAX`); more goes through `import_products.php`. Each product made sends `product.created`, as the assistants' bulk updates send their events (`workspace/workspace-bulk-create.md`).
-- Owner decision (2026-10-27, «toplu ürün önerin kabul», plan questions 2 and 4 of workspace-catalog-create): a card the person reads before applying stays short enough to check; a subscriber hears each new product the same way whichever door made it.
+- Owner decision (2026-10-27, «toplu ürün önerin kabul», questions 2 and 4 of the catalogue create plan, done and deleted): a card the person reads before applying stays short enough to check; a subscriber hears each new product the same way whichever door made it.
 
 Related: docs/memory/workflow/decisions-made.md

@@ -111,3 +111,30 @@ function test_ws_bulk_step_claims_a_create_row_before_writing_it()
 	pg_assert_contains("ws_change_check(\$viewer, \$type, 'create'", $code, 'and against the rights of the person');
 	pg_assert_contains('ws_bulk_create_row(', pg_test_ws_bulk_create_code('ws_bulk_step'), 'the runner writes rows through it');
 }
+
+// The assistants learn the create: Pinegrap AI's tool takes action create
+// with rows (a JSON list, decoded before the check), its guide says when to
+// use it, and the changes text Claude's answers, applications and MCP read
+// names it with the ceiling.
+function test_ws_bulk_create_is_taught_to_the_assistants()
+{
+	$ai = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/ai.php');
+
+	pg_assert_contains("'enum' => array('update', 'delete', 'create')", $ai, 'the tool\'s actions');
+	pg_assert_contains("'rows'        => array('type' => 'string'", $ai, 'the tool\'s rows');
+	pg_assert_contains("\$bulk['rows'] = json_decode(\$bulk['rows'], true);", pg_test_ws_bulk_ai_code('ws_ai_propose_bulk'), 'rows decoded before ws_bulk_input()');
+
+	pg_assert_contains('action create and rows', pg_test_ws_bulk_create_code('ws_bulk_guide'), 'the guide');
+
+	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_proposals.php');
+	pg_assert_contains('or create with rows', $api, 'the shared changes text');
+}
+
+function pg_test_ws_bulk_ai_code($function)
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/ai.php');
+	$start = strpos($source, 'function ' . $function . '(');
+	$end = strpos($source, "\nfunction ", $start + 1);
+
+	return substr($source, $start, $end - $start);
+}
