@@ -19855,6 +19855,21 @@ html[data-bs-theme="dark"] .wsf-node-sa-follow { --wsf-kind: #c3a8ec; }
   --bs-info-contrast: var(--pg-on-accent);
   --bs-info-focus-ring: color-mix(in srgb, var(--pg-info) 50%, transparent);
 }
+/* Unlayered: .hover-lift sits in Bootstrap 6's helpers layer, which beats
+   @layer custom, so a panel rule cannot set its tokens. They read the
+   panel's --pg-lift-* instead, set by the element's own rule: the lift
+   (1 px without one), the shadow (none without one), the duration, and
+   the element's own fades, which this transition would otherwise drop. */
+.hover-lift {
+  --bs-hover-lift-transform: translateY(var(--pg-lift-y, -1px));
+  --bs-hover-lift-box-shadow: var(--pg-lift-shadow, none);
+  --bs-hover-lift-transition-duration: var(--pg-lift-duration, 0.15s);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hover-lift {
+    transition: transform var(--bs-hover-lift-transition-duration) var(--bs-hover-lift-transition-timing), box-shadow var(--bs-hover-lift-transition-duration) var(--bs-hover-lift-transition-timing), var(--pg-lift-also, opacity 0s);
+  }
+}
 /* v6 keeps a scrollbar's gutter on the page even when nothing scrolls. */
 :root {
   scrollbar-gutter: auto;
