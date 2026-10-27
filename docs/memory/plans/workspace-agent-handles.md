@@ -24,7 +24,7 @@ description: Plan (2026-10-21, step 1 done, answers open): each askable agent ge
 4. Application membership endpoints (item 1 of plans/workspace-phase3-leftovers.md): add or remove an application in a channel; only a member adds one to a private channel.
 5. MCP agents get an avatar and their name in tags. Each slice writes its memory.
    - 5a done (#2112, workspace-mcp-agent-identity.md): one avatar and icon per `mcp:<id>`, server.
-   - 5b done (#PRNUM): the @ picker draws the server's avatar/icon, the task's delegate tag its icon (workspace-mcp-agent-identity.md).
+   - 5b done (#2130): the @ picker draws the server's avatar/icon, the task's delegate tag its icon (workspace-mcp-agent-identity.md).
 
 ## Open questions (recommendation)
 1. Which first: (a) model assistants, `@chatgpt` answers inside the site, (b) outside apps on the webhook, (c) both → step 1, then a.
