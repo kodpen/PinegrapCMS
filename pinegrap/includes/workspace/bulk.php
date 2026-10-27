@@ -951,6 +951,16 @@ function ws_bulk_step($change_id)
         ws_ai_voice_change($change);
     }
 
+    // A card the person made themselves (bulk_sources.php) has no request
+    // behind it: the records' sentences name the person, and the one log
+    // line is the finish's.
+    $own = ((int) $change['request_id'] === 0);
+
+    if ($own) {
+        $GLOBALS['ws_change_log_quiet'] = true;
+        ws_change_source(array('kind' => 'person', 'name' => ws_person_name($viewer['id'])));
+    }
+
     foreach ($slice as $id) {
         $state['pos']++;
 
@@ -1015,6 +1025,11 @@ function ws_bulk_step($change_id)
         if (count($state['lines']) < 30) {
             $state['lines'][] = '<#' . $types[$type]['tag'] . ':' . (int) $id . '>';
         }
+    }
+
+    if ($own) {
+        ws_change_source(false);
+        $GLOBALS['ws_change_log_quiet'] = false;
     }
 
     if ($voice) {
@@ -1129,9 +1144,11 @@ function ws_bulk_finish($viewer, $change, $spec, $state)
     $vars = array(
         ($proposer !== '') ? $proposer : ($by_ai ? 'Pinegrap AI' : 'Claude'), ws_bulk_summary($spec + array('fields' => array(), 'only_empty' => ''), (int) $state['total']),
         (int) $state['done'], (int) $state['skipped'], (int) $state['failed']);
-    $body = (($spec['action'] ?? '') === 'create')
+    $body = ((int) $change['request_id'] === 0)
+        ? lang(array('string' => 'Bulk change by {var:1}: {var:2}. {var:3} records made, {var:4} left out, {var:5} could not be made.', 'vars' => array_merge(array(ws_person_name($viewer['id'])), array_slice($vars, 1))))
+        : ((($spec['action'] ?? '') === 'create')
         ? lang(array('string' => 'Bulk change on {var:1}\'s proposal: {var:2}. {var:3} records made, {var:4} left out, {var:5} could not be made.', 'vars' => $vars))
-        : lang(array('string' => 'Bulk change on {var:1}\'s proposal: {var:2}. {var:3} records changed, {var:4} left as they were, {var:5} could not be changed.', 'vars' => $vars));
+        : lang(array('string' => 'Bulk change on {var:1}\'s proposal: {var:2}. {var:3} records changed, {var:4} left as they were, {var:5} could not be changed.', 'vars' => $vars)));
 
     if (!empty($state['lines'])) {
         $body .= "\n" . implode(' ', $state['lines']) . (((int) $state['done'] > count($state['lines'])) ? ' …' : '');
@@ -1393,6 +1410,12 @@ function ws_bulk_js_strings()
         'bulk_result'   => ws_js_template('{var:1} changed · {var:2} left as they were · {var:3} could not be changed', 3),
         'bulk_running'  => lang('Being applied…'),
         'bulk_warning'  => ws_js_template('This changes {var:1} records at once. Go on?', 1),
+        'bulk_make_products'  => lang('Make products'),
+        'bulk_make_intro'     => lang('Paste one product per line: the name, then its price if it has one. A first line of column names (Name, Price, Stock…) is read as a header. Products are made off sale, after you apply the card.'),
+        'bulk_make_placeholder' => lang('Blue mug; 129,90'),
+        'bulk_make_go'        => lang('Make the card'),
+        'bulk_make_done'      => ws_js_template('A card of {var:1} product drafts is waiting for you to apply it.', 1),
+        'bulk_make_ignored'   => ws_js_template('Columns not read: {var:1}.', 1),
         'bulk_create_result'  => ws_js_template('{var:1} made · {var:2} left out · {var:3} could not be made', 3),
         'bulk_create_warning' => ws_js_template('This makes {var:1} new records at once. Go on?', 1),
         'bulk_delete_warning' => ws_js_template('This deletes {var:1} records at once. Records with a Recycle Bin go there; the others are deleted for good. Go on?', 1),

@@ -1731,10 +1731,14 @@ function pg_passkey_add_texts()
  * The script of the account security widget's add a passkey forms
  * (form[data-pg-passkey-add], wired by _pg_sec_apply_action_bindings()):
  * each form stays hidden until the browser can make passkeys, else a
- * sentence takes its place. On submit it asks passkey.php for the options
- * with the form's name, current_password and code, lets the browser make
- * the passkey and reloads the page; a refusal is shown in the form's
- * [data-pg-passkey-message] element, or in one added after its last
+ * sentence takes its place. A [data-pg-passkey-send] button in the form has
+ * passkey.php e-mail the code an account without two-step verification adds
+ * with; its sentence goes to the form's [data-pg-passkey-sent] element, or
+ * the message element. On submit it asks passkey.php for the options with
+ * the form's name, current_password, code and email_code, lets the browser
+ * make the passkey and reloads the page, or first shows the recovery codes
+ * the first passkey of such an account brings; a refusal is shown in the
+ * form's [data-pg-passkey-message] element, or in one added after its last
  * control.
  *
  * @return string
@@ -1770,6 +1774,22 @@ function pg_passkey_add_form_script()
                     form.appendChild(notice);
                 }
                 form.hidden = false;
+                var send = form.querySelector("[data-pg-passkey-send]");
+                if (send) {
+                    var sent = form.querySelector("[data-pg-passkey-sent]") || notice;
+                    send.addEventListener("click", function () {
+                        send.disabled = true;
+                        sent.textContent = "";
+                        notice.textContent = "";
+                        window.PgPasskey.sendEmailCode({ url: url, token: value("token") }).then(function (message) {
+                            sent.textContent = message;
+                            send.disabled = false;
+                        }).catch(function (error) {
+                            notice.textContent = (error && error.message) || texts.failed;
+                            send.disabled = false;
+                        });
+                    });
+                }
                 form.addEventListener("submit", function (event) {
                     event.preventDefault();
                     var button = form.querySelector("[type=submit]");
@@ -1782,16 +1802,24 @@ function pg_passkey_add_form_script()
                         token: value("token"),
                         name: value("name"),
                         currentPassword: value("current_password"),
-                        code: value("code")
-                    }).then(function () {
+                        code: value("code"),
+                        emailCode: value("email_code")
+                    }).then(function (passkey) {
+                        if (passkey && passkey.recoveryCodes && passkey.recoveryCodes.length) {
+                            window.PgPasskey.showRecoveryCodes(form, passkey.recoveryCodes, texts);
+                            return;
+                        }
                         window.location.reload();
                     }).catch(function (error) {
                         var code = error && error.code;
                         // A code is spent once passkey.php accepts it, so a
-                        // cancelled dialog needs the next one.
-                        if (fields.namedItem("code")) {
-                            fields.namedItem("code").value = "";
-                        }
+                        // cancelled dialog needs the next one (a new e-mail
+                        // for the e-mailed code).
+                        ["code", "email_code"].forEach(function (name) {
+                            if (fields.namedItem(name)) {
+                                fields.namedItem(name).value = "";
+                            }
+                        });
                         if (button) {
                             button.disabled = false;
                         }
