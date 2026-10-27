@@ -230,10 +230,12 @@ echo pg_page_shell($shell) . '
             ' . $liveform->output_notices() . '
             <nav id="button_bar" class="pg-toolbar my-3" aria-label="' . h(lang('Button Bar')) . '">
                 <div class="pg-toolbar-grow"></div>
-                <form method="get" action="view_not_found_log.php" class="input-group input-group-sm rounded-pill pg-toolbar-search disable_shortcut" role="search">
+                <form method="get" action="view_not_found_log.php" class="pg-toolbar-search disable_shortcut" role="search">
                     ' . (($who !== '') ? '<input type="hidden" name="who" value="' . h($who) . '">' : '') . '
-                    <label class="input-group-text" for="pg_404_search"><i class="bi bi-search" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Search')) . '</span></label>
-                    <input type="search" class="form-control" id="pg_404_search" name="q" value="' . h($search) . '" maxlength="' . (int) PG_NOT_FOUND_LOG_PATH_MAX . '" placeholder="' . h(lang('Search addresses')) . '">
+                    <label class="form-control form-control-sm form-adorn rounded-pill">
+                        <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                        <input type="search" class="form-ghost" id="pg_404_search" name="q" value="' . h($search) . '" maxlength="' . (int) PG_NOT_FOUND_LOG_PATH_MAX . '" placeholder="' . h(lang('Search addresses')) . '" aria-label="' . h(lang('Search')) . '">
+                    </label>
                 </form>
                 ' . pg_filter_select('who', $who_options, $who, array('keep' => array('q'), 'label' => lang('Who asked'), 'icon' => 'person', 'action' => 'view_not_found_log.php')) . '
                 ' . pg_list_sort_menu('view_not_found_log.php', $sort_columns, $sort_levels, $sort_default, $kept) . '

@@ -32,6 +32,8 @@ if (pg_mail_queue_ready()) {
     pg_cron_ran('mail_job');
 }
 
-if (php_sapi_name() === 'cli') {
+// The summary is for a person running the script by hand; under the general
+// job's dispatcher printed text goes to the site log (pg_cron_dispatch_output()).
+if ((php_sapi_name() === 'cli') && !defined('PG_CRON_DISPATCH')) {
     print 'sent: ' . $result['sent'] . ', not sent: ' . $result['failed'] . "\n";
 }

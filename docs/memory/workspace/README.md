@@ -79,6 +79,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-chain-box.md: The start a flow box (PR #2235, flow_runs.php): another live flow started by hand, started by a box with the owner's rights, depth 8, start key per box, {{source}}, what non-editors read
 - workspace-flows-change-box.md: The change box of a flow (F4b3, PR #1957): the scheduled change step as a box, its settings, rights, what it writes, and why its record and values reach only the flow's editors
 - workspace-flows-condition-box.md: The condition box of a flow (F4c, PR #1980, flow_conditions.php): one scheduled-action condition, yes/no outcomes, a no without an arrow ends the branch, owner rights, what non-editors read
+- workspace-flows-condition-values.md: A condition box comparing a value of the run (data-passing D7): the value rule, its operators, reference check, how it holds at run time, masking, the canvas picker
 - workspace-flows-delay-box.md: The delay box of a flow (F5b, PR #2135): amount and unit up to a week, waits as a waiting box with wake_at, settles done with waited_until, problems, try, canvas form
 - workspace-flows-event-depth.md: The chain depth a flow run's events carry: ws_event_depth() said by a step box around its work, stamped as _depth by ws_event() and pg_event_record(), read by ws_events_start()
 - workspace-flows-from-scheduled.md: A scheduled action as a flow graph (ws_flow_graph_from_scheduled(), PR #2306): how each part maps to a box or arrow, self-retry, money, what is told in left
@@ -96,6 +97,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-template-format.md: Flow templates (G1 #2161, G3 flow-only, flow_templates.php): format, the scheduled templates that came over or wait, the flow-only ones, the gallery
 - workspace-flows-template-setup.md: Placing a flow template (G2): motion schedule from ws_flow_template_motion(), drawn threads, reduced motion, the setup panel, ws_flow_template_setup action, answers checked on the server
 - workspace-flows-trigger-values.md: What a flow's step boxes read of what started the run (#2205, D5 #2341): {{trigger.<field>}} declared per start kind, event and record values, the newcomer, a post box in the channel joined (-1)
+- workspace-flows-value-picker.md: "Add value" in a Flows box's side panel (data-passing D6): the text boxes with value chips, what the list offers, "empty if skipped", how a chip is kept and edited
 - workspace-flows-versions.md: A paused flow resumed on its live version, and a flow's published versions listed, read and brought back into the draft (flow_versions.php, API routes, no schema)
 - workspace-flows-wait-timeout.md: The timeout of a flow task box (F5d): hours to wait, the timeout outcome, counted from the claim, next look capped at the deadline, the task end first, why approvals have none
 - workspace-followups.md: Workspace follow-ups (followups.php, #1790): ws_followup_task_open() opens a tagged, reminded task; "Remind me" on the customer card; quote expiry and overdue receivable jobs

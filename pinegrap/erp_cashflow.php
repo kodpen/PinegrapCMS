@@ -438,10 +438,10 @@ pg_page_shell(array(
                     <label for="to" class="small fg-secondary text-nowrap mb-0">' . lang('End') . '</label>
                     <input type="date" id="to" name="to" class="form-control form-control-sm w-auto" value="' . h($options['to']) . '" max="' . h(date('Y-m-d')) . '" />
                     <select id="till" name="till" class="form-control form-control-sm w-auto" aria-label="' . lang('Till') . '">' . $output_till_options . '</select>
-                    <button type="submit" class="btn btn-sm btn-ghost" title="' . lang('Apply') . '"><i class="bi bi-arrow-right-circle"></i></button>
+                    <button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . lang('Apply') . '"><i class="bi bi-arrow-right-circle"></i></button>
                 </form>
                 <div class="pg-toolbar-grow"></div>
-                <a class="btn btn-sm btn-ghost" href="erp_cashflow.php?' . h($query) . '&amp;csv=1"><i class="bi bi-filetype-csv me-1"></i>' . lang('Download CSV') . '</a>
+                <a class="btn btn-sm btn-text theme-secondary" href="erp_cashflow.php?' . h($query) . '&amp;csv=1"><i class="bi bi-filetype-csv me-1"></i>' . lang('Download CSV') . '</a>
                 <a class="btn btn-sm btn-outline theme-secondary" href="erp_cash.php"><i class="bi bi-cash-stack me-1"></i>' . lang('Cash and Bank') . '</a>
             </nav>
 

@@ -368,7 +368,7 @@ pg_page_shell(array(
     ' . $liveform_messages . '
     ' . ($viewer['settings'] ? '
     <nav id="button_bar" class="pg-toolbar navigation mb-5" aria-label="' . lang('Button Bar') . '">
-        <a class="btn btn-sm btn-ghost" href="workspace_settings.php#ws-mcp"><i class="bi bi-sliders me-1" aria-hidden="true"></i>' . h(lang('MCP servers')) . '</a>
+        <a class="btn btn-sm btn-text theme-secondary" href="workspace_settings.php#ws-mcp"><i class="bi bi-sliders me-1" aria-hidden="true"></i>' . h(lang('MCP servers')) . '</a>
     </nav>' : '') . '
     ' . (empty($servers)
         ? pg_empty_state('bi-plug', lang('No MCP server yet'), lang('An administrator adds the other services\' MCP servers under Workspace Settings › MCP servers. They appear here once they are on.'))

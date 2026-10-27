@@ -145,7 +145,7 @@ function erp_waybill_form_line_row($liveform, $index, $line)
                     'class' => 'form-control form-control-sm', 'options' => $unit_options,
                     'aria-label' => lang('Unit'))) . '</td>
                 <td class="align-middle text-end">
-                    <button type="button" class="btn btn-sm btn-ghost no-submit" data-erp-remove-line title="' . lang('Remove line') . '" aria-label="' . lang('Remove line') . '"><i class="bi bi-x-lg"></i></button>
+                    <button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-erp-remove-line title="' . lang('Remove line') . '" aria-label="' . lang('Remove line') . '"><i class="bi bi-x-lg"></i></button>
                 </td>
             </tr>';
 }

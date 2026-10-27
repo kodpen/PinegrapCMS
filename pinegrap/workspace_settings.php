@@ -449,12 +449,12 @@ foreach ($departments as $department) {
                     . ($channel ? ' · <a href="workspace.php?channel=' . (int) $channel['id'] . '">#' . h($channel['name']) . '</a>' : '') . '
                 </div>
             </div>
-            <button type="button" class="btn btn-sm btn-ghost" data-bs-toggle="collapse" data-bs-target="#ws-dept-' . $id . '" aria-expanded="false"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</button>
+            <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="collapse" data-bs-target="#ws-dept-' . $id . '" aria-expanded="false"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</button>
             <form method="post" action="' . h($self_url) . '" class="d-inline">
                 ' . get_token_field() . '
                 <input type="hidden" name="ws_action" value="department_archive">
                 <input type="hidden" name="department_id" value="' . $id . '">
-                <button type="submit" class="btn btn-sm btn-ghost" title="' . h($department['archived'] ? lang('Bring it back') : lang('Move to the archive')) . '"><i class="bi ' . ($department['archived'] ? 'bi-arrow-counterclockwise' : 'bi-archive') . '" aria-hidden="true"></i></button>
+                <button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . h($department['archived'] ? lang('Bring it back') : lang('Move to the archive')) . '"><i class="bi ' . ($department['archived'] ? 'bi-arrow-counterclockwise' : 'bi-archive') . '" aria-hidden="true"></i></button>
             </form>
         </div>
         <div class="collapse" id="ws-dept-' . $id . '">
@@ -594,8 +594,8 @@ pg_page_shell([
     ' . $liveform->get_warnings() . '
     ' . $liveform->output_notices() . '
     <nav id="button_bar" class="pg-toolbar navigation mb-5" aria-label="' . lang('Button Bar') . '">
-        <a class="btn btn-sm btn-ghost" href="workspace.php"><i class="bi bi-chat-square-text me-1" aria-hidden="true"></i>' . h(lang('Channels')) . '</a>
-        <a class="btn btn-sm btn-ghost" href="workspace_board.php"><i class="bi bi-calendar-week me-1" aria-hidden="true"></i>' . h(lang('Planning Board')) . '</a>
+        <a class="btn btn-sm btn-text theme-secondary" href="workspace.php"><i class="bi bi-chat-square-text me-1" aria-hidden="true"></i>' . h(lang('Channels')) . '</a>
+        <a class="btn btn-sm btn-text theme-secondary" href="workspace_board.php"><i class="bi bi-calendar-week me-1" aria-hidden="true"></i>' . h(lang('Planning Board')) . '</a>
     </nav>
     <div class="row g-7">
         <div class="xl:col-8">

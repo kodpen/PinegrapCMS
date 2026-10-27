@@ -66,7 +66,7 @@
             }
 
             if (removable) {
-                var remove = h.button('btn btn-sm btn-ghost py-0 px-1', '', 'bi-x-lg', h.t('tl_remove'));
+                var remove = h.button('btn btn-sm btn-text theme-secondary py-0 px-1', '', 'bi-x-lg', h.t('tl_remove'));
                 remove.addEventListener('click', function () {
                     remove.disabled = true;
                     h.api('ws_task_link_remove', { task_id: task.id, blocker_id: other.id }).then(function (data) {

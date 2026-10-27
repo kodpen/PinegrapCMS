@@ -24,12 +24,12 @@ description: Stripe on PaymentIntents (gateway 'Stripe PaymentIntents', 11.0.24,
 - A definition may list `csp` hosts (script-src, frame-src, connect-src; https origins, `https://*.` allowed). `waf_csp_add_payment_sources()` adds the card gateway's to the built-in policy (read from the config row). Stripe's: script `js.stripe.com`, `*.js.stripe.com`; frame those, `hooks.stripe.com`, `link.com`, `*.link.com`; connect `api.stripe.com`, `link.com`, `*.link.com` (Link hosts always listed). A custom policy must add them itself.
 
 ## Webhook?
-- `notify()` (PR #2143): `Stripe-Signature` checked (HMAC-SHA256 of `t.body`, any `v1`, 300 s; no secret = refused). `payment_intent.succeeded` (metadata `order_id`) → `paid`; `charge.refunded` → `refunded`; `charge.dispute.created` → `pending`; else `raw.ignored`. Order lookup and outcome: `payment-callback.md`.
+- `notify()` (PR #2143): `Stripe-Signature` checked (HMAC-SHA256 of `t.body`, any `v1`, 300 s; no secret = refused). `payment_intent.succeeded` (metadata `order_id`) → `paid`; `charge.refunded` → `refunded`; `charge.dispute.created` → `pending`; else `raw.ignored`. Outcome: `payment-callback.md`.
 
 ## What is not done?
-- Completing an incomplete order from the webhook (owner, plan 3b). Apple Pay needs the domain in the Stripe Dashboard; Link is turned on there.
+- Completing an incomplete order from the webhook: `plans/order-completion-function.md` (intent and amount on the order: #2199). Apple Pay: domain in the Dashboard; Link is set there.
 
 ## How was it verified?
-- `tests/payment_stripe_test.php` (stand-in HTTP caller), `payment_stripe_webhook_test.php`; sandbox, Stripe unreachable; the script in jsdom with a fake Stripe.js. No real Stripe account.
+- `tests/payment_stripe_test.php` (stand-in HTTP caller), `payment_stripe_webhook_test.php`; sandbox (Stripe unreachable); the script in jsdom with a fake Stripe.js; no real account.
 
 Related: docs/memory/commerce/payment-drivers.md, docs/memory/commerce/payment-refunds.md, docs/memory/plans/payment-driver-layer.md

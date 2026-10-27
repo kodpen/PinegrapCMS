@@ -44,7 +44,9 @@ if (function_exists('pg_cron_ran')) {
     pg_cron_ran('erp_overdue_job');
 }
 
-if (php_sapi_name() === 'cli') {
+// The summary is for a person running the script by hand; under the general
+// job's dispatcher printed text goes to the site log (pg_cron_dispatch_output()).
+if ((php_sapi_name() === 'cli') && !defined('PG_CRON_DISPATCH')) {
     print 'overdue reminders: ' . ($result['ran']
         ? ('sent, ' . count($result['new']) . ' new, ' . count($result['second'] ?? array()) . ' second, ' . (int) ($result['customers']['sent'] ?? 0) . ' customer(s) e-mailed')
         : ('skipped (' . $result['reason'] . ')')) . "\n";

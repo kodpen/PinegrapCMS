@@ -1920,6 +1920,19 @@ function submit_order($type) {
 
         // The bank's 3-D Secure page, or the service's own payment page.
         if ($payment_answer['status'] === 'redirect') {
+            // The order keeps the payment the service now finishes, so the
+            // service's own message about it finds the order even when the
+            // visitor never returns.
+            $payment_started = pg_payment_started_order_values($payment_answer, $total);
+
+            if ($payment_started !== null) {
+                db("UPDATE orders
+                    SET
+                        transaction_id = '" . e($payment_started['transaction_id']) . "',
+                        total = '" . $payment_started['total'] . "'
+                    WHERE (id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "') AND (status = 'incomplete')");
+            }
+
             if ($payment_answer['html'] !== '') {
                 echo $payment_answer['html'];
             } else {

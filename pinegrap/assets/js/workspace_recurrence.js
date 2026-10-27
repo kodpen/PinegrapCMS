@@ -474,7 +474,7 @@
                 state.appendChild(el('span', 'fg-secondary', text('repeat_older_copy', current.latest_number || '')));
 
                 if (helpers && helpers.open && current.last_task_id) {
-                    var latest = el('button', 'btn btn-sm btn-ghost');
+                    var latest = el('button', 'btn btn-sm btn-text theme-secondary');
                     latest.type = 'button';
                     latest.appendChild(icon('bi-box-arrow-up-right'));
                     latest.appendChild(document.createTextNode(' ' + text('repeat_open_latest', current.latest_number || '')));

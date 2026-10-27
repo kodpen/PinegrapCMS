@@ -1310,14 +1310,14 @@ function ws_templates_settings_card($self_url, $viewer)
         $actions = '';
 
         if ($present['builtin']) {
-            $actions .= '<a class="btn btn-sm btn-ghost" href="' . h($edit_url . '?copy=' . rawurlencode($present['id'])) . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</a>';
+            $actions .= '<a class="btn btn-sm btn-text theme-secondary" href="' . h($edit_url . '?copy=' . rawurlencode($present['id'])) . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</a>';
         } else {
-            $actions .= '<a class="btn btn-sm btn-ghost" href="' . h($edit_url . '?id=' . (int) $present['id']) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</a>'
+            $actions .= '<a class="btn btn-sm btn-text theme-secondary" href="' . h($edit_url . '?id=' . (int) $present['id']) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</a>'
                 . '<form method="post" action="' . h($self_url) . '" class="d-inline">' . get_token_field()
                 . '<input type="hidden" name="ws_action" value="template_archive">'
                 . '<input type="hidden" name="template_id" value="' . (int) $present['id'] . '">'
                 . '<input type="hidden" name="archive" value="' . ($present['archived'] ? 0 : 1) . '">'
-                . '<button type="submit" class="btn btn-sm btn-ghost" title="' . h($present['archived'] ? lang('Bring it back') : lang('Move to the archive')) . '" aria-label="' . h($present['archived'] ? lang('Bring it back') : lang('Move to the archive')) . '"><i class="bi ' . ($present['archived'] ? 'bi-arrow-counterclockwise' : 'bi-archive') . '" aria-hidden="true"></i></button>'
+                . '<button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . h($present['archived'] ? lang('Bring it back') : lang('Move to the archive')) . '" aria-label="' . h($present['archived'] ? lang('Bring it back') : lang('Move to the archive')) . '"><i class="bi ' . ($present['archived'] ? 'bi-arrow-counterclockwise' : 'bi-archive') . '" aria-hidden="true"></i></button>'
                 . '</form>';
         }
 

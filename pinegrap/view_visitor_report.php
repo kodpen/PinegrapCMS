@@ -717,7 +717,7 @@ if (!$_POST) {
             </div>    
         </div>
         <p class="text-center md:text-end p-0 m-0">
-            <span class="badge fg-black fw-light border-2">    ' . $output_date_range . '</span>
+            <span class="badge fg-body fw-light border-2">    ' . $output_date_range . '</span>
         </p>';
 
     }

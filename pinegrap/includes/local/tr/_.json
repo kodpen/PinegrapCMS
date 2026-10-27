@@ -1013,6 +1013,7 @@
     "{var:1} page{suffix:1} in the site search": "Site aramasında {var:1} sayfa",
     "{var:1} paid back on {var:2}": "{var:2} tarihinde {var:1} geri ödendi",
     "{var:1} paid by the bank": "{var:1} banka tarafından ödendi",
+    "{var:1} panel": "{var:1} paneli",
     "{var:1} paragraph{suffix:1} contain a block element (invalid nesting)": "{var:1} paragrafın içinde blok element var (geçersiz iç içe geçme)",
     "{var:1} passed on": "{var:1} ciro edildi",
     "{var:1} past due": "{var:1} vadesi geçmiş",

@@ -121,12 +121,12 @@ pg_page_shell(array(
                     <input type="hidden" name="direction" value="' . h($direction) . '" />
                     <label for="as_of" class="small fg-secondary text-nowrap mb-0">' . lang('As of') . '</label>
                     <input type="date" id="as_of" name="as_of" class="form-control form-control-sm" value="' . h($as_of) . '" max="' . h(date('Y-m-d')) . '" />
-                    <button type="submit" class="btn btn-sm btn-ghost" title="' . lang('Apply') . '"><i class="bi bi-arrow-right-circle"></i></button>
+                    <button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . lang('Apply') . '"><i class="bi bi-arrow-right-circle"></i></button>
                 </form>
                 <div class="pg-toolbar-grow small fg-secondary text-truncate">
                     ' . h(lang(array('string' => '{var:1} as of {var:2}: {var:3} document(s) open on {var:4} account(s)', 'vars' => array($direction_titles[$direction], prepare_form_data_for_output($as_of, 'date', false), (int) $folded['totals']['count'], count($folded['accounts']))))) . '
                 </div>
-                <a class="btn btn-sm btn-ghost" href="erp_aging.php?' . h($query) . '&amp;csv=1"><i class="bi bi-filetype-csv me-1"></i>' . lang('Download CSV') . '</a>
+                <a class="btn btn-sm btn-text theme-secondary" href="erp_aging.php?' . h($query) . '&amp;csv=1"><i class="bi bi-filetype-csv me-1"></i>' . lang('Download CSV') . '</a>
                 <a class="btn btn-sm btn-outline theme-secondary" href="erp_invoices.php?' . h($query . '&filter=' . ($is_today ? 'overdue' : 'open')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Invoices') . '</a>
             </nav>
 
