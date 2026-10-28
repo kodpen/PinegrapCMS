@@ -10,6 +10,7 @@ description: Templates made from a design (2026.4.8): design_template table, cus
 
 ## How are its placeholders made?
 - The `pg_dtc_*` helpers are the reverse of `_pg_tpl_fill()`, without the database: a page address → `{{page:<key>}}` (alone or followed by `?` / `#`; an address that only starts the same way is left), page ids in widget and form settings and a link's `_bindParams` page of the design → `{{tab:<key>}}` (its params untouched), folders → `{{folder:<key>}}`, contact groups → `{{contact_group:<key>}}`, a value equal to the site name → `{{site_name}}`, the year after © → `{{year}}`. Exact matches only. Every placed component becomes `props.templateWidget` or `props.templateShared`.
+- A page form carries its structured data settings: `schema_type` with the editor's settings, and `schema_author` read apart (`pg_dtc_form_schema_author()`: `organization` or `field:<name>`, left out for the contact), so Publish writes both into the new form (`tests/design_template_form_schema_test.php`).
 - The design's CSS, JS, fonts, head code and body classes travel in the `'assets'` entry: `add_system_style.php` puts them into its hidden fields, install hands them to `save_system_style()`. Asset `pages` become `key:<page key>` (`design-asset-records.md`).
 - A new key added to the template array is added to this export too, or templates made from designs lose it.
 
