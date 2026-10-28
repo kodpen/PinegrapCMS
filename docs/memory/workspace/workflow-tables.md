@@ -1,6 +1,6 @@
 ---
 name: workflow-tables
-description: Workflow tables (11.0.110, #2746): the four ws_wtable* tables column by column, ws_wtable_access(), column changes; JSON person/link cells closed until the erasure reads them
+description: Workflow tables (11.0.110, #2746): the four ws_wtable* tables column by column, ws_wtable_access(), column changes; JSON person/link cells and the privacy reader
 ---
 
 ## What are the four tables, column by column?
@@ -25,5 +25,6 @@ description: Workflow tables (11.0.110, #2746): the four ws_wtable* tables colum
 - A table delete is final (no bin yet): the table row goes first, so a request stopped halfway leaves nothing reachable.
 - Results are codes (`not_found` 404, `forbidden` 403, `too_many_*` 409, field errors 422) for the panel and API to word.
 
-## What must the person and record-link cells get before they can be filled?
-- They live in JSON, so `pg_contact_holders()` cannot re-point them and the privacy export and erasure (`core/personal-data-erasure.md`) do not see them. Until those paths get a reader for `ws_wtable_rows.cells`, a row write refuses a non-empty cell of either type (`not_writable_yet`, `workflow-table-rows.md`).
+## How do the privacy paths see person and record-link cells?
+- They live in JSON, so the privacy export and erasure read them with `pg_privacy_wtable_rows()` (`includes/fn/privacy.php`, `core/personal-data-erasure.md`): the export hands over the cells naming the person, the erasure empties them and keeps the row (T1b2). A hit: a person cell with their account, a link of a kind in `pg_privacy_wtable_link_kinds()` (contact, user_account, a person erp_account) to theirs; a deleted column's leftover cell is read as either. SQL `LIKE '%:id,%'`/`'%:id}%'` narrows, PHP decides (`pg_privacy_wtable_cell_hits()`); the erasure writes each row on its revision, re-read up to 3 times. Since then `ws_wtable_row_closed_types()` is empty and both types are written like any other cell.
+- `pg_contact_holders()` still does not re-point them: a contact merge leaves a link to the merged-away contact.

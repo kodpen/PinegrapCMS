@@ -14,10 +14,9 @@
  * delete in the same statement that checks the 5000-row limit, so two adds
  * at once cannot pass it.
  *
- * Person and record-link cells are not written yet: the privacy export and
- * erasure cannot read them in the rows' JSON, and a person's name or record
- * kept where those paths do not look could neither be handed over nor
- * erased. Emptying such a cell is allowed.
+ * Person and record-link cells are read in the rows' JSON by the privacy
+ * export and erasure (pg_privacy_wtable_rows()): a cell naming a person is
+ * handed over with their pack and emptied when they are erased.
  *
  * A formula column names other columns of its table by name (Price *
  * Quantity) and is worked out from the row's cells on every read, by
@@ -38,20 +37,22 @@ if (!defined('PG_FUNCTIONS_DIR')) {
    --------------------------------------------------------------------------- */
 
 /**
- * Column types whose cells may not be filled yet: they name a person or a
- * record that the privacy export and erasure do not find in the rows' JSON.
+ * Column types whose cells may not be filled yet. None: the privacy export
+ * and erasure read person and record-link cells in the rows' JSON
+ * (pg_privacy_wtable_rows()). A later type that holds personal data the
+ * privacy paths cannot read yet is listed here until they can.
  *
  * @return string[]
  */
 function ws_wtable_row_closed_types()
 {
-    return array('person', 'link');
+    return array();
 }
 
 /**
  * A row's cells as given by the person, checked: ws_wtable_row_cells_check()
- * with a person or record-link cell refused (not_writable_yet) unless it
- * empties the cell.
+ * with a cell of a closed type (ws_wtable_row_closed_types()) refused
+ * (not_writable_yet) unless it empties the cell.
  *
  * @param array $columns column id => column
  * @param mixed $cells

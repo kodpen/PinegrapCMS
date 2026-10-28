@@ -38,6 +38,21 @@ function test_privacy_export_sections_are_pinned()
 	}
 }
 
+// A workflow table row is exported by the cells that name the person, under
+// their column names, with the table it is in; its other cells are the
+// table owner's.
+function test_privacy_export_wtable_row()
+{
+	$row = array('id' => 5, 'table_id' => 3, 'cells' => array('1' => 7, '2' => 'note', '9' => 7), 'hits' => array('1', '9'), 'created_at' => 100, 'updated_at' => 200);
+	$columns = array('1' => array('name' => 'Owner', 'type' => 'person'), '2' => array('name' => 'Note', 'type' => 'text'));
+
+	pg_assert_same(
+		array('record' => 'table_row', 'id' => 5, 'table_id' => 3, 'table' => 'Leads', 'cells' => array('Owner' => 7, '9' => 7), 'created_at' => 100, 'updated_at' => 200),
+		pg_privacy_export_wtable_row($row, 'Leads', $columns),
+		'row'
+	);
+}
+
 // A passkey is exported by what the person sees of it; the credential (its
 // id and hash, public key, user handle, counter, algorithm) is never read.
 function test_privacy_export_passkeys_leave_the_credential_out()
