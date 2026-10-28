@@ -115,6 +115,9 @@ if (!$user_id) {
 		'user_username' => 'ayse.yilmaz',
 		'user_email' => 'ayse.yilmaz@example.test',
 		'user_password' => password_hash('sandbox-user', PASSWORD_DEFAULT),
+		// The hash's kind (pg_password_verify()): 2 is password_hash(); the
+		// column's default 0 reads it as an MD5 and the account never signs in.
+		'user_password_algo' => 2,
 		'user_role' => 3,
 		'user_timestamp' => $now,
 	));

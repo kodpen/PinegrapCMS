@@ -363,7 +363,6 @@ pg_page_shell(array(
 )) . '
 <main id="content" class="container-fluid p-0">
 <div class="ws-shell">
-    ' . ws_screen_rail($viewer, 'mcp') . '
 <div class="ws-shell-main">
     ' . $liveform_messages . '
     ' . ($viewer['settings'] ? '

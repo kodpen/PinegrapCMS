@@ -649,6 +649,9 @@ $(document).ready(function () {
     // The panel this tab keeps open (initMenuPanels()). Assigned up here: the
     // init calls below run before the rest of this section is reached.
     var MENU_PANEL_KEY = 'pgMenuPanel';
+    // Set once initMenuPanels() has run: until then a change of the menu's
+    // state opens no panel by itself (autoMenuPanel()).
+    var menuPanelsReady = false;
     var menuBackdrop = null;
 
     initMenuToggle();                 // The button in the bar: mini, open, hidden (the drawer on a phone)
@@ -680,9 +683,12 @@ $(document).ready(function () {
         var backdrop = getMenuBackdrop();
         $('.software-container').addClass('drawer-open');
         paintMenuToggle();
-        // Next frame, so the element is in the DOM before the opacity transition runs.
+        // Next frame, so the element is in the DOM before the opacity transition
+        // runs; not for a drawer shut again in between.
         window.requestAnimationFrame(function () {
-            backdrop.classList.add('show');
+            if (isMenuDrawerOpen()) {
+                backdrop.classList.add('show');
+            }
         });
     }
 
@@ -972,6 +978,12 @@ $(document).ready(function () {
                 back.focus({ preventScroll: true });
             }
         }
+
+        // For a panel a script fills when it is first shown (the Workspace
+        // list, workspace_side.js).
+        if (typeof window.CustomEvent === 'function') {
+            panel.dispatchEvent(new CustomEvent('pg:menu-panel-open', { bubbles: true }));
+        }
     }
 
     // Back one step: from a second-level panel to the panel that holds the
@@ -1041,6 +1053,7 @@ $(document).ready(function () {
         }
 
         if (!menu.classList.contains('pg-menu-drilled')) {
+            autoMenuPanel(menu);
             return;
         }
 
@@ -1055,10 +1068,32 @@ $(document).ready(function () {
         }
     }
 
+    // A panel that opens by itself on the screens it is about (the
+    // Workspace list on the workspace's own screens, which print
+    // data-pg-menu-auto in it): whenever the menu shows its labels and no
+    // other panel is open. The rail has no room for it.
+    function autoMenuPanel(menu) {
+        if (!menuPanelsReady || !menu || isMenuRail() || menu.classList.contains('pg-menu-drilled')) {
+            return;
+        }
+
+        var marker = menu.querySelector('.pg-menu-panel [data-pg-menu-auto]');
+        var panel = marker ? marker.closest('.pg-menu-panel') : null;
+
+        if (panel) {
+            openMenuPanel(panel, {});
+        }
+    }
+
     // The visible words of an entry: the Calendars entry draws the day of
     // the month as svg text, which is not part of its name.
     function menuEntryLabel(link) {
         var text = '';
+
+        // An entry drawn with counts and controls inside it names itself.
+        if (link.hasAttribute('data-pg-menu-label')) {
+            return link.getAttribute('data-pg-menu-label').replace(/\s+/g, ' ').trim();
+        }
 
         Array.prototype.forEach.call(link.childNodes, function (node) {
             if (node.nodeType === 3) {
@@ -1138,7 +1173,7 @@ $(document).ready(function () {
             var best = null;
             var bestScore = -1;
 
-            Array.prototype.forEach.call(panel.querySelectorAll('.pg-menu-panel-body a[href]'), function (link) {
+            Array.prototype.forEach.call(panel.querySelectorAll('.pg-menu-panel-body a[href]:not([data-pg-menu-skip])'), function (link) {
                 var score = menuEntryScore(link, here, params, paramCount);
 
                 if (score > bestScore) {
@@ -1228,6 +1263,11 @@ $(document).ready(function () {
         // Escape inside the menu goes back one step, and stops there: a
         // second Escape is the drawer's.
         menu.addEventListener('keydown', function (e) {
+            // A search box in a panel clears itself on Escape first.
+            if (e.defaultPrevented) {
+                return;
+            }
+
             if (((e.key === 'Escape') || (e.key === 'Esc')) && menu.classList.contains('pg-menu-drilled')) {
                 e.stopPropagation();
                 backMenuPanel({ animate: true, focus: true });
@@ -1240,9 +1280,31 @@ $(document).ready(function () {
             }
         });
 
+        // What counts as inside the widened rail: the sidebar, and a layer a
+        // panel opened over the page (a list's right-click menu, a tour's
+        // bubble), which marks itself data-pg-menu-hold.
+        function insideMenu(node) {
+            if (!node || (node.nodeType !== 1)) {
+                return false;
+            }
+
+            return !!((sidebar && sidebar.contains(node)) || (node.closest && node.closest('[data-pg-menu-hold]')));
+        }
+
         document.addEventListener('click', function (e) {
-            if (!isMenuPeek() || (sidebar && e.target && sidebar.contains(e.target))) {
+            if (!isMenuPeek() || insideMenu(e.target)) {
                 return;
+            }
+
+            // A control that redrew itself (a section of a list opened or
+            // closed) has left the document by now; the path of the click
+            // was taken when it started, and still holds the sidebar.
+            var path = (typeof e.composedPath === 'function') ? e.composedPath() : [];
+
+            for (var i = 0; i < path.length; i++) {
+                if ((path[i] === sidebar) || ((path[i].nodeType === 1) && path[i].hasAttribute('data-pg-menu-hold'))) {
+                    return;
+                }
             }
 
             closeMenuPanel({});
@@ -1255,7 +1317,7 @@ $(document).ready(function () {
         function peekLostFocus() {
             var active = document.activeElement;
 
-            if (isMenuPeek() && active && (active !== document.body) && sidebar && !sidebar.contains(active)) {
+            if (isMenuPeek() && active && (active !== document.body) && sidebar && !insideMenu(active)) {
                 closeMenuPanel({});
             }
         }
@@ -1267,7 +1329,7 @@ $(document).ready(function () {
 
             if (!e.relatedTarget) {
                 window.setTimeout(peekLostFocus, 0);
-            } else if (sidebar && !sidebar.contains(e.relatedTarget)) {
+            } else if (sidebar && !insideMenu(e.relatedTarget)) {
                 closeMenuPanel({});
             }
         });
@@ -1284,21 +1346,68 @@ $(document).ready(function () {
             markMenuCurrent(menu);
         });
 
-        // The panel this tab had open, when the page is one it is about.
+        // The way in for a script that draws into a panel (the Workspace
+        // list): open, close and the current entry again after the address
+        // changed without a page load (history.replaceState()).
+        window.pgMenu = {
+            // Asked from a click on the page (a button of the screen), it
+            // opens once that click is over: the click would otherwise reach
+            // the closers above (a click outside the widened rail, a tap on
+            // the page behind the drawer) and shut it again at once.
+            openPanel: function (id, options) {
+                var panel = document.getElementById(id);
+
+                if (!panel || !panel.classList.contains('pg-menu-panel')) {
+                    return;
+                }
+
+                options = options || {};
+
+                window.setTimeout(function () {
+                    if (isMenuDrawerMode() && !isMenuDrawerOpen()) {
+                        openMenuDrawer();
+                    }
+
+                    openMenuPanel(panel, { animate: !panel.classList.contains('is-open'), focus: !!options.focus });
+                }, 0);
+            },
+            // Done with the panel after an entry was answered on this page:
+            // the widened rail and the phone's drawer step aside.
+            dismiss: function () {
+                if (isMenuPeek()) {
+                    closeMenuPanel({});
+                }
+
+                if (isMenuDrawerMode() && isMenuDrawerOpen()) {
+                    closeMenuDrawer();
+                }
+            },
+            refreshCurrent: function () {
+                markMenuCurrent(menu);
+            },
+            isRail: function () {
+                return isMenuRail();
+            }
+        };
+
+        menuPanelsReady = true;
+
+        // The panel this tab had open, when the page is one it is about;
+        // otherwise the panel this screen opens by itself, if any.
         var stored = storedMenuPanel();
-
-        if (stored === '') {
-            return;
-        }
-
-        var panel = document.getElementById(stored);
+        var panel = (stored !== '') ? document.getElementById(stored) : null;
         var row = panel ? document.getElementById(panel.getAttribute('data-pg-menu-row')) : null;
 
         if (panel && row && panel.classList.contains('pg-menu-panel') && !isMenuRail() && (panel.querySelector('.pg-menu-current') || row.classList.contains('active'))) {
             openMenuPanel(panel, {});
-        } else {
+            return;
+        }
+
+        if (stored !== '') {
             storeMenuPanel('');
         }
+
+        autoMenuPanel(menu);
     }
 
     // The Dashboard entry's icon is a clock and the Calendars entry's icon

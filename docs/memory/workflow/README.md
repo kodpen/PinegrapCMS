@@ -38,7 +38,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-seo.md: Decisions list, SEO part (2026-10-27/28): large image preview, site icon, main-host redirect, per-form structured-data type and author source; settings whose defaults keep running sites
 - decisions-made-waf.md: Decisions list, firewall part: thresholds stay, a concurrent refusal is no offence, a rate ban stays off the ladder, the global limit counts before the session, no address-lock release action.
 - decisions-made-widgets.md: Decisions list, system widget part: conditions and required controls, translated compared text, old blocks equal in look (W16), gallery sources (W5), entity values (W8), the 2026-10-27 answers.
-- decisions-made-workspace.md: Decisions list, workspace part: a typed @username in /task, whose rights a flow's change box writes with, bulk product card size and events, model assistants not licence-gated.
+- decisions-made-workspace.md: Decisions list, workspace part: a typed @username in /task, a flow change box's rights, bulk product cards, model assistants not licence-gated, where the Workspace list sits
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, the PR footer (pointer), editing shared files without conflicts, API vs ERP files
 - install-check-filter.md: When install-check.yml runs its six-database matrix (#1985): the changes job, the paths it reads, always on merge trains and pushes, why plain git, a skipped job blocks nothing
