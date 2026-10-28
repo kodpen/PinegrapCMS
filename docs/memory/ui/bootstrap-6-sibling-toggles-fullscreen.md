@@ -1,6 +1,6 @@
 ---
 name: bootstrap-6-sibling-toggles-fullscreen
-description: v5 toggle buttons (input.btn-check before its label.btn) and full-screen dialogs on Bootstrap 6: the shell rules that give the label its checked look and take a full-screen dialog's corners away; the checked switch thumb on --pg-on-accent
+description: Bootstrap 6 shell rules: v5 toggle buttons (input.btn-check + label.btn) get their checked look, full-screen dialogs lose corners, a checked switch thumb reads --pg-on-accent
 ---
 
 ## Why did checked and unchecked toggle buttons look the same?
