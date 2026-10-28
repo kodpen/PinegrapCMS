@@ -33,4 +33,4 @@ description: Plan (2026-10-23, S1 #1708, S2 #1858, S2b #1987, T1a #2745, T1b #27
 2. Answered (#2424): administrators see a personal table only through a share, like notes (a). Owner deleted or `ws_profiles.excluded`: tables stay invisible, their flows pause.
 
 ## Where to start?
-- T1c shares, then T1d API and MCP.
+- T1c shares in progress (includes/workspace/wtable_shares.php), then T1d API and MCP.
