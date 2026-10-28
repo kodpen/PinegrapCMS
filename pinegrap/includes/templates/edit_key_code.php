@@ -165,8 +165,8 @@ if (!defined('PG_INIT_LOADED')) {
 											
                                         </div>
                                     </div>
-                                    <div class="col-12 my-3">
-                                        <label class="form-label" for=""><?=lang('Report')?></label>
+                                    <fieldset class="col-12 my-3">
+                                        <legend class="form-label fs-md"><?=lang('Report')?></legend>
                                         <div class="form-field">
 											<?=$liveform->output_field(array(
 												'type' => 'radio',
@@ -186,18 +186,18 @@ if (!defined('PG_INIT_LOADED')) {
                                             <label class="" for="report_offer_code"><?=lang('Offer Code')?></label>
                                         </div>
 										<div class="form-text"><?=lang('Code for Order Reporting & Exporting')?></div>
-                                    </div>
+                                    </fieldset>
                                 </div>
 							</div>
 						</div>
 					</div>
 				</div>
-				<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+				<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="<?=h(lang('data edit buttons'))?>">
                     <div class="container">
                         <div class=" btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="save_button" name="submit_button" value="<?php if ($screen == 'create'): ?>Create<?php else: ?>Save<?php endif ?>" class="btn my-1 btn-solid theme-success "><span class="material-icons me-3"><?php if ($screen == 'create'): ?>add<?php else: ?>save<?php endif ?></span><span class="pg-btn-label" ><?php if ($screen == 'create'): ?><?=lang(array('string'=>'Create') )?><?php else: ?><?=lang(array('string'=>'Save') )?><?php endif ?></span></button>
+                            <button type="submit" id="save_button" name="submit_button" value="<?php if ($screen == 'create'): ?>Create<?php else: ?>Save<?php endif ?>" class="btn my-1 btn-solid theme-success "><span class="material-icons me-3" aria-hidden="true"><?php if ($screen == 'create'): ?>add<?php else: ?>save<?php endif ?></span><span class="pg-btn-label" ><?php if ($screen == 'create'): ?><?=lang(array('string'=>'Create') )?><?php else: ?><?=lang(array('string'=>'Save') )?><?php endif ?></span></button>
                             <?php if ($screen == 'edit'): ?>
-								<button type="submit" name="delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="<?=lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('key code'))))?>"><span class="material-icons me-3">delete</span><span class="pg-btn-label" ><?=lang(array('string'=>'Delete') )?></span></button>
+								<button type="submit" name="delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="<?=lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('key code'))))?>"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label" ><?=lang(array('string'=>'Delete') )?></span></button>
 							<?php endif ?>
 						</div>
                     </div>

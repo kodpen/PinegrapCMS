@@ -24,7 +24,7 @@ if (!defined('PG_INIT_LOADED')) {
 	        <div class="row mb-3 flex-wrap">
                 <div class="col-12 text-center md:text-start">
                     <h2 class="d-inline-block " data-bs-content="<?=lang('All key codes assigned to specific offers.')?>" title="<?=lang('All Key Codes')?>"><?=lang('All Key Codes')?></h2>
-                    <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                    <nav id="button_bar" class="navigation " aria-label="<?=h(lang('Button Bar'))?>">
                     	<a class="btn btn-sm btn-solid theme-primary m-1 " href="add_key_code.php"><span class="bi bi-plus-circle me-3"></span><?=lang('Create')?></a>
 						<form  class="disable_shortcut d-inline-block" method="get">
                             <div class=" btn-group btn-group-sm flex-wrap">
@@ -32,7 +32,7 @@ if (!defined('PG_INIT_LOADED')) {
                                 <button type="submit" name="submit_data" value="Export Key Codes" class="btn btn-link pg-link-secondary py-0 m-1"><span class="bi bi-file-earmark-arrow-down bi-me-2"></span><?=lang(array('string'=>'Export') )?></button>
                             </div>
 							<div class=" btn-group btn-group-sm flex-wrap">
-								<a href="delete_key_codes.php" class="btn btn-link pg-link-danger py-0 m-1"><span class="material-icons me-3">delete_forever</span><?=lang(array('string'=>'Delete All Key Codes') )?></a>
+								<a href="delete_key_codes.php" class="btn btn-link pg-link-danger py-0 m-1"><span class="material-icons me-3" aria-hidden="true">delete_forever</span><?=lang(array('string'=>'Delete All Key Codes') )?></a>
 							</div>
                         </form>
                         <div class="pg-toolbar-grow"></div>
@@ -93,7 +93,7 @@ if (!defined('PG_INIT_LOADED')) {
 									</td>
 									<td class="align-middle text-center">
 										<?php if ($key_code['single_use']): ?>
-											<span class="material-icons">task_alt</span>
+											<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden"><?=lang('Yes')?></span>
 										<?php endif ?>
 									</td>
 									<td class="align-middle">

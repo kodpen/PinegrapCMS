@@ -9983,7 +9983,7 @@ function pg_key_code_list_cells($key_code, $today)
 
     return array(
         'code'          => array('class' => 'chart_label align-middle ' . (pg_key_code_active($key_code, $today) ? 'status_enabled fg-success' : 'status_disabled fg-danger')),
-        'enabled'       => array('html' => !empty($key_code['enabled']) ? '<span class="material-icons">task_alt</span>' : '', 'class' => 'align-middle text-center'),
+        'enabled'       => array('html' => !empty($key_code['enabled']) ? '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . h(lang('Yes')) . '</span>' : '', 'class' => 'align-middle text-center'),
         'last_modified' => array(
             'html'  => get_relative_time(array('timestamp' => $key_code['last_modified_timestamp']))
                 . (($username !== '') ? ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($username)))) : ''),
