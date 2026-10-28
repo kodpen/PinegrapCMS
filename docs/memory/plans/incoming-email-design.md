@@ -6,7 +6,7 @@ description: Design of the not-started incoming e-mail feature: ingest flow, ws_
 ## What happens to one incoming mail?
 `ws_mail_fetch(box)` (IMAP, or a push endpoint) → `ws_mail_ingest(raw, box)`:
 1. De-duplicate (box + Message-ID); loop gate (our own mail, `Auto-Submitted` ≠ `no`, `Precedence: bulk|junk|list`, our `X-` header; >20 mails/hour per sender held).
-2. Parse (`ws_mail_parse()`): RFC 2047 headers, RFC 2231 file names, charsets incl. `windows-1254` / `iso-8859-9` to UTF-8, multipart walk, nested `message/rfc822` as attachment, quoted history and signature folded.
+2. Parse (`pg_mail_parse()`): RFC 2047 headers, RFC 2231 file names, charsets incl. `windows-1254` / `iso-8859-9` to UTF-8, multipart walk, nested `message/rfc822` as attachment, quoted history and signature folded.
 3. Find the conversation by In-Reply-To / References, fallback subject tag `[#T123]`; never by subject similarity. Our outgoing Message-ID is `<pg.c{conversation}.{random}@{site}>`.
 4. New conversation → mail card in the channel; ongoing → its thread.
 5. Attachments into the channel folder under the channel's rules; refused types (programs, scripts, SVG, HTML) listed by name only.

@@ -5646,7 +5646,7 @@ function ws_api_note_present($viewer, $note)
         'shared_with' => ws_api_note_people_present($note['with'] ?? array()),
         'shared_in'   => ws_api_note_channels_present($note['in'] ?? array()),
         'channel_id'  => is_array($note['channel'] ?? null) ? (int) $note['channel']['id'] : null,
-        'text'        => $full ? ws_plain_text($viewer, (string) $note['body']) : null,
+        'text'        => $full ? ws_plain_text($viewer, (string) $note['body'], null, true) : null,
         'body'        => $full ? (string) $note['body'] : null,
         'created_at'  => api_time($note['created_at']),
         'updated_at'  => api_time($note['updated_at']),

@@ -9,7 +9,7 @@ description: Notes brought in from other apps (workspace_notes_import.php, notes
 
 ## How is a file read (notes_io.php, pure)?
 - Text: UTF-8 (BOM dropped), UTF-16, else Windows-1254. Front matter: title, created/date, updated/modified, tags (a `#tag` line at the end), pinegrap_note. Title: front matter, else a first `# heading` (taken out, also when it repeats the title), else the file name minus Notion's 32-hex id. An empty file named only by its name is refused.
-- `ws_note_import_convert()`: headings → bold lines, `*`/`+` items → `- `, `*x*` → `_x_`, `__x__` → `**x**` (`==x==` kept), `![a](f)` → `[a](f)`, `~~~` → ```` ``` ````, ```` ```math ```` → ```` ```latex ```` (math is a calculation here). A .txt and a file of ours stay as written. Text shaped like `<@user:12>` loses its brackets: a file tags nobody.
+- `ws_note_import_convert()`: headings kept (#2649), `*`/`+` items → `- `, `*x*` → `_x_`, `__x__` → `**x**` (`==x==` kept), `![a](f)` → `[a](f)`, `~~~` → ```` ``` ````, ```` ```math ```` → ```` ```latex ```` (math is a calculation). A .txt and our own file stay as written. Text shaped like `<@user:12>` loses its brackets: a file tags nobody.
 - Links: relative paths are pointed from the top of the upload; `[[Name]]`, `![[file]]` by name, the one beside the note first (as Obsidian). A linked file in the upload goes to the note's folder (`ws_note_file_store_bytes()`, channel refusals apply); one missing or refused becomes its words. In `finish`, `[[Note]]` and `[x](Other.md)` become a link to the note it became (absolute `workspace_notes.php?note=N`: the renderer draws http links only), else to an own note of that title, else words.
 
 ## What does a file exported from here do?

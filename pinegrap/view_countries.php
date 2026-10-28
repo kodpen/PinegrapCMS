@@ -69,7 +69,9 @@ $query = "SELECT
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 while ($row = mysqli_fetch_array($result)) {
     $id = $row['id'];
-    $name = h($row['name']);
+    // The name in the panel's language; the list is still sorted by the
+    // stored name when that column is chosen.
+    $name = h(pg_geo_country_label($row['name'], $row['code']));
     $code = h($row['code']);
     $zip_code_required = $row['zip_code_required'];
     $transit_adjustment_days = $row['transit_adjustment_days'];

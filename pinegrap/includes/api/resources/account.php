@@ -180,6 +180,107 @@ function api_auth_login($params) {
 
 }
 
+// POST /auth/pair: the session POST /auth/login gives, for a pairing code the
+// person showed on device_pairing.php instead of a password
+// (includes/api/pairing.php). The person passed the password and the second
+// step when they signed in to the site, so neither is asked again.
+function api_auth_pair($params) {
+
+	if (!api_devices_ready() || !api_pairing_ready()) {
+
+		api_fail(503, 'not_installed', lang('The API is not installed on this site yet. Run the software upgrade to finish it.'));
+
+	}
+
+	$limits = api_pairing_limits();
+
+	$ip = api_client_ip();
+
+	// Failed codes are counted per address, outside the firewall's offences:
+	// a code is 48 random hex characters, so the count only stops a client
+	// from hammering, and a mistyped scan should never ban an office.
+	$counted = function_exists('waf_rate_hits') && function_exists('waf_ip_is_counted') && waf_ip_is_counted($ip);
+
+	$subject = $counted ? waf_ip_subject($ip) : '';
+
+	if ($counted && (waf_rate_hits($subject, 'pairf', $limits['failure_window']) >= $limits['failures'])) {
+
+		waf_log_event('rate', 'api-pair', 'rate', 5, 'auth/pair', $limits['failures'] . '/' . ($limits['failure_window'] / 60) . 'min');
+
+		api_extra_headers('Retry-After', (string)(int)$limits['failure_window']);
+
+		api_fail(429, 'rate_limited', lang('Too many attempts. Please wait a few minutes and try again.'));
+
+	}
+
+	$row = api_pairing_find(trim(api_account_raw_input('code')));
+
+	$app = is_array($row)
+		? api_row("SELECT id, name, api_key, owner_user_id, scopes, ip_allowlist,
+				status, expires_at, rate_limit_per_min, kind
+			FROM api_apps
+			WHERE id = '" . (int)$row['app_id'] . "' AND kind = 'device'
+			LIMIT 1")
+		: null;
+
+	if (!api_pairing_usable($row, is_array($app) ? (int)$app['id'] : -1, time())) {
+
+		if ($counted) {
+
+			waf_rate_record($subject, 'pairf', $limits['failure_window']);
+
+		}
+
+		api_fail(401, 'pairing_invalid', lang('This pairing code is not valid any more. Show a new one on the site.'));
+
+	}
+
+	// The application the code was made for must still let devices in: a
+	// switch turned off since, an expiry, or the caller's address off its
+	// allow list refuses it here, before the code is spent.
+	api_device_app_check($app);
+
+	api_current_app($app);
+
+	$owner = api_load_owner((int)$row['user_id']);
+
+	if (($owner === null) || !api_device_account_has_rights($owner)) {
+
+		api_fail(403, 'forbidden', lang('This account has no rights that can be used from a device.'));
+
+	}
+
+	if (!api_pairing_consume($row)) {
+
+		api_fail(401, 'pairing_invalid', lang('This pairing code is not valid any more. Show a new one on the site.'));
+
+	}
+
+	$platform = isset($params['platform']) ? $params['platform'] : 'other';
+
+	$name = (isset($params['device_name']) && $params['device_name'] !== '')
+		? $params['device_name']
+		: ucfirst($platform);
+
+	$issued = api_device_issue($app, (int)$row['user_id'], $name, $platform,
+		isset($params['app_version']) ? $params['app_version'] : '');
+
+	api_pairing_note_device($row, (int)$issued['device_id']);
+
+	log_activity(lang(array(
+		'string' => 'signed in from a device with a pairing code ({var:1})',
+		'vars'   => $name
+	)), $owner['username']);
+
+	$device = api_row("SELECT api_devices.*, api_apps.name AS app_name
+		FROM api_devices
+		LEFT JOIN api_apps ON api_apps.id = api_devices.app_id
+		WHERE api_devices.id = '" . (int)$issued['device_id'] . "' LIMIT 1");
+
+	api_ok(api_auth_session_present($issued, $device, $owner), 201);
+
+}
+
 // Whether this account is past the point where the sign-in screen asks its
 // question.
 //

@@ -18,5 +18,9 @@ description: assets/js/pg_style_suggest.js: the lazy loader of the predictor and
 ## What replaced class_suggestions.js?
 - The fixed list `window.PG_CLASS_SUGGESTIONS` is gone (step 4, 2026.11.0); `clean_up.php` deletes the file on updated sites. The code view's class completion uses the predictor's full match list (`limit: 5000`, the editor filters while the word grows) once loaded.
 
+## What stays out of it?
+- No heavier designer page: predictor and vocabulary load on first focus or first editor; plain panel inputs never load CM6.
+- The inline hint (planned off by default) and a User Styles CSS tab are dropped until a site asks (#2439).
+
 ## How is it tested?
 - `tests/style_suggest_test.php` (Node, plain stand-ins): context, counts, load once/failure, the hint text on real predictor results. The dropdown draws into the document and is not unit tested.

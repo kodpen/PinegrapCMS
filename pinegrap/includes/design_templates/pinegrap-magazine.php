@@ -2312,6 +2312,9 @@ $pages[] = array(
         'confirm_page_id'      => '{{tab:email_article_received}}',
         'pretty_urls'          => 0,
         'sample_records'       => $sample_stories,
+        // The BlogPosting author is the byline readers see, not the account
+        // that sent the story (the sample stories have none).
+        'schema_author'        => 'field:byline',
     ),
     'tree'    => $page(array(
         $page_header(lang('Submit a Story'), lang('Write your story and send it to the editors. They read it, may ask for changes and decide when it goes live.')),
@@ -3885,7 +3888,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Long-Read Magazine'),
-    'version'     => '1.0.1',
+    'version'     => '1.0.2',
     'framework'   => 'bootstrap5',
     'order'       => 80,
     'icon'        => 'bi-journal-richtext',

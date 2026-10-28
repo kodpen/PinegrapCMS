@@ -2220,13 +2220,18 @@ function _eo_render_billing_country_select($lf)
         $current = (string)db_value("SELECT code FROM countries WHERE default_selected = 1 ORDER BY id ASC LIMIT 1");
     }
     // countries table has no `status` column — all rows are considered active.
-    $rows = db_items("SELECT code, name FROM countries ORDER BY name ASC");
+    // Named and ordered in the site's language (pg_geo_country_label()).
+    $rows = db_items("SELECT code, name FROM countries");
     if (!is_array($rows)) $rows = array();
+    $options = array();
+    foreach ($rows as $r) {
+        $options[] = array('code' => (string)$r['code'], 'label' => pg_geo_country_label($r['name'], $r['code']));
+    }
     $html = '<select class="form-select" id="billing_country" name="billing_country" required>'
           . '<option value="">' . h(lang('Select...')) . '</option>';
-    foreach ($rows as $r) {
+    foreach (pg_geo_sort_by_label($options) as $r) {
         $sel = ((string)$r['code'] === $current) ? ' selected' : '';
-        $html .= '<option value="' . h($r['code']) . '"' . $sel . '>' . h($r['name']) . '</option>';
+        $html .= '<option value="' . h($r['code']) . '"' . $sel . '>' . h($r['label']) . '</option>';
     }
     $html .= '</select>';
     return $html;
