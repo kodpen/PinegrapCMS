@@ -18,12 +18,12 @@ module: bundles
 ## What refreshes a bundle?
 - `pg_marketplace_product_changed()` calls `pg_bundle_refresh_for()` first: every stock and price writer ends there, `pg_product_stock_changed()` included. A static guard stops the bundle's own call from looking up again.
 - `import_products.php` ends with `pg_bundle_refresh_all()`, which also overwrites a stock or price the file gave a bundle.
-- A bundle's stock is never written directly: the inventory API answers 409 `bundle` (bulk items: status `bundle`), the barcode screens and the ERP stock count refuse it, the list's bulk edits (`edit_products.php`, `handle_products_bulk.php`) end with `pg_bundle_refresh()`, its quick edit of the stock (`pg_pb_quick_update()`) answers code `bundle` (#2c).
+- A bundle's stock is never written directly: the inventory API answers 409 `bundle` (bulk items: status `bundle`), the barcode screens and the ERP stock count refuse it, the list's bulk edits (`edit_products.php`, `handle_products_bulk.php`) end with `pg_bundle_refresh()`, its quick edit of the stock (`pg_pb_quick_update()`) answers code `bundle` (#2826).
 
 ## How is a bundle sold? (#2691)
 - Counter sale (`local_sale_complete()`): a bundle line calls `pg_bundle_take_stock()` instead of the plain decrement: one `order_item_components` row per component (unit_cost from `erp_product_costs.avg_cost`), each tracked component goes down as in a plain sale; `$stock_left` is shared.
 - Marketplace import (`mp_order_take_stock()`) the same, source `marketplace`; its cancel restock (`mp_order_return_stock()`) puts back the snapshot's components (`pg_bundle_return_stock()`).
-- Checkout (#2c): `pg_order_complete_line_stock()` routes a line through `pg_bundle_sale_takes_components()` (pure: a bundle with an order item id) to `pg_bundle_take_stock(..., 'checkout', $stock_left)` and returns before the plain decrement.
+- Checkout (#2826): `pg_order_complete_line_stock()` routes a line through `pg_bundle_sale_takes_components()` (pure: a bundle with an order item id) to `pg_bundle_take_stock(..., 'checkout', $stock_left)` and returns before the plain decrement.
 - `check_inventory()`: a cart holding a bundle goes to `pg_bundle_check_inventory()`: every line against one stock pool (`pg_bundle_cart_allowance()`, lines in id order); other carts keep the old loop.
 
 ## What does the ERP do with a bundle line?

@@ -17,7 +17,7 @@ description: Bundles design note, part 2: hook points checked in the code, steps
 1. Done (#2646): schema 11.0.54, `includes/fn/bundles.php`, refresh, product screen card, delete refusal (`commerce/product-bundles.md`).
 2a. Done (#2691): counter sale through `pg_bundle_take_stock()`, combined demand in `check_inventory()`.
 2b. Done (#2707): marketplace import and restock, refusals in the inventory API, barcode, stock count, bulk edits, binning a component.
-2c. Done (#2c): checkout through `pg_order_complete_line_stock()`, the list's quick edit of a bundle's stock refused.
+2c. Done (#2826): checkout through `pg_order_complete_line_stock()`, the list's quick edit of a bundle's stock refused.
 3. Done (#2727): component snapshot on invoice lines, component moves on post, return and cancel, profit report (the key was widened in step 1).
 4. API fields, catalog tokens, list source, designer palette and flags, in two parts claimed when no open PR holds their files:
    - 4a Done (#2796): the `bundle` block on Product, bundle fields on `POST /products/{id}`, `sum` bundles refused by the price batch (`api/api-product-bundles.md`).
