@@ -14,6 +14,7 @@ description: What each hooked date/time field keeps (site text, ISO on native in
 ## How does the box write it?
 - Every store but a site-text date is hidden (`.pg-field-native`) behind one typed box in the site's order and clock (`.pg-date-box`, `.pg-datetime-box`, `.pg-time-box`). An empty box empties the store, a date alone is midnight.
 - Text that says no date or time: a text store keeps it as typed for the server to refuse; a native input cannot hold it and is emptied.
+- Focus a hooked field with `pgFields.focus(el)`: it lands on the box (whose calendar opens on focus), never on the hidden store (comment publish schedule, #2832).
 - The selects: a pick writes all three and fires a change on each that moved; a typed date the selects cannot hold (a year outside the list) is taken back.
 
 ## What bounds the calendar?

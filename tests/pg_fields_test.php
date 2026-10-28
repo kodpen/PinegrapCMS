@@ -789,6 +789,13 @@ function main() {
     md.win.pgFields.init(built);
     out.built = [built.pgFieldKind, md.calls.map(function (c) { return c[0] + ':' + c[1]; })];
 
+    // pgFields.focus() puts the focus where people type: the box after a
+    // hidden store, the field itself for a site-text date.
+    md.win.pgFields.focus(ndt);
+    var focusBox = md.doc.activeElement === ndtBox;
+    md.win.pgFields.focus(built);
+    out.focus = [focusBox, md.doc.activeElement === built];
+
     return out;
 }
 
@@ -1339,4 +1346,14 @@ function test_pg_fields_date_selects_and_built_fields()
 		'month, day and year selects stay posted and hidden behind one box named by the wrapper\'s label; the year list bounds the calendar; a pick writes the three selects with a change each; a year outside the list is taken back'
 	);
 	pg_assert_same(array('date', array('calendar:built')), $r['built'], 'a field a script builds is drawn by pgFields.init(field)');
+}
+
+function test_pg_fields_focus_goes_to_the_box_people_type_in()
+{
+	$r = pg_fields_test_result();
+	if (!$r) {
+		return;
+	}
+
+	pg_assert_same(array(true, true), $r['focus'], 'pgFields.focus() focuses the box after a hidden store (the calendar opens on focus) and a site-text date field itself');
 }
