@@ -645,7 +645,7 @@ echo
                         </div>
                         <div class="row">
                             <span class="col fg-secondary">' . h(lang('Payment Method')) . ':</span>
-                            <span class="col text-end">' . h((string) $order['payment_method']) . '</span>
+                            <span class="col text-end">' . h(pg_payment_method_label($order['payment_method'])) . '</span>
                         </div>' : '') . '
                         <hr>
                         <div class="fw-semibold">' . h($customer) . '</div>

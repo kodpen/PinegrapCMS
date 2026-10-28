@@ -346,7 +346,7 @@ function pg_commission_profile_list_row($profile)
         pg_list_cell('<button type="button" class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_recurring_commission_profile.php?id=' . (int) $profile['id'] . '\'"><i class="bi bi-pencil"></i></button>', 'align-middle text-start col-reorder-none'),
         pg_list_cell(h($profile['affiliate_name']), 'align-middle chart_label'),
         pg_list_cell(h($profile['affiliate_code'])),
-        pg_list_cell(($profile['enabled'] == 1) ? '<span class="material-icons">task_alt</span>' : '', 'align-middle text-center'),
+        pg_list_cell(($profile['enabled'] == 1) ? '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . h(lang('Yes')) . '</span>' : '', 'align-middle text-center'),
         pg_list_cell('<span class="badge theme-primary fw-light">' . pg_format_money($profile['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span>', 'align-middle text-end'),
         pg_list_cell(prepare_form_data_for_output($profile['start_date'], 'date')),
         pg_list_cell(h(pg_commission_list_periods()[(string) $profile['period']] ?? lang(ucwords((string) $profile['period'])))),

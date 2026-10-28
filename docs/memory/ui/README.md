@@ -125,6 +125,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-focus-ring.md: The panel's focus ring on Bootstrap 6's focus-ring tokens (step B9k): the --pg-focus-ring-* tokens, why the colour is not an alias, what was checked, which ring sizes wait for B10
 - panel-help-links.md: Where a panel screen's help goes: get_help_url.php maps script names (and list filters) to page#anchor on pinegrap.com; the 'help' property, language prefix, private label, F1, adding a new screen.
 - panel-hint-tooltip-or-popover.md: Panel hover hints: why a bare title turns into a large header-only popover, when to use a compact tooltip (no-popover + data-bs-toggle="tooltip") and how to keep a details popover short
+- panel-icon-marks-and-filter-rows.md: Ligature status marks with a hidden text, filter-link rows as nav not tablist, list-cell text visible instead of a title, payment method shown through pg_payment_method_label() on return screens
 - panel-layout-pitfalls.md: Panel CSS and JS traps that fail silently, with their files: hiding under CSS layers, menus in scroll boxes, flex min-height 0, nested :has(), drawers in forms, top layer, multiselect.
 - panel-save-shortcut.md: Panel Ctrl+S (backend.src.js) and Return in a text field: which form and button each submits, the button hint, disable_shortcut forms, a key a dialog handled, buttons on their own form
 - panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page

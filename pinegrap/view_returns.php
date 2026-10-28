@@ -118,7 +118,7 @@ foreach ($rows as $row) {
                 <td class="align-middle" data-order="' . $id . '">#' . $id . '</td>
                 <td class="align-middle"><a href="view_order.php?id=' . (int) $row['order_id'] . '">' . h($order_number) . '</a></td>
                 <td class="align-middle">' . h($row['customer']) . (((string) $row['email'] !== '') ? '<div class="small fg-secondary">' . h((string) $row['email']) . '</div>' : '') . '</td>
-                <td class="align-middle" title="' . h(implode(', ', $names)) . '">' . h(lang(array('string' => '{var:1} item(s)', 'vars' => array($quantity)))) . '</td>
+                <td class="align-middle">' . h(lang(array('string' => '{var:1} item(s)', 'vars' => array($quantity)))) . (($names !== array()) ? '<div class="small fg-secondary">' . h(implode(', ', $names)) . '</div>' : '') . '</td>
                 <td class="align-middle">' . h(isset($reasons[(string) $row['reason']]) ? $reasons[(string) $row['reason']] : '') . '</td>
                 <td class="align-middle"><span class="' . h(pg_return_panel_badge_class($status)) . '">' . h(pg_return_status_label($status)) . '</span></td>
                 <td class="align-middle" data-order="' . (int) $row['requested_at'] . '">' . h(pg_return_time_text($row['requested_at'])) . '</td>

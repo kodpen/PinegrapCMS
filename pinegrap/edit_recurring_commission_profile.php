@@ -61,7 +61,7 @@ if (!$_POST) {
         'icon'=>'store',
         'heading'=>lang('Edit Recurring Commission Profile'),
         'heading_description' => lang('Enable or disable this recurring commission profile.'),
-        'cancel'=>array('enable'=>'true','url'=>'view_commissions.php')
+        'cancel'=>array('enable'=>'true','url'=>'view_recurring_commission_profiles.php')
     ,
             'breadcrumb' => array(array('label' => lang('All Commission Profiles'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_recurring_commission_profiles.php'), array('label' => lang('Edit Recurring Commission Profile'))),
         ]) . '
@@ -98,10 +98,10 @@ if (!$_POST) {
                             </div> 
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
