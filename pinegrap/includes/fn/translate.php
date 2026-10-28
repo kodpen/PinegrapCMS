@@ -788,39 +788,61 @@ function pg_tr_text($text, $format = 'text', $kind = 'content')
 }
 
 /**
+ * The language a rendered document's <html> tag carries: a missing lang
+ * attribute is added and "en" is replaced, while any other language is kept.
+ * The designer's output carries the fixed lang="en" of
+ * generate_style_code_from_tree(), which says nothing about the page; another
+ * value was written into a style by hand and stands. Only the first <html>
+ * tag is read, so one quoted in the body is left alone.
+ *
+ * @param string $content  the rendered document
+ * @param string $language the language code to set
+ * @return string
+ */
+function pg_tr_html_lang($content, $language)
+{
+    $language = (string) $language;
+
+    if (($language === '') || !is_string($content) || ($content === '')) {
+        return $content;
+    }
+
+    return preg_replace_callback('~<html\b([^>]*)>~i', function ($match) use ($language) {
+        $attrs = $match[1];
+
+        if (!preg_match('~\slang=("|\')([^"\']*)\1~i', $attrs, $lang)) {
+            return '<html' . $attrs . ' lang="' . h($language) . '">';
+        }
+
+        if (strtolower(trim($lang[2])) !== 'en') {
+            return $match[0];
+        }
+
+        return '<html' . preg_replace('~\slang=("|\')[^"\']*\1~i', ' lang="' . h($language) . '"', $attrs, 1) . '>';
+    }, $content, 1);
+}
+
+/**
  * The assembled page on its way out: the language attributes, the address
  * prefix on the links to pages, the alternates, the language switchers. Also
  * runs for a page in the source language, which gets the alternates and the
- * switchers alone.
+ * switchers alone. The error screen leaves through here too
+ * (output_error()).
  *
  * @param string $content
  * @return string
  */
 function pg_tr_finalize($content)
 {
-    // A page in the site's own language says which one it is. The stored
-    // body carries the fixed lang="en" of generate_style_code_from_tree(),
-    // and the browser changes case by the page's language: "müşteri" in
-    // capitals is "MÜŞTERİ" in Turkish and "MÜŞTERI" in English. A language
-    // other than "en" written into a style by hand is left as it is; with
-    // languages set up, the language pass below sets every page's.
+    // A page in the site's own language says which one it is: the browser
+    // changes case by the page's language, and "müşteri" in capitals is
+    // "MÜŞTERİ" in Turkish and "MÜŞTERI" in English. With languages set up,
+    // the language pass below sets every page's.
     if (!pg_tr_active()) {
         $source = pg_tr_source_language();
 
         if ($source !== '' && $source !== 'en') {
-            $content = preg_replace_callback('~<html\b([^>]*)>~i', function ($match) use ($source) {
-                $attrs = $match[1];
-
-                if (!preg_match('~\slang=("|\')([^"\']*)\1~i', $attrs, $lang)) {
-                    return '<html' . $attrs . ' lang="' . h($source) . '">';
-                }
-
-                if (strtolower(trim($lang[2])) !== 'en') {
-                    return $match[0];
-                }
-
-                return '<html' . preg_replace('~\slang=("|\')[^"\']*\1~i', ' lang="' . h($source) . '"', $attrs, 1) . '>';
-            }, $content, 1);
+            $content = pg_tr_html_lang($content, $source);
         }
     }
 

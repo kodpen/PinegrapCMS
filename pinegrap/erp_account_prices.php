@@ -49,7 +49,7 @@ $account_id = is_scalar($_REQUEST['account_id'] ?? null) ? (int) $_REQUEST['acco
 $account = erp_account($account_id);
 
 if (!is_array($account)) {
-    output_error(lang('The account could not be found.') . ' <a href="erp_accounts.php">' . lang('Accounts') . '</a>');
+    output_error(lang('The account could not be found.') . ' <a href="erp_accounts.php">' . lang('Accounts') . '</a>', 404);
     exit();
 }
 
