@@ -25,27 +25,9 @@ $liveform = new liveform('view_contacts');
 
 // These are only ever appended to (or conditionally set) further below, so they have to start
 // out empty.
-$where = '';
-$join_table = '';
-$sql_columns = '';
-$output_rows = '';
 $output = '';
 $show_hide_contact_group_select = '';
 $output_merge_contacts_button = '';
-
-// NOTE: $number_of_screens is never calculated anywhere in this script, so the paging links
-// below never render.  Starting it at zero keeps that behaviour and stops the warning.
-$number_of_screens = 0;
-
-// if show contact groups is not set yet, then default it to off
-if (isset($_SESSION['software']['view_contacts']['show_contact_groups']) == false) {
-    $_SESSION['software']['view_contacts']['show_contact_groups'] = false;
-}
-
-// if advanced filters are not set yet, then default them to off
-if (isset($_SESSION['software']['view_contacts']['advanced_filters']) == false) {
-    $_SESSION['software']['view_contacts']['advanced_filters'] = false;
-}
 
 // if user has a user role and if the all duplicate contacts filter is on, then user does not have access to this filter so output error
 if (($user['role'] == 3) && (($_GET['filter'] ?? '') == 'all_duplicate_contacts')) {
@@ -71,63 +53,16 @@ foreach ($_REQUEST as $key => $value) {
     }
 }
 
-// if user has a user role, verify that user has access to contact groups that user has selected
-if ($user['role'] == 3) {
-    // if contact group has been selected and selected contact group is not [All]
-    if ((($_SESSION['software']['view_contacts']['contact_group'] ?? '')) && (($_SESSION['software']['view_contacts']['contact_group'] ?? '') != '[' . lang('All') . ']')) {
-        // if user does not have access to contact group, then unset contact group selection
-        if (validate_contact_group_access($user, ($_SESSION['software']['view_contacts']['contact_group'] ?? '')) == false) {
-            unset($_SESSION['software']['view_contacts']['contact_group']);
-        }
-    }
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/contact_list.php');
 
-    // if contact groups have been selected in advanced filters
-    if (($_SESSION['software']['view_contacts']['contact_groups'] ?? array())) {
-        // loop through all selected contact groups in order to check if user has access to contact groups
-        foreach (($_SESSION['software']['view_contacts']['contact_groups'] ?? array()) as $key => $value) {
-            // if user does not have access to contact group, then unset contact group selection
-            if (validate_contact_group_access($user, $value) == false) {
-                unset($_SESSION['software']['view_contacts']['contact_groups'][$key]);
-            }
-        }
-    }
-}
-
-// If there is a filter in the query string, save it
-// (one sent as an array, ?filter[]=x, counts as not given: it ended in an
-// error page)
-if (isset($_GET['filter']) && is_string($_GET['filter'])) {
-    $filter = $_GET['filter'];
-
-// else set the filter to default
-} else {
-    $filter = 'default';
-}
+// The view from the query string. A name the list does not know, or one sent
+// as an array (?filter[]=x), lists like All My Contacts.
+$filter = pg_contact_list_filter_name($_GET['filter'] ?? '');
 
 $filter_for_links = '&filter=' . $filter;
 $output_filter_for_links = h($filter_for_links);
 
-// build filters array
-$filters_in_array = 
-    array(
-        'all_my_contacts'=>lang('All My Contacts'),
-        'my_subscribers'=>lang('My Subscribers'),
-        'my_affiliates'=>lang('My Affiliates'),
-        'my_customers'=>lang('My Customers'),
-        'my_members'=>lang('My Members'),
-        'my_active_members'=>lang('My Active Members'),
-        'my_expired_members'=>lang('My Expired Members'),
-        'my_unregistered_members'=>lang('My Unregistered Members'),
-        'my_contacts_by_user'=>lang('My Contacts by User'),
-        'my_contacts_by_business_address'=>lang('My Contacts by Business Address'),
-        'my_contacts_by_home_address'=>lang('My Contacts by Home Address')
-    );
-
-// If user is a manager or above add the all duplicate contacts filter to the array
-if ($user['role'] < 3) {
-    $filters_in_array['all_duplicate_contacts'] = lang('All Duplicate Contacts');
-}
-
+$filters_in_array = pg_contact_list_filters($user['role']);
 
 // if show contact groups is true then set the session to show the groups
 if (($_GET['show_contact_groups'] ?? '') == 'true') {
@@ -145,443 +80,28 @@ if (($filter != 'all_duplicate_contacts') && (($_SESSION['software']['view_conta
     $output_organize_selected_button = '<button type="button" value="Organize Selected" class=" btn mb-1 mt-1 btn-solid theme-primary disabled" onclick="window.open(\'organize_contacts.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'organize\',\'contact\')"><span class="material-icons me-3">edit</span>' . lang(array('string'=>'Organize Selected') ) . '</button>';
 }
 
-// Switch between the subnav filters
-switch ($filter) {
-    case 'my_subscribers':
-        // If where is blank
-        if ($where == '') {
-            $where .= ' WHERE ';
-        
-        // else where is not blank, so add and
-        } else {
-            $where .= ' AND ';
-        }
-        
-        // Set the query filter.
-        $where .= ' ((contacts.email_address != "") AND (contacts.opt_in = "1"))';
-        
-        // Change the heading and subheading.
-        $heading = lang('My Subscribers');
-        $subheading = lang('All my contacts that can be recipients of an email campaign.');
-        break;
-        
-    case 'my_affiliates':
-        // If where is blank
-        if ($where == '') {
-            $where .= ' WHERE ';
-
-        // else where is not blank, so add and
-        } else {
-            $where .= ' AND ';
-        }
-
-        // Set the query filter.
-        $where .= "(contacts.affiliate_approved = '1')";
-
-        // Change the heading and subheading.
-        $heading = lang('My Affiliates');
-        $subheading = lang('All my contacts with approved affiliate status that can receive order commissions for referring visitors.');
-        break;
-
-    case 'my_customers':
-        // If where is blank
-        if ($where == '') {
-            $where .= ' WHERE ';
-
-        // else where is not blank, so add and
-        } else {
-            $where .= ' AND ';
-        }
-
-        // Join table
-        $join_table = 'LEFT JOIN orders ON orders.contact_id = contacts.id';
-
-        // Set the query filter.
-        $where .= "(orders.status != 'incomplete')";
-
-        // Change the heading and subheading.
-        $heading = lang('My Customers');
-        $subheading = lang('All my contacts who have submitted orders.');
-        break;
-
-    case 'my_members':
-
-        // If where is blank
-        if ($where == '') {
-            $where .= ' WHERE ';
-
-        // else where is not blank, so add and
-        } else {
-            $where .= ' AND ';
-        }
-
-        // Set the query filter.
-        $where .= "(contacts.member_id != '')";
-
-        // Set membership filter and label
-        $membership_filter = true;
-        $membership_status_label = lang('Member');
-
-        // Change the heading and subheading.
-        $heading = lang('My Members');
-        $subheading = lang('All my contacts with a member id.');
-        break;
-
-    case 'my_active_members':
-
-        // If where is blank
-        if ($where == '') {
-            $where .= ' WHERE ';
-
-        // else where is not blank, so add and
-        } else {
-            $where .= ' AND ';
-        }
-
-        // Set the query filter.
-        $where .= "((contacts.member_id != '') AND ((contacts.expiration_date >= CURRENT_DATE()) OR (contacts.expiration_date = '0000-00-00')))";
-
-        // Set membership filter and label
-        $membership_filter = true;
-        $membership_status_label = lang('Active Member');
-
-        // Change the heading and subheading.
-        $heading = lang('My Active Members');
-        $subheading = lang('All my contacts with a member id and a future expiration date.');
-        break;
-
-    case 'my_expired_members':
-
-        // If where is blank
-        if ($where == '') {
-            $where .= ' WHERE ';
-
-        // else where is not blank, so add and
-        } else {
-            $where .= ' AND ';
-        }
-
-        // Set the query filter.
-        $where .= "((contacts.member_id != '') AND (contacts.expiration_date < CURRENT_DATE()) AND (contacts.expiration_date != '0000-00-00'))";
-
-        // Set membership filter and label
-        $membership_filter = true;
-        $membership_status_label = lang('Expired Member');
-
-        // Change the heading and subheading.
-        $heading = lang('My Expired Members');
-        $subheading = lang('All my contacts with a member id and a lapsed expiration date.');
-        break;
-
-    case 'my_unregistered_members':
-
-        // If where is blank
-        if ($where == '') {
-            $where .= ' WHERE ';
-
-        // else where is not blank, so add and
-        } else {
-            $where .= ' AND ';
-        }
-
-        // Set the query filter.
-        $where .= "((contact_user.user_contact IS NULL) AND (contacts.member_id != '') AND ((contacts.expiration_date >= CURRENT_DATE()) OR (contacts.expiration_date = '0000-00-00')))";
-
-        // Set membership filter and label
-        $membership_filter = true;
-        $membership_status_label = lang('Unregistered Member');
-
-        // Change the heading and subheading.
-        $heading = lang('My Unregistered Members');
-        $subheading = lang('All my contacts with a member id and valid expiration date, but cannot login due to a missing user account.');
-        break;
-
-    case 'my_contacts_by_user':
-
-        // If where is blank
-        if ($where == '') {
-            $where .= ' WHERE ';
-
-        // else where is not blank, so add and
-        } else {
-            $where .= ' AND ';
-        }
-
-
-        // Set the query filter.
-        $where .= "(contacts.id = contact_user.user_contact)";
-
-        // Change the heading and subheading.
-        $heading = lang('My Contacts by User');
-        $subheading = lang('All my contacts that have also registered through the website.');
-        break;
-        
-    case 'my_contacts_by_business_address':
-        
-        $sql_columns = 
-            'contacts.business_address_1 as address_1,
-            contacts.business_address_2 as address_2,
-            contacts.business_city as city,
-            contacts.business_state as state,
-            contacts.business_country as country,
-            contacts.business_zip_code as zip_code,';
-        
-        // If where is blank
-        if ($where == '') {
-            $where .= ' WHERE ';
-
-        // else where is not blank, so add and
-        } else {
-            $where .= ' AND ';
-        }
-
-        // Set the query filter.
-        $where .= "((((contacts.first_name != '') AND (contacts.last_name != '')) OR (contacts.company != '')) AND ((contacts.business_address_1 != '') AND (contacts.business_city != '') AND (contacts.business_state != '') AND (contacts.business_zip_code != '')))";
-
-        // Change the heading and subheading.
-        $heading = lang('My Contacts by Business Address');
-        $subheading = lang('All my contacts that have a business address.');
-        break;
-        
-    case 'my_contacts_by_home_address':
-
-        $sql_columns = 
-            'contacts.home_address_1 as address_1,
-            contacts.home_address_2 as address_2,
-            contacts.home_city as city,
-            contacts.home_state as state,
-            contacts.home_country as country,
-            contacts.home_zip_code as zip_code,';
-
-        // If where is blank
-        if ($where == '') {
-            $where .= ' WHERE ';
-
-        // else where is not blank, so add and
-        } else {
-            $where .= ' AND ';
-        }
-
-
-        // Set the query filter.
-        $where .= "((((contacts.first_name != '') AND (contacts.last_name != '')) OR (contacts.company != '')) AND ((contacts.home_address_1 != '') AND (contacts.home_city != '') AND (contacts.home_state != '') AND (contacts.home_zip_code != '')))";
-
-        // Change the heading and subheading.
-        $heading = lang('My Contacts by Home Address');
-        $subheading = lang('All my contacts that have a home address.');
-        break;
-        
-    case 'all_duplicate_contacts':
-        $sql_columns = 
-            'contacts.business_address_1,
-            contacts.business_address_2,
-            contacts.business_city,
-            contacts.business_state,
-            contacts.business_country,
-            contacts.business_zip_code,
-            contacts.home_address_1,
-            contacts.home_address_2,
-            contacts.home_city,
-            contacts.home_state,
-            contacts.home_country,
-            contacts.home_zip_code,';
-        
-        $all_email_addresses = array();
-        
-        // get all e-mail addresses from database
-        $query = "SELECT email_address FROM contacts WHERE email_address != '' ORDER BY email_address ASC";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
-        // loop through the results in order to add them to array (we convert e-mail address to lowercase in order to prevent case comparison issues later)
-        while ($row = mysqli_fetch_assoc($result)) {
-            $all_email_addresses[] = mb_strtolower($row['email_address']);
-        }
-        
-        $checked_email_addresses = array();
-        $duplicate_email_addresses = array();
-        
-        // loop through all the email addresses to see if there are duplicates
-        foreach ($all_email_addresses as $email_address) {
-            // if the email address is in the checked array then it is a duplicate so add it to the duplicate email addresses array
-            if (in_array($email_address, $checked_email_addresses) == TRUE) {
-                $duplicate_email_addresses[] = $email_address;
-            }
-            
-            // add this email to the checked email addresses array
-            $checked_email_addresses[] = $email_address;
-        }
-        
-        // remove duplicate email addresses from array so that we can build an sql where statement
-        $duplicate_email_addresses = array_unique($duplicate_email_addresses);
-        
-        $duplicate_email_addresses_where_statement = '';
-        
-        // loop through the duplicate email addresses and build sql where statement so that we get only contacts that are duplicates
-        foreach ($duplicate_email_addresses as $email_address) {
-            if ($duplicate_email_addresses_where_statement != '') {
-                $duplicate_email_addresses_where_statement .= ' OR ';
-            }
-            
-            $duplicate_email_addresses_where_statement .= "(contacts.email_address = '" . escape($email_address) . "')";
-        }
-        
-        // If where is blank
-        if ($where == '') {
-            $where .= ' WHERE ';
-        
-        // else where is not blank, so add and
-        } else {
-            $where .= ' AND ';
-        }
-        
-        // if there are duplicate e-mail addresses to get then set the where statement to get them
-        if ($duplicate_email_addresses_where_statement != '') {
-            $where .= "(" . $duplicate_email_addresses_where_statement . ")";
-        
-        // else there are not any duplicate e-mail addresses so set the where statement to get a blank id, that way no contacts will be found for this screen
-        } else {
-            $where .= "(contacts.id = '')";
-        }
-        
-        // Change the heading and subheading.
-        $heading = lang('All Duplicate Contacts');
-        $subheading = lang('All contacts that have a duplicate email address.');
-        break;
-
-    case'all_my_contacts':
-    default:
-        // Change the heading and subheading.
-        $heading = lang('All My Contacts');
-        $subheading = lang('All contacts, subscribers, members, and affiliates that I can edit.');
-        break;
-}
-
-$my_contacts = 0;
-$all_contacts = 0;
-
-// Get contacts based on filter.
-$query =
-    "SELECT
-        COUNT(DISTINCT contacts.id)
-    FROM contacts
-    LEFT JOIN user AS contact_user ON contacts.id = contact_user.user_contact
-    $join_table
-    $where";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-$row = mysqli_fetch_row($result);
-$all_contacts = $row[0];
-
-// get all contact groups (the array will be used in multiple places in this script)
-$query =
-    "SELECT
-        id,
-        name
-    FROM contact_groups
-    ORDER BY name";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-$contact_groups = array();
-
-// create contact group selection list
-while ($row = mysqli_fetch_assoc($result)) {
-    // if user has access to this contact group, then add contact group to array
-    if (validate_contact_group_access($user, $row['id']) == true) {
-        $contact_groups[] = $row;
-    }
-}
-
-// If the user is a basic user
-if ($user['role'] == 3) {
-    // If where is blank
-    if ($where == '') {
-        $my_contacts_where = ' WHERE ';
-
-    // else where is not blank, so add and
-    } else {
-        $my_contacts_where = $where . ' AND ';
-    }
-
-    $my_contacts_where .= '(';
-
-    // Set loop counter to zero.
-    $loop_count = 0;
-
-    // Loop through the contact groups the user has access to.
-    foreach($contact_groups as $contact_group) {
-
-        // If the loop has ran at least once add OR.
-        if ($loop_count > 0) {
-            $my_contacts_where    .= ' OR ';
-        }
-
-        // Add the condition to the sql statement.
-        $my_contacts_where .= '(contact_group_id = ' . $contact_group['id'] . ')';
-
-        // Increment the counter. After once loop this doesn't matter any more.
-        $loop_count++;
-    }
-
-    $my_contacts_where .= ')';
-
-    // Get number of contacts that user has access to.
-    $query = "
-              SELECT
-                 COUNT(DISTINCT contacts_contact_groups_xref.contact_id)
-              FROM contacts
-              LEFT JOIN user AS contact_user ON contacts.id = contact_user.user_contact
-              LEFT JOIN contacts_contact_groups_xref ON contacts_contact_groups_xref.contact_id = contacts.id
-              $join_table
-              $my_contacts_where";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    $row = mysqli_fetch_row($result);
-    $my_contacts = $row[0];
-
-// If user is manager or above.
-} else {
-    $my_contacts = $all_contacts;
-}
-
-// if advanced filters value was passed in the query string
+// if advanced filters value was passed in the query string, turn them on or
+// off before the session filters are brought into shape below
 if (isset($_REQUEST['advanced_filters']) == true) {
-    // if advanced filters should be turned on
-    if ($_REQUEST['advanced_filters'] == 'true') {
-        $_SESSION['software']['view_contacts']['advanced_filters'] = true;
-
-    // else advanced filters should be turned off
-    } else {
-        $_SESSION['software']['view_contacts']['advanced_filters'] = false;
-    }
+    $_SESSION['software']['view_contacts']['advanced_filters'] = ($_REQUEST['advanced_filters'] == 'true');
 }
 
-// if contact group is not set yet, set default to [All]
-if (isset($_SESSION['software']['view_contacts']['contact_group']) == false) {
-    $_SESSION['software']['view_contacts']['contact_group'] = '[' . lang('All') . ']';
-}
+// The list's filters and rows are shared with the action that pages it
+// (includes/fn/contact_list.php).
+$contact_groups = pg_contact_list_groups($user);
+pg_contact_list_prepare($user, $contact_groups);
+$list_filter = pg_contact_list_filter($user, $filter, $contact_groups);
+$heading = $list_filter['heading'];
+$subheading = $list_filter['subheading'];
+$advanced_filters = $list_filter['advanced'];
+$contact_groups_filter = $list_filter['group_filter'];
+$sort_columns = $list_filter['sort_columns'];
+$sort_default = $list_filter['sort_default'];
+$sort_levels = $list_filter['sort_levels'];
 
-// if filter is set to all dupliate contacts then set the advanced filter varable to false so that none of the logic is ran for the filters,
-// and set the contact groups filter to all so that all contact groups are used
-if ($filter == 'all_duplicate_contacts') {
-    $advanced_filters = FALSE;
-    $contact_groups_filter = '[' . lang('All') . ']';
-    
-// else use the session values
-} else {
-    $advanced_filters = ($_SESSION['software']['view_contacts']['advanced_filters'] ?? '');
-    $contact_groups_filter = ($_SESSION['software']['view_contacts']['contact_group'] ?? '');
-}
-
-// if advanced filters are on and contact groups have not already been set in session, set default for contact groups in advanced filters
-if (($advanced_filters == true) && (isset($_SESSION['software']['view_contacts']['contact_groups']) == false)) {
-    // if contact group is set to all, prepare contact groups so all will be checked
-    if ($contact_groups_filter == '[' . lang('All') . ']') {
-        foreach ($contact_groups as $contact_group) {
-            $_SESSION['software']['view_contacts']['contact_groups'][] = $contact_group['id'];
-        }
-
-    // else contact group is not set to all
-    } else {
-        $_SESSION['software']['view_contacts']['contact_groups'][] = $contact_groups_filter;
-    }
+if ($list_filter['membership_label'] !== null) {
+    $membership_filter = true;
+    $membership_status_label = $list_filter['membership_label'];
 }
 
 $decrease_year = array();
@@ -600,30 +120,9 @@ $increase_day = array();
 $output_date_range_time = '';
 $show_hide_date_range = '';
 
-// find the oldest timestamp (this will be used later in a couple of places)
-$query = "SELECT MIN(timestamp) FROM contacts";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-$row = mysqli_fetch_row($result);
-$oldest_timestamp = $row[0];
-
-// Default range: the oldest contact's date to today. Each date part is checked
-// on its own, for every filter: the year select further below loops forever on
-// a non-numeric stop year, and since the value is kept in the session, one bad
-// address would otherwise break the list for the rest of the session.
-$date_defaults = array(
-    'start_month' => date('m', $oldest_timestamp),
-    'start_day'   => date('d', $oldest_timestamp),
-    'start_year'  => date('Y', $oldest_timestamp),
-    'stop_month'  => date('m'),
-    'stop_day'    => date('d'),
-    'stop_year'   => date('Y'),
-);
-
-foreach ($date_defaults as $key => $value) {
-    if (!preg_match('/^\d{1,4}$/', (string) ($_SESSION['software']['view_contacts'][$key] ?? ''))) {
-        $_SESSION['software']['view_contacts'][$key] = $value;
-    }
-}
+// The oldest contact's date starts the year picker (pg_contact_list_prepare()
+// has already put the date range in shape).
+$oldest_timestamp = (int) db_value("SELECT MIN(timestamp) FROM contacts");
 
 // if the filter is not set to all duplicate contacts, then run logic to get date range
 if ($filter != 'all_duplicate_contacts') {
@@ -743,204 +242,12 @@ if ($filter != 'all_duplicate_contacts') {
     $increase_day['stop_day'] = $increase_day['new_day'];
     $increase_day['stop_year'] = $increase_day['new_year'];
 
-    // get timestamps for start and stop dates
-    $start_timestamp = mktime(0, 0, 0, (int)($_SESSION['software']['view_contacts']['start_month'] ?? ''), (int)($_SESSION['software']['view_contacts']['start_day'] ?? ''), (int)($_SESSION['software']['view_contacts']['start_year'] ?? ''));
-    $stop_timestamp = mktime(23, 59, 59, (int)($_SESSION['software']['view_contacts']['stop_month'] ?? ''), (int)($_SESSION['software']['view_contacts']['stop_day'] ?? ''), (int)($_SESSION['software']['view_contacts']['stop_year'] ?? ''));
-
-    // If where is blank
-    if ($where == '') {
-        $where .= ' WHERE ';
-
-    // else where is not blank, so add and
-    } else {
-        $where .= ' AND ';
-    }
-
-    $where .= "(contacts.timestamp >= $start_timestamp) AND (contacts.timestamp <= $stop_timestamp)";
-    
     // The range on screen, in the site's date order.
     $output_date_range_time = h(pg_list_period_heading($_SESSION['software']['view_contacts'] ?? array()));
 
 // else this is the all duplicate contacts filter so hide the date range
 } else {
     $show_hide_date_range = ' d-none';
-}
-
-// if advanced filters are on, prepare SQL for checked contact groups
-if ($advanced_filters == true) {
-    // if at least one contact group is checked
-    if (is_array(($_SESSION['software']['view_contacts']['contact_groups'] ?? array())) == true) {
-        $where_contact_groups = '';
-
-        foreach (($_SESSION['software']['view_contacts']['contact_groups'] ?? array()) as $contact_group) {
-            // if this is not the first contact group, then add an OR before SQL
-            if ($where_contact_groups) {
-                $where_contact_groups .= " OR";
-            }
-
-            // if contact group is [None]
-            if ($contact_group == '[' . lang('None') . ']') {
-                $where_contact_groups .= " (contacts_contact_groups_xref.contact_group_id IS NULL)";
-
-            // else contact group is not [None]
-            } else {
-                $where_contact_groups .= " (contacts_contact_groups_xref.contact_group_id = '" . escape($contact_group) . "')";
-            }
-        }
-
-        if ($where_contact_groups) {
-            $where .= " AND ($where_contact_groups)";
-        } else {
-            $where .= " AND (0 = 1)";
-        }
-
-    // else no contact groups are checked, so use SQL that will result in no contacts being found
-    } else {
-        $where .= " AND (0 = 1)";
-    }
-
-// else advanced filters are off, so use contact group picklist
-} else {
-    // if user has selected [All] and user is greater than user role, then do not add any where clause for contact group, because all contact groups are valid
-    if (($contact_groups_filter == '[' . lang('All') . ']') && ($user['role'] < 3)) {
-        // do nothing
-
-    // else if user has selected [All] and user has a user role, then prepare where clause for all contact groups that user has access to
-    } elseif (($contact_groups_filter == '[' . lang('All') . ']') && ($user['role'] == 3)) {
-        $where_contact_groups = '';
-
-        foreach ($contact_groups as $contact_group) {
-            // if this is not the first contact group, then add an OR before SQL
-            if ($where_contact_groups) {
-                $where_contact_groups .= " OR";
-            }
-
-            $where_contact_groups .= " (contacts_contact_groups_xref.contact_group_id = '" . escape($contact_group['id']) . "')";
-        }
-
-        if ($where_contact_groups) {
-            $where .= " AND ($where_contact_groups)";
-        } else {
-            $where .= " AND (0 = 1)";
-        }
-
-    // else if user selected [None]
-    } elseif ($contact_groups_filter == '[' . lang('None') . ']') {
-        $where .= " AND (contacts_contact_groups_xref.contact_group_id IS NULL)";
-
-    // else user selected a contact group
-    } else {
-        $where .= " AND (contacts_contact_groups_xref.contact_group_id = '" . escape($contact_groups_filter) . "')";
-    }
-}
-
-
-// if advanced filters are on, prepare SQL
-if ($advanced_filters == true) {
-    if (($_SESSION['software']['view_contacts']['salutation'] ?? '')) {$where .= " AND (contacts.salutation LIKE '%" . escape(($_SESSION['software']['view_contacts']['salutation'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['first_name'] ?? '')) {$where .= " AND (contacts.first_name LIKE '%" . escape(($_SESSION['software']['view_contacts']['first_name'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['last_name'] ?? '')) {$where .= " AND (contacts.last_name LIKE '%" . escape(($_SESSION['software']['view_contacts']['last_name'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['suffix'] ?? '')) {$where .= " AND (contacts.suffix LIKE '%" . escape(($_SESSION['software']['view_contacts']['suffix'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['nickname'] ?? '')) {$where .= " AND (contacts.nickname LIKE '%" . escape(($_SESSION['software']['view_contacts']['nickname'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['company'] ?? '')) {$where .= " AND (contacts.company LIKE '%" . escape(($_SESSION['software']['view_contacts']['company'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['title'] ?? '')) {$where .= " AND (contacts.title LIKE '%" . escape(($_SESSION['software']['view_contacts']['title'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['department'] ?? '')) {$where .= " AND (contacts.department LIKE '%" . escape(($_SESSION['software']['view_contacts']['department'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['office_location'] ?? '')) {$where .= " AND (contacts.office_location LIKE '%" . escape(($_SESSION['software']['view_contacts']['office_location'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['business_address_1'] ?? '')) {$where .= " AND (contacts.business_address_1 LIKE '%" . escape(($_SESSION['software']['view_contacts']['business_address_1'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['business_address_2'] ?? '')) {$where .= " AND (contacts.business_address_2 LIKE '%" . escape(($_SESSION['software']['view_contacts']['business_address_2'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['business_city'] ?? '')) {$where .= " AND (contacts.business_city LIKE '%" . escape(($_SESSION['software']['view_contacts']['business_city'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['business_state'] ?? '')) {$where .= " AND (contacts.business_state LIKE '%" . escape(($_SESSION['software']['view_contacts']['business_state'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['business_country'] ?? '')) {$where .= " AND (contacts.business_country LIKE '%" . escape(($_SESSION['software']['view_contacts']['business_country'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['business_zip_code'] ?? '')) {$where .= " AND (contacts.business_zip_code LIKE '%" . escape(($_SESSION['software']['view_contacts']['business_zip_code'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['business_phone'] ?? '')) {$where .= " AND (contacts.business_phone LIKE '%" . escape(($_SESSION['software']['view_contacts']['business_phone'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['business_fax'] ?? '')) {$where .= " AND (contacts.business_fax LIKE '%" . escape(($_SESSION['software']['view_contacts']['business_fax'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['home_address_1'] ?? '')) {$where .= " AND (contacts.home_address_1 LIKE '%" . escape(($_SESSION['software']['view_contacts']['home_address_1'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['home_address_2'] ?? '')) {$where .= " AND (contacts.home_address_2 LIKE '%" . escape(($_SESSION['software']['view_contacts']['home_address_2'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['home_city'] ?? '')) {$where .= " AND (contacts.home_city LIKE '%" . escape(($_SESSION['software']['view_contacts']['home_city'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['home_state'] ?? '')) {$where .= " AND (contacts.home_state LIKE '%" . escape(($_SESSION['software']['view_contacts']['home_state'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['home_country'] ?? '')) {$where .= " AND (contacts.home_country LIKE '%" . escape(($_SESSION['software']['view_contacts']['home_country'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['home_zip_code'] ?? '')) {$where .= " AND (contacts.home_zip_code LIKE '%" . escape(($_SESSION['software']['view_contacts']['home_zip_code'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['home_phone'] ?? '')) {$where .= " AND (contacts.home_phone LIKE '%" . escape(($_SESSION['software']['view_contacts']['home_phone'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['home_fax'] ?? '')) {$where .= " AND (contacts.home_fax LIKE '%" . escape(($_SESSION['software']['view_contacts']['home_fax'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['mobile_phone'] ?? '')) {$where .= " AND (contacts.mobile_phone LIKE '%" . escape(($_SESSION['software']['view_contacts']['mobile_phone'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['email_address'] ?? '')) {$where .= " AND (contacts.email_address LIKE '%" . escape(($_SESSION['software']['view_contacts']['email_address'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['website'] ?? '')) {$where .= " AND (contacts.website LIKE '%" . escape(($_SESSION['software']['view_contacts']['website'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['lead_source'] ?? '')) {$where .= " AND (contacts.lead_source LIKE '%" . escape(($_SESSION['software']['view_contacts']['lead_source'] ?? '')) . "%')";}
-
-    // If the subscribers filter is not on.
-        if ($filter != 'my_subscribers') {
-            if (($_SESSION['software']['view_contacts']['opt_in_status'] ?? '') == 'opt_in') {
-                $where .= " AND (contacts.opt_in = '1')";
-            } else if (($_SESSION['software']['view_contacts']['opt_in_status'] ?? '') == 'opt_out') {
-                $where .= " AND (contacts.opt_in = '0')";
-            }
-
-            if (($_SESSION['software']['view_contacts']['description'] ?? '')) {$where .= " AND (contacts.description LIKE '%" . escape(($_SESSION['software']['view_contacts']['description'] ?? '')) . "%')";}
-
-            if (($_SESSION['software']['view_contacts']['opt_in_status'] ?? '') == 'opt_in') {
-                $where .= " AND (contacts.opt_in = '1')";
-            } else if (($_SESSION['software']['view_contacts']['opt_in_status'] ?? '') == 'opt_out') {
-                $where .= " AND (contacts.opt_in = '0')";
-            }
-        }
-     // If any of the Membership filters are not on.
-        if (isset($membership_filter) == false) {
-            // prepare SQL for membership status
-            switch (($_SESSION['software']['view_contacts']['membership_status'] ?? '')) {
-
-                case 'member':
-                    $where .=
-                        " AND (contacts.member_id != '')
-                        AND (contacts.member_id IS NOT NULL)";
-                    break;
-
-                case 'active_member':
-                    $where .=
-                        " AND (contacts.member_id != '')
-                        AND (contacts.member_id IS NOT NULL)
-                        AND
-                        (
-                            (contacts.expiration_date >= CURRENT_DATE())
-                            OR (contacts.expiration_date = '0000-00-00')
-                            OR (contacts.expiration_date IS NULL)
-                        )";
-
-                    break;
-
-                case 'expired_member':
-                    $where .=
-                        " AND (contacts.member_id != '')
-                        AND (contacts.member_id IS NOT NULL)
-                        AND (contacts.expiration_date < CURRENT_DATE())
-                        AND (contacts.expiration_date != '0000-00-00')
-                        AND (contacts.expiration_date IS NOT NULL)";
-                    break;
-
-                case 'unregistered_member':
-                    $where .=
-                        " AND (contact_user.user_contact IS NULL)
-                        AND (contacts.member_id != '')
-                        AND ((contacts.expiration_date >= CURRENT_DATE())
-                        OR (contacts.expiration_date = '0000-00-00'))";
-                    break;
-
-                case 'non_member':
-                    $where .=
-                        " AND
-                        (
-                            (contacts.member_id = '')
-                            OR (contacts.member_id IS NULL)
-                        )";
-                    break;
-            }
-        }
-    if (($_SESSION['software']['view_contacts']['member_id'] ?? '')) {$where .= " AND (contacts.member_id LIKE '%" . escape(($_SESSION['software']['view_contacts']['member_id'] ?? '')) . "%')";}
-    if (($_SESSION['software']['view_contacts']['expiration_date'] ?? '')) {$where .= " AND (contacts.expiration_date = '" . escape(prepare_form_data_for_input(($_SESSION['software']['view_contacts']['expiration_date'] ?? ''), 'date')) . "')";}
-
-    if (AFFILIATE_PROGRAM == true) {
-        if (($_SESSION['software']['view_contacts']['affiliate_name'] ?? '')) {$where .= " AND (contacts.affiliate_name LIKE '%" . escape(($_SESSION['software']['view_contacts']['affiliate_name'] ?? '')) . "%')";}
-        if (($_SESSION['software']['view_contacts']['affiliate_code'] ?? '')) {$where .= " AND (contacts.affiliate_code LIKE '%" . escape(($_SESSION['software']['view_contacts']['affiliate_code'] ?? '')) . "%')";}
-    }
 }
 
 // if user requested to export contacts, export contacts
@@ -994,15 +301,12 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 contacts.affiliate_name,
                 contacts.affiliate_code,
                 contacts.affiliate_commission_rate
-             FROM contacts
-             LEFT JOIN user AS contact_user ON contacts.id = contact_user.user_contact
-             LEFT JOIN contacts_contact_groups_xref ON contacts.id = contacts_contact_groups_xref.contact_id
-             $join_table
-             $where
+             " . $list_filter['from'] . "
+             " . $list_filter['where'] . "
              GROUP BY contacts.id
              ORDER BY contacts.last_name, contacts.first_name";
 
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, $list_filter['params']) or output_error('Query failed.');
     while($row = mysqli_fetch_assoc($result)) {
         // for each value in the row
         foreach ($row as $key => $value) {
@@ -1033,13 +337,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     // get all contacts that need to be deleted
     $query =
         "SELECT contacts.id
-        FROM contacts
-        LEFT JOIN user AS contact_user ON contacts.id = contact_user.user_contact
-        LEFT JOIN contacts_contact_groups_xref ON contacts.id = contacts_contact_groups_xref.contact_id
-        $join_table
-        $where
+        " . $list_filter['from'] . "
+        " . $list_filter['where'] . "
         GROUP BY contacts.id";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, $list_filter['params']) or output_error('Query failed.');
 
     $number_of_contacts = mysqli_num_rows($result);
 
@@ -1178,13 +479,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
             contacts.user,
             contact_user.user_id as user_id,
             contacts.timestamp
-        FROM contacts
-        LEFT JOIN user AS contact_user ON contacts.id = contact_user.user_contact
-        LEFT JOIN contacts_contact_groups_xref ON contacts.id = contacts_contact_groups_xref.contact_id
-        $join_table
-        $where
+        " . $list_filter['from'] . "
+        " . $list_filter['where'] . "
         ORDER BY contacts.email_address ASC";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, $list_filter['params']) or output_error('Query failed.');
     while($row = mysqli_fetch_assoc($result)) {
         $contacts_to_merge[] = $row;
     }
@@ -1232,36 +530,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $years[] = $i;
     }
 
-    // if sort was set, update session
-    if (isset($_REQUEST['sort'])) {
-        // store sort in session
-        $_SESSION['software']['view_contacts']['sort'] = $_REQUEST['sort'];
-
-        // clear order
-        $_SESSION['software']['view_contacts']['order'] = '';
-    }
-
-    // if order was set, update session (an order sent as an array counts as not given)
-    if (isset($_REQUEST['order']) && is_string($_REQUEST['order'])) {
-        $_SESSION['software']['view_contacts']['order'] = sql_order_direction($_REQUEST['order'], '');
-    }
-
-    // If a screen was passed and it is a positive integer, then use it.
-    // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
-    if (
-        isset($_REQUEST['screen'])
-        and $_REQUEST['screen']
-        and is_numeric($_REQUEST['screen'])
-        and $_REQUEST['screen'] > 0
-        and $_REQUEST['screen'] == round($_REQUEST['screen'])
-    ) {
-        $screen = (int) $_REQUEST['screen'];
-
-    // Otherwise, use the default, which is the first screen.
-    } else {
-        $screen = 1;
-    }
-
     // if the advanced filters are not on, then prepare contact group picklist
     if ($advanced_filters == false) {
         $output_contact_group_options = '';
@@ -1305,518 +573,33 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $output_contact_group_options = '<option value="[' . lang('All') . ']"' . $selected . '>[' . lang('All') . ']</option>' . $output_contact_group_options;
     }
     
-    // The columns this view sorts by, in the order the table shows them. The
-    // address filters show the address columns in place of the e-mail, user
-    // and opt-in ones; pg_list_state() falls back to the default for any
-    // column the view does not show.
-    if ($filter == 'my_contacts_by_business_address') {
-        $address_prefix = 'contacts.business_';
-    } elseif ($filter == 'my_contacts_by_home_address') {
-        $address_prefix = 'contacts.home_';
-    } else {
-        $address_prefix = '';
-    }
+    // The rows of the other views come one page at a time from the
+    // contact_list_rows action (includes/panel/lists.php). The duplicates view
+    // orders the copies of an address in PHP, so it is read and printed whole.
+    $output_rows = '';
+    $output_list_attributes = ' data-pg-list-action="contact_list_rows" data-pg-list-params="' . h(encode_json(array('filter' => $filter))) . '"';
 
-    $sort_columns = array(
-        'first_name' => lang('First Name'),
-        'last_name'  => lang('Last Name'),
-        'company'    => lang('Company'),
-    );
-
-    // What each sort code orders by. Only codes pg_list_state() let through
-    // reach pg_list_order_by(), and it writes nothing but these.
-    $sort_sql = array(
-        'first_name'    => 'contacts.first_name',
-        'last_name'     => 'contacts.last_name',
-        'company'       => 'contacts.company',
-        'email'         => 'contacts.email_address',
-        'last_modified' => 'contacts.timestamp',
-    );
-
-    if ($address_prefix === '') {
-        $sort_columns['email'] = lang('Email');
-        $sort_columns['user'] = lang('User');
-        $sort_columns['opt_in'] = lang('Opt-In');
-
-        $sort_sql['user'] = 'contact_user.user_username';
-        $sort_sql['opt_in'] = 'contacts.opt_in';
-    } else {
-        $sort_columns['city'] = lang('City');
-        $sort_columns['state'] = lang('State');
-        $sort_columns['zip_code'] = lang('Zip Code');
-        $sort_columns['country'] = lang('Country');
-
-        $sort_sql['city'] = $address_prefix . 'city';
-        $sort_sql['state'] = $address_prefix . 'state';
-        $sort_sql['zip_code'] = $address_prefix . 'zip_code';
-        $sort_sql['country'] = $address_prefix . 'country';
-    }
-
-    $sort_columns['last_modified'] = lang('Last Modified');
-    $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
-
-    // Duplicates are listed by e-mail address so that the copies of a contact
-    // sit together. The sort kept for the other views is left as it is.
     if ($filter == 'all_duplicate_contacts') {
-        $sort_levels = array(array('sort' => 'email', 'order' => 'asc'));
-    } else {
-        $list_state = pg_list_state('view_contacts', $sort_columns, $sort_default);
-        $sort_levels = $list_state['sorts'];
-    }
+        $output_list_attributes = '';
+        $query = "SELECT " . pg_contact_list_select($filter) . "
+            " . $list_filter['from'] . "
+            " . $list_filter['where'] . "
+            GROUP BY contacts.id
+            ORDER BY " . $list_filter['order_by'];
+        $result = db_q($query, $list_filter['params']) or output_error('Query failed.');
 
-    $order_by = pg_list_order_by($sort_levels, $sort_sql);
-    
+        $contacts = array();
 
-
-    // get total number of results for all screens, so that we can output links to different screens
-    $query =
-        "SELECT contacts.id
-        FROM contacts
-        LEFT JOIN user AS contact_user ON contacts.id = contact_user.user_contact
-        LEFT JOIN contacts_contact_groups_xref ON contacts.id = contacts_contact_groups_xref.contact_id
-        $join_table
-        $where
-        GROUP BY contacts.id";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    $number_of_results = mysqli_num_rows($result);
-
-   
-
-    // if there are more than one screen
-    $output_screen_links = '';
-
-    if ($number_of_screens > 1) {
-
-        $output_screen_links .= '
-            <nav class="mt-5 navigation " aria-label="data pagination"> 
-                <ul class="pagination pagination-sm flex-wrap justify-content-center">';
-        // build Previous button if necessary
-        $previous = $screen - 1;
-        // if previous screen is greater than zero, output previous link
-        if ($previous > 0) {
-            $output_screen_links .= '<li class="page-item mt-1 mb-1"><a class="page-link" href="view_contacts.php?filter=' . h($filter) . '&screen=' . $previous . $output_filter_for_links . '" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a></li>';
-        }else{
-            $output_screen_links .= '<li class="page-item mt-1 mb-1 disabled"><a class="page-link" href="#!" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a></li>';
+        while ($row = mysqli_fetch_assoc($result)) {
+            $contacts[] = $row;
         }
 
-        // build HTML output for links to screens
-        for ($i = 1; $i <= $number_of_screens; $i++) {
-            // if this number is the current screen, then select option
-            if ($i == $screen) {
-                $active = 'active"';
-            // else this number is not the current screen, so do not select option
-            } else {
-                $active = '';
-            }
-            $output_screen_links .= '<li class="page-item mt-1 mb-1 ' . $active . '"><a class="page-link " href="view_contacts.php?filter=' . h($filter) . '&screen=' . $i . $output_filter_for_links . '">' . $i . '</a></li>';
-        }
-        // build Next button if necessary
-        $next = $screen + 1;
-        // if next screen is less than or equal to the total number of screens, output next link
-        if ($next <= $number_of_screens) {
-            $output_screen_links .= '<li class="page-item mt-1 mb-1"><a class="page-link" href="view_contacts.php?filter=' . h($filter) . '&screen=' . $next . $output_filter_for_links . '" aria-label="Next"><span aria-hidden="true">&raquo;</span></a></li>';
-        }else{
-            $output_screen_links .= '<li class="page-item mt-1 mb-1 disabled"><a class="page-link" href="#!" aria-label="Next"><span aria-hidden="true">&raquo;</span></a></li>';
-        }
-        $output_screen_links .= '</ul></nav>';
-    }
-
-    // get results for just this screen
-    $query =
-        "SELECT
-            contacts.image,
-            contacts.file_id,
-            contacts.id,
-            contacts.first_name,
-            contacts.last_name,
-            contacts.company,
-            contacts.business_phone,
-            contacts.home_phone,
-            contacts.mobile_phone,
-            contacts.email_address,
-            contacts.opt_in,
-            $sql_columns
-            last_modified_user.user_username as last_modified_username,
-            contact_user.user_id as user_id,
-            contact_user.user_username as user_username,
-            contact_user.user_role as user_role,
-            contacts.timestamp
-        FROM contacts
-        LEFT JOIN user AS contact_user ON contacts.id = contact_user.user_contact
-        LEFT JOIN user AS last_modified_user ON contacts.user = last_modified_user.user_id
-        LEFT JOIN contacts_contact_groups_xref ON contacts.id = contacts_contact_groups_xref.contact_id
-        $join_table
-        $where
-        GROUP BY contacts.id
-        ORDER BY $order_by";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-    $contacts = array();
-
-    // loop through all contacts, so they can be added to array
-    while ($row = mysqli_fetch_assoc($result)) {
-        $contacts[] = $row;
-    }
-    
-    // if the filter is set to all duplicate contacts then organize the contacts to be sorted by e-mail address, and then by child orphan relationship
-    if ($filter == 'all_duplicate_contacts') {
-        $child_contacts = array();
-        $organized_contacts = array();
-        
-        // loop through the contacts to put children contacts in their own array
-        foreach ($contacts as $key => $contact) {
-            // if the contact has a user id then it is a child so add it to the child contacts array
-            if ($contact['user_id'] != '') {
-                $child_contacts[$key] = $contact;
-            }
-        }
-        
-        // loop through all contacts to organize them
-        foreach ($contacts as $contact) {
-            // loop through all child contacts to see if there are any children for this contact, and add any matches to the organzied contacts array
-            foreach ($child_contacts as $key => $child_contact) {
-                // if the child's email address is the same as the contact's email address, then add it to the organized contacts array, 
-                // and remove it from the other arrays so that it isn't found again
-                if ($child_contact['email_address'] == $contact['email_address']) {
-                    $organized_contacts[] = $child_contact;
-                    
-                    // remove contact from arrays so that this child contact is not found again
-                    unset($contacts[$key]);
-                    unset($child_contacts[$key]);
-                }
-            }
-            
-            // if this contact is not a child then add it to the organized contacts array
-            if ($contact['user_id'] == '') {
-                $organized_contacts[] = $contact;
-            }
-        }
-        
-        // if there are organized contacts, then unset the contacts array and set it to the organized contacts array
-        if (count($organized_contacts) > 0) {
-            unset($contacts);
-            $contacts = $organized_contacts;
+        foreach (pg_contact_list_rows($user, $filter, $contact_groups, true, pg_contact_list_duplicates_order($contacts)) as $list_row) {
+            $output_rows .= pg_list_row_html($list_row);
         }
     }
-    
-    // The image heading is set for each row below; an empty list (no duplicates)
-    // leaves it empty.
-    $output_image_header = '';
 
-    // loop through all contacts that need to be outputted, so they can be outputted
-    foreach ($contacts as $contact) {
-        // Set link url
-        $output_link_url = 'edit_contact.php?id=' . $contact['id'] . '&send_to=' . h(escape_javascript(REQUEST_URL));
-
-        $output_opt_in_row = '';
-        $output_phone_row = '';
-        $output_email_address_row = '';
-        $output_image_header ='';
-        $output_image_column ='';
-		//default show image
-		$show_image = true;
-		if($show_image == true){
-			$output_image_header ='<th>' . lang(array('string'=>'Image') ) . '</th>';
-            if($contact['file_id'] == 0){
-                if($contact['image']){
-                    // output image
-                    $output_image_column ='<td class="align-middle text-start"><img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h($contact['image']) . '" /></td>';
-                }else{
-                    // No picture: the letters of the name (includes/fn/contacts.php).
-                    $output_image_column ='<td class="align-middle text-start">' . pg_avatar_markup_for($contact['first_name'] ?? '', $contact['last_name'] ?? '', $contact['company'] ?? '', $contact['id'] ?? '', 'pg-avatar-50') . '</td>';
-                }
-            }else{
-                //check file
-                $query = 
-                "SELECT 
-                    files.name
-                FROM files 
-                WHERE files.id = ?";
-                $result = db_q($query, array((string) $contact['file_id'])) or output_error('Query failed.');
-                $file = mysqli_fetch_array($result);
-                $file_name = $file['name'];
-                $output_image_column ='<td class="align-middle text-start"><img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' .  PATH . h($file_name) . '" /></td>';
-            }
-		}
-
-
-        // if the filter is not set to either my contacts by business address or my contacts by home address then output my contacts by user, opt in, phone and e-mail address rows
-        if (($filter != 'my_contacts_by_business_address') && ($filter != 'my_contacts_by_home_address')) {
-            $user_display = '';
-            
-            // if there is a user for this contact
-            if ($contact['user_id']) {
-                // if the editor user is an administrator or the editor user has access to edit this user, then prepare username with link
-                if (($user['role'] == 0) || ($user['role'] < $contact['user_role'])) {
-                    $user_display = '<a class="pg-link-secondary" href="edit_user.php?id=' . $contact['user_id'] . '">' . h($contact['user_username']) . '</a>';
-
-                // else the editor user does not have access to edit this user, so prepare username without link
-                } else {
-                    $user_display = h($contact['user_username']);
-                }
-            }
-
-            // Show the user column column.
-            $output_user_row = '<td class="align-middle">' . $user_display . '</td>';
-
-            // If the contact is opted in then prepare the checkmark.
-            if ($contact['opt_in']) {
-                $opt_in_display = '<span class="material-icons">task_alt</span>';
-            } else {
-                $opt_in_display = '';
-            }
-            
-            // output opt in row
-            $output_opt_in_row = '<td class="align-middle text-center">' . $opt_in_display . '</td>';
-            
-            $output_phone_numbers = '';
-            
-            // build phone numbers to be outputted in the Phone row
-            if ($contact['business_phone'] != '') {
-                $output_phone_numbers .= lang('Business') . ': ' . h($contact['business_phone']);
-            }
-            
-            if ($contact['home_phone'] != '') {
-                if ($output_phone_numbers != '') {
-                    $output_phone_numbers .= '<br />';
-                }
-                $output_phone_numbers .= lang('Home') . ': ' . h($contact['home_phone']);
-            }
-            
-            if ($contact['mobile_phone'] != '') {
-                if ($output_phone_numbers != '') {
-                    $output_phone_numbers .= '<br />';
-                }
-                $output_phone_numbers .= lang('Mobile') . ': ' . h($contact['mobile_phone']);
-            }
-            
-            // output phone row
-            $output_phone_row  = '<td class="align-middle">' . $output_phone_numbers . '</td>';
-            
-            // output email address row
-            $output_email_address_row  = '<td class="align-middle"><a class="pg-link-secondary" href="mailto:' . h($contact['email_address']) . '">' . h($contact['email_address']) . '</a></td>';
-        }
-        
-        $output_contact_groups = '';
-        
-        // If show groups is on, or the filter is set to all duplicate contacts then get contact groups.
-        if ((($_SESSION['software']['view_contacts']['show_contact_groups'] ?? '') == true) || ($filter == 'all_duplicate_contacts')) {
-            // get contact groups that this contact is in
-            $query = "SELECT contact_group_id FROM contacts_contact_groups_xref WHERE contact_id = ?";
-            $result = db_q($query, array((string) $contact['id'])) or output_error('Query failed.');
-
-            $contact_groups_for_contact = array();
-
-            // loop through all contacts, so they can be added to array
-            while ($row = mysqli_fetch_assoc($result)) {
-                $contact_groups_for_contact[] = $row['contact_group_id'];
-            }
-
-            // loop through all contact groups that this user has access to in order to prepare list of contact groups to output for this contact
-            foreach ($contact_groups as $contact_group) {
-                // if contact is in this contact group, then prepare to output contact group
-                if (in_array($contact_group['id'], $contact_groups_for_contact) == true) {
-                    if ($output_contact_groups) {
-                        $output_contact_groups .= ',<br />';
-                    }
-
-                    $output_contact_groups .= h($contact_group['name']);
-                }
-            }
-        }
-        
-        $output_address_rows = '';
-        
-        // If the filter is set to contacts by business address or contacts by home address then output address rows
-        if (($filter == 'my_contacts_by_business_address') || ($filter == 'my_contacts_by_home_address')) {
-            // set the street address line 1
-            $output_street_address = h($contact['address_1']);
-            
-            // if there is a second street address, then combine address line 1 with address line 2 to get the full street address
-            if ($contact['address_2'] != '') {
-                $output_street_address .= ',<br />' . h($contact['address_2']);
-            }
-            
-            // output address rows
-            $output_address_rows = 
-                '<td class="align-middle">' . $output_street_address . '</td>
-                <td class="align-middle">' . h($contact['city']) . '</td>
-                <td class="align-middle">' . h($contact['state']) . '</td>
-                <td class="align-middle">' . h($contact['zip_code']) . '</td>
-                <td class="align-middle">' . h($contact['country']) . '</td>';
-        }
-        
-        // if the all duplicate contacts filter is on then build address row and output the appropriate table layout
-        if ($filter == 'all_duplicate_contacts') {
-            // dynamically build a business address string to be outputted
-            $business_address = '';
-            
-            if ($contact['business_address_1'] != '') {
-                $business_address .= $contact['business_address_1'];
-            }
-            
-            if ($contact['business_address_2'] != '') {
-                if ($business_address != '') {
-                    $business_address .= ' ';
-                }
-                
-                $business_address .= $contact['business_address_2'];
-            }
-            
-            if ($contact['business_city'] != '') {
-                if ($business_address != '') {
-                    $business_address .= ' ';
-                }
-                
-                $business_address .= $contact['business_city'];
-            }
-            
-            if ($contact['business_state'] != '') {
-                if ($business_address != '') {
-                    $business_address .= ', ';
-                }
-                
-                $business_address .= $contact['business_state'];
-            }
-            
-            if ($contact['business_zip_code'] != '') {
-                if ($business_address != '') {
-                    $business_address .= ' ';
-                }
-                
-                $business_address .= $contact['business_zip_code'];
-            }
-            
-            if ($contact['business_country'] != '') {
-                if ($business_address != '') {
-                    $business_address .= ' ';
-                }
-                
-                $business_address .= $contact['business_country'];
-            }
-            
-            if ($business_address != '') {
-                $business_address = lang('Business') . ': ' . $business_address;
-            }
-            
-            // remove any double spaces that may have been entered or created
-            $business_address = str_replace("  ", " ", $business_address);
-            
-            // dynamically build a home address string to be outputted
-            $home_address = '';
-            
-            if ($contact['home_address_1'] != '') {
-                $home_address .= $contact['home_address_1'];
-            }
-            
-            if ($contact['home_address_2'] != '') {
-                if ($home_address != '') {
-                    $home_address .= ' ';
-                }
-                
-                $home_address .= $contact['home_address_2'];
-            }
-            
-            if ($contact['home_city'] != '') {
-                if ($home_address != '') {
-                    $home_address .= ' ';
-                }
-                
-                $home_address .= $contact['home_city'];
-            }
-            
-            if ($contact['home_state'] != '') {
-                if ($home_address != '') {
-                    $home_address .= ', ';
-                }
-                
-                $home_address .= $contact['home_state'];
-            }
-            
-            if ($contact['home_zip_code'] != '') {
-                if ($home_address != '') {
-                    $home_address .= ' ';
-                }
-                
-                $home_address .= $contact['home_zip_code'];
-            }
-            
-            if ($contact['home_country'] != '') {
-                if ($home_address != '') {
-                    $home_address .= ' ';
-                }
-                
-                $home_address .= $contact['home_country'];
-            }
-            
-            if ($home_address != '') {
-                $home_address = lang('Home') . ': ' . $home_address;
-            }
-            
-            // remove any double spaces that may have been entered or created
-            $home_address = str_replace("  ", " ", $home_address);
-            
-            $output_address_row = '';
-            
-            // if there is a business address then output it
-            if ($business_address != '') {
-                $output_address_row .= h($business_address);
-            }
-            
-            // if there is a home address then output it
-            if ($home_address != '') {
-                // if there is a business address then add a break tag to get the home address on it's own line
-                if ($business_address != '') {
-                    $output_address_row .= '<br />';
-                }
-                
-                $output_address_row .= h($home_address);
-            }
-            
-            $output_address_row = '<td class="align-middle">' . $output_address_row . '</td>';
-            
-            $output_rows .=
-                '<tr id="' . $contact['id'] . '">
-                    <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="contacts[]" value="' . $contact['id'] . '" class="checkbox" /></td>
-                    <td class="align-middle text-start col-reorder-none action-buttons">
-                        <button type="button" class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                        <!--<button type="button" class="btn-data-control m-1 btn btn-outline theme-danger border-2" title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
-                    </td>
-                    ' . $output_image_column . '
-                    ' . $output_email_address_row . '
-                    <td class="align-middle">' . h($contact['first_name']) . '</td>
-                    <td class="align-middle">' . h($contact['last_name']) . '</td>
-                    <td class="align-middle">' . h($contact['company']) . '</td>
-                    ' . $output_address_row . '
-                    ' . $output_phone_row . '
-                    ' . $output_user_row . '
-                    <td class="align-middle">' . $output_contact_groups . '</td>
-                    <td class="align-middle">' . get_relative_time(array('timestamp' => $contact['timestamp'])) . '<br />' . h($contact['last_modified_username'] ?? '') . '</td>
-                </tr>';
-            
-        // else output the standard table layout
-        } else {
-            $output_rows .=
-                '<tr id="' . $contact['id'] . '">
-                    <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="contacts[]" value="' . $contact['id'] . '" class="checkbox" /></td>
-                    <td class="align-middle text-start col-reorder-none action-buttons">
-                        <button type="button" class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                        <!--<button type="button" class="btn-data-control m-1 btn btn-outline theme-danger border-2" title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
-                    </td>
-                    ' . $output_image_column . '
-                    <td class="align-middle">' . h($contact['first_name']) . '</td>
-                    <td class="align-middle">' . h($contact['last_name']) . '</td>
-                    <td class="align-middle">' . h($contact['company']) . '</td>
-                    ' . $output_phone_row . '
-                    ' . $output_email_address_row . '
-                    ' . $output_user_row . '
-                    ' . $output_opt_in_row . '
-                    ' . $output_address_rows . '
-                    <td class="align-middle">' . $output_contact_groups . '</td>
-                    <td class="align-middle">' . get_relative_time(array('timestamp' => $contact['timestamp'])) . '<br />' . h($contact['last_modified_username'] ?? '') . '</td>
-                </tr>';
-        }
-    }
+    $output_image_header = '<th>' . lang(array('string'=>'Image') ) . '</th>';
 
     // if the advanced filters are off
     if ($advanced_filters == false) {
@@ -1880,6 +663,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
 
         // If the Opt in status is not on display the opt in select box.
         if ($filter != 'my_subscribers') {
+            // only the chosen status is marked
+            $opt_in_status_any_selected = '';
+            $opt_in_status_opt_in_selected = '';
+            $opt_in_status_opt_out_selected = '';
 
             switch (($_SESSION['software']['view_contacts']['opt_in_status'] ?? '')) {
                 case 'any':
@@ -1902,7 +689,15 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
 
         // If any of the Membership filters are not on.
         if (isset($membership_filter) == false) {
-            // prepare selection for membership status pick list
+            // prepare selection for membership status pick list; only the
+            // chosen one is marked
+            $membership_status_any_selected = '';
+            $membership_status_member_or_expired_member_selected = '';
+            $membership_status_member_selected = '';
+            $membership_status_expired_member_selected = '';
+            $membership_status_unregistered_member_selected = '';
+            $membership_status_non_member_selected = '';
+
             switch (($_SESSION['software']['view_contacts']['membership_status'] ?? '')) {
                 case 'any':
                     $membership_status_any_selected = ' selected="selected"';
@@ -2330,7 +1125,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                             <input type="hidden" name="add_to_contact_groups" />
                             <input type="hidden" name="remove_from_contact_groups" />
                             <input type="hidden" name="send_to" value="' . h(REQUEST_URL) . '" />
-                            <table class="chart table-hover table " style="width:100%;display:none">
+                            <table class="chart table-hover table " style="width:100%;display:none"' . $output_list_attributes . '>
                                 <thead>
                                     <tr>' . $output_table_headings . '</tr>
                                 </thead>

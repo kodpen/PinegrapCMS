@@ -707,7 +707,7 @@ function test_comment_thread_rules_states()
 	// count (no row) reads 0, as the block's string '0' did.
 	$queries = array();
 	$read = pg_comments_rows(5, null, pg_comments_viewer_decision(false, null, false, 0, null), array(), comment_thread_rules_test_fetch(array(array(), array(array('COUNT(*)' => null))), $queries));
-	pg_assert_same(array('count' => 0, 'has_featured' => false, 'featured_view' => false, 'rows' => array()), $read, 'no counts, no rows');
+	pg_assert_same(array('count' => 0, 'has_featured' => false, 'featured_view' => false, 'rows' => array(), 'review' => false), $read, 'no counts, no rows');
 	pg_assert_same(3, count($queries), 'three statements');
 
 	// Rows keyed otherwise come back as a list.
@@ -776,6 +776,49 @@ function test_comment_thread_rules_rows_thread_key()
 	pg_assert_same($legacy, comment_thread_rules_test_squash($queries[2]), 'thread_key off');
 	pg_assert_same(2, substr_count($queries[0] . $queries[1], 'COUNT(*)'), 'the counts are not touched');
 	pg_assert_false(strpos($queries[0] . $queries[1], 'item_type') !== false, 'nor do they read the key');
+}
+
+// A product's reviews read verified purchases only, newest first, with no
+// featured count or filter: two statements, both with the verified filter.
+// Any other thread keeps the block's statements; a product thread on a site
+// without the review columns (no database here) is not a review.
+function test_comment_thread_rules_rows_review()
+{
+	comment_thread_rules_test_db_stub();
+
+	$viewer = pg_comments_viewer_decision(false, null, false, 0, null);
+	$thread = array('item_type' => 'product', 'item_id' => '9');
+	$rows = array(array('id' => '8', 'created_timestamp' => '200'), array('id' => '7', 'created_timestamp' => '100'));
+
+	$queries = array();
+	$read = pg_comments_rows('5', $thread, $viewer, array('featured' => 'filter', 'view' => null, 'review' => true), comment_thread_rules_test_fetch(array(array(array('COUNT(*)' => '2')), $rows), $queries));
+	pg_assert_same(2, count($queries), 'no featured count');
+	pg_assert_same(array('count' => 2, 'has_featured' => false, 'featured_view' => false, 'rows' => $rows, 'review' => true), $read, 'verified reviews, nothing featured');
+
+	$count = comment_thread_rules_test_squash($queries[0]);
+	$select = comment_thread_rules_test_squash($queries[1]);
+	pg_assert_same("SELECT COUNT(*) FROM comments WHERE comments.page_id = '5' AND (item_id = '9') AND (item_type = 'product') AND ((comments.published = '1')) AND (comments.verified_order_id > 0)", $count, 'the count is of verified purchases');
+	pg_assert_contains("AND ((comments.published = '1')) AND (comments.verified_order_id > 0) ORDER BY comments.created_timestamp DESC", $select, 'the rows: verified, newest first');
+	pg_assert_false(strpos($select, "featured = '1') ORDER") !== false, 'no featured filter');
+
+	// Staff read every review, still verified only.
+	$queries = array();
+	pg_comments_rows('5', $thread, array('staff' => true), array('review' => true), comment_thread_rules_test_fetch(array(), $queries));
+	pg_assert_contains("AND (item_type = 'product') AND (comments.verified_order_id > 0) ORDER BY comments.created_timestamp DESC", comment_thread_rules_test_squash($queries[1]), 'staff: verified only');
+
+	// Not a review: the block's three statements.
+	$legacy = array_map('comment_thread_rules_test_squash', comment_thread_rules_test_legacy_statements('5', comment_thread_rules_test_legacy_where(true, 'product', '9', false, false, false, null), false));
+
+	foreach (array('review false' => array('review' => false), 'not ready' => array(), 'review not true' => array('review' => '1')) as $name => $options) {
+		$queries = array();
+		$read = pg_comments_rows('5', $thread, $viewer, $options, comment_thread_rules_test_fetch(array(), $queries));
+		pg_assert_same($legacy, array_map('comment_thread_rules_test_squash', $queries), $name . ': the block\'s statements');
+		pg_assert_false($read['review'], $name . ': not a review');
+	}
+
+	$queries = array();
+	$read = pg_comments_rows('5', null, $viewer, array(), comment_thread_rules_test_fetch(array(), $queries));
+	pg_assert_false($read['review'], 'a page-level read is no review');
 }
 
 // -- thread order ------------------------------------------------------------

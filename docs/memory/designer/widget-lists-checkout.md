@@ -26,3 +26,4 @@ module: widgets_lists_checkout
 
 ## What is left?
 - A browser round is owed.
+- The per-item gift card and schedule lists (`cart.item_gift_cards`, `cart.item_schedule`) stay the express order's own fields (#2383: W24 gives display lists first); offered on `express_order` only if a site asks.

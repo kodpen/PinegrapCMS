@@ -405,6 +405,17 @@ function _apply_shopping_cart_bindings(&$node, $context)
         pg_sw_cart_gift_card_control($node, isset($context['cart_form_id']) ? (string)$context['cart_form_id'] : '');
     }
 
+    // ── Product form controls (the cart.item_form_fields list) ──────────
+    // The same split: names, values, limits and whether a field is required
+    // are the system's, row by row (pg_sw_cart_form_control()); a field box
+    // without one of its controls gets it back.
+    if (pg_sw_list_is_sourced($node) && $node['props']['source'] === 'cart.item_form_fields') {
+        pg_sw_cart_form_restore($node);
+    }
+    if (isset($bindings['value']) && pg_sw_cart_form_control_kind($bindings['value']) !== '') {
+        pg_sw_cart_form_control($node, isset($context['cart_form_id']) ? (string)$context['cart_form_id'] : '');
+    }
+
     // ── Recurring schedule controls (the cart.item_schedule list) ───────
     // The same split: the names, values and the gateway's rules are the
     // system's (pg_sw_cart_schedule_control()); a schedule without a
@@ -422,6 +433,7 @@ function _apply_shopping_cart_bindings(&$node, $context)
         }
         unset($child);
         pg_sw_cart_gift_card_label_for($node);
+        pg_sw_form_label_for($node, array_keys(pg_sw_cart_form_control_tags()));
     }
 }
 
@@ -1190,6 +1202,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                 // else, so the designer's `^^__item_form_data_html^^`
                 // token quietly disappears for non-form rows.
                 $form_data_html = '';
+                $form_blocks    = array();
                 if (!empty($r['product_has_form'])) {
                     // Pass $cart_form_id so the inputs use HTML5 form="..."
                     // and submit alongside the cart-update form even when
@@ -1199,18 +1212,17 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                     // block would be copy the operator never wrote and can't
                     // change from the product editor.
                     $cart_form_name = isset($r['form_name']) ? trim((string)$r['form_name']) : '';
-                    $rendered_form = _pg_render_cart_item_form_data(
+                    // The same blocks feed the product form part's lists
+                    // (cart.item_forms, widgets_lists_cart.php).
+                    $form_blocks = _pg_cart_item_form(
                         (int)$r['item_id'],
                         (int)$r['product_id'],
                         $qty,
                         (string)$r['product_name'],
                         (string)$r['form_quantity_type'],
-                        $cart_form_id,
                         $cart_form_name !== '' ? (string)lang($cart_form_name) : ''
                     );
-                    if ($rendered_form !== '') {
-                        $form_data_html = $rendered_form;
-                    }
+                    $form_data_html = _pg_render_cart_item_form_html((int)$r['item_id'], $form_blocks, $cart_form_id);
                 }
 
                 // Gift-card recipient block. Gift cards are NOT driven by
@@ -1348,6 +1360,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                     'line_total_block'         => _pg_format_price_with_discount($orig_line_cents, $line_cents, $currency_symbol),
                     // Per-row product-form data block (read-only review).
                     'form_data_html'           => $form_data_html,
+                    'form'                     => $form_blocks,
                     'gift_card_html'           => $gift_card_html,
                     'gift_cards'               => $gift_cards,
                     'recurring_editable'       => $recurring_editable ? 1 : 0,
@@ -1538,7 +1551,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     if ($loop_template !== '' && $static_html !== '' && $cart_count > 0) {
         // The row blocks the item template places (pg_sw_placed()).
         $_cart_row_tree    = array('type' => 'root', 'children' => $split['loop_children']);
-        $_cart_form_placed = pg_sw_placed($_cart_row_tree, array('__item_form_data_html'));
+        $_cart_form_placed = pg_sw_placed($_cart_row_tree, array('__item_form_data_html', 'cart.item_forms'));
         $_cart_gift_placed = pg_sw_placed($_cart_row_tree, array('__item_gift_card_html', 'cart.item_gift_cards'));
         $_cart_sched_placed = pg_sw_placed($_cart_row_tree, array('__item_recurring_schedule_html', 'cart.item_schedule'));
         foreach ($items as $idx => $item) {

@@ -157,7 +157,7 @@
     }
     function tagHtml(label, action, index, id, variant) {
         return '<span class="badge rounded-pill theme-' + variant + ' d-inline-flex align-items-center gap-1 fw-normal">' + esc(label) +
-            '<a href="#" class="fg-white text-decoration-none" data-on="' + action + '" data-index="' + index + '" data-id="' + id + '" title="' + esc(L.remove) + '">&times;</a></span>';
+            '<a href="#" class="fg-reset text-decoration-none" data-on="' + action + '" data-index="' + index + '" data-id="' + id + '" title="' + esc(L.remove) + '">&times;</a></span>';
     }
 
     // ── condition rows ───────────────────────────────────────────────────
@@ -444,11 +444,11 @@
                 '<div class="row g-3 align-items-center">' +
                 '<div class="col-auto fg-secondary small">' + esc(L.tierFrom) + '</div>' +
                 '<div class="col-6 sm:col-4 md:col-3 xl:col-2">' +
-                '<div class="input-group input-group-sm"><input type="text" class="form-control text-end" inputmode="decimal" value="' + esc(centsToInput(t.min)) + '" placeholder="0.00" data-on="tier-min" data-index="' + i + '" data-tier="' + k + '"><span class="input-group-text">' + esc(C.currency) + '</span></div>' +
+                '<label class="form-control form-control-sm form-adorn form-adorn-end"><span class="form-adorn-text" aria-hidden="true">' + esc(C.currency) + '</span><input type="text" class="form-ghost text-end" inputmode="decimal" value="' + esc(centsToInput(t.min)) + '" placeholder="0.00" aria-label="' + esc(L.tierMinLabel) + '" data-on="tier-min" data-index="' + i + '" data-tier="' + k + '"></label>' +
                 '</div>' +
                 '<div class="col-auto fg-secondary small">→</div>' +
                 '<div class="col-4 sm:col-3 md:col-2 xl:col-1">' +
-                '<div class="input-group input-group-sm"><input type="text" class="form-control text-end" inputmode="numeric" value="' + esc(t.percent || '') + '" data-on="tier-percent" data-index="' + i + '" data-tier="' + k + '"><span class="input-group-text">%</span></div>' +
+                '<label class="form-control form-control-sm form-adorn form-adorn-end"><span class="form-adorn-text" aria-hidden="true">%</span><input type="text" class="form-ghost text-end" inputmode="numeric" value="' + esc(t.percent || '') + '" aria-label="' + esc(L.tierPercentLabel) + '" data-on="tier-percent" data-index="' + i + '" data-tier="' + k + '"></label>' +
                 '</div>' +
                 '<div class="col-auto"><button type="button" class="btn btn-sm btn-text theme-secondary" data-on="tier-remove" data-index="' + i + '" data-tier="' + k + '" title="' + esc(L.remove) + '">' + icon('bi-x-lg') + '</button></div>' +
                 '</div></div>';

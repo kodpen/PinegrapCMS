@@ -686,14 +686,14 @@ foreach ($records as $r) {
 
     $table_rows .= '<tr>
         <td>
-            <button class="btn btn-sm btn-outline theme-warning" data-bs-toggle="dialog" data-bs-target="#editModal" '.$attrs.'>
+            <button class="btn btn-sm btn-outline theme-warning" data-bs-toggle="dialog" data-bs-target="#editModal" aria-label="' . h(lang('Edit')) . '" '.$attrs.'>
                 <i class="bi bi-pencil-square"></i>
             </button>
             <form method="post" style="display:inline" onsubmit="event.preventDefault(); var f=this; pgConfirm({title:\'' . h(escape_javascript(lang('Delete'))) . '\', message:\'' . h(escape_javascript(lang('Are you sure you want to delete this record?'))) . '\', confirmText:\'' . h(escape_javascript(lang('Delete'))) . '\', cancelText:\'' . h(escape_javascript(lang('Cancel'))) . '\', variant:\'danger\'}).then(function(ok){if(ok) f.submit();}); return false;">
                 '.get_token_field().'
                 <input type="hidden" name="action" value="delete_record">
                 <input type="hidden" name="id" value="' . htmlspecialchars((string)$r['id'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '">
-                <button type="submit" class="btn btn-sm btn-outline theme-danger"><i class="bi bi-trash"></i></button>
+                <button type="submit" class="btn btn-sm btn-outline theme-danger" aria-label="' . h(lang('Delete')) . '"><i class="bi bi-trash"></i></button>
             </form>
         </td>
         <td><span class="badge theme-info">' . htmlspecialchars((string)$r['type'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '</span></td>
@@ -915,7 +915,7 @@ print pg_page_shell([
     <form method="post" class="d-contents">
       '.get_token_field().'
       <input type="hidden" name="action" value="add_record">
-      <div class="dialog-header"><h5 class="dialog-title">' . lang('Add DNS Record') . '</h5><button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>
+      <div class="dialog-header"><h5 class="dialog-title">' . lang('Add DNS Record') . '</h5><button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button></div>
       <div class="dialog-body">
         <div class="mb-5"><label class="form-label">' . lang('Type') . '</label>
           <select name="type" id="add_type" class="form-control" required>
@@ -964,7 +964,7 @@ print pg_page_shell([
       '.get_token_field().'
       <input type="hidden" name="action" value="edit_record">
       <input type="hidden" name="id" id="edit_id">
-      <div class="dialog-header"><h5 class="dialog-title">' . lang('Edit DNS Record') . '</h5><button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>
+      <div class="dialog-header"><h5 class="dialog-title">' . lang('Edit DNS Record') . '</h5><button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button></div>
       <div class="dialog-body">
         <div class="mb-5"><label>' . lang('Type') . '</label>
           <select name="type" id="edit_type" class="form-control" required>

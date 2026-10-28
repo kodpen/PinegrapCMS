@@ -45,16 +45,14 @@ function pg_test_form_adorn_cases()
 {
 	$root = dirname(__DIR__) . '/pinegrap/';
 
-	return array(
+	$cases = array(
 		array($root . 'add_gift_card.php', "'id' => 'amount'", '<label for="amount"', 'form-adorn-end', ''),
 		array($root . 'edit_gift_card.php', "'id' => 'balance'", '<label for="balance"', 'form-adorn-end', ''),
 		array($root . 'workspace_template.php', 'id="ws_tpl_icon"', 'for="ws_tpl_icon"', '', 'id="ws_tpl_icon_preview"'),
 		array($root . 'includes/workspace/mcp_catalogue.php', 'id="ws_mcp_probe_alias"', 'for="ws_mcp_probe_alias"', 'form-control-sm', '>@</span>'),
 		array($root . 'includes/workspace/mcp.php', 'id="\' . $prefix . \'alias"', 'for="\' . $prefix . \'alias"', 'form-control-sm', '>@</span>'),
-		array($root . 'add_ad_region.php', "'id'=>'transition_duration'", '<label class="form-label" for="transition_duration"', 'form-adorn-end', "lang('milliseconds')"),
-		array($root . 'edit_ad_region.php', "'id'=>'transition_duration'", '<label class="form-label" for="transition_duration"', 'form-adorn-end', "lang('milliseconds')"),
-		array($root . 'add_ad_region.php', "'id'=>'slideshow_interval'", '<label class="form-label" for="slideshow_interval"', 'form-adorn-end', "lang('seconds')"),
-		array($root . 'edit_ad_region.php', "'id'=>'slideshow_interval'", '<label class="form-label" for="slideshow_interval"', 'form-adorn-end', "lang('seconds')"),
+		array($root . 'includes/forms/ad_region_form.php', "'id'=>'transition_duration'", '<label class="form-label" for="transition_duration"', 'form-adorn-end', "lang('milliseconds')"),
+		array($root . 'includes/forms/ad_region_form.php', "'id'=>'slideshow_interval'", '<label class="form-label" for="slideshow_interval"', 'form-adorn-end', "lang('seconds')"),
 		// Toolbar search fields: the input names itself with aria-label.
 		array($root . 'view_folders.php', 'id="filter_input"', '', 'form-control-sm', 'bi bi-search'),
 		array($root . 'view_folders.php', 'id="transfer_filter"', '', 'form-control-sm', 'bi bi-search'),
@@ -67,6 +65,69 @@ function pg_test_form_adorn_cases()
 		array($root . 'erp_purchase_orders.php', 'name="search"', '', 'form-control-sm', 'bi bi-search'),
 		array($root . 'erp_stock_minimums.php', 'name="search"', '', 'form-control-sm', 'bi bi-search'),
 		array($root . 'includes/forms/contact_form.php', 'id="affiliate_commission_rate" class', '<label for="affiliate_commission_rate" class="form-label"', 'form-adorn-end', '>%</span>'),
+		array($root . 'includes/settings/screen.php', 'id="pg_settings_filter"', '', 'form-control-sm', 'bi bi-search'),
+		array($root . 'view_orders.php', 'id="tax_rate_for_parasut"', '<label class="form-label" for="tax_rate_for_parasut"', 'form-adorn-end', '>%</span>'),
+		array($root . 'includes/local_sale.php', 'id="pg_sale_received"', 'for="pg_sale_received"', 'form-control-lg', 'BASE_CURRENCY_SYMBOL'),
+		array($root . 'includes/designer_screen.php', 'id="sdh-filter"', '', 'form-control-sm form-adorn rounded-pill', 'bi bi-search'),
+		// Offer tier fields: no <label for>, so each input names itself.
+		array($root . 'assets/js/offer_editor.js', 'data-on="tier-min"', '', 'form-control-sm form-adorn form-adorn-end', 'esc(C.currency)'),
+		array($root . 'assets/js/offer_editor.js', 'data-on="tier-percent"', '', 'form-control-sm form-adorn form-adorn-end', '>%</span>'),
+	);
+
+	// Settings cards: every single add-on field keeps its <label for> above the wrapper.
+	foreach (pg_test_form_adorn_settings_fields() as $file => $ids) {
+		foreach ($ids as $id => $add_on) {
+			$cases[] = array($root . 'includes/settings/' . $file, 'id="' . $id . '"', 'for="' . $id . '"', 'form-adorn-end', $add_on);
+		}
+	}
+
+	return $cases;
+}
+
+/**
+ * The settings card fields drawn as form-adorn, by file: input id => add-on.
+ */
+function pg_test_form_adorn_settings_fields()
+{
+	return array(
+		'api.php' => array('api_log_retention_days' => "lang('day(s)')"),
+		'appearance.php' => array('dashboard_refresh' => "lang('seconds')"),
+		'contact.php' => array('mailchimp_sync_days' => "lang('days in the past')"),
+		'features.php' => array(
+			'image_quality_webp' => '>%</span>',
+			'image_quality_avif' => '>%</span>',
+			'image_product_max_dimension' => "lang('pixels')",
+			'image_product_min_dimension' => "lang('pixels')",
+			'image_file_resize_trigger' => "lang('pixels')",
+			'image_file_max_dimension' => "lang('pixels')",
+			'page_revisions_days' => "lang('days')",
+			'page_cache_ttl' => "lang('seconds')",
+		),
+		'firewall.php' => array(
+			'waf_log_retention_days' => "lang('day(s)')",
+			'waf_log_max_rows' => "lang('row(s)')",
+			'waf_rate_limit_requests' => "lang('per minute')",
+			'waf_rate_limit_sensitive' => "lang('per minute')",
+			'waf_rate_limit_api' => "lang('per minute')",
+			'waf_inflight_limit' => "lang('requests')",
+			'waf_auto_ban_threshold' => "lang('events / 10 min')",
+			'waf_auto_ban_minutes' => "lang('minute(s)')",
+			'waf_auto_ban_max_minutes' => "lang('minute(s)')",
+		),
+		'prep.php' => array(
+			'login_throttle_minutes' => "lang('minutes')",
+			'login_throttle_lockout' => "lang('minutes')",
+			'login_throttle_captcha_after' => "lang('failures')",
+		),
+		'security.php' => array(
+			'\' . $form_limit_input[0] . \'' => 'h($form_limit_input[3])',
+			'audit_log_retention_years' => "lang('years')",
+		),
+		'seo.php' => array(
+			'tracking_code_duration' => "lang('day(s)')",
+			'visitor_retention_days' => "lang('day(s)')",
+			'visitor_ip_days' => "lang('day(s)')",
+		),
 	);
 }
 
@@ -166,5 +227,56 @@ function test_bs6_form_adorn_workspace_toolbar_searches()
 			pg_assert_contains("'bi-search'", $before, $file . ': ' . $placeholder);
 			pg_assert_contains("setAttribute('aria-label'", $after, $file . ': ' . $placeholder);
 		}
+	}
+}
+
+function test_bs6_form_adorn_settings_cards_keep_no_single_add_on_group()
+{
+	$root = dirname(__DIR__) . '/pinegrap/includes/settings/';
+
+	// The groups left are the ones form-adorn cannot hold: two add-ons
+	// (language address prefix), a hint on the add-on (membership warning) and
+	// buttons (SEO). commerce.php is converted on its own.
+	$left = array('languages.php' => 1, 'security.php' => 1, 'seo.php' => 2);
+
+	foreach (array('api.php', 'appearance.php', 'contact.php', 'features.php', 'firewall.php', 'languages.php', 'prep.php', 'screen.php', 'security.php', 'seo.php') as $file) {
+		$source = (string) file_get_contents($root . $file);
+
+		pg_assert_same(isset($left[$file]) ? $left[$file] : 0, preg_match_all('/class="input-group[ "]/', $source), $file . ': input-groups left');
+	}
+}
+
+function test_bs6_form_adorn_settings_row_rules_name_the_wrapper()
+{
+	$css = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/css/backend.src.css');
+
+	// The settings row shape test and the control placement know the wrapper,
+	// or a converted field drops out of the two-column row.
+	pg_assert_contains('.pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .form-adorn,', $css);
+	pg_assert_true(strpos($css, '> .input-group, > .form-range)') === false, 'every settings row shape test names .form-adorn');
+
+	// The add-on keeps the input-group add-on type, so a converted row stays 38px tall.
+	pg_assert_contains(".pg-set-card .form-adorn > .form-adorn-text {\n  font-size: var(--bs-btn-input-font-size);", $css);
+}
+
+function test_bs6_form_adorn_designer_home_search_width_on_the_wrapper()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+	$css = (string) file_get_contents($root . 'assets/css/designer_home.css');
+
+	// The search box width and its full-width narrow screen rule follow the wrapper.
+	pg_assert_false(strpos($css, '.sdh-head-tools .input-group') !== false, 'designer_home.css: a width rule still names .input-group');
+	pg_assert_same(2, substr_count($css, '.sdh-head-tools .form-adorn'), 'designer_home.css: both width rules name .form-adorn');
+}
+
+function test_bs6_form_adorn_offer_tier_fields_have_names()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+	$offer = (string) file_get_contents($root . 'edit_offer.php');
+	$js = (string) file_get_contents($root . 'assets/js/offer_editor.js');
+
+	foreach (array('tierMinLabel', 'tierPercentLabel') as $key) {
+		pg_assert_contains("'" . $key . "'", $offer, 'edit_offer.php: ' . $key);
+		pg_assert_contains('aria-label="\' + esc(L.' . $key . ')', $js, 'offer_editor.js: ' . $key);
 	}
 }

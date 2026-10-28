@@ -156,6 +156,39 @@ function test_widget_entity_fields_quiz_score()
 	pg_assert_same('', $v['__quiz_score'], 'not a quiz form');
 }
 
+// A form record's public values come from its fields' RSS roles, the
+// title and summary as plain text in the page's language, the picture only
+// when the media field holds one.
+function test_widget_entity_fields_post_values()
+{
+	$rows = array(
+		array('field_name' => 'baslik', 'field_rss' => 'title', 'field_type' => 'text box', 'data' => 'Stored title', 'file_name' => ''),
+		array('field_name' => 'ozet', 'field_rss' => 'description', 'field_type' => 'text area', 'data' => '<p>Short &amp; <b>sweet</b></p>', 'file_name' => ''),
+		array('field_name' => 'gorsel', 'field_rss' => 'media', 'field_type' => 'file upload', 'data' => '', 'file_name' => 'cover photo.jpg'),
+		array('field_name' => 'email', 'field_rss' => '', 'field_type' => 'email address', 'data' => 'a@b.c', 'file_name' => ''),
+	);
+	$custom = array('baslik' => array('data' => 'Translated title'), 'ozet' => array('data' => '<p>Short &amp; <b>sweet</b></p>'));
+	$v = pg_sw_entity_post_values($rows, $custom);
+	pg_assert_same('Translated title', $v['post_title'], 'the value in the page language');
+	pg_assert_same('Short & sweet', trim(preg_replace('/\s+/', ' ', $v['post_summary'])), 'plain text');
+	pg_assert_contains('cover%20photo.jpg', $v['post_image']);
+	pg_assert_false(in_array('a@b.c', $v, true), 'no private value');
+
+	$img = function ($data, $file = '') { return pg_sw_entity_post_image(array('data' => $data, 'file_name' => $file)); };
+	pg_assert_same('https://x.test/a.png', $img('https://x.test/a.png'));
+	pg_assert_same('', $img('https://x.test/clip.mp4'), 'a video is no picture');
+	pg_assert_same('', $img('', 'notes.pdf'), 'another file is no picture');
+	pg_assert_same('/files/b.webp', $img('<p><img src="/files/b.webp"></p>'));
+	pg_assert_same('', $img('<img src="javascript:alert(1)">'));
+
+	$e = pg_sw_entity_values('form_record', array('submitted_timestamp' => 86400 * 365, 'post_author' => 'Ada', 'post_title' => 'T') + $v,
+		array('format_stamp' => function ($ts) { return date('Y-m-d', $ts); }));
+	pg_assert_same('1971-01-01', $e['__post_date']);
+	pg_assert_same('Ada', $e['__post_author']);
+	pg_assert_same('T', $e['__post_title']);
+	pg_assert_same('', pg_sw_entity_values('form_record', null)['__post_title']);
+}
+
 function _wef_order($extra = array())
 {
 	return $extra + array(

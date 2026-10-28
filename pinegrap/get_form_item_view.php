@@ -827,67 +827,76 @@ function get_form_item_view($properties) {
         // else user has not chosen to edit submitted form, so just output layout with values
         } else {
 
-            // Record the view so that the form view directory feature will know about it.
-            //
-            // pg_sfv_record_view() folds this into one row per article, page and
-            // day. It returns false on an install that took the code without
-            // running the database upgrade, and the legacy per-view insert below
-            // keeps that install working until it does.
-            if (!pg_sfv_record_view($submitted_form['id'], $page_id)) {
-                $query =
-                    "INSERT INTO submitted_form_views (
-                        submitted_form_id,
-                        page_id,
-                        timestamp)
-                    VALUES (
-                        ?,
-                        ?,
-                        UNIX_TIMESTAMP())";
-                $result = db_q($query, array((string) $submitted_form['id'], (string) $page_id)) or output_error('Query failed.');
-            }
-
-            // Sampled retention sweep, still six months.
-            //
-            // One in 500 rather than the old one in 100: the rollup holds a few
-            // thousand rows where the legacy table held millions, so far fewer
-            // passes keep it bounded.
-            //
-            // The legacy table is swept only while it is still the one being
-            // written. Once the rollup is live it is left alone -- the backfill
-            // is reading it, and deleting rows out from under a cursor that has
-            // not reached them yet would silently lose that history.
-            if (rand(1, 500) == 1) {
-                if (pg_sfv_stats_ready()) {
-                    db("DELETE FROM submitted_form_view_stats WHERE view_date < DATE_SUB(CURDATE(), INTERVAL 6 MONTH)");
-                } else {
-                    $six_months_ago_timestamp = time() - 15552000;
-
-                    db("DELETE FROM submitted_form_views WHERE timestamp < $six_months_ago_timestamp");
+            // A view is counted only for a GET from a person: crawlers, scripts,
+            // uptime monitors and other Pinegrap installations are left out, the
+            // rule designed record pages follow (pg_sw_should_count_record_view()).
+            if (pg_sw_should_count_record_view(
+                array('form_id' => $submitted_form['id'], 'page_id' => $page_id),
+                isset($_SERVER['REQUEST_METHOD']) ? (string) $_SERVER['REQUEST_METHOD'] : '',
+                pg_request_is_automated())
+            ) {
+                // Record the view so that the form view directory feature will know about it.
+                //
+                // pg_sfv_record_view() folds this into one row per article, page and
+                // day. It returns false on an install that took the code without
+                // running the database upgrade, and the legacy per-view insert below
+                // keeps that install working until it does.
+                if (!pg_sfv_record_view($submitted_form['id'], $page_id)) {
+                    $query =
+                        "INSERT INTO submitted_form_views (
+                            submitted_form_id,
+                            page_id,
+                            timestamp)
+                        VALUES (
+                            ?,
+                            ?,
+                            UNIX_TIMESTAMP())";
+                    $result = db_q($query, array((string) $submitted_form['id'], (string) $page_id)) or output_error('Query failed.');
                 }
-            }
 
-            // Also record the view in the submitted form info table which stores totals for performance reasons.
+                // Sampled retention sweep, still six months.
+                //
+                // One in 500 rather than the old one in 100: the rollup holds a few
+                // thousand rows where the legacy table held millions, so far fewer
+                // passes keep it bounded.
+                //
+                // The legacy table is swept only while it is still the one being
+                // written. Once the rollup is live it is left alone -- the backfill
+                // is reading it, and deleting rows out from under a cursor that has
+                // not reached them yet would silently lose that history.
+                if (rand(1, 500) == 1) {
+                    if (pg_sfv_stats_ready()) {
+                        db("DELETE FROM submitted_form_view_stats WHERE view_date < DATE_SUB(CURDATE(), INTERVAL 6 MONTH)");
+                    } else {
+                        $six_months_ago_timestamp = time() - 15552000;
 
-            // If a record does not already exist in the submitted form info table, then add one.
-            if (db_value("SELECT COUNT(*) FROM submitted_form_info WHERE (submitted_form_id = '" . $submitted_form['id'] . "') AND (page_id = '" . $page_id . "')") == 0) {
-                db(
-                    "INSERT INTO submitted_form_info (
-                        submitted_form_id,
-                        page_id,
-                        number_of_views)
-                    VALUES (
-                        '" . $submitted_form['id'] . "',
-                        '" . $page_id . "',
-                        '1')");
+                        db("DELETE FROM submitted_form_views WHERE timestamp < $six_months_ago_timestamp");
+                    }
+                }
 
-            // Otherwise a record already exists in the submitted form info table, so just update it.
-            } else {
-                db(
-                    "UPDATE submitted_form_info
-                    SET number_of_views = number_of_views + 1
-                    WHERE
-                        (submitted_form_id = '" . $submitted_form['id'] . "')
-                        AND (page_id = '" . $page_id . "')");
+                // Also record the view in the submitted form info table which stores totals for performance reasons.
+
+                // If a record does not already exist in the submitted form info table, then add one.
+                if (db_value("SELECT COUNT(*) FROM submitted_form_info WHERE (submitted_form_id = '" . $submitted_form['id'] . "') AND (page_id = '" . $page_id . "')") == 0) {
+                    db(
+                        "INSERT INTO submitted_form_info (
+                            submitted_form_id,
+                            page_id,
+                            number_of_views)
+                        VALUES (
+                            '" . $submitted_form['id'] . "',
+                            '" . $page_id . "',
+                            '1')");
+
+                // Otherwise a record already exists in the submitted form info table, so just update it.
+                } else {
+                    db(
+                        "UPDATE submitted_form_info
+                        SET number_of_views = number_of_views + 1
+                        WHERE
+                            (submitted_form_id = '" . $submitted_form['id'] . "')
+                            AND (page_id = '" . $page_id . "')");
+                }
             }
             
             // get form data for all custom fields

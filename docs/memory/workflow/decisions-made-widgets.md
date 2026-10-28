@@ -4,7 +4,7 @@ description: Decisions list, system widget part: conditions and required control
 ---
 
 ## How do system widget conditions treat forms and languages?
-- Owner decision (2026-10-25): a value condition never hides a required form control; the panel offers none there and the renderer ignores one. Reason: the server still asks for that value, so the form could never be sent.
+- Owner decision (2026-10-25): a value condition never hides a required form control; the panel offers none there and the renderer ignores one. Reason: the server still asks for that value, so the form could never be sent. Narrowed (#2450, W16 cart product form): a control whose `required` is a lone row token (`required="{{token}}"`) does not count as required for this rule, on the control or on any element holding it; a plainly `required` control keeps the protection. Reason: the row decides whether the field is required, and the visible control is the one that sends the field.
 - Owner decision (2026-10-25): a condition's compared text with words is translated like the page's texts. Reason: the value it is compared with is drawn in the page's language, so an untranslated text would not match on other languages (`designer/widget-condition-panel.md`).
 
 ## What do the widget designability answers of 2026-10-26 bind?

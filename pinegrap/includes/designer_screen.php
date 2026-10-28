@@ -1189,7 +1189,7 @@ function pg_designer_home_design_card($d, $pages, $ctx)
     $name = h($d['style_name']);
     $attrs = ' data-style-id="' . $id . '" data-name="' . $name . '" data-pages="' . $count . '" data-home="' . ($home ? '1' : '0') . '"'
            . ' data-folders="' . (int)$ctx['folders'] . '" data-edit-url="' . h($edit_url) . '" data-add-url="' . h($add_url) . '" data-view-url="' . h($view_url) . '"';
-    $more = '<button type="button" class="btn btn-sm btn-ghost sdh-more no-popover" data-bs-toggle="tooltip" title="' . h(lang('More actions')) . '" aria-label="' . h(lang('More actions')) . '" aria-haspopup="menu" aria-expanded="false"><i class="bi bi-three-dots" aria-hidden="true"></i></button>';
+    $more = '<button type="button" class="btn btn-sm btn-text theme-secondary sdh-more no-popover" data-bs-toggle="tooltip" title="' . h(lang('More actions')) . '" aria-label="' . h(lang('More actions')) . '" aria-haspopup="menu" aria-expanded="false"><i class="bi bi-three-dots" aria-hidden="true"></i></button>';
     // The picture opens the editor too; the name link is the one announced.
     $picture = '<a class="sdh-browser" href="' . h($edit_url) . '" tabindex="-1" aria-hidden="true">'
              .     '<span class="sdh-browser-bar"><i></i><i></i><i></i><span class="sdh-browser-url">' . h($address) . '</span></span>'
@@ -1228,13 +1228,13 @@ function pg_designer_home_design_card($d, $pages, $ctx)
     // menu, where it is not one stray click away.
     $buttons = '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="' . h($edit_url) . '"><i class="bi bi-pencil-square me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</a>';
     if (!empty($ctx['can_change'])) {
-        $buttons .= '<a class="btn btn-sm btn-ghost" href="' . h($add_url) . '"><i class="bi bi-file-earmark-plus me-1" aria-hidden="true"></i>' . h(lang('Add Page')) . '</a>';
+        $buttons .= '<a class="btn btn-sm btn-text theme-secondary" href="' . h($add_url) . '"><i class="bi bi-file-earmark-plus me-1" aria-hidden="true"></i>' . h(lang('Add Page')) . '</a>';
     }
     if ($view_url !== '') {
-        $buttons .= '<a class="btn btn-sm btn-ghost" href="' . h($view_url) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang('View on site')) . '</a>';
+        $buttons .= '<a class="btn btn-sm btn-text theme-secondary" href="' . h($view_url) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang('View on site')) . '</a>';
     }
     if (!empty($ctx['can_draft'])) {
-        $buttons .= '<button type="button" class="btn btn-sm btn-ghost' . ((int)$d['draft_count'] > 0 ? '' : ' d-none') . '" data-act="on"><i class="bi bi-cloud-check me-1" aria-hidden="true"></i>' . h(lang('Put on the site')) . '</button>';
+        $buttons .= '<button type="button" class="btn btn-sm btn-text theme-secondary' . ((int)$d['draft_count'] > 0 ? '' : ' d-none') . '" data-act="on"><i class="bi bi-cloud-check me-1" aria-hidden="true"></i>' . h(lang('Put on the site')) . '</button>';
     }
 
     $pages_html = $pages
@@ -1436,10 +1436,10 @@ function pg_designer_start_screen($ctx)
     if ($designs) {
         // A name to look for once there are more designs than fit a glance.
         $search = (count($designs) > 6)
-            ? '<div class="input-group input-group-sm">
-                    <span class="input-group-text rounded-start-pill"><i class="bi bi-search" aria-hidden="true"></i></span>
-                    <input type="search" class="form-control rounded-end-pill" id="sdh-filter" placeholder="' . h(lang('Find a design')) . '" aria-label="' . h(lang('Find a design')) . '" autocomplete="off">
-               </div>'
+            ? '<label class="form-control form-control-sm form-adorn rounded-pill">
+                    <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="search" class="form-ghost" id="sdh-filter" placeholder="' . h(lang('Find a design')) . '" aria-label="' . h(lang('Find a design')) . '" autocomplete="off">
+               </label>'
             : '';
         $list =
             '<section class="sdh-section" aria-labelledby="sdh-designs-title">
@@ -1862,7 +1862,7 @@ function pg_designer_template_modal($templates, $from_pages)
         $custom = isset($s['builtin']) && !$s['builtin'];
         $custom_badge = $custom ? '<span class="badge theme-secondary fw-normal text-nowrap">' . lang('Made from a design') . '</span>' : '';
         $delete_btn = $custom
-            ? '<button type="button" class="btn btn-sm btn-ghost sd-tpl-delete no-popover" data-template="' . h($s['id']) . '" data-name="' . h($s['name']) . '" data-bs-toggle="tooltip" title="' . h(lang('Delete template')) . '" aria-label="' . h(lang('Delete template')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>'
+            ? '<button type="button" class="btn btn-sm btn-text theme-secondary sd-tpl-delete no-popover" data-template="' . h($s['id']) . '" data-name="' . h($s['name']) . '" data-bs-toggle="tooltip" title="' . h(lang('Delete template')) . '" aria-label="' . h(lang('Delete template')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>'
             : '';
         $use_href = 'add_system_style.php?start=template&template=' . rawurlencode($s['id']) . $extra;
         $cards .=
@@ -2118,7 +2118,7 @@ function pg_designer_settings_modal($ctx)
 
     $rail = function ($pane, $icon, $label, $scope, $active, $hidden = false) use ($design_hidden) {
         return '<button class="nav-link text-start' . ($active ? ' active' : '') . ($scope === 'design' ? $design_hidden : '') . ($hidden ? ' d-none' : '') . '" id="tab-' . $pane . '-btn"
-                    data-bs-toggle="pill" data-bs-target="#tab-' . $pane . '" type="button" role="tab"
+                    data-bs-toggle="tab" data-bs-target="#tab-' . $pane . '" type="button" role="tab"
                     aria-controls="tab-' . $pane . '" aria-selected="' . ($active ? 'true' : 'false') . '" data-sd-settings-scope="' . $scope . '">
                     <span class="bi ' . $icon . '" aria-hidden="true"></span><span class="sd-settings-nav-txt">' . $label . '</span>
                 </button>';
@@ -2399,10 +2399,12 @@ function pg_designer_settings_modal($ctx)
                     <div class="dialog-body sd-settings-main">
 
                         <div class="sd-settings-nav">
-                            <!-- ONE tablist: Bootstrap deactivates the previous pill by looking
+                            <!-- ONE tablist: Bootstrap deactivates the previous tab by looking
                                  for the active sibling inside the same tablist, so two separate
-                                 navs would leave both panes showing. The group headings are plain
-                                 divs the pill logic ignores. -->
+                                 navs would leave both panes showing. The rail buttons are
+                                 data-bs-toggle="tab" (the Bootstrap 6 Tab listens to no "pill"),
+                                 drawn as pills by nav-pills. The group headings are plain
+                                 divs the tab logic ignores. -->
                             <nav class="nav nav-pills" id="settingsTabs" role="tablist">
                                 <div class="sd-settings-nav-title' . $design_hidden . '" data-sd-settings-scope="design">' . lang('Shared by all pages') . '</div>
                                 ' . $rail('style', 'bi-palette', lang('General'), 'design', $full) . '
@@ -2535,7 +2537,7 @@ function pg_designer_pick_page_modal()
         <dialog class="dialog dialog-scrollable" id="sdPickPageModal" style="background:#1e2127; color:#c9d1d9; border:1px solid #30363d;">
                     <div class="dialog-header" style="border-color:#30363d;">
                         <h5 class="dialog-title fs-md"><span class="bi bi-files me-3"></span>' . lang('Select Page') . '</h5>
-                        <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog"></button>
+                        <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
                     <div class="dialog-body p-0">
                         <div class="p-5 pb-3">
@@ -2562,7 +2564,7 @@ function pg_designer_import_modal()
         <dialog class="dialog" id="sdImportModal" style="background:#1e2127; color:#c9d1d9; border:1px solid #30363d;">
                     <div class="dialog-header" style="border-color:#30363d;">
                         <h5 class="dialog-title fs-md"><span class="bi bi-file-earmark-code me-3"></span>' . lang('Import HTML / ZIP') . '</h5>
-                        <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog"></button>
+                        <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
                     <div class="dialog-body">
                         <div class="mb-5">

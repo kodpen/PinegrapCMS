@@ -838,6 +838,9 @@ function bs6_shared_panel_blocks()
 		// The calendar screen and the dashboard calendar widget pass the
 		// signed-in user; site pages pass none.
 		'includes/fn/calendar.php' => array('get_calendar' => 'if ($user) {'),
+		// No login page: the default sign-in screen inside
+		// output_header_secure(); a login page's branches are site output.
+		'get_login.php' => array('get_login' => 'if ((int)$page_id <= 0) {'),
 	);
 }
 
@@ -1166,7 +1169,7 @@ function bs6_scope_kind($path)
 	if (strpos($path, 'includes/templates/') === 0) {
 		$panel_templates = array(
 			'duplicate_folder', 'edit_auto_dialog', 'edit_key_code', 'edit_offer', 'edit_products', 'generate_layout',
-			'view_auto_dialogs', 'view_key_codes', 'view_offers', 'shipping_method_service',
+			'view_auto_dialogs', 'view_key_codes', 'view_offers', 'shipping_method_service', 'si',
 		);
 		return in_array(substr($base, 0, -4), $panel_templates, true) ? 'panel' : 'site';
 	}
@@ -1417,4 +1420,42 @@ function bs6_scope_files($root)
 	ksort($files);
 
 	return $files;
+}
+
+// Offsets of every `.form-floating` wrapper whose <label> comes after its
+// field. Bootstrap 6 floats the label with `label:has(~ .form-control…)`, a
+// selector that looks only at later siblings, so the label must come first;
+// one after its field stays full size on top of the value. The wrapper runs
+// from its class to the next </div>; the field is a <select>, <input> or
+// <textarea> tag or a liveform output_field() call.
+function bs6_floating_labels_after_control($source)
+{
+	$found = array();
+
+	if (!preg_match_all('/class\s*=\s*\\\\?["\'][^"\'\n]*(?<![\w-])form-floating(?![\w-])/', $source, $matches, PREG_OFFSET_CAPTURE)) {
+		return $found;
+	}
+
+	foreach ($matches[0] as $match) {
+		$start = $match[1];
+		$open = strpos($source, '>', $start);
+
+		if ($open === false) {
+			continue;
+		}
+
+		$close = strpos($source, '</div>', $open);
+		$body = substr($source, $open + 1, ($close === false ? strlen($source) : $close) - $open - 1);
+
+		if (!preg_match('/<label\b/', $body, $label, PREG_OFFSET_CAPTURE)
+			|| !preg_match('/<(select|input|textarea)\b|->output_field\(/', $body, $control, PREG_OFFSET_CAPTURE)) {
+			continue;
+		}
+
+		if ($label[0][1] > $control[0][1]) {
+			$found[] = $start;
+		}
+	}
+
+	return $found;
 }

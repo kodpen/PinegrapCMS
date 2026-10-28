@@ -1449,11 +1449,12 @@ function _pg_comments_first_int($rows)
 }
 
 /**
- * The comments a viewer reads on a thread, oldest first, with the counts the
- * classic block shows.
+ * The comments a viewer reads on a thread, oldest first (a product's reviews
+ * newest first), with the counts the classic block shows.
  *
  * Sends, in this order, the block's three statements: the count of what the
- * viewer reads, the count of the featured ones among them, then the rows.
+ * viewer reads, the count of the featured ones among them, then the rows; a
+ * review thread sends no featured count.
  * When only the featured comments are read (pg_comments_featured_filter()),
  * the rows statement alone filters them, so the count is of all.
  *
@@ -1475,6 +1476,14 @@ function _pg_comments_first_int($rows)
  * - 'thread_key': true adds comments.item_type and comments.item_id after
  *   those, so a caller that reads every comment on a page (a null thread)
  *   knows which thread each row belongs to. The block never asks.
+ * - 'review': whether the thread is a product's reviews; unset, it is asked
+ *   of pg_review_gate_applies() (false for a null thread). A review thread
+ *   reads only verified purchases (pg_review_verified_filter_sql('yes')) in
+ *   the count and the rows, newest first, and never counts or filters the
+ *   featured ones: Turkish advertising rules let a store show only verified
+ *   purchasers' reviews and forbid ordering them to its liking. A comment
+ *   from before the 11.0.14 columns and a staff comment under a product are
+ *   not shown there.
  *
  * A failed query ends on the db helpers' error page.
  *
@@ -1485,7 +1494,8 @@ function _pg_comments_first_int($rows)
  * @param mixed    $options see above
  * @param callable $fetch   runs a SELECT and returns its rows (db_items)
  * @return array 'count' (int), 'has_featured' (bool), 'featured_view'
- *               (bool), 'rows' (the rows as read, a list)
+ *               (bool), 'rows' (the rows as read, a list), 'review'
+ *               (bool, rows newest first)
  */
 function pg_comments_rows($page_id, $thread, $viewer, $options = array(), $fetch = 'db_items')
 {
@@ -1495,19 +1505,35 @@ function pg_comments_rows($page_id, $thread, $viewer, $options = array(), $fetch
     $page = _pg_comments_sql_value($page_id);
     $where = pg_comments_thread_sql($thread) . pg_comments_visible_sql($viewer);
 
+    if (array_key_exists('review', $options)) {
+        $review = ($options['review'] === true);
+    } else {
+        $review = is_array($thread) && function_exists('pg_review_gate_applies')
+            && pg_review_gate_applies(isset($thread['item_type']) ? $thread['item_type'] : '', isset($thread['item_id']) ? $thread['item_id'] : 0);
+    }
+
+    if ($review) {
+        $where .= " AND (" . pg_review_verified_filter_sql('yes') . ")";
+    }
+
     $count = _pg_comments_first_int(call_user_func($fetch,
         "SELECT COUNT(*) FROM comments WHERE comments.page_id = '" . $page . "'" . $where));
 
-    $featured_count = _pg_comments_first_int(call_user_func($fetch,
-        "SELECT COUNT(*)
-        FROM comments
-        WHERE
-            (comments.page_id = '" . $page . "')
-            " . $where . "
-            AND comments.featured = '1'"));
+    $has_featured = false;
+    $featured_view = false;
 
-    $has_featured = ($featured_count > 0);
-    $featured_view = pg_comments_featured_filter($has_featured, $mode, $view);
+    if (!$review) {
+        $featured_count = _pg_comments_first_int(call_user_func($fetch,
+            "SELECT COUNT(*)
+            FROM comments
+            WHERE
+                (comments.page_id = '" . $page . "')
+                " . $where . "
+                AND comments.featured = '1'"));
+
+        $has_featured = ($featured_count > 0);
+        $featured_view = pg_comments_featured_filter($has_featured, $mode, $view);
+    }
 
     if ($featured_view) {
         $where .= " AND (comments.featured = '1')";
@@ -1553,13 +1579,14 @@ function pg_comments_rows($page_id, $thread, $viewer, $options = array(), $fetch
         LEFT JOIN files ON comments.file_id = files.id
         LEFT JOIN user ON comments.created_user_id = user.user_id
         WHERE comments.page_id = '" . $page . "'" . $where . "
-        ORDER BY comments.created_timestamp ASC");
+        ORDER BY comments.created_timestamp " . ($review ? 'DESC' : 'ASC'));
 
     return array(
         'count' => $count,
         'has_featured' => $has_featured,
         'featured_view' => $featured_view,
         'rows' => is_array($rows) ? array_values($rows) : array(),
+        'review' => $review,
     );
 }
 

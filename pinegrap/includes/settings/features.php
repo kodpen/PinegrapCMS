@@ -263,18 +263,18 @@ $pg_settings_cards[] = '
             $output_image_delivery_fields .= '
                             <div class="pg-f-xs">
                                 <label for="image_quality_webp" class="form-label">' . lang('WebP Quality') . '</label>
-                                <div class="input-group">
-                                    <input type="text" name="image_quality_webp" id="image_quality_webp" maxlength="3" inputmode="numeric" class="form-control text-end" value="' . h($image_settings['quality_webp']) . '" />
-                                    <label class="input-group-text" for="image_quality_webp">%</label>
-                                </div>
+                                <label class="form-control form-adorn form-adorn-end">
+                                    <span class="form-adorn-text" aria-hidden="true">%</span>
+                                    <input type="text" name="image_quality_webp" id="image_quality_webp" maxlength="3" inputmode="numeric" class="form-ghost text-end" value="' . h($image_settings['quality_webp']) . '" />
+                                </label>
                                 <div class="form-text">' . lang('A changed quality makes the pictures again as they are next asked for. Resized JPEG and PNG pictures use the quality when resizing above.') . '</div>
                             </div>
                             <div class="pg-f-xs">
                                 <label for="image_quality_avif" class="form-label">' . lang('AVIF Quality') . '</label>
-                                <div class="input-group">
-                                    <input type="text" name="image_quality_avif" id="image_quality_avif" maxlength="3" inputmode="numeric" class="form-control text-end" value="' . h($image_settings['quality_avif']) . '" />
-                                    <label class="input-group-text" for="image_quality_avif">%</label>
-                                </div>
+                                <label class="form-control form-adorn form-adorn-end">
+                                    <span class="form-adorn-text" aria-hidden="true">%</span>
+                                    <input type="text" name="image_quality_avif" id="image_quality_avif" maxlength="3" inputmode="numeric" class="form-ghost text-end" value="' . h($image_settings['quality_avif']) . '" />
+                                </label>
                                 <div class="form-text">' . lang('AVIF holds up at a lower number than WebP, so its quality is set apart.') . '</div>
                             </div>';
         }
@@ -308,18 +308,18 @@ $pg_settings_cards[] = '
                             </div>
                             <div class="pg-f-xs">
                                 <label for="image_product_max_dimension" class="form-label">' . lang('Product Image Size Limit') . '</label>
-                                <div class="input-group">
-                                    <input type="text" name="image_product_max_dimension" id="image_product_max_dimension" maxlength="5" inputmode="numeric" class="form-control text-end" value="' . h($image_settings['product_max_dimension']) . '" />
-                                    <label class="input-group-text" for="image_product_max_dimension">' . lang('pixels') . '</label>
-                                </div>
+                                <label class="form-control form-adorn form-adorn-end">
+                                    <span class="form-adorn-text" aria-hidden="true">' . lang('pixels') . '</span>
+                                    <input type="text" name="image_product_max_dimension" id="image_product_max_dimension" maxlength="5" inputmode="numeric" class="form-ghost text-end" value="' . h($image_settings['product_max_dimension']) . '" />
+                                </label>
                                 <div class="form-text">' . lang('Longest edge. A product photo above this is scaled down on upload, keeping its proportions.') . '</div>
                             </div>
                             <div class="pg-f-xs">
                                 <label for="image_product_min_dimension" class="form-label">' . lang('Smallest Acceptable Product Image') . '</label>
-                                <div class="input-group">
-                                    <input type="text" name="image_product_min_dimension" id="image_product_min_dimension" maxlength="5" inputmode="numeric" class="form-control text-end" value="' . h($image_settings['product_min_dimension']) . '" />
-                                    <label class="input-group-text" for="image_product_min_dimension">' . lang('pixels') . '</label>
-                                </div>
+                                <label class="form-control form-adorn form-adorn-end">
+                                    <span class="form-adorn-text" aria-hidden="true">' . lang('pixels') . '</span>
+                                    <input type="text" name="image_product_min_dimension" id="image_product_min_dimension" maxlength="5" inputmode="numeric" class="form-ghost text-end" value="' . h($image_settings['product_min_dimension']) . '" />
+                                </label>
                                 <div class="form-text">' . lang('Shortest edge. Smaller images are still accepted; the product screen and the SEO details point them out. Google Merchant Center requires 500 pixels from 2027.') . '</div>
                             </div>
                             <div class="pg-f-xs">
@@ -331,18 +331,18 @@ $pg_settings_cards[] = '
                             </div>
                             <div class="pg-f-xs">
                                 <label for="image_file_resize_trigger" class="form-label">' . lang('Offer To Resize Files Above') . '</label>
-                                <div class="input-group">
-                                    <input type="text" name="image_file_resize_trigger" id="image_file_resize_trigger" maxlength="5" inputmode="numeric" class="form-control text-end" value="' . h($image_settings['file_resize_trigger']) . '" />
-                                    <label class="input-group-text" for="image_file_resize_trigger">' . lang('pixels') . '</label>
-                                </div>
+                                <label class="form-control form-adorn form-adorn-end">
+                                    <span class="form-adorn-text" aria-hidden="true">' . lang('pixels') . '</span>
+                                    <input type="text" name="image_file_resize_trigger" id="image_file_resize_trigger" maxlength="5" inputmode="numeric" class="form-ghost text-end" value="' . h($image_settings['file_resize_trigger']) . '" />
+                                </label>
                                 <div class="form-text">' . lang('On the Files screen the resize button appears only for images whose longest edge is above this.') . '</div>
                             </div>
                             <div class="pg-f-xs">
                                 <label for="image_file_max_dimension" class="form-label">' . lang('Resize Files Down To') . '</label>
-                                <div class="input-group">
-                                    <input type="text" name="image_file_max_dimension" id="image_file_max_dimension" maxlength="5" inputmode="numeric" class="form-control text-end" value="' . h($image_settings['file_max_dimension']) . '" />
-                                    <label class="input-group-text" for="image_file_max_dimension">' . lang('pixels') . '</label>
-                                </div>
+                                <label class="form-control form-adorn form-adorn-end">
+                                    <span class="form-adorn-text" aria-hidden="true">' . lang('pixels') . '</span>
+                                    <input type="text" name="image_file_max_dimension" id="image_file_max_dimension" maxlength="5" inputmode="numeric" class="form-ghost text-end" value="' . h($image_settings['file_max_dimension']) . '" />
+                                </label>
                                 <div class="form-text">' . lang('Files are never resized on upload and never by the plain optimize button. This is only used when the resize button is pressed.') . '</div>
                             </div>' . $output_image_delivery_fields . $output_page_rebuild_field . '
                             <div class="col-12 ">
@@ -385,10 +385,10 @@ if (function_exists('pg_page_revisions_retention') && array_key_exists('page_rev
                                         </div>
                                         <div class="pg-f-xs">
                                             <label for="page_revisions_days" class="form-label">' . lang('Revisions Kept for') . '</label>
-                                            <div class="input-group">
-                                                <input type="text" name="page_revisions_days" id="page_revisions_days" maxlength="4" inputmode="numeric" class="form-control text-end" value="' . h($page_revisions_retention['days']) . '" />
-                                                <label class="input-group-text" for="page_revisions_days">' . lang('days') . '</label>
-                                            </div>
+                                            <label class="form-control form-adorn form-adorn-end">
+                                                <span class="form-adorn-text" aria-hidden="true">' . lang('days') . '</span>
+                                                <input type="text" name="page_revisions_days" id="page_revisions_days" maxlength="4" inputmode="numeric" class="form-ghost text-end" value="' . h($page_revisions_retention['days']) . '" />
+                                            </label>
                                             <div class="form-text">' . lang(array('string' => 'Every revision younger than this, however many there are. 1 to {var:1}.', 'vars' => array(PG_PAGE_REVISIONS_DAYS_MAX))) . '</div>
                                         </div>
                                     </div>
@@ -422,10 +422,10 @@ if (function_exists('pg_page_cache_ttl')) {
                                         </div>
                                         <div class="pg-f-xs">
                                             <label for="page_cache_ttl" class="form-label">' . lang('Page Lifetime') . '</label>
-                                            <div class="input-group">
-                                                <input type="text" name="page_cache_ttl" id="page_cache_ttl" maxlength="4" inputmode="numeric" class="form-control text-end" value="' . h(($page_cache_ttl > 0) ? $page_cache_ttl : PG_PAGE_CACHE_TTL_DEFAULT) . '" />
-                                                <label class="input-group-text" for="page_cache_ttl">' . lang('seconds') . '</label>
-                                            </div>
+                                            <label class="form-control form-adorn form-adorn-end">
+                                                <span class="form-adorn-text" aria-hidden="true">' . lang('seconds') . '</span>
+                                                <input type="text" name="page_cache_ttl" id="page_cache_ttl" maxlength="4" inputmode="numeric" class="form-ghost text-end" value="' . h(($page_cache_ttl > 0) ? $page_cache_ttl : PG_PAGE_CACHE_TTL_DEFAULT) . '" />
+                                            </label>
                                             <div class="form-text">' . lang(array('string' => 'A change to a page reaches visitors within this time. {var:1} to {var:2}.', 'vars' => array(PG_PAGE_CACHE_TTL_MIN, PG_PAGE_CACHE_TTL_MAX))) . '</div>
                                         </div>
                                     </div>

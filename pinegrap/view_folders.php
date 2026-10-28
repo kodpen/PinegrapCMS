@@ -1510,7 +1510,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                      to files while the sidebar, the tree and the address bar all
                      stayed in the store -- a half-changed screen. Crossing to the
                      other area is a link, the way the sidebar's bridge row is. -->
-                <!-- The way back. Under 992px the sidebar is gone and this menu
+                <!-- The way back. Under 1024px the sidebar is gone and this menu
                      is the whole of the navigation, so the views across
                      everything cannot be the only things in it: an operator who
                      reached Pages from here looks for Folders here too, and the
@@ -2280,12 +2280,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function toast(message, ok, action) {
         var container = document.getElementById('explorer_toasts');
         var element = document.createElement('div');
-        element.className = 'toast align-items-center border-0 text-bg-' + (ok === false ? 'danger' : 'success');
+        var tone = ok === false ? 'danger' : 'success';
+        element.className = 'toast align-items-center border-0 bg-' + tone + ' fg-contrast-' + tone;
         element.setAttribute('role', 'status');
         element.innerHTML = '<div class="d-flex"><div class="toast-body"></div>' +
             (action ? '<button type="button" class="btn btn-sm btn-subtle theme-secondary my-auto me-1 text-nowrap" data-role="toast-action"></button>' : '') +
-            '<button type="button" class="btn-close fg-white me-3 m-auto" data-bs-dismiss="toast"></button></div>';
+            '<button type="button" class="btn-close me-3 m-auto" data-bs-dismiss="toast" aria-label="' + L.close + '"></button></div>';
         element.querySelector('.toast-body').textContent = message;
+        // An open dialog's backdrop would cover a body-level toast.
+        pgUI.hostLayer(container);
         container.appendChild(element);
         var instance = pgUI.toast.get(element, { delay: action ? 9000 : 3500 });
 
@@ -5055,14 +5058,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // dragged edge mean something, and what stops eleven columns from
     // squeezing a name down to one letter per line.
 
-    var LIST_BREAKPOINTS = { md: 768, lg: 992, xl: 1200, xxl: 1400 };
+    var LIST_BREAKPOINTS = { md: 768, lg: 1024, xl: 1280, xxl: 1536 };
 
     // Whether a column that asks for a minimum width gets one.
     //
     // Below the first breakpoint the answer is always yes: a phone keeps every
     // column and scrolls the table sideways instead of trimming it. There is
     // nowhere else for the detail to go at that width -- the tree and preview
-    // panes are hidden under 992px too -- and a name that does not fit is
+    // panes are hidden under 1024px too -- and a name that does not fit is
     // already cut with an ellipsis rather than breaking the row.
     //
     // Between the breakpoints the table still trims, because there the panes
@@ -5782,6 +5785,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         var counts = fmt(L.counts_label, [state.items.folders.length, state.items.pages.length, state.items.files.length]);
+        var listed = state.items.folders.length + state.items.pages.length + state.items.files.length;
+
+        // A search or a filter shows part of the folder: say how much.
+        if (state.ordered.length < listed) {
+            counts = fmt(L.filters_showing, [state.ordered.length, listed]);
+        }
+
         var selected = selectedItems();
         var selectedInfo = selected.length > 0 ? (selected.length + ' ' + L.items + ' ' + L.selected) : '';
         var clipboardInfo = '';
@@ -14502,6 +14512,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         renderContent();
         applySelectionClasses();
         renderStatusbar();
+
+        // An item the search hides leaves the selection strip; it leaves the
+        // preview too, instead of standing there beside results it is not in.
+        var searchSelected = selectedItems();
+        renderPreview(searchSelected.length === 1 ? searchSelected[0] : null);
     });
 
     // The selection strip is redrawn on every selection change, so its buttons

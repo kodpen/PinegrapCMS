@@ -127,6 +127,16 @@ function pg_payment_builtin_drivers()
                 'connect-src' => array('https://api.stripe.com', 'https://link.com', 'https://*.link.com'),
             ),
         ),
+        // The visitor approves on PayPal's own page: nothing is loaded from
+        // PayPal into the checkout, so no security policy sources.
+        'paypal' => array(
+            'label'    => 'PayPal Checkout',
+            'log_name' => 'PayPal',
+            'kind'     => 'redirect',
+            'method'   => 'PayPal Checkout',
+            'file'     => 'paypal.php',
+            'portal'   => 'https://developer.paypal.com/dashboard/applications',
+        ),
     );
 }
 

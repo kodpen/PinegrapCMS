@@ -24,6 +24,7 @@
  *   pgUI.on(el, kind, 'hidden', fn[, {once: true}])   both event names; returns off()
  *   pgUI.dialog.build({...})          dialog markup for the loaded version
  *   pgUI.overlayHost(el)              where a floating layer must be appended
+ *   pgUI.hostLayer(el)                a body-level layer into the top dialog, back on its hide
  *   pgUI.dialog.show(el), pgUI.menu.hide(el), ...   the same per kind
  *
  * @author      Erdal Güral (Kodpen)
@@ -155,7 +156,9 @@
     }
 
     // Open state as the markup shows it: a v6 <dialog> is open, a v5 modal,
-    // offcanvas, menu or collapse carries .show.
+    // offcanvas, menu or collapse carries .show. Bootstrap 6 adds .hiding on
+    // hide() and calls close() only after the animation, so a <dialog> on its
+    // way out is still [open] for a moment: it counts as closed.
     function isOpen(kind, target) {
         var el = node(target);
         names(kind);
@@ -163,7 +166,7 @@
             return false;
         }
         if (el.tagName === 'DIALOG') {
-            return !!el.open;
+            return !!el.open && !(el.classList && el.classList.contains('hiding'));
         }
         if (kind === 'menu' && el.getAttribute && el.getAttribute('aria-expanded') !== null) {
             return el.getAttribute('aria-expanded') === 'true';
@@ -173,8 +176,8 @@
 
     function anyOpen(kind) {
         var selectors = {
-            dialog: 'dialog.dialog[open], .modal.show',
-            drawer: 'dialog.drawer[open], .offcanvas.show'
+            dialog: 'dialog.dialog[open]:not(.hiding), .modal.show',
+            drawer: 'dialog.drawer[open]:not(.hiding), .offcanvas.show'
         };
         names(kind);
         return !!(selectors[kind] && document.querySelector(selectors[kind]));
@@ -251,7 +254,9 @@
      * container) is appended. Bootstrap 6 dialogs sit in the browser's top
      * layer and make the rest of the page inert, so a layer for something
      * inside an open dialog must be inside that dialog. Under Bootstrap 5
-     * z-index still works and the body stays the host.
+     * z-index still works and the body stays the host. A dialog that is
+     * closing (.hiding) is never chosen as the top one: it leaves the top
+     * layer a moment later and takes the layer with it.
      */
     function overlayHost(target) {
         var el = node(target), open;
@@ -264,8 +269,46 @@
                 return open;
             }
         }
-        open = document.querySelectorAll('dialog[open]');
+        open = document.querySelectorAll('dialog[open]:not(.hiding)');
         return open.length ? open[open.length - 1] : document.body;
+    }
+
+    /**
+     * Moves a body-level floating layer (a toast container) into the top open
+     * dialog or drawer, so it is not left under the ::backdrop of a modal
+     * <dialog>, and back to the body when that dialog starts hiding: Bootstrap
+     * hides every .toast.show inside a dialog right after its 'hide' event, so
+     * 'hidden' is too late. The native 'close' covers a dialog closed without
+     * Bootstrap. Returns the host.
+     */
+    function hostLayer(target) {
+        var layer = node(target), host, kind, done = false, off;
+        if (!layer) {
+            return null;
+        }
+        host = overlayHost(null);
+        if (layer.parentNode === host) {
+            return host;
+        }
+        host.appendChild(layer);
+        if (host === document.body) {
+            return host;
+        }
+        kind = (host.classList && host.classList.contains('drawer')) ? 'drawer' : 'dialog';
+        function back() {
+            if (done) {
+                return;
+            }
+            done = true;
+            off();
+            host.removeEventListener('close', back);
+            if (layer.parentNode === host) {
+                document.body.appendChild(layer);
+            }
+        }
+        off = on(host, kind, 'hide', back, { once: true });
+        host.addEventListener('close', back);
+        return host;
     }
 
     function make(tag, classes, attrs) {
@@ -400,6 +443,7 @@
         anyOpen: anyOpen,
         on: on,
         overlayHost: overlayHost,
+        hostLayer: hostLayer,
         show: function (kind, target, opts) { return run(kind, target, 'show', opts); },
         hide: function (kind, target) { return run(kind, target, 'hide'); },
         toggle: function (kind, target, opts) { return run(kind, target, 'toggle', opts); }
