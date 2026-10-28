@@ -652,13 +652,23 @@ function ws_mail_items_map($rows)
 
 /**
  * Who a mail's message is drawn under: the sender as the mail names them,
- * with letters for a picture, like a guest of a room.
+ * with letters for a picture, like a guest of a room; an answer the team
+ * sent, under its writer.
  *
  * @param array|null $item ws_mail_items row
  * @return array
  */
 function ws_mail_sender($item)
 {
+    // An answer the team sent: its writer, from the mailbox's address.
+    if (is_array($item) && ((string) ($item['direction'] ?? 'in') === 'out') && ((int) $item['user_id'] > 0) && function_exists('ws_people')) {
+        $people = ws_people(array((int) $item['user_id']));
+
+        if (isset($people[(int) $item['user_id']])) {
+            return array_merge($people[(int) $item['user_id']], array('title' => (string) $item['from_email'], 'mail' => true));
+        }
+    }
+
     $email = is_array($item) ? (string) $item['from_email'] : '';
     $name = (is_array($item) && (trim((string) $item['from_name']) !== '')) ? (string) $item['from_name'] : (($email !== '') ? $email : lang('E-mail'));
     $seed = 'mail' . md5(strtolower($email));
@@ -699,12 +709,17 @@ function ws_mail_card_html($row, $item)
 
     $conversation = $item['conversation'];
     $card = is_array($conversation) && ((int) $conversation['message_id'] === (int) $row['id']);
-    $badge = ((string) $item['auth'] === 'pass')
+    $out = ((string) ($item['direction'] ?? 'in') === 'out');
+    $badge = $out
+        ? '<span class="badge theme-success"><i class="bi bi-send me-1" aria-hidden="true"></i>' . h(lang('Sent by e-mail')) . '</span>'
+        : (((string) $item['auth'] === 'pass')
         ? '<span class="badge theme-info"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . h(lang('E-mail')) . '</span>'
-        : '<span class="badge theme-warning"><i class="bi bi-envelope-exclamation me-1" aria-hidden="true"></i>' . h(lang('Sender not verified')) . '</span>';
+        : '<span class="badge theme-warning"><i class="bi bi-envelope-exclamation me-1" aria-hidden="true"></i>' . h(lang('Sender not verified')) . '</span>');
 
+    // An answer names whom it went to; a mail, who sent it.
     $html = '<div class="ws-mail-card">'
-        . '<div class="small fg-secondary mb-1">' . $badge . ' <span class="ms-1">' . h((string) $item['from_email']) . '</span></div>';
+        . '<div class="small fg-secondary mb-1">' . $badge . ' <span class="ms-1">'
+        . h($out ? lang(array('string' => 'To {var:1}', 'vars' => (string) $item['to_list'])) : (string) $item['from_email']) . '</span></div>';
 
     if ($card && ((string) $item['subject'] !== '')) {
         $html .= '<div class="fw-semibold mb-1">' . h((string) $item['subject']) . '</div>';

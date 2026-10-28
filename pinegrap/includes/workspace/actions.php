@@ -1979,6 +1979,20 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('message' => $payload[0]));
 
+        // An answer to an e-mail conversation, sent by e-mail (mail_reply.php).
+        case 'ws_mail_reply':
+            if (!function_exists('ws_mail_reply_send') || !ws_mail_ready()) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            $result = ws_mail_reply_send($viewer, (int) ($request['conversation_id'] ?? 0), (string) ($request['text'] ?? ''));
+
+            if (!$result['ok']) {
+                return ws_action_error(ws_mail_reply_error_text($result['error']) . (($result['detail'] !== '') ? ' ' . $result['detail'] : ''), 'text');
+            }
+
+            return ws_action_ok(array('message_id' => $result['message_id']));
+
         case 'ws_attach':
             $channel = ws_action_channel($viewer, $request, 'post');
 
