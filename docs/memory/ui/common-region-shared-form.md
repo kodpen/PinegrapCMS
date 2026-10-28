@@ -18,4 +18,4 @@ description: The common region create and edit screens share includes/forms/comm
 ## What stays in the screens?
 - Create: the INSERT, the log line, the notice on the region list.
 - Edit: the not-found guard (`tests/panel_id_gate_test.php`), the row load, the body tag line, the Duplicate link, the shared component notice and the convert form (`disable_shortcut`, #2253), the Region Type select, delete, the UPDATE (a converted region keeps content and type), the redirect.
-- Tests: `tests/common_region_form_test.php`; `db_q_pages_regions_test.php` and `db_q_regions_styles_menus_test.php` count the screens' queries (the form runs none, counts unchanged).
+- Tests: `tests/common_region_form_test.php`; `db_q_pages_regions_test.php` and `db_q_regions_styles_menus_test.php` count the screens' queries (the form runs none, counts unchanged). Done in #2843.
