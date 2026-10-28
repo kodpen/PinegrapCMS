@@ -21,7 +21,7 @@ description: Decisions list, workspace part: a typed @username in /task, a flow 
 
 ## Where does the Workspace list of channels and places sit?
 - In the main menu's Workspace panel only, on every panel page, for everyone the workspace admits; the channel screen has no sidebar column of its own and the other workspace screens no icon rail or drawer (#2545).
-- On workspace screens the panel opens by itself while the menu shows its labels (on a phone the drawer opens on it); on the mini rail a click on the row widens the rail. Elsewhere it is the same list with links, loaded on the first click; collapsing works everywhere; New channel and the message search go to the channel screen, which alone has pin, drag into a group and the right-click menu.
+- On workspace screens the menu is open and the panel opens by itself, narrowed only to the rail (`decisions-made-panel.md`); on a phone the drawer opens on it. Elsewhere it is the same list with links, loaded on the first click; collapsing works everywhere; New channel and the message search go to the channel screen, which alone has pin, drag into a group and the right-click menu.
 - Owner decision (2026-10-28, answering the four questions of #2545: "Evet, kendiliğinden", "Kaldırılsın", "Aynı liste, bağlantılarla", "İlk tıklamada"; and "kanallar ve diğer öğelerin erişime göre gizlenme olayı atlanmasın"): one place to find a channel from any screen, without making every panel page heavier (the discussions alone cost up to ~150 queries), and nobody sees a channel, group, discussion or place their access does not open.
 
 ## What do Edit and the three starters do once the scheduled form is retired?

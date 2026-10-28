@@ -1,6 +1,6 @@
 ---
 name: decisions-made-panel
-description: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose; the one date-and-time picker (vanilla-calendar-pro); the main menu in category headings; the front-end editor strip
+description: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose; the one date-and-time picker; the main menu in category headings; navigator screens; the front-end editor strip
 ---
 
 ## Why do the panel's own media queries break at 1024 and 1280 px?
@@ -19,3 +19,6 @@ description: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose
 
 ## Where does the front-end editing button box sit? (#2849, 2026-10-28)
 - Decided (architect): a vertical strip fixed to the right edge, vertically centred, buttons stacked, so it covers no theme's top-right controls (account menu, cart, language) or bottom-right buttons; the SEO ring, its panel and the inline save/cancel pair sit beside it. Under 768 px it starts collapsed to the arrow; otherwise the session-kept open/closed choice stays. `role="toolbar"`, labelled buttons, no data change (`ui/site-page-toolbar-theme.md`).
+
+## Why is the menu open on the workspace, file manager and catalog screens? (owner, 2026-10-28)
+- Their own navigation is the menu panel (the Workspace list, the explorer tree, `ui/explorer-menu-tree.md`): the menu comes open there even if mini or hidden is saved; the button narrows it to the rail, never hides it ("daralır ama gizlenmez, dar menü olarak kalır, mobilde gizlenir"), kept in its own cookie; phones keep the shut drawer; the "Folder tree" switch is gone (`ui/main-menu-navigator-screens.md`). Not a lost hidden state.
