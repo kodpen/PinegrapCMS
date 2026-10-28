@@ -931,6 +931,12 @@
         }
     }
 
+    // An open dialog or drawer sits in the top layer over an inert page, so a
+    // menu opened from inside it must be appended to it.
+    function ctxHost() {
+        return window.pgUI ? pgUI.overlayHost() : document.body;
+    }
+
     // "above" opens it over the point, for buttons at the bottom of the screen.
     function ctxMenu(x, y, items, above) {
         closeCtx();
@@ -1029,7 +1035,7 @@
         menu.appendChild(body);
         menu.style.left = '0px';
         menu.style.top = '0px';
-        document.body.appendChild(menu);
+        ctxHost().appendChild(menu);
 
         var width = menu.offsetWidth;
         var height = menu.offsetHeight;
@@ -1057,13 +1063,18 @@
         }
     });
 
+    // Escape closes the menu only: caught first and kept from the dialog or
+    // drawer the menu sits in, which would close on it as well.
+    document.addEventListener('keydown', function (event) {
+        if (ctxNode && event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            closeCtx();
+        }
+    }, true);
+
     document.addEventListener('keydown', function (event) {
         if (!ctxNode) {
-            return;
-        }
-
-        if (event.key === 'Escape') {
-            closeCtx();
             return;
         }
 
@@ -1884,7 +1895,7 @@
         box.appendChild(content);
         box.style.left = '0px';
         box.style.top = '0px';
-        document.body.appendChild(box);
+        ctxHost().appendChild(box);
 
         var width = box.offsetWidth;
         var height = box.offsetHeight;
