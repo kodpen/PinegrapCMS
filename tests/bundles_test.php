@@ -213,3 +213,18 @@ function test_bundle_cart_allowance_unavailable_bundle()
 	pg_assert_same(array('allowed' => 0, 'unavailable' => true), $answer[2], 'no contents');
 	pg_assert_same(array('allowed' => 2, 'unavailable' => false), $answer[3], 'an untracked component sets no limit');
 }
+
+// The saving is the components' sum less the bundle's price, never negative.
+function test_bundle_saving()
+{
+	$components = array(
+		array('price' => 1000, 'quantity' => 2),
+		array('price' => 550, 'quantity' => 1),
+	);
+
+	pg_assert_same(550, pg_bundle_saving($components, 2000));
+	pg_assert_same(0, pg_bundle_saving($components, 2550), 'the same price saves nothing');
+	pg_assert_same(0, pg_bundle_saving($components, 3000), 'a dearer bundle saves nothing');
+	pg_assert_same(549, pg_bundle_saving($components, 2000.6), 'an offer price is rounded, not cut');
+	pg_assert_same(0, pg_bundle_saving(array(), 100), 'no contents, no saving');
+}

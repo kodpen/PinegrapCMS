@@ -820,3 +820,17 @@ function pg_bundle_return_stock($order_item_id, $quantity, $source)
 
     return true;
 }
+
+/**
+ * What a bundle saves its buyer against its components bought one by one,
+ * in minor units: the components' prices times their quantities less the
+ * price the bundle sells at, 0 when the bundle costs as much or more.
+ *
+ * @param array $components rows with price and quantity
+ * @param int   $price      the bundle's price as the visitor pays it
+ * @return int
+ */
+function pg_bundle_saving($components, $price)
+{
+    return max(0, pg_bundle_price('sum', 0, $components, 0) - (int) round($price));
+}
