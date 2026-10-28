@@ -5,7 +5,7 @@ description: G2 of incoming e-mail (IMAP read) cut into three PRs: G2a client (p
 
 ## Which steps, and where do they stand?
 - G2a: the socket IMAP client `pg_imap_*()` (`workspace/mail-imap-client.md`). Done, PR #2764.
-- G2b: the box card's server fields and "Test connection" (`workspace/mail-card.md`). PR #PRNUM.
+- G2b: the box card's server fields and "Test connection" (`workspace/mail-card.md`). PR #2788.
 - G2c: `ws_mail_fetch($box)` and its inline pass in `job.php` (a `pg_cron_jobs()` entry `workspace_mail_job`, inline like `push_job`, own script for a dedicated cron line), `checked_at` / `ok_at` / `last_error` written as the test writes them (`ws_mail_last_error()`), a System status row (a box whose `ok_at` is over an hour behind `checked_at`, or `last_error` set), and the Mailboxes card text that still says reading comes later.
 
 ## Which read rules did G2c decide?
