@@ -1286,7 +1286,8 @@ function pg_cf_field_map($page_id)
                 `rows`, cols, default_value, use_folder_name_for_default_value,
                 contact_field, office_use_only, wysiwyg, information, rss_field"
          . (pg_cf_form_fields_has_column('validation_regex')
-                ? ", validation_regex, validation_message" : ", '' AS validation_regex, '' AS validation_message") . "
+                ? ", validation_regex, validation_message" : ", '' AS validation_regex, '' AS validation_message")
+         . (pg_coll_ready() ? ", collection_kind, reference_page_id" : ", '' AS collection_kind, 0 AS reference_page_id") . "
          FROM form_fields
          WHERE page_id = '$page_id' AND form_type = 'custom'
          ORDER BY sort_order ASC, id ASC") as $row) {
@@ -1723,16 +1724,45 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
                 $set_attr($tree['props']['_attrs'], 'title', $cf_msg);
             }
 
+            // A field's kind draws its control: a number field takes decimal
+            // numbers, an image field offers images; a reference pick list
+            // lists the records of the form it points into, below the
+            // designer's empty-valued prompt row (one whose form is gone
+            // keeps its drawn choices). The server checks them again
+            // (pg_coll_check_field()). The row's reference_options, when
+            // given, stand for that read.
+            $cf_kind = pg_coll_field_kind(isset($row['collection_kind']) ? $row['collection_kind'] : '', (string)$row['type']);
+            if ($tag_lc === 'input') {
+                foreach (pg_coll_input_attrs($cf_kind, (string)$row['type']) as $attr => $value) {
+                    $set_attr($tree['props']['_attrs'], $attr, $value);
+                }
+            }
+            $cf_ref_options = null;
+            if ($cf_kind === 'reference' && $tag_lc === 'select') {
+                if (isset($row['reference_options']) && is_array($row['reference_options'])) {
+                    $cf_ref_options = $row['reference_options'];
+                } elseif (!empty($row['reference_page_id'])) {
+                    $cf_ref_options = pg_coll_reference_options((int)$row['reference_page_id']);
+                }
+            }
+
             // A <select> shows the FIELD's choices. They were written from
             // this very markup on save, so normally the two are identical -
             // but a list edited on the legacy field screen has to reach the
             // visitor without anybody re-drawing the control. The designer's
             // empty-valued prompt row is kept.
             if ($tag_lc === 'select') {
-                $opts = db_items(
-                    "SELECT label, value, default_selected FROM form_field_options
-                     WHERE form_field_id = '$field_id' ORDER BY sort_order ASC, id ASC");
-                if (is_array($opts) && !empty($opts)) {
+                if ($cf_ref_options !== null) {
+                    $opts = array();
+                    foreach ($cf_ref_options as $code => $label) {
+                        $opts[] = array('label' => $label, 'value' => $code, 'default_selected' => 0);
+                    }
+                } else {
+                    $opts = db_items(
+                        "SELECT label, value, default_selected FROM form_field_options
+                         WHERE form_field_id = '$field_id' ORDER BY sort_order ASC, id ASC");
+                }
+                if ((is_array($opts) && !empty($opts)) || $cf_ref_options !== null) {
                     $kept = array();
                     foreach ((array)(isset($tree['children']) ? $tree['children'] : array()) as $child) {
                         if (!is_array($child) || !isset($child['props']['tag'])) continue;
@@ -1740,7 +1770,7 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
                         $ca = _pg_cf_node_attrs($child);
                         if (isset($ca['value']) && $ca['value'] === '') { $kept[] = $child; break; }
                     }
-                    foreach ($opts as $o) {
+                    foreach ((array)$opts as $o) {
                         $oattrs = array(array('name' => 'value', 'value' => (string)$o['value']));
                         if ((int)$o['default_selected'] === 1) $oattrs[] = array('name' => 'selected', 'value' => '');
                         $kept[] = array(

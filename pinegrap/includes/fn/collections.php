@@ -386,3 +386,239 @@ function pg_coll_reference_target($page_id)
     if ($page_id <= 0) return 0;
     return db_value("SELECT COUNT(*) FROM custom_form_pages WHERE page_id = '$page_id'") ? $page_id : 0;
 }
+
+/**
+ * A number as a collection's number field stores it: trimmed, a decimal
+ * comma read as a point, a plus sign and a leading point's missing zero
+ * settled ('+.5' is '0.5'); '' for an empty value (the required check is the
+ * form's). null when it is not a plain decimal number: a thousands
+ * separator, an exponent and anything longer than 30 characters are
+ * refused, so the stored text sorts and compares as the number it shows.
+ *
+ * @param mixed $value
+ * @return string|null
+ */
+function pg_coll_number_value($value)
+{
+    if (!is_string($value)) return null;
+    $value = trim($value);
+    if ($value === '') return '';
+    if (strlen($value) > 30) return null;
+
+    $value = str_replace(',', '.', $value);
+    if (!preg_match('/^([+-]?)(\d*)(?:\.(\d*))?$/', $value, $m)) return null;
+    $int  = $m[2];
+    $frac = isset($m[3]) ? $m[3] : '';
+    if ($int === '' && $frac === '') return null;
+    if ($int === '') $int = '0';
+
+    return ($m[1] === '-' ? '-' : '') . $int . ($frac !== '' ? '.' . $frac : '');
+}
+
+/**
+ * The image types a collection's image field takes, by extension. SVG is
+ * left out: it is a document that can carry script.
+ *
+ * @return array extension => media type
+ */
+function pg_coll_image_types()
+{
+    return array(
+        'jpg'  => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'png'  => 'image/png',
+        'gif'  => 'image/gif',
+        'webp' => 'image/webp',
+    );
+}
+
+/**
+ * Whether an uploaded file's name is one of pg_coll_image_types().
+ *
+ * @param mixed $name
+ * @return bool
+ */
+function pg_coll_image_name_ok($name)
+{
+    if (!is_string($name) || !preg_match('/\.([A-Za-z0-9]+)$/', $name, $m)) return false;
+    $types = pg_coll_image_types();
+    return isset($types[strtolower($m[1])]);
+}
+
+/**
+ * Whether every reference in a posted value is a record of the form the
+ * field points into. $value is one code, several joined by commas (a text
+ * box) or a list of them (a check box group or a multiple pick list); an
+ * empty one is left out, and an empty value passes (the required check is
+ * the form's).
+ *
+ * @param mixed $value
+ * @param array $codes reference code => label (pg_coll_reference_options())
+ * @return bool
+ */
+function pg_coll_reference_ok($value, $codes)
+{
+    $parts = is_array($value) ? $value : explode(',', (string)$value);
+    foreach ($parts as $part) {
+        if (!is_scalar($part)) return false;
+        $part = trim((string)$part);
+        if ($part === '') continue;
+        if (!isset($codes[$part])) return false;
+    }
+    return true;
+}
+
+/**
+ * The attributes a control of a field's kind is drawn with: a number field
+ * takes decimal numbers, an image field offers pg_coll_image_types(). A
+ * reference is drawn by its choices instead (pg_coll_reference_options()).
+ *
+ * @param string $kind
+ * @param string $type
+ * @return array attribute => value
+ */
+function pg_coll_input_attrs($kind, $type)
+{
+    $kind = pg_coll_field_kind($kind, $type);
+    if ($kind === 'number') {
+        return array('type' => 'number', 'step' => 'any', 'inputmode' => 'decimal');
+    }
+    if ($kind === 'image') {
+        return array('accept' => implode(',', array_values(array_unique(pg_coll_image_types()))));
+    }
+    return array();
+}
+
+/**
+ * The records a reference field may point at: the complete records of the
+ * form on $page_id, reference code => label (pg_coll_reference_labels()).
+ * The label is the record's Title field, else its reference code. At most 500 are read,
+ * the most recent; a form with more is better pointed at by a text box.
+ *
+ * @param int $page_id
+ * @return array
+ */
+function pg_coll_reference_options($page_id)
+{
+    static $cache = array();
+    $page_id = (int)$page_id;
+    if ($page_id <= 0) return array();
+    if (isset($cache[$page_id])) return $cache[$page_id];
+
+    $options = array();
+    foreach ((array)db_items(
+        "SELECT
+            forms.reference_code,
+            (SELECT form_data.data
+             FROM form_data
+             JOIN form_fields ON form_data.form_field_id = form_fields.id
+             WHERE form_data.form_id = forms.id
+               AND form_fields.rss_field = 'title'
+               AND form_fields.office_use_only = 0
+             LIMIT 1) AS title
+         FROM forms
+         WHERE forms.page_id = '$page_id'
+           AND forms.complete = 1
+           AND forms.reference_code != ''
+         ORDER BY forms.id DESC
+         LIMIT 500") as $row) {
+        $code  = (string)$row['reference_code'];
+        $title = trim((string)$row['title']);
+        $options[$code] = ($title !== '') ? $title : $code;
+    }
+
+    return $cache[$page_id] = pg_coll_reference_labels($options);
+}
+
+/**
+ * Reference choices as they are offered: a label two records share gets
+ * each record's code after it, so every choice reads differently (a pick
+ * list is keyed by its labels), then sorted by label.
+ *
+ * @param array $options reference code => label
+ * @return array
+ */
+function pg_coll_reference_labels($options)
+{
+    $count = array_count_values(array_map('strval', $options));
+    foreach ($options as $code => $label) {
+        if ($count[(string)$label] > 1 && $label !== (string)$code) $options[$code] = $label . ' (' . $code . ')';
+    }
+    natcasesort($options);
+    return $options;
+}
+
+/**
+ * The kinds of a form's fields: field id => array('kind', 'reference_page_id'),
+ * only the fields that have one. Empty before step 11.0.43 has run.
+ *
+ * @param int $page_id
+ * @return array
+ */
+function pg_coll_field_kinds($page_id)
+{
+    static $cache = array();
+    $page_id = (int)$page_id;
+    if ($page_id <= 0 || !pg_coll_ready()) return array();
+    if (isset($cache[$page_id])) return $cache[$page_id];
+
+    $kinds = array();
+    foreach ((array)db_items(
+        "SELECT id, type, collection_kind, reference_page_id
+         FROM form_fields
+         WHERE page_id = '$page_id' AND collection_kind != ''") as $row) {
+        $kind = pg_coll_field_kind($row['collection_kind'], $row['type']);
+        if ($kind === '') continue;
+        $kinds[(int)$row['id']] = array('kind' => $kind, 'reference_page_id' => (int)$row['reference_page_id']);
+    }
+
+    return $cache[$page_id] = $kinds;
+}
+
+/**
+ * Marks the kind errors of one posted field: a number that is not one (a
+ * valid one is stored as pg_coll_number_value() writes it), an image field
+ * given another file, a reference to a record the form it points into does
+ * not have (a text box or pick list). Run after the field's own checks; a
+ * field already marked is left alone.
+ *
+ * @param liveform $liveform
+ * @param array    $field  form_fields row: id, label, type
+ * @param array    $kinds  pg_coll_field_kinds()
+ */
+function pg_coll_check_field($liveform, $field, $kinds)
+{
+    $id = (int)$field['id'];
+    if (!isset($kinds[$id]) || $liveform->check_field_error($field['id'])) return;
+    $kind  = $kinds[$id]['kind'];
+    $label = h(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']);
+
+    if ($kind === 'image') {
+        $name = isset($_FILES[$field['id']]['name']) ? $_FILES[$field['id']]['name'] : '';
+        if (is_string($name) && $name !== '' && !pg_coll_image_name_ok($name)) {
+            $liveform->mark_error($field['id'], lang(array('string' => 'Please choose an image (JPG, PNG, GIF or WebP) for {var:1}', 'vars' => $label)));
+        }
+        return;
+    }
+
+    $value = $liveform->get_field_value($field['id']);
+
+    if ($kind === 'number') {
+        $number = pg_coll_number_value(is_array($value) ? '' : (string)$value);
+        if ($number === null) {
+            $liveform->mark_error($field['id'], lang(array('string' => 'Please enter a number for {var:1}', 'vars' => $label)));
+        } elseif ($number !== (string)$value) {
+            $liveform->assign_field_value($field['id'], $number);
+        }
+        return;
+    }
+
+    // A reference whose form is gone points nowhere and is not checked. A
+    // radio button or check box group is still drawn with the designer's
+    // own choices on the site, so it is not held to the records yet.
+    if ($kind === 'reference' && $kinds[$id]['reference_page_id'] > 0
+        && in_array((string)$field['type'], array('text box', 'pick list'), true)
+        && !pg_coll_reference_ok($value, pg_coll_reference_options($kinds[$id]['reference_page_id']))) {
+        $liveform->mark_error($field['id'], lang(array('string' => 'Please choose one of the listed items for {var:1}', 'vars' => $label)));
+    }
+}
