@@ -227,7 +227,7 @@ function pg_commission_list_row($commission)
         pg_list_cell(h($commission['affiliate_name']), 'align-middle chart_label'),
         pg_list_cell(h($commission['affiliate_code'])),
         pg_list_cell(h($commission['reference_code'])),
-        pg_list_cell('<span class="badge ' . ($badges[$status] ?? 'bg-secondary fg-white fw-light') . '">' . h(lang(ucwords($status))) . '</span>'),
+        pg_list_cell('<span class="badge ' . ($badges[$status] ?? 'theme-secondary fg-white fw-light') . '">' . h(lang(ucwords($status))) . '</span>'),
         pg_list_cell(pg_format_money($commission['amount'] / 100, BASE_CURRENCY_SYMBOL), 'align-middle text-end'),
         pg_list_cell(h(pg_commission_list_periods()[(string) $commission['period']] ?? lang(ucwords((string) $commission['period'])))),
         pg_list_cell(h($commission['order_number'])),

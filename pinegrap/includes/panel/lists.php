@@ -183,7 +183,7 @@ function pg_panel_product_list_rows($request, $action)
 }
 
 // Both commission screens' gate: validate_ecommerce_access(), answered in
-// JSON, then the form token.
+// JSON. Each action checks the form token itself.
 function pg_panel_commission_list_gate()
 {
     // Kept global: helpers read the session user through `global $user`;
@@ -197,14 +197,13 @@ function pg_panel_commission_list_gate()
         respond(array('status' => 'error', 'message' => lang('Access denied')));
     }
 
-    validate_token();
-
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/commission_list.php');
 }
 
 function pg_panel_commission_list_rows($request, $action)
 {
     pg_panel_commission_list_gate();
+    validate_token();
 
     // The date range is the one the screen kept in the session.
     $page = pg_commission_list_page(
@@ -223,6 +222,7 @@ function pg_panel_commission_list_rows($request, $action)
 function pg_panel_commission_profile_list_rows($request, $action)
 {
     pg_panel_commission_list_gate();
+    validate_token();
 
     $page = pg_commission_profile_list_page(
         pg_list_search_terms($request['search'] ?? ''),

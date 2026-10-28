@@ -14,6 +14,7 @@ description: Generated from the module field of the memory files: each includes/
 - `classic_style_design`: [[classic-style-design-files]], [[classic-style-to-design]]
 - `collections`: [[collection-references]]
 - `comments`: [[comment-replies]], [[comment-thread-rules]], [[comment-thread-verify]], [[comments-moderation-counters]], [[comments-widget-pages]], [[designed-page-comment-names]], [[product-review-order]]
+- `commission_list`: [[commission-list-paging]]
 - `config_text`: [[config-table-no-varchar]]
 - `consent`: [[fn-module-errors-mail-backup-consent]]
 - `contact_list`: [[server-paged-lists]]
