@@ -1012,9 +1012,17 @@ function local_sale_complete($user, $input)
     //    on from what the line above left ($stock_left, only set for a
     //    product that tracks stock).
     $stock_left = array();
+    $bundle_ids = pg_bundle_ids_among(array_column($lines, 'product_id'));
 
     foreach ($lines as $line) {
         $product_id = (int) $line['product_id'];
+
+        // A bundle takes its components' stock (includes/fn/bundles.php).
+        if (isset($bundle_ids[$product_id])) {
+            pg_bundle_take_stock($line['id'], $product_id, $line['quantity'], 'local_sale', $stock_left);
+            continue;
+        }
+
         $tracked = ((int) $line['inventory'] === 1);
         $stock_before = (int) $line['inventory_quantity'];
 

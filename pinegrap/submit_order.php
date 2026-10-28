@@ -6331,6 +6331,9 @@ function submit_order($type) {
     // the first one left, not from the stock read before the loop.
     $stock_left = array();
 
+    // A bundle's stock is its components' (includes/fn/bundles.php).
+    $bundle_ids = pg_bundle_ids_among(array_column($products, 'product_id'));
+
     // loop through all ordered products in order to determine if things need to be done for each product
     foreach ($products as $product) {
         $product_id = $product['product_id'];
@@ -6372,8 +6375,16 @@ function submit_order($type) {
             }
         }
 
+        // A bundle line takes its components' stock and keeps the contents
+        // it was sold with; its own cached stock follows from them.
+        $is_bundle = isset($bundle_ids[(int) $product_id]);
+
+        if ($is_bundle) {
+            pg_bundle_take_stock($product['order_item_id'], $product_id, $quantity, 'checkout', $stock_left);
+        }
+
         // if inventory is enabled for this product and the inventory quantity is not already zero then decrement inventory quantity
-        if (($inventory == 1) && ($inventory_quantity != 0)) {
+        if (!$is_bundle && ($inventory == 1) && ($inventory_quantity != 0)) {
             // the single quotes around the quantity are necessary in order to prevent MySQL from doing strange things
             $query = "UPDATE products SET inventory_quantity = (inventory_quantity - ?) WHERE id = ?";
             $result = db_q($query, array((string) $quantity, (string) $product_id)) or output_error('Query failed.');

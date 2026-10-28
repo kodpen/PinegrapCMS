@@ -16,7 +16,8 @@ description: Bundles design note, part 2: hook points checked in the code, steps
 
 ## How is the work cut? (about 1,000 product lines each)
 1. Done (#2646): schema 11.0.54, `includes/fn/bundles.php`, refresh, product screen card, delete refusal (`commerce/product-bundles.md`).
-2. Sale paths: checkout, local sale, marketplace import and restock, combined demand in `check_inventory()`, `order_item_components`, refusals in the inventory API, barcode, stock count, the product list's quick and bulk edit of a bundle's stock; refuse binning a component (step 1 refuses only the permanent delete).
+2a. Checkout and counter sale: components' stock and the `order_item_components` snapshot (`pg_bundle_take_stock()`), combined demand in `check_inventory()` (`pg_bundle_cart_allowance()`).
+2b. Marketplace import and its refund restock, refusals in the inventory API, barcode, stock count, the product list's quick and bulk edit of a bundle's stock; refuse binning a component (step 1 refuses only the permanent delete).
 3. ERP: component snapshot on invoice lines, the `erp_stock_moves` key, component moves on post, return and cancel, profit report check.
 4. API fields, catalog tokens, list source, designer palette and flags.
 
