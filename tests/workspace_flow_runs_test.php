@@ -1001,3 +1001,34 @@ function test_workspace_flow_runs_walk_always()
 	pg_assert_true(ws_flow_outcome_routed($graph, 'a', 'timeout'));
 	pg_assert_false(ws_flow_outcome_routed($graph, 'start', 'failed'));
 }
+
+// The result a run's flag shows: the first failure of a failed run, else the
+// box that moved last, an open box latest of all; boxes without a sentence
+// are passed over.
+function test_workspace_flow_runs_result_pick()
+{
+	$line = function ($status, $text, $finished, $id) {
+		return array('status' => $status, 'text' => $text, 'finished_at' => $finished, 'id' => $id);
+	};
+
+	pg_assert_same('', ws_flow_run_result_pick('done', array()), 'no boxes');
+	pg_assert_same('', ws_flow_run_result_pick('done', array($line('done', '  ', 10, 1))), 'no sentence');
+	pg_assert_same('Mail sent.', ws_flow_run_result_pick('done', array(
+		$line('done', 'Task opened.', 10, 1),
+		$line('done', 'Mail sent.', 20, 2),
+		$line('skipped', '', 30, 3),
+	)), 'the last box with a sentence');
+	pg_assert_same('Second.', ws_flow_run_result_pick('done', array($line('done', 'First.', 20, 1), $line('done', 'Second.', 20, 2))), 'a tie goes to the later box');
+	pg_assert_same('Waiting for Ada.', ws_flow_run_result_pick('waiting', array(
+		$line('waiting', 'Waiting for Ada.', 0, 1),
+		$line('done', 'Mail sent.', 20, 2),
+	)), 'an open box is the latest');
+	pg_assert_same('Address refused.', ws_flow_run_result_pick('failed', array(
+		$line('done', 'Task opened.', 10, 1),
+		$line('failed', 'Address refused.', 20, 2),
+		$line('failed', 'Timed out.', 30, 3),
+		$line('done', 'Later.', 40, 4),
+	)), 'the first failure of a failed run');
+	pg_assert_same('Later.', ws_flow_run_result_pick('done', array($line('failed', 'Routed failure.', 20, 2), $line('done', 'Later.', 40, 4))), 'a routed failure of a run done is just a box');
+	pg_assert_same(WS_FLOW_RUN_RESULT_CHARS, mb_strlen(ws_flow_run_result_pick('done', array($line('done', str_repeat('ş', 1500), 10, 1)))), 'cut in characters');
+}

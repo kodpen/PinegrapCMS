@@ -63,6 +63,9 @@ define('WS_FLOW_MAX_BOX_RUNS', 200);
 /** The largest result one box keeps, in bytes of JSON. */
 define('WS_FLOW_RESULT_BYTES', 16384);
 
+/** The longest result a run's flag carries, in characters. */
+define('WS_FLOW_RUN_RESULT_CHARS', 1000);
+
 /** Seconds a finished run is kept before it is swept (30 days). */
 define('WS_FLOW_RUNS_KEEP', 2592000);
 
@@ -1243,6 +1246,50 @@ function ws_flow_step_states($rows)
     }
 
     return $out;
+}
+
+/**
+ * The result a run's flag shows: the sentence of the box that failed it
+ * first for a failed run, else the sentence of the box that moved last (a
+ * box still open counts as the latest), so a run done shows what it ended
+ * on and a waiting one what it waits at. Boxes without a sentence are
+ * passed over; none at all gives ''. Trimmed and cut to
+ * WS_FLOW_RUN_RESULT_CHARS. Pure.
+ *
+ * @param string  $run_status ws_flow_run_statuses()
+ * @param array[] $lines      status, text (as the reader is shown it), finished_at, id
+ * @return string
+ */
+function ws_flow_run_result_pick($run_status, $lines)
+{
+    $best = null;
+    $best_key = null;
+
+    foreach ((array) $lines as $line) {
+        $text = trim((string) ($line['text'] ?? ''));
+
+        if ($text === '') {
+            continue;
+        }
+
+        $finished = (int) ($line['finished_at'] ?? 0);
+        $id = (int) ($line['id'] ?? 0);
+
+        if (($run_status === 'failed') && ((string) ($line['status'] ?? '') === 'failed')) {
+            // The first failure: the earliest settled, a failed box never
+            // being open.
+            $key = array(0, -$finished, -$id);
+        } else {
+            $key = array(-1, ($finished > 0) ? $finished : PHP_INT_MAX, $id);
+        }
+
+        if (($best_key === null) || ($key > $best_key)) {
+            $best_key = $key;
+            $best = $text;
+        }
+    }
+
+    return ($best === null) ? '' : mb_substr($best, 0, WS_FLOW_RUN_RESULT_CHARS);
 }
 
 /* ---------------------------------------------------------------------------
