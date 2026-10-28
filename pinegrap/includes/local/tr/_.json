@@ -1146,6 +1146,7 @@
     "{var:1} set {var:2} to {var:3}": "{var:1}, {var:2} görevini “{var:3}” durumuna aldı",
     "{var:1} shared a flow with you": "{var:1} sizinle bir akış paylaştı",
     "{var:1} shared a note with you": "{var:1} sizinle bir not paylaştı",
+    "{var:1} shared a table with you": "{var:1} sizinle bir tablo paylaştı",
     "{var:1} shared components and system widgets were deleted: {var:2}": "{var:1} ortak bileşen ve sistem widget'ı silindi: {var:2}",
     "{var:1} shared folder(s), {var:2} person(s)": "{var:1} paylaşılan klasör, {var:2} kişi",
     "{var:1} shared this channel with {var:2} ({var:3}), with a link valid until {var:4}": "{var:1} bu kanalı {var:4} tarihine kadar geçerli bir bağlantıyla {var:2} ile paylaştı ({var:3})",
