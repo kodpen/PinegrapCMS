@@ -75,7 +75,7 @@ function pg_zone_form_choices($zone_id = 0)
     $zone_country_ids = array();
     $zone_state_ids = array();
 
-    $result = db_q("SELECT id, name FROM countries ORDER BY name") or output_error('Query failed.');
+    $result = db_q("SELECT id, name FROM countries ORDER BY name", array()) or output_error('Query failed.');
 
     while ($row = mysqli_fetch_assoc($result)) {
         $countries[] = array('id' => $row['id'], 'label' => $row['name']);
@@ -85,7 +85,7 @@ function pg_zone_form_choices($zone_id = 0)
         "SELECT states.id, states.name, countries.name as country_name
         FROM states
         LEFT JOIN countries ON countries.id = states.country_id
-        ORDER BY countries.name, states.name") or output_error('Query failed.');
+        ORDER BY countries.name, states.name", array()) or output_error('Query failed.');
 
     while ($row = mysqli_fetch_assoc($result)) {
         $states[] = array('id' => $row['id'], 'label' => $row['country_name'] . ': ' . $row['name']);
