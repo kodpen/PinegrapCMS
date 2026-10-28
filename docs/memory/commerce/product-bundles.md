@@ -20,7 +20,7 @@ module: bundles
 - `import_products.php` ends with `pg_bundle_refresh_all()`, which also overwrites a stock or price the file gave a bundle.
 - Not yet refused (sale-paths step): quick edit, bulk edit, barcode and the inventory API can still write a bundle's stock; the next refresh replaces it.
 
-## How is a bundle sold? (step 2a)
+## How is a bundle sold? (#2691)
 - Checkout (`submit_order.php` stock loop) and counter sale (`local_sale_complete()`): a bundle line calls `pg_bundle_take_stock()` instead of the plain decrement: one `order_item_components` row per component (quantity per bundle, `erp_product_costs.avg_cost` as unit_cost when the ERP table exists), then each tracked component with stock goes down by quantity × line quantity, out-of-stock flag and `pg_product_stock_changed()` as a plain sale; `$stock_left` is shared with plain lines.
 - `check_inventory()`: a cart holding a bundle goes to `pg_bundle_check_inventory()`, which checks every line against one stock pool (`pg_bundle_cart_allowance()`, lines in id order); a cart without one keeps the old loop unchanged.
 
