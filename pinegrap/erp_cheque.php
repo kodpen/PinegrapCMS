@@ -97,7 +97,7 @@ $step_form = function ($step, $title, $button, $class, $fields, $note) use ($che
         </form>';
 };
 
-$date_field = '<div class="col-6 md:col-3"><label class="form-label small">' . lang('Date') . '</label><input type="date" class="form-control form-control-sm" name="date" value="' . date('Y-m-d') . '" /></div>';
+$date_field = '<div class="col-6 md:col-3"><label class="form-label small">' . lang('Date') . '</label><input type="date" data-pg-date class="form-control form-control-sm" name="date" value="' . date('Y-m-d') . '" /></div>';
 $bank_field = '<div class="col-6 md:col-4"><label class="form-label small">' . lang('Bank account') . '</label><select class="form-control form-control-sm" name="bank_till_id" aria-label="' . h(lang('Bank account')) . '">' . $tills . '</select></div>';
 
 $output_steps = '';
@@ -181,7 +181,7 @@ pg_page_shell([
         </div>
     </div>
 </main>
-' . pg_fields_script() .
+' . get_date_picker_format() . pg_fields_script() .
 output_footer();
 
 $liveform->remove_form();

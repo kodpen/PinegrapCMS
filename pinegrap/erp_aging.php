@@ -120,7 +120,7 @@ pg_page_shell(array(
                 <form method="get" action="erp_aging.php" class="d-flex align-items-center gap-3 mb-0">
                     <input type="hidden" name="direction" value="' . h($direction) . '" />
                     <label for="as_of" class="small fg-secondary text-nowrap mb-0">' . lang('As of') . '</label>
-                    <input type="date" id="as_of" name="as_of" class="form-control form-control-sm" value="' . h($as_of) . '" max="' . h(date('Y-m-d')) . '" />
+                    <input type="date" data-pg-date id="as_of" name="as_of" class="form-control form-control-sm" value="' . h($as_of) . '" max="' . h(date('Y-m-d')) . '" />
                     <button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . lang('Apply') . '"><i class="bi bi-arrow-right-circle"></i></button>
                 </form>
                 <div class="pg-toolbar-grow small fg-secondary text-truncate">
@@ -157,7 +157,7 @@ pg_page_shell(array(
         </div>
     </div>
 </main>
-' .
+' . get_date_picker_format() . pg_fields_script() .
 output_footer();
 
 $liveform->remove_form();

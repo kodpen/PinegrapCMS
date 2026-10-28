@@ -149,12 +149,12 @@ pg_page_shell([
                         <input type="hidden" name="id" value="' . $account_id . '" />
                         <div class="mb-5">
                             <label for="as_of" class="form-label">' . lang('Balance as of') . '</label>
-                            <input type="date" id="as_of" name="as_of" class="form-control" value="' . h($options['as_of']) . '" max="' . h(date('Y-m-d')) . '" />
+                            <input type="date" data-pg-date id="as_of" name="as_of" class="form-control" value="' . h($options['as_of']) . '" max="' . h(date('Y-m-d')) . '" />
                             <div class="form-text">' . lang('The balance and the movements are read as of this date; later postings are left out.') . '</div>
                         </div>
                         <div class="mb-5">
                             <label for="from" class="form-label">' . lang('List movements from') . '</label>
-                            <input type="date" id="from" name="from" class="form-control" value="' . h($options['from']) . '" max="' . h($options['as_of']) . '" />
+                            <input type="date" data-pg-date id="from" name="from" class="form-control" value="' . h($options['from']) . '" max="' . h($options['as_of']) . '" />
                             <div class="form-text">' . lang('Everything before this date is one opening balance.') . '</div>
                         </div>
                         <div class="mb-5">
@@ -200,7 +200,7 @@ pg_page_shell([
             </div>
         </div>
     </div>
-</main>' .
+</main>' . get_date_picker_format() . pg_fields_script() .
 output_footer();
 
 $liveform->remove_form();

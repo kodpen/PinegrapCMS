@@ -278,11 +278,11 @@ pg_page_shell([
                     </div>
                     <div class="col-6 md:col-2" data-range="dates"' . (($range === 'dates') ? '' : ' hidden') . '>
                         <label class="form-label small fg-secondary mb-1" for="from">' . lang('Start') . '</label>
-                        <input type="date" class="form-control form-control-sm" id="from" name="from" value="' . h($period['from']) . '" />
+                        <input type="date" data-pg-date class="form-control form-control-sm" id="from" name="from" value="' . h($period['from']) . '" />
                     </div>
                     <div class="col-6 md:col-2" data-range="dates"' . (($range === 'dates') ? '' : ' hidden') . '>
                         <label class="form-label small fg-secondary mb-1" for="to">' . lang('End') . '</label>
-                        <input type="date" class="form-control form-control-sm" id="to" name="to" value="' . h($period['to']) . '" />
+                        <input type="date" data-pg-date class="form-control form-control-sm" id="to" name="to" value="' . h($period['to']) . '" />
                     </div>
                     <div class="col-12 md:col-auto">
                         <input type="hidden" name="orders" value="0" />
@@ -459,7 +459,7 @@ pg_page_shell([
     });
 })();
 </script>
-' .
+' . get_date_picker_format() . pg_fields_script() .
 output_footer();
 
 $liveform->remove_form();
