@@ -3,11 +3,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Source test for jQuery UI leaving the panel: the panel header prints no
- * jQuery UI sheet or script, backend.src.js sets up no jQuery UI widget and
- * backend.src.css styles no jQuery UI class. Every other PHP and JS file
- * outside the site renderers and the unlinked theme designer calls no jQuery
- * UI widget, so a screen cannot depend on the library the header no longer
- * loads. Site pages keep loading jQuery UI on their own.
+ * jQuery UI sheet or script and backend.src.js sets up no jQuery UI widget.
+ * Every other PHP and JS file outside the site renderers and the unlinked
+ * theme designer calls no jQuery UI widget, so a screen cannot depend on the
+ * library the header no longer loads. Site pages keep loading jQuery UI on their own.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com

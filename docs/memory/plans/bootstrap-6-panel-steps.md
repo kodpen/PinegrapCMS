@@ -10,7 +10,7 @@ description: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and st
 - B8, the switch, is done (#1866, `bootstrap-6-panel-done.md`); B9 can start.
 - B9 Component swaps on v6, one claim each (`bootstrap-6-components.md`): B9a Chips (done, #2208), B9b Combobox (done, #2243), B9c Datepicker and time (done, #2262), B9e Range (done, #2207), B9f form-adorn, B9g Stepper (done, #2206), B9h hover-lift (done, #2217, #2237), B9i Strength, B9j Avatar (done, #2216, #2242, #2256, #2339), B9k research proposals (slice 1 done, #2273; `.btn-ghost` slices done #2373, #2479, #2505, #2552; focus ring tokens done #2561; `workspace_flow.js`'s ghosts go with the flows work, the editor toast and dropping the `.btn-ghost` CSS follow, the rest waits for B11: `ui/bootstrap-6-own-widget-swaps.md`).
 - B9i: done — the panel meter (#2211) and the installer meter (#2274), `ui/password-strength-js.md`.
-- B10 Token tuning, B11 redesign, B12 jQuery UI out of the panel (done, #2762): `bootstrap-6-redesign.md`.
+- B10 Token tuning, B11 redesign, B12 jQuery UI out of the panel (done in #2762 but four dead CSS rules): `bootstrap-6-redesign.md`.
 
 ## Where do I start?
 - After the claim check, take the lowest open step whose dependencies are done and that no open PR holds; independent steps run in parallel sessions, one draft PR each; a step over about 1,000 product lines goes in several PRs, one after the other (`workflow/working-mode.md`). B1-B5 are independent; B6 needs B2a; B7 needs B1a and B2a; B8 needs B1a-B7; B9 needs B8 (B9c also B5); B10 needs B9; B11 needs B10; B12 needs B9c.
