@@ -937,8 +937,9 @@ if (!defined('PG_DB_GUARD_LOADED')) {
      * mirror instead, so the two agree on which peers may speak for someone
      * else even though only one of them can ask the database.
      *
-     * Only the two unambiguous single-value headers are read. X-Forwarded-For
-     * is a client-appendable chain, and parsing it correctly needs the full
+     * Only the single-value headers the proxy line names are read, the ones
+     * waf_client_ip() reads from that proxy (pg_ban_shield_proxy_headers()).
+     * X-Forwarded-For is a client-appendable chain, and parsing it correctly needs the full
      * trusted-hop walk in waf.php; getting it half right here would let an
      * attacker choose which address the shield judges - the opposite of the
      * point.
@@ -951,20 +952,7 @@ if (!defined('PG_DB_GUARD_LOADED')) {
             return $remote;
         }
 
-        $trusted = false;
-
-        foreach ($proxies as $proxy) {
-            if (waf_ip_matches_simple($remote, $proxy)) {
-                $trusted = true;
-                break;
-            }
-        }
-
-        if (!$trusted) {
-            return $remote;
-        }
-
-        foreach (array('HTTP_CF_CONNECTING_IP', 'HTTP_TRUE_CLIENT_IP') as $header) {
+        foreach (pg_ban_shield_proxy_headers($proxies, $remote) as $header) {
 
             if (empty($_SERVER[$header])) {
                 continue;
@@ -978,6 +966,46 @@ if (!defined('PG_DB_GUARD_LOADED')) {
         }
 
         return $remote;
+    }
+
+    /**
+     * The headers the peer may name the visitor with, from the mirror's proxy
+     * lines ("<range> <keys>", see waf_ban_shield_proxy_line()): the first
+     * line that covers the peer decides. A line written before the keys were
+     * carried reads the old pair; "-" reads none. Only HTTP_ keys are taken,
+     * whatever the file says.
+     *
+     * @param array $proxies the proxy lines without their "P "
+     * @param string $remote the peer's address
+     * @return array $_SERVER keys in reading order
+     */
+    function pg_ban_shield_proxy_headers($proxies, $remote)
+    {
+        foreach ($proxies as $proxy) {
+            $parts = preg_split('/\s+/', trim((string) $proxy), 2);
+
+            if (!waf_ip_matches_simple($remote, $parts[0])) {
+                continue;
+            }
+
+            if (!isset($parts[1])) {
+                return array('HTTP_CF_CONNECTING_IP', 'HTTP_TRUE_CLIENT_IP');
+            }
+
+            $headers = array();
+
+            foreach (explode(',', $parts[1]) as $header) {
+                $header = trim($header);
+
+                if (preg_match('/^HTTP_[A-Z0-9_]+$/', $header)) {
+                    $headers[] = $header;
+                }
+            }
+
+            return $headers;
+        }
+
+        return array();
     }
 
     /**
