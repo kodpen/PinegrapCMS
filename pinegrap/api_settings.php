@@ -1044,8 +1044,8 @@ function api_settings_permission_rows($prefix, $id_prefix = '') {
 		$html .= '
 		<div class="api-perm" data-group="' . h($group_key) . '">
 			<i class="bi ' . $text[2] . '"></i>
-			<div class="api-perm-text"><b>' . h($text[0]) . '</b><span>' . h($text[1]) . '</span></div>
-			<div class="api-seg btn-group btn-group-sm" role="group">
+			<div class="api-perm-text"><b id="' . $id . '_label">' . h($text[0]) . '</b><span>' . h($text[1]) . '</span></div>
+			<div class="api-seg btn-group btn-group-sm" role="group" aria-labelledby="' . $id . '_label">
 				<input type="radio" class="btn-check" name="' . $name . '" id="' . $id . '_none" value="" checked>
 				<label class="btn" for="' . $id . '_none">' . lang('None') . '</label>
 				' . $read . '
@@ -1659,7 +1659,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 		' . $liveform_messages . '
 	</div></div>
 
-	<div class="d-flex align-items-center gap-3 mb-5">
+	<div class="d-flex flex-wrap align-items-center gap-3 mb-5">
 		<div class="input-group input-group-sm" style="max-width:280px">
 			<span class="input-group-text"><i class="bi bi-search"></i></span>
 			<input type="text" class="form-control" id="api_filter" aria-label="' . h(lang('Search application')) . '" placeholder="' . lang('Search application') . '" autocomplete="off">
@@ -1703,7 +1703,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 
 <!-- The drawer. One of them, filled from the row that was clicked: a drawer per
      application would put every application\'s settings into the page at once. -->
-<dialog class="drawer drawer-end" id="api_drawer" style="width:min(520px,100%)">
+<dialog class="drawer drawer-end" id="api_drawer" aria-labelledby="d_title" style="width:min(520px,100%)">
 	<form method="post" action="api_settings.php" autocomplete="off" class="disable_shortcut d-flex flex-column h-100">
 		' . get_token_field() . '
 		<input type="hidden" name="api_action" value="update" id="d_action">
@@ -1878,23 +1878,23 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 </dialog>
 
 <!-- New application -->
-<dialog class="dialog dialog-lg dialog-scrollable" id="api_new">
+<dialog class="dialog dialog-lg dialog-scrollable" id="api_new" aria-labelledby="api_new_title">
 		<form method="post" action="api_settings.php" autocomplete="off" class="d-contents disable_shortcut">
 			' . get_token_field() . '
 			<input type="hidden" name="api_action" value="create">
 			<div class="dialog-header">
-				<h5 class="dialog-title"><i class="bi bi-key me-3"></i>' . lang('New Application') . '</h5>
+				<h5 class="dialog-title" id="api_new_title"><i class="bi bi-key me-3"></i>' . lang('New Application') . '</h5>
 				<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
 			</div>
 			<div class="dialog-body">
 				<div class="mb-5">
-					<label class="form-label small">' . lang('Name') . ' <span class="fg-danger">*</span></label>
-					<input type="text" class="form-control form-control-sm" name="name" maxlength="190" required
+					<label class="form-label small" for="n_name">' . lang('Name') . '</label>
+					<input type="text" class="form-control form-control-sm" name="name" id="n_name" maxlength="190" required
 						placeholder="' . lang('For example: marketplace sync') . '">
 				</div>
 				<div class="mb-5">
-					<label class="form-label small">' . lang('Description') . '</label>
-					<input type="text" class="form-control form-control-sm" name="description" maxlength="500">
+					<label class="form-label small" for="n_description">' . lang('Description') . '</label>
+					<input type="text" class="form-control form-control-sm" name="description" id="n_description" maxlength="500">
 				</div>
 				<div class="mb-7">
 					<label class="form-label small">' . lang('Who connects') . '</label>
@@ -1931,9 +1931,9 @@ if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_cred
 
 	echo '
 <div class="pg-open-sheet" id="api_secret_sheet" style="background:rgba(0,0,0,.6)">
-	<dialog class="dialog dialog-lg pg-dialog-centered" open>
+	<dialog class="dialog dialog-lg pg-dialog-centered" id="api_sheet_oauth" aria-labelledby="api_sheet_oauth_title" open>
 			<div class="dialog-header border-0 pb-0">
-				<h5 class="dialog-title"><i class="bi bi-plug me-3 fg-primary"></i>' . lang('Connecting applications with OAuth is switched on') . '</h5>
+				<h5 class="dialog-title" id="api_sheet_oauth_title"><i class="bi bi-plug me-3 fg-primary"></i>' . lang('Connecting applications with OAuth is switched on') . '</h5>
 			</div>
 			<div class="dialog-body">
 				<p class="mb-5">' . lang('Outside applications can now ask a person to connect. The person signs in on this site, sees what the application asks for and agrees or refuses; the application never sees the password. Nothing here has to be kept secret.') . '</p>
@@ -1962,9 +1962,9 @@ if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_cred
 
 	echo '
 <div class="pg-open-sheet" id="api_secret_sheet" style="background:rgba(0,0,0,.6)">
-	<dialog class="dialog dialog-lg pg-dialog-centered" open>
+	<dialog class="dialog dialog-lg pg-dialog-centered" id="api_sheet_device" aria-labelledby="api_sheet_device_title" open>
 			<div class="dialog-header border-0 pb-0">
-				<h5 class="dialog-title"><i class="bi bi-phone me-3 fg-primary"></i>' . lang('Signing in from devices is switched on') . '</h5>
+				<h5 class="dialog-title" id="api_sheet_device_title"><i class="bi bi-phone me-3 fg-primary"></i>' . lang('Signing in from devices is switched on') . '</h5>
 			</div>
 			<div class="dialog-body">
 				<p class="mb-5">' . lang('Staff can now sign in on the app with their own user name and password. Nothing here has to be kept secret.') . '</p>
@@ -2002,9 +2002,9 @@ if ($new_credentials !== null) {
 
 	echo '
 <div class="pg-open-sheet" id="api_secret_sheet" style="background:rgba(0,0,0,.6)">
-	<dialog class="dialog dialog-lg pg-dialog-centered" open>
+	<dialog class="dialog dialog-lg pg-dialog-centered" id="api_sheet_secret" aria-labelledby="api_sheet_secret_title" open>
 			<div class="dialog-header border-0 pb-0">
-				<h5 class="dialog-title"><i class="bi bi-key me-3 fg-warning"></i>'
+				<h5 class="dialog-title" id="api_sheet_secret_title"><i class="bi bi-key me-3 fg-warning"></i>'
 					. ((isset($new_credentials['rotated']) && $new_credentials['rotated'])
 						? lang('A new secret was issued')
 						: lang('The application was created')) . '</h5>
