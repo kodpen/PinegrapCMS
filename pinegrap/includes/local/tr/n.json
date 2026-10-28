@@ -956,6 +956,7 @@
     "No variants to create.": "Oluşturulacak varyant yok.",
     "No viewport tag (mobile rendering)": "Viewport etiketi yok (mobil görünüm)",
     "No walk-in sales account is named on the ERP settings card, so this sale cannot be invoiced unless a customer is picked.": "ERP ayar kartında sıcak satış carisi tanımlı değil; müşteri seçilmezse bu satış faturalanamaz.",
+    "No webhook ID is stored for PayPal.": "PayPal için kayıtlı webhook kimliği yok.",
     "No webhook is registered for this account.": "Bu hesap için kayıtlı bir webhook yok.",
     "No webhook signing secret is stored for Stripe.": "Stripe için kayıtlı bir webhook imzalama anahtarı yok.",
     "No writable field was sent.": "Yazılabilir bir alan gönderilmedi.",
