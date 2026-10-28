@@ -20,6 +20,7 @@ include('init.php');
 
 $user = validate_user();
 validate_area_access($user, 'designer');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/common_region_form.php');
 
 // Stop early when the screen is opened without an existing record (stale
 // link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
@@ -70,17 +71,6 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
         $output_component = '';
     }
 
-    if ($component_id) {
-        $output_content = '';
-    } else {
-        $output_content =
-            '<h5 class="mt-12">' . lang('Shared Content to appear on associated Pages') . '</h5>
-            <div class="col-12 my-3">
-                <label for="name" class="form-label">' . lang('Content') . '</label>
-                <textarea id="content_textarea" name="content" style="width: 100%" rows="30" wrap="off">' . h(prepare_rich_text_editor_content_for_output($cregion_content)) . '</textarea>
-            </div>';
-    }
-
     $output = '';
     $output .= 
     pg_page_shell([
@@ -114,33 +104,12 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
                 <form name="form" action="edit_common_region.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '">
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Options') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
+                    ' . pg_common_region_form_card($cregion_name, $cregion_content, '
                                         <div class="col-12 md:col-6 my-3">
-                                            <label for="name" class="form-label">' . lang('Common Region Name') . '</label>
-                                            <div class="input-group">
-                                                <div class="input-group-text">' . h('<cregion>') . '</div>
-                                                <input value="' . h($cregion_name) . '" name="name" id="name" type="text" class="form-control" maxlength="100" />
-                                                <div class="input-group-text">' . h('</cregion>') . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 md:col-6 my-3">
-                                            <label for="name" class="form-label">' . lang('Region Type') . '</label>
+                                            <label for="type" class="form-label">' . lang('Region Type') . '</label>
                                             <select name="type" id="type" class="form-control"' . ($component_id ? ' disabled' : '') . '><option value="common" selected="selected">' . lang('Common Region') . '</option><option value="designer">' . lang('Designer Region') . '</option></select>
                                             ' . ($component_id ? '<input type="hidden" name="type" value="common">' : '<div class="form-text text-end">' . lang('You can change Region Type') . '</div>') . '
-                                        </div>
-                                        ' . $output_content . '
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                                        </div>', !$component_id) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -208,7 +177,7 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('common region'), $_POST['name']) )), $_SESSION['sessionusername']);
         $notice = lang(array('string'=>'{var:1} was deleted successfully','vars'=>lang('Common Region') ));
     } else {
-        $_POST['name'] = trim($_POST['name']);
+        list($name, $content) = pg_common_region_form_values($_POST);
 
         if ($_POST['type'] == 'common') {
             $cregion_designer_type = 'no';
@@ -222,11 +191,11 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
             $cregion_designer_type = 'no';
             $sql_content = "";
         } else {
-            $sql_content = "cregion_content = '" . escape(prepare_rich_text_editor_content_for_input($_POST['content'] ?? '')) . "', ";
+            $sql_content = "cregion_content = '" . escape(prepare_rich_text_editor_content_for_input($content)) . "', ";
         }
 
         $query = "UPDATE cregion "
-                ."SET cregion_name = '" . escape($_POST['name'] ?? '') . "', "
+                ."SET cregion_name = '" . escape($name) . "', "
                     .$sql_content
                     ."cregion_designer_type = '$cregion_designer_type', "
                     ."cregion_user = '" . $user['id'] . "', "
@@ -234,7 +203,7 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
                 ."WHERE cregion_id = '" . escape($_POST['id'] ?? '') . "'";
         // update region
         $result = mysqli_query(db::$con, $query) or output_error('Query failed');
-        log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('common region'), $_POST['name']) )), $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('common region'), $name) )), $_SESSION['sessionusername']);
         $notice = lang(array('string'=>'{var:1} was edited successfully','vars'=>lang('Common Region') ));
 
     }
