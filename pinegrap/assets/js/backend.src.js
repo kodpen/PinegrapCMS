@@ -1762,6 +1762,16 @@ $(document).ready(function () {
         var unit_in_label = $("input[name=length]").parent().find("label.unit");
         var unit_in_label_text = unit_in_label.text();
     }
+    // A dimension as typed on the product screen, with either decimal
+    // separator (the server reads "12,5" and "12.5" alike); no digits is 0.
+    function pgProductFigure(text) {
+        var n = parseFloat(String(text).replace(/\s+/g, "").replace(",", "."));
+        return isNaN(n) ? 0 : n;
+    }
+    // The converted figure to four places, the precision the columns hold.
+    function pgProductRound(n) {
+        return Math.round(n * 10000) / 10000;
+    }
     $("input[name=convert_to_metric_system]").on("click", function () {
         var switcher = $(this);
         $($(this).attr("data-bs-target")).each(function () {
@@ -1769,12 +1779,12 @@ $(document).ready(function () {
                 case "weight":
                     var input = $("#" + $(this).attr("id"));
                     if (switcher.is(':checked')) {
-                        input.val(input.val() * 0.45359237);
+                        input.val(pgProductRound(pgProductFigure(input.val()) * 0.45359237));
                         input.parent().find("label.unit").each(function () {
                             $(this).text("kg");
                         });
                     } else {
-                        input.val(input.val() * 2.20462262185);
+                        input.val(pgProductRound(pgProductFigure(input.val()) * 2.20462262185));
                         input.parent().find("label.unit").each(function () {
                             $(this).text(unit_lb_label_text);
                         });
@@ -1785,13 +1795,13 @@ $(document).ready(function () {
                 case "height":
                     var input = $("#" + $(this).attr("id"));
                     if (switcher.is(':checked')) {
-                        input.val(input.val() * 2.54);
+                        input.val(pgProductRound(pgProductFigure(input.val()) * 2.54));
                         input.parent().find("label.unit").each(function () {
                             $(this).text("cm");
                         });
 
                     } else {
-                        input.val(input.val() * 0.393700787);
+                        input.val(pgProductRound(pgProductFigure(input.val()) * 0.393700787));
                         input.parent().find("label.unit").each(function () {
                             $(this).text(unit_in_label_text);
                         });
@@ -8676,7 +8686,9 @@ function pg_background_calls_allowed() {
                 while (p && p.tagName !== 'LABEL' && p !== document.body) p = p.parentElement;
                 if (p && p.tagName === 'LABEL') label = p;
             }
-            if (label && !label.querySelector('.pg-required-marker')) {
+            // A label whose text already starts with "*" carries its own
+            // marker: a second one would read "*Name *".
+            if (label && !label.querySelector('.pg-required-marker') && !/^\s*\*/.test(label.textContent)) {
                 var span = document.createElement('span');
                 span.className = 'pg-required-marker fg-danger ms-1';
                 span.setAttribute('aria-hidden', 'true');
