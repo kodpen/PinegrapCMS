@@ -2005,7 +2005,20 @@ function ws_handle_action($action, $request)
                 'voice'     => array('duration_ms' => $request['voice_duration_ms'] ?? 0, 'peaks' => $request['voice_peaks'] ?? ''),
             ));
 
-            return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'])) : ws_action_error($result['error']);
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            // A recording that asked an assistant without waiting for its
+            // transcript (ws_voice_posted()): Claude's run starts now, the
+            // screen carries Pinegrap AI on as after a message.
+            $asked = (array) ($result['asked'] ?? array());
+
+            if (!empty($asked['claude']) && function_exists('ws_claude_dispatch')) {
+                ws_claude_dispatch();
+            }
+
+            return ws_action_ok(array('message_id' => $result['message_id'], 'ai' => !empty($asked['ai']), 'agent' => !empty($asked['agent'])));
 
         // A file of the file manager in a conversation (library.php): the
         // picker under the paperclip, the channels the file manager's "Send

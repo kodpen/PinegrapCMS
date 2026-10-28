@@ -1441,9 +1441,15 @@ function ws_api_files_create($params)
         api_fail_validation($result['error'], 'text');
     }
 
-    // A voice message waits to be written out (voice.php).
+    // A voice message waits to be written out (voice.php); the assistants
+    // its words ask are asked once it is, or now when it will not be, as
+    // a message from the person's own device asks them.
     if (function_exists('ws_voice_queue')) {
-        ws_voice_queue($channel, $result['message_id'], $stored['file_id'], $stored['name']);
+        $queued = ws_voice_queue($channel, $result['message_id'], $stored['file_id'], $stored['name']);
+
+        if (ws_api_message_asks_assistants($app_id, 'message')) {
+            ws_api_assistants_carry_on(ws_voice_posted($viewer, $channel, $result['message_id'], (string) ($params['text'] ?? ''), $stored['name'], $queued));
+        }
     }
 
     $row = ws_message($result['message_id']);

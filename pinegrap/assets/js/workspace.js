@@ -11697,10 +11697,10 @@
             return this.rich ? this.rich.isEmpty() : (this.input.value === '');
         },
 
-        // The microphone in place of Send while the box is empty. Not while a
-        // message is changed; beside a reply bar it answers that message
-        // (voiceSend()), but not several at once, nor an assistant the reply
-        // would ask (voiceAnswers()).
+        // The microphone in place of Send while the box is empty or holds
+        // only tags (voiceTags()). Not while a message is changed; beside a
+        // reply bar it answers that message (voiceSend()), but not several
+        // at once, nor an MCP agent (voiceAnswers()).
         voiceSwap: function () {
             var mic = this.voiceMic;
 
@@ -11708,7 +11708,7 @@
                 return;
             }
 
-            var show = this.inputEmpty() && !this.editing && !this.editingScheduled && !this.era
+            var show = (this.inputEmpty() || (this.voiceTags() !== '')) && !this.editing && !this.editingScheduled && !this.era
                 && !!this.channel && !!this.channel.can_post
                 && (!this.reply || (!(this.replyMore && this.replyMore.length) && this.voiceAnswers(this.reply)));
 
@@ -11716,15 +11716,29 @@
             this.sendNode.classList.toggle('d-none', show);
         },
 
-        // Whether a recording may answer this message. An answer to Claude,
-        // Pinegrap AI or an MCP agent asks it, as the reply bar says; a
-        // recording asks nobody, so it does not stand in for one.
+        // The box's text while it holds nothing but tags (a person, @ai,
+        // @Claude, a channel or record), which a recording takes as its
+        // words so that it asks whom they name (voiceSend()); '' for an
+        // empty box or one with words in it.
+        voiceTags: function () {
+            if (!this.input || this.inputEmpty()) {
+                return '';
+            }
+
+            var text = this.tokens(this.inputText());
+            var rest = text.replace(/<[@#][a-z_]{1,30}:[0-9]{1,10}>/gi, '').replace(/(^|\s)@ai(?=\s|$)/gi, '$1');
+
+            return (rest.replace(/[\s\u00a0\u200b]/g, '') === '') ? text.trim() : '';
+        },
+
+        // Whether a recording may answer this message. An answer to Claude
+        // or Pinegrap AI asks it once the recording is written out
+        // (includes/workspace/voice.php, ws_voice_ask()); an MCP agent reads
+        // only the words, so a recording does not stand in for them.
         voiceAnswers: function (message) {
             var sender = (message && message.sender) || {};
-            var channel = this.channel || {};
 
-            return !((sender.claude && channel.claude && channel.claude.available)
-                || (sender.ai && channel.ai && channel.ai.available) || sender.mcp);
+            return !sender.mcp;
         },
 
         // Whether a sound in the conversation gets the microphone that
@@ -11779,17 +11793,19 @@
             self.voiceRecord();
         },
 
-        // A recording leaves as a file of its own: the words in the box stay
-        // there, and it answers the message the reply bar shows when it is
-        // sent. The bar closes once it is posted. measure: the length and
-        // waveform the recorder heard, kept for the player; its transcript
-        // is asked for at once (kickVoice()).
+        // A recording leaves as a file of its own: words in the box stay
+        // there, tags alone go with it (voiceTags()) and leave the box. It
+        // answers the message the reply bar shows when it is sent; the bar
+        // closes once it is posted. measure: the length and waveform the
+        // recorder heard, kept for the player; its transcript is asked for
+        // at once (kickVoice()), and an assistant it asks answers after it.
         voiceSend: function (file, measure) {
             var self = this;
             var parent = (self.reply && self.voiceAnswers(self.reply)) ? self.reply : null;
+            var tags = self.voiceTags();
 
             self.uploadFiles([file], {
-                body: '',
+                body: tags,
                 parent_id: parent ? parent.id : 0,
                 voice: measure || null,
                 sent: function () {
@@ -11797,6 +11813,11 @@
                         self.reply = null;
                         self.replyMore = null;
                         self.drawReplyBar();
+                    }
+
+                    if (tags !== '') {
+                        self.clearSent(tags);
+                        self.voiceSwap();
                     }
 
                     self.kickVoice(true);
