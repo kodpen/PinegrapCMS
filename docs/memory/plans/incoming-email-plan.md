@@ -1,11 +1,11 @@
 ---
 name: incoming-email-plan
-description: Incoming e-mail into Workspace channels (G1 done, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
+description: Incoming e-mail into Workspace channels (G1, G2 done, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
 ---
 
 ## What is it and where does it stand?
 - Mail to `support@company.com` becomes a card in a Workspace channel; the team discusses, opens tasks and replies by e-mail from there. Research note `notes/workspace-arastirma.md` §4, item 2.3.
-- G1 (core) is done: parser #2586, tables #2676, ingest #2710, card and `.eml` upload on the Mailboxes card #2738 (`workspace/mail-parse.md`, `mail-tables.md`, `mail-ingest.md`, `mail-card.md`). G2 (IMAP read) is cut into G2a–G2c: docs/memory/plans/incoming-email-g2.md.
+- G1 (core) is done: parser #2586, tables #2676, ingest #2710, card and `.eml` upload on the Mailboxes card #2738 (`workspace/mail-parse.md`, `mail-tables.md`, `mail-ingest.md`, `mail-card.md`). G2 (IMAP read) is done: #2764, #2788, #2806, #2828 (`workspace/mail-imap-client.md`, `mail-fetch.md`). G3 (reply by e-mail) is cut into G3a–G3c: docs/memory/plans/incoming-email-g3.md.
 - Naming: "gelen kutusu" / `ws_inbox` / `GET /workspace/inbox` already means notifications. This feature is "Gelen e-posta" / "E-posta kutuları" in the UI, `ws_mail_*` in code, `/workspace/mail/*` in the API; never "inbox".
 - Out of scope: own mail server or piping, POP3, IMAP IDLE (holds a PHP worker), HTML rendering, customer portal, knowledge base, WhatsApp.
 - Design details: docs/memory/plans/incoming-email-design.md
@@ -18,7 +18,7 @@ description: Incoming e-mail into Workspace channels (G1 done, owner 2026-10-27)
 
 ## What are the slices?
 One PR each. G1 core (schema 10.85 if still free): tables, MIME parser, `ws_mail_ingest()`, channel card, `.eml` upload in settings to test without a transport. G2 IMAP client, box card, "Test connection", inline cron job, System status row. G3 reply by e-mail from the channel. G4 read and send through a connected Microsoft 365 (or Google) account, new purpose `mail_read`. G5 request status, assignee, first-response target, "E-postalar" tab, events, auto-reply. G6 routing rules (+tag or address → channel, line in the customer's channel). G7 external API and MCP. G8 `@ai` triage suggestion (needs an AI key). G9 push endpoint, only if B or C is chosen (replaces G2).
-- Order: G1 after answers 3 and 9; G2 after 1 (a) and 4; then G3, G6, G5 (if 10 a); G7 and G4 per answer 2; G8 on a site with an AI key.
+- Order: G3, G6, G5; G7 and G4 per answer 2; G8 on a site with an AI key.
 
 ## What did the owner answer? (2026-10-27, #2444)
 - The plan starts. 1: IMAP (a). Reason: every installation runs under its own operators' responsibility, so the data-processor question does not concern Kodpen, and turning the feature on is the site administrators' call.
