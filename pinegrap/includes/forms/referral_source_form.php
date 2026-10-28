@@ -75,9 +75,9 @@ function pg_referral_source_form_card($values)
                                             <div class="col-12 sm:col-2 my-3">
                                                 <label for="sort_order" class="form-label">' . lang('Sort Order') . '</label>
                                                 <div class="input-group number-controls">
-                                                    <button class="btn material-icons minus border border-end-0" type="button">remove</button>
+                                                    <button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>
                                                     <input class="form-control text-center border-start-0 border-end-0" value="' . $sort_order . '" type="text" name="sort_order" id="sort_order" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"/>
-                                                    <button class="btn material-icons plus border border-start-0" type="button">add</button>
+                                                    <button class="btn material-icons plus border border-start-0" type="button" aria-label="' . h(lang('Increase')) . '">add</button>
                                                 </div>
                                             </div>
 

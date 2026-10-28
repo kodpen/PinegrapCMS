@@ -2415,8 +2415,8 @@ function pg_pb_render_attribute_card($attribute, $selected_option_ids = array(),
                        default to — it is the choice. */
                     ? ''
                     : '<div class="d-none align-items-center gap-3 pg-pb-attr-default-wrap">
-                    <span class="fg-secondary small">' . lang('Default Option') . ':</span>
-                    <select class="form-control form-control-sm pg-pb-attr-default" style="max-width:220px;">' . $output_default_options . '</select>
+                    <label class="fg-secondary small mb-0" for="pg_pb_attr_default_' . h($attribute['id']) . '">' . lang('Default Option') . ':</label>
+                    <select class="form-control form-control-sm pg-pb-attr-default" id="pg_pb_attr_default_' . h($attribute['id']) . '" style="max-width:220px;">' . $output_default_options . '</select>
                 </div>') . '
 
             </div>
@@ -2444,10 +2444,10 @@ function pg_pb_render_attribute_card($attribute, $selected_option_ids = array(),
 function pg_pb_render_attribute_modal()
 {
     return
-        '<dialog class="dialog dialog-lg dialog-scrollable" id="pg_pb_attribute_modal">
+        '<dialog class="dialog dialog-lg dialog-scrollable" id="pg_pb_attribute_modal" aria-labelledby="pg_pb_attribute_modal_title">
 
                     <div class="dialog-header">
-                        <h5 class="dialog-title"><i class="bi bi-tags me-3"></i>' . lang('New Attribute') . '</h5>
+                        <h5 class="dialog-title" id="pg_pb_attribute_modal_title"><i class="bi bi-tags me-3" aria-hidden="true"></i>' . lang('New Attribute') . '</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . lang('Close') . '"></button>
                     </div>
 
@@ -2465,7 +2465,7 @@ function pg_pb_render_attribute_modal()
                                 <input type="text" id="pg_pb_attr_label" class="form-control" maxlength="255" placeholder="' . lang('Attribute Label') . '" />
                             </div>
                             <div class="col-12">
-                                <label class="form-label">' . lang('Atribute Options') . '</label>
+                                <label class="form-label">' . lang('Attribute Options') . '</label>
                                 <div id="pg_pb_attr_options"></div>
                                 <button type="button" class="btn btn-sm btn-outline theme-primary mt-3" id="pg_pb_attr_add_option"><i class="bi bi-plus-circle me-3"></i>' . lang('Add Option') . '</button>
                             </div>
@@ -3123,7 +3123,12 @@ function pg_pb_render_styles()
                 background: rgba(0,0,0,.55); color: #fff;
                 border: 0; padding: 0; font-size: .7rem;
             }
-            .pg-pb-strip .pg-pb-chip:hover .pg-pb-chip-remove { display: flex; }
+            .pg-pb-strip .pg-pb-chip:hover .pg-pb-chip-remove,
+            .pg-pb-strip .pg-pb-chip:focus-within .pg-pb-chip-remove { display: flex; }
+            /* No hover on a touch screen: the remove button stays visible. */
+            @media (hover: none) {
+                .pg-pb-strip .pg-pb-chip .pg-pb-chip-remove { display: flex; }
+            }
 
             /* Variant table: the header row is hidden below lg and each cell
                becomes a block, so a row reads as a small card. Bootstrap has
@@ -3444,7 +3449,7 @@ function pg_pb_variant_sets_screen()
         $output_rows .=
             '<tr>
                 <td class="select-all align-middle text-start">
-                    <input class="check" type="checkbox" name="group_ids[]" value="' . $set_id . '" />
+                    <input class="check" type="checkbox" name="group_ids[]" value="' . $set_id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($set['name'])))) . '" />
                 </td>
                 <td class="align-middle text-start action-buttons text-nowrap">
                     <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2"
@@ -3604,7 +3609,7 @@ function pg_pb_variant_sets_screen()
                 <div class="row mb-3 flex-wrap">
                     <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
                         
-                        <nav id="button_bar" class="navigation" aria-label="Button Bar">
+                        <nav id="button_bar" class="navigation" aria-label="' . h(lang('Button Bar')) . '">
                             <a class="btn btn-sm btn-solid theme-primary m-1" href="add_product.php"><i class="bi bi-plus-circle me-3"></i>' . lang('Create') . '</a>
                             <a class="btn btn-sm btn-outline theme-secondary m-1" href="view_products.php?mode=products"><i class="bi bi-list-ul me-3"></i>' . lang('All Products') . '</a>
                         </nav>
@@ -4065,7 +4070,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                     '<div class="card-header bg-transparent border-bottom py-1 px-3 d-flex align-items-center justify-content-between gap-1">' .
                         '<button type="button" class="btn btn-link btn-sm p-0 fg-secondary text-nowrap" title="' . lang('Edit Template') . '" onclick="editBarcodeTemplate(window._pgBarcodeOpts)">' .
                             '<i class="bi bi-pencil-square me-1"></i><small>' . lang('Edit Template') . '</small></button>' .
-                        '<select id="pg-barcode-type" class="form-control form-control-sm" style="max-width:105px;">' .
+                        '<select id="pg-barcode-type" aria-label="' . h(lang('Barcode Type')) . '" class="form-control form-control-sm" style="max-width:105px;">' .
                             '<option value="CODE128"' . ($bc_type === 'CODE128' ? ' selected' : '') . '>Code 128</option>' .
                             '<option value="EAN13"'   . ($bc_type === 'EAN13'   ? ' selected' : '') . '>EAN-13</option>' .
                             '<option value="CODE39"'  . ($bc_type === 'CODE39'  ? ' selected' : '') . '>Code 39</option>' .
@@ -4623,6 +4628,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         'Images'             => lang('Images'),
         'Add Image'          => lang('Add Image'),
         'Remove'             => lang('Remove'),
+        'Remove image'       => lang('Remove image'),
         'Cover'              => lang('Cover'),
         'Select All'         => lang('Select All'),
         'Clear'              => lang('Clear'),
@@ -4827,9 +4833,9 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                 $v('selected_images', array()),
                                 '<button type="button" class="btn btn-sm btn-outline theme-secondary ms-auto" data-bs-toggle="dialog" data-bs-target="#image_code" title="' . lang('Code') . '"><i class="bi bi-code-slash"></i></button>') . '
 
-                        <dialog class="dialog dialog-lg" id="image_code">
+                        <dialog class="dialog dialog-lg" id="image_code" aria-labelledby="image_code_title">
                                     <div class="dialog-header">
-                                        <h5 class="dialog-title">' . lang('Code') . '</h5>
+                                        <h5 class="dialog-title" id="image_code_title">' . lang('Code') . '</h5>
                                         <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="' . lang('Close') . '"></button>
                                     </div>
                                     <div class="dialog-body">

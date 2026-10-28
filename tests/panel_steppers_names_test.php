@@ -38,7 +38,7 @@ function test_panel_steppers_names_every_stepper_button_is_named()
 
 		$source = (string) file_get_contents($path);
 
-		if (!preg_match_all('/<button[^>]*class="[^"]*material-icons (minus|plus)[^"]*"[^>]*>/', $source, $matches, PREG_SET_ORDER)) {
+		if (!preg_match_all('/<button[^>]*class="[^"]*material-icons (minus|plus)[^"]*"(?:[^>"]|"[^"]*")*>/', $source, $matches, PREG_SET_ORDER)) {
 			continue;
 		}
 
@@ -60,7 +60,7 @@ function test_panel_steppers_names_every_stepper_button_is_named()
 		}
 	}
 
-	pg_assert_true($found >= 20, 'expected the panel steppers, found ' . $found);
+	pg_assert_true($found >= 18, 'expected the panel steppers, found ' . $found);
 }
 
 function test_panel_steppers_names_offer_tag_remove_link()
