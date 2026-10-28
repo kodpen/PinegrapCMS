@@ -25,7 +25,9 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
    - 4a. Done (#2292). Scheduled actions section: New flow in the toolbar, the list's New hidden (`{ add: false }`); cards keep the form.
    - 4b. The other ways in (composer insert menu, note toolbar, Duplicate): open the canvas instead of the form. Waits on questions 7 and 8.
    - 4c. Done: AI drafts on the canvas (F8): 4c1 #2306 `ws_flow_graph_from_scheduled()`; 4c2 #2323 a draft card opens as a new flow.
-5. Conversion (answer 2): in the 2026.11.0 upgrade every row becomes a converted anchor, its id and every parity row kept. Schema (a mark for the two anchors): ask first.
+5. Conversion (answer 2): in the 2026.11.0 upgrade every row becomes a converted anchor, its id and every parity row kept. Schema `ws_scheduled_actions.anchor` approved (#2396).
+   - 5a. Done (#2558). Anchor column 11.0.88, hidden/converted filters, converted starts and write-back (workspace/workspace-flows-converted-anchor.md).
+   - 5b. The upgrade conversion of every row; the edit path for any staff.
 
 ## Which questions are answered? (owner, 2026-10-24: 1 no, 2 c, 3 a; 4-8 open)
 1. Scheduled messages too? → no, staff's actions only; messages stay in the composer and their list.
@@ -38,4 +40,4 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 8. A scheduled action kept in a note (its card in the note strip, open): flows have no note; (a) a flow gets a note as its home and its post box may write in the note, (b) no new ones from a note: the note toolbar entry goes, converted ones keep their card. Recommended b.
 
 ## Where to start?
-- Slices 1-3, 4a and 4c done. Next: 4b once 7 and 8 are answered, or slice 5 (ask about its schema first); read workspace/README.md.
+- Slices 1-3, 4a, 4c and 5a done. Next: 4b or 5b; read workspace/README.md.
