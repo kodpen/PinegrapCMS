@@ -849,3 +849,58 @@ function test_legal_documents_kvkk_reaches_the_store()
 	pg_assert_contains("pg_legal_kvkk_copy_html(\$kvkk['full_url'], \$kvkk['consent'])", $store, 'the copy kept');
 	pg_assert_contains("strpos(\$html, 'pg-legal-kvkk') === false", $inject, 'one set of KVKK lines');
 }
+
+// A sign-up page gets the KVKK lines in front of its register button: the
+// legacy screen's submit_register (its login form's button comes first),
+// else a widget's first submit control; once only, never without settings.
+function test_legal_documents_kvkk_signup_html()
+{
+	$legacy = '<form><button type="submit" name="submit_login">Log in</button></form><form><input type="submit" name="submit_register" value="Register"></form>';
+	$out = pg_legal_kvkk_signup_html($legacy, array(), '/kvkk', 'I consent');
+	pg_assert_true(strpos($out, 'pg-legal-kvkk') > strpos($out, 'submit_login'), 'not on the login form');
+	pg_assert_true(strpos($out, 'pg-legal-kvkk') < strpos($out, 'submit_register'), 'in front of the register button');
+
+	$widget = '<form><input name="email"><button class="btn" type="submit">Sign up</button></form>';
+	$out = pg_legal_kvkk_signup_html($widget, array('legal_kvkk' => '1'), '', 'I consent');
+	pg_assert_contains('</div><button class="btn" type="submit">', $out, 'a widget: before its submit control');
+	pg_assert_contains('value="1" checked>', $out, 'ticked state kept');
+
+	pg_assert_same($out, pg_legal_kvkk_signup_html($out, array(), '/kvkk', 'I consent'), 'once only');
+	pg_assert_same($widget, pg_legal_kvkk_signup_html($widget, array(), '', ''), 'nothing set');
+	pg_assert_same('<p>Signed in</p>', pg_legal_kvkk_signup_html('<p>Signed in</p>', array(), '/kvkk', ''), 'no form');
+}
+
+// Consent counts only when the store asks for it and the box was ticked.
+function test_legal_documents_kvkk_consent_given()
+{
+	pg_assert_true(pg_legal_kvkk_consent_given('1', 'I consent'));
+	pg_assert_false(pg_legal_kvkk_consent_given('1', '  '), 'no sentence, no consent');
+	pg_assert_false(pg_legal_kvkk_consent_given('0', 'I consent'), 'unticked');
+	pg_assert_false(pg_legal_kvkk_consent_given(null, 'I consent'), 'not posted');
+	pg_assert_false(pg_legal_kvkk_consent_given(array('1'), 'I consent'), 'not a value');
+}
+
+// Every sign-up screen draws the lines and both entrance scripts pass the
+// answer on; the account writers record it as a granted contract:kvkk row.
+function test_legal_documents_kvkk_signup_wiring()
+{
+	$read = function ($file) {
+		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+	};
+
+	pg_assert_same(2, substr_count($read('get_page_content.php'), 'pg_legal_kvkk_signup_inject(get_'), 'both legacy screens in a page');
+	pg_assert_same(2, substr_count($read('includes/fn/forms.php'), 'pg_legal_kvkk_signup_inject(get_'), 'both fallback screens');
+	pg_assert_same(2, substr_count($read('includes/fn/designer.php'), 'pg_legal_kvkk_signup_inject(_render_system_widget_'), 'both widgets');
+
+	foreach (array('registration_entrance.php' => 'register_opts', 'membership_entrance.php' => 'activate_opts') as $file => $opts) {
+		pg_assert_contains("\$" . $opts . "['kvkk_consent'] = pg_legal_kvkk_consent_given(\$_POST['legal_kvkk'] ?? null, \$kvkk['consent']);", $read($file), $file);
+	}
+
+	pg_assert_same(2, substr_count($read('includes/fn/auth.php'), "array('contract:kvkk' => true),"), 'register and activate record it');
+	pg_assert_true(pg_consent_log_purpose_valid('contract', 'kvkk'), 'a purpose the log takes');
+
+	$changes = pg_consent_log_changes(array(), array('contract:kvkk' => true));
+	pg_assert_same(1, count($changes), 'a first consent is a change');
+	pg_assert_true(is_array(pg_consent_log_row($changes[0] + array('source' => 'signup', 'user_id' => 5), 1)), 'a valid sign-up row');
+	pg_assert_same(array(), pg_consent_log_changes(array('contract:kvkk' => array('status' => 'granted')), array('contract:kvkk' => true)), 'given before: nothing new');
+}

@@ -423,6 +423,9 @@ function pg_member_widget_asks_opt_in($widget_id, $type = 'registration')
 //   opt_in_asked      true when the screen that posted showed the marketing
 //                     question; only then is the answer recorded in
 //                     consent_log.
+//   kvkk_consent      true when the visitor ticked the store's explicit KVKK
+//                     consent box (pg_legal_kvkk_consent_given()); recorded
+//                     in consent_log as a granted contract:kvkk answer.
 //
 // Field names are the entrance screen's: first_name, last_name, username,
 // email, email_verify, password, password_verify, password_hint, opt_in,
@@ -595,6 +598,15 @@ function pg_member_register($form, $opts = array())
             'signup');
     }
 
+    // Explicit KVKK consent: only a ticked box is an answer (no refusal row),
+    // and a person who gave it before adds nothing.
+    if (!empty($opts['kvkk_consent'])) {
+        pg_consent_log_answers(
+            array('email' => $email, 'user_id' => $new_user_id, 'contact_id' => $contact_id),
+            array('contract:kvkk' => true),
+            'signup');
+    }
+
     // Remember me: the entrance screen's field name first, the login form's
     // as the designed page may use it.
     $remember = false;
@@ -656,7 +668,7 @@ function pg_member_register($form, $opts = array())
 //
 // $opts: contact_fields (column => value written to the member's contact,
 // found or created), contact_group_id (the site setting when absent),
-// opt_in_asked (as in pg_member_register()).
+// opt_in_asked and kvkk_consent (as in pg_member_register()).
 function pg_member_activate($form, $opts = array())
 {
     if (!is_array($opts)) $opts = array();
@@ -866,6 +878,14 @@ function pg_member_activate($form, $opts = array())
         pg_consent_log_answers(
             array('email' => $email, 'user_id' => $new_user_id, 'contact_id' => $contact_id, 'previous_email' => $previous_email),
             array('email:marketing' => ($opt_in === '1')),
+            'signup');
+    }
+
+    // Explicit KVKK consent (see pg_member_register()).
+    if (!empty($opts['kvkk_consent'])) {
+        pg_consent_log_answers(
+            array('email' => $email, 'user_id' => $new_user_id, 'contact_id' => $contact_id, 'previous_email' => $previous_email),
+            array('contract:kvkk' => true),
             'signup');
     }
 

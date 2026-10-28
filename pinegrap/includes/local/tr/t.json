@@ -1167,6 +1167,7 @@
     "The chat is not available on this screen.": "Sohbet bu ekranda kullanılamıyor.",
     "The check digits of this number do not match; it is probably mistyped. GİB refuses a document that carries it.": "Bu numaranın kontrol haneleri tutmuyor; büyük olasılıkla yanlış yazıldı. GİB bu numarayı taşıyan belgeyi reddeder.",
     "The checklist in the channel becomes this task's list ({var:1} items). Ticked in the channel or here, the progress of the task follows.": "Kanaldaki kontrol listesi bu görevin listesi olur ({var:1} madde). Kanalda ya da burada işaretlendikçe görevin ilerlemesi güncellenir.",
+    "The checkout and the sign-up forms link this page where they explain how personal data is processed.": "Ödeme sayfası ve üyelik formları, kişisel verilerin nasıl işlendiğini anlatırken bu sayfaya bağlantı verir.",
     "The checkout linked the notice at {var:1}.": "Ödeme sayfası {var:1} adresindeki aydınlatma metnine bağlantı verdi.",
     "The checkout links this page where it explains how personal data is processed.": "Ödeme sayfası, kişisel verilerin nasıl işlendiğini anlatırken bu sayfaya bağlantı verir.",
     "The checks read the published markup of each page against WCAG 2.2. They cover only what can be checked automatically; every criterion still needs a person to review the rest.": "Denetimler her sayfanın yayındaki işaretlemesini WCAG 2.2'ye göre okur. Yalnızca otomatik denetlenebilen kısmı kapsar; her ölçütün geri kalanını yine bir kişinin gözden geçirmesi gerekir.",

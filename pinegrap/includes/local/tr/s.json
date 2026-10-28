@@ -1270,6 +1270,7 @@
     "Shown as a Bootstrap 5 Toast in the top right corner for 4.5 seconds.": "Bootstrap 5 Toast olarak sağ üst köşede 4.5 saniye görünür.",
     "Shown as plain text on purpose: a password-type box invites the browser's password manager to overwrite it, which silently replaces the key on save.": "Bilerek düz metin gösteriliyor: parola tipi bir kutuyu tarayıcının parola yöneticisi doldurabiliyor ve kaydettiğinizde anahtarı sessizce değiştiriyor.",
     "Shown before the name in the lists, the same for everybody. A private, guest or customer channel keeps its mark in the corner of the icon.": "Listelerde adın önünde, herkese aynı görünür. Özel, misafir ya da müşteri kanalı kendi işaretini ikonun köşesinde korur.",
+    "Shown beside a box the customer may leave unticked; the answer is kept with the order, or in the consent log on sign-up. Leave it empty for no box.": "Müşterinin işaretlemeden bırakabileceği bir kutunun yanında gösterilir; yanıt siparişle birlikte, üyelikte ise rıza kayıtlarında saklanır. Kutu istemiyorsanız boş bırakın.",
     "Shown beside a box the customer may leave unticked; the answer is kept with the order. Leave it empty for no box.": "Müşterinin işaretlemeden bırakabileceği bir kutunun yanında gösterilir; yanıt siparişle birlikte saklanır. Kutu istemiyorsanız boş bırakın.",
     "Shown beside the calculated VAT, which stays in full": "Hesaplanan KDV'nin yanında gösterilir, hesaplanan KDV tam kalır",
     "Shown for reference only. This file cannot be edited here.": "Yalnızca görüntülemek için. Bu dosya burada düzenlenemez.",
