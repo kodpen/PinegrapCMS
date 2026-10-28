@@ -16,7 +16,7 @@ description: Plan (approved 2026-10-19): SMS layer, order messages, consent writ
 
 ## What remains?
 - Done: provider interface + Netgsm (PR #600), `sms_outbox` queue (PR #610), order and shipping messages (PR #1839, `platform/sms-order-messages.md`), e-mail consent writers (PR #1581, `core/consent-log-writers.md`). Commercial SMS kinds stay refused by `pg_sms_send()` until SMS consent exists.
-3b. COD code check at checkout (M), and member OTP: both through the normal SMS route (#2432; Netgsm's OTP route may come later as a per-provider option). Codes use `expires_at` (`platform/sms-outbox-queue.md`).
+3b. COD code check at checkout (M), and member OTP: both through the normal SMS route (#2432; Netgsm's OTP route may come later as a per-provider option). Codes use `expires_at` (`platform/sms-outbox-queue.md`). Draft PR #2669 (branch `feature/sms-3b-cod-otp-k1`) holds the shared code module (`platform/sms-codes.md`); the COD half waits on #2670 (which orders), the member half on #2672 (second-step alternative or sign-in by phone, which number).
 5. ~~İYS client, daily push/pull job, contact status column, campaign filter~~ (done, PR #1895; `platform/iys-client.md`; dry run by default, inert until 5b).
 5b. ~~İYS settings card~~ (done, PR #1940; `platform/iys-settings-card.md`). Left: the first live run against the sandbox once the owner gives İYS test credentials.
 6. ~~API: consents read, webhook `customer.consent_changed`~~ (done, PR #1940; `api/api-customer-consents.md`).
