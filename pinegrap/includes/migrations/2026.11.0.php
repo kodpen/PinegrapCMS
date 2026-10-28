@@ -93,6 +93,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_voice();        // 11.0.89
 	upgrade_2026_11_0_workspace_mail();          // 11.0.82
 	upgrade_2026_11_0_workspace_wtables();      // 11.0.110
+	upgrade_2026_11_0_workspace_mcp_preamble(); // 11.0.111
 
 }
 
@@ -3114,5 +3115,22 @@ function upgrade_2026_11_0_workspace_voice() {
 	install_add_column('config', 'ws_voice_hold_until', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Workspace: voice messages can be written out as text by a transcription service with the site\'s own key, once an administrator switches it on in the Workspace settings; private channels only where their manager allows it.');
+
+}
+
+// The preamble an MCP agent may be sent (2026.11.0, 11.0.111;
+// includes/workspace/mcp_agent.php).
+//
+// A server that is an agent itself (ws_mcp_servers.agent_tool) gets the
+// message alone. ws_mcp_servers.agent_preamble, when an administrator turns
+// it on for the server, puts a short preamble before it: the site, the time,
+// who asked, the channel or task by name, the language of the answer and the
+// assistant rules, with the message inside a data block. 0 for every server,
+// so nothing an agent is sent changes until somebody turns it on.
+function upgrade_2026_11_0_workspace_mcp_preamble() {
+
+	install_add_column('ws_mcp_servers', 'agent_preamble', "TINYINT(1) NOT NULL DEFAULT 0 AFTER agent_tool");
+
+	install_note('Workspace: an MCP server that is an agent itself can be told about the site before each message: the site, who asked, the channel or task by name, the language to answer in and the rules Pinegrap AI follows. It is off for every server until an administrator turns it on.');
 
 }

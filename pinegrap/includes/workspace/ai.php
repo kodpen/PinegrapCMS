@@ -3278,14 +3278,25 @@ function ws_ai_request_language($text)
 
 /**
  * The first lines of an assistant's briefing: who it is, now, who asked.
+ * An agent of another service (an MCP agent, an outside application) is
+ * told who asked by name only: the site's tags mean nothing to it.
  *
- * @param array  $asker
- * @param string $agent ai | claude
+ * @param array  $asker ws_ai_viewer(), or for an agent array('name' => ...)
+ * @param string $agent ai | claude | agent
+ * @param string $name  the agent's name on this site (agent only)
  * @return string[]
  */
-function ws_ai_briefing_head($asker, $agent)
+function ws_ai_briefing_head($asker, $agent, $name = '')
 {
     $today = date('Y-m-d') . ' (' . date('l') . '), ' . date('H:i') . ' ' . date_default_timezone_get();
+
+    if ($agent === 'agent') {
+        return array(
+            'You are ' . $name . ', an agent asked from the Workspace of the Pinegrap site ' . HOSTNAME_SETTING . '.',
+            'Now: ' . $today . '.',
+            'The request comes from ' . (isset($asker['name']) ? (string) $asker['name'] : ws_person_name($asker['id'])) . '.',
+        );
+    }
 
     return array(
         ($agent === 'claude')
@@ -3294,6 +3305,58 @@ function ws_ai_briefing_head($asker, $agent)
         'Now: ' . $today . '.',
         'The request comes from ' . ws_person_name($asker['id']) . ' <@user:' . (int) $asker['id'] . '>.',
     );
+}
+
+/**
+ * Where an agent of another service was asked, as one line: the channel or
+ * the discussion by name, a task by number. Nothing written in the channel
+ * goes with it.
+ *
+ * @param string $kind    channel | thread | task
+ * @param string $channel the channel's name (a discussion's: the channel it belongs to), '' for none
+ * @param string $task    the task's number (T-12), task only
+ * @return string
+ */
+function ws_ai_agent_place($kind, $channel, $task = '')
+{
+    $channel = trim(str_replace(array("\r", "\n"), ' ', (string) $channel));
+    $in = ($channel !== '') ? ' of the channel #' . $channel : '';
+
+    if ($kind === 'task') {
+        return 'Asked on the task ' . $task . $in . ' of the Workspace.';
+    }
+
+    if ($kind === 'thread') {
+        return 'Asked in a discussion' . (($in !== '') ? $in : ' of the Workspace') . '.';
+    }
+
+    return 'Asked in ' . (($channel !== '') ? 'the channel #' . $channel : 'a channel') . ' of the Workspace.';
+}
+
+/**
+ * The short preamble an agent of another service is given (an MCP agent
+ * whose server sends it, an outside application through
+ * GET /workspace/messages/{id}/preamble): the head of the briefing, the
+ * place, the request inside a data block when there is one, the language of
+ * the answer and the rules. No channel text, no people list.
+ *
+ * @param string[] $head    ws_ai_briefing_head($asker, 'agent', $name)
+ * @param string   $place   ws_ai_agent_place()
+ * @param string   $request what the agent is sent, '' when it reads it elsewhere
+ * @param string   $language
+ * @return string
+ */
+function ws_ai_agent_preamble($head, $place, $request, $language)
+{
+    $lines = array_merge(array_values($head), array('', $place));
+
+    if (trim((string) $request) !== '') {
+        $lines[] = '';
+        $lines[] = 'The request:';
+        $lines[] = pg_ai_data_block('request', (string) $request);
+    }
+
+    return ws_ai_briefing_text($lines, $language);
 }
 
 /**
