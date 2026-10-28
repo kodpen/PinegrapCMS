@@ -6346,13 +6346,11 @@ function _pg_build_catalog_item_rss_parts($page_id, $page_name, $widget)
 // placeholder block is intentionally NOT replicated here — that was a
 // stop-gap ("google require it so we set random" per its own comment) and
 // shipping fabricated ratings from a NEW code path isn't something to carry
-// forward by default. Nor is the real aggregateRating of the legacy block
-// added: this page type is 'standard', whose comments widget shows the
-// page's own thread, never the product's reviews, and markup may describe
-// only reviews a visitor can read on the page. A catalog detail page, whose
-// System region shows the product and whose comments widget or block its
-// reviews, gets it from the legacy block.
-function _pg_build_product_jsonld($product, $canonical_url)
+// forward by default. The real aggregateRating is added only when the
+// page's comments widget shows this product's reviews with their stars
+// ($rating_shown, pg_comment_product_view_rating_shown()): markup may
+// describe only reviews a visitor can read on the page.
+function _pg_build_product_jsonld($product, $canonical_url, $rating_shown = false)
 {
     $currency_code = defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '';
     $image_url = '';
@@ -6395,6 +6393,10 @@ function _pg_build_product_jsonld($product, $canonical_url)
         foreach (pg_product_merchant_jsonld_parts($merchant_shippable) as $merchant_key => $merchant_value) {
             $data['offers'][$merchant_key] = $merchant_value;
         }
+    }
+
+    if ($rating_shown && (($aggregate_rating = pg_review_product_aggregate_jsonld(isset($product['id']) ? $product['id'] : 0)) !== null)) {
+        $data['aggregateRating'] = $aggregate_rating;
     }
     return $data;
 }

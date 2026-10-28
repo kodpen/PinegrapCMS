@@ -11842,11 +11842,20 @@ const StyleDesigner = (function () {
     // reviews (a product in the address; a group there reads like a
     // catalog page's), a catalog page a product group's comments, a
     // calendar event view page an event's; any other page its own or its
-    // record's ('').
+    // record's (''). A designed product page reads as catalog detail.
     function _sdCommentsPageThread() {
         var p = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
         var type = (p && typeof p.page_type === 'string') ? p.page_type : '';
+        if (_sdCommentsProductViewPage(p)) type = 'catalog detail';
         return { 'catalog detail': 'product', 'catalog': 'group', 'calendar event view': 'event' }[type] || '';
+    }
+
+    // Whether page p is a designed product page, as
+    // pg_comment_thread_page_type() reads it: a standard page whose top level
+    // places a catalog_item_view widget and no form_item_view widget.
+    function _sdCommentsProductViewPage(p) {
+        if (!p || (p.page_type && p.page_type !== 'standard') || typeof _swTabHasWidget !== 'function') return false;
+        return _swTabHasWidget(p, ['catalog_item_view']) && !_swTabHasWidget(p, ['form_item_view']);
     }
 
     // The thread a canvas state draws: the page's, a product's for the
@@ -32981,6 +32990,9 @@ const StyleDesigner = (function () {
     // (_sdCommentsPageThread()), in words; '' for a page's own thread.
     function _sdCommentsPageThreadText() {
         var thread = _sdCommentsPageThread();
+        if (thread === 'product' && _sdCommentsProductViewPage((typeof _pgActivePage === 'function') ? _pgActivePage() : null)) {
+            return _sdT('On this product page it shows the reviews of the product in the address: verified purchases only, newest first, written by a customer who bought it. E-mails about them link to the product\'s address.');
+        }
         if (thread === 'product') {
             return _sdT('On this catalog detail page it shows the comments of the product or product group in the address. A product\'s are reviews: verified purchases only, newest first, written by a customer who bought it. E-mails about them link to the item\'s address.');
         }

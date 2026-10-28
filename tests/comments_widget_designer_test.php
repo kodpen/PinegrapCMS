@@ -864,7 +864,7 @@ _sysWidgetRenderTreeRoot = null;
 JS;
 
 	$res = comments_widget_designer_test_node(
-		array('_swKindOf', '_sdCommentsThreadFlags', '_sdCommentsRecentFlags', '_sdCommentsRecentFacts', '_sdCommentsStateFlags', '_sdCommentsCanvasStates', '_sdCommentsPageThread', '_sdCommentsStateThread', '_sdCommentsCanvasFacts',
+		array('_swKindOf', '_sdCommentsThreadFlags', '_sdCommentsRecentFlags', '_sdCommentsRecentFacts', '_sdCommentsStateFlags', '_sdCommentsCanvasStates', '_sdCommentsPageThread', '_sdCommentsProductViewPage', '_sdCommentsStateThread', '_sdCommentsCanvasFacts',
 			'_sdCommentsCanvasFlags', '_sdCommentsModeOffBindings', '_sdCommentsEmailDrops', '_sdCommentsEmailDrawsComment', '_sdListIsSourced', '_sdCommentsFlagOff', '_sdCommentsStateFor'),
 		comments_widget_designer_test_canvas_script($body));
 	if ($res === null) {
@@ -2365,7 +2365,7 @@ _sdCommentsCanvasState = 'staff';
 out.staff_on = _sdCommentsFlagOff(named['staff controls'], list);
 JS;
 
-	$res = comments_widget_designer_test_node(array('_swKindOf', '_sdCommentsThreadFlags', '_sdCommentsRecentFlags', '_sdCommentsCanvasStates', '_sdCommentsPageThread', '_sdCommentsStateThread', '_sdCommentsCanvasFacts',
+	$res = comments_widget_designer_test_node(array('_swKindOf', '_sdCommentsThreadFlags', '_sdCommentsRecentFlags', '_sdCommentsCanvasStates', '_sdCommentsPageThread', '_sdCommentsProductViewPage', '_sdCommentsStateThread', '_sdCommentsCanvasFacts',
 		'_sdCommentsRecentFacts', '_sdCommentsStateFlags', '_sdCommentsCanvasFlags', '_sdCommentsFlagOff', '_sdCommentsRecentSamples'), comments_widget_designer_test_canvas_script($body));
 	if ($res === null) {
 		return;
@@ -2443,6 +2443,15 @@ var out = {};
         review_verified: _sdCommentSamples(cfg, _sdCommentsStateFlags(flags.review ? 'review' : 'not_bought', cfg)).map(function (s) { return s.flags.comment_is_verified; })
     };
 });
+// A designed product page: a standard page with a catalog_item_view widget
+// and no record view (_swTabHasWidget() stubbed by the page's widgets).
+function _swTabHasWidget(p, types) { return (p.widgets || []).some(function (w) { return types.indexOf(w) !== -1; }); }
+_page = { page_type: 'standard', widgets: ['catalog_item_view'] };
+out.product_view = { states: keys(_sdCommentsCanvasStates(cfg)), text: _sdCommentsPageThreadText() };
+_page = { page_type: 'standard', widgets: ['catalog_item_view', 'form_item_view'] };
+out.product_record = keys(_sdCommentsCanvasStates(cfg));
+_page = { page_type: 'catalog', widgets: ['catalog_item_view'] };
+out.product_catalog = keys(_sdCommentsCanvasStates(cfg));
 _page = null;
 out.no_page = keys(_sdCommentsCanvasStates(cfg));
 out.recent = keys(_sdCommentsCanvasStates({ regionType: 'comments', mode: 'recent' }));
@@ -2450,7 +2459,7 @@ process.stdout.write(JSON.stringify(out));
 JS;
 
 	$res = comments_widget_designer_test_node(array('_swKindOf', '_sdCommentsThreadFlags', '_sdCommentsRecentFlags', '_sdCommentsRecentFacts', '_sdCommentsCanvasStates',
-		'_sdCommentsPageThread', '_sdCommentsStateThread', '_sdCommentsCanvasFacts', '_sdCommentsStateFlags', '_sdCommentSamples', '_sdCommentsPageToken',
+		'_sdCommentsPageThread', '_sdCommentsProductViewPage', '_sdCommentsStateThread', '_sdCommentsCanvasFacts', '_sdCommentsStateFlags', '_sdCommentSamples', '_sdCommentsPageToken',
 		'_sdCommentsPageThreadText'), $script);
 	if ($res === null) {
 		return;
@@ -2462,6 +2471,10 @@ JS;
 	pg_assert_same($res['standard']['states'], $res['catalog']['states'], 'a catalog page as a page');
 	pg_assert_same($res['standard']['states'], $res['calendar event view']['states'], 'an event page as a page');
 	pg_assert_same($res['standard']['states'], $res['no_page'], 'no page on screen');
+	pg_assert_same($res['catalog detail']['states'], $res['product_view']['states'], 'a designed product page reads as catalog detail');
+	pg_assert_contains('On this product page', $res['product_view']['text'], 'and says so');
+	pg_assert_same($res['standard']['states'], $res['product_record'], 'a record view decides first');
+	pg_assert_same($res['standard']['states'], $res['product_catalog'], 'a catalog page keeps its group thread');
 	pg_assert_same(array('comments', 'empty', 'staff'), $res['recent'], 'a list of recent comments keeps its states');
 
 	$standard = $res['standard']['flags'];

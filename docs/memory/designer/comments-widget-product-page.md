@@ -1,6 +1,6 @@
 ---
 name: comments-widget-product-page
-description: Product reviews on a designed product page (standard page with a catalog_item_view widget, 2c1, PR #2817): read as catalog detail for the thread, add_comment.php, links, e-mails and recent lists
+description: Product reviews on a designed product page (standard page with a catalog_item_view widget): thread, add_comment.php, links, e-mails, recent lists, canvas, templates, aggregateRating
 module: comments
 ---
 
@@ -19,10 +19,14 @@ module: comments
 - The recent list's page facts: such a page is refused as a source (`classic`): its comments are item threads.
 - Links: `get_query_string_for_page_url()` gives a product's or group's `/address` on any page type outside its cases (admin and watcher mails, `add_comment.php`'s redirect).
 
+## What do the canvas, the templates and the markup add? (2c2)
+- Canvas: `_sdCommentsProductViewPage(p)` (same rule, `_swTabHasWidget()`) makes `_sdCommentsPageThread()` answer `product`; Preview says "On this product page it shows the reviews…".
+- The store, boutique and bookshop product page: comments on with stars, sign-in, auto-publish, staff mail; a "Reviews" section (col-lg-8, centred) with widget `product_reviews` (kind `comments`, newest, featured `none`, flat, 10 a page, starter tree, shop only).
+- `aggregateRating` in `_pg_build_product_jsonld()` only when `pg_comment_product_view_rating_shown()` (pure `pg_comment_rating_markup_decision()`): comments and stars on, a comments widget on the page, the address thread is this product's (a select group's thread counts in no rating).
+
 ## What is left as it was?
 - The classic `comments_block` region on a designed page still reads the page's own thread.
 - The address is read as `get_catalog_item_from_url()` reads it (groups first, any display type); the catalog_item_view widget shows only a select group, so a browsing group's address shows its group thread under "not found".
-- Canvas, templates' review section and `aggregateRating` there: 2c2 (`plans/storefront-conversion-pack.md`).
 
 ## Where is it tested?
-- `tests/comments_product_view_test.php`: the type table, the address item with `product_view`, each reader taking the type through the function.
+- `tests/comments_product_view_test.php`: the type table, the address item with `product_view`, the readers, the rating decision, the templates; the canvas in `comments_widget_designer_test.php` (item threads).
