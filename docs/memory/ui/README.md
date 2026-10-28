@@ -127,7 +127,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - pg-combobox-menu-instance.md: Why every Bootstrap 6 combobox logged "more than one instance per element" and built an unbound Menu on each arrow key, and the two guards in pg_fields.js that keep the console clean (#2520)
 - pg-combobox-server-search.md: data-pg-source combobox (google_product_category) on Bootstrap 6 Combobox with our own server search (#2362): engine, search box, debounce, free text, keys
 - pg-combobox.md: data-pg-combobox on Bootstrap 6 Combobox (B9b, #2243, #2362): toggle and menu after the hidden select, silent fill, native change, empty item instead of clear, server search for data-pg-source
-- pg-datepicker.md: data-pg-date, data-pg-datetime and data-pg-time on Bootstrap 6 Datepicker and <input type="time"> (B9c, #2262): own parse, the hidden store, the clone dispose leaves, dialogs and drawers
+- pg-datepicker.md: data-pg-date, data-pg-datetime and data-pg-time on the calendar of pg_datetime.js (vanilla-calendar-pro) and <input type="time">: own parse, the hidden store, keys, theme, dialogs and drawers
 - pg-field-wrappers.md: pgChips, pgCombobox, pgDatePicker, pgDateTimeField (pg_fields.js): data-pg-* hooks, the posted field as store, own date parse, change event, engines, screens
 - pg-ui-adapter.md: pgUI (assets/js/pg_ui.js), the panel's one door to Bootstrap's JavaScript on 5.3 and 6: kinds, promises, both event names, dialog markup, overlay host, readiness, the Bootstrap 6 bridge
 - print-views-light-paper.md: The order print view and packing slip force the light theme (they stand for the paper), carry their own title and the store icon; the e-mail campaign popups' title and icon
