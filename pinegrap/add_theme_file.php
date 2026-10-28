@@ -497,18 +497,18 @@ article,aside,details,figcaption,figure,footer,header,hgroup,nav,section,summary
         $query = "UPDATE files SET size = ? WHERE id = ?";
         $result = db_q($query, array((string) filesize(FILE_DIRECTORY_PATH . '/' . $file_name), (string) $theme_id)) or output_error('Query failed.');
         
-        // if a new theme was created, then log the activity, output a message and then send the user to the theme designer
+        // if a new theme was created, then log the activity, output a message and then send the user to the theme's CSS editor
         if ($liveform->get_field_value('create_system_theme_option') == 'new') {
             // log the activity
             log_activity(lang(array('string'=>'{var:1} ({var:2}) was created','vars'=>array(lang('theme'),$file_name))), $_SESSION['sessionusername']);
             // clear the liveform
             $liveform->remove_form();
-            // add liveform notice to theme designer
-            $liveform_theme_designer = new liveform('theme_designer');
-            $liveform_theme_designer->add_notice(lang(array('string'=>'{var:1} was created successfully','vars'=>lang('Theme') )));
+            // add liveform notice to the CSS editor
+            $liveform_edit_theme_css = new liveform('edit_theme_css');
+            $liveform_edit_theme_css->add_notice(lang(array('string'=>'{var:1} was created successfully','vars'=>lang('Theme') )));
             
-            // send the user to the theme designer
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/theme_designer.php?id=' . $theme_id . '&clear_theme_designer_session=true');
+            // send the user to the theme's CSS editor, which goes back to the theme list
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . $theme_id . '&send_to=' . urlencode(PATH . SOFTWARE_DIRECTORY . '/view_themes.php'));
         
         // else a theme was imported, so log the activity, output a message and then send the user to the view themes screen
         } else {

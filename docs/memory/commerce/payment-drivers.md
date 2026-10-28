@@ -32,4 +32,4 @@ description: Payment driver layer (2026.11.0, PR #740; iyzico on it since step 2
 ## How was it verified?
 - `tests/payment_drivers_test.php`; sandbox with a registered driver.
 
-Related: docs/memory/commerce/payment-driver-iyzico.md, docs/memory/commerce/payment-driver-stripe.md, docs/memory/commerce/payment-refunds.md, docs/memory/plans/payment-driver-layer.md, docs/memory/platform/sms-provider-layer.md
+Related: commerce/payment-driver-iyzico.md, payment-driver-stripe.md, payment-driver-paypal.md, payment-refunds.md, plans/payment-driver-layer.md, platform/sms-provider-layer.md

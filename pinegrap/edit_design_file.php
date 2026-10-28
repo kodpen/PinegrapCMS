@@ -150,7 +150,7 @@ if (empty($_POST['name'])) {
             if ($row[0] > 0) {
                 $edit_file_button_value = 'Edit Theme';
                 $edit_file_button_label = lang('Edit Theme');
-                $edit_file_button_location = 'theme_designer.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri());
+                $edit_file_button_location = 'edit_theme_css.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_design_file';
                 $system_theme = true;
             } else {
                 // else output the edit css button

@@ -190,7 +190,7 @@ function _parasut_status_badge($status) {
         'paid'         => ['bg-success',            lang('Paid')],
         'partially_paid' => ['bg-info fg-black',   lang('Partially Paid')],
         'cancelled'    => ['bg-secondary',          lang('Cancelled')],
-        'deleted'      => ['bg-black',               lang('Deleted')],
+        'deleted'      => ['bg-black fg-white',      lang('Deleted')],
     ];
     $info  = $map[$status] ?? ['bg-secondary', ucfirst(str_replace('_', ' ', $status))];
     return '<span class="badge ' . $info[0] . '">' . h($info[1]) . '</span>';
@@ -273,6 +273,7 @@ if ($tab === 'incoming') {
                 <td class="align-middle text-end">
                     <button type="button" class="btn btn-sm btn-outline theme-secondary"
                         data-bs-toggle="dialog" data-bs-target="#detailModal"
+                        aria-label="' . h(lang('Invoice Detail')) . '"
                         data-bill-id="' . h($bid) . '"
                         data-contact="' . h($contact_name) . '"
                         data-date="' . h($issue_date) . '"
@@ -357,6 +358,7 @@ if ($tab === 'outgoing') {
                 <td class="align-middle text-end">
                     <button type="button" class="btn btn-sm btn-outline theme-secondary"
                         data-bs-toggle="dialog" data-bs-target="#detailModal"
+                        aria-label="' . h(lang('Invoice Detail')) . '"
                         data-bill-id="' . h($iid) . '"
                         data-contact="' . h($contact_name) . '"
                         data-date="' . h($issue_date) . '"
@@ -473,7 +475,7 @@ $output_detail_modal = '
 <dialog class="dialog" id="detailModal" aria-labelledby="detailModalLabel">
             <div class="dialog-header">
                 <h5 class="dialog-title" id="detailModalLabel"><i class="bi bi-file-earmark-text me-3"></i>' . lang('Invoice Detail') . '</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="dialog"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
             </div>
             <div class="dialog-body">
                 <table class="table table-sm table-borderless mb-0">

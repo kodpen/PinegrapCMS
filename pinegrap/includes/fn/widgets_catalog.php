@@ -3330,7 +3330,17 @@ function _civ_breadcrumb_rows($p, $select_group_id, $select_group_name, $catalog
  */
 function _pg_render_cart_item_form_data($order_item_id, $product_id, $quantity, $product_name, $form_qty_type, $cart_form_id = '', $legend = '')
 {
-    if ($order_item_id <= 0 || $product_id <= 0) return '';
+    return _pg_render_cart_item_form_html($order_item_id,
+        _pg_cart_item_form($order_item_id, $product_id, $quantity, $product_name, $form_qty_type, $legend), $cart_form_id);
+}
+
+// The product form of a cart line as blocks of fields with the values its
+// controls show (_pg_cart_item_form_blocks()), read for the line
+// $order_item_id of product $product_id; empty when the product has no
+// form fields. The arguments are _pg_render_cart_item_form_data()'s.
+function _pg_cart_item_form($order_item_id, $product_id, $quantity, $product_name, $form_qty_type, $legend = '')
+{
+    if ($order_item_id <= 0 || $product_id <= 0) return array();
     // `rows` and `cols` are MySQL reserved words → must be backticked.
     // We alias them to underscore-suffixed names for cleaner PHP access.
     $fields = db_items(
@@ -3340,7 +3350,7 @@ function _pg_render_cart_item_form_data($order_item_id, $product_id, $quantity, 
          WHERE (product_id = '" . (int)$product_id . "') AND (form_type = 'product')
          ORDER BY sort_order ASC, id ASC"
     );
-    if (!$fields) return '';
+    if (!$fields) return array();
 
     // Pre-load existing form_data so we can pre-fill INPUT values on render.
     $existing = db_items(
@@ -3349,13 +3359,6 @@ function _pg_render_cart_item_form_data($order_item_id, $product_id, $quantity, 
          WHERE order_item_id = '" . (int)$order_item_id . "'
          ORDER BY quantity_number ASC, id ASC"
     );
-    $by_q = array();
-    if (is_array($existing)) {
-        foreach ($existing as $r) {
-            $q = max(1, (int)$r['quantity_number']);
-            $by_q[$q][(int)$r['form_field_id']] = $r;
-        }
-    }
 
     // Pre-load options for pick-list / radio / checkbox fields.
     // Single batched query, then index by field_id.
@@ -3388,41 +3391,51 @@ function _pg_render_cart_item_form_data($order_item_id, $product_id, $quantity, 
         }
     }
 
-    $is_per_qty   = ($form_qty_type === 'One Form per Quantity');
-    $qty_iter     = $is_per_qty ? max(1, (int)$quantity) : 1;
-    $multi_header = $is_per_qty && $qty_iter > 1;
-    $form_attr    = $cart_form_id !== '' ? ' form="' . h($cart_form_id) . '"' : '';
-
     // Legend text comes from the DATA: the admin-set form name (products.
     // form_name), falling back to the product name. Callers used to print
     // their own heading above this block with an invented label and a
     // decorative icon — invented copy the operator can't edit, so it's gone.
-    // Legacy renders exactly this: <fieldset> + <legend> with the form name
-    // and "(n / m)" when a form repeats per quantity.
-    $legend_base = ($legend !== '') ? $legend : $product_name;
+    return _pg_cart_item_form_blocks($order_item_id, $fields, is_array($existing) ? $existing : array(), $options_by_field,
+        $quantity, $form_qty_type, ($legend !== '') ? $legend : $product_name);
+}
 
-    $out = '<div class="pg-cart-item-form mt-3" data-pg-cart-item-form="' . (int)$order_item_id . '">';
-    for ($q = 1; $q <= $qty_iter; $q++) {
+// The blocks of a cart line's product form: one per unit for 'One Form per
+// Quantity', else one. $fields: the product's form_fields rows in their
+// order (id, label, type, required, default_value, rows_, cols_, maxlength,
+// multiple, information); $existing: the line's form_data rows
+// (form_field_id, data, quantity_number); $options_by_field: field id =>
+// its options (name, value); $legend: the form's name or the product's.
+// A block: number, count, legend, has_legend (a name or more than one
+// block), fields. A field: kind (info, input, textarea, select, choice,
+// file), label, info, required, name and id as cart_action.php reads them,
+// type (an input's, a choice's radio or checkbox), value as its control
+// takes it (a stored date in the control's shape), maxlength, rows, cols,
+// multiple, options (label, value, selected, id, name) and the stored file
+// name of an upload. Pure: the cart's part and the old block read it.
+function _pg_cart_item_form_blocks($order_item_id, $fields, $existing, $options_by_field, $quantity, $form_qty_type, $legend)
+{
+    $order_item_id = (int)$order_item_id;
+    $by_q = array();
+    foreach ((array)$existing as $r) {
+        $by_q[max(1, (int)$r['quantity_number'])][(int)$r['form_field_id']] = $r;
+    }
+    $is_per_qty = ($form_qty_type === 'One Form per Quantity');
+    $count      = $is_per_qty ? max(1, (int)$quantity) : 1;
+    $legend     = (string)$legend;
+    $kinds      = array('text area' => 'textarea', 'pick list' => 'select', 'radio button' => 'choice',
+                        'check box' => 'choice', 'file upload' => 'file', 'information' => 'info');
+    $input_types = array('date' => 'date', 'date and time' => 'datetime-local', 'time' => 'time', 'email address' => 'email');
+
+    $blocks = array();
+    for ($q = 1; $q <= $count; $q++) {
         $val_map = isset($by_q[$q]) ? $by_q[$q] : array();
-
-        $out .= '<fieldset class="pg-cart-item-form-block border rounded p-3 mt-2">';
-        if ($legend_base !== '' || $multi_header) {
-            // `float-none w-auto px-2` is the Bootstrap 5 recipe for a legend
-            // that sits ON the fieldset border instead of stretching full width.
-            $out .= '<legend class="float-none w-auto px-2 fs-6 fw-semibold">'
-                  . h($legend_base)
-                  . ($multi_header ? ' (' . $q . ' / ' . $qty_iter . ')' : '')
-                  . '</legend>';
-        }
-
-        foreach ($fields as $f) {
-            $fid    = (int)$f['id'];
-            $type   = (string)$f['type'];
-            $label  = (string)$f['label'];
-            $req    = !empty($f['required']) ? ' <span class="text-danger">*</span>' : '';
-            $req_attr = !empty($f['required']) ? ' required' : '';
-            $row    = isset($val_map[$fid]) ? $val_map[$fid] : null;
-            $val    = $row ? (string)$row['data'] : (string)$f['default_value'];
+        $out = array();
+        foreach ((array)$fields as $f) {
+            $fid  = (int)$f['id'];
+            $type = (string)$f['type'];
+            $kind = isset($kinds[$type]) ? $kinds[$type] : 'input';
+            $row  = isset($val_map[$fid]) ? $val_map[$fid] : null;
+            $val  = $row ? (string)$row['data'] : (string)$f['default_value'];
             // Stored date/time fields use a unix timestamp. Convert for the
             // matching <input> shape (date / datetime-local / time).
             $val_for_input = $val;
@@ -3431,133 +3444,131 @@ function _pg_render_cart_item_form_data($order_item_id, $product_id, $quantity, 
                 elseif ($type === 'date and time')  $val_for_input = date('Y-m-d\TH:i', (int)$val);
                 elseif ($type === 'time')           $val_for_input = date('H:i', (int)$val);
             }
-            $name = 'order_item_' . (int)$order_item_id . '_quantity_number_' . $q . '_form_field_' . $fid;
-            $id   = 'pgCif_' . (int)$order_item_id . '_q' . $q . '_f' . $fid;
-
-            // 'information' renders only the label / info HTML — no input.
-            if ($type === 'information') {
-                $info = (string)$f['information'];
-                if ($label !== '' || $info !== '') {
-                    $out .= '<div class="mb-3 small">';
-                    if ($label !== '') $out .= '<div class="fw-semibold">' . h($label) . '</div>';
-                    if ($info !== '')  $out .= '<div class="text-muted">' . $info . '</div>';
-                    $out .= '</div>';
-                }
-                continue;
-            }
-
-            $out .= '<div class="mb-3">';
-            $out .= '<label for="' . h($id) . '" class="form-label">' . h($label) . $req . '</label>';
-
-            switch ($type) {
-                case 'text area':
-                    $rows_ = max(1, (int)$f['rows_']);
-                    $cols_ = max(1, (int)$f['cols_']);
-                    $maxl  = (int)$f['maxlength'];
-                    $out .= '<textarea name="' . h($name) . '" id="' . h($id) . '"'
-                          . ' class="form-control"'
-                          . ' rows="' . $rows_ . '"'
-                          . ' cols="' . $cols_ . '"'
-                          . ($maxl > 0 ? ' maxlength="' . $maxl . '"' : '')
-                          . $form_attr . $req_attr
-                          . '>' . h($val_for_input) . '</textarea>';
-                    break;
-
-                case 'pick list':
-                    $multi  = !empty($f['multiple']) ? ' multiple' : '';
-                    $multi_n = !empty($f['multiple']) ? '[]' : '';
-                    $opts   = isset($options_by_field[$fid]) ? $options_by_field[$fid] : array();
-                    $out .= '<select name="' . h($name . $multi_n) . '" id="' . h($id) . '"'
-                          . ' class="form-select"' . $multi . $form_attr . $req_attr . '>';
-                    if (!$multi) $out .= '<option value="">' . h(lang('Select...')) . '</option>';
-                    foreach ($opts as $opt) {
-                        $sel = ((string)$opt['value'] === (string)$val) ? ' selected' : '';
-                        $out .= '<option value="' . h($opt['value']) . '"' . $sel . '>' . h($opt['name']) . '</option>';
-                    }
-                    $out .= '</select>';
-                    break;
-
-                case 'radio button':
-                    $opts = isset($options_by_field[$fid]) ? $options_by_field[$fid] : array();
-                    $out .= '<div>';
-                    foreach ($opts as $i => $opt) {
-                        $rid = $id . '_' . $i;
-                        $chk = ((string)$opt['value'] === (string)$val) ? ' checked' : '';
-                        $out .= '<div class="form-check">'
-                              . '<input class="form-check-input" type="radio"'
-                              . ' name="' . h($name) . '" id="' . h($rid) . '"'
-                              . ' value="' . h($opt['value']) . '"'
-                              . $form_attr . $req_attr . $chk . '>'
-                              . '<label class="form-check-label" for="' . h($rid) . '">' . h($opt['name']) . '</label>'
-                              . '</div>';
-                    }
-                    $out .= '</div>';
-                    break;
-
-                case 'check box':
-                    $opts = isset($options_by_field[$fid]) ? $options_by_field[$fid] : array();
-                    // Selected values stored as comma- or pipe-separated.
-                    $selected_set = array();
+            $multiple = ($kind === 'select' && !empty($f['multiple']));
+            $name = 'order_item_' . $order_item_id . '_quantity_number_' . $q . '_form_field_' . $fid;
+            $id   = 'pgCif_' . $order_item_id . '_q' . $q . '_f' . $fid;
+            $field = array(
+                'kind'      => $kind,
+                'label'     => (string)$f['label'],
+                'info'      => ($kind === 'info') ? (string)$f['information'] : '',
+                'required'  => !empty($f['required']) && $kind !== 'info',
+                'name'      => $name . (($multiple || $type === 'check box') ? '[]' : ''),
+                'id'        => $id,
+                'type'      => ($kind === 'choice') ? (($type === 'check box') ? 'checkbox' : 'radio')
+                               : (isset($input_types[$type]) ? $input_types[$type] : (($kind === 'file') ? 'file' : 'text')),
+                'value'     => ($kind === 'file') ? '' : $val_for_input,
+                // A text area, an e-mail address and a text box take a maximum
+            // length; a date, a time, a choice and an upload do not.
+            'maxlength' => ($kind === 'textarea' || $kind === 'input' && ($type === 'email address' || !isset($input_types[$type])))
+                               ? max(0, (int)$f['maxlength']) : 0,
+                'rows'      => ($kind === 'textarea') ? max(1, (int)$f['rows_']) : 0,
+                'cols'      => ($kind === 'textarea') ? max(1, (int)$f['cols_']) : 0,
+                'multiple'  => $multiple,
+                'options'   => array(),
+                'file'      => ($kind === 'file') ? $val_for_input : '',
+            );
+            if ($kind === 'select' || $kind === 'choice') {
+                // A check box group stores its ticks comma- or pipe-separated.
+                $selected_set = array();
+                if ($type === 'check box') {
                     foreach (preg_split('/[,|]/', $val) as $sv) {
                         $sv = trim($sv);
                         if ($sv !== '') $selected_set[$sv] = true;
                     }
-                    $out .= '<div>';
-                    foreach ($opts as $i => $opt) {
-                        $rid = $id . '_' . $i;
-                        $chk = isset($selected_set[(string)$opt['value']]) ? ' checked' : '';
-                        $out .= '<div class="form-check">'
-                              . '<input class="form-check-input" type="checkbox"'
-                              . ' name="' . h($name) . '[]" id="' . h($rid) . '"'
-                              . ' value="' . h($opt['value']) . '"'
-                              . $form_attr . $chk . '>'
-                              . '<label class="form-check-label" for="' . h($rid) . '">' . h($opt['name']) . '</label>'
-                              . '</div>';
-                    }
+                }
+                foreach (isset($options_by_field[$fid]) ? $options_by_field[$fid] : array() as $i => $opt) {
+                    $ov = (string)$opt['value'];
+                    $field['options'][] = array(
+                        'label'    => (string)$opt['name'],
+                        'value'    => $ov,
+                        'selected' => ($type === 'check box') ? isset($selected_set[$ov]) : ($ov === (string)$val),
+                        'id'       => $id . '_' . $i,
+                    );
+                }
+            }
+            $out[] = $field;
+        }
+        $blocks[] = array('number' => $q, 'count' => $count, 'legend' => $legend,
+                          'has_legend' => ($legend !== '' || $count > 1), 'fields' => $out);
+    }
+    return $blocks;
+}
+
+// The cart line $order_item_id's product form ($blocks,
+// _pg_cart_item_form_blocks()) as the block the cart printed before its
+// form became a designable part: each control in the cart form $cart_form_id
+// (HTML5 form="…", so it submits with the quantity update wherever it sits).
+// Empty for no blocks.
+function _pg_render_cart_item_form_html($order_item_id, $blocks, $cart_form_id = '')
+{
+    if (!$blocks) return '';
+    $form_attr = $cart_form_id !== '' ? ' form="' . h($cart_form_id) . '"' : '';
+    $out = '<div class="pg-cart-item-form mt-3" data-pg-cart-item-form="' . (int)$order_item_id . '">';
+    foreach ($blocks as $b) {
+        $out .= '<fieldset class="pg-cart-item-form-block border rounded p-3 mt-2">';
+        if ($b['has_legend']) {
+            // `float-none w-auto px-2` is the Bootstrap 5 recipe for a legend
+            // that sits ON the fieldset border instead of stretching full width.
+            $out .= '<legend class="float-none w-auto px-2 fs-6 fw-semibold">'
+                  . h($b['legend'])
+                  . ($b['count'] > 1 ? ' (' . $b['number'] . ' / ' . $b['count'] . ')' : '')
+                  . '</legend>';
+        }
+
+        foreach ($b['fields'] as $f) {
+            $kind = $f['kind'];
+            // 'information' renders only the label / info HTML — no input.
+            if ($kind === 'info') {
+                if ($f['label'] !== '' || $f['info'] !== '') {
+                    $out .= '<div class="mb-3 small">';
+                    if ($f['label'] !== '') $out .= '<div class="fw-semibold">' . h($f['label']) . '</div>';
+                    if ($f['info'] !== '')  $out .= '<div class="text-muted">' . $f['info'] . '</div>';
                     $out .= '</div>';
-                    break;
+                }
+                continue;
+            }
+            $req      = $f['required'] ? ' <span class="text-danger">*</span>' : '';
+            $req_attr = $f['required'] ? ' required' : '';
+            $maxl     = $f['maxlength'] > 0 ? ' maxlength="' . (int)$f['maxlength'] . '"' : '';
 
-                case 'date':
-                    $out .= '<input type="date" name="' . h($name) . '" id="' . h($id) . '"'
-                          . ' class="form-control" value="' . h($val_for_input) . '"'
-                          . $form_attr . $req_attr . '>';
-                    break;
+            $out .= '<div class="mb-3">';
+            $out .= '<label for="' . h($f['id']) . '" class="form-label">' . h($f['label']) . $req . '</label>';
 
-                case 'date and time':
-                    $out .= '<input type="datetime-local" name="' . h($name) . '" id="' . h($id) . '"'
-                          . ' class="form-control" value="' . h($val_for_input) . '"'
-                          . $form_attr . $req_attr . '>';
-                    break;
-
-                case 'time':
-                    $out .= '<input type="time" name="' . h($name) . '" id="' . h($id) . '"'
-                          . ' class="form-control" value="' . h($val_for_input) . '"'
-                          . $form_attr . $req_attr . '>';
-                    break;
-
-                case 'email address':
-                    $out .= '<input type="email" name="' . h($name) . '" id="' . h($id) . '"'
-                          . ' class="form-control" value="' . h($val_for_input) . '"'
-                          . ((int)$f['maxlength'] > 0 ? ' maxlength="' . (int)$f['maxlength'] . '"' : '')
-                          . $form_attr . $req_attr . '>';
-                    break;
-
-                case 'file upload':
-                    $out .= '<input type="file" name="' . h($name) . '" id="' . h($id) . '"'
-                          . ' class="form-control"'
-                          . $form_attr . $req_attr . '>';
-                    if ($val !== '') {
-                        $out .= '<div class="form-text small">' . h(lang('Current file:')) . ' ' . h($val_for_input) . '</div>';
-                    }
-                    break;
-
-                case 'text box':
-                default:
-                    $out .= '<input type="text" name="' . h($name) . '" id="' . h($id) . '"'
-                          . ' class="form-control" value="' . h($val_for_input) . '"'
-                          . ((int)$f['maxlength'] > 0 ? ' maxlength="' . (int)$f['maxlength'] . '"' : '')
-                          . $form_attr . $req_attr . '>';
-                    break;
+            if ($kind === 'textarea') {
+                $out .= '<textarea name="' . h($f['name']) . '" id="' . h($f['id']) . '"'
+                      . ' class="form-control"'
+                      . ' rows="' . (int)$f['rows'] . '"'
+                      . ' cols="' . (int)$f['cols'] . '"'
+                      . $maxl . $form_attr . $req_attr
+                      . '>' . h($f['value']) . '</textarea>';
+            } elseif ($kind === 'select') {
+                $out .= '<select name="' . h($f['name']) . '" id="' . h($f['id']) . '"'
+                      . ' class="form-select"' . ($f['multiple'] ? ' multiple' : '') . $form_attr . $req_attr . '>'
+                      . _pg_cart_item_form_options_html($f) . '</select>';
+            } elseif ($kind === 'choice') {
+                // A check box group is never required as a whole.
+                $out .= '<div>';
+                foreach ($f['options'] as $opt) {
+                    $out .= '<div class="form-check">'
+                          . '<input class="form-check-input" type="' . $f['type'] . '"'
+                          . ' name="' . h($f['name']) . '" id="' . h($opt['id']) . '"'
+                          . ' value="' . h($opt['value']) . '"'
+                          . $form_attr . ($f['type'] === 'radio' ? $req_attr : '') . ($opt['selected'] ? ' checked' : '') . '>'
+                          . '<label class="form-check-label" for="' . h($opt['id']) . '">' . h($opt['label']) . '</label>'
+                          . '</div>';
+                }
+                $out .= '</div>';
+            } elseif ($kind === 'file') {
+                $out .= '<input type="file" name="' . h($f['name']) . '" id="' . h($f['id']) . '"'
+                      . ' class="form-control"'
+                      . $form_attr . $req_attr . '>';
+                if ($f['file'] !== '') {
+                    $out .= '<div class="form-text small">' . h(lang('Current file:')) . ' ' . h($f['file']) . '</div>';
+                }
+            } else {
+                $out .= '<input type="' . $f['type'] . '" name="' . h($f['name']) . '" id="' . h($f['id']) . '"'
+                      . ' class="form-control" value="' . h($f['value']) . '"'
+                      . $maxl . $form_attr . $req_attr . '>';
             }
 
             $out .= '</div>';
@@ -3565,6 +3576,18 @@ function _pg_render_cart_item_form_data($order_item_id, $product_id, $quantity, 
         $out .= '</fieldset>';   // opened as <fieldset> above (border + legend)
     }
     $out .= '</div>';
+    return $out;
+}
+
+// The <option>s of the pick list $f (a field of _pg_cart_item_form_blocks()):
+// a single choice starts with an empty "Select...", the stored value
+// selected.
+function _pg_cart_item_form_options_html($f)
+{
+    $out = $f['multiple'] ? '' : '<option value="">' . h(lang('Select...')) . '</option>';
+    foreach ($f['options'] as $opt) {
+        $out .= '<option value="' . h($opt['value']) . '"' . ($opt['selected'] ? ' selected' : '') . '>' . h($opt['label']) . '</option>';
+    }
     return $out;
 }
 

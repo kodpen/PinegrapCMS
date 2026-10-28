@@ -7,7 +7,7 @@ description: The credential-free discovery document (.well-known/pinegrap.json a
 - `{"software":"pinegrap","version","api_version","api_base","title","logo_url","language","api_enabled","device_signin","pairing","https_required","min_app_version"}`, built by the pure `api_discovery_document($facts)` (`includes/api/resources/discovery.php`) from `api_discovery_facts()`.
 - Sources: `VERSION`, `api_openapi_base_url()`, `TITLE`, `pg_resolve_config_image(ORGANIZATION_LOGO)` (null without one), `api_text_language()` (the same `language` as `GET /meta`), `api_settings()` for `https_required`. `min_app_version` is the constant `API_DISCOVERY_MIN_APP_VERSION`, null until a release needs one.
 - `api_enabled` is false also when the database is missing or `api_apps` is not installed yet.
-- `version` is public already (`changelog.txt`, the `Pinegrap/<VERSION>` User-Agent). Nothing about people, keys, scopes or the firewall goes in.
+- `version` is the major line only (`2026`, not `2026.11.0`), cut by `api_discovery_version_line()`, so one unauthenticated request does not name the exact build; the exact version comes from `GET /meta` after sign-in (decided #2384, PR #2495). Nothing about people, keys, scopes or the firewall goes in.
 
 ## When is device_signin true?
 - When `api_device_app_check()` would let a sign-in through: API on, `api_devices_ready()`, `api_device_app('')` active and not past `expires_at`, and the caller's address admitted by its allow list. The allow-list test is `api_ip_allowlist_admits($list, $ip)`, the boolean `api_check_ip_allowlist()` now calls.

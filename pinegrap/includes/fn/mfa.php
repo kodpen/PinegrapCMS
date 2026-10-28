@@ -1061,6 +1061,26 @@ function pg_mfa_self_disable_check($user_id, $username, $current_password, $code
 }
 
 /**
+ * What new recovery codes ask for besides the password: 'totp' (a code from
+ * the authenticator app) while TOTP is on; for an account whose second
+ * factor is its passkeys, 'email' (the code passkey.php e-mails, as for
+ * adding a passkey: the codes need no encryption key, being kept as
+ * hashes); '' for an account with no second factor, which has none to get.
+ *
+ * @param bool $totp_on pg_mfa_enabled()
+ * @param bool $passkey pg_mfa_has_passkey()
+ * @return string 'totp', 'email' or ''
+ */
+function pg_mfa_recovery_proof($totp_on, $passkey)
+{
+    if ($totp_on) {
+        return 'totp';
+    }
+
+    return $passkey ? 'email' : '';
+}
+
+/**
  * Replace the account's recovery codes with a fresh set of ten.
  *
  * @param int $user_id

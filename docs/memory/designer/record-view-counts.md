@@ -1,6 +1,6 @@
 ---
 name: record-view-counts
-description: Views on designed record pages (form counters, people only, counted after sending) and form lists ordered by views, comments, recent views or newest activity; why not visitor_content_hourly
+description: Views on record pages (form counters, people only, counted after sending) and form lists ordered by views, comments, recent views or newest activity; why not visitor_content_hourly
 ---
 
 ## What counts a view?
@@ -28,11 +28,11 @@ description: Views on designed record pages (form counters, people only, counted
 - The names win over a same-named form field (the editor drops that option).
 - They read the list's `detail_page_id`; without one the list keeps date order and the panel says so.
 - Editor: Statistics group in Sort field, Days input for recent days (clamped on save); a switch to catalog listing maps them to `sort_order`.
-- Performance: each candidate record runs one subquery before `LIMIT`; pair a "most read" box with a date filter and `max_results = items_per_page`.
+- Performance: one subquery per candidate record before `LIMIT`; pair a "most read" box with a date filter.
 
 ## What else?
 - The six-month sweep (1 in 500) runs from both writers (`pg_sfv_sweep_sampled()` on the designed path).
 - Backups carry no daily rows: after a restore recent views start again, all-time counters survive.
-- Legacy still counts crawlers, index runs, the SEO pass and e-mail renders: an owner question, as is a rollup that skips crawlers.
+- Legacy `get_form_item_view.php` writes behind the same gate since #2184 (decision #2482); before, it counted crawlers, renders, HEAD and POST. Totals were not rebuilt.
 
 Related: docs/memory/visitors/article-view-daily-bucket.md, docs/memory/designer/submitted-form-system-fields.md

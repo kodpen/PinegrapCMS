@@ -152,7 +152,7 @@ function pg_dashboard_widget_14($request, $user)
                         <span class="badge rounded-pill flex-shrink-0" style="background:' . $color . '22;color:' . $color . ';font-size:10px;white-space:nowrap">' . $badge_text . '</span>
                     </div>'
                     . ($subline ? '<small class="fg-secondary d-block mb-1" style="padding-left:23px">' . h($subline) . '</small>' : '') .
-                    '<div class="rounded-pill ms-1" style="height:4px;background:#e5e7eb;overflow:hidden">
+                    '<div class="rounded-pill ms-1" style="height:4px;background:var(--pg-bg-2);overflow:hidden">
                         <div class="rounded-pill h-100" style="width:' . $pct . '%;background:' . $color . '"></div>
                     </div>
                 </div>';
