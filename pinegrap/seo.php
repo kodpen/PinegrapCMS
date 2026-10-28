@@ -2171,10 +2171,7 @@ function pg_seo_page_toolbar($page_id, $style_id = 0, $user = null, $options = a
 
     $css = '
             #software_seo_toggle{
-                margin-top: 6px;
-                margin-bottom: 0;
-                margin-left: 7px;
-                margin-right: 0;
+                margin: 2px 7px;
                 width: 32px;
                 height: 40px;
                 background: var(--pg-sp-bg);
@@ -2212,19 +2209,21 @@ function pg_seo_page_toolbar($page_id, $style_id = 0, $user = null, $options = a
                 --pg-sp-orange: #a65200;
                 --pg-sp-danger: #c62828;
             }
+            /* Beside the button strip on the right edge (get_page.php),
+               centred on it; the toolbar places its own copy as a column. */
             #software_seo_panel{
                 position: fixed;
-                top: 50px;
-                right: 0;
+                top: 50%;
+                right: 48px;
+                transform: translateY(-50%);
                 width: 330px;
+                max-width: calc(100vw - 56px);
                 max-height: 70vh;
                 overflow-y: auto;
                 background: var(--pg-sp-bg);
                 color: var(--pg-sp-fg);
                 border: 1px solid var(--pg-sp-border);
-                border-top: 0;
-                border-right: 0;
-                border-bottom-left-radius: 3px;
+                border-radius: 3px;
                 z-index: 9999999;
                 font-family: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
                 font-size: 12px;

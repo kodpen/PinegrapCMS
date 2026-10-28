@@ -163,13 +163,17 @@ if ($pg_toolbar_panel['panel'] !== '') {
                    The pixel it sits high swallows the bar\'s hairline, the way
                    the sidebar does against the navbar. */
                 top: var(--pg-navbar-h, 50px);
+                right: 0;
+                transform: none;
                 margin-top: -1px;
                 bottom: 0;
                 width: var(--pg-tbp-w);
                 max-width: 100vw;
                 max-height: none;
+                border-top: 0;
+                border-right: 0;
                 border-bottom: 0;
-                border-bottom-left-radius: 0;
+                border-radius: 0;
                 box-shadow: none;
 
                 /* Zero, and the order still comes out right - because of where
