@@ -666,6 +666,66 @@ function ws_mail_box_check_line($box)
 }
 
 /**
+ * How the mailboxes read from a server stand, for the System status tile.
+ *
+ * Only a box that is on and has a server counts. A box whose last read
+ * failed is failing; one left a mail over 25 MB in the box, or not read well
+ * for over an hour (the general job is not running), wants a look; a box
+ * added in the last hour and not checked yet is fine. 'none' when no box
+ * counts, so the tile is not drawn.
+ *
+ * @param array[] $boxes ws_mail_boxes rows
+ * @param int     $now
+ * @return array state (none|ok|warn|fail), failing, stale, on, rows
+ *               (id, name, address, state, checked_at, error, detail)
+ */
+function ws_mail_fetch_health(array $boxes, $now)
+{
+    $out = array('state' => 'none', 'failing' => 0, 'stale' => 0, 'on' => 0, 'rows' => array());
+    $rank = array('none' => 0, 'ok' => 1, 'warn' => 2, 'fail' => 3);
+
+    foreach ($boxes as $box) {
+        $settings = ws_mail_box_settings($box);
+
+        if (empty($box['enabled']) || ((string) ($box['transport'] ?? 'imap') !== 'imap') || ((string) ($settings['host'] ?? '') === '')) {
+            continue;
+        }
+
+        $parts = explode('|', (string) $box['last_error'], 2);
+        $error = $parts[0];
+        $since = max((int) $box['ok_at'], (int) $box['created_at']);
+
+        if (($error !== '') && ($error !== 'too_large')) {
+            $state = 'fail';
+            $out['failing']++;
+        } elseif (($error === 'too_large') || (((int) $now - $since) > 3600)) {
+            $state = 'warn';
+            $out['stale'] += ($error === 'too_large') ? 0 : 1;
+        } else {
+            $state = 'ok';
+        }
+
+        $out['on']++;
+        $out['rows'][] = array(
+            'id'         => (int) $box['id'],
+            'name'       => (string) $box['name'],
+            'address'    => (string) $box['address'],
+            'state'      => $state,
+            'checked_at' => (int) $box['checked_at'],
+            'error'      => $error,
+            'detail'     => $parts[1] ?? '',
+            'host'       => (string) $settings['host'],
+        );
+
+        if ($rank[$state] > $rank[$out['state']]) {
+            $out['state'] = $state;
+        }
+    }
+
+    return $out;
+}
+
+/**
  * The mailboxes card: each box with its channel and last mail, its form,
  * and the .eml upload.
  *
@@ -734,7 +794,7 @@ function ws_mail_settings_card($self_url, $viewer)
             <div class="card-body">
                 <div class="collapse" id="ws-mail-new">' . ws_mail_box_form($self_url, null, $channels) . '</div>
                 ' . $rows . '
-                <div class="form-text mt-5">' . h(lang('A mailbox with a server is read every minute while the Incoming e-mail scheduled job is on; an .eml file saved from a mail program can also be brought in by hand.')) . '</div>
+                <div class="form-text mt-5">' . h(lang('A mailbox with a server is read every minute while the general scheduled job runs; an .eml file saved from a mail program can also be brought in by hand.')) . '</div>
             </div>
         </div>';
 }

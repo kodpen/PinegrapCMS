@@ -86,4 +86,47 @@ function test_workspace_mail_fetch_job_is_in_the_catalogue()
 
 	pg_assert_contains("pg_cron_ran('workspace_mail_job');", $script, 'it records its run');
 	pg_assert_contains("validate_area_access(\$user, 'manager');", $script, 'a web request needs a manager');
+
+	pg_assert_true(!empty($job['inline']), 'the general job reads the boxes itself');
+	pg_assert_true(empty($job['dispatch']), 'no switch and no turn in the rotation');
+
+	$general = (string) file_get_contents(PG_FUNCTIONS_DIR . '/job.php');
+
+	pg_assert_contains('ws_mail_fetch_run(', $general, 'job.php reads the boxes');
+	pg_assert_contains("pg_cron_ran('workspace_mail_job');", $general, 'and records the run');
+}
+
+function test_workspace_mail_fetch_health()
+{
+	$now = gmmktime(12, 0, 0, 11, 5, 2026);
+	$server = json_encode(array('host' => 'imap.example.com', 'port' => 993));
+	$box = function ($id, $over) use ($now, $server) {
+		return array_merge(array('id' => $id, 'name' => 'Box ' . $id, 'address' => 'b' . $id . '@example.com', 'transport' => 'imap', 'enabled' => 1,
+			'settings' => $server, 'last_error' => '', 'ok_at' => $now - 60, 'checked_at' => $now - 60, 'created_at' => $now - 86400), $over);
+	};
+
+	$none = ws_mail_fetch_health(array($box(1, array('settings' => '{}')), $box(2, array('enabled' => 0)), $box(3, array('transport' => 'push'))), $now);
+	pg_assert_same('none', $none['state'], 'no box with a server that is on: no tile');
+	pg_assert_same(array(), $none['rows']);
+
+	$ok = ws_mail_fetch_health(array($box(1, array()), $box(2, array('ok_at' => 0, 'checked_at' => 0, 'created_at' => $now - 600))), $now);
+	pg_assert_same('ok', $ok['state'], 'read a minute ago, and one added ten minutes ago');
+	pg_assert_same(2, $ok['on']);
+
+	$warn = ws_mail_fetch_health(array($box(1, array()), $box(2, array('ok_at' => $now - 7200, 'checked_at' => $now - 7200))), $now);
+	pg_assert_same('warn', $warn['state'], 'not read for two hours');
+	pg_assert_same(1, $warn['stale']);
+	pg_assert_same('warn', ws_mail_fetch_health(array($box(1, array('ok_at' => 0, 'checked_at' => 0))), $now)['state'], 'added a day ago, never read');
+
+	$large = ws_mail_fetch_health(array($box(1, array('last_error' => 'too_large|'))), $now);
+	pg_assert_same('warn', $large['state'], 'a mail left in the box');
+	pg_assert_same(0, $large['stale']);
+	pg_assert_same('too_large', $large['rows'][0]['error']);
+
+	$fail = ws_mail_fetch_health(array($box(1, array('ok_at' => $now - 7200)), $box(2, array('last_error' => 'login|AUTHENTICATIONFAILED Invalid credentials'))), $now);
+	pg_assert_same('fail', $fail['state'], 'a failing box wins');
+	pg_assert_same(1, $fail['failing']);
+	pg_assert_same('login', $fail['rows'][1]['error']);
+	pg_assert_same('AUTHENTICATIONFAILED Invalid credentials', $fail['rows'][1]['detail']);
+	pg_assert_same('imap.example.com', $fail['rows'][1]['host']);
 }
