@@ -4,7 +4,7 @@ description: Plan (#2382; A1 done in #2199, A2a in #2638): submit_order() comple
 ---
 
 ## What did the owner decide?
-- 2026-10-27 (#2382, owner: "A1"): a payment the service confirms after the visitor left completes the order from the webhook ("en makül güncel yol olsun … global pinegrap kullanıcıları ihtiyaç duyabilir"; the visitor may never return). Built as A1 → A2 → A3; until A3 lands the webhook only alerts (`commerce/payment-callback.md`).
+- 2026-10-27 (#2382, owner: "A1"): a payment the service confirms after the visitor left completes the order from the webhook (the visitor may never return). Built as A1 → A2 → A3; until A3 lands the webhook only alerts (`commerce/payment-callback.md`).
 - The six frozen legacy gateways' code in `submit_order.php` is not touched; only the shared tail they fall through to moves.
 
 ## What is done?
@@ -13,17 +13,17 @@ description: Plan (#2382; A1 done in #2199, A2a in #2638): submit_order() comple
 - A2a (#2638): `pg_order_complete()` (`commerce/order-completion.md`) holds the lock and the writes from the completing UPDATE to the order SMS; `submit_order()` calls it.
 
 ## What remains?
-- A2 (L), cut into steps of about 1,000 product lines; each step moves the next part of the tail into `pg_order_complete()` (`commerce/order-completion.md`), fed by the order row, its recipients and items, never `$_SESSION` or the posted form. `tests/order_completion_test.php` pins the tail's writes in order; each step keeps it green.
+- A2 (L), steps of about 1,000 product lines: each moves the next part of the tail into session-free functions of `includes/fn/order_completion.php` (`commerce/order-completion.md`), called by `submit_order()` where the code stood (same order of writes). `tests/order_completion_test.php` pins that order.
   - A2a: done (#2638).
-  - A2b: after the number, up to the per-product loop: the gift card error mail, the receipt e-mail (each copy), ship and delivery dates and the address book, auto e-mail campaigns. The receipt e-mail reads the order, not the visitor's session (`pg_order_receipt_audience()` stays).
-  - A2c: the per-product loop of `submit_order()` (stock and its announcement, reservations, memberships, private folders, gift cards issued, e-mail campaigns, product forms and their mails, comments): about 1,650 lines today, so A2c may split again where the loop allows.
-  - A2d: after the loop: private access, reward points, contact groups, abandoned campaigns, visitor record, activity log and notification, ERP invoice. Then the writes still before the lock (key code use, gift card redemption, auto-registration, affiliate commission) are settled: run once behind the lock, or kept with the visitor's request where only the visitor's request can do them (card redemption needs the posted codes); the step names which.
+  - A2b: the receipt e-mail (each copy; BCC addresses from the order's lines) and the recipients' ship and delivery dates with the address book entries of an auto-registered customer, as `pg_order_complete_receipt()` and `pg_order_complete_ship_dates()`; the date arithmetic as pure helpers. The receipt settings come from the checkout page row, passed in.
+  - A2c: auto e-mail campaigns (`order_completed`, needs the order's contact) and the per-product loop of `submit_order()` (stock, reservations, memberships, folders, gift cards issued, campaigns, product forms, comments): about 1,650 lines, may split again.
+  - A2d: after the loop: private access, rewards, contact groups, abandoned campaigns, visitor record, log, notification, ERP invoice. Then the writes still before the lock (key code use, gift card redemption, auto-registration, affiliate commission) are settled: run once behind the lock, or kept with the visitor's request where only the visitor's request can do them (card redemption needs the posted codes); the step names which. The gift card error mail goes with the redemption. Last, `pg_order_complete()` calls the stage functions in order, so one call completes the whole order.
   - Stays in `submit_order()`: the six frozen legacy gateways and their recurring profiles (a card the visitor typed), the session values the receipt page reads, the redirect.
-- A3 (S-M): `pg_payment_notify_outcome()`'s `paid`/`authorized` branch completes an incomplete order through A2 when the order's `transaction_id` equals the intent, the amount equals `orders.total` (integer hundredths) and the currency is the store's; a mismatch logs and alerts and completes nothing. Tests in `tests/payment_stripe_webhook_test.php`: completes once, a second event is a no-op, amount/currency/intent mismatch → alert, already complete → no-op. Then PayTR (4c of `payment-driver-layer.md`) uses the same function.
+- A3 (S-M): `pg_payment_notify_outcome()`'s `paid`/`authorized` branch completes an incomplete order through A2 when the order's `transaction_id` equals the intent, the amount equals `orders.total` (integer hundredths) and the currency is the store's; a mismatch logs and alerts and completes nothing. Tests: completes once; a second event, or an order already complete, is a no-op; a mismatch alerts. Then PayTR (4c of `payment-driver-layer.md`) uses the same function.
 
 ## Open questions?
-- None.
+- For A3: the receipt e-mail's settings (on, subject, format, header, footer, page) live on the checkout page (`order_preview_pages` / `express_order_pages`), and the order does not name the page it was placed from. A3 needs them without the visitor; if that takes a column, it is an architect question first.
 
 ## Where to start?
-- A2b: `pg_order_complete()` in `includes/fn/order_completion.php` and its call in `submit_order.php`; `tests/order_completion_test.php`.
-- `submit_order.php` from the driver branch (`pg_payment_checkout_driver()`) to the end of `submit_order()`; `commerce/payment-callback.md`; `commerce/order-status-moves.md`.
+- A2c: the stage functions in `includes/fn/order_completion.php` and its call in `submit_order.php`; `tests/order_completion_test.php`.
+- `commerce/payment-callback.md`, `commerce/order-status-moves.md`.
