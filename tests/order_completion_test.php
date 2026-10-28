@@ -47,7 +47,7 @@ function order_completion_test_tail()
 	$tail = substr($source, (int) strpos($source, 'pg_payment_checkout_driver('));
 	$module = PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php';
 
-	foreach (array('pg_order_complete', 'pg_order_complete_receipt', 'pg_order_complete_ship_dates', 'pg_order_complete_line_stock', 'pg_order_complete_line_reservation', 'pg_order_complete_line_membership', 'pg_order_complete_line_folder_access', 'pg_order_complete_line_gift_cards') as $name) {
+	foreach (array('pg_order_complete', 'pg_order_complete_receipt', 'pg_order_complete_ship_dates', 'pg_order_complete_line_stock', 'pg_order_complete_line_reservation', 'pg_order_complete_line_membership', 'pg_order_complete_line_folder_access', 'pg_order_complete_line_gift_cards', 'pg_order_line_product_form_fields', 'pg_order_complete_line_form_update') as $name) {
 		$call = strpos($tail, $name . '(');
 
 		if ($call !== false) {
@@ -94,6 +94,9 @@ function test_order_completion_tail_writes_in_order()
 		'membership extended' => array('UPDATE contacts SET expiration_date = ? WHERE member_id = ?'),
 		'folder access' => array('"INSERT INTO aclfolder ('),
 		'gift cards issued' => array('"INSERT INTO gift_cards ('),
+		'product form read' => array('FROM form_data'),
+		'submitted form updated' => array('"UPDATE forms'),
+		'submitted form created' => array('"INSERT INTO forms ('),
 		'reward points' => array('UPDATE user SET user_reward_points = ?'),
 		'contact groups' => array('"INSERT INTO contacts_contact_groups_xref ('),
 		'abandoned campaigns cancelled' => array('"UPDATE email_campaigns'),
@@ -323,4 +326,88 @@ function test_order_completion_gift_card_send_time()
 {
 	pg_assert_same('', pg_order_gift_card_send_time('0000-00-00'), 'no delivery date: sent at once');
 	pg_assert_same('2026-12-01 12:00:00', pg_order_gift_card_send_time('2026-12-01'), 'noon of the delivery date');
+}
+
+function test_order_completion_submit_order_prepares_line_fields_through_the_functions()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+
+	foreach (array('pg_order_line_variable_fields', 'pg_order_line_product_form_fields', 'pg_order_complete_line_form_update') as $name) {
+		pg_assert_same(1, substr_count($source, $name . '('), $name);
+	}
+
+	pg_assert_same(0, substr_count($source, "'name' => 'billing_salutation'"), 'no variable fields of its own');
+	pg_assert_same(0, substr_count($source, "(product_submit_form_fields.action = 'update')"), 'no form update of its own');
+}
+
+function test_order_completion_line_variable_fields()
+{
+	$order = array(
+		'billing_salutation' => 'Ms.', 'billing_first_name' => 'Ada', 'billing_last_name' => 'Lovelace',
+		'billing_company' => 'Engines', 'billing_address_1' => '1 Road', 'billing_address_2' => 'Flat 2',
+		'billing_city' => 'London', 'billing_state' => 'LDN', 'billing_zip_code' => 'N1',
+		'billing_country' => 'GB', 'billing_phone_number' => '123', 'billing_fax_number' => '456',
+		'billing_email_address' => 'ada@example.com', 'custom_field_1' => 'c1', 'custom_field_2' => 'c2',
+		'po_number' => 'PO-7', 'total' => 123456, 'order_number' => 1001, 'order_date' => mktime(14, 5, 6, 11, 10, 2026),
+	);
+
+	$fields = pg_order_line_variable_fields($order, 3);
+	$by_name = array();
+
+	foreach ($fields as $field) {
+		$by_name[$field['name']] = $field;
+	}
+
+	pg_assert_same(
+		array('billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'custom_field_1', 'custom_field_2', 'po_number', 'total', 'order_number', 'order_date_and_time', 'quantity', 'quantity_plural_suffix', 'quantity_plural_suffix_es'),
+		array_column($fields, 'name'),
+		'the names in the order the checkout gave them'
+	);
+	pg_assert_same('Ada', $by_name['billing_first_name']['data'], 'from the order row');
+	pg_assert_same('1234.56', $by_name['total']['data'], 'the total in major units, two decimals');
+	pg_assert_same(array('name' => 'order_date_and_time', 'data' => '2026-11-10 14:05:06', 'type' => 'date and time'), $by_name['order_date_and_time'], 'the order date');
+	pg_assert_same(3, $by_name['quantity']['data'], 'the quantity');
+	pg_assert_same('s', $by_name['quantity_plural_suffix']['data'], 'plural');
+	pg_assert_same('es', $by_name['quantity_plural_suffix_es']['data'], 'plural es');
+
+	$one = pg_order_line_variable_fields($order, 1);
+	pg_assert_same('', $one[20]['data'], 'one: no suffix');
+	pg_assert_same('', $one[21]['data'], 'one: no es suffix');
+}
+
+function test_order_completion_product_form_fields()
+{
+	$items = array(
+		array('quantity_number' => '1', 'form_field_id' => '5', 'data' => 'Red', 'name' => 'colour', 'type' => 'check box'),
+		array('quantity_number' => '1', 'form_field_id' => '5', 'data' => 'Blue', 'name' => 'colour', 'type' => 'check box'),
+		array('quantity_number' => '1', 'form_field_id' => '6', 'data' => 'Ada', 'name' => 'name', 'type' => 'text box'),
+		array('quantity_number' => '2', 'form_field_id' => '6', 'data' => 'Bob', 'name' => 'name', 'type' => 'text box'),
+	);
+
+	pg_assert_same(
+		array(
+			1 => array(
+				array('name' => 'colour', 'data' => 'Red, Blue', 'type' => 'check box'),
+				array('name' => 'name', 'data' => 'Ada', 'type' => 'text box'),
+			),
+			2 => array(
+				array('name' => 'name', 'data' => 'Bob', 'type' => 'text box'),
+			),
+		),
+		pg_order_product_form_fields($items),
+		'one list per unit, the values of a field joined by commas'
+	);
+	pg_assert_same(array(), pg_order_product_form_fields(array()), 'no product form');
+}
+
+function test_order_completion_product_form_number()
+{
+	$forms = array(1 => array(), 2 => array());
+
+	pg_assert_same(1, pg_order_product_form_number(1, $forms), 'the first unit');
+	pg_assert_same(2, pg_order_product_form_number(2, $forms), 'a unit with its own form');
+	pg_assert_same(1, pg_order_product_form_number(3, $forms), 'a unit without one uses the first');
+	pg_assert_same(0, pg_order_product_form_number(1, array()), 'no product form');
+	pg_assert_same(2, pg_order_product_form_number(2, array(2 => array())), 'a later unit with its own form, the first without');
+	pg_assert_same(0, pg_order_product_form_number(1, array(2 => array())), 'the first unit without a form');
 }
