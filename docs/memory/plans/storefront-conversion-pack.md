@@ -1,6 +1,6 @@
 ---
 name: storefront-conversion-pack
-description: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, wishlist, back-in-stock e-mail, form and SMS, API done): review form, bundles
+description: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, review form and photos, wishlist, back-in-stock e-mail, form and SMS, API done): bundles
 ---
 
 ## Why?
@@ -21,17 +21,13 @@ description: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, w
 3-4. (PRs #1583-#1585, #1659, #1664, #1864) Wishlist, hearts, Favourites; back-in-stock e-mail, "Notify me", SMS (`commerce/wishlist*.md`, `commerce/back-in-stock-*.md`).
 5. (PR #1676) API: reviews, rating, a customer's favourites, `product.review.created`, `verified` (`api/api-reviews-and-wishlist.md`).
 2d. (PR #2567) Reviews newest first, verified only (#2426): `commerce/product-review-order.md`.
+2c (form, photos). (PRs #2817, #2840, #2859, #2870) The comments widget is the review list and form on a product page (`designer/comments-widget-product-page.md`); photo reviews by `config.review_photos`, thumbnails in the classic list, moderation and the widget (`commerce/product-review-photos.md`).
 
 ## What remains?
-2c. Review form, `__reviews` (M): the comments widget is the list and form on a `catalog detail` page (#2678, #2799). Templates' product pages are `standard` pages with a catalog_item_view widget: page comments, ungated. Cut:
-- 2c1. (PR #2817) Done: `designer/comments-widget-product-page.md`.
-- 2c2. (PR #2840) Done: same file.
-- 2c3a. (PR #2859) Photo reviews: setting, gate, image check, forms, classic and moderation thumbnails (`commerce/product-review-photos.md`).
-- 2c3b. The comments widget's photo thumbnail: row flag, default layout in three places, canvas (same file).
 6. Bundles: `storefront-bundles-design.md`; owner review (#2425).
 
 ## Which questions are answered? (#2426)
 - Photo reviews by a site setting, off by default, images only. Review order: step 2d.
 
 ## Where to start?
-- Step 6 after #2425; 2c3b.
+- Step 6 after #2425.
