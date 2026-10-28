@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/folder_form.php');
 $user = validate_user();
 validate_area_access($user, 'user');
 
@@ -91,24 +92,12 @@ if (empty($_POST['name'])) {
                         </nav>';
     }
     
-    // only display parent folder selection if folder is not root
-    if ($folder_parent != 0) {
-        $output_folder_row =
-            '<div class="col-12 md:col-6 my-3">
-                <label for="folder" class="form-label">' . lang('Parent Folder') . '</label>
-                <select class="form-control" id="folder" name="folder">' . select_folder($folder_parent, 0, $excluded_folder_id = $folder_id) . '</select>
-            </div>';
-    } else {
-        $output_folder_row = '';
-    }
-    
-    // if user role is Administrator, Designer, or Manager, then allow user to select style and mobile style for folder
-    if ($user['role'] < 3) {
-        $output_style = '<select class="form-control" id="style" name="style">' . select_style($folder_style) . '</select>';
-        $output_mobile_style = '<select class="form-control" id="mobile_style_id" name="mobile_style_id">' . get_mobile_style_options($mobile_style_id) . '</select>';
-        
-    // else user has a user role
-    } else {
+    // A user cannot pick styles, so the form names the stored or inherited
+    // ones; administrators, designers and managers get the selects.
+    $output_style = null;
+    $output_mobile_style = null;
+
+    if ($user['role'] >= 3) {
         // if there is a style set for this folder
         if ($folder_style) {
             // get style name
@@ -197,13 +186,6 @@ if (empty($_POST['name'])) {
         $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('folder')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
     
-    $folder_archived_checked = '';
-    
-    // if folder archived is 1, then check the checkbox
-    if ($folder_archived == '1') {
-        $folder_archived_checked = ' checked="checked"';
-    }
-    
     echo
         pg_page_shell(
             array(
@@ -230,70 +212,21 @@ if (empty($_POST['name'])) {
                         </div>
                     </div>
                     <form name="form" action="edit_folder.php" method="post">
-                        ' . get_token_field() . '
-                        <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="card my-7">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                        ' . lang('Folder Information') . '
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-12 md:col-8 my-3">
-                                                <label for="name" class="form-label">' . lang('Folder Name') . '</label>
-                                                <input id="name" name="name" type="text" value="' . h($folder_name) . '" class="form-control " required>
-                                                <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                            </div>
-                                            <div class="col-12 md:col-4  my-3">
-                                                <label for="order" class="form-label" data-bs-content="' . lang('Display order of this Folder to other Folders') . '" title="' . lang('Sorting') . '">' . lang('Sorting') . ' (?)</label>
-                                                <div class="input-group number-controls">
-                                                    <button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>
-                                                    <input class="form-control text-center border-start-0 border-end-0"  value="' . $folder_order . '" type="text" name="order" id="order" maxlength="9" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0"/>
-                                                    <button class="btn material-icons plus border border-start-0" type="button" aria-label="' . h(lang('Increase')) . '">add</button>
-    
-                                                </div>
-                                            </div>
-                                            <div class="col-12 my-5">
-                                                <div class="form-field">
-                                                    <div class="switch"><input class="" type="checkbox" id="folder_archived" name="folder_archived" value="1"' . $folder_archived_checked . ' /></div>
-                                                    <label class="" for="folder_archived" data-bs-content="' . lang('Archive Folder for Pages and Files that are no longer being used') . '" title="' . lang('Archive') . '">' . lang('Archive') . ' (?)</label>
-                                                </div>
-                                                
-                                            </div>
-    
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <div class="card my-7">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                        ' . lang('Content Options') . '
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            ' . $output_folder_row . '
-                                            <div class="col-12 md:col-6 lg:col-auto my-3">
-                                                <label for="access_control_type" class="form-label" data-bs-content="' . lang('Access Control for all Pages and Files within this Folder') . '" title="' . lang('Folder Access Control Type') . '">' . lang('Folder Access Control Type') . ' (?)</label>
-                                                <select class="form-control" id="access_control_type" name="access_control_type">' . select_access_control_type($folder_access_control_type) . '</select>
-                                            </div>
-                                        </div>
-                                        <div class="row mt-7">
-                                            <div class="col-12 md:col-6 lg:col-auto my-3">
-                                                <label for="style" class="form-label">' . lang('Desktop Page Style') . '</label>
-                                                ' . $output_style . '
-                                            </div>
-                                            <div class="col-12 md:col-6 lg:col-auto my-3">
-                                                <label for="mobile_style_id" class="form-label">' . lang('Mobile Page Style') . '</label>
-                                                ' . $output_mobile_style . '
-                                            </div>
-                                            <div class="col-12 form-text">' . lang('Default Page Styles for Pages within this Folder') . '</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        ' . pg_folder_form(array(
+                            'edit' => true,
+                            'name' => $folder_name,
+                            'order' => $folder_order,
+                            'archived' => ($folder_archived == '1'),
+                            'show_parent' => ($folder_parent != 0),
+                            'parent' => $folder_parent,
+                            'exclude' => $folder_id,
+                            'access_control_type' => $folder_access_control_type,
+                            'style' => $folder_style,
+                            'mobile_style' => $mobile_style_id,
+                            'role' => $user['role'],
+                            'style_label' => $output_style,
+                            'mobile_style_label' => $output_mobile_style,
+                        )) . '
                         <input type="hidden" name="id" value="' . h($_GET['id']) . '">      
                         <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                             <div class="container">
@@ -427,17 +360,15 @@ if (empty($_POST['name'])) {
             }
         }
 
-        $name = trim($_POST['name']);
+        list($name, $order, $access_control_type, $folder_archived, $style_values) = pg_folder_form_values($_POST, $user['role']);
 
         $sql_style_fields = "";
-        $style_values = array();
         
         // if user role is Administrator, Designer, or Manager, then allow user to change style and mobile style for folder
         if ($user['role'] < 3) {
             $sql_style_fields =
                 "folder_style = ?,
                 mobile_style_id = ?,";
-            $style_values = array((string) ($_POST['style'] ?? ''), (string) ($_POST['mobile_style_id'] ?? ''));
         }
         
         $query =
@@ -452,7 +383,7 @@ if (empty($_POST['name'])) {
                 folder_user = ?
             WHERE folder_id = ?";
         $result = db_q($query, array_merge(
-            array((string) $name, (string) ($_POST['order'] ?? ''), (string) ($_POST['access_control_type'] ?? ''), (string) ($_POST['folder_archived'] ?? '')),
+            array($name, $order, $access_control_type, $folder_archived),
             $style_values,
             array((string) $user['id'], (string) ($_POST['id'] ?? ''))
         )) or output_error('Query failed.');

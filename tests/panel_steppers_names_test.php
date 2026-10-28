@@ -60,7 +60,8 @@ function test_panel_steppers_names_every_stepper_button_is_named()
 		}
 	}
 
-	pg_assert_true($found >= 18, 'expected the panel steppers, found ' . $found);
+	// The folder screens share one stepper pair (includes/forms/folder_form.php).
+	pg_assert_true($found >= 16, 'expected the panel steppers, found ' . $found);
 }
 
 function test_panel_steppers_names_offer_tag_remove_link()
