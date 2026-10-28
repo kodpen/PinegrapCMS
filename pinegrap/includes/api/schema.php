@@ -1138,7 +1138,7 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'from',        'in' => 'query', 'type' => 'datetime'),
 				array('name' => 'to',          'in' => 'query', 'type' => 'datetime'),
-				array('name' => 'source',      'in' => 'query', 'type' => 'enum', 'values' => array('panel', 'api', 'job')),
+				array('name' => 'source',      'in' => 'query', 'type' => 'enum', 'values' => array('panel', 'api', 'job', 'site')),
 				array('name' => 'user',        'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'A number is a user id (the operator, or the owner of an application); any other text matches part of the name the line was written under.'),
 				array('name' => 'action',      'in' => 'query', 'type' => 'string', 'max_length' => 64, 'description' => 'create, update, delete, recycle, restore, rotate, revoke, cancel, refund, export or erase.'),
 				array('name' => 'entity_type', 'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'settings, user, product, page, order, order_return, file, offer, api_app, api_key, api_device, oauth_client, person or audit.'),
