@@ -20,7 +20,7 @@ description: Bundles design note, part 2: hook points checked in the code, steps
 2c. Checkout: the order completion's stock loop calls `pg_bundle_take_stock(..., 'checkout', $stock_left)` for a bundle line. After order-completion A2b (#2687) moves that loop out of `submit_order.php`.
 3. Done (#2727): component snapshot on invoice lines, component moves on post, return and cancel, profit report (the key was widened in step 1).
 4. API fields, catalog tokens, list source, designer palette and flags, in two parts claimed when no open PR holds their files:
-   - 4a API: `includes/api/resources/products.php`, `inventory.php`, `includes/api/schema.php`.
+   - 4a Done (#PR): the `bundle` block on Product, bundle fields on `POST /products/{id}`, `sum` bundles refused by the price batch (`api/api-product-bundles.md`).
    - 4b catalog with the designer: the card tokens and a `product.bundle_items` list source need `assets/js/style_designer.js` in the same PR (`check_bindings.php` wants each card token in a palette; `tests/widget_lists_*` compare the editor's list sources with `pg_sw_list_sources()`).
 
 ## What did the owner answer? (2026-10-27, #2425)

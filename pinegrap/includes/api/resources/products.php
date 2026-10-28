@@ -84,6 +84,10 @@ function api_product_present($row, $extras = array(), $with_issues = false) {
 			'quantity'     => (int)$row['inventory_quantity'],
 			'out_of_stock' => ((int)$row['out_of_stock'] === 1)
 		),
+		// What a bundle holds, null on a plain product. A bundle's inventory
+		// above is a cache of what its components allow and is never written
+		// directly (includes/fn/bundles.php).
+		'bundle'          => api_product_bundle($row, isset($extras['bundles'][$id]) ? $extras['bundles'][$id] : array()),
 		// The stars of the product's published reviews from verified
 		// purchases (GET /products/{id}/reviews), kept on the row.
 		'rating'          => api_product_rating($row),
@@ -96,6 +100,38 @@ function api_product_present($row, $extras = array(), $with_issues = false) {
 		// engine. Nothing is calculated here; the findings are only carried on
 		// the single product endpoint, because they are a query per row.
 		'seo'             => api_seo_block('product', $id, $row, $with_issues)
+	);
+
+}
+
+// A bundle as the product object carries it: how it is priced, the discount
+// in basis points (1250 = 12.5%) taken off the sum, and its contents in their
+// order, each component with its quantity per bundle. Null for a product that
+// is not a bundle, which is every product on a site before the bundle schema
+// (api_product_select() reads 0 there).
+function api_product_bundle($row, $items) {
+
+	if (empty($row['bundle'])) {
+
+		return null;
+
+	}
+
+	$list = array();
+
+	foreach ((array)$items as $item) {
+
+		$list[] = array(
+			'product_id' => (int)$item['product_id'],
+			'quantity'   => (int)$item['quantity']
+		);
+
+	}
+
+	return array(
+		'pricing'     => (isset($row['bundle_pricing']) && ($row['bundle_pricing'] === 'sum')) ? 'sum' : 'fixed',
+		'discount_bp' => isset($row['bundle_discount_bp']) ? (int)$row['bundle_discount_bp'] : 0,
+		'items'       => $list
 	);
 
 }
@@ -135,7 +171,7 @@ function api_product_compare_at_price($row) {
 // one.
 function api_product_extras($ids) {
 
-	$extras = array('images' => array(), 'attributes' => array(), 'groups' => array());
+	$extras = array('images' => array(), 'attributes' => array(), 'groups' => array(), 'bundles' => array());
 
 	$ids = array_values(array_unique(array_map('intval', $ids)));
 
@@ -227,6 +263,21 @@ function api_product_extras($ids) {
 
 	}
 
+	// Bundle contents. Only a bundle has rows: switching it off empties them.
+	if (pg_bundles_ready()) {
+
+		$contents = api_rows("SELECT bundle_id, product_id, quantity FROM product_bundle_items
+			WHERE bundle_id IN (" . $in . ")
+			ORDER BY bundle_id ASC, sort_order ASC, id ASC");
+
+		foreach ($contents as $row) {
+
+			$extras['bundles'][(int)$row['bundle_id']][] = $row;
+
+		}
+
+	}
+
 	return $extras;
 
 }
@@ -245,6 +296,7 @@ function api_product_select() {
 			products.shippable, products.free_shipping, products.weight,
 			products.inventory, products.inventory_quantity, products.out_of_stock,
 			products.tax_rate,
+			" . (pg_bundles_ready() ? "products.bundle, products.bundle_pricing, products.bundle_discount_bp," : "0 AS bundle, 'fixed' AS bundle_pricing, 0 AS bundle_discount_bp,") . "
 			" . (pg_reviews_ready() ? "products.rating_avg, products.rating_count," : "0 AS rating_avg, 0 AS rating_count,") . "
 			" . (api_catalog_bin_columns() ? "products.recycled," : "0 AS recycled,") . "
 			products.timestamp,
@@ -1101,9 +1153,18 @@ function api_products_update($params) {
 
 	}
 
+	$bundle = api_products_bundle_write($params, $id);
+
+	if ($bundle !== null) {
+
+		$set = array_merge($set, $bundle['set']);
+
+	}
+
 	// A barcode the product already carries is a field that was sent and
 	// needs no write, not an empty request.
-	if (empty($set) && ($group_ids === null) && ($attributes === null) && !array_key_exists('barcode', $params)) {
+	if (empty($set) && ($group_ids === null) && ($attributes === null) && !array_key_exists('barcode', $params)
+		&& (($bundle === null) || ($bundle['items'] === null))) {
 
 		api_fail_validation(lang('No writable field was sent.'));
 
@@ -1186,6 +1247,20 @@ function api_products_update($params) {
 
 	}
 
+	// The contents were checked above. The refresh then brings the bundle's
+	// stock and, priced as the sum, its price in line with them.
+	if ($bundle !== null) {
+
+		if (($bundle['items'] !== null) && (pg_bundle_items_save($id, $bundle['items']) !== '')) {
+
+			api_fail_server(lang('The bundle contents could not be saved.'));
+
+		}
+
+		pg_bundle_refresh($id);
+
+	}
+
 	// Site search keeps its own index of the promoted keywords. The panel syncs
 	// it on every save and the values are read back rather than taken from the
 	// request, because a request that changed only the title still has to leave
@@ -1229,6 +1304,205 @@ function api_products_update($params) {
 	}
 
 	api_ok(api_product_present($row, api_product_extras(array($id)), true));
+
+}
+
+// The bundle fields an update sent, checked before anything is written, the
+// way the product screen's Bundle card writes them: null when the request
+// named none of them. Answers the columns to set and the contents to save
+// (null to leave them; switching a bundle off empties them).
+//
+// A bundle's stock is never written here: it follows its components. Its
+// price is not either while it is priced as the sum of them, so a price sent
+// to such a bundle is refused rather than overwritten by the next refresh.
+function api_products_bundle_write($params, $id) {
+
+	$sent = false;
+
+	foreach (array('bundle', 'bundle_pricing', 'bundle_discount_bp', 'bundle_items') as $name) {
+
+		if (array_key_exists($name, $params)) {
+
+			$sent = true;
+
+		}
+
+	}
+
+	if (!$sent && !array_key_exists('price', $params)) {
+
+		return null;
+
+	}
+
+	if (!pg_bundles_ready()) {
+
+		if ($sent) {
+
+			api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+
+		}
+
+		return null;
+
+	}
+
+	$stored = api_row("SELECT bundle, bundle_pricing FROM products WHERE id = '" . (int)$id . "' LIMIT 1");
+
+	$was = ($stored !== null) && !empty($stored['bundle']);
+	$on = array_key_exists('bundle', $params) ? (bool)$params['bundle'] : $was;
+	$pricing = array_key_exists('bundle_pricing', $params)
+		? (string)$params['bundle_pricing']
+		: (($stored !== null) ? (string)$stored['bundle_pricing'] : 'fixed');
+
+	if ($on && ($pricing === 'sum') && array_key_exists('price', $params)) {
+
+		api_fail_validation(lang('A bundle priced as the sum of its products takes no price of its own.'), 'price');
+
+	}
+
+	if (!$sent) {
+
+		return null;
+
+	}
+
+	if ($on && !$was && pg_bundle_is_component($id)) {
+
+		api_fail(409, 'product_in_bundle', lang('A product that is part of a bundle cannot be a bundle itself.'));
+
+	}
+
+	$items = null;
+
+	if (array_key_exists('bundle_items', $params)) {
+
+		$items = api_products_bundle_items_read($params['bundle_items'], $id);
+
+		if (is_string($items)) {
+
+			$messages = array(
+				'shape'    => lang('Each bundle item needs a product_id and a quantity.'),
+				'quantity' => lang(array('string' => 'A bundle item quantity is a whole number from 1 to {var:1}.', 'vars' => PG_BUNDLE_MAX_QUANTITY)),
+				'self'     => lang('A bundle cannot hold itself.'),
+				'twice'    => lang('A product is named twice in the bundle.')
+			);
+
+			api_fail_validation($messages[$items], 'bundle_items');
+
+		}
+
+		if ($items && !$on) {
+
+			api_fail_validation(lang('Only a bundle has contents. Send bundle true with them.'), 'bundle_items');
+
+		}
+
+		$problem = pg_bundle_items_problem($id, $items);
+
+		if ($problem !== '') {
+
+			api_fail_validation(lang($problem), 'bundle_items');
+
+		}
+
+	} elseif ($was && !$on) {
+
+		$items = array();
+
+	}
+
+	$set = array();
+
+	if (array_key_exists('bundle', $params)) {
+
+		$set[] = "bundle = '" . ($on ? '1' : '0') . "'";
+
+	}
+
+	if (array_key_exists('bundle_pricing', $params)) {
+
+		$set[] = "bundle_pricing = '" . (($pricing === 'sum') ? 'sum' : 'fixed') . "'";
+
+	}
+
+	if (array_key_exists('bundle_discount_bp', $params)) {
+
+		$set[] = "bundle_discount_bp = '" . min(10000, max(0, (int)$params['bundle_discount_bp'])) . "'";
+
+	}
+
+	return array('set' => $set, 'items' => $items);
+
+}
+
+// The contents a write sent, as rows for pg_bundle_items_save(), or why they
+// are refused: 'shape' for an item without a whole product_id and quantity,
+// 'quantity' for one outside 1 to PG_BUNDLE_MAX_QUANTITY, 'self' for the
+// bundle in its own contents, 'twice' for a product named twice. Refused
+// rather than cleaned: pg_bundle_items_normalize() drops such rows and adds
+// duplicates up, which is right for a form and silent for an integration.
+function api_products_bundle_items_read($raw, $bundle_id) {
+
+	$items = array();
+	$seen = array();
+
+	foreach ((array)$raw as $item) {
+
+		if (!is_array($item) || !isset($item['product_id'], $item['quantity'])) {
+
+			return 'shape';
+
+		}
+
+		$product_id = api_products_bundle_whole($item['product_id']);
+		$quantity = api_products_bundle_whole($item['quantity']);
+
+		if (($product_id === null) || ($product_id < 1) || ($quantity === null)) {
+
+			return 'shape';
+
+		}
+
+		if (($quantity < 1) || ($quantity > PG_BUNDLE_MAX_QUANTITY)) {
+
+			return 'quantity';
+
+		}
+
+		if ($product_id === (int)$bundle_id) {
+
+			return 'self';
+
+		}
+
+		if (isset($seen[$product_id])) {
+
+			return 'twice';
+
+		}
+
+		$seen[$product_id] = true;
+
+		$items[] = array('product_id' => $product_id, 'quantity' => $quantity);
+
+	}
+
+	return $items;
+
+}
+
+// A whole number from JSON or a numeric string, null for anything else: the
+// router does not look inside the objects of a list parameter.
+function api_products_bundle_whole($raw) {
+
+	if (is_bool($raw) || !is_scalar($raw) || !is_numeric($raw) || ((string)(int)$raw !== trim((string)$raw))) {
+
+		return null;
+
+	}
+
+	return (int)$raw;
 
 }
 
@@ -1491,12 +1765,25 @@ function api_products_prices($params) {
 		}
 
 		$product = ($id > 0)
-			? api_row("SELECT id, name, short_description, price FROM products WHERE id = '" . $id . "' LIMIT 1")
+			? api_row("SELECT id, name, short_description, price,
+					" . (pg_bundles_ready() ? "bundle, bundle_pricing" : "0 AS bundle, 'fixed' AS bundle_pricing") . "
+				FROM products WHERE id = '" . $id . "' LIMIT 1")
 			: null;
 
 		if ($product === null) {
 
 			$results[] = array('index' => $index, 'id' => $id, 'barcode' => $barcode, 'status' => 'not_found');
+
+			continue;
+
+		}
+
+		// A bundle priced as the sum of its products follows them: a price
+		// written here would be overwritten by the next refresh.
+		if (!empty($product['bundle']) && ($product['bundle_pricing'] === 'sum')) {
+
+			$results[] = array('index' => $index, 'id' => (int)$product['id'], 'barcode' => $barcode, 'status' => 'bundle',
+				'message' => lang('A bundle priced as the sum of its products takes no price of its own.'));
 
 			continue;
 
@@ -1895,6 +2182,7 @@ function api_product_schema() {
 			'quantity'     => 'integer',
 			'out_of_stock' => 'boolean'
 		),
+		'bundle'            => 'ProductBundle?',
 		'rating'            => array(
 			'average' => 'number?',
 			'count'   => 'integer'
@@ -1903,6 +2191,20 @@ function api_product_schema() {
 		'updated_at'      => 'string?',
 		'updated_at_unix' => 'integer',
 		'seo'             => 'Seo'
+	);
+
+}
+
+// What api_product_bundle() returns, declared for the OpenAPI document.
+function api_product_bundle_schema() {
+
+	return array(
+		'pricing'     => 'string',
+		'discount_bp' => 'integer',
+		'items'       => array(array(
+			'product_id' => 'integer',
+			'quantity'   => 'integer'
+		))
 	);
 
 }

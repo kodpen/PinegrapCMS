@@ -156,7 +156,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'Product',
 			'summary' => 'Change a product',
-			'description' => 'Only the fields present in the body are written. name is the merchant SKU, as on create: a name another product has is refused with 409 name_taken and an empty one with 422; sending the product\'s own name again is fine. group_ids, attributes and images replace what the product has; an empty list removes all of them. Group membership can also be changed from the group\'s side with POST /product-groups/{id}/products. Stock is not changed here - use the inventory endpoint, which adjusts atomically. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached, and IIS then treats that address as a file that does not exist - the next POST to the same product falls through the site rewrite and comes back as the shop\'s 404 page. Use POST.',
+			'description' => 'Only the fields present in the body are written. name is the merchant SKU, as on create: a name another product has is refused with 409 name_taken and an empty one with 422; sending the product\'s own name again is fine. group_ids, attributes and images replace what the product has; an empty list removes all of them. Group membership can also be changed from the group\'s side with POST /product-groups/{id}/products. Stock is not changed here - use the inventory endpoint, which adjusts atomically. A bundle\'s stock follows its products and is not written anywhere; its contents and pricing are written here. PATCH is accepted as well, but do not send it to an IIS server: WebDAV answers it with a 405 before PHP is reached, and IIS then treats that address as a file that does not exist - the next POST to the same product falls through the site rewrite and comes back as the shop\'s 404 page. Use POST.',
 			'params'  => array(
 				array('name' => 'id',                'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'name',              'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The product id / SKU. Unique across the catalogue.'),
@@ -186,7 +186,11 @@ function api_schema() {
 				array('name' => 'group_ids',         'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50, 'description' => 'Product groups this product belongs to, replacing the current ones. A product in no group is not shown in the shop\'s catalogue tree.'),
 				array('name' => 'attributes',        'in' => 'body', 'type' => 'list', 'of' => array('attribute_id' => 'integer', 'option_id' => 'integer'), 'max_items' => 20, 'description' => 'Objects of {attribute_id, option_id}, replacing the current ones: what makes this row one variant rather than another. Both ids have to belong together; GET /product-attributes lists them.'),
 				array('name' => 'images',            'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 50, 'description' => 'Images from the Files library, by file name or by the url the API gives for it, replacing the current ones. The first is the main photo, the rest the gallery in this order. Upload a new image with POST /files first.'),
-				array('name' => 'barcode',           'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'Gives a product that has no barcode yet its code. A barcode already on the product is not replaced, because labels may already carry it; that is changed on the product screen.')
+				array('name' => 'barcode',           'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'Gives a product that has no barcode yet its code. A barcode already on the product is not replaced, because labels may already carry it; that is changed on the product screen.'),
+				array('name' => 'bundle',            'in' => 'body', 'type' => 'bool', 'description' => 'Make the product a bundle of other products, or a plain product again, which empties its contents. A product that is part of a bundle cannot become one (409 product_in_bundle).'),
+				array('name' => 'bundle_pricing',    'in' => 'body', 'type' => 'enum', 'values' => array('fixed', 'sum'), 'description' => 'fixed keeps the price of the bundle; sum prices it as its products\' prices times their quantities, less bundle_discount_bp. A sum bundle takes no price of its own.'),
+				array('name' => 'bundle_discount_bp','in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 10000, 'description' => 'The discount on the sum, in basis points: 1250 is 12.5%.'),
+				array('name' => 'bundle_items',      'in' => 'body', 'type' => 'list', 'of' => array('product_id' => 'integer', 'quantity' => 'integer'), 'max_items' => 50, 'description' => 'Objects of {product_id, quantity}, replacing the bundle\'s contents in this order; quantity is per bundle, 1 to 9999. A component is a plain product: not a bundle, donation, gift card or recurring product. Only on a bundle.')
 			)
 		),
 
@@ -233,7 +237,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'Inventory',
 			'summary' => 'Set or adjust stock',
-			'description' => 'op=set writes an absolute quantity; op=adjust moves it by a signed amount and is applied by the database in one statement, so two channels selling the same item at the same moment cannot both write the same result. Send an Idempotency-Key so a retried adjustment is not applied twice.',
+			'description' => 'op=set writes an absolute quantity; op=adjust moves it by a signed amount and is applied by the database in one statement, so two channels selling the same item at the same moment cannot both write the same result. A bundle is refused with 409 bundle: its stock follows the products in it. Send an Idempotency-Key so a retried adjustment is not applied twice.',
 			'params'  => array(
 				array('name' => 'id',       'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'op',       'in' => 'body', 'type' => 'enum', 'values' => array('set', 'adjust'), 'required' => true),
@@ -250,7 +254,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'InventoryBatch',
 			'summary' => 'Set or adjust stock for many products',
-			'description' => 'Up to 200 items in one call, because marketplaces synchronise stock in batches rather than one product at a time. Each item is reported on separately: one bad product id does not throw the rest away, and an adjust against a product that does not track stock is reported as not_tracked rather than switching tracking on.',
+			'description' => 'Up to 200 items in one call, because marketplaces synchronise stock in batches rather than one product at a time. Each item is reported on separately: one bad product id does not throw the rest away, and an adjust against a product that does not track stock is reported as not_tracked rather than switching tracking on. A bundle is reported as bundle: its stock follows the products in it.',
 			'params'  => array(
 				array('name' => 'items', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'integer', 'sku' => 'string', 'barcode' => 'string', 'op' => 'string', 'quantity' => 'integer'), 'max_items' => 200, 'required' => true, 'description' => 'Objects of {id, op, quantity}. sku is accepted as an alias for id; barcode looks the product up by its EAN/UPC. quantity is a whole number from -1000000 to 1000000, as for one product; an item outside that is reported as invalid and the others are applied.')
 			)
@@ -265,7 +269,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'PriceBatch',
 			'summary' => 'Set prices for many products',
-			'description' => 'The twin of the batch stock endpoint: one call for a repricing run instead of one call per product. Answers 200 with an outcome per item - ok, not_found or invalid - and applied says how many landed, because a product the other side has not noticed was deleted is data rather than a failure. Prices are whole minor units from 0 to 2147483647, the bound the single-product routes declare; a decimal is refused rather than rounded and a figure past the bound rather than cut. Only the price is written.',
+			'description' => 'The twin of the batch stock endpoint: one call for a repricing run instead of one call per product. Answers 200 with an outcome per item - ok, not_found, invalid, or bundle for a bundle priced as the sum of its products - and applied says how many landed, because a product the other side has not noticed was deleted is data rather than a failure. Prices are whole minor units from 0 to 2147483647, the bound the single-product routes declare; a decimal is refused rather than rounded and a figure past the bound rather than cut. Only the price is written.',
 			'params'  => array(
 				array('name' => 'items', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'integer', 'sku' => 'string', 'barcode' => 'string', 'price' => 'integer'), 'required' => true, 'max_items' => 250, 'description' => 'Up to 250 objects: id, sku or barcode to say which product, and price in minor units (0 to 2147483647).')
 			)
