@@ -187,3 +187,13 @@ function test_ai_prompt_rules_translation()
 		pg_assert_same('Answer with one JSON object only', substr(end($lines), 0, 32), $shape . ': with a style note, the answer\'s shape is still the last line');
 	}
 }
+
+function test_ai_prompt_version()
+{
+	$version = pg_ai_prompt_version();
+
+	pg_assert_true(preg_match('/^r[0-9a-f]{8}$/', $version) === 1, 'an r and eight hex digits: ' . $version);
+	pg_assert_same($version, pg_ai_prompt_version(), 'the same on every call');
+	pg_assert_same('r' . substr(sha1(implode("\n", array_merge(pg_ai_prompt_rules('writer', ''), pg_ai_prompt_rules('assistant', '')))), 0, 8), $version, 'taken from both profiles\' lines, so a changed rule changes it');
+	pg_assert_true(strlen($version) <= 16, 'fits a short column');
+}

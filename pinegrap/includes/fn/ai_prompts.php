@@ -71,6 +71,19 @@ function pg_ai_prompt_rules($profile = 'writer', $prefix = '- ')
 }
 
 /**
+ * The version of the rules a prompt ran with: "r" and the first eight hex
+ * digits of the SHA-1 of both profiles' lines. It changes by itself when a
+ * rule's text changes, so a stored request can be told apart from one that
+ * ran with other rules without anybody raising a number by hand.
+ *
+ * @return string
+ */
+function pg_ai_prompt_version()
+{
+    return 'r' . substr(sha1(implode("\n", array_merge(pg_ai_prompt_rules('writer', ''), pg_ai_prompt_rules('assistant', '')))), 0, 8);
+}
+
+/**
  * Untrusted text set apart for a prompt: a line <<<name>>>, the text, a line
  * <<<end name>>>. Every "<<<" in the text is written with other brackets, so
  * a message, record or tool answer can neither close its block early nor
