@@ -49,7 +49,7 @@ function test_ws_api_routes_reach_a_handler()
 		$ids[$route['id']] = true;
 
 		pg_assert_true(function_exists($route['handler']), $route['id'] . ': ' . $route['handler'] . '() exists');
-		pg_assert_true(in_array($route['scope'], array('workspace:read', 'workspace:write', 'tasks:read', 'tasks:write'), true), $route['id'] . ' asks for one of the module\'s scopes');
+		pg_assert_true(in_array($route['scope'], array('workspace:read', 'workspace:write', 'workspace:commands', 'tasks:read', 'tasks:write'), true), $route['id'] . ' asks for one of the module\'s scopes');
 	}
 }
 
