@@ -74,12 +74,15 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_marketplace_remote_products(); // 11.0.40
 	upgrade_2026_11_0_passkey_signin();        // 11.0.41
 	upgrade_2026_11_0_delivered_campaigns();    // 11.0.42
+	upgrade_2026_11_0_collections();            // 11.0.43
 	upgrade_2026_11_0_marketplace_map_code_bin(); // 11.0.44
 	upgrade_2026_11_0_shipment_lookup();        // 11.0.45
 	upgrade_2026_11_0_session_passkey();        // 11.0.46
 	upgrade_2026_11_0_audit_retention();        // 11.0.47
 	upgrade_2026_11_0_kvkk_notice();            // 11.0.48
 	upgrade_2026_11_0_reference_price_rule();   // 11.0.49
+	upgrade_2026_11_0_max_image_preview();      // 11.0.51
+	upgrade_2026_11_0_workspace_scheduled_anchor(); // 11.0.88
 
 }
 
@@ -1339,6 +1342,21 @@ function upgrade_2026_11_0_erp_invoice_recurring_day() {
 
 }
 
+// Collections (includes/fn/collections.php): a designer form marked as a
+// collection, and the kind of each of its fields with the form a reference
+// field points into. Pickers, lists, feeds and the API read them without
+// loading the form page's design. VARCHAR, not ENUM, so a new kind needs no
+// migration. Every existing form and field stays as it was (0 and '').
+function upgrade_2026_11_0_collections() {
+
+	install_add_column('custom_form_pages', 'collection', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('form_fields', 'collection_kind', "VARCHAR(32) NOT NULL DEFAULT ''");
+	install_add_column('form_fields', 'reference_page_id', "INT(10) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Forms: a designed form can be marked as a collection, and its fields can be given a kind (number, image, reference to another form); existing forms are unchanged.');
+
+}
+
 // A switch on each text field of a custom form: switched off, the answers
 // visitors give in that field (icon names, codes, JSON) are never listed for
 // translation nor looked up when a page shows them. Existing fields stay
@@ -1895,6 +1913,28 @@ function upgrade_2026_11_0_workspace_flows() {
 	install_add_index('ws_scheduled_actions', 'idx_flow', "INDEX idx_flow (flow_id)");
 
 	install_note('Workspace: the tables that will keep the flows drawn on the Workspace canvas, their published versions and their runs are added. Nothing changes in the Workspace with this update.');
+
+}
+
+// Which scheduled actions are a flow's anchor (2026.11.0, 11.0.88;
+// includes/workspace/flow_anchors.php).
+//
+// ws_scheduled_actions.anchor says what a row with a flow_id is: 'hidden'
+// is the row a flow's start box writes (at a time, on an event, on a join),
+// left out of every list, card, history and report; 'converted' is a
+// scheduled action now carried out by a flow, which keeps its id, card,
+// history and news; '' is a scheduled action of its own. Every row that
+// starts a flow today is a hidden anchor, so the UPDATE marks them; it only
+// touches rows still unmarked and runs again harmlessly. The column comes
+// after the flows step that added flow_id and before scheduled actions are
+// converted into flows. A VARCHAR, so a later value needs no MODIFY.
+function upgrade_2026_11_0_workspace_scheduled_anchor() {
+
+	install_add_column('ws_scheduled_actions', 'anchor', "VARCHAR(12) NOT NULL DEFAULT ''");
+
+	db("UPDATE ws_scheduled_actions SET anchor = 'hidden' WHERE flow_id <> 0 AND anchor = ''");
+
+	install_note('Workspace: the scheduled actions that start a flow are marked as such, so they stay out of the list of scheduled actions. Nothing changes in the Workspace with this update.');
 
 }
 
@@ -2578,5 +2618,22 @@ function upgrade_2026_11_0_reference_price_rule() {
 	install_add_column('config', 'ecommerce_reference_price_rule', "TEXT DEFAULT NULL");
 
 	install_note('Ecommerce: Settings › Ecommerce › Reference Price now picks which price counts as the price before a discount: the lowest price of the last 30 days (the default), of the last 10 days, or the compare-at price entered on each product.');
+
+}
+
+// Large image previews in search results (2026.11.0, 11.0.51;
+// includes/fn/seo.php, Site Settings › SEO, Site Map and Crawling).
+//
+// max_image_preview_large adds max-image-preview:large to the robots meta tag
+// of every indexed page (pg_page_robots_content()), which lets Google show a
+// page's large picture in Discover and in results; a noindex page never gets
+// it. It starts off, so a running site writes exactly what it wrote before
+// until the operator switches it on; a new site gets it on from the
+// installer, after this step.
+function upgrade_2026_11_0_max_image_preview() {
+
+	install_add_column('config', 'max_image_preview_large', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('SEO: pages can now let search engines show their pictures large (max-image-preview:large in the robots meta tag), under Site Settings, SEO, Site Map and Crawling. It stays off on this site until switched on.');
 
 }

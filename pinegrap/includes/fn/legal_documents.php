@@ -641,20 +641,7 @@ function pg_legal_documents_checkboxes_html(array $checked, $url)
  */
 function pg_legal_documents_insert_before_purchase($html, $block)
 {
-    $html = (string) $html;
-    $at = strpos($html, 'name="submit_purchase_now"');
-
-    if ($at === false) {
-        return $html;
-    }
-
-    $tag = strrpos(substr($html, 0, $at), '<');
-
-    if ($tag === false) {
-        return $html;
-    }
-
-    return substr($html, 0, $tag) . $block . substr($html, $tag);
+    return pg_legal_insert_before_tag($html, $block, 'name="submit_purchase_now"');
 }
 
 /**
@@ -687,6 +674,99 @@ function pg_legal_kvkk_html(array $checked, $notice_url, $consent)
     }
 
     return ($rows !== '') ? '<div class="pg-legal-kvkk mb-3">' . $rows . '</div>' : '';
+}
+
+/**
+ * Put a block in front of the tag that carries $needle (an attribute such as
+ * name="submit_register"). A page without it is returned as it is.
+ *
+ * @param string $html
+ * @param string $block
+ * @param string $needle
+ * @return string
+ */
+function pg_legal_insert_before_tag($html, $block, $needle)
+{
+    $html = (string) $html;
+    $at = strpos($html, (string) $needle);
+
+    if ($at === false) {
+        return $html;
+    }
+
+    $tag = strrpos(substr($html, 0, $at), '<');
+
+    if ($tag === false) {
+        return $html;
+    }
+
+    return substr($html, 0, $tag) . $block . substr($html, $tag);
+}
+
+/**
+ * Give a sign-up form (the registration and membership entrance screens and
+ * their designer widgets) the KVKK lines of pg_legal_kvkk_html(), in front of
+ * its register button: the legacy screens' submit_register (their page also
+ * holds a login form), else a widget's first submit control. A page that
+ * already has the lines, or no such button, is returned as it is.
+ *
+ * @param string $html
+ * @param array  $values    field => value from the visitor's last submit
+ * @param string $notice_url
+ * @param string $consent
+ * @return string
+ */
+function pg_legal_kvkk_signup_html($html, array $values, $notice_url, $consent)
+{
+    $html = (string) $html;
+
+    if (strpos($html, 'pg-legal-kvkk') !== false) {
+        return $html;
+    }
+
+    $block = pg_legal_kvkk_html($values, $notice_url, $consent);
+
+    if ($block === '') {
+        return $html;
+    }
+
+    $needle = (strpos($html, 'name="submit_register"') !== false) ? 'name="submit_register"' : 'type="submit"';
+
+    return pg_legal_insert_before_tag($html, $block, $needle);
+}
+
+/**
+ * pg_legal_kvkk_signup_html() with the store's settings.
+ *
+ * @param string $html
+ * @param array  $values  pg_legal_documents_form_values() of the sign-up
+ *                        liveform (register, membership_entrance), taken
+ *                        before the screen is drawn: drawing it may drop the
+ *                        form from the session
+ * @return string
+ */
+function pg_legal_kvkk_signup_inject($html, array $values)
+{
+    $kvkk = pg_legal_kvkk_settings();
+
+    if (($kvkk['url'] === '') && ($kvkk['consent'] === '')) {
+        return (string) $html;
+    }
+
+    return pg_legal_kvkk_signup_html($html, $values, $kvkk['url'], $kvkk['consent']);
+}
+
+/**
+ * Whether a sign-up post gave the explicit KVKK consent: the store asks for
+ * it and the visitor ticked the box.
+ *
+ * @param mixed  $posted   the posted legal_kvkk
+ * @param string $consent  the consent sentence ('' when none is asked)
+ * @return bool
+ */
+function pg_legal_kvkk_consent_given($posted, $consent)
+{
+    return (trim((string) $consent) !== '') && is_scalar($posted) && ((string) $posted === '1');
 }
 
 /**

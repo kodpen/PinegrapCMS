@@ -1996,6 +1996,25 @@ const StyleDesigner = (function () {
         return _cfFlagOn(hit.translate_values);
     }
 
+    // The kinds a collection field may have beyond its type, and the field
+    // types each is given to: twin of pg_coll_kinds() in
+    // includes/fn/collections.php.
+    var _CF_KINDS = {
+        number:    ['text box'],
+        image:     ['file upload'],
+        reference: ['text box', 'pick list', 'radio button', 'check box']
+    };
+    // The [kind, label] pairs a field of `type` may take.
+    function _cfKindsFor(type) {
+        var labels = {
+            number:    _sdT('Number'),
+            image:     _sdT('Image'),
+            reference: _sdT('Reference to another form')
+        };
+        return Object.keys(_CF_KINDS).filter(function (k) { return _CF_KINDS[k].indexOf(type) !== -1; })
+            .map(function (k) { return [k, labels[k]]; });
+    }
+
     // The control whose record a panel edits: the first control of the group
     // for a radio / checkbox in a <fieldset>, the control itself otherwise.
     function _cfLeadOf(node, root) {
@@ -2388,6 +2407,28 @@ const StyleDesigner = (function () {
                     '</div></div>';
         }
 
+        // A collection field's kind, where the control's type can have one
+        // (pg_coll_field_kind()); a reference names the form it points into.
+        // Offered on a form marked as a collection, and kept in view on a
+        // field that already has a kind.
+        var kinds = _cfKindsFor(leadType);
+        if (kinds.length && (parseInt(settings.collection || 0, 10) || rec.kind)) {
+            if (rec.kind === 'reference' && !_customFormsCache && typeof _fetchCustomForms === 'function') {
+                _fetchCustomForms(function () { _sdSchedulePropsRefresh(); });
+            }
+            var kindNow = (kinds.some(function (k) { return k[0] === rec.kind; })) ? rec.kind : '';
+            html += row(_sdT('Kind'),
+                _cfSel('sd-cf-kind', kindNow, kinds, _sdT('— As its type —')) +
+                (kindNow === 'reference'
+                    ? '<select class="form-control form-control-sm mt-1 sd-cf-ref" aria-label="' + esc(_sdT('Form it points into')) + '">' +
+                          '<option value="0">' + esc(_sdT('— Choose a form —')) + '</option>' +
+                          _swFormOptions(parseInt(rec.ref || 0, 10) || 0) +
+                      '</select>' +
+                      _cfHint(esc(_sdT('The field holds the reference code or the address name of a record of that form; several are separated by commas.')))
+                    : '') +
+                '');
+        }
+
         html += row(_sdT('Contact binding'),
             _cfSel('sd-cf-contact', rec.contact_field || '', contact, null) +
             _cfHint(_sdT('For a signed-in visitor the field is filled from the contact record, and submitting updates that record.')));
@@ -2625,6 +2666,19 @@ const StyleDesigner = (function () {
         });
         on('sd-cf-contact', 'change', function (el) {
             _cfRec(lead).contact_field = el.value;
+            commit(false);
+        });
+        on('sd-cf-kind', 'change', function (el) {
+            var r = _cfRec(lead);
+            if (el.value) r.kind = el.value; else delete r.kind;
+            if (el.value !== 'reference') delete r.ref;
+            // An empty `_cf` turns into an array on the server's round trip.
+            if (!Object.keys(r).length) delete lead.props._cf;
+            commit(true);
+        });
+        on('sd-cf-ref', 'change', function (el) {
+            var v = parseInt(el.value, 10) || 0;
+            if (v) _cfRec(lead).ref = v; else delete _cfRec(lead).ref;
             commit(false);
         });
         on('sd-cf-urlparam', 'change', function (el) {
@@ -2944,6 +2998,8 @@ const StyleDesigner = (function () {
             rec.quiz_answer        = f.quiz_answer || '';
             if (kind === 'textarea') rec.wysiwyg = _cfFlagOn(f.wysiwyg);
             if (f.translate !== undefined) rec.translate = _cfFlagOn(f.translate);
+            if (f.kind) rec.kind = String(f.kind);
+            if (parseInt(f.reference_page_id || 0, 10) > 0) rec.ref = parseInt(f.reference_page_id, 10);
 
             ctrls.forEach(function (c) { _cfSetAttr(c.node, 'name', f.name); });
             var src = _cfLabelSource(ctrls[0]);
@@ -14494,6 +14550,13 @@ const StyleDesigner = (function () {
         // A list's sample row (_sdListGhostEls()).
         if (_sdListSample && fieldName && Object.prototype.hasOwnProperty.call(_sdListSample, fieldName)) {
             return _sdListSample[fieldName];
+        }
+        // A value of the page's record outside a widget reads as its name.
+        if (String(fieldName || '').indexOf('__record__') === 0 && !_isInsideSystemWidget(node)) {
+            if (prop === 'src') return _sdImgPlaceholderForToken(fieldName);
+            if (prop === 'href') return '#';
+            var _rec = _sdPageRecordOptions().filter(function (o) { return o.token === fieldName; })[0];
+            return _rec ? '[' + _rec.label + ']' : '';
         }
         if (prop === 'src' && _SD_AVATAR_TOKENS[fieldName]) return _sdAvatarSample();
         if (prop === 'src')  return _sdImgPlaceholderForToken(fieldName);
@@ -35345,6 +35408,18 @@ const StyleDesigner = (function () {
                                   '</div>'
                                 : '')
                         ) +
+                        // A collection: its records are the items other
+                        // forms' records point at (a category, an author),
+                        // and its fields can be given a kind.
+                        row(_sdT('Collection'),
+                            '<div class="form-field">' +
+                                '<div class="switch"><input class="sd-cf-sb" data-s="collection" type="checkbox" id="sd-sw-cf-collection"' + (_cfFS.collection ? ' checked' : '') + '></div>' +
+                                '<label for="sd-sw-cf-collection" style="font-size:.72rem">' + esc(_sdT('Use as a collection')) + '</label>' +
+                            '</div>' +
+                            '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
+                                esc(_sdT('Each field can then be given a kind (number, image, a reference to another form) in Form Field → Kind. The records stay this form\'s submissions.')) +
+                            '</div>'
+                        ) +
                         row(_sdT('Notification email'),
                             '<input type="text" class="form-control form-control-sm sd-cf-s" data-s="notify_email" value="' + esc(_cfFS.notify_email || '') + '" maxlength="255" placeholder="' + esc(_sdT('sample@site.com')) + '">' +
                             '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Notified when the form is submitted. Separate several addresses with commas. Leave it empty and no notification is sent.')) + '</div>' +
@@ -37928,7 +38003,12 @@ const StyleDesigner = (function () {
     // A form record's allow-listed values (pg_sw_entity_fields('form_record')),
     // in the record's own view only: a list would show other people's scores.
     var SW_FORM_RECORD_ENTITY_TOKENS = [
-        ['__quiz_score', _sdT('Quiz score (percent, quiz forms)')]
+        ['__quiz_score',   _sdT('Quiz score (percent, quiz forms)')],
+        ['__post_title',   _sdT('Title (the field with the RSS title role)')],
+        ['__post_date',    _sdT('Date sent')],
+        ['__post_summary', _sdT('Summary (the field with the RSS description role)')],
+        ['__post_image',   _sdT('Picture address (the field with the RSS media role)')],
+        ['__post_author',  _sdT('Author name')]
     ];
     var SW_FORM_ITEM_VIEW_BUILTIN_OPTIONS = SW_STANDARD_FIELD_OPTIONS.concat([
         ['not_found', _sdT('Not-found message (filled when there is no record)')]
@@ -38500,6 +38580,45 @@ const StyleDesigner = (function () {
             });
         });
         return out;
+    }
+
+    // The record values an element outside a widget may print
+    // (pg_page_record_value_tokens()): those of _sdPageRecordOptions() but
+    // whether it is found and the yes/no ones, which only show an element.
+    function _sdPageRecordValueOptions() {
+        var condOnly = {};
+        Object.keys(SD_PAGE_RECORD_KINDS).forEach(function (kind) {
+            SD_PAGE_RECORD_KINDS[kind]().forEach(function (t) { if (_swTokenCondOnly(t)) condOnly['__record' + t[0]] = true; });
+        });
+        return _sdPageRecordOptions().filter(function (o) { return o.token !== '__record_found' && !condOnly[o.token]; });
+    }
+
+    // Bind Data outside a widget: a text, a link's address or a picture
+    // prints a value of the page's record (pg_page_record_bind_props()),
+    // offered when the page holds a detail widget. A binding already set
+    // stays listed, so it can be seen and cleared.
+    function _sdPageRecordBindRows(node) {
+        var bindable = _getBindableProps(node);
+        if (!bindable.length) return '';
+        var opts = _sdPageRecordValueOptions();
+        var cur = (node.props && node.props._bindings) || {};
+        var rows = '';
+        bindable.forEach(function (b) {
+            var current = cur[b.prop] || '';
+            if (!opts.length && !current) return;
+            var html = '<option value="">' + esc(_sdT('— No binding —')) + '</option>';
+            var listed = false;
+            opts.forEach(function (o) {
+                if (o.token === current) listed = true;
+                html += '<option value="' + esc(o.token) + '"' + (o.token === current ? ' selected' : '') + '>' + esc(o.label) + '</option>';
+            });
+            if (current && !listed) html += '<option value="' + esc(current) + '" selected>' + esc(current) + '</option>';
+            rows += row(b.label, '<select class="form-control form-control-sm sd-sw-bind-sel" data-bind-prop="' + esc(b.prop) + '">' + html + '</select>');
+        });
+        if (!rows) return '';
+        return sect('bi-link-45deg', _sdT('Show this page\'s record'), rows +
+            '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
+            esc(_sdT('The value of the record the page opens (a product, an event, a form record); empty when the page opens none.')) + '</div>');
     }
 
     // Whether `token` is one the page decides (pg_page_fact_spec()).
@@ -42369,7 +42488,7 @@ const StyleDesigner = (function () {
     function _propsDataBindingCore(node) {
         if (!node) return '';
         var swSid = _isInsideSystemWidget(node);
-        if (!swSid) return '';
+        if (!swSid) return _sdPageRecordBindRows(node);
         var bindable = _getBindableProps(node);
         var regionType = _getSystemWidgetRegionType(node);
 

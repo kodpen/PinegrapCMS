@@ -6362,6 +6362,20 @@ else {
 
 		}
 
+		// A new site lets search engines show its pictures large from its first day
+		// (max-image-preview:large, pg_page_robots_content()). The upgrade above added
+		// the switch off, as it does on every upgraded site. Only a starter site: a
+		// restored backup keeps the switch it was taken with.
+		if ((get_starter_site_language($install_directory_path) !== '') && (install_column_exists('config', 'max_image_preview_large'))) {
+
+			db("UPDATE config SET max_image_preview_large = 1");
+
+			$install_expected_steps++;
+
+			add_install_step(lang('Allowed large image previews in search results'), lang('Site Settings › SEO › Site Map and Crawling'));
+
+		}
+
 		// The administrator row above was written as MD5 because the starter
 		// template predates user_password_algo. Now that the upgrades have added
 		// the column, store the modern hash right away instead of leaving the

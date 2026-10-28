@@ -197,7 +197,7 @@ pg_page_shell([
                     <form method="get" action="erp_account_prices.php" class="d-flex gap-1" role="search">
                         <input type="hidden" name="account_id" value="' . $account_id . '" />
                         <input type="search" class="form-control" name="search" value="' . h($search) . '" placeholder="' . h(lang('Product or code')) . '" aria-label="' . h(lang('Search')) . '" />
-                        <button type="submit" class="btn btn-outline theme-secondary"><i class="bi bi-search" aria-hidden="true"></i></button>
+                        <button type="submit" class="btn btn-outline theme-secondary" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
                     </form>
                 </div>
                 ' . $output_found . '

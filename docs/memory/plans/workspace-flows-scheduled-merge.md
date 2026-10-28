@@ -25,7 +25,8 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
    - 4a. Done (#2292). Scheduled actions section: New flow in the toolbar, the list's New hidden (`{ add: false }`); cards keep the form.
    - 4b. The other ways in (composer insert menu, note toolbar, Duplicate): open the canvas instead of the form. 7 and 8 answered: may start.
    - 4c. Done: AI drafts on the canvas (F8): 4c1 #2306 `ws_flow_graph_from_scheduled()`; 4c2 #2323 a draft card opens as a new flow.
-5. Conversion (answer 2): in the 2026.11.0 upgrade every row becomes a converted anchor, its id and every parity row kept. Schema: `ws_scheduled_actions.anchor` VARCHAR(12) ('', hidden, converted), approved (#2396).
+5. Conversion (answer 2): in the 2026.11.0 upgrade every row becomes a converted anchor, its id and every parity row kept. Schema approved (#2396).
+   - 5a done (#2558, workspace-flows-converted-anchor.md). 5b: convert rows, edit path.
 
 ## Which questions are answered? (owner, 2026-10-24: 1 no, 2 c, 3 a; 7 and 8 on 2026-10-27)
 1. Scheduled messages too? → no, staff's actions only; messages stay in the composer and their list.
@@ -38,4 +39,4 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 8. A scheduled action kept in a note → b (#2395): no new ones from a note; the toolbar entry goes, converted ones keep their card and post step.
 
 ## Where to start?
-- Slices 1-3, 4a and 4c done. Next: 4b, or slice 5 (schema approved, #2396); read workspace/README.md.
+- Slices 1-3, 4a, 4c and 5a done. Next: 4b or 5b; read workspace/README.md.

@@ -212,6 +212,9 @@ if (!$_POST) {
             ? pg_member_widget_asks_opt_in((int) $_POST['pg_widget_id'], 'membership')
             : true;
 
+        $kvkk = pg_legal_kvkk_settings();
+        $activate_opts['kvkk_consent'] = pg_legal_kvkk_consent_given($_POST['legal_kvkk'] ?? null, $kvkk['consent']);
+
         $activated = pg_member_activate($liveform, $activate_opts);
 
         // if an error does not exist

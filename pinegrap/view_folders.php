@@ -2285,7 +2285,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         element.setAttribute('role', 'status');
         element.innerHTML = '<div class="d-flex"><div class="toast-body"></div>' +
             (action ? '<button type="button" class="btn btn-sm btn-subtle theme-secondary my-auto me-1 text-nowrap" data-role="toast-action"></button>' : '') +
-            '<button type="button" class="btn-close me-3 m-auto" data-bs-dismiss="toast"></button></div>';
+            '<button type="button" class="btn-close me-3 m-auto" data-bs-dismiss="toast" aria-label="' + L.close + '"></button></div>';
         element.querySelector('.toast-body').textContent = message;
         // An open dialog's backdrop would cover a body-level toast.
         pgUI.hostLayer(container);

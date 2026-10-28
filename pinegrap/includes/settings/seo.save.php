@@ -291,6 +291,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             additional_llms_content = '" . escape(trim((string) post_value('additional_llms_content'))) . "',";
     }
 
+    // Large image previews (2026.11.0, 11.0.51): only once the column is
+    // there and the SEO card was posted (its title field always is).
+    $sql_max_image_preview_field = '';
+
+    if (pg_schema_has('config', 'max_image_preview_large') && array_key_exists('title', $_POST)) {
+        $sql_max_image_preview_field =
+            "max_image_preview_large = '" . ((post_value('max_image_preview_large') == '1') ? 1 : 0) . "',";
+    }
+
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET
@@ -302,6 +311,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             $sql_seo_jsonld_fields
             $sql_cookie_consent_fields
             $sql_ai_crawler_fields
+            $sql_max_image_preview_field
             $sql_visitor_retention_fields
             strutured_data = '" . escape(post_value('strutured_data')) . "',
             indexnow_key = '" . escape(post_value('indexnow_key')) . "',
