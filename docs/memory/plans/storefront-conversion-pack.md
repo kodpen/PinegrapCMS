@@ -28,11 +28,11 @@ description: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, w
 2d. (PR #2567) Reviews newest first, verified only (#2426): `commerce/product-review-order.md`.
 
 ## What remains?
-2c. Review form, `__reviews`, designer aggregateRating: after designable-comments slice 20 (M).
+2c. Review form, `__reviews` (M): the comments widget shows reviews since #2678; designer aggregateRating needs none (#2799).
 6. Bundles: `storefront-bundles-design.md`; owner review (#2425).
 
 ## Which questions are answered? (#2426)
 - Photo reviews by a site setting, off by default, images only. Review order: step 2d.
 
 ## Where to start?
-- Step 6 after #2425; 2c after designable-comments slice 20.
+- Step 6 after #2425; 2c: its slice 20 dependency is done.

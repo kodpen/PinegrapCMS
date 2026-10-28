@@ -23,5 +23,5 @@ description: RSS feeds and JSON-LD for system widget pages: _pg_ bridge function
 - Channel `title`/`link`/`description` reflect the ACTIVE group, not the host page. Priority: group `title` → `short_description` → `name` → page.
 - The RSS `<link>` href in `<head>` must carry the drill segment (`/a/Office_Supplies?rss=true`).
 - Descriptions are stored entity-encoded in the DB: `html_entity_decode()` THEN `h()`, else `y&amp;uuml;ksek` appears.
-- Legacy's fabricated `review`/`aggregateRating` JSON-LD block was deliberately NOT ported (no fake ratings). Real ratings: `_pg_build_product_jsonld()` adds none until designer pages show the reviews (`commerce/product-reviews-verified.md`).
+- Legacy's fabricated `review`/`aggregateRating` JSON-LD block was deliberately NOT ported (no fake ratings). Real ratings: `_pg_build_product_jsonld()` adds none, as a `standard` page shows no product reviews; a catalog detail page gets them from the legacy block (`commerce/product-reviews-verified.md`).
 - The `STRUTURED_DATA` constant is misspelled (no C); it is consistent across the codebase, do not "fix" it.
