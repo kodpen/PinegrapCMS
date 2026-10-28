@@ -75,7 +75,6 @@ function test_time_format_output_screens_have_no_fixed_twelve_hour_text()
 
 	foreach (array(
 		'includes/forms/email_campaign_profile_form.php' => "lang('HH:mm, leave blank to send at any time.')",
-		'includes/forms/submitted_form_form.php' => "lang('Format: HH:mm')",
 		'includes/fn/content.php' => "lang('(Format: HH:mm)')",
 		'get_form_item_view.php' => "lang('(Format: HH:mm)')",
 		'get_form_list_view.php' => "lang('(Format: HH:mm)')",

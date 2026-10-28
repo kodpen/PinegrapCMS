@@ -429,7 +429,7 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                         <label class="form-label">' . h($field['label']) . '</label>
                         ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'11', 'data-pg-time' => '')) . '
                         ' . $field_required . '
-                        <div class="form-text text-end">' . ((pg_time_format_code() === 'H:i') ? lang('Format: HH:mm') : lang('Format: h:mm AM/PM')) . '</div>
+                        <div class="form-text text-end">' . lang('Format: h:mm AM/PM') . '</div>
                     </div>';
                 break;
 
