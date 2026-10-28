@@ -1651,6 +1651,7 @@ $(document).ready(function () {
             $("input[name=" + $(this).attr("name") + "]").each(function () {
                 if ($(this).attr("id") != multi_switcher_this_id) {
                     $($(this).attr("data-bs-target")).toggle(false);
+                    pgCollapseSwitcherShow($(this).attr("data-bs-target"), false);
                 }
             });
         }
@@ -1665,6 +1666,7 @@ $(document).ready(function () {
             returned = this.checked;
         }
         $(target).toggle(returned);
+        pgCollapseSwitcherShow(target, returned);
     });
 
     /* The e-document card's "test the connection".
@@ -9417,6 +9419,18 @@ function pgBindTitlePopovers(scope) {
 
 
 /**
+ * Set .show on a switcher's plain .collapse section together with its display.
+ *
+ * Bootstrap 6 hides `.collapse:not(.show)` with display:none and block-size:0
+ * outside any layer, so an inline display alone leaves the section 0 px high.
+ * A callout (.collapse.popover) keeps its own .show toggle.
+ */
+function pgCollapseSwitcherShow(target, shown) {
+    $(target).filter('.collapse:not(.popover)').toggleClass('show', !!shown);
+}
+
+
+/**
  * Draw every collapse pair in the state its own control is in.
  *
  * The controls themselves are driven by two delegated listeners in the ready
@@ -9438,6 +9452,7 @@ function pgSyncCollapseSwitchers(scope) {
         }
 
         $(target).toggle(returned);
+        pgCollapseSwitcherShow(target, returned);
 
         if ($(target).hasClass('popover')) {
             $(target).toggleClass('show');

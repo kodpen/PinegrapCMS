@@ -479,6 +479,18 @@ function main() {
     cb.win.pgFields.destroy(acct);
     out.combobox_destroy = { native: acct.className, siblings: acct.parentNode.children.length, value: acct.value, calls: cb.calls.slice(-1).map(function (c) { return c[0]; }) };
 
+    // Inside a switch panel (.collapse clips overflow-y in Bootstrap 6) the
+    // menu is placed fixed, so it is not cut off at the panel's edge. The
+    // fields are drawn on load, so the one moved into the panel is drawn again.
+    var cz = load({ fields: [['select', { id: 'zones', 'data-pg-combobox': '' }], ['select', { id: 'outside', 'data-pg-combobox': '' }]], options: [['zones', { value: 'eu', text: 'EU' }], ['outside', { value: 'a', text: 'A' }]] });
+    var zones = cz.doc.querySelector('#zones'), zform = zones.parentNode, panel = cz.doc.create('div', { 'class': 'collapse' });
+    cz.win.pgFields.destroy(zones);
+    zform.removeChild(zones);
+    panel.appendChild(zones);
+    zform.appendChild(panel);
+    cz.win.pgFields.init();
+    out.combobox_in_collapse = [zones.nextSibling.getAttribute('data-bs-strategy'), cz.doc.querySelector('#outside').nextSibling.getAttribute('data-bs-strategy')];
+
     // Without the library the field stays a plain one; no error.
     var b = load({ noBootstrap: true, fields: [['select', { id: 's', 'data-pg-combobox': '' }], ['input', { id: 'c', 'data-pg-chips': '' }]] });
     out.no_library = { kind: [b.doc.querySelector('#s').pgFieldKind || null, b.doc.querySelector('#c').pgFieldKind || null], calls: b.calls.length };
@@ -890,6 +902,7 @@ function test_pg_fields_combobox_on_bootstrap_6()
 	pg_assert_same(array('item:a:A', 'item:b:B'), $m['few'], 'no search box under eight options');
 	pg_assert_same(array('Pick one', 'combobox-value combobox-placeholder'), $m['few_text'], 'nothing chosen: the placeholder');
 	pg_assert_same(0, $m['heard_on_draw'], 'drawing fires no change');
+	pg_assert_same(array('fixed', null), $r['combobox_in_collapse'], 'a combobox inside a .collapse panel opens its menu fixed, one outside keeps the default');
 	pg_assert_same(1, $r['combobox_click'], 'a click on the toggle opens its own instance');
 	pg_assert_same(
 		array('value' => '120', 'heard' => array('120:true'), 'text' => 'Account 120', 'get' => '120'),

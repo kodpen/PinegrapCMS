@@ -79,7 +79,7 @@ function pg_container_form_card($liveform)
                                                 </div>
                                             </div>
                                             <div class="col-12 md:col-6 my-3">
-                                                <label class="form-label">' . lang('Weight') . '</label>
+                                                <label for="weight" id="weight_label" class="form-label">' . lang('Weight') . '</label>
                                                 <div class="mb-3">
                                                     <div class="form-field d-inline-grid me-5">
                                                         <input type="radio" class="radio" id="weight_type_pounds" name="weight_type" value="pounds" checked />
@@ -96,7 +96,7 @@ function pg_container_form_card($liveform)
                                                 </label>
                                                 <label id="weight_kg" class="form-control form-adorn form-adorn-end d-none" style="max-width:200px;">
                                                     <span class="form-adorn-text" aria-hidden="true">' . lang('kg') . '</span>
-                                                    <input type="number" step="any" id="weightkg" name="weightkg" class="form-ghost" />
+                                                    <input type="number" step="any" id="weightkg" name="weightkg" class="form-ghost" aria-labelledby="weight_label" />
                                                 </label>
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
