@@ -44,7 +44,8 @@ function test_translations_screen_names_review_toggle_follows_state()
 	pg_assert_true((bool) preg_match('/<button[^\n]*pg-tr-review[^\n]*/', $source, $match), 'review button found');
 	pg_assert_contains('no-popover', $match[0], 'no popover copies a stale title into aria-label');
 	pg_assert_contains('aria-label="', $match[0], 'own aria-label');
-	pg_assert_contains("lang('Mark as not reviewed')", $match[0], 'reviewed rows offer the reverse');
+	pg_assert_contains('aria-label="\' . h($review_label) . \'"', $match[0], 'named by the state label');
+	pg_assert_contains('$review_label = ($state === \'reviewed\') ? lang(\'Mark as not reviewed\') : lang(\'Mark as reviewed\');', $source, 'reviewed rows offer the reverse');
 
 	$script = translations_screen_names_source('assets/js/translations.js');
 	pg_assert_contains("review.setAttribute('aria-label'", $script, 'rowState renames the button');
@@ -57,5 +58,7 @@ function test_translations_screen_names_boxes_and_marks()
 	pg_assert_true((bool) preg_match('/<textarea class="form-control pg-tr-target"[^>]*>/', $source, $match), 'translation box found');
 	pg_assert_contains("aria-label=\"' . h(lang('Translation')) . '\"", $match[0], 'translation box named');
 
-	pg_assert_same(2, preg_match_all('/pg-tr-suspicious[^>]*>(?:(?!<\/span>\s*\').)*class="visually-hidden"/', $source), 'both suspicious marks carry text');
+	// One markup for the shown mark and the hidden copy a save reveals.
+	pg_assert_same(1, preg_match_all('/class="badge theme-danger pg-tr-suspicious/', $source), 'one suspicious mark markup');
+	pg_assert_true((bool) preg_match('/pg-tr-suspicious[^\n]*<span class="visually-hidden">\' \. h\(\$suspicious_text\)/', $source), 'suspicious mark carries text');
 }

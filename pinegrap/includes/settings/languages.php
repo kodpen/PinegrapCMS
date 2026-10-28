@@ -48,10 +48,18 @@ foreach ($translation_known as $translation_code => $translation_info) {
 // name, so the save knows which row it belongs to.
 $output_translation_rows = '';
 
+// The card's hints for Translate on save and Remove are printed once, under
+// the rows, and only when a row has that control.
+$translation_auto_column = false;
+
 foreach ($translation_languages as $translation_code => $translation_row) {
 
     if ($translation_code === $translation_source) {
         continue;
+    }
+
+    if (array_key_exists('auto_update', $translation_row)) {
+        $translation_auto_column = true;
     }
 
     $translation_name = 'languages[' . h($translation_code) . ']';
@@ -89,12 +97,12 @@ foreach ($translation_languages as $translation_code => $translation_row) {
                                     <div class="switch"><input value="1"' . (((int) $translation_row['enabled'] === 1) ? ' checked="checked"' : '') . ' class="" type="checkbox" id="tr_enabled_' . h($translation_code) . '" name="' . $translation_name . '[enabled]"/></div>
                                     <label class="" for="tr_enabled_' . h($translation_code) . '">' . lang('Served') . '</label>
                                 </div>' . (array_key_exists('auto_update', $translation_row) ? '
-                                <div class="form-field mb-0 ms-3" title="' . h(lang('When a page is saved, its new and changed texts are sent to this language\'s engine (Pinegrap AI, Claude or Google) on their own. The browser engine and translation by hand need the Translations screen.')) . '">
-                                    <div class="switch"><input value="1"' . (((int) $translation_row['auto_update'] === 1) ? ' checked="checked"' : '') . ' class="" type="checkbox" id="tr_auto_' . h($translation_code) . '" name="' . $translation_name . '[auto_update]"/></div>
+                                <div class="form-field mb-0 ms-3">
+                                    <div class="switch"><input value="1"' . (((int) $translation_row['auto_update'] === 1) ? ' checked="checked"' : '') . ' class="" type="checkbox" id="tr_auto_' . h($translation_code) . '" name="' . $translation_name . '[auto_update]" aria-describedby="tr_auto_hint"/></div>
                                     <label class="" for="tr_auto_' . h($translation_code) . '">' . lang('Translate on save') . '</label>
                                 </div>' : '') . '
-                                <div class="form-field mb-0 ms-3" title="' . h(lang('Removing a language deletes its translations, its update history and its own glossary terms as well. Turn "Served" off instead to take it off the site for a while.')) . '">
-                                    <input value="1" class="check" type="checkbox" id="tr_remove_' . h($translation_code) . '" name="' . $translation_name . '[remove]"/>
+                                <div class="form-field mb-0 ms-3">
+                                    <input value="1" class="check" type="checkbox" id="tr_remove_' . h($translation_code) . '" name="' . $translation_name . '[remove]" aria-describedby="tr_remove_hint"/>
                                     <label class="fg-danger" for="tr_remove_' . h($translation_code) . '">' . lang('Remove') . '</label>
                                 </div>
                             </div>
@@ -139,6 +147,8 @@ foreach ($translation_languages as $translation_code => $translation_row) {
                         </div>';
 }
 
+$output_translation_rows_have_language = ($output_translation_rows !== '');
+
 if ($output_translation_rows === '') {
     $output_translation_rows = '
                         <div class="fg-secondary small">' . lang('No target language yet. Add one below: the pages of the visual designs are then served under its address prefix as well.') . '</div>';
@@ -168,7 +178,9 @@ $output_translation_languages = '
                         <label class="form-label">' . lang('Target languages') . '</label>
                         <div class="d-flex flex-column gap-5">' . $output_translation_rows . '
                         </div>
-                        <div class="form-text">' . lang('A served language is reachable under its address prefix (for example /en/about). Removing a language takes it off the site; the translations already made are kept and come back when the language is added again.') . '</div>
+                        <div class="form-text">' . lang('A served language is reachable under its address prefix (for example /en/about).') . '</div>' . ($translation_auto_column ? '
+                        <div class="form-text" id="tr_auto_hint">' . lang('When a page is saved, its new and changed texts are sent to this language\'s engine (Pinegrap AI, Claude or Google) on their own. The browser engine and translation by hand need the Translations screen.') . '</div>' : '') . ($output_translation_rows_have_language ? '
+                        <div class="form-text" id="tr_remove_hint">' . lang('Removing a language deletes its translations, its update history and its own glossary terms as well. Turn "Served" off instead to take it off the site for a while.') . '</div>' : '') . '
                     </div>
                     <div class="col-12">
                         <div class="pg-f-md">
