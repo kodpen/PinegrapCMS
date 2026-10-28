@@ -25,6 +25,7 @@ description: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, w
 4b. (PR #1664) "Notify me" field and button in the catalog item view, `can_notify`, starter (`designer/catalog-stock-notify-form.md`).
 4c. (PR #1864) SMS, kind `stock` (owner: "sadece işlem mesajları yer alacak"): `commerce/back-in-stock-sms.md`.
 5. (PR #1676) API: reviews, rating, a customer's favourites, `product.review.created`, `verified` (`api/api-reviews-and-wishlist.md`).
+2d. (PR #2567) Reviews newest first, verified only (#2426): `commerce/product-review-order.md`.
 
 ## What remains?
 2c. Review form, `__reviews`, designer aggregateRating: after designable-comments slice 20 (M).
@@ -32,7 +33,6 @@ description: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, w
 
 ## Open questions?
 - Photo reviews: comments take attachments; allow by a setting?
-- Featured comments show first; 28/B(4) asks for an objective order. Change it for product reviews?
 
 ## Where to start?
 - Step 6: owner answers `storefront-bundles-hooks.md` questions, then its step 1. 2c waits for designable-comments slice 20.
