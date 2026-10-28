@@ -195,6 +195,9 @@ function erp_order_lines($order, $items, $charges_taxed = null, $settle_charges 
             'tax_rate' => $rate,
             'tax_total' => $tax_total,
             'line_total' => $line_total,
+            // The order line it came from: a bundle's components are copied
+            // from it onto the invoice (erp_stock_snapshot_components()).
+            'order_item_id' => (int) ($item['id'] ?? 0),
         );
 
         $weights[$index] = $line_total;
@@ -1074,6 +1077,13 @@ function erp_invoice_from_order_locked($order_id, $options = array())
                 tax_total = '" . (int) $line['tax_total'] . "',
                 vat_exemption_code = '" . escape(erp_vat_line_exemption_code($line)) . "',
                 line_total = '" . (int) $line['line_total'] . "'");
+
+        // A bundle line keeps the components the order sold it with; the
+        // stock moves below follow them.
+        if (($ok !== false) && ((int) ($line['order_item_id'] ?? 0) > 0)
+            && (erp_stock_snapshot_components($invoice_id, (int) mysqli_insert_id(db::$con), (int) $line['product_id'], (int) $line['order_item_id']) === false)) {
+            $ok = false;
+        }
 
         if ($ok === false) {
             $error = erp_db_error();

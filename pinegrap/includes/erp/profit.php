@@ -275,7 +275,7 @@ function erp_profit_report($from, $to, $options = array())
     }
 
     // What the stock moves recorded, for the lines and for the invoice lines
-    // the returns point at.
+    // the returns point at; a bundle line has one move per component.
     $moves = array();
     $stock = function_exists('erp_stock_ready') && erp_stock_ready();
 
@@ -283,7 +283,8 @@ function erp_profit_report($from, $to, $options = array())
         foreach (array_chunk(array_values(array_unique(array_merge($line_ids, array_values($parent_ids)))), 500) as $chunk) {
             foreach ((array) db_items("SELECT line_id, kind, cost_total FROM erp_stock_moves
                 WHERE kind IN ('sale', 'sales_return') AND line_id IN (" . implode(',', $chunk) . ")") as $move) {
-                $moves[(string) $move['kind'] . ':' . (int) $move['line_id']] = (int) $move['cost_total'];
+                $key = (string) $move['kind'] . ':' . (int) $move['line_id'];
+                $moves[$key] = ($moves[$key] ?? 0) + (int) $move['cost_total'];
             }
         }
     }
@@ -295,17 +296,25 @@ function erp_profit_report($from, $to, $options = array())
         }
     }
 
-    // A product's average cost today, for a line whose move is missing.
+    // A product's average cost today, for a line whose move is missing. A
+    // bundle has no cost of its own: its components' costs add up to it.
     $averages = array();
-    $average = function ($product_id) use (&$averages, $stock) {
+    $average = function ($product_id) use (&$averages, &$average, $stock) {
         $product_id = (int) $product_id;
 
         if (!array_key_exists($product_id, $averages)) {
+            $averages[$product_id] = null;
             $cost = $stock ? erp_stock_cost($product_id) : null;
             $unit = is_array($cost) ? (int) $cost['avg_cost'] : 0;
 
             if (($unit <= 0) && is_array($cost)) {
                 $unit = (int) $cost['last_cost'];
+            }
+
+            if (($unit <= 0) && !is_array($cost) && function_exists('pg_bundle_items')) {
+                foreach (pg_bundle_items($product_id) as $component) {
+                    $unit += (int) round((int) $average($component['product_id']) * max(1, (int) $component['quantity']));
+                }
             }
 
             $averages[$product_id] = ($unit > 0) ? $unit : null;

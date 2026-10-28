@@ -25,6 +25,9 @@ module: bundles
 - Marketplace import (`mp_order_take_stock()`) the same, source `marketplace`; its cancel restock (`mp_order_return_stock()`) puts back the snapshot's components (`pg_bundle_return_stock()`). Checkout not yet (plan step 2c).
 - `check_inventory()`: a cart holding a bundle goes to `pg_bundle_check_inventory()`, which checks every line against one stock pool (`pg_bundle_cart_allowance()`, lines in id order); a cart without one keeps the old loop unchanged.
 
+## What does the ERP do with a bundle line?
+- One invoice line, one stock move per component: `erp/erp-bundle-lines.md`.
+
 ## What does the product screen do?
 - Edit screen only: the Bundle card (`pg_pb_render_bundle_card()`, `assets/js/product_bundle.js`), search through `add_order.php?request=search_products` (enabled products only). Hidden `bundle_card` marks a save that carries it.
 - `pg_pb_validate_product_post()` refuses bad contents before writing (`pg_bundle_items_problem()`: not found, a bundle, donation, gift card, recurring; a component cannot become a bundle). While on, the posted stock fields are ignored and the stored cache kept; switching off empties the contents.
