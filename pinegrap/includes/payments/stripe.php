@@ -235,23 +235,17 @@ function pg_payment_stripe_encode($params)
 }
 
 /**
- * One call to Stripe's API.
+ * The pg_curl_run() call for one request to Stripe's API.
  *
  * @param string $secret_key
  * @param string $method          GET or POST
  * @param string $path            /v1/...
  * @param array  $params
  * @param string $idempotency_key '' for none
- * @return array status (the HTTP status, 0 when Stripe was not reached),
- *               body (the decoded answer, null when it was not JSON),
- *               error (why Stripe was not reached)
+ * @return array method, url, options (pg_curl_run()'s)
  */
-function pg_payment_stripe_request($secret_key, $method, $path, $params, $idempotency_key)
+function pg_payment_stripe_request_options($secret_key, $method, $path, $params, $idempotency_key)
 {
-    if (!function_exists('curl_init')) {
-        return array('status' => 0, 'body' => null, 'error' => 'cURL is not available on this server.');
-    }
-
     $method = ($method === 'POST') ? 'POST' : 'GET';
     $query = pg_payment_stripe_encode($params);
     $url = 'https://api.stripe.com' . $path . ((($method === 'GET') && ($query !== '')) ? '?' . $query : '');
@@ -265,32 +259,45 @@ function pg_payment_stripe_request($secret_key, $method, $path, $params, $idempo
         $headers[] = 'Idempotency-Key: ' . $idempotency_key;
     }
 
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_USERPWD, $secret_key . ':');
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+    // A POST always carries its body, '' included, so it goes out as a POST
+    // with Content-Length: 0 rather than a bare custom request.
+    return array('method' => $method, 'url' => $url, 'options' => array(
+        'userpwd'         => $secret_key . ':',
+        'headers'         => $headers,
+        'body'            => ($method === 'POST') ? $query : null,
+        'timeout'         => 60,
+        'connect_timeout' => 15,
+    ));
+}
 
-    if ($method === 'POST') {
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $query);
+/**
+ * One call to Stripe's API.
+ *
+ * @param string $secret_key
+ * @param string $method          GET or POST
+ * @param string $path            /v1/...
+ * @param array  $params
+ * @param string $idempotency_key '' for none
+ * @return array status (the HTTP status, 0 when Stripe was not reached),
+ *               body (the decoded answer, null when it was not JSON),
+ *               error (why Stripe was not reached)
+ */
+function pg_payment_stripe_request($secret_key, $method, $path, $params, $idempotency_key)
+{
+    // pg_curl_run() adds the proxy, the user agent and the TLS settings;
+    // Stripe's host is fixed, so no address check.
+    $request = pg_payment_stripe_request_options($secret_key, $method, $path, $params, $idempotency_key);
+    $call = pg_curl_run($request['method'], $request['url'], $request['options']);
+
+    if (($call['status'] === 0) && ($call['error'] !== '')) {
+        $hint = ($call['errno'] !== 0) ? (string) pg_curl_tls_hint($call['errno']) : '';
+
+        return array('status' => 0, 'body' => null, 'error' => trim($call['error'] . ' ' . $hint));
     }
 
-    pg_curl_tls($ch);
+    $decoded = json_decode((string) $call['body'], true);
 
-    $raw = curl_exec($ch);
-    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-    if (!is_string($raw)) {
-        $hint = function_exists('pg_curl_tls_hint') ? (string) pg_curl_tls_hint(curl_errno($ch)) : '';
-
-        return array('status' => 0, 'body' => null, 'error' => trim(curl_error($ch) . ' ' . $hint));
-    }
-
-    $body = json_decode($raw, true);
-
-    return array('status' => $status, 'body' => is_array($body) ? $body : null, 'error' => '');
+    return array('status' => (int) $call['status'], 'body' => is_array($decoded) ? $decoded : null, 'error' => '');
 }
 
 /**

@@ -22,6 +22,7 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/payments/stripe.php');
 require_once(PG_FUNCTIONS_DIR . '/waf.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/update.php');
 
 /* ---------------------------------------------------------------------------
    Fixtures
@@ -246,6 +247,42 @@ function test_payment_stripe_form_encoding()
 		pg_payment_stripe_encode(array('amount' => 4714, 'confirm' => true, 'off' => false, 'payment_method_types' => array('card', 'link'), 'metadata' => array('order_id' => '438'))));
 	pg_assert_same('', pg_payment_stripe_encode(array()));
 	pg_assert_same('2024-06-20', pg_payment_stripe_api_version());
+}
+
+function test_payment_stripe_request_options()
+{
+	$env = array('user_agent' => 'Pinegrap', 'proxy' => '', 'resolve' => '');
+
+	$get = pg_payment_stripe_request_options('sk_test_1', 'GET', '/v1/payment_intents/pi_1', array('expand' => array('latest_charge')), '');
+	pg_assert_same('GET', $get['method']);
+	pg_assert_same('https://api.stripe.com/v1/payment_intents/pi_1?expand%5B0%5D=latest_charge', $get['url']);
+	pg_assert_same(array(
+		'userpwd'         => 'sk_test_1:',
+		'headers'         => array('Stripe-Version: 2024-06-20', 'Content-Type: application/x-www-form-urlencoded'),
+		'body'            => null,
+		'timeout'         => 60,
+		'connect_timeout' => 15,
+	), $get['options']);
+	$curl = pg_curl_run_options($get['method'], $get['url'], $get['options'], $env);
+	pg_assert_false(isset($curl['CURLOPT_POST']) || isset($curl['CURLOPT_CUSTOMREQUEST']) || isset($curl['CURLOPT_POSTFIELDS']), 'GET carries no body');
+	pg_assert_same('CURLPROTO_HTTPS', $curl['CURLOPT_PROTOCOLS']);
+
+	$post = pg_payment_stripe_request_options('sk_test_1', 'POST', '/v1/payment_intents', array('amount' => 4714), 'order-438');
+	pg_assert_same('https://api.stripe.com/v1/payment_intents', $post['url']);
+	pg_assert_same('amount=4714', $post['options']['body']);
+	pg_assert_same('Idempotency-Key: order-438', $post['options']['headers'][2]);
+
+	// A POST with no parameters still goes out as a POST with an empty body.
+	$empty = pg_payment_stripe_request_options('sk_test_1', 'POST', '/v1/payment_intents/pi_1/cancel', array(), '');
+	$curl = pg_curl_run_options($empty['method'], $empty['url'], $empty['options'], $env);
+	pg_assert_same(true, $curl['CURLOPT_POST']);
+	pg_assert_same('', $curl['CURLOPT_POSTFIELDS']);
+	pg_assert_false(isset($curl['CURLOPT_CUSTOMREQUEST']), 'not a bare custom request');
+	pg_assert_same('sk_test_1:', $curl['CURLOPT_USERPWD']);
+	pg_assert_same(60, $curl['CURLOPT_TIMEOUT']);
+	pg_assert_same(15, $curl['CURLOPT_CONNECTTIMEOUT']);
+
+	pg_assert_same('GET', pg_payment_stripe_request_options('sk_test_1', 'DELETE', '/v1/x', array(), '')['method']);
 }
 
 /* ---------------------------------------------------------------------------
