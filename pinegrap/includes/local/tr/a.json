@@ -735,6 +735,7 @@
     "A room of its own for a conversation with somebody who has no account: a customer, a supplier. Everything written in it is read by the guest. Only staff can be in it.": "Hesabı olmayan biriyle (müşteri, tedarikçi) görüşmek için ayrı bir oda. Odaya yazılan her şeyi misafir okur. Odada yalnızca personel bulunabilir.",
     "A routine on claude.ai": "claude.ai'da bir rutin",
     "A run can be about one record of this kind, such as an order or a customer.": "Bir çalışma bu türden tek bir kayıtla ilgili olabilir; örneğin bir sipariş ya da bir müşteri.",
+    "A run is started only in a public or private channel you read and the owner of the flow may write in.": "Bir çalıştırma yalnız okuyabildiğiniz ve akışın sahibinin yazabildiği genel ya da özel bir kanalda başlatılır.",
     "A run of your flow ended": "Akışınızın bir çalıştırması bitti",
     "A run on a task proposes no tasks: its changes wait on the task.": "Görev üzerindeki bir çalışma görev önermez: önerdiği değişiklikler görevde onay bekler.",
     "A run on the routine owner's claude.ai subscription answers the requests; each run counts against that account's daily allowance. Public channels are open to Claude, private ones only when their manager allows it.": "İstekleri, rutin sahibinin claude.ai aboneliğindeki bir çalıştırma yanıtlar; her çalıştırma o hesabın günlük hakkından düşer. Genel kanallar Claude'a açıktır, özel kanallar yalnız yöneticisi izin verirse.",

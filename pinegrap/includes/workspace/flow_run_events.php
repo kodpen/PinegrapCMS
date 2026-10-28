@@ -4,16 +4,17 @@
  *
  * Workspace - what a flow's run tells the webhooks: that it ended done
  * (workspace.flow.run.finished) or failed (workspace.flow.run.failed), with
- * the box its result comes from, and that one of its boxes started to wait
+ * the box its result comes from, that somebody cancelled it
+ * (workspace.flow.run.cancelled), and that one of its boxes started to wait
  * (workspace.flow.run.waiting) for a task, an approval, a moment or its
  * next try.
  *
  * Each is announced by the request whose conditional write made the move
- * (flow_runs.php): the UPDATE that ended the run, or the one that put a
- * running box to waiting, counted by its affected rows. A request that lost
- * the race, a look at a box that keeps waiting, a box that stopped half way
- * and waits again for what it began, and a run that was cancelled announce
- * nothing, so every move is told once. A run reopened by trying a failed box
+ * (flow_runs.php): the UPDATE that ended or cancelled the run, or the one
+ * that put a running box to waiting, counted by its affected rows. A request
+ * that lost the race, a look at a box that keeps waiting, a box that stopped
+ * half way and waits again for what it began, and the runs ended with a
+ * deleted flow announce nothing, so every move is told once. A run reopened by trying a failed box
  * again ends again, and that end is a move of its own.
  *
  * The run goes out as the API's run answer gives it without its boxes
@@ -260,7 +261,8 @@ function ws_flow_run_waiting_for($step)
  * The body of a run's event: the run's id, its channel (what a subscription
  * narrowed to a group of channels is matched by,
  * ws_webhook_event_channel_id()), its flow and the run, then what the event
- * is about ($about: result for an end, waiting for a wait).
+ * is about ($about: result for an end, cancelled_by for a cancel, waiting
+ * for a wait).
  *
  * @param array $run_fields ws_flow_run_event_run()
  * @param array $context    ws_flow_run_context()
@@ -345,6 +347,34 @@ function ws_flow_run_announce_end($run_id, $state)
     } else {
         pg_announce('workspace.flow.run.finished', ws_flow_run_event_body($read['fields'], $read['context'], $read['words'], $about));
     }
+
+    return true;
+}
+
+/**
+ * Announces that a person cancelled a run. Called only by the request whose
+ * UPDATE cancelled it (ws_flow_run_cancel()), after its open boxes were
+ * skipped. The runs a deleted flow takes with it are not announced.
+ *
+ * @param int $run_id
+ * @param int $by     who cancelled it
+ * @return bool whether it was announced
+ */
+function ws_flow_run_announce_cancelled($run_id, $by)
+{
+    if (!function_exists('pg_announce')) {
+        return false;
+    }
+
+    $read = ws_flow_run_event_read($run_id);
+
+    if (!$read || ((string) $read['run']['status'] !== 'cancelled')) {
+        return false;
+    }
+
+    pg_announce('workspace.flow.run.cancelled', ws_flow_run_event_body($read['fields'], $read['context'], $read['words'], array(
+        'cancelled_by' => (int) $by,
+    )));
 
     return true;
 }
