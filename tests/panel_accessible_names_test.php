@@ -92,3 +92,76 @@ function test_panel_accessible_names_marketplace_bulk_layer()
 	pg_assert_contains("}\n}</style>", $source);
 	pg_assert_true(strpos($source, "<style>\n") === false, 'unlayered inline style');
 }
+
+function test_panel_accessible_names_dialogs_named_by_their_title()
+{
+	$expect = array(
+		'includes/settings/general.php' => array('cron_jobs'),
+		'edit_form_item_view.php' => array('hints'),
+		'edit_form_list_view.php' => array('hints', 'hints_for_advanced_search'),
+		'includes/forms/product_group_form.php' => array('image_code'),
+	);
+
+	foreach ($expect as $path => $ids) {
+		$source = panel_accessible_names_source($path);
+
+		foreach ($ids as $id) {
+			// A dialog labelled by itself is named with its whole body text.
+			pg_assert_contains('id="' . $id . '" aria-labelledby="' . $id . '_title"', $source, $path);
+			pg_assert_true((bool) preg_match('/<h5 class="dialog-title" id="' . $id . '_title">/', $source), $path . ': ' . $id . ' title has the id');
+		}
+	}
+}
+
+function test_panel_accessible_names_filter_selects()
+{
+	// The input-group label holds only an icon ligature ('visibility',
+	// 'groups'...), which would otherwise name the select.
+	$expect = array(
+		'view_users.php' => array('filter_select' => 'Content that viewed'),
+		'view_pages.php' => array('filter_select' => 'Content that viewed'),
+		'view_files.php' => array('filter_select' => 'Content that viewed'),
+		'view_ads.php' => array('ad_region_id' => 'Content that viewed'),
+		'view_contacts.php' => array('contact_group' => 'Group', 'filter' => 'Content that viewed'),
+		'view_submitted_forms.php' => array('custom_form' => 'Custom Form', 'custom_form_fake' => 'Custom Form'),
+		'editor_select_page_or_file.php' => array('folder_id' => 'Folder', 'access_control_type' => 'Access'),
+	);
+
+	foreach ($expect as $path => $selects) {
+		$source = panel_accessible_names_source($path);
+
+		foreach ($selects as $id => $name) {
+			pg_assert_true((bool) preg_match('/<select id="' . $id . '"[^>]*>/', $source, $match), $path . ': #' . $id . ' found');
+			pg_assert_contains("aria-label=\"' . h(lang('" . $name . "')) . '\"", $match[0], $path . ' #' . $id);
+		}
+	}
+
+	$source = panel_accessible_names_source('smtp_settings.php');
+	pg_assert_contains("<label class=\"visually-hidden\" for=\"dkim_selector\">' . h(lang('Selector')) . '</label>", $source);
+	pg_assert_contains("<label class=\"visually-hidden\" for=\"dkim_domain\">' . h(lang('Domain')) . '</label>", $source);
+}
+
+function test_panel_accessible_names_workspace_settings_hints()
+{
+	// Bootstrap 6 copies a title into aria-label on a textless element, which
+	// on a labelled field replaces the label's name: the hint is form-text.
+	$source = panel_accessible_names_source('includes/workspace/workdays.php');
+	pg_assert_true((bool) preg_match('/<input[^>]*id="ws_hol_to"[^>]*>/', $source, $match), 'ws_hol_to found');
+	pg_assert_true(strpos($match[0], 'title=') === false, 'ws_hol_to has no title');
+	pg_assert_contains('aria-describedby="ws_hol_to_hint"', $match[0]);
+	pg_assert_contains("<div class=\"form-text\" id=\"ws_hol_to_hint\">' . h(lang('Leave it empty for one day.')) . '</div>", $source);
+
+	$source = panel_accessible_names_source('includes/workspace/mcp.php');
+	pg_assert_true(strpos($source, "title=\"' . h(lang('Disconnect')) . '\"") === false, 'the Disconnect button repeats its text in a title');
+
+	// The copy buttons sit in the secret sheet too, above the popover layer.
+	$source = panel_accessible_names_source('includes/workspace/claude.php');
+	pg_assert_contains("no-popover\" data-ws-copy-field=\"' . h(\$id) . '\" data-bs-toggle=\"tooltip\" title=\"' . h(lang('Copy')) . '\" aria-label=\"' . h(lang('Copy')) . '\"", $source);
+}
+
+function test_panel_accessible_names_edit_contact_remove_picture()
+{
+	$source = panel_accessible_names_source('edit_contact.php');
+	pg_assert_true(strpos($source, 'title="remove"') === false, 'literal remove title');
+	pg_assert_same(2, substr_count($source, "aria-label=\"' . h(lang('Remove')) . '\""), 'edit_contact.php: both remove buttons');
+}

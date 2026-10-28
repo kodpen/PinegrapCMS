@@ -61,6 +61,7 @@
     "Backup Name": "Yedek Adı",
     "Backup age": "Yedek",
     "Backup folder ({var:1}) cannot be accessed: {var:2}": "Yedek klasörüne ({var:1}) erişilemiyor: {var:2}",
+    "Backup folder not found or inaccessible.": "Yedek klasörü bulunamadı ya da erişilemiyor.",
     "Backup taken before the software update: {var:1}": "Yazılım güncellemesinden önce yedek alındı: {var:1}",
     "Backups": "Yedeklemeler",
     "Badge": "Rozet",

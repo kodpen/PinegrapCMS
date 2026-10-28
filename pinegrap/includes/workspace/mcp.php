@@ -2259,7 +2259,7 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null)
                     ' . get_token_field() . '
                     <input type="hidden" name="ws_action" value="mcp_disconnect">
                     <input type="hidden" name="mcp_id" value="' . $id . '">
-                    <button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Disconnect')) . '"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+                    <button type="submit" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
                 </form>';
         }
 

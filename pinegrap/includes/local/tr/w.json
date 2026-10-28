@@ -485,6 +485,7 @@
     "What type of Page Style do you want to create?": "Ne tür bir Sayfa Stili oluşturmak istiyorsunuz?",
     "What type of Theme do you want to create?": "Ne tür bir Tema oluşturmak istiyorsunuz?",
     "What visitors wrote under pages, records, products and events; writing means publishing, holding, featuring or removing one": "Ziyaretçilerin sayfalara, kayıtlara, ürünlere ve etkinliklere yazdıkları; yazma, birini yayınlamak, bekletmek, öne çıkarmak ya da kaldırmak demektir",
+    "What was downloaded is not a zip archive. A proxy or firewall may have replaced the response.": "İndirilen dosya bir zip arşivi değil. Bir proxy ya da güvenlik duvarı yanıtı değiştirmiş olabilir.",
     "What was in it before the first movement was recorded here.": "Buraya ilk hareket girilmeden önce içinde ne olduğu.",
     "What was sold, what it cost and what is left, in {var:1} and without tax.": "Ne satıldı, maliyeti ne oldu, geriye ne kaldı; {var:1} cinsinden ve vergisiz.",
     "What was spent": "Harcama",

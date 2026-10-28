@@ -509,6 +509,7 @@
     "Invalid e-mail address.": "Geçersiz e-posta adresi.",
     "Invalid image data. Please try again.": "Geçersiz görsel verisi. Lütfen tekrar deneyin.",
     "Invalid login": "Geçersiz giriş",
+    "Invalid login.": "Oturum geçersiz.",
     "Invalid node type: \"{var:1}\" [id: {var:2}]": "Geçersiz node tipi: \"{var:1}\" [id: {var:2}]",
     "Invalid page data.": "Geçersiz sayfa verisi.",
     "Invalid product group.": "Geçersiz ürün grubu.",

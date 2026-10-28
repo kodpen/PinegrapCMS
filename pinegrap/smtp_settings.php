@@ -155,6 +155,8 @@ if (!$_POST) {
 
     $dkim_settings = '
     <div class="col-12 md:col-8 lg:col-6  my-3">
+        <label class="visually-hidden" for="dkim_selector">' . h(lang('Selector')) . '</label>
+        <label class="visually-hidden" for="dkim_domain">' . h(lang('Domain')) . '</label>
         <div class="input-group">
             ' . $liveform->output_field([
                 'type'=>'text',

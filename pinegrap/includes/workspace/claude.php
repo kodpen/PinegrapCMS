@@ -1829,7 +1829,7 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null)
             : '<input class="form-control form-control-sm font-monospace" type="text" id="' . h($id) . '" value="' . h($value) . '" readonly>';
 
         return '<div class="ws-claude-copy">' . $field
-            . '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-ws-copy-field="' . h($id) . '" title="' . h(lang('Copy')) . '"><i class="bi bi-clipboard" aria-hidden="true"></i></button></div>';
+            . '<button type="button" class="btn btn-sm btn-outline theme-secondary no-popover" data-ws-copy-field="' . h($id) . '" data-bs-toggle="tooltip" title="' . h(lang('Copy')) . '" aria-label="' . h(lang('Copy')) . '"><i class="bi bi-clipboard" aria-hidden="true"></i></button></div>';
     };
 
     // The steps, each with its picture (claude_setup.php).

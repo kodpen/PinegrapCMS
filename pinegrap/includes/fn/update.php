@@ -1053,12 +1053,12 @@ function pg_extract_archive($archive_path, $destination)
     $failure = array('ok' => false, 'message' => '', 'missing' => array(), 'stale' => array(), 'blocked' => array());
 
     if (!class_exists('ZipArchive')) {
-        $failure['message'] = 'The ZipArchive extension is not available on this server.';
+        $failure['message'] = lang('The ZipArchive extension is not available on this server.');
         return $failure;
     }
 
     if (!is_file($archive_path) || filesize($archive_path) < 4) {
-        $failure['message'] = 'The downloaded archive is missing or empty.';
+        $failure['message'] = lang('The downloaded archive is missing or empty.');
         return $failure;
     }
 
@@ -1075,7 +1075,7 @@ function pg_extract_archive($archive_path, $destination)
         $opened = $zip->open($archive_path);
 
         if ($opened !== true) {
-            $failure['message'] = 'The downloaded archive could not be opened (code ' . (int) $opened . '). It is most likely incomplete — try again.';
+            $failure['message'] = lang(array('string' => 'The downloaded archive could not be opened (code {var:1}). It is most likely incomplete — try again.', 'vars' => array((int) $opened)));
             return $failure;
         }
     }
@@ -1169,7 +1169,10 @@ function pg_extract_archive($archive_path, $destination)
     if ($blocked) {
         $zip->close();
 
-        $failure['message'] = count($blocked) . ' file(s) on this server cannot be replaced or created by the web server - the file or its folder belongs to another system user or is read-only. Nothing was changed. Correct the permissions, or delete the files (FTP or the file manager), and run the update again: ' . implode(', ', array_slice($blocked, 0, 10)) . (count($blocked) > 10 ? ', …' : '');
+        $failure['message'] = lang(array(
+            'string' => '{var:1} file(s) on this server cannot be replaced or created by the web server - the file or its folder belongs to another system user or is read-only. Nothing was changed. Correct the permissions, or delete the files (FTP or the file manager), and run the update again: {var:2}',
+            'vars' => array(count($blocked), implode(', ', array_slice($blocked, 0, 10)) . (count($blocked) > 10 ? ', …' : '')),
+        ));
         $failure['blocked'] = $blocked;
         return $failure;
     }
@@ -1178,7 +1181,7 @@ function pg_extract_archive($archive_path, $destination)
     $zip->close();
 
     if (!$extracted) {
-        $failure['message'] = 'Extraction failed. The web server may not have write permission for the software directory, or the disk may be full.';
+        $failure['message'] = lang('Extraction failed. The web server may not have write permission for the software directory, or the disk may be full.');
         return $failure;
     }
 
@@ -1215,13 +1218,16 @@ function pg_extract_archive($archive_path, $destination)
     }
 
     if ($missing) {
-        $failure['message'] = count($missing) . '+ file(s) from the archive were not written. The installation is now partially updated and should be repaired.';
+        $failure['message'] = lang(array('string' => '{var:1}+ file(s) from the archive were not written. The installation is now partially updated and should be repaired.', 'vars' => array(count($missing))));
         $failure['missing'] = $missing;
         return $failure;
     }
 
     if ($stale) {
-        $failure['message'] = count($stale) . ' file(s) on disk are not the ones in the package after extraction - the server kept its old copy: ' . implode(', ', array_slice($stale, 0, 10)) . (count($stale) > 10 ? ', …' : '') . '. Delete them and run the update again.';
+        $failure['message'] = lang(array(
+            'string' => '{var:1} file(s) on disk are not the ones in the package after extraction - the server kept its old copy: {var:2}. Delete them and run the update again.',
+            'vars' => array(count($stale), implode(', ', array_slice($stale, 0, 10)) . (count($stale) > 10 ? ', …' : '')),
+        ));
         $failure['stale'] = $stale;
         return $failure;
     }
