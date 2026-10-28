@@ -887,6 +887,21 @@ function pg_coll_reference_holds_sql($data_sql, $code)
 }
 
 /**
+ * The reference code of the record a detail page shows, as a list filter
+ * valued "shown record" compares it: ?r= under the rules of an address
+ * value (pg_sw_url_param_value()), '' when there is none. A pretty record
+ * address has put the code there before the page is drawn
+ * (pg_sw_route_record_address()).
+ *
+ * @param array|null $request the query parameters (pg_sw_filter_request())
+ * @return string
+ */
+function pg_coll_shown_record_code($request)
+{
+    return pg_sw_url_param_value($request, 'r');
+}
+
+/**
  * The record of form page $page_id a filter value names, by address name
  * or reference code, byte for byte: array('code' => its reference code,
  * 'label' => its Title field, else the code), complete records only; null
