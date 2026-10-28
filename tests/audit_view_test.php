@@ -184,5 +184,24 @@ function test_audit_view_record_ids_grouped_by_type()
 		pg_assert_true(pg_audit_view_record_url($type, 5) !== '', $type . ' has an edit screen');
 	}
 
-	pg_assert_contains('pg_audit_view_live_records(', file_get_contents(dirname(__DIR__) . '/pinegrap/view_audit_log.php'), 'the screen asks which records still exist');
+	pg_assert_contains('pg_audit_view_live_records(', file_get_contents(dirname(__DIR__) . '/pinegrap/includes/fn/audit_list.php'), 'each page asks which records still exist');
+}
+
+// The condition binds every value; a ? in a value stays a value.
+function test_audit_view_condition()
+{
+	pg_assert_same(array('sql' => '1', 'params' => array()), pg_audit_view_condition(pg_audit_view_filters(array())), 'nothing filtered');
+
+	$condition = pg_audit_view_condition(pg_audit_view_filters(array('action' => 'update', 'user' => 'who?', 'q' => 'a_b')));
+
+	pg_assert_same('(action = ?) AND (username LIKE ?) AND (label LIKE ?)', $condition['sql']);
+	pg_assert_same(array('update', '%who?%', '%a\\_b%'), $condition['params']);
+	pg_assert_same("(action = 'update') AND (username LIKE '%who?%') AND (label LIKE '%a\\\\_b%')", pg_audit_view_where(pg_audit_view_filters(array('action' => 'update', 'user' => 'who?', 'q' => 'a_b')), 'addslashes'));
+}
+
+function test_audit_view_labels()
+{
+	pg_assert_same(lang('Created'), pg_audit_view_labels('action')['create']);
+	pg_assert_same(array(), pg_audit_view_labels('other'));
+	pg_assert_same('later_word', pg_audit_view_label('action', 'later_word'), 'a word without a label is shown as stored');
 }
