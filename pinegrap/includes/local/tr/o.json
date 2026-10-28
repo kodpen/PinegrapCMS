@@ -364,6 +364,7 @@
     "Only POST": "Yalnızca POST",
     "Only a .zip archive can be uploaded here.": "Buraya yalnızca .zip arşivi yüklenebilir.",
     "Only a box that failed can be tried again or skipped.": "Yalnızca başarısız olan bir kutu yeniden denenebilir veya atlanabilir.",
+    "Only a bundle has contents. Send bundle true with them.": "Yalnızca bir paketin içeriği olur. İçerikle birlikte bundle true gönderin.",
     "Only a cancelled purchase order is opened again.": "Yalnız iptal edilmiş satın alma siparişi yeniden açılır.",
     "Only a change applied to the saved page can be taken back here.": "Burada yalnız kayıtlı sayfaya uygulanmış bir değişiklik geri alınabilir.",
     "Only a complete or exported order changes status here. Cancel an order with its Cancel Order button; bring a cancelled order back with Restore Order on the order screen.": "Burada yalnız tamamlanmış ya da dışa aktarılmış bir siparişin durumu değişir. Siparişi satırdaki \"Siparişi İptal Et\" düğmesiyle iptal edin; iptal edilmiş siparişi sipariş ekranındaki \"Siparişi Geri Al\" ile geri alın.",

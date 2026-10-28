@@ -1050,6 +1050,7 @@
     "The built-in invoice template is back in use.": "Yerleşik fatura şablonu yeniden kullanımda.",
     "The built-in question needs no account. Turnstile and hCaptcha draw their own check and are verified with the provider when the form is sent; when the provider cannot be reached or refuses the keys, the form is not accepted and the visitor is asked to try again. Staff never see a CAPTCHA.": "Yerleşik soru hesap gerektirmez. Turnstile ve hCaptcha kendi denetimlerini çizer ve form gönderilirken sağlayıcıyla doğrulanır; sağlayıcıya ulaşılamazsa ya da anahtarları kabul etmezse form alınmaz ve ziyaretçiden yeniden denemesi istenir. Personel hiçbir zaman CAPTCHA görmez.",
     "The built-in template is back in use for: {var:1}.": "Yerleşik şablon yeniden kullanımda: {var:1}.",
+    "The bundle contents could not be saved.": "Paket içeriği kaydedilemedi.",
     "The bundle could not be downloaded from {var:1}: cURL error {var:2}, {var:3}.": "Paket {var:1} adresinden indirilemedi: cURL hatası {var:2}, {var:3}.",
     "The bundle could not be downloaded from {var:1}: the server answered HTTP {var:2}.": "Paket {var:1} adresinden indirilemedi: sunucu HTTP {var:2} yanıtı verdi.",
     "The bundled CA certificate file is current: Mozilla data as of {var:1}, {var:2} months old.": "Paketlenmiş CA sertifika dosyası güncel: Mozilla verisi {var:1} tarihli, {var:2} aylık.",
