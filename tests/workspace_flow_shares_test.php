@@ -62,6 +62,18 @@ function test_workspace_flow_shares_owner_edits_while_on_the_staff()
 	pg_assert_same('', ws_flow_access_level(ws_flow_shares_test_facts()), 'nothing at all');
 }
 
+// A converted scheduled action's flow is changed by any staff member, as
+// the action was; not by anyone off the staff, nor once deleted.
+function test_workspace_flow_shares_converted_flow_for_any_staff()
+{
+	pg_assert_same('edit', ws_flow_access_level(ws_flow_shares_test_facts(array('converted' => true, 'staff' => true))));
+	pg_assert_same('', ws_flow_access_level(ws_flow_shares_test_facts(array('converted' => true, 'staff' => false))), 'off the staff');
+	pg_assert_same('', ws_flow_access_level(ws_flow_shares_test_facts(array('converted' => true, 'staff' => true, 'status' => 'binned'))), 'deleted');
+
+	// The owner alone manages its shares and deletes it.
+	pg_assert_false(ws_flow_share_manages(false, 'edit'));
+}
+
 // The home channel's readers run a live flow, as before the shares.
 function test_workspace_flow_shares_home_readers_run_a_live_flow()
 {

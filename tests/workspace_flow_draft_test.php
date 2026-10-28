@@ -136,3 +136,194 @@ function test_ws_flow_draft_wiring()
 	pg_assert_contains('{type: flow, action: draft, data, reason}', $param['description'], 'the flow draft is described');
 	pg_assert_contains('{type: scheduled', $param['description'], 'the older kind still is');
 }
+
+// The settings each kind of box takes, from the catalogue.
+function workspace_flow_draft_keys()
+{
+	return ws_flow_ai_setting_keys(ws_flow_kind_catalogue());
+}
+
+// The tool takes only the kinds of the catalogue and the outcomes an arrow
+// leaves on, and names what each kind takes.
+function test_ws_flow_ai_tool_from_catalogue()
+{
+	$catalogue = ws_flow_kind_catalogue();
+	$tool = ws_flow_ai_tool($catalogue);
+	$params = $tool['function']['parameters']['properties'];
+	$box = $params->boxes['items']['properties'];
+	$arrow = $params->arrows['items']['properties'];
+	$kinds = array_map(function ($kind) {
+		return $kind['kind'];
+	}, $catalogue);
+
+	pg_assert_same('propose_flow', $tool['function']['name'], 'name');
+	pg_assert_same($kinds, $box->kind['enum'], 'kinds from the catalogue');
+	pg_assert_true(in_array('always', $arrow->on['enum'], true), 'arrows on always');
+	pg_assert_true(in_array('approved', $arrow->on['enum'], true), 'and on the outcomes of the kinds');
+	pg_assert_same(array('add', 'connect', 'remove', 'set'), $params->changes['items']['properties']->op['enum'], 'patch operations');
+
+	foreach ($catalogue as $kind) {
+		pg_assert_contains('- ' . $kind['kind'] . ' "', $tool['function']['description'], $kind['kind'] . ' described');
+	}
+
+	pg_assert_contains('priority (normal|low|high|urgent)', ws_flow_ai_catalogue_text($catalogue), 'fixed words listed');
+	pg_assert_contains('manual "', ws_flow_ai_catalogue_text($catalogue), 'the start box');
+}
+
+// No invented kind and no invented setting.
+function test_ws_flow_ai_node_refusals()
+{
+	$keys = workspace_flow_draft_keys();
+	$ok = ws_flow_ai_node(array('id' => 'task_1', 'kind' => 'task', 'label' => 'Call', 'settings' => array('title' => 'Call back')), $keys, 'boxes[0]: ');
+
+	pg_assert_true($ok['ok'], 'a known kind and setting');
+	pg_assert_same(array('title' => 'Call back'), $ok['node']['config'], 'settings kept as config');
+
+	$kind = ws_flow_ai_node(array('id' => 'x', 'kind' => 'sms'), $keys, 'boxes[0]: ');
+	pg_assert_false($kind['ok'], 'unknown kind');
+	pg_assert_contains('boxes[0]: ', $kind['error'], 'says where');
+
+	$setting = ws_flow_ai_node(array('id' => 'x', 'kind' => 'task', 'settings' => array('colour' => 'red')), $keys, '');
+	pg_assert_false($setting['ok'], 'unknown setting');
+	pg_assert_contains('colour', $setting['error'], 'names it');
+
+	pg_assert_false(ws_flow_ai_node(array('id' => 'x', 'kind' => 'task', 'settings' => 'title'), $keys, '')['ok'], 'settings an object');
+}
+
+// A new flow is laid out from its start, a column per step, a branch one
+// row lower; nothing the model sends is a place.
+function test_ws_flow_ai_graph_layout()
+{
+	$made = ws_flow_ai_graph(array(
+		'boxes'  => array(
+			array('id' => 'start', 'kind' => 'manual'),
+			array('id' => 'ask', 'kind' => 'approval', 'settings' => array('title' => 'OK?', 'channel_id' => 3, 'approvers' => array(5))),
+			array('id' => 'yes', 'kind' => 'task', 'settings' => array('title' => 'Go')),
+			array('id' => 'no', 'kind' => 'task', 'settings' => array('title' => 'Stop')),
+		),
+		'arrows' => array(
+			array('from' => 'start', 'to' => 'ask'),
+			array('from' => 'ask', 'to' => 'yes', 'on' => 'approved'),
+			array('from' => 'ask', 'to' => 'no', 'on' => 'rejected'),
+		),
+	), workspace_flow_draft_keys());
+
+	pg_assert_true($made['ok'], 'made');
+
+	$at = array();
+
+	foreach ($made['graph']['nodes'] as $node) {
+		$at[$node['id']] = array($node['x'], $node['y']);
+	}
+
+	pg_assert_same(array(WS_FLOW_LAYOUT_ORIGIN, WS_FLOW_LAYOUT_ORIGIN), $at['start'], 'start first');
+	pg_assert_same(array(WS_FLOW_LAYOUT_ORIGIN + WS_FLOW_LAYOUT_STEP_X, WS_FLOW_LAYOUT_ORIGIN), $at['ask'], 'next column');
+	pg_assert_same($at['yes'][0], $at['no'][0], 'both branches in one column');
+	pg_assert_same(WS_FLOW_LAYOUT_STEP_Y, $at['no'][1] - $at['yes'][1], 'one row apart');
+	pg_assert_same(array(), array_values(array_filter(ws_flow_graph_check($made['graph']), function ($problem) {
+		return empty($problem['warning']);
+	})), 'publishable as drafted');
+
+	pg_assert_false(ws_flow_ai_graph(array('boxes' => array()), workspace_flow_draft_keys())['ok'], 'no boxes');
+	pg_assert_false(ws_flow_ai_graph(array('boxes' => array(array('id' => 'a', 'kind' => 'nope'))), workspace_flow_draft_keys())['ok'], 'invented kind');
+}
+
+// A patch is made in order on the flow; the boxes there keep their places,
+// a box added goes after the one it follows, and the changes kept make the
+// same flow again.
+function test_ws_flow_patch_apply()
+{
+	$keys = workspace_flow_draft_keys();
+	$graph = ws_flow_graph_normalize(array(
+		'nodes' => array(
+			array('id' => 'start', 'kind' => 'manual', 'x' => 400, 'y' => 32),
+			array('id' => 'task_1', 'kind' => 'task', 'x' => 700, 'y' => 32, 'config' => array('title' => 'One', 'priority' => 'low')),
+			array('id' => 'old', 'kind' => 'task', 'x' => 700, 'y' => 300, 'config' => array('title' => 'Old one')),
+		),
+		'edges' => array(array('from' => 'start', 'to' => 'task_1', 'on' => 'next'), array('from' => 'start', 'to' => 'old', 'on' => 'next')),
+	));
+	$ops = array(
+		array('op' => 'add', 'id' => 'tell', 'kind' => 'notify', 'label' => 'Tell', 'settings' => array('text' => 'Done: {{node.task_1.task_id}}')),
+		array('op' => 'connect', 'from' => 'task_1', 'to' => 'tell', 'on' => 'done'),
+		array('op' => 'set', 'id' => 'task_1', 'label' => 'First', 'settings' => array('priority' => 'high')),
+		array('op' => 'remove', 'id' => 'old'),
+	);
+	$made = ws_flow_patch_apply($graph, $ops, $keys);
+
+	pg_assert_true($made['ok'], 'made');
+
+	$by = array();
+
+	foreach ($made['graph']['nodes'] as $node) {
+		$by[$node['id']] = $node;
+	}
+
+	pg_assert_same(array('start', 'task_1', 'tell'), array_keys($by), 'added and removed');
+	pg_assert_same(array(400, 32), array($by['start']['x'], $by['start']['y']), 'kept its place');
+	pg_assert_same(array(700 + WS_FLOW_LAYOUT_STEP_X, 32), array($by['tell']['x'], $by['tell']['y']), 'after the box it follows');
+	pg_assert_same('First', $by['task_1']['label'], 'label set');
+	pg_assert_same('high', $by['task_1']['config']['priority'], 'setting set');
+	pg_assert_same('One', $by['task_1']['config']['title'], 'other settings kept');
+	pg_assert_same(2, count($made['graph']['edges']), 'the removed box\'s arrow went with it');
+	pg_assert_same(array('tell', 'task_1'), $made['touched'], 'what it added or changed');
+	pg_assert_same('old', $made['ops'][3]['name'], 'a removed box keeps its name for the card');
+
+	$again = ws_flow_patch_apply($graph, $made['ops'], $keys);
+	pg_assert_same($made['graph'], $again['graph'], 'the changes kept make the same flow');
+
+	$lines = ws_flow_patch_lines($made['ops'], $made['graph']);
+	pg_assert_same(4, count($lines), 'a line per change');
+	pg_assert_contains('First → Tell (done)', $lines[1]['text'], 'arrow by names');
+	pg_assert_contains('priority', $lines[2]['text'], 'the settings changed');
+	pg_assert_same('old', $lines[3]['text'], 'the box removed');
+
+	$refused = array(
+		'empty'          => array(),
+		'unknown op'     => array(array('op' => 'move', 'id' => 'start')),
+		'id taken'       => array(array('op' => 'add', 'id' => 'start', 'kind' => 'task')),
+		'bad id'         => array(array('op' => 'add', 'id' => 'Tell me', 'kind' => 'task')),
+		'no such box'    => array(array('op' => 'set', 'id' => 'ghost', 'settings' => array())),
+		'invented field' => array(array('op' => 'set', 'id' => 'task_1', 'settings' => array('colour' => 'red'))),
+		'arrow to none'  => array(array('op' => 'connect', 'from' => 'start', 'to' => 'ghost')),
+		'no such arrow'  => array(array('op' => 'remove', 'from' => 'task_1', 'to' => 'start')),
+	);
+
+	foreach ($refused as $case => $bad) {
+		$out = ws_flow_patch_apply($graph, $bad, $keys);
+		pg_assert_false($out['ok'], $case);
+		pg_assert_true($out['error'] !== '', $case . ' says why');
+	}
+}
+
+// Pinegrap AI offers the tool in a channel to whoever builds flows, keeps
+// its draft as the card an application's proposal makes, never saves or
+// publishes a flow while drafting, and a card that changes a flow opens onto
+// that flow's draft.
+function test_ws_flow_ai_wiring()
+{
+	pg_assert_contains('ws_flow_ai_tool(ws_flow_kind_catalogue())', workspace_flow_draft_code('ws_ai_tools'), 'schema from the catalogue');
+	pg_assert_contains('ws_flow_ai_offered(', workspace_flow_draft_code('ws_ai_tools'), 'only where offered');
+	pg_assert_contains('ws_flow_ai_propose(', workspace_flow_draft_code('ws_ai_tool_run'), 'handled');
+	pg_assert_true(in_array('propose_flow', ws_ai_tool_names(), true), 'named');
+
+	$propose = workspace_flow_draft_code('ws_flow_ai_propose');
+	pg_assert_contains('ws_flow_draft_proposal_row(', $propose, 'the A8 check and card');
+	pg_assert_contains('ws_flow_save_check(', $propose, 'a patch rehearsed as a draft save');
+	pg_assert_contains('ws_flow_ai_problem_texts(', $propose, 'the publish problems handed back');
+
+	foreach (array('ws_flow_save(', 'ws_flow_publish', 'ws_changes_store(') as $write) {
+		pg_assert_false(strpos($propose, $write) !== false, 'drafting writes nothing: ' . $write);
+	}
+
+	pg_assert_contains("\$proposals['flows']", workspace_flow_draft_code('ws_ai_deliver'), 'stored with the answer');
+	pg_assert_contains('ws_flow_draft_patch_open(', workspace_flow_draft_code('ws_flow_draft_open'), 'a patch card opens onto its flow');
+
+	$open = workspace_flow_draft_code('ws_flow_draft_patch_open');
+	pg_assert_contains("'edit'", $open, 'only for an editor of the flow');
+	pg_assert_contains("'draft_rev'", $open, 'saved against the draft it was made on');
+	pg_assert_false(strpos($open, 'ws_flow_publish') !== false, 'never published');
+
+	$row = array('channel_id' => 3, 'note_id' => 0, 'task_id' => 0, 'mcp_server_id' => 0);
+	pg_assert_false(ws_flow_ai_offered($row, null), 'nobody asking');
+	pg_assert_false(ws_flow_ai_offered(array('task_id' => 9) + $row, array('id' => 1, 'role' => 0)), 'not on a task');
+}

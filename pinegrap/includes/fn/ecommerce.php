@@ -923,7 +923,8 @@ function _pg_order_status_stage($status)
 }
 
 /**
- * Whether an order is still waiting for its bank transfer.
+ * Whether an order is still waiting for its money: a bank transfer that has
+ * not arrived, or a PayPal Checkout payment PayPal left pending.
  *
  * Derived, not a status of its own: the order stays 'complete' (or 'exported')
  * so every report, filter and export keyed on orders.status keeps working, and
@@ -936,9 +937,63 @@ function _pg_order_status_stage($status)
  */
 function pg_order_awaiting_payment(array $order): bool
 {
-    return ((string) ($order['payment_method'] ?? '') === 'Offline Payment')
+    $method = (string) ($order['payment_method'] ?? '');
+
+    return (($method === 'Offline Payment') || in_array($method, pg_order_pending_payment_methods(), true))
         && ((int) ($order['paid_at'] ?? 0) === 0)
         && in_array((string) ($order['status'] ?? ''), array('complete', 'exported'), true);
+}
+
+/**
+ * The payment methods whose service may answer a payment as pending (taken
+ * but not settled, e.g. under review) and whose order then waits with
+ * paid_at = 0 until the operator records the payment.
+ *
+ * Only methods that never wrote paid_at = 0 for a paid order belong here:
+ * an older order of another method would read as unpaid.
+ *
+ * @return array
+ */
+function pg_order_pending_payment_methods(): array
+{
+    return array('PayPal Checkout');
+}
+
+/**
+ * Whether an order waits on a payment its service left pending, rather than
+ * on a bank transfer.
+ *
+ * @param array $order Row carrying payment_method, paid_at and status
+ * @return bool
+ */
+function pg_order_payment_pending(array $order): bool
+{
+    return in_array((string) ($order['payment_method'] ?? ''), pg_order_pending_payment_methods(), true)
+        && pg_order_awaiting_payment($order);
+}
+
+/**
+ * The paid_at the checkout writes when it places an order: the order date
+ * for a payment the service confirmed, 0 for an offline payment (no
+ * transaction) and for a payment the service answered as pending.
+ *
+ * @param string $payment_method  orders.payment_method
+ * @param string $transaction_id  the payment's id at the service
+ * @param string $payment_status  the payment driver's answer ('paid', 'pending', ...); '' for the legacy gateways
+ * @param int    $order_date
+ * @return int
+ */
+function pg_order_checkout_paid_at(string $payment_method, string $transaction_id, string $payment_status, int $order_date): int
+{
+    if ($transaction_id === '') {
+        return 0;
+    }
+
+    if (($payment_status === 'pending') && in_array($payment_method, pg_order_pending_payment_methods(), true)) {
+        return 0;
+    }
+
+    return $order_date;
 }
 
 /**
@@ -11829,6 +11884,22 @@ function pg_variant_price_rules_store($group_id, $rules, $base_cents)
  */
 function pg_product_image_cell($key, $image_name, $name, $short_description = '', $more_images = array())
 {
+    return '<td class="align-middle text-start">' . pg_product_image_cell_content($key, $image_name, $name, $short_description, $more_images) . '</td>';
+}
+
+/**
+ * What pg_product_image_cell() puts in its cell, for a row built as cells
+ * (pg_list_cell()) whose cell class is 'align-middle text-start'.
+ *
+ * @param string $key
+ * @param string $image_name
+ * @param string $name
+ * @param string $short_description
+ * @param array  $more_images
+ * @return string
+ */
+function pg_product_image_cell_content($key, $image_name, $name, $short_description = '', $more_images = array())
+{
     $image_name = trim((string) $image_name);
 
     $caption = trim((string) $name);
@@ -11839,14 +11910,13 @@ function pg_product_image_cell($key, $image_name, $name, $short_description = ''
     }
 
     if ($image_name === '') {
-        return '<td class="align-middle text-start"><svg class="bd-placeholder-img img-thumbnail" width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" ><rect width="100%" height="100%" fill="#868e96"></rect><text x="10%" y="50%" style="font-size: 8px;" fill="#dee2e6" dy=".3em">' . lang(array('string' => 'No Image')) . '</text></svg></td>';
+        return '<svg class="bd-placeholder-img img-thumbnail" width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" ><rect width="100%" height="100%" fill="#868e96"></rect><text x="10%" y="50%" style="font-size: 8px;" fill="#dee2e6" dy=".3em">' . lang(array('string' => 'No Image')) . '</text></svg>';
     }
 
     $gallery = 'pg-thumb-' . $key;
 
     $output =
-        '<td class="align-middle text-start">'
-        . '<button type="button" class="btn p-0 border-0 no-submit" style="cursor: zoom-in;"'
+        '<button type="button" class="btn p-0 border-0 no-submit" style="cursor: zoom-in;"'
         . ' data-pg-lb-gallery="' . h($gallery) . '" data-pg-lb-index="0"'
         . ' data-pg-lb-src="' . h(PATH . encode_url_path($image_name)) . '"'
         . ' data-pg-lb-alt="' . h($caption) . '" data-pg-lb-caption="' . h($caption) . '"'
@@ -11871,7 +11941,7 @@ function pg_product_image_cell($key, $image_name, $name, $short_description = ''
         $index++;
     }
 
-    return $output . '</td>';
+    return $output;
 }
 
 

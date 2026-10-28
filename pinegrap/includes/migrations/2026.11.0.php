@@ -67,6 +67,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_note_revision(); // 11.0.84
 	upgrade_2026_11_0_workspace_note_deletions(); // 11.0.85
 	upgrade_2026_11_0_workspace_note_sources(); // 11.0.86
+	upgrade_2026_11_0_workspace_app_commands(); // 11.0.87
 	upgrade_2026_11_0_marketplace_columns();    // 11.0.37
 	upgrade_2026_11_0_audit_feed_tokens();      // 11.0.38
 	upgrade_2026_11_0_erp_efatura_threshold();  // 11.0.61
@@ -81,8 +82,12 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_audit_retention();        // 11.0.47
 	upgrade_2026_11_0_kvkk_notice();            // 11.0.48
 	upgrade_2026_11_0_reference_price_rule();   // 11.0.49
+	upgrade_2026_11_0_paypal_checkout();        // 11.0.50
 	upgrade_2026_11_0_max_image_preview();      // 11.0.51
+	upgrade_2026_11_0_main_host_redirect();     // 11.0.52
+	upgrade_2026_11_0_blogposting_author();     // 11.0.53
 	upgrade_2026_11_0_workspace_scheduled_anchor(); // 11.0.88
+	upgrade_2026_11_0_api_device_pairings();    // 11.0.70
 
 }
 
@@ -1811,6 +1816,35 @@ function upgrade_2026_11_0_workspace_note_sources() {
 
 }
 
+// The / commands an application registers for itself (2026.11.0, 11.0.87;
+// includes/workspace/app_commands.php).
+//
+// One row a command: the application that registered it, its name (one word
+// of letters, Turkish lower case, without the slash), what it does and the
+// arguments after the name as /help shows them. A name is the site's: UNIQUE
+// lets the database refuse a second application the name the first one
+// holds, even when both register at once. Deleting the application deletes
+// its commands; renaming it keeps them. usage_text, since USAGE is a
+// reserved word.
+function upgrade_2026_11_0_workspace_app_commands() {
+
+	install_create_table('ws_app_commands', "CREATE TABLE ws_app_commands (
+		id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		app_id INT UNSIGNED NOT NULL DEFAULT 0,
+		name VARCHAR(20) NOT NULL DEFAULT '',
+		description VARCHAR(200) NOT NULL DEFAULT '',
+		usage_text VARCHAR(200) NOT NULL DEFAULT '',
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_name (name),
+		KEY idx_app (app_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: connected applications can add their own / commands to the channels.');
+
+}
+
 // Workspace flows (2026.11.0, 11.0.80; includes/workspace/flows.php).
 //
 // A flow is a graph of boxes and arrows drawn on the Workspace canvas: a
@@ -1926,15 +1960,18 @@ function upgrade_2026_11_0_workspace_flows() {
 // history and news; '' is a scheduled action of its own. Every row that
 // starts a flow today is a hidden anchor, so the UPDATE marks them; it only
 // touches rows still unmarked and runs again harmlessly. The column comes
-// after the flows step that added flow_id and before scheduled actions are
-// converted into flows. A VARCHAR, so a later value needs no MODIFY.
+// after the flows step that added flow_id. The actions themselves are
+// converted into flows by the Workspace's scheduled-actions driver right
+// after the upgrade (includes/workspace/scheduled_convert.php): the upgrade
+// does not load the Workspace code the drawing needs. A VARCHAR, so a later
+// value needs no MODIFY.
 function upgrade_2026_11_0_workspace_scheduled_anchor() {
 
 	install_add_column('ws_scheduled_actions', 'anchor', "VARCHAR(12) NOT NULL DEFAULT ''");
 
 	db("UPDATE ws_scheduled_actions SET anchor = 'hidden' WHERE flow_id <> 0 AND anchor = ''");
 
-	install_note('Workspace: the scheduled actions that start a flow are marked as such, so they stay out of the list of scheduled actions. Nothing changes in the Workspace with this update.');
+	install_note('Workspace: every scheduled action of the staff becomes a flow in the first minutes after this update, keeping its card, its history and its state; it is then changed on the flow canvas. Scheduled messages stay as they are.');
 
 }
 
@@ -2635,5 +2672,104 @@ function upgrade_2026_11_0_max_image_preview() {
 	install_add_column('config', 'max_image_preview_large', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('SEO: pages can now let search engines show their pictures large (max-image-preview:large in the robots meta tag), under Site Settings, SEO, Site Map and Crawling. It stays off on this site until switched on.');
+
+}
+
+// The PayPal Checkout payment driver on the Orders v2 API (2026.11.0, 11.0.50;
+// includes/payments/paypal.php).
+//
+// orders.payment_method is an ENUM and the connection runs without strict
+// mode, so a method outside the list is stored as '': an order paid with the
+// driver would lose its method, and with it its refund through the driver.
+// 'PayPal Checkout' is appended to the list the column already has, as 4.48
+// appended 'Pay With Iyzico'; 'PayPal Express Checkout' stays the classic
+// code. Nullability and default are copied from the column as it is. The
+// driver keeps its keys in connect_apps, so no other column is needed.
+function upgrade_2026_11_0_paypal_checkout() {
+
+	$column = install_column_info('orders', 'payment_method');
+
+	if (!is_array($column)) {
+
+		install_skipped(lang('orders.payment_method does not exist, skipped'));
+
+	} elseif (stripos((string) $column['Type'], "'PayPal Checkout'") !== false) {
+
+		install_skipped(lang('orders.payment_method already knows about PayPal Checkout'));
+
+	} elseif (preg_match('/^enum\((.*)\)$/is', trim((string) $column['Type']), $enum_match)) {
+
+		$nullable = (strtoupper((string) $column['Null']) === 'YES');
+		$default  = ($column['Default'] === null) ? ($nullable ? 'NULL' : "''") : "'" . e((string) $column['Default']) . "'";
+
+		install_modify_column('orders', 'payment_method',
+			"ENUM(" . $enum_match[1] . ",'PayPal Checkout') " . ($nullable ? 'NULL' : 'NOT NULL') . " DEFAULT " . $default);
+
+	} else {
+
+		install_skipped(lang('orders.payment_method is not an ENUM, skipped'));
+
+	}
+
+	install_note('PayPal can now take payments on its Checkout (Orders v2) API: the visitor approves the payment on PayPal\'s page and the store takes it on the way back. Turn on "PayPal Checkout" in the Ecommerce settings with the REST app\'s client ID and secret; "PayPal Express Checkout" keeps working as before.');
+
+}
+
+// Redirect to the main host (2026.11.0, 11.0.52; pg_main_host_redirect_url()
+// in includes/fn/seo.php, get_page.php, Site Settings › SEO).
+//
+// main_host_redirect answers a page request that arrived on another host name
+// (www.example.com for example.com, or the other way round) with a 301 to the
+// same path on config.hostname, so search engines see one copy of each page.
+// Only GET and HEAD page renders, never an IP address or localhost; the panel,
+// the API, health.php, cron, webhooks and file downloads are left alone. It
+// starts off on every site, new ones included: a site reached by an
+// unexpected name would otherwise send its visitors to a name that may not
+// resolve yet.
+function upgrade_2026_11_0_main_host_redirect() {
+
+	install_add_column('config', 'main_host_redirect', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('SEO: pages opened on another host name of this site (for example with or without www) can now be sent to the site address with a permanent redirect, under Site Settings, SEO, Site Map and Crawling. It stays off until switched on.');
+
+}
+// The author of a record page's BlogPosting (2026.11.0, 11.0.53;
+// includes/fn/seo.php, the custom form's settings). One word per form:
+// contact (the record's linked contact, as before), organization (the site
+// with its address) or field:<form_field_id> (a field of the form holds the
+// name). The default keeps every form's output as it was.
+function upgrade_2026_11_0_blogposting_author() {
+
+	install_add_column('custom_form_pages', 'schema_author', "VARCHAR(64) NOT NULL DEFAULT 'contact'");
+
+	install_note('Custom forms: the author named in the structured data of a record page is now chosen per form in the form settings, next to Enable Pretty URLs: the contact of the record as before, the site as an organization, or a field of the form. Nothing changes until a form picks one.');
+
+}
+
+// Pairing codes for team devices (2026.11.0, 11.0.70; includes/api/pairing.php).
+//
+// A person signed in to the panel shows a one-time code as a QR; the team app
+// scans it and exchanges it at POST /auth/pair for a device session. A code
+// lives five minutes and works once. Only its HMAC is kept (code_hash), so a
+// copy of the table signs nobody in. Rows are bound to the person and to the
+// device application; device_id is the session the exchange made.
+function upgrade_2026_11_0_api_device_pairings() {
+
+	install_create_table('api_device_pairings', "CREATE TABLE api_device_pairings (
+		id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		app_id INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id INT UNSIGNED NOT NULL DEFAULT 0,
+		code_hash CHAR(64) NOT NULL DEFAULT '',
+		created_timestamp INT UNSIGNED NOT NULL DEFAULT 0,
+		expires_timestamp INT UNSIGNED NOT NULL DEFAULT 0,
+		used_timestamp INT UNSIGNED NOT NULL DEFAULT 0,
+		device_id INT UNSIGNED NOT NULL DEFAULT 0,
+		created_ip VARCHAR(45) NOT NULL DEFAULT '',
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_code_hash (code_hash),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Team devices can now be paired by scanning a code the person shows in the panel, without typing a password on the phone.');
 
 }

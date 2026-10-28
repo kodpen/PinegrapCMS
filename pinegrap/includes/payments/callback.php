@@ -7,11 +7,13 @@
  *
  * The driver's notify() checks the message's signature and says what it is
  * about (pg_payment_<key>_notify(), includes/payments/driver.php); this file
- * finds the order it names and decides what the store does. For now that is
- * telling the people who run the site, never changing the order: a payment
- * that went through for an order still incomplete, a refund or a dispute
- * made on the service's own screen each write a line to the activity log and
- * raise an operations alert (pg_ops_alert()).
+ * finds the order it names and decides what the store does. Mostly that is
+ * telling the people who run the site: a payment that went through for an
+ * order still incomplete, a refund or a dispute made on the service's own
+ * screen each write a line to the activity log and raise an operations alert
+ * (pg_ops_alert()). The one change made to an order is recording the payment
+ * of an order placed with its payment pending (pg_order_payment_pending())
+ * once the service reports it settled, for the amount the order totals.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -83,7 +85,8 @@ function pg_payment_notify_order_terms($answer)
  * The orders row a notify() answer names.
  *
  * @param array $answer pg_payment_answer()
- * @return array|null id, status, transaction_id
+ * @return array|null id, status, transaction_id, payment_method, total,
+ *                    paid_at (0 on a schema without the column)
  */
 function pg_payment_notify_order($answer)
 {
@@ -97,7 +100,8 @@ function pg_payment_notify_order($answer)
         return null;
     }
 
-    $order = db_item("SELECT id, status, transaction_id FROM orders WHERE " . $where . " ORDER BY id DESC LIMIT 1");
+    $paid_at = pg_schema_has('orders', 'paid_at') ? 'paid_at' : '0 AS paid_at';
+    $order = db_item("SELECT id, status, transaction_id, payment_method, total, " . $paid_at . " FROM orders WHERE " . $where . " ORDER BY id DESC LIMIT 1");
 
     return is_array($order) ? $order : null;
 }
@@ -112,21 +116,25 @@ function pg_payment_notify_order($answer)
  *   ignored        an event the store does not use: 200
  *   unknown_order  no order of this store, or another payment than the
  *                  order's own: 200, nothing done
- *   nothing        a payment for an order already placed: 200
- *   alerted        a payment for an order still incomplete, a refund, a
- *                  cancellation or a dispute: 200, a log line and an alert
+ *   nothing        a payment for an order already placed and paid: 200
+ *   recorded       a payment for an order placed with its payment pending,
+ *                  for the order's total: 200, a log line, and the caller
+ *                  marks the order paid (mark_paid)
+ *   alerted        a payment for an order still incomplete, a pending
+ *                  payment for another amount, a refund, a cancellation or a
+ *                  dispute: 200, a log line and an alert
  *
- * The order is never changed here: whether a webhook may complete an order
- * is not decided.
+ * An incomplete order is never completed here.
  *
  * @param string     $key    driver key
  * @param array      $answer pg_payment_answer() of notify()
  * @param array|null $order  pg_payment_notify_order()
- * @return array http (status code), status, log (lines), alert (detail, '' for none)
+ * @return array http (status code), status, log (lines), alert (detail, '' for none),
+ *               mark_paid (bool)
  */
 function pg_payment_notify_outcome($key, $answer, $order)
 {
-    $outcome = array('http' => 200, 'status' => '', 'log' => array(), 'alert' => '');
+    $outcome = array('http' => 200, 'status' => '', 'log' => array(), 'alert' => '', 'mark_paid' => false);
 
     if (empty($answer['success'])) {
         if (!empty($answer['raw']['ignored'])) {
@@ -156,7 +164,17 @@ function pg_payment_notify_outcome($key, $answer, $order)
     $order_id = (int) $order['id'];
     $line = isset($answer['log'][0]) ? $answer['log'][0] : pg_payment_log_name($key) . ' reports ' . $answer['status'] . ' for payment ' . $answer['transaction_id'];
 
-    if (in_array($answer['status'], array('paid', 'authorized'), true)) {
+    if (($answer['status'] === 'paid') && pg_order_payment_pending($order)) {
+        if (($answer['amount'] !== null) && ((int) $answer['amount'] === (int) ($order['total'] ?? -1))) {
+            $outcome['status'] = 'recorded';
+            $outcome['log'] = array($line . ' for order #' . $order_id . ', which was awaiting it. The payment was recorded.');
+            $outcome['mark_paid'] = true;
+
+            return $outcome;
+        }
+
+        $line .= ' for order #' . $order_id . ', which is awaiting payment, but not for the order\'s total. The payment was not recorded: check it on ' . pg_payment_log_name($key) . '\'s own screen.';
+    } elseif (in_array($answer['status'], array('paid', 'authorized'), true)) {
         if ((string) $order['status'] !== 'incomplete') {
             $outcome['status'] = 'nothing';
 
@@ -231,6 +249,10 @@ function pg_payment_callback_receive()
 
     foreach ($outcome['log'] as $line) {
         log_activity($line, 'SYSTEM');
+    }
+
+    if ($outcome['mark_paid']) {
+        pg_order_mark_paid((int) $order['id'], 0);
     }
 
     if ($outcome['alert'] !== '') {

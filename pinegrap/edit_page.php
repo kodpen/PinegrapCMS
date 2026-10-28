@@ -847,7 +847,7 @@ if (!$_POST) {
                                                         <div class="popover-body">
                                                             <div class="row">
                                                                 <div class="col-12 mt-5 mb-3">
-                                                                    <label for="keywords" class="form-label">' . lang('Promote on Keyword') . '</label>
+                                                                    <label for="search_keywords" class="form-label">' . lang('Promote on Keyword') . '</label>
                                                                     <input value="' . h($page_search_keywords) . '" type="text" name="search_keywords" id="search_keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"/>' . pg_fields_script() . '
                                                                 </div>
                                                             </div>

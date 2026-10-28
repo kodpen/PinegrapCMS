@@ -334,6 +334,8 @@ if ($liveform->check_form_errors() == false) {
                        "tax_office = '" . escape(trim($liveform->get_field_value('tax_office'))) . "', ";
         }
 
+        // a contact made above is traced once it is filled in, as a create
+        $audit_before = empty($new_contact_id) ? pg_audit_fetch('contacts', (int) $contact_id) : array();
         $query = "UPDATE contacts " .
                  "SET " .
                      "salutation = '" . escape($liveform->get_field_value('billing_salutation')) . "', " .
@@ -357,6 +359,10 @@ if ($liveform->check_form_errors() == false) {
                  "WHERE id = '" . $contact_id . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
+        if (empty($new_contact_id)) {
+            pg_audit_site_record('update', 'contacts', (int) $contact_id, $audit_before);
+        }
+
         // The box's answer goes to the consent log as the contact now holds
         // it, here where the contact takes it: the order may still be
         // refused or left unpaid, and the contact keeps the answer then too.
@@ -365,12 +371,13 @@ if ($liveform->check_form_errors() == false) {
         // The card is not updated from the billing block, but a card with no
         // tax number still takes the one typed here: the order keeps none of
         // its own, and the account its invoice goes to is opened from the card.
-        pg_checkout_fill_contact_tax((int) $contact_id, (string) $liveform->get_field_value('tax_number'), (string) $liveform->get_field_value('tax_office'), (int) $user_id);
+        pg_checkout_fill_contact_tax((int) $contact_id, (string) $liveform->get_field_value('tax_number'), (string) $liveform->get_field_value('tax_office'), (int) $user_id, empty($new_contact_id));
     }
 
     // Announced only now: the row above was created empty and has just been
     // filled in, so a receiver that fetches the customer gets a real one.
     if (!empty($new_contact_id)) {
+        pg_audit_site_record('create', 'contacts', (int) $new_contact_id);
         pg_announce_contact_created($new_contact_id);
     }
 

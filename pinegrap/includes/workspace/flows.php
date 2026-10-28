@@ -1089,12 +1089,13 @@ function ws_flow_access($viewer, $flow)
     $reach = ((int) ($flow['id'] ?? 0) > 0) ? ws_flow_share_reach($viewer, $flow) : array('person' => '', 'channel' => false);
 
     return ws_flow_access_level(array(
-        'owner'   => $owner,
-        'staff'   => $staff,
-        'status'  => (string) $flow['status'],
-        'home'    => $home,
-        'person'  => $reach['person'],
-        'channel' => $reach['channel'],
+        'owner'     => $owner,
+        'staff'     => $staff,
+        'status'    => (string) $flow['status'],
+        'home'      => $home,
+        'person'    => $reach['person'],
+        'channel'   => $reach['channel'],
+        'converted' => $staff && ws_flow_converted((int) ($flow['id'] ?? 0)),
     ));
 }
 
@@ -1567,7 +1568,11 @@ function ws_flow_publish_check($viewer, $flow, $data = array())
         return ws_flow_refusal(lang('The database has to be updated first.'), 503);
     }
 
-    if (!ws_flow_share_manager($viewer, $flow)) {
+    // A converted scheduled action's flow is published by any staff member,
+    // as they saved the action; it keeps running as its owner.
+    $converted = ws_flow_converted((int) $flow['id']) && (ws_flow_access($viewer, $flow) === 'edit');
+
+    if (!ws_flow_share_manager($viewer, $flow) && !$converted) {
         return ws_flow_refusal(lang('Only the owner of a flow can publish it.'), 403);
     }
 

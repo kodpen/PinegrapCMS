@@ -36,4 +36,18 @@ if (waf_table_has_column('config', 'api_enabled')) {
         api_upload_folder_id = '" . (int) post_value('api_upload_folder_id') . "',
         last_modified_user_id = '" . USER_ID . "',
         last_modified_timestamp = UNIX_TIMESTAMP()");
+
+    // The Team devices switch is drawn only where api_apps has its kind column
+    // (includes/settings/api.php); where it is not drawn, nothing was posted
+    // for it and the applications are left as they are.
+    if (waf_table_has_column('api_apps', 'kind')) {
+
+        if (!defined('PG_API_PANEL')) {
+            define('PG_API_PANEL', true);
+        }
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/api/device_switch.php');
+
+        api_device_switch_save(post_value('api_team_devices') ? true : false, USER_ID, $_SESSION['sessionusername']);
+    }
 }

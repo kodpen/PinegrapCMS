@@ -376,7 +376,12 @@ if (!$_POST) {
     $field_options[] = array('name' => '', 'value' => '</optgroup>');
 
     $field_options[] = array('name' => lang('Payment'), 'value' => '<optgroup>');
-    $field_options[] = array('name' => lang('Payment Method'), 'value' => 'payment_method', 'value_options' => array(array('name' => lang('Credit/Debit Card'), 'value' => 'Credit/Debit Card'), array('name' => lang('PayPal Express Checkout'), 'value' => 'PayPal Express Checkout'), array('name' => lang('Offline Payment'), 'value' => 'Offline Payment')));
+    // The methods the store has always listed, then each redirect driver's.
+    $payment_method_options = array(array('name' => lang('Credit/Debit Card'), 'value' => 'Credit/Debit Card'), array('name' => lang('PayPal Express Checkout'), 'value' => 'PayPal Express Checkout'), array('name' => lang('Offline Payment'), 'value' => 'Offline Payment'));
+    foreach (array_keys(pg_payment_driver_methods()) as $payment_method_driver) {
+        $payment_method_options[] = array('name' => pg_payment_method_label($payment_method_driver), 'value' => $payment_method_driver);
+    }
+    $field_options[] = array('name' => lang('Payment Method'), 'value' => 'payment_method', 'value_options' => $payment_method_options);
     $field_options[] = array('name' => lang('Card Type'), 'value' => 'card_type');
     $field_options[] = array('name' => lang('Cardholder'), 'value' => 'cardholder');
     $field_options[] = array('name' => lang('Card Number'), 'value' => 'card_number');
@@ -528,15 +533,10 @@ if (!$_POST) {
         $increase_year['stop_day'] = '31';
         $increase_year['stop_year'] = $_SESSION['software']['ecommerce']['view_order_report'][$session_index]['start_year'] + 1;
 
-        $decrease_month['new_time'] = mktime(0, 0, 0, $_SESSION['software']['ecommerce']['view_order_report'][$session_index]['start_month'] - 1, 1, $_SESSION['software']['ecommerce']['view_order_report'][$session_index]['start_year']);
-        $decrease_month['new_month'] = date('m', $decrease_month['new_time']);
-        $decrease_month['new_year'] = date('Y', $decrease_month['new_time']);
-        $decrease_month['start_month'] = $decrease_month['new_month'];
-        $decrease_month['start_day'] = '01';
-        $decrease_month['start_year'] = $decrease_month['new_year'];
-        $decrease_month['stop_month'] = $decrease_month['new_month'];
-        $decrease_month['stop_day'] = date('t', $decrease_month['new_time']);
-        $decrease_month['stop_year'] = $decrease_month['new_year'];
+        // The arrows of the month unit step from the last month on screen
+        // (pg_list_period_month_steps()).
+        $month_steps = pg_list_period_month_steps($_SESSION['software']['ecommerce']['view_order_report'][$session_index]);
+        $decrease_month = $month_steps['previous'];
 
         $current_month['new_month'] = date('m');
         $current_month['new_year'] = date('Y');
@@ -547,15 +547,7 @@ if (!$_POST) {
         $current_month['stop_day'] = date('t');
         $current_month['stop_year'] = $current_month['new_year'];
 
-        $increase_month['new_time'] = mktime(0, 0, 0, $_SESSION['software']['ecommerce']['view_order_report'][$session_index]['start_month'] + 1, 1, $_SESSION['software']['ecommerce']['view_order_report'][$session_index]['start_year']);
-        $increase_month['new_month'] = date('m', $increase_month['new_time']);
-        $increase_month['new_year'] = date('Y', $increase_month['new_time']);
-        $increase_month['start_month'] = $increase_month['new_month'];
-        $increase_month['start_day'] = '01';
-        $increase_month['start_year'] = $increase_month['new_year'];
-        $increase_month['stop_month'] = $increase_month['new_month'];
-        $increase_month['stop_day'] = date('t', $increase_month['new_time']);
-        $increase_month['stop_year'] = $increase_month['new_year'];
+        $increase_month = $month_steps['next'];
 
         $decrease_week['start_date_timestamp'] = mktime(0, 0, 0, $_SESSION['software']['ecommerce']['view_order_report'][$session_index]['start_month'], $_SESSION['software']['ecommerce']['view_order_report'][$session_index]['start_day'], $_SESSION['software']['ecommerce']['view_order_report'][$session_index]['start_year']);
         $decrease_week['new_time_start'] = strtotime('last Sunday', $decrease_week['start_date_timestamp']);
@@ -657,7 +649,7 @@ if (!$_POST) {
             <div class="btn-group btn-group-sm col-auto py-0 px-1 my-1">
                 <a class="btn py-0 px-1 border-start border-top border-bottom" href="view_order_report.php?start_month=' . $decrease_month['start_month'] . '&start_day=' . $decrease_month['start_day'] . '&start_year=' . $decrease_month['start_year'] . '&stop_month=' . $decrease_month['stop_month'] . '&stop_day=' . $decrease_month['stop_day'] . '&stop_year=' . $decrease_month['stop_year'] . $output_date_changer_query_string_id . '"><</a>
                 <a class="btn py-0 px-1 border-bottom border-top" href="view_order_report.php?start_month=' . $current_month['start_month'] . '&start_day=' . $current_month['start_day'] . '&start_year=' . $current_month['start_year'] . '&stop_month=' . $current_month['stop_month'] . '&stop_day=' . $current_month['stop_day'] . '&stop_year=' . $current_month['stop_year'] . $output_date_changer_query_string_id . '">' . lang('Month') . '</a>
-                <a class="btn py-0 px-1 border-end border-top border-bottom" href="view_order_report.php?start_month=' . $increase_month['start_month'] . '&start_day=' . $increase_month['start_day'] . '&start_year=' . $increase_month['start_year'] . '&stop_month=' . $increase_month['stop_month'] . '&stop_day=' . $increase_month['stop_day'] . '&stop_year=' . $increase_month['stop_year'] . '">></a>
+                <a class="btn py-0 px-1 border-end border-top border-bottom" href="view_order_report.php?start_month=' . $increase_month['start_month'] . '&start_day=' . $increase_month['start_day'] . '&start_year=' . $increase_month['start_year'] . '&stop_month=' . $increase_month['stop_month'] . '&stop_day=' . $increase_month['stop_day'] . '&stop_year=' . $increase_month['stop_year'] . $output_date_changer_query_string_id . '">></a>
             </div>
             <div class="btn-group btn-group-sm col-auto py-0 px-1 my-1">    
                 <a class="btn py-0 px-1 border-start border-top border-bottom" href="view_order_report.php?start_month=' . $decrease_week['start_month'] . '&start_day=' . $decrease_week['start_day'] . '&start_year=' . $decrease_week['start_year'] . '&stop_month=' . $decrease_week['stop_month'] . '&stop_day=' . $decrease_week['stop_day'] . '&stop_year=' . $decrease_week['stop_year'] . $output_date_changer_query_string_id . '"><</a>
@@ -671,7 +663,7 @@ if (!$_POST) {
             </div>    
         </div>
         <p class="text-center md:text-end p-0 m-0">
-            <span class="badge fg-black fw-light border-2">    ' . $output_date_range . '</span>
+            <span class="badge fg-body fw-light border-2">    ' . $output_date_range . '</span>
         </p>';
     }
     

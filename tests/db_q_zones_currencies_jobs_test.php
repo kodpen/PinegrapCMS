@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Static checks on the tax zone, state, currency, add, order edit and
- * payment job screens (edit_tax_zone.php, edit_state.php,
+ * payment job screens (edit_tax_zone.php and its shared form, edit_state.php,
  * edit_currency.php, update_currency.php, add_zone.php,
  * add_shipping_method.php, add_arrival_date.php, add_product_group.php,
  * edit_orders.php, view_orders_for_contact.php, membership_job.php,
@@ -122,9 +122,10 @@ function db_q_zones_currencies_jobs_test_calls($path)
 function db_q_zones_currencies_jobs_test_files()
 {
 	return array(
-		'edit_tax_zone.php' => 6,
+		'edit_tax_zone.php' => 4,
+		'includes/forms/tax_zone_form.php' => 4,
 		'edit_state.php' => 6,
-		'edit_currency.php' => 5,
+		'edit_currency.php' => 4,
 		'update_currency.php' => 3,
 		'add_zone.php' => 3,
 		'add_shipping_method.php' => 1,

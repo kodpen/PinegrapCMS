@@ -123,7 +123,7 @@ function db_q_commerce_tail_test_calls($path)
 function db_q_commerce_tail_test_files()
 {
 	return array(
-		'add_tax_zone.php' => 3,
+		'add_tax_zone.php' => 1,
 		'edit_referral_source.php' => 3,
 		'add_referral_source.php' => 1,
 		'view_referral_sources.php' => 0,
@@ -137,7 +137,8 @@ function db_q_commerce_tail_test_files()
 		'catalog_detail.php' => 2,
 		'barcode_increase_inventory.php' => 2,
 		'barcode_decrease_inventory.php' => 2,
-		'add_currency.php' => 2,
+		'add_currency.php' => 1,
+		'includes/forms/currency_form.php' => 2,
 		'add_country.php' => 2,
 		'add_state.php' => 1,
 		'view_zones.php' => 0,

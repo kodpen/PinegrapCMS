@@ -1,6 +1,6 @@
 ---
 name: payment-driver-layer
-description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b, 4a, 5 done; 4b, 4c open): payment drivers beside submit_order.php; iyzico and Stripe on it; one checkout method list, then PayPal v2 and PayTR
+description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b, 4a, 4b, 4b2, 5 done; 4c open): payment drivers beside submit_order.php; iyzico and Stripe on it; one checkout method list, then PayPal v2 and PayTR
 ---
 
 ## What did the owner decide?
@@ -21,14 +21,16 @@ description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b, 4a, 5 done; 4b, 4c ope
 ## What remains?
 - Done: 1 contract and registry (PR #740), 2 iyzico (#812), 2b its 3-D Secure return (#1710), 3a Stripe PaymentIntents (#937), 4a one list of checkout methods (#1743, `commerce/payment-method-lists.md`), 5 refund and cancel through the driver (#873).
 3b. Stripe webhook (`payment_callback.php?driver=stripe`) (M). First half done (PR #2143, alert only: `commerce/payment-callback.md`); the order keeps the started PaymentIntent (A1, #2199); completing from the webhook moved to `plans/order-completion-function.md`.
-4b. PayPal Checkout v2 driver (M), after 4a: a redirect method appended to `orders.payment_method` by a 2026.11.0 step; Orders v2 create, approve redirect, capture in `complete()`; refund by capture id; no webhook needed. Built on a branch, not landed: `plans/payment-driver-paypal.md`.
+4b. PayPal Checkout v2: done (#2377, `commerce/payment-driver-paypal.md`); PENDING capture → awaiting payment (#2408).
+4b2. PayPal capture webhooks: done (#2613, `commerce/payment-driver-paypal-webhook.md`).
 4c. PayTR driver (M), after `order-completion-function.md` A3: it confirms payments only server to server; its iframe needs frame-src CSP.
+6b. Driver card fields on the classic order preview and express order pages (built-in and custom layouts, #2407): done (PR #2556, `commerce/payment-hosted-classic-pages.md`).
 6. Memory: keep `commerce/payment-drivers.md` current; the decisions list entry (legacy gateways frozen on purpose, `workflow/decisions-made-product.md`) is the owner's to add.
 
 ## Open questions?
 - Sipay/Param after PayTR by demand; prefer a PSP that fronts the banks over per-bank vPOS.
 - Answered (#2438): the unreachable inline Iyzipay and Pay With Iyzico code goes, after a test pins both values to the driver branch.
-- Answered (#2407): the driver's fields are drawn on the classic checkout pages and classic express order too, a step after 3b.
+- Answered (#2407): the driver's fields on the classic checkout and express order pages too: 6b, PR #2556.
 
 ## Where to start?
-- 4b: `commerce/payment-method-lists.md` (what a new redirect method still needs: the ENUM step), then `commerce/payment-drivers.md`.
+- 4c: `plans/order-completion-function.md` (A3 first), then `commerce/payment-drivers.md`.

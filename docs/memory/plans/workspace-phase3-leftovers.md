@@ -1,6 +1,6 @@
 ---
 name: workspace-phase3-leftovers
-description: Workspace phase 3 (bots): app.mentioned webhook done (#809), app membership moved to workspace-agent-handles; ERP overdue to task done; left: command registry over the API, designer task panel
+description: Workspace phase 3 (bots): app.mentioned webhook done (#809), app commands done (#2213), app membership moved to workspace-agent-handles; ERP overdue to task done; left: designer task panel
 ---
 
 ## What is done?
@@ -10,7 +10,7 @@ description: Workspace phase 3 (bots): app.mentioned webhook done (#809), app me
 ## What is left of phase 3?
 Not found in code on 2026-10-16; check again before starting, then one PR per item:
 1. Moved (2026-10-21) to docs/memory/plans/workspace-agent-handles.md: an outside application's own tag name and place in the @ picker (step 1), its channel membership endpoints (step 4).
-2. Command registry over the API, decided in #2381: table `ws_app_commands` (UNIQUE name, deleted with the application); a typed app command is not posted but sent to the registering application where it may read the channel; scope `workspace:commands`; 20 per application. Draft PR #2213 builds it (`includes/workspace/commands.php`, `ws_command_names()`).
+2. Done (#2213, decided in #2381): an application registers its own `/command`; the channel offers it beside the built-in ones and sends it to that application alone: docs/memory/workspace/workspace-app-commands.md.
 3. Done (#809): `workspace.app.mentioned`, sent to the mentioned application's own subscriptions where it may read the channel, answered with `POST /workspace/channels/{id}/messages`: docs/memory/workspace/workspace-app-mentioned-webhook.md.
 4. Done (#1860): ERP overdue receivable → task, `erp_overdue_followups()` behind `ERP_OVERDUE_FOLLOWUP` in config.php: docs/memory/erp/erp-overdue-reminders.md.
 5. Visual designer: a "tasks of this page" panel next to the page settings.

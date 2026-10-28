@@ -204,7 +204,7 @@ function test_widget_parts_cart_schedule_gateway_rules_on_the_controls()
 function test_widget_parts_cart_schedule_controls_are_the_systems()
 {
 	$tree = json_decode(pg_sw_default_parts_apply(json_encode(_pcsc_tree()), 'shopping_cart'), true);
-	$set = &$tree['children'][0]['children'][2]['children'][0];
+	$set = &$tree['children'][0]['children'][3]['children'][0];
 	pg_assert_same('pg-cart-recurring-set border rounded p-3 mb-3', $set['props']['cssClass']);
 	// The designer restyles the frequency, names it, and deletes the
 	// optional number of payments.
@@ -225,7 +225,7 @@ function test_widget_parts_cart_schedule_controls_are_the_systems()
 
 	// The required frequency deleted: it comes back in the box.
 	$tree = json_decode(pg_sw_default_parts_apply(json_encode(_pcsc_tree()), 'shopping_cart'), true);
-	unset($tree['children'][0]['children'][2]['children'][0]['children'][1]);
+	unset($tree['children'][0]['children'][3]['children'][0]['children'][1]);
 	$new = _pcsc_render($tree);
 	pg_assert_same(1, preg_match_all('/<select[^>]*name="recurring_payment_period_31"[^>]*required/', $new), 'one required frequency');
 }
@@ -233,8 +233,8 @@ function test_widget_parts_cart_schedule_controls_are_the_systems()
 function test_widget_parts_cart_schedule_placed_beats_pushed()
 {
 	$tree = json_decode(pg_sw_default_parts_apply(json_encode(_pcsc_tree()), 'shopping_cart'), true);
-	pg_assert_same(3, count($tree['children'][0]['children']), 'the row, the gift cards, then the schedule');
-	pg_assert_same('cart.item_schedule', $tree['children'][0]['children'][2]['props']['source']);
+	pg_assert_same(4, count($tree['children'][0]['children']), 'the row, the product form, the gift cards, then the schedule');
+	pg_assert_same('cart.item_schedule', $tree['children'][0]['children'][3]['props']['source']);
 	$json = json_encode($tree);
 	pg_assert_same($json, pg_sw_default_parts_apply($json, 'shopping_cart'), 'a tree with its part is left as it is');
 }
@@ -261,7 +261,7 @@ function test_widget_parts_cart_schedule_editor_twin()
 		. $cut("\n    var SW_CART_SCHEDULE_CONTROLS = {", "\n    };\n");
 	foreach (array('_sdDefaultParts', '_sdPartTokenOf', '_sdPartHost', '_sdPartEl', '_sdPartWhen', '_sdPartPlaced', '_sdPartItemLegend',
 		'_sdPartCartGiftCardField', '_sdPartCartItemGiftCard', '_sdPartCartScheduleField', '_sdPartCartItemSchedule',
-		'_sdMainLoop', '_sdDefaultLoopTails') as $fn) {
+		'_sdPartValue', '_sdPartCartFormControl', '_sdPartCartItemForm', '_sdMainLoop', '_sdDefaultLoopTails') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
 	}
 	$tree = _pcsc_tree(array(_pcsc_node('content', array('contentType' => 'paragraph', 'text' => '^^__item_recurring_schedule_html^^'))));

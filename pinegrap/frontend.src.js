@@ -289,6 +289,48 @@ software_$(document).ready(function() {
           
           }
 
+        // Tells api.php the bar's new state the moment it changes, so the next
+        // front-end page opens it the same way. It used to be sent on
+        // beforeunload with a synchronous request, which Chromium refuses
+        // during page dismissal, so the state never reached the server. A
+        // keepalive request survives a navigation that follows at once.
+        function send_toolbar_state(enabled) {
+            if (enabled == toolbar_enabled) {
+                return;
+            }
+
+            toolbar_enabled = enabled;
+
+            var url = software_path + software_directory + '/api.php';
+            var body = JSON.stringify({
+                action: 'update_toolbar_properties',
+                token: software_token,
+                enabled: enabled
+            });
+
+            if (typeof window.fetch === 'function') {
+                try {
+                    window.fetch(url, {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        keepalive: true,
+                        headers: {'Content-Type': 'application/json'},
+                        body: body
+                    });
+                    return;
+                } catch (e) {
+                    // An old fetch without keepalive support falls through.
+                }
+            }
+
+            software_$.ajax({
+                contentType: 'application/json',
+                url: url,
+                data: body,
+                type: 'POST'
+            });
+        }
+
         toolbar_button.click(function () {
             // If the toolbar is expanded, then collapse it.
             if (toolbar.is(':visible')) {
@@ -297,6 +339,7 @@ software_$(document).ready(function() {
                 toolbar_button.addClass('down_button');
                 toolbar_button.prop('title', lang('Deactivate Fullscreen Mode') + ' (Ctrl+D | \u2318+D)');
                 software_$('#software_pinegrap_button_container').show();
+                send_toolbar_state(false);
             // Otherwise the toolbar is collapsed, so expand it.
             } else {
                 // If the toolbar is fully loaded, then expand it now.
@@ -319,6 +362,7 @@ software_$(document).ready(function() {
                     toolbar_button.addClass('up_button');
                     toolbar_button.prop('title', lang('Activate Fullscreen Mode') + ' (Ctrl+D | \u2318+D)');
                     software_$('#software_pinegrap_button_container').hide();
+                    send_toolbar_state(true);
                 // Otherwise use polling to determine when the toolbar is fully ready.
                 } else {
                     var count = 0;
@@ -354,6 +398,7 @@ software_$(document).ready(function() {
                             toolbar_button.addClass('up_button');
                             toolbar_button.prop('title', lang('Activate Fullscreen Mode') + ' (Ctrl+D | \u2318+D)');
                             software_$('#software_pinegrap_button_container').hide();
+                            send_toolbar_state(true);
                             clearInterval(toolbar_polling);
 
                         // Otherwise if we have polled a large number of times,
@@ -368,33 +413,6 @@ software_$(document).ready(function() {
             }
         });
     
-        // Update toolbar properties when visitor leaves this page.
-        software_$(window).on('beforeunload', function() {
-            var new_toolbar_enabled = false;
-
-            // If the toolbar is enabled, then store that.
-            if (toolbar_button.hasClass('up_button')) {
-                new_toolbar_enabled = true;
-            }
-
-            // If the status of the toolbar is different from when the page
-            // first loaded, then send AJAX request to update status,
-            // so that we can remember it for future page views.
-            if (new_toolbar_enabled != toolbar_enabled) {
-                software_$.ajax({
-                    contentType: 'application/json',
-                    url: software_path + software_directory + '/api.php',
-                    data: JSON.stringify({
-                        action: 'update_toolbar_properties',
-                        token: software_token,
-                        enabled: new_toolbar_enabled
-                    }),
-                    type: 'POST',
-                    async: false
-                });
-            }
-        });
-
         // Add keyboard shortcuts.
         software_$(window).bind('keydown', function(event) {
             if (event.ctrlKey || event.metaKey) {

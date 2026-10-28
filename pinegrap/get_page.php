@@ -18,6 +18,19 @@
 
 include ('init.php');
 
+// A page asked for on another host name of the site (www or the bare name)
+// goes to the same address on the site's own host, when the site says so
+// (pg_main_host_redirect_url()). Only page renders reach this file; the panel,
+// the API, cron and file downloads keep answering on any host.
+if (MAIN_HOST_REDIRECT && !headers_sent()) {
+	$pg_main_host_url = pg_main_host_redirect_url(true, $_SERVER['REQUEST_METHOD'] ?? '', $_SERVER['HTTP_HOST'] ?? '', HOSTNAME_SETTING, REQUEST_URL, URL_SCHEME);
+
+	if ($pg_main_host_url !== '') {
+		header('Location: ' . $pg_main_host_url, true, 301);
+		exit();
+	}
+}
+
 // Maintenance mode (includes/fn/maintenance_mode.php): while it holds, a
 // visitor gets the maintenance screen with a 503 and Retry-After, before any
 // tracking or page lookup. Staff and the listed addresses see the site.
@@ -1294,7 +1307,9 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 						// If there is a media_file, then output it.
                         // it mean file is uploaded we check files
                         if(!empty($submitted_form['media_file'])){
-                           
+                          // Only an upload a visitor who is not signed in may open: the
+                          // enclosure's address must not answer with the sign-in screen.
+                          if (pg_file_open_to_everyone($submitted_form['media_file'])) {
                             $query = "SELECT 
                             id,
                             name,
@@ -1316,6 +1331,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                                 $output_media_type = get_mime_type($media['type']);
                                 $output_rss_media = '<enclosure url="' . URL_SCHEME . HOSTNAME_SETTING . PATH  . h(urlencode($media['name'])) . '" length="' . $media['size'] . '" type="' . $output_media_type . '"/>';
                             }
+                          }
                             //else no media_file so we check media_text for data 
                         }else{
                             if(!empty($submitted_form['media_text'])){
@@ -3005,10 +3021,16 @@ else
 		// If the toolbar was expanded on the last page visit, then prepare it to
 		// be expanded by default.
 		//
-		// frontend.src.js posts this flag to api.php every time the state
-		// changes, on every front-end page. It used to be read only while a
-		// theme preview was running, so everywhere else the bar it had just
-		// remembered opened closed again on the next page.
+		// frontend.src.js posts this flag to api.php the moment the bar is
+		// opened or closed, on every front-end page. It used to be read only
+		// while a theme preview was running, and later sent only on
+		// beforeunload, which Chromium refuses for a synchronous request, so
+		// the bar opened closed again on the next page.
+		//
+		// The iframe below carries color-scheme: light like the bar's root
+		// (toolbar.php): a frame whose element and document differ in scheme
+		// is painted on an opaque canvas, which hid a dark site's page under
+		// a grey-white layer whenever the bar was open.
 		if (isset($_SESSION['software']['toolbar_enabled']) && ($_SESSION['software']['toolbar_enabled'] == true))
 		{
 			$fullscreen_toggle = "up_button";
@@ -3088,7 +3110,7 @@ else
 		
 		// prepare to add toolbar and buttons below toolbar
 		$output_toolbar = '
-			<iframe id="software_toolbar" scrolling="no" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/toolbar.php?page_id=' . $page_id . '&amp;style_id=' . STYLE_ID . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '" style="position: fixed; top: 0; right: 0; left: 0; z-index: 999999999; padding: 0; margin: 0; width: 100%; display: none;100% !important" frameborder="0"></iframe>
+			<iframe id="software_toolbar" scrolling="no" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/toolbar.php?page_id=' . $page_id . '&amp;style_id=' . STYLE_ID . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '" style="position: fixed; top: 0; right: 0; left: 0; z-index: 999999999; padding: 0; margin: 0; width: 100%; display: none; color-scheme: light;" frameborder="0"></iframe>
             <div id="software_pinegrap_button_container">
 				' . $output_seo_toolbar['button'] . '
 				' . $output_grid_button . '
