@@ -9,7 +9,7 @@ description: Plan (owner request 2026-10-27, draft): flows started from a channe
 - Scheduled work has no menu or form of its own: a scheduled job is a flow with a time start. Scheduled messages ("Send later") stay a composer feature (answer 1 of workspace-flows-scheduled-merge.md).
 
 ## What happens to the scheduled-action parts and API? (owner, 2026-10-27)
-- Every part of a scheduled action gets a place in the designer: starts, conditions, the 12 steps, the four outcomes, delay, chain, placeholders, counts. Still missing: approval box, skipped and always outcomes, delay (F5); a start-a-flow box; trigger values (D5); counts as thread outputs (D1).
+- Every part of a scheduled action gets a place in the designer: starts, conditions, the 12 steps, the four outcomes, delay, chain, placeholders, counts. Each has its box now: approval #2142, delay #2135, always and skipped #2249 (skipped is a condition's no), start a flow #2235, trigger values #2341, counts as outputs #2111.
 - Decided (owner, 2026-10-27): the `/workspace/scheduled-actions` routes (list, get, create, update, pause, resume, cancel; `api_scheduled.php`, #1708 #1858 #1987, never released) are removed before 2026.11.0 ships, with no compatibility layer. Scheduled work goes through the flow routes (`/workspace/flows`). The #1708 rule moves to flows: only the person publishes, changes live or resumes (workflow/decisions-made-product.md). `/workspace/scheduled-messages` stays.
 
 ## Which steps? (one PR each)
@@ -25,7 +25,7 @@ description: Plan (owner request 2026-10-27, draft): flows started from a channe
 
 - C5b before 2026.11.0: the `scheduled` proposal type (api_proposals.php, scheduled_draft.php) becomes a flow draft card. `?start=` on `GET /workspace/flows` is workspace-flows-api.md A1. More flow routes come in their place: workspace-flows-api.md.
 
-- C6 every scheduled action becomes a flow in the 2026.11.0 upgrade, none left read-only: needs every part as a box first (parity test green: approval, delay, skipped and always outcomes from F5, start-a-flow, trigger values D5, counts D1). Then the scheduled-action form goes. A mark on the converted rows is schema: ask first (merge plan slice 5).
+- C6 every scheduled action becomes a flow in the 2026.11.0 upgrade, none left read-only; then the scheduled-action form goes. The work is merge plan slice 5: the mark on converted rows approved (#2396), 5a done (#2558).
 
 ## What was decided about existing actions? (owner, 2026-10-27)
 - All of them are converted, none stays read-only or on the form: every part gets its box before 2026.11.0 ships (C6). Answer 2 of workspace-flows-scheduled-merge.md is now (b), no longer (c). Until then an existing action keeps its card and form (merge plan 4a); the other ways in move to the canvas in 4b.
