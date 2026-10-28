@@ -137,3 +137,33 @@ function test_mail_site_mark()
 	pg_assert_contains("\$mail->addCustomHeader('X-Pinegrap-Mail', pg_mail_site_mark());", $source, 'every mail carries it');
 	pg_assert_same(strtolower('X-Pinegrap-Mail'), WS_MAIL_LOOP_HEADER, 'the header the loop gate reads');
 }
+
+function test_workspace_mail_reply_offer()
+{
+	$item = array('conversation' => array('id' => 3, 'message_id' => 100));
+
+	pg_assert_same(3, ws_mail_reply_offer(array('id' => 100), $item, true), 'the card');
+	pg_assert_same(0, ws_mail_reply_offer(array('id' => 101), $item, true), 'not an answer under it');
+	pg_assert_same(0, ws_mail_reply_offer(array('id' => 100), $item, false), 'a reader who cannot write');
+	pg_assert_same(0, ws_mail_reply_offer(array('id' => 100), array('conversation' => null), true), 'no conversation');
+	pg_assert_same(0, ws_mail_reply_offer(array('id' => 100), null, true), 'the mail gone');
+}
+
+function test_workspace_mail_reply_reaches_the_screen()
+{
+	$messages = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/messages.php');
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_mail.js');
+
+	pg_assert_contains("'mail_reply'  => (\$mail && !\$deleted && function_exists('ws_mail_reply_offer'))", $messages, 'the payload offers it');
+	pg_assert_contains("case 'ws_mail_reply':", $actions, 'the action');
+	pg_assert_contains('ws_mail_reply_send($viewer,', $actions, 'checked and sent by the server');
+	pg_assert_contains('window.PGWsMail.node(message, self, featureHelpers())', $screen, 'drawn under the card');
+	pg_assert_contains("h.api('ws_mail_reply', { conversation_id: message.mail_reply, text: text.value })", $script);
+	pg_assert_true(in_array('assets/js/workspace_mail.js', pg_js_bundles()['assets/js/workspace.min.js'], true), 'in the bundle');
+
+	foreach (array_keys(ws_mail_js_strings()) as $key) {
+		pg_assert_contains("'" . $key . "'", $script, $key . ' is used');
+	}
+}

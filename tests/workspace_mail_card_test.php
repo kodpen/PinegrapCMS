@@ -97,6 +97,7 @@ function test_workspace_mail_box_input()
 	pg_assert_same(array(
 		'name' => 'Support', 'address' => 'support@example.com', 'channel_id' => 4, 'auth_server' => 'mx.google.com', 'enabled' => 1,
 		'provider' => '', 'host' => '', 'port' => 993, 'user' => '', 'password' => '', 'folder' => 'INBOX', 'after_fetch' => 'seen', 'move_folder' => '',
+		'reply_via' => 'box', 'smtp_host' => '', 'smtp_port' => 0,
 	), $ok['values'], 'cleaned; no server is an .eml-only box');
 
 	$base = array('name' => 'Support', 'address' => 'support@example.com', 'channel_id' => 4, 'auth_server' => '');
@@ -213,4 +214,55 @@ function test_workspace_mail_box_form_never_draws_the_password()
 	pg_assert_contains('<option value="zoho" selected>', $html);
 	pg_assert_contains('<option value="move" selected>', $html);
 	pg_assert_contains('value="imap.example.com"', $html);
+}
+
+function test_workspace_mail_box_input_sending()
+{
+	$base = array('name' => 'Support', 'address' => 'support@example.com', 'channel_id' => 4, 'auth_server' => '');
+
+	$gmail = ws_mail_box_input(array_merge($base, array('provider' => 'gmail', 'user' => 'support@example.com')));
+	pg_assert_same(array('box', 'smtp.gmail.com', 465), array($gmail['values']['reply_via'], $gmail['values']['smtp_host'], $gmail['values']['smtp_port']), 'a service fills its sending server');
+
+	$typed = ws_mail_box_input(array_merge($base, array('smtp_host' => 'SMTP.Example.com', 'smtp_port' => '2525', 'user' => 'u')));
+	pg_assert_true($typed['ok'], 'sending without reading');
+	pg_assert_same(array('smtp.example.com', 2525), array($typed['values']['smtp_host'], $typed['values']['smtp_port']));
+	pg_assert_same(587, ws_mail_box_input(array_merge($base, array('smtp_host' => 'smtp.example.com', 'user' => 'u')))['values']['smtp_port'], 'the submission port by default');
+
+	pg_assert_same(lang('Enter the user name the mailbox signs in with.'), ws_mail_box_input(array_merge($base, array('smtp_host' => 'smtp.example.com')))['error'], 'a sending server signs in');
+	pg_assert_same(lang('The sending server is a host name such as smtp.gmail.com, with a port from 1 to 65535.'), ws_mail_box_input(array_merge($base, array('smtp_host' => 'localhost', 'user' => 'u')))['error']);
+	pg_assert_same(lang('The sending server is a host name such as smtp.gmail.com, with a port from 1 to 65535.'), ws_mail_box_input(array_merge($base, array('smtp_host' => 'smtp.example.com', 'smtp_port' => '99999', 'user' => 'u')))['error']);
+
+	$site = ws_mail_box_input(array_merge($base, array('provider' => 'gmail', 'user' => 'u', 'reply_via' => 'site', 'smtp_host' => 'smtp.example.com')));
+	pg_assert_same(array('site', '', 0), array($site['values']['reply_via'], $site['values']['smtp_host'], $site['values']['smtp_port']), 'the site\'s settings keep no server');
+	pg_assert_same('box', ws_mail_box_input(array_merge($base, array('reply_via' => 'connection')))['values']['reply_via'], 'a connected account is not chosen here yet');
+
+	foreach (ws_mail_providers() as $key => $provider) {
+		pg_assert_true(($provider['smtp_host'] === '') || pg_imap_host_valid($provider['smtp_host']), $key . ' sending server is a host name');
+	}
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail_settings.php');
+	pg_assert_contains("(\$settings['smtp_host'] ?? '') !== \$values['smtp_host']", $source, 'a new sending server asks for the password again');
+}
+
+function test_workspace_mail_box_form_sending_fields()
+{
+	$box = array('id' => 3, 'name' => 'Support', 'address' => 'support@example.com', 'channel_id' => 0, 'folder' => 'INBOX', 'after_fetch' => 'seen', 'enabled' => 1, 'reply_via' => 'site',
+		'settings' => json_encode(array('host' => 'imap.example.com', 'user' => 'u', 'smtp_host' => 'smtp.example.com', 'smtp_port' => 465)));
+	$html = ws_mail_box_form('workspace_settings.php', $box, array());
+
+	pg_assert_contains('<option value="site" selected>', $html);
+	pg_assert_contains('name="smtp_host" id="ws_mail_3_smtp_host" maxlength="253" value="smtp.example.com"', $html);
+	pg_assert_contains('name="smtp_port" id="ws_mail_3_smtp_port" min="1" max="65535" value="465"', $html);
+}
+
+function test_workspace_mail_sent_answer_is_drawn_as_sent()
+{
+	$item = workspace_mail_card_test_item(array('direction' => 'out', 'from_email' => 'support@shop.test', 'to_list' => 'ayse@example.com', 'auth' => 'pass'));
+	$html = ws_mail_card_html(array('id' => 101, 'file_id' => 0, 'body' => 'On its way.'), $item);
+
+	pg_assert_contains(h(lang('Sent by e-mail')), $html);
+	pg_assert_contains(h(lang(array('string' => 'To {var:1}', 'vars' => 'ayse@example.com'))), $html, 'whom it went to');
+	pg_assert_true(strpos($html, h(lang('Sender not verified'))) === false);
+
+	pg_assert_same('Ayşe Yılmaz', ws_mail_sender(workspace_mail_card_test_item(array('direction' => 'out', 'user_id' => 0)))['name'], 'a writer gone: the name kept on the mail');
 }

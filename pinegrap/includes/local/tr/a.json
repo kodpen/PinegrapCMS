@@ -2329,6 +2329,7 @@
     "Answers about posting, replies, your account and the docs.": "Konu açma, yanıtlar, hesabınız ve dokümanlar hakkında yanıtlar.",
     "Answers already given keep their text but lose their line breaks; switched off, stored formatting shows as code.": "Önceden verilmiş yanıtların metni kalır ama satır sonları kaybolur; kapatılırsa saklanan biçimlendirme kod olarak görünür.",
     "Answers in the forum come from other members and are given in good faith, without a guarantee. Keep a copy of anything important before you follow a step you are unsure of.": "Forumdaki yanıtlar diğer üyelerden gelir ve iyi niyetle, herhangi bir garanti olmadan verilir. Emin olmadığınız bir adımı uygulamadan önce önemli her şeyin bir kopyasını alın.",
+    "Answers leave from the mailbox's address. Its own sending server signs in with the user name and password above; the site's mail settings send only for an address on the site's own mail domain.": "Yanıtlar e-posta kutusunun adresinden çıkar. Kutunun kendi gönderme sunucusu yukarıdaki kullanıcı adı ve parolayla oturum açar; sitenin e-posta ayarları yalnızca sitenin kendi e-posta alan adındaki bir adres için gönderir.",
     "Answers needed": "Yanıt bekliyor",
     "Answers questions about public GitHub repositories from their code and documentation.": "Herkese açık GitHub depolarıyla ilgili soruları kodlarından ve belgelerinden yanıtlar.",
     "Answers through a connected account are not available yet.": "Bağlı hesap üzerinden yanıt henüz kullanılamıyor.",

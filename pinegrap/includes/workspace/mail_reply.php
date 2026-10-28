@@ -203,6 +203,44 @@ function ws_mail_reply_error_text($error)
 }
 
 /**
+ * The conversation a message offers to answer by e-mail: only the card of
+ * a conversation (not its thread), for a reader who may write in the
+ * channel. Whether the box can send is told when the answer is sent.
+ *
+ * @param array      $row      ws_messages row
+ * @param array|null $item     ws_mail_items_map() entry
+ * @param bool       $can_post
+ * @return int conversation id, 0 for none
+ */
+function ws_mail_reply_offer($row, $item, $can_post)
+{
+    $conversation = is_array($item) ? $item['conversation'] : null;
+
+    if (!$can_post || !is_array($conversation) || ((int) $conversation['message_id'] !== (int) $row['id'])) {
+        return 0;
+    }
+
+    return (int) $conversation['id'];
+}
+
+/**
+ * The texts of the "Reply by e-mail" drawer (assets/js/workspace_mail.js).
+ *
+ * @return array key => text
+ */
+function ws_mail_js_strings()
+{
+    return array(
+        'mail_reply'         => lang('Reply by e-mail'),
+        'mail_reply_to'      => ws_js_template('To {var:1}', 1),
+        'mail_reply_hint'    => lang('Sent from the mailbox\'s address with your name under it; the customer\'s last e-mail is quoted below. Only the customer receives it.'),
+        'mail_reply_send'    => lang('Send e-mail'),
+        'mail_reply_sent'    => lang('The e-mail was sent.'),
+        'mail_reply_text'    => lang('Answer'),
+    );
+}
+
+/**
  * Whether this person may send this answer in this conversation. Reads the
  * conversation, its box and its channel; sends nothing.
  *
@@ -227,7 +265,7 @@ function ws_mail_reply_check($viewer, $conversation_id, $text)
     $conversation = db_item("SELECT * FROM ws_mail_conversations WHERE id = '" . (int) $conversation_id . "'");
     $channel = is_array($conversation) ? ws_channel((int) $conversation['channel_id']) : null;
 
-    if (!$channel || !ws_can_post_channel(ws_rights($viewer), $channel)) {
+    if (!$channel || !ws_can_post_channel($viewer, $channel)) {
         return array_merge($out, array('error' => 'no_access'));
     }
 
