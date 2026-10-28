@@ -707,6 +707,7 @@
     "{var:1} installments": "{var:1} Taksit",
     "{var:1} internal link{suffix:1} point nowhere": "{var:1} iç bağlantı hiçbir yere gitmiyor",
     "{var:1} invoice(s) written so far.": "Şimdiye kadar {var:1} fatura yazıldı.",
+    "{var:1} is a bundle: count the products in it instead.": "{var:1} bir paket: bunun yerine içindeki ürünleri sayın.",
     "{var:1} is a day off: {var:2}.": "{var:1} tatil: {var:2}.",
     "{var:1} is a free item that you have requested to ship with no non-free items. Free items must be shipped with at least one non-free item. You may update your order so that the item is shipped with at least one non-free item or you may remove the item.": "{var:1}, ücretsiz bir üründür ve ücretsiz olmayan başka bir ürünle birlikte gönderilmesini istememişsiniz. Ücretsiz ürünler, en az bir ücretsiz olmayan ürünle birlikte gönderilmelidir. Siparişinizi bu ürünün en az bir ücretsiz olmayan ürünle birlikte gönderileceği şekilde güncelleyebilir veya ürünü kaldırabilirsiniz.",
     "{var:1} is a list of variant objects.": "{var:1} bir varyant nesneleri listesidir.",
