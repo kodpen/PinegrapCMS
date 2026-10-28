@@ -17,6 +17,7 @@ description: Panel text on the page background is fg-body, never fg-black (black
 - `view_orders.php` tracking count was `bg-white opacity-75 fg-success` (light green on white in the dark theme); now `badge-subtle theme-success` (#2569).
 - `badge bg-black` has no ink of its own, so it was dark on black in the light theme: `view_waf_log.php` (Banned) and `view_parasut_inbox.php` (Deleted) add `fg-white` (#2569).
 - The users list access menu (`pg_user_list_names_cell()`) sits in a scrollX DataTable and opens with `data-bs-strategy="fixed"`, like `view_product_attributes.php`; it was clipped by `.dt-scroll-body` (#2585).
+- The none/read/write control of the API applications drawer (`api_settings.php`, `.api-seg`) printed `#fff` on `--pg-primary`, a light tone in the dark theme: the checked position now reads `--pg-on-accent`, and the read position that write implies is a `--pg-primary-bg-subtle` tint with `--pg-primary-fg-emphasis` ink and the primary border instead of the fill at 45% opacity, which faded the ink too. `tests/api_settings_theme_test.php`.
 
 ## What is left?
 - `view_order_report.php` (period badge) still carries `fg-black`; it was held by another PR at the time.

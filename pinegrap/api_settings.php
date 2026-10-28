@@ -1572,10 +1572,13 @@ echo pg_page_shell(array(
 .api-seg .btn { --bs-btn-font-size: 11px; --bs-btn-padding-y: .25rem; --bs-btn-padding-x: .6rem;
 	--bs-btn-color: var(--pg-fg-2); --bs-btn-border-color: var(--pg-border-color);
 	--bs-btn-hover-border-color: var(--pg-border-color); }
-.api-seg .btn-check:checked + .btn { color: #fff; background: var(--pg-primary); border-color: var(--pg-primary); }
+.api-seg .btn-check:checked + .btn { color: var(--pg-on-accent); background: var(--pg-primary); border-color: var(--pg-primary); }
 /* Write implies read, so the read position shows as held-open rather than
-   inviting a click that would silently do nothing. */
-.api-seg .btn.implied { color: #fff; background: var(--pg-primary); border-color: var(--pg-primary); opacity: .45; }
+   inviting a click that would silently do nothing. A tint with the primary
+   border, not the fill faded: fading the whole button fades its ink too, and
+   in the dark theme dark ink at partial opacity sinks into the background. */
+.api-seg .btn.implied { color: var(--pg-primary-fg-emphasis); background: var(--pg-primary-bg-subtle);
+	border-color: var(--pg-primary); }
 .api-seg-none { display: inline-flex; align-items: center; justify-content: center; min-width: 34px;
 	font-size: 11px; opacity: .3; border: 1px solid var(--pg-border-color); border-left: 0; }
 .api-log { display: grid; grid-template-columns: 46px 1fr auto auto auto; gap: 9px; align-items: center;
@@ -1625,7 +1628,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 	<div class="d-flex align-items-center gap-3 mb-5">
 		<div class="input-group input-group-sm" style="max-width:280px">
 			<span class="input-group-text"><i class="bi bi-search"></i></span>
-			<input type="text" class="form-control" id="api_filter" placeholder="' . lang('Search application') . '" autocomplete="off">
+			<input type="text" class="form-control" id="api_filter" aria-label="' . h(lang('Search application')) . '" placeholder="' . lang('Search application') . '" autocomplete="off">
 		</div>
 		<div class="flex-grow-1"></div>
 		<a class="btn btn-sm btn-outline theme-secondary" href="api_docs.php">
@@ -1677,7 +1680,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 		<div class="drawer-header pb-1 d-block">
 			<div class="d-flex align-items-start">
 				<h5 class="drawer-title mb-0" id="d_title"></h5>
-				<button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer"></button>
+				<button type="button" class="btn-close ms-auto" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
 			</div>
 			<p class="small opacity-75 mb-0 mt-1" id="d_sub"></p>
 		</div>
@@ -1844,7 +1847,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			<input type="hidden" name="api_action" value="create">
 			<div class="dialog-header">
 				<h5 class="dialog-title"><i class="bi bi-key me-3"></i>' . lang('New Application') . '</h5>
-				<button type="button" class="btn-close" data-bs-dismiss="dialog"></button>
+				<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
 			</div>
 			<div class="dialog-body">
 				<div class="mb-5">
