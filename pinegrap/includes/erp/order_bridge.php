@@ -754,7 +754,9 @@ function erp_order_payment_date($order)
  * carries. Everything that came in over the wire (web checkout,
  * marketplace, or the default type of an older row) is one, and only an
  * internet sale states the address it was made at: the ERP setting, or
- * failing that the site's own address.
+ * failing that the site's configured host name. The request's Host header is
+ * never used: the address is stored on the invoice, and the client chooses
+ * that header.
  *
  * @param array $order  The orders row (type)
  * @return array ['is_internet_sale' => 0|1, 'web_address' => string]
@@ -764,7 +766,7 @@ function erp_order_internet_sale($order)
     return _erp_order_internet_sale(
         (string) ($order['type'] ?? ''),
         defined('ERP_WEB_ADDRESS') ? (string) ERP_WEB_ADDRESS : '',
-        (defined('URL_SCHEME') && defined('HOSTNAME')) ? URL_SCHEME . HOSTNAME : ''
+        (defined('URL_SCHEME') && defined('HOSTNAME_SETTING')) ? URL_SCHEME . HOSTNAME_SETTING : ''
     );
 }
 
@@ -774,7 +776,7 @@ function erp_order_internet_sale($order)
  *
  * @param string $type     orders.type
  * @param string $setting  ERP_WEB_ADDRESS
- * @param string $site     The site's own address (URL_SCHEME . HOSTNAME)
+ * @param string $site     The site's configured address (URL_SCHEME . HOSTNAME_SETTING)
  * @return array ['is_internet_sale' => 0|1, 'web_address' => string]
  */
 function _erp_order_internet_sale($type, $setting, $site)
