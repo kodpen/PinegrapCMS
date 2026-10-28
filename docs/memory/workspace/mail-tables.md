@@ -1,11 +1,12 @@
 ---
 name: mail-tables
-description: Incoming e-mail tables (G1b, step 11.0.82): ws_mail_boxes, ws_mail_conversations, ws_mail_items, sender kind 'mail'; what each column holds and why, pending the architect's approval
+description: Incoming e-mail tables (G1b, step 11.0.82): ws_mail_boxes, ws_mail_conversations, ws_mail_items, sender kind 'mail'; what each column holds and why
 ---
 
 ## Which step adds them?
 - `upgrade_2026_11_0_workspace_mail()` (label 11.0.82) in `includes/migrations/2026.11.0.php`; the three tables are in `get_tables()`. The parser module `includes/fn/mail_parse.php` is loaded by `functions.php` from the same PR.
-- The owner's answers in #2444 approved the feature, not the tables: the schema waits on an `architect` issue (Fixed rules 5) named in the PR body.
+- The owner's answers in #2444 approved the feature; the tables were approved as written in #2677 (option a, PR #2676), G5's status/assignee/auto-reply columns included.
+- No database in the cloud sessions: `tests/workspace_mail_schema_test.php` runs the step twice against an in-memory schema with the real runner helpers; the second run must write nothing.
 
 ## What does ws_mail_boxes hold?
 - `name`, `address`, `transport` (imap | graph | gmail | push), `settings` TEXT (JSON: server, port, user, the password sealed with `pg_connect_seal()`, the move folder, a connection id), `folder` (default `INBOX`), `after_fetch` (seen | move), `channel_id`, `reply_via` (box | site | connection).

@@ -686,6 +686,7 @@
     "It is shown only now. Anyone who has it can download the pack, so send it to the accountant only.": "Yalnızca şimdi gösterilir. Bağlantıya sahip olan herkes paketi indirebilir; yalnızca muhasebecinize gönderin.",
     "It is stored encrypted and never shown again.": "Şifreli saklanır ve bir daha gösterilmez.",
     "It is stored encrypted and never shown again. If it leaks, press Regenerate on claude.ai and enter the new one.": "Şifreli saklanır ve bir daha gösterilmez. Sızarsa claude.ai'da Regenerate'e basıp yenisini girin.",
+    "It is stored encrypted and never shown again. The site's own account at the service pays for the transcripts.": "Şifreli saklanır ve bir daha gösterilmez. Dökümlerin ücretini sitenin hizmetteki kendi hesabı öder.",
     "It is used in other designs too: {var}": "Başka tasarımlarda da kullanılıyor: {var}",
     "It is written over every software file. Changes made to those files by hand are lost; files that are not in the package stay where they are. The data folder and the database are not touched.": "Paket her yazılım dosyasının üzerine yazılır. Bu dosyalarda elle yapılmış değişiklikler kaybolur; pakette olmayan dosyalar yerinde kalır. data klasörüne ve veritabanına dokunulmaz.",
     "It keeps working on the site. For new designs, build the same thing as a shared component: designed once, it updates on every page together.": "Sitede çalışmaya devam eder. Yeni tasarımlarda aynı işi paylaşılan bileşenle yapın: bir kez tasarlanır, bütün sayfalarda birlikte güncellenir.",

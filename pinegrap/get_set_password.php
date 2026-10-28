@@ -27,6 +27,10 @@ function get_set_password($properties) {
 
         $output = $form->get_messages();
 
+        // The default screen keeps its confirmation on the card it was
+        // asked from.
+        $output = ((int)$page_id <= 0) ? pg_secure_card('bi-key', lang('Set Password'), $output) : $output;
+
     } else {
 
         $token = $_GET['k'] ?? '';
@@ -115,16 +119,57 @@ function get_set_password($properties) {
             <input type="hidden" name="send_to">' . '
             <input type="hidden" name="k">';
 
-        $output = render_layout(array(
-            'page_id' => $page_id,
-            'page_type' => 'set password',
-            'messages' => $form->get_messages(),
-            'form' => $form,
-            'attributes' => $attributes,
-            'strong_password_help' => $strong_password_help,
-            'strength_meter' => $strength_meter,
-            'email' => (is_array($user) ? $user['email'] : ''),
-            'system' => $system));
+        // No set password page: the default screen, on the sign-in card
+        // inside output_header_secure()'s Bootstrap 6, with the Strength
+        // meter under the password. The field names stay those of the
+        // system layout, which set_password.php reads and prepare() fills.
+        if ((int)$page_id <= 0) {
+
+            $output_email = '';
+            if (is_array($user) && ($user['email'] != '')) {
+                $output_email = '<p class="fg-secondary mb-5">' . h($user['email']) . '</p>';
+            }
+
+            $output_strong_password_help = '';
+            if ($strong_password_help != '') {
+                $output_strong_password_help = '<div class="small fg-secondary mb-5">' . $strong_password_help . '</div>';
+            }
+
+            $output_password_hint = '';
+            if (PASSWORD_HINT) {
+                $output_password_hint =
+                    '<div class="mb-5">
+                        <label for="password_hint" class="form-label">' . lang('Password Hint') . '</label>
+                        <input type="text" name="password_hint" id="password_hint" class="form-control">
+                    </div>';
+            }
+
+            $output = pg_secure_card('bi-key', lang('Set Password'),
+                $output_email . $form->get_messages() . '
+                <form ' . $attributes . '>
+                    ' . $output_strong_password_help . '
+                    <div class="mb-5">
+                        <label for="new_password" class="form-label">' . lang('Password') . '</label>
+                        <input type="password" name="new_password" id="new_password" class="form-control form-control-lg" autocomplete="new-password">
+                        ' . $strength_meter . '
+                    </div>
+                    ' . $output_password_hint . '
+                    <button type="submit" name="submit" value="Set Password" class="btn btn-solid theme-primary w-100">' . lang('Set Password') . '</button>
+                    ' . $system . '
+                </form>');
+
+        } else {
+            $output = render_layout(array(
+                'page_id' => $page_id,
+                'page_type' => 'set password',
+                'messages' => $form->get_messages(),
+                'form' => $form,
+                'attributes' => $attributes,
+                'strong_password_help' => $strong_password_help,
+                'strength_meter' => $strength_meter,
+                'email' => (is_array($user) ? $user['email'] : ''),
+                'system' => $system));
+        }
 
         $output = $form->prepare($output);
         

@@ -10,8 +10,8 @@ module: widgets_comments
 - Options (`system_region_config`, `pg_comments_widget_options()`, JS `_swTypeDefaults()`): `order` oldest|newest, `featured` first (default: featured roots pinned) | filter (the classic block's, `?comments=all`) | none, `layout` flat|threaded, `max_depth` 1-3 (replies: [[comments-widget-replies]]), `per_page` 0|10|20|50 ([[comments-widget-pages]]). Panel: [[comments-widget-panel]].
 
 ## Which thread does a page show?
-- The drawn page's (`pg_sw_render_context()['page_id']`). A top-level form_item_view widget (`pg_sw_record_comment_context()`): that record's thread, posted as `submitted_form`. Else the page's own: every comment on the page (as the classic block), posted as `''` / 0.
-- Left to the classic block, unclaimed: `form item view` pages, catalog, catalog detail and calendar event view pages without a record widget ([[comments-widget-hand-off]]).
+- The drawn page's (`pg_sw_render_context()['page_id']`). A top-level form_item_view widget (`pg_sw_record_comment_context()`): that record's thread, posted as `submitted_form`. A catalog (detail) or event view page: the item in the address ([[comments-widget-item-threads]]). Else the page's own: every comment on the page (as the classic block), posted as `''` / 0.
+- Left to the classic block, unclaimed: `form item view` pages only ([[comments-widget-hand-off]]).
 - Prints nothing (page claimed): comments off, a record not shown (hidden or none), a form_item_view below the top level (`pg_comments_page_nested_record()`), a second comments widget.
 - The search index reads a visitor's view: published only, no form, not staff.
 
@@ -29,4 +29,4 @@ module: widgets_comments
 
 ## How was it checked?
 - `tests/comments_widget_test.php`, `designer_messages_test`, `check_bindings`.
-- Sandbox, MariaDB, PHP 8.3, 2026-10-24: page and record threads; guest, member, admin; refused post, closed, sign-in, featured modes, own pending, scheduled, CAPTCHA, files, stars, publish picker, two widgets, widget + block; JS starter = PHP tree; classic and block pages as on the base. Later fixes (hidden list, anchor links, classic pages, form fallbacks, stars [[widget-default-parts-comments]]): tests.
+- Sandbox, MariaDB, PHP 8.3, 2026-10-24: page and record threads; guest, member, admin; refused post, closed, sign-in, featured modes, own pending, scheduled, CAPTCHA, files, stars, publish picker, two widgets, widget + block; JS starter = PHP tree. Later fixes (hidden list, anchor links, classic pages, form fallbacks, stars [[widget-default-parts-comments]]): tests.

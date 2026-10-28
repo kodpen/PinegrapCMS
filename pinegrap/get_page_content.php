@@ -5730,6 +5730,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 $pg_og_image_candidate = pg_resolve_submitted_form_og_image($pg_blog_form['page_id'], $submitted_form['id']);
                 $pg_blog_author = pg_submitted_form_author_name($submitted_form['id']);
                 $pg_blog_form_id = (int) $submitted_form['id'];
+                $pg_blog_schema_type = pg_form_page_schema_type($pg_blog_form['page_id']);
             }
         }
     }
@@ -6060,9 +6061,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $pg_jsonld_out = '';
 
         // $pg_blog_form_id is set only for a resolved record: a legacy form
-        // item view page, or a visual-editor page with the form item view widget.
-        if (!empty($pg_blog_form_id)) {
+        // item view page, or a visual-editor page with the form item view
+        // widget. A form whose schema type is None describes its records
+        // with nothing but the page's own JSON-LD below.
+        if (!empty($pg_blog_form_id) && (($pg_blog_schema_type ?? 'BlogPosting') !== 'none')) {
             $pg_jsonld_out .= "\n" . '<script type="application/ld+json">' . json_encode(pg_build_blogposting_jsonld(array(
+                'type'        => $pg_blog_schema_type ?? 'BlogPosting',
                 'headline'    => $page_title,
                 'description' => $page_meta_description,
                 'url'         => $canonical_url,

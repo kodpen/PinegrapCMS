@@ -1503,6 +1503,70 @@ function pg_submitted_form_author_name($submitted_form_id)
 }
 
 /**
+ * Whether custom_form_pages carries the schema type of a form's record pages
+ * (2026.11.0, 11.0.55). Files land before the upgrade runs, so the column is
+ * probed before it is read or written.
+ */
+function pg_record_schema_type_setting_ready()
+{
+    return pg_schema_has('custom_form_pages', 'schema_type');
+}
+
+/**
+ * The schema types a form may give its record pages, as stored.
+ * BlogPosting, Article and NewsArticle share the properties
+ * pg_build_blogposting_jsonld() writes; 'none' writes no record block, and
+ * the page's own JSON-LD is left as its only description.
+ *
+ * @return array
+ */
+function pg_record_schema_types()
+{
+    return array('BlogPosting', 'Article', 'NewsArticle', 'none');
+}
+
+/**
+ * A stored schema type, read: one of the words of pg_record_schema_types()
+ * (case-insensitive). Anything else, '' included, reads as BlogPosting, the
+ * type every record page had before the setting.
+ *
+ * @param string|null $stored  custom_form_pages.schema_type
+ * @return string
+ */
+function pg_record_schema_type($stored)
+{
+    $stored = strtolower(trim((string) $stored));
+
+    foreach (pg_record_schema_types() as $type) {
+        if (strtolower($type) === $stored) {
+            return $type;
+        }
+    }
+
+    return 'BlogPosting';
+}
+
+/**
+ * The schema type the record pages of the form on a page are described
+ * with (pg_record_schema_type()); BlogPosting before the 11.0.55 column is
+ * there or when the page holds no form.
+ *
+ * @param int $form_page_id  The custom form's page (forms.page_id)
+ * @return string
+ */
+function pg_form_page_schema_type($form_page_id)
+{
+    if (((int) $form_page_id <= 0) || !pg_record_schema_type_setting_ready()) {
+        return 'BlogPosting';
+    }
+
+    return pg_record_schema_type(db_value(
+        "SELECT schema_type FROM custom_form_pages
+        WHERE page_id = '" . (int) $form_page_id . "'
+        LIMIT 1"));
+}
+
+/**
  * True when the operator has configured the merchant facts at all.
  */
 function pg_merchant_jsonld_configured()
@@ -1588,13 +1652,17 @@ function pg_product_merchant_jsonld_parts($shippable)
  * schema.org BlogPosting for a submitted form shown on a form item view.
  *
  * properties: headline, description, url, image (array from the og resolvers
- * or null), published (unix), modified (unix), author (string, may be blank).
+ * or null), published (unix), modified (unix), author (string, may be blank),
+ * type (the form's schema type, pg_record_schema_type(); BlogPosting when
+ * missing; the three types share these properties).
  */
 function pg_build_blogposting_jsonld($properties)
 {
+    $type = pg_record_schema_type($properties['type'] ?? '');
+
     $data = array(
         '@context' => 'https://schema.org',
-        '@type'    => 'BlogPosting',
+        '@type'    => ($type === 'none') ? 'BlogPosting' : $type,
         'headline' => (string) ($properties['headline'] ?? ''),
         'url'      => (string) ($properties['url'] ?? ''),
         'mainEntityOfPage' => array(

@@ -399,6 +399,7 @@
     "Only an administrator can change this.": "Bunu yalnız bir yönetici değiştirebilir.",
     "Only an administrator can connect Claude.": "Claude'u yalnız bir yönetici bağlayabilir.",
     "Only an administrator can connect Pinegrap AI.": "Pinegrap AI'ı yalnız bir yönetici bağlayabilir.",
+    "Only an administrator can connect a transcription service.": "Yazıya dökme hizmetini yalnızca bir yönetici bağlayabilir.",
     "Only an application registers commands; a devices session cannot.": "Komutları yalnızca bir uygulama kaydedebilir; cihaz oturumu kaydedemez.",
     "Only an automatic campaign takes a blind copy address.": "Gizli kopya (BCC) adresi yalnız otomatik kampanyada olur.",
     "Only an earlier task can be chosen; drag the task down to wait for a later one.": "Yalnızca önceki bir görev seçilebilir; sonraki bir görevi beklemesi için görevi aşağı sürükleyin.",

@@ -8,6 +8,9 @@ module: audit_view
 - `view_audit_log.php` (manager and up, like the Site Log; Settings hub, Monitoring group): `audit_log` lines newest first, 50 a page (one line more is read to know an older page exists; no COUNT). Nothing on it writes a line except the CSV export.
 - Helpers in `includes/fn/audit_view.php` (pure, `tests/audit_view_test.php`): `pg_audit_view_filters()`, `pg_audit_view_where()`, `pg_audit_view_changes()`, `pg_audit_view_value()`, `pg_audit_view_csv_line()`, `pg_audit_view_record_url()`, `pg_audit_view_label()`.
 
+## When does a line get an "Open" link?
+- Only when its record still exists: `pg_audit_view_live_records()` looks up the page's ids with one query per type (`pg_audit_view_record_tables()`: products, page, files, user, orders, offers, contacts), and the screen drops the link of a missing one. The name's history link stays. Before (#2521), deleted pages and files linked to their edit screen's 404. API types keep their `api_settings.php` link.
+
 ## Which filters are there?
 - From/to (whole days in the site's time zone; the picker's text is turned to ISO first, a reversed range is turned round), source (`pg_audit_sources()`: `panel`, `api`, `job`, `site`), user (a number is `user_id`, else part of `username`, where an API line keeps the app's name), action and type (the choices are `SELECT DISTINCT` of the trail), record id, request id, text in `label`. A value that does not fit its field is dropped, never passed into SQL; LIKE wildcards in the text are literal.
 - Links on a line narrow the list: the name shows the record's whole history (type + id), the action, the user, the request id (every line one request wrote). The icon opens the record's screen for product, page, file, user, order, offer, the API screen for apps, keys, devices and OAuth clients.

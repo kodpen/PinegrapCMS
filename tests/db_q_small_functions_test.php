@@ -144,7 +144,7 @@ function db_q_small_functions_test_files()
 		'includes/forms/calendar_event_location_form.php' => 1,
 		'view_calendars.php' => 0,
 		'view_calendar_event_locations.php' => 0,
-		'add_contact_group.php' => 2,
+		'add_contact_group.php' => 1,
 		'view_contact_groups.php' => 0,
 		'organize_contacts.php' => 0,
 		'view_visitor_reports.php' => 0,

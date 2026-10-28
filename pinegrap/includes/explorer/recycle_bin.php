@@ -531,7 +531,9 @@ function pg_recycle_hard_delete_item($item_kind, $item_id, $user)
                 break;
             }
 
-            pg_pb_delete_product($item_id);
+            if (!pg_pb_delete_product($item_id)) {
+                return array('status' => 'error', 'message' => lang(array('string' => '{var:1} is part of a bundle. Take it out of the bundle before deleting it.', 'vars' => $product['name'])));
+            }
 
             log_activity(lang(array('string' => 'product ({var:1}) was deleted', 'vars' => array($product['name']))), $_SESSION['sessionusername']);
             break;

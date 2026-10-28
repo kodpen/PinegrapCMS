@@ -297,3 +297,57 @@ function test_bs6_panel_screens_under_secure_header()
 	pg_assert_contains("if ((int)\$page_id <= 0) {\n        \$a = '<p class=\"fg-secondary mb-3\">';", $r['source']);
 	pg_assert_contains("} elseif (\$layout_type == 'system') {\n        \$a = '<p class=\"text-muted mb-2\">';", $r['source']);
 }
+
+// The screens the default sign-in card leads to print inside
+// output_header_secure() too: forgot password and set password with no
+// page, the device limit question, the subscription confirmation and the
+// default logout screen. Their panel markup is registered with the codemod
+// and drawn on the same Bootstrap 6 card, never with the site's
+// software_input_* classes, which only frontend.css defines.
+function test_bs6_sign_in_screens_on_card()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+	$blocks = bs6_shared_panel_blocks();
+	$functions = bs6_shared_panel_functions();
+
+	foreach (array('get_forgot_password', 'get_set_password') as $name) {
+		$path = $name . '.php';
+		pg_assert_same('shared', bs6_scope_kind($path), $path);
+		pg_assert_same('if ((int)$page_id <= 0) {', $blocks[$path][$name] ?? '', "$path default screen block");
+
+		$source = (string) file_get_contents($root . $path);
+		$ranges = bs6_block_ranges($source, $name, 'if ((int)$page_id <= 0) {');
+		pg_assert_same(1, count($ranges), "$path default screen block");
+		$block = $ranges ? substr($source, $ranges[0][0], $ranges[0][1] - $ranges[0][0]) : '';
+		pg_assert_contains('pg_secure_card(', $block, $path);
+		pg_assert_contains('form-control', $block, $path);
+		pg_assert_false(strpos($block, 'software_input') !== false, "$path draws no site input class");
+	}
+
+	pg_assert_true(in_array('get_logout_screen', $functions['includes/fn/forms.php'] ?? array(), true), 'get_logout_screen() is panel markup');
+	pg_assert_true(in_array('pg_secure_card', $functions['includes/fn/auth.php'] ?? array(), true), 'pg_secure_card() is panel markup');
+
+	$forms = (string) file_get_contents($root . 'includes/fn/forms.php');
+	$logout = bs6_function_ranges($forms, array('get_logout_screen'));
+	pg_assert_contains('pg_secure_card(', $logout ? substr($forms, $logout[0][0], $logout[0][1] - $logout[0][0]) : '', 'default logout screen');
+
+	foreach (array('device_limit.php', 'confirm_subscription.php') as $path) {
+		pg_assert_same('panel', bs6_scope_kind($path), $path);
+		$source = (string) file_get_contents($root . $path);
+		pg_assert_contains('pg_secure_card(', $source, $path);
+		pg_assert_contains('btn btn-solid theme-primary', $source, $path);
+		foreach (array('#dadce0', 'Roboto', 'software_input') as $old) {
+			pg_assert_false(strpos($source, $old) !== false, "$path has no $old");
+		}
+	}
+}
+
+function test_bs6_secure_card_markup()
+{
+	$html = pg_secure_card('bi-key', 'Forgot <Password>', '<p>Body</p>');
+	pg_assert_contains('<main class="container py-7 md:py-12">', $html);
+	pg_assert_contains('<div class="card mx-auto shadow-sm" style="max-width: 28rem;">', $html);
+	pg_assert_contains('<div class="card-body p-7">', $html);
+	pg_assert_contains('<h1 class="h4 mb-5"><i class="bi bi-key me-3" aria-hidden="true"></i>Forgot &lt;Password&gt;</h1>', $html);
+	pg_assert_contains('<p>Body</p>', $html);
+}

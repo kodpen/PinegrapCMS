@@ -785,6 +785,11 @@ if (!$_POST) {
     
     fclose($handle);
 
+    // The import writes stock and prices without the per-product hooks, so
+    // every bundle is recomputed from its components once, at the end. A
+    // stock or price the file gave a bundle itself is replaced by that too.
+    pg_bundle_refresh_all();
+
     // The rest of the queued products. A row is written only for a product
     // whose price is not the newest one in its history (or that has no
     // history yet), so a file without a price column adds rows for the

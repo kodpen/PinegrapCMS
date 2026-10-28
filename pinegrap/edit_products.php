@@ -559,7 +559,9 @@ if (!$_POST) {
                         // images, group and zone links, attributes, barcodes,
                         // form fields, keywords, short links, offer rules and
                         // stored SEO findings, and the product.deleted event.
-                        pg_pb_delete_product($product_id);
+                        if (!pg_pb_delete_product($product_id)) {
+                            continue;
+                        }
                     }
 
                     $number_of_products++;

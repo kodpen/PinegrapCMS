@@ -745,6 +745,12 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         $custom_form_schema_author_rows = pg_page_form_schema_author_rows($custom_form_properties['schema_author'] ?? '', $page_id);
     }
 
+    // The schema type of the form's record pages, drawn only once the
+    // 11.0.55 column is there.
+    if (pg_record_schema_type_setting_ready()) {
+        $custom_form_schema_author_rows .= pg_page_form_schema_type_row($custom_form_properties['schema_type'] ?? '');
+    }
+
     $form_list_view_viewer_filter_checked = '';
 
     if (($form_list_view_properties['viewer_filter'] ?? '') == 1) {
@@ -2901,6 +2907,34 @@ function pg_page_form_schema_author_rows($stored, $page_id)
                 </div>';
 }
 
+/**
+ * The Schema Type row of a custom form's settings: how the structured data
+ * of the form's record pages names them (includes/fn/seo.php), or None to
+ * leave the page's own JSON-LD as their only description.
+ *
+ * @param string $stored  custom_form_pages.schema_type
+ * @return string
+ */
+function pg_page_form_schema_type_row($stored)
+{
+    $current = pg_record_schema_type($stored);
+    $options = '';
+
+    foreach (pg_record_schema_types() as $type) {
+        $label = ($type === 'none') ? lang('None') : $type;
+        $options .= '<option value="' . h($type) . '"' . (($current === $type) ? ' selected="selected"' : '') . '>' . h($label) . '</option>';
+    }
+
+    return '
+                <div class="row mt-3">
+                    <div class="col-12 md:col-6 my-1">
+                        <label class="form-label" for="custom_form_schema_type">' . lang('Schema Type') . '</label>
+                        <select class="form-control" id="custom_form_schema_type" name="custom_form_schema_type">' . $options . '</select>
+                        <div class="form-text">' . lang('How the structured data of the record pages describes them. None leaves the page\'s own structured data as their only description.') . '</div>
+                    </div>
+                </div>';
+}
+
 function pg_page_form_new_page_properties()
 {
     $order_receipt_email = array(
@@ -3086,6 +3120,10 @@ function pg_page_form_type_properties_from_post($page_type, $page_id)
             // becomes a column of the save query.
             if (pg_blogposting_author_setting_ready()) {
                 $properties['schema_author'] = pg_blogposting_author_setting_value($field('custom_form_schema_author'), $field('custom_form_schema_author_field_id'));
+            }
+
+            if (pg_record_schema_type_setting_ready()) {
+                $properties['schema_type'] = pg_record_schema_type($field('custom_form_schema_type'));
             }
 
             if ($hooks) {

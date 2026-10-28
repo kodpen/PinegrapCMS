@@ -12,8 +12,8 @@ description: The panel on Bootstrap 6 (switch #1866, tag bs6-switch): docs and s
 - They assume Bootstrap's Sass and npm setup; the panel has neither. Take from `bootstrap-component` its markup, token and layer conventions, from `bootstrap-color-system` only "Step 7: Runtime overrides". Panel CSS stays plain CSS. They never apply to site output.
 
 ## What runs Bootstrap 6 and what stays on 5.3.8?
-- Bootstrap 6: the panel and every screen `output_header_secure()` prints (sign-in, MFA, device limit, set password, OAuth consent, print views, the installer), and the visual editor's own chrome and dialogs. `tools/bs6_rules.php` scopes them: System Info (`includes/templates/si.php`) is a panel template and `get_login()`'s no-login-page branch a shared panel block; a login page's branches stay site output.
-- 5.3.8 and jQuery UI: sites (designs, classic themes, site forms, `frontend.src.js`, site renderers, palette and widget output, e-mails) and the editor's canvas. Renderers printing on both sides choose at run time: `get_calendar()` by `$user`, liveform notices through v5 alert rules the panel maps to v6 themes.
+- Bootstrap 6: the panel and every screen `output_header_secure()` prints (sign-in, forgot/set password, MFA, device limit, logout, OAuth consent, print views, installer), and the visual editor's own chrome and dialogs. `tools/bs6_rules.php` scopes them: System Info (`includes/templates/si.php`) is a panel template; the no-page branches of `get_login()`, `get_forgot_password()`, `get_set_password()` are shared panel blocks; a page's branches stay site output.
+- 5.3.8 and jQuery UI: sites (designs, classic themes, site forms, `frontend.src.js`, site renderers, palette and widget output, e-mails) and the editor's canvas. Renderers on both sides choose at run time: `get_calendar()` by `$user`, liveform notices through v5 alert rules the panel maps to v6 themes.
 - v6 JS is ESM-only: `pg_bs6_bridge.js` imports the bundle, sets `window.bootstrap`, fires `pg:bootstrap-ready`; panel code reaches Bootstrap only through `pgUI` (`pg-ui-adapter.md`). No jQuery plugins.
 
 ## What do panel rules rely on?

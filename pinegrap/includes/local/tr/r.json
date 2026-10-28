@@ -304,6 +304,8 @@
     "Recorded once the sale has been taken back.": "Satış geri alındıktan sonra kaydedilir.",
     "Recorded, made another way": "Başka bir yolla yapıldı, kaydedildi",
     "Recorded, with its movement in the till and on the account.": "Kaydedildi; hareketi kasada ve caride.",
+    "Recordings are sent to": "Kayıtların gönderildiği yer",
+    "Recordings wait until {var:1}.": "Kayıtlar {var:1} tarihine kadar bekliyor.",
     "Records": "Kayıt",
     "Records are kept in one partition per month. Once all of a month is older than the period, the general job drops it in a moment and its file goes back to the disk; the records of the month the period ends in are removed a chunk at a time. Shrink now rebuilds the table at once.": "Kayıtlar her ay için ayrı bir bölümde tutulur. Bir ayın tamamı saklama süresinden eski olduğunda genel görev o bölümü bir anda kaldırır ve dosyası diske geri döner; sürenin bittiği ayın kayıtları parça parça silinir. «Şimdi küçült» tabloyu hemen yeniden kurar.",
     "Records how long each request takes, so slow pages can be found. The measurement is written after the response has been sent, so visitors do not wait for it.": "Her isteğin ne kadar sürdüğünü kaydeder, böylece yavaş sayfalar bulunabilir. Ölçüm yanıt gönderildikten sonra yazılır, ziyaretçi beklemez.",

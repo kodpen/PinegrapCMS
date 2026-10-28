@@ -26,5 +26,5 @@ description: Voice messages (workspace_voice.js): the mic in place of Send, a so
 - `Permissions-Policy: microphone=(self)` (`waf.php`); keep `(self)`.
 
 ## What is not built yet?
-- `parent_id` in the API's message answer and in `messages.create`, a stored duration or waveform, transcripts, assistants hearing it.
+- `parent_id` in the API's message answer and in `messages.create`, a stored duration or waveform, assistants hearing it. Transcripts: workspace-voice-transcripts.md.
 - Checked in headless Chromium with a fake microphone and a stubbed API; not on Safari, Firefox or a running site.

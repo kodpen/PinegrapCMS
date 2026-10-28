@@ -121,19 +121,17 @@ $limit    = pg_device_limit();
 $active   = pg_auth_token_count($user_id);
 $to_close = max(1, $active - $limit + 1);
 
-$content =
-    '<div style="max-width:520px;margin:2em auto;padding:1.5em;border:1px solid #dadce0;border-radius:8px;font-family:Roboto,Arial,sans-serif">'
-    . '<h2 style="margin-top:0">' . h(lang('Too many signed-in devices')) . '</h2>'
-    . '<p>' . h(lang(array(
+$content = pg_secure_card('bi-phone', lang('Too many signed-in devices'),
+    '<p class="mb-5">' . h(lang(array(
         'string' => 'This account is signed in on {var:1} devices, and the limit is {var:2}. To continue on this device, the oldest {var:3} will be signed out.',
         'vars'   => array((string) $active, (string) $limit, (string) $to_close)))) . '</p>'
-    . '<form method="post" action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/device_limit.php') . '" style="margin-top:1.25em">'
+    . '<form method="post" action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/device_limit.php') . '" class="d-flex flex-wrap gap-3">'
     . get_token_field()
     . '<input type="hidden" name="send_to" value="' . h($send_to) . '"/>'
-    . '<button type="submit" name="pg_device_action" value="confirm" class="software_input_submit_primary" style="margin-right:.5em">'
+    . '<button type="submit" name="pg_device_action" value="confirm" class="btn btn-solid theme-primary">'
     . h(lang('Sign out the others and continue')) . '</button>'
-    . '<button type="submit" name="pg_device_action" value="cancel" class="software_input_submit_secondary">'
+    . '<button type="submit" name="pg_device_action" value="cancel" class="btn btn-outline theme-secondary">'
     . h(lang('Cancel')) . '</button>'
-    . '</form></div>';
+    . '</form>');
 
-print output_header_secure() . $content . output_footer_secure();
+print output_header_secure(array('title' => lang('Too many signed-in devices'))) . $content . output_footer_secure();

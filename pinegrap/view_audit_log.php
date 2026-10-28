@@ -130,6 +130,9 @@ $audit_view_cell = function (array $value) {
 
 $audit_view_list = '';
 
+// The records of this page that still exist: only those get an "Open" link.
+$audit_view_live = pg_audit_view_live_records($audit_view_rows);
+
 foreach ($audit_view_rows as $audit_view_row) {
     $audit_view_changes = pg_audit_view_changes($audit_view_row['before_json'], $audit_view_row['after_json']);
     $audit_view_type = (string) $audit_view_row['entity_type'];
@@ -150,6 +153,11 @@ foreach ($audit_view_rows as $audit_view_row) {
     $audit_view_record .= '<a class="text-break" href="' . h($audit_view_url(array('type' => $audit_view_type, 'id' => $audit_view_id, 'q' => '', 'page' => 1))) . '" title="' . h(lang('Show the history of this record')) . '">' . h($audit_view_name) . '</a>';
 
     $audit_view_open = pg_audit_view_record_url($audit_view_type, $audit_view_id);
+
+    // A deleted record's edit screen answers "not found".
+    if (isset(pg_audit_view_record_tables()[$audit_view_type]) && empty($audit_view_live[$audit_view_type][$audit_view_id])) {
+        $audit_view_open = '';
+    }
 
     if ($audit_view_open !== '') {
         $audit_view_record .= ' <a href="' . h($audit_view_open) . '" class="pg-link-secondary" title="' . h(lang('Open')) . '" aria-label="' . h(lang('Open')) . '"><i class="bi bi-box-arrow-up-right small" aria-hidden="true"></i></a>';
@@ -262,11 +270,11 @@ $audit_view_toolbar = '
                     ' . $audit_view_hidden . '
                     <div class="row g-3 align-items-end">
                         <div class="col-6 md:col-4 xl:col-2">
-                            <label for="audit_from" class="form-label small mb-1">' . h(lang('From')) . '</label>
+                            <label for="audit_from" class="form-label small mb-1">' . h(lang('Start')) . '</label>
                             <input type="text" class="form-control form-control-sm" id="audit_from" name="from" value="' . h($audit_view_date_value('from')) . '" autocomplete="off" data-pg-date>
                         </div>
                         <div class="col-6 md:col-4 xl:col-2">
-                            <label for="audit_to" class="form-label small mb-1">' . h(lang('To')) . '</label>
+                            <label for="audit_to" class="form-label small mb-1">' . h(lang('End')) . '</label>
                             <input type="text" class="form-control form-control-sm" id="audit_to" name="to" value="' . h($audit_view_date_value('to')) . '" autocomplete="off" data-pg-date>
                         </div>
                         <div class="col-6 md:col-4 xl:col-2">

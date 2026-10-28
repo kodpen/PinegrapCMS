@@ -605,8 +605,9 @@ function ws_note_import_inline($line)
 
 /**
  * A Markdown text written the workspace's way (see ws_render_body(), which
- * draws neither headings nor nested lists): a heading becomes a bold line,
- * a list item marked * or + becomes "- ", a block of code fenced with ~~~
+ * draws headings of three levels in a note and no nested lists): a heading
+ * stays a heading, "####" and below as "###", an underlined one as "#"
+ * (under =) or "##" (under -), a list item marked * or + becomes "- ", a block of code fenced with ~~~
  * gets ``` and loses what follows its language, and a ```math block (LaTeX
  * in the apps that write one) is called latex, since the workspace works a
  * math block out as a calculation.
@@ -645,8 +646,8 @@ function ws_note_import_convert($body)
             $previous = empty($out) ? '' : end($out);
 
             // Under a line of words, "---" underlines a heading.
-            if (($rule[1] === '-') && (trim($previous) !== '') && !preg_match('/^\s*([-*+|>]|\d+[.)]|\*\*)/', $previous)) {
-                $out[count($out) - 1] = '**' . trim(str_replace('**', '', $previous)) . '**';
+            if (($rule[1] === '-') && (trim($previous) !== '') && !preg_match('/^\s*([-*+|>#]|\d+[.)])/', $previous)) {
+                $out[count($out) - 1] = '## ' . trim($previous);
                 continue;
             }
 
@@ -654,19 +655,26 @@ function ws_note_import_convert($body)
             continue;
         }
 
-        if (preg_match('/^\s{0,3}=+\s*$/', $line) && !empty($out) && (trim(end($out)) !== '') && !preg_match('/^\s*([-*+|>]|\d+[.)]|\*\*)/', end($out))) {
-            $out[count($out) - 1] = '**' . trim(str_replace('**', '', end($out))) . '**';
+        if (preg_match('/^\s{0,3}=+\s*$/', $line) && !empty($out) && (trim(end($out)) !== '') && !preg_match('/^\s*([-*+|>#]|\d+[.)])/', end($out))) {
+            $out[count($out) - 1] = '# ' . trim(end($out));
             continue;
         }
 
-        if (preg_match('/^\s{0,3}#{1,6}(?:[ \t]+(.*?))?(?:[ \t]+#+)?[ \t]*$/u', $line, $heading)) {
-            $words = trim(str_replace('**', '', (string) ($heading[1] ?? '')));
-            $out[] = ($words !== '') ? '**' . ws_note_import_inline($words) . '**' : '';
+        if (preg_match('/^\s{0,3}(#{1,6})(?:[ \t]+(.*?))?(?:[ \t]+#+)?[ \t]*$/u', $line, $heading)) {
+            $words = trim((string) ($heading[2] ?? ''));
+            $out[] = ($words !== '') ? str_repeat('#', min(3, strlen($heading[1]))) . ' ' . ws_note_import_inline($words) : '';
             continue;
         }
 
         $line = preg_replace('/^(\s*)[*+](\s+)/', '$1-$2', $line);
-        $out[] = ws_note_import_inline($line);
+        $converted = ws_note_import_inline($line);
+
+        // "\# words" keeps its escape: without it a note draws a heading.
+        if (preg_match('/^\\\\#/', $line) && preg_match('/^#{1,3}[ \t]+\S/', $converted)) {
+            $converted = '\\' . $converted;
+        }
+
+        $out[] = $converted;
     }
 
     return implode("\n", $out);
