@@ -34753,6 +34753,10 @@ const StyleDesigner = (function () {
                 if (!(_srPerPage > 0)) _srPerPage = 20;
                 var _srNoResults = (typeof _cfg.empty_message === 'string') ? _cfg.empty_message : _sdT('No results found.');
                 if (!_catalogDetailPagesCache) _fetchCatalogDetailPages(function () { renderProperties(); });
+                // No page opens a product (none chosen, none on the site, none
+                // in this design): the search leaves products out.
+                var _srNoDetail = !(parseInt(_cfg.catalog_detail_page_id, 10) > 0) && Array.isArray(_catalogDetailPagesCache) && !_catalogDetailPagesCache.length
+                    && !((typeof _pages !== 'undefined' && _pages) ? _pages : []).some(function (p) { return _swTabHasWidget(p, ['catalog_item_view']); });
 
                 systemSection += sect('bi-search', _sdT('Search Results Settings'),
                     row(_sdT('Search scope'),
@@ -34786,7 +34790,8 @@ const StyleDesigner = (function () {
                                 _swPageOptions(_cfg.catalog_detail_page_id, _catalogDetailPagesCache,
                                     { none: _sdT('— Automatic —'), types: ['catalog_item_view'] }) +
                             '</select>' +
-                            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Automatic: the first page with a product detail widget, else the classic catalog detail page.')) + '</div>')
+                            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Automatic: the first page with a product detail widget, else the classic catalog detail page.')) + '</div>' +
+                            (_srNoDetail ? '<div style="font-size:.66rem;color:#b45309;margin-top:3px"><span class="bi bi-exclamation-triangle me-1"></span>' + esc(_sdT('No product detail page exists yet: products stay out of the search results until the site has one.')) + '</div>' : ''))
                         : '')
                 );
             }

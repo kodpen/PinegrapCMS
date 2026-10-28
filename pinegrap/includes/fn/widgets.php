@@ -5618,7 +5618,9 @@ function pg_search_highlight_inject($content)
 // and meta description, which a visitor expects a search to find.
 //
 // cfg: search_scope ('all' | 'pages' | 'products'), product_group_id (the
-// catalog branch searched; 0 = the top-level group), catalog_detail_page_id.
+// catalog branch searched; 0 = the top-level group), catalog_detail_page_id
+// (the page a catalog item opens on; without one, chosen or found, the
+// catalog is left out: an item nobody can open is no result).
 // The advanced search covers the whole site, within what the visitor may view.
 // Returns ['featured' => rows, 'catalog' => rows, 'pages' => rows,
 // 'limited' => bool]; every row is ['title', 'url', 'full_url', 'excerpt',
@@ -5664,12 +5666,13 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
     };
 
     // ── Catalog ──────────────────────────────────────────────────────────
+    // The page a catalog item opens on: the configured detail page, else the
+    // first page with a Catalog Detail widget, else the legacy catalog detail
+    // page. A site without one has no address for an item, so its catalog is
+    // not searched: an item listed with a '#' link would be counted in the
+    // heading and clicked for nothing.
+    $detail_name = '';
     if ($want_catalog) {
-        $group_id = isset($cfg['product_group_id']) ? (int)$cfg['product_group_id'] : 0;
-        if ($group_id <= 0) $group_id = (int)db_value("SELECT id FROM product_groups WHERE parent_id = '0' LIMIT 1");
-        // Boolean operators belong to the fulltext page search only.
-        $catalog_query = $advanced ? str_replace(array('"', '+'), '', $query) : $query;
-
         $detail_page_id = isset($cfg['catalog_detail_page_id']) ? (int)$cfg['catalog_detail_page_id'] : 0;
         if ($detail_page_id <= 0) {
             $pages = pg_sw_widget_pages('catalog_item_view');
@@ -5679,8 +5682,14 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
             $detail_page_id = (int)db_value("SELECT page_id FROM page WHERE page_type = 'catalog detail' ORDER BY page_id ASC LIMIT 1");
         }
         $detail_name = ($detail_page_id > 0) ? (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $detail_page_id . "' LIMIT 1") : '';
-        $back_query  = ($detail_name !== '') ? '?previous_url_id=' . urlencode(generate_url_id()) : '';
-        $discounted  = get_discounted_product_prices();
+    }
+    if ($want_catalog && $detail_name !== '') {
+        $group_id = isset($cfg['product_group_id']) ? (int)$cfg['product_group_id'] : 0;
+        if ($group_id <= 0) $group_id = (int)db_value("SELECT id FROM product_groups WHERE parent_id = '0' LIMIT 1");
+        // Boolean operators belong to the fulltext page search only.
+        $catalog_query = $advanced ? str_replace(array('"', '+'), '', $query) : $query;
+        $back_query    = '?previous_url_id=' . urlencode(generate_url_id());
+        $discounted    = get_discounted_product_prices();
 
         foreach ((array)get_catalog_search_results($catalog_query, $group_id) as $item) {
             $price = '';
@@ -5705,17 +5714,14 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
                 $is_discounted = isset($discounted[$item['id']]);
                 $price = prepare_price_for_output($item['price'], $is_discounted, $is_discounted ? $discounted[$item['id']] : '', 'html');
             }
-            $url = '';
-            if ($detail_name !== '') {
-                $url = $path . encode_url_path($detail_name) . '/'
-                     . encode_url_path(get_catalog_item_address_name_from_id($item['id'], $item['type'])) . $back_query;
-            }
+            $url   = $path . encode_url_path($detail_name) . '/'
+                   . encode_url_path(get_catalog_item_address_name_from_id($item['id'], $item['type'])) . $back_query;
             $title = ((string)$item['short_description'] !== '') ? (string)$item['short_description'] : (string)$item['name'];
             $out['catalog'][] = array(
                 'title'    => $title,
                 'url'      => $url,
                 // Shown under the title, so without the back-link query.
-                'full_url' => ($url !== '') ? $host . strtok($url, '?') : '',
+                'full_url' => $host . strtok($url, '?'),
                 'excerpt'  => '',
                 'type'     => ($item['type'] === 'product group') ? 'product group' : 'product',
                 'image'    => ((string)$item['image_name'] !== '') ? $path . encode_url_path($item['image_name']) : '',

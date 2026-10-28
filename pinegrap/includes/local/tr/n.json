@@ -810,6 +810,7 @@
     "No product attributes found.": "Ürün özelliği bulunamadı.",
     "No product carries that barcode or SKU.": "Bu barkod ya da stok kodunu taşıyan ürün yok.",
     "No product carries the code {var:1}.": "{var:1} koduna sahip ürün yok.",
+    "No product detail page exists yet: products stay out of the search results until the site has one.": "Henüz bir ürün detay sayfası yok: site bir tane edinene kadar ürünler arama sonuçlarına girmez.",
     "No product found with this barcode/sku/id.": "Bu barkod/sku/id ile ürün bulunamadı.",
     "No product found. Enter reads the text as a barcode.": "Ürün bulunamadı. Enter'a basarsanız metin barkod olarak okunur.",
     "No product groups": "Ürün grubu yok",
