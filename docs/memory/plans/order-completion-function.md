@@ -1,6 +1,6 @@
 ---
 name: order-completion-function
-description: Plan (#2382; A1 done in #2199): submit_order() completion tail as one session-free function with a once-only lock; then the Stripe webhook and PayTR complete orders through it
+description: Plan (#2382; A1 done in #2199, A2a in #2638): submit_order() completion tail as one session-free function with a once-only lock; then the Stripe webhook and PayTR complete orders through it
 ---
 
 ## What did the owner decide?
@@ -10,9 +10,11 @@ description: Plan (#2382; A1 done in #2199): submit_order() completion tail as o
 ## What is done?
 - A1 (#2199): when `authorize()` answers `redirect` with a payment id, the incomplete order keeps that id in `orders.transaction_id` and the amount it was started for in `orders.total` (`pg_payment_started_order_values()`, `UPDATE … AND status = 'incomplete'`). Stripe's 3-D Secure redirect has one; iyzico's 3-D Secure page names none, so nothing is written for it. Completion writes both again.
 
+- A2a (#2638): `pg_order_complete()` (`commerce/order-completion.md`) holds the lock and the writes from the completing UPDATE to the order SMS; `submit_order()` calls it.
+
 ## What remains?
 - A2 (L), cut into steps of about 1,000 product lines; each step moves the next part of the tail into `pg_order_complete()` (`commerce/order-completion.md`), fed by the order row, its recipients and items, never `$_SESSION` or the posted form. `tests/order_completion_test.php` pins the tail's writes in order; each step keeps it green.
-  - A2a: the function and its lock: `UPDATE orders … status = 'complete' WHERE … status = 'incomplete'` (columns from the caller), the affected-rows count, saved lines, order number, legal documents, `order.created`, the order SMS. A request that loses the lock goes to the receipt and writes nothing more.
+  - A2a: done (#2638).
   - A2b: after the number, up to the per-product loop: the gift card error mail, the receipt e-mail (each copy), ship and delivery dates and the address book, auto e-mail campaigns. The receipt e-mail reads the order, not the visitor's session (`pg_order_receipt_audience()` stays).
   - A2c: the per-product loop of `submit_order()` (stock and its announcement, reservations, memberships, private folders, gift cards issued, e-mail campaigns, product forms and their mails, comments): about 1,650 lines today, so A2c may split again where the loop allows.
   - A2d: after the loop: private access, reward points, contact groups, abandoned campaigns, visitor record, activity log and notification, ERP invoice. Then the writes still before the lock (key code use, gift card redemption, auto-registration, affiliate commission) are settled: run once behind the lock, or kept with the visitor's request where only the visitor's request can do them (card redemption needs the posted codes); the step names which.

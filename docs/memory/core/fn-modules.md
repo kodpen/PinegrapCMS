@@ -28,6 +28,7 @@ description: Generated from the module field of the memory files: each includes/
 - `link_resolve`: [[designer-prototype-viewer]]
 - `list_paging`: [[server-paged-lists]]
 - `mail_queue`: [[fn-module-errors-mail-backup-consent]]
+- `order_completion`: [[order-completion]]
 - `order_list`: [[orders-list-amount-column]]
 - `page_facts`: [[page-conditions]]
 - `privacy`: [[consent-log-and-audit-trail]]
