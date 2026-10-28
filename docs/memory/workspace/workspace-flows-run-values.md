@@ -15,7 +15,7 @@ description: What GET /workspace/flow-runs/{id} gives per box beyond its status 
 - The canvas's panel actions answer with the same presenter (actions.php), so the run view has the fields; nothing draws them yet.
 
 ## What is left of A5?
-- The run's flag (state and one-line result) waits for C1 of `plans/workspace-flows-channels.md`, which defines the run's result; open question in #2284. Retry and skip were already API routes (F5a, #2098).
+- The run's flag (state and one-line result) comes with C1 of `plans/workspace-flows-channels.md`, which defines the run's result (#2385). Retry and skip were already API routes (F5a, #2098).
 
 ## How is it tested?
 - `tests/workspace_flow_run_values_test.php`.

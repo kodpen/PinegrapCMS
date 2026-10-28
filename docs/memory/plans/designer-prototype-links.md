@@ -24,7 +24,7 @@ description: Plan (2026-10-24, not started, answer 1 given): a Figma/XD-like pro
 4. Shared positions, thumbnails; links by page id that survive a rename, built from `__page_link` (outside widgets a new tree prop and renderer: ask first).
 - Schema: none for slices 1-3; a new table or column is asked first.
 
-## Which questions are answered? (owner, 2026-10-24: 1 a; 2-5 open)
+## Which questions are answered? (1 a owner 2026-10-24; 2-5 #2446)
 1. Where: (a) inside the designer, (b) on the Workspace Flows screen → a: a Prototype view in the visual designer on the shared canvas core (plans/graph-canvas-core.md), with the designer's save, rights, undo.
 2. Hrefs: (a) by page name, as today, (b) by page id → a now, b in slice 4.
 3. Who draws: (a) as today: roles 0-1, roles 2-3 inside editable areas (opened shared components too), (b) roles 2-3 everywhere → a.

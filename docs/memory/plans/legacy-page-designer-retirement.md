@@ -24,8 +24,8 @@ description: Plan (2026-10-19, waits for its prerequisites) to open classic page
 
 ## Open questions
 - Answered 2026-10-27: the frame is (b) one shared component. The owner delegated the answer to the coordinator ("bekleyen işçilere yanıtı sen ver benim yerime", "en makul ve işlevsel seçimle"), consistent with the R2 answer that the source is the shared component.
-- Pages that take a converted style from their folder: give them `page_style` on conversion, or leave them classic? Asked in #2452.
-- Theme designer (`theme_designer.php`) and `view_styles.php`: retire with the page designer or keep for classic sites?
+- Answered (#2411): on Save of a converted style, "Also convert the N pages that take this style from their folder", default on, the list shown; a step after L2.
+- Answered (#2437): `theme_designer.php` and `view_styles.php` stay while any classic style exists and retire in a later step once conversion covers every style.
 - A classic style on a PHP template file (`style_file`) is not convertible; it stays classic.
 
 ## Where to start?

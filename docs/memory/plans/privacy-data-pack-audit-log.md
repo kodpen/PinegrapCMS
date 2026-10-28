@@ -25,9 +25,9 @@ description: Plan (approved 2026-10-19; all steps done, open questions remain): 
 5e. Done (#2000): `contract` consent rows from `pg_legal_documents_store()`; `core/consent-log-writers.md`.
 5c. Done (#2324): `config.audit_log_retention_years` (11.0.47, owner approved 2026-10-27), the general job's daily pass; `core/privacy-log-retention.md`.
 
-## Open questions?
-- The export leaves out the site log, `audit_log` rows about the person and `visitors` (`core/personal-data-export.md`): add them later?
-- Tie an anonymous visitor's cookie rows by an id in `pg_consent` (cookie format change)? Asked in 5d's PR.
+## Which questions are answered?
+- Answered (#2434, owner 2026-10-28): the export stays as it is; the site log, audit and visitor rows are not added.
+- Answered (#2435): no id in `pg_consent`; each cookie consent row stands alone.
 
 ## Where to start?
-- Every step is done; only the open questions above remain. Once the owner answers them, their decisions go to the topic files and this plan is deleted.
+- Nothing: every step is done and the questions are answered; the decisions go to the topic files and this plan is deleted.

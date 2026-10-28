@@ -26,12 +26,12 @@ description: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, ans
 5. V4 assistants hear it: transcript in Pinegrap AI's context, `ws_api_claude_request_present()`, `ws_api_channel_context()`, recaps, push, search; a recording with typed tags (mic kept while the box holds only tags) or answering an assistant asks once transcribed.
 6. V5 (optional) answers read aloud by `speechSynthesis`; V6 a recording in a note (`ws_note_file`).
 
-## Open questions (recommendation)
-1. Transcript in `ws_voice` or in `body` (4000 chars, editable) → `ws_voice`.
-2. First provider: own key (OpenAI, Groq, own server) or Pinegrap AI's gateway (ai.pinegrap.com work) → own key, gateway a preset.
-3. Private channels: follow the site switch, or off until a manager allows (`ws_channels` column: schema) → off.
-4. Delete for everyone removes recording and transcript (the file stays today; a discussion copy shares its id) → yes.
-5. Cap 2 or 5 minutes → 5.
+## Which questions are answered? (#2417)
+1. Transcript in `ws_voice`, not in `body`.
+2. First provider: the site's own key (OpenAI-compatible), the gateway as a preset later.
+3. Private channels: off until a manager allows (a `ws_channels` column, in the V3 step).
+4. Delete for everyone removes the recording and the transcript (a discussion copy that shares the id is re-pointed).
+5. Cap 5 minutes.
 
 ## Where to start?
-- V3 (schema): needs the owner's answers to questions 1-5 first.
+- V3 (schema approved in #2417): `ws_voice`, the settings card, the `ws_channels` allow column in the `ai_access` shape.

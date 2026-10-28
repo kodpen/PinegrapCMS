@@ -27,11 +27,11 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 - `SW_TYPES` + `_swTypeDefaults`, `pg_sw_type_labels()`, renderer in `includes/fn/widgets*.php` with `_pg_inject_messages_node()` named after the classic liveform, PHP default tree and JS starter tree in lockstep, tokens and flags passing `tools/check_bindings.php`; compare against the classic page (`designer/system-widget-test-pages.md`).
 
 ## Which order did the owner give?
-- 2026-10-27, through the coordinator: "bekleyen işçilere yanıtı sen ver benim yerime", "en makul ve işlevsel seçimle", and "sorular mimari soru değilse makul seçim yap". Under that the order is: order form, folder view, photo gallery, confirmations, affiliate sign-up form.
-- Confirmations: decided when reached; preferred: a state / next-page setting of the registration and membership widgets.
+- 2026-10-27 (owner): order form, folder view, photo gallery, confirmations, affiliate sign-up form; a question that is not architectural takes the reasonable choice.
+- Confirmations (#2436): a next-page or message setting of the registration, membership and affiliate sign-up widgets.
 
-## Open questions?
-- Which of the types above must be designable before L5 (retire), and which may stay `system` region nodes?
+## Which stay `system` nodes?
+- #2436: 5a-5e of the owner's order get widgets; e-mail a friend, form view directory, affiliate confirmation and welcome stay `system` nodes.
 
 ## Where to start?
 - Next: the next type of the owner's order no open PR holds. One widget per PR.
