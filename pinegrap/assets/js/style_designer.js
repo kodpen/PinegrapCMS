@@ -11773,7 +11773,7 @@ const StyleDesigner = (function () {
                 flags: ['comments_open', 'comments_closed', 'can_comment', 'must_sign_in', 'featured_view', 'has_featured', 'name_is_typed',
                     'name_is_chosen', 'name_is_fixed', 'rating_on', 'files_on', 'watching_on', 'is_replying', 'is_watching', 'not_watching',
                     'can_manage_watchers', 'is_email', 'comment_is_reply', 'comment_has_quote', 'comment_has_replies', 'comment_has_file',
-                    'comment_is_verified', 'comment_has_seller_reply', 'is_item_thread', 'is_review_thread']
+                    'comment_has_image', 'comment_is_verified', 'comment_has_seller_reply', 'is_item_thread', 'is_review_thread']
             };
         }
         return {
@@ -12268,7 +12268,7 @@ const StyleDesigner = (function () {
     // While one is drawn, its flags and values are here.
     var _sdCommentSample = null;
 
-    // The samples, as { key, flags (the 14 row flags), values (tokens; a
+    // The samples, as { key, flags (the 15 row flags), values (tokens; a
     // function is called) }. `thread` is the state's thread flags.
     function _sdCommentSamples(cfg, thread) {
         cfg = cfg || {};
@@ -12283,7 +12283,7 @@ const StyleDesigner = (function () {
                 comment_is_root: true, comment_is_reply: false, comment_is_featured: false,
                 comment_is_pending: false, comment_is_own_pending: false, comment_is_scheduled: false,
                 comment_has_quote: false, comment_has_replies: false, comment_has_rating: false,
-                comment_has_file: false, comment_has_badge: false, comment_has_seller_reply: false,
+                comment_has_file: false, comment_has_image: false, comment_has_badge: false, comment_has_seller_reply: false,
                 comment_is_verified: verified, comment_can_edit: staff
             };
             Object.keys(over).forEach(function (k) { f[k] = over[k]; });
@@ -12315,7 +12315,7 @@ const StyleDesigner = (function () {
             },
             {
                 key: 'rated',
-                flags: flags({ comment_has_rating: _getCmtVal('pg_comments_rating') === '1', comment_has_file: true }),
+                flags: flags({ comment_has_rating: _getCmtVal('pg_comments_rating') === '1', comment_has_file: true, comment_has_image: true }),
                 values: {
                     __comment_name: _sdT('Daniel Ross'),
                     __comment_rating: '4',
@@ -12347,7 +12347,7 @@ const StyleDesigner = (function () {
                 comment_is_root: true, comment_is_reply: false, comment_is_featured: false,
                 comment_is_pending: false, comment_is_own_pending: false, comment_is_scheduled: false,
                 comment_has_quote: false, comment_has_replies: false, comment_has_rating: false,
-                comment_has_file: false, comment_has_badge: false, comment_has_seller_reply: false,
+                comment_has_file: false, comment_has_image: false, comment_has_badge: false, comment_has_seller_reply: false,
                 comment_is_verified: false, comment_can_edit: staff, comment_on_record: false, comment_on_page: false
             };
             Object.keys(over).forEach(function (k) { f[k] = over[k]; });
@@ -42406,6 +42406,7 @@ const StyleDesigner = (function () {
             ['comment_is_scheduled',     _sdT('Row: scheduled (staff only)')],
             ['comment_has_rating',       _sdT('Row: has a rating')],
             ['comment_has_file',         _sdT('Row: has an attachment')],
+            ['comment_has_image',        _sdT('Row: the attachment is a photo')],
             ['comment_has_badge',        _sdT('Row: the writer has a badge')],
             ['comment_is_verified',      _sdT('Row: from a verified purchase')],
             ['comment_has_seller_reply', _sdT('Row: the store replied')],
@@ -63011,6 +63012,11 @@ const StyleDesigner = (function () {
                                             ]),
                                             createNode('semantic', { tag: 'div', cssClass: 'mt-2', customName: _sdT('Message'), text: _sdT('Comment text'),
                                                 _bindings: { text: '__comment_message_html' } }),
+                                            createNode('semantic', { tag: 'div', cssClass: 'mt-3', customName: _sdT('Photo'),
+                                                _bindings: { eo_visible_if: 'comment_has_image' } }, [
+                                                createNode('content', { contentType: 'image', src: '', alt: _sdT('Photo'), loading: 'lazy', cssClass: 'img-thumbnail',
+                                                    maxWidth: '160px', maxHeight: '160px', _bindings: { src: '__comment_file_url' } })
+                                            ]),
                                             createNode('semantic', { tag: 'div', cssClass: 'small mt-3 d-flex align-items-center gap-2', customName: _sdT('Attachment'),
                                                 _bindings: { eo_visible_if: 'comment_has_file' } }, [
                                                 createNode('content', { contentType: 'link', text: 'file.pdf', href: '#', cssClass: '', target: '_blank', rel: 'noopener',

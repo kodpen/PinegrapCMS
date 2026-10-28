@@ -924,7 +924,7 @@ function test_comments_recent_mode_off_tables()
 	foreach (array('__comment_thread_title', '__comment_thread_url', '__comment_label', '__comment_excerpt', '__comment_url', '__comment_name', '__comments_count') as $token) {
 		pg_assert_false(in_array($token, $recent['tokens'], true), 'recent: ' . $token . ' kept');
 	}
-	foreach (array('can_comment', 'comments_open', 'is_replying', 'watching_on', 'comment_is_reply', 'comment_has_quote', 'comment_has_file') as $flag) {
+	foreach (array('can_comment', 'comments_open', 'is_replying', 'watching_on', 'comment_is_reply', 'comment_has_quote', 'comment_has_file', 'comment_has_image') as $flag) {
 		pg_assert_true(in_array($flag, $recent['flags'], true), 'recent: ' . $flag . ' off');
 	}
 	foreach (array('has_comments', 'no_comments', 'has_more_pages', 'is_staff', 'is_signed_in', 'comment_is_pending', 'comment_on_record') as $flag) {
