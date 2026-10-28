@@ -172,6 +172,7 @@ function ws_js_strings()
         'list_task_title'        => lang('Checklist'),
         'list_to_task'           => lang('Make the list a task'),
         'loading'                => lang('Loading…'),
+        'script_missing'         => lang('A script of this screen did not load. Reload the page.'),
         'make_private'           => lang('Make it private'),
         'make_private_confirm'   => ws_js_template('Make this channel private? Its {var:1} members keep it; the rest of the team stops seeing it, what was written in it and the notes shared only here. Claude reads a private channel only if it is let in.', 1),
         'make_public'            => lang('Open it to everyone'),

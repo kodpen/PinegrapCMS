@@ -14,12 +14,20 @@
  * got 403, og:image and the RSS enclosure named a closed file.
  * pg_record_file_designed_access() gives get_file.php the missing answer.
  *
- * Loaded by get_file.php alone, on the path where it would otherwise refuse
- * the file; tests/record_files_test.php loads it for the tests. get_file.php
- * never loads functions.php (router.php dispatches it that way on purpose),
- * so the widget helpers of includes/fn/widgets.php are not there. What the
- * answer needs from them is carried here, and the test file holds each copy
- * to its original:
+ * The form's RSS media field counts as printed by every view that shows the
+ * record, classic or designed: the software publishes that field's address
+ * as the record's picture (og:image, the feed's enclosure) wherever the
+ * record is shown. pg_record_file_anonymous_access() answers for a visitor
+ * who is not signed in, so that og:image and the enclosure (seo.php,
+ * get_page.php) leave out an upload such a visitor cannot open.
+ *
+ * Loaded by get_file.php on the path where it would otherwise refuse the
+ * file, and by pg_file_open_to_everyone() of includes/fn/seo.php;
+ * tests/record_files_test.php loads it for the tests. get_file.php never
+ * loads functions.php (router.php dispatches it that way on purpose), so the
+ * widget helpers of includes/fn/widgets.php are not there. What the answer
+ * needs from them is carried here, and the test file holds each copy to its
+ * original:
  *
  *   pg_record_file_widget_public()    pg_sw_form_widget_public()
  *   pg_record_file_sql_operation()    prepare_sql_operation()
@@ -28,14 +36,16 @@
  *                                     filters it can build (see there)
  *   pg_record_file_tree_shared_ids()  pg_sw_page_widgets()' walk
  *   pg_record_file_loop_children()    _split_widget_tree()'s loop_area search
+ *   pg_record_file_classic_view_shows() get_file.php's list and item view
+ *                                     checks, for a visitor not signed in
  *
  * CONTRACT - the functions in this file may only call each other, escape()
- * (both includers define it), check_view_access() and pg_auth_column_exists()
- * of includes/authentication.php, get_file.php's initialize_timezone() behind
- * function_exists(), and PHP itself. Queries go through
- * pg_record_file_rows(), which answers a failed query with no rows, so a
- * database without the visual editor's tables keeps the file closed instead
- * of ending the request.
+ * (both includers define it), check_view_access(), get_access_control_type()
+ * and pg_auth_column_exists() of includes/authentication.php, get_file.php's
+ * initialize_timezone() behind function_exists(), and PHP itself. Queries go
+ * through pg_record_file_rows(), which answers a failed query with no rows,
+ * so a database without the visual editor's tables keeps the file closed
+ * instead of ending the request.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -480,14 +490,16 @@ function pg_record_file_merge_filters($list_cfg, $view_cfg)
  *   identifiers                    pg_record_file_field_identifiers()
  *   listed                         the field is an upload not kept for
  *                                  office use (pg_record_file_tree_binds())
+ *   media                          the field is the form's RSS media field
  *   pages                          the pages carrying the widget, each
  *                                  array('binned', 'draft', 'viewable')
  *   filters                        'pass', 'fail' or 'closed' for the record
  *
  * It does: a record view or a list of that form, public
- * (pg_record_file_widget_public()), whose tree prints the field, on at least
- * one page that is neither in the recycle bin nor among the drafts and that
- * the visitor may view, and whose filters the record passes.
+ * (pg_record_file_widget_public()), whose tree prints the field (the media
+ * field counts as printed by every view of the record), on at least one page
+ * that is neither in the recycle bin nor among the drafts and that the
+ * visitor may view, and whose filters the record passes.
  *
  * @param array $facts
  * @return bool
@@ -503,7 +515,7 @@ function pg_record_file_view_grants($facts)
             isset($facts['form_page_id']) ? $facts['form_page_id'] : 0,
             isset($facts['form_page_name']) ? $facts['form_page_name'] : '')) return false;
     if (!pg_record_file_widget_public($cfg)) return false;
-    if (!pg_record_file_widget_binds($cfg, isset($facts['tree']) ? $facts['tree'] : null,
+    if (empty($facts['media']) && !pg_record_file_widget_binds($cfg, isset($facts['tree']) ? $facts['tree'] : null,
             isset($facts['identifiers']) ? $facts['identifiers'] : array(), !empty($facts['listed']))) return false;
     if (!isset($facts['filters']) || $facts['filters'] !== 'pass') return false;
     return pg_record_file_open_page(isset($facts['pages']) ? $facts['pages'] : array());
@@ -648,15 +660,18 @@ function pg_record_file_pages_sql($sids, $expr, $page_ids = null)
  * The pages carrying any of the shared components, each with the facts
  * pg_record_file_view_grants() reads, keyed by component id: those of
  * $page_ids and the home page, or with null every page, in one scan of the
- * page trees (pg_record_file_pages_sql()).
+ * page trees (pg_record_file_pages_sql()). A page is viewable when this
+ * visitor may view its folder; with $anonymous, when the folder is public.
  *
  * @param int[]      $sids
  * @param int[]|null $page_ids
+ * @param bool       $anonymous judge the pages for a visitor not signed in
  * @return array sid => list of array('page_id', 'binned', 'draft', 'viewable')
  */
-function pg_record_file_widget_pages($sids, $page_ids = null)
+function pg_record_file_widget_pages($sids, $page_ids = null, $anonymous = false)
 {
     static $views = array();
+    $mode = $anonymous ? 'a' : 'v';
     $out = array();
     foreach ((array)$sids as $sid) {
         if ((int)$sid > 0) $out[(int)$sid] = array();
@@ -673,16 +688,17 @@ function pg_record_file_widget_pages($sids, $page_ids = null)
             // A row the prefix found for another id (12 for 123) places none.
             if (empty($row['s' . $sid])) continue;
             if ($page === null) {
-                if (!$binned && !$draft && !isset($views[$folder])) {
-                    // The folder check of the classic branch; skipped for a
-                    // page that is closed anyway.
-                    $views[$folder] = (check_view_access($folder) == true);
+                if (!$binned && !$draft && !isset($views[$mode . $folder])) {
+                    // The folder check of the classic branch, or for a
+                    // visitor not signed in the folder's own setting;
+                    // skipped for a page that is closed anyway.
+                    $views[$mode . $folder] = $anonymous ? pg_record_file_folder_public($folder) : (check_view_access($folder) == true);
                 }
                 $page = array(
                     'page_id'  => (int)$row['page_id'],
                     'binned'   => $binned,
                     'draft'    => $draft,
-                    'viewable' => (!$binned && !$draft) ? $views[$folder] : false,
+                    'viewable' => (!$binned && !$draft) ? $views[$mode . $folder] : false,
                 );
             }
             $out[$sid][] = $page;
@@ -823,9 +839,12 @@ function pg_record_file_filter_verdict($cfg, $form_page_id, $form_page_name, $fo
  * Whether a page built in the visual editor shows this visitor the file a
  * submitted form holds in one of its fields: a public record view or list of
  * the form, placed on a page the visitor may view (not binned, not a draft),
- * printing that field, for a record that passes the widget's filters
- * (pg_record_file_view_grants()). get_file.php asks after its classic checks
- * have refused the file.
+ * printing that field (or the field is the form's RSS media field, which
+ * every view of the record counts as printing), for a record that passes the
+ * widget's filters (pg_record_file_view_grants()). get_file.php asks after
+ * its classic checks have refused the file; with $anonymous the pages are
+ * judged for a visitor who is not signed in, whoever is asking
+ * (pg_record_file_anonymous_access()).
  *
  * The widgets and their bindings come first, in two small queries. Then the
  * pages: those the form's lists name as their detail page and the home page,
@@ -843,21 +862,23 @@ function pg_record_file_filter_verdict($cfg, $form_page_id, $form_page_name, $fo
  * @param int    $custom_form_page_id the record's custom form (page id)
  * @param int    $form_id             the record (forms.id)
  * @param string $field_name          the field holding the file
+ * @param bool   $anonymous           for a visitor who is not signed in
  * @return bool
  */
-function pg_record_file_designed_access($custom_form_page_id, $form_id, $field_name)
+function pg_record_file_designed_access($custom_form_page_id, $form_id, $field_name, $anonymous = false)
 {
     static $cache = array();
     $custom_form_page_id = (int)$custom_form_page_id;
     $form_id             = (int)$form_id;
     $field_name          = (string)$field_name;
+    $anonymous           = (bool)$anonymous;
     if ($custom_form_page_id <= 0 || $form_id <= 0 || $field_name === '') return false;
-    $key = $custom_form_page_id . '|' . $form_id . '|' . $field_name;
+    $key = ($anonymous ? 'a' : 'v') . '|' . $custom_form_page_id . '|' . $form_id . '|' . $field_name;
     if (isset($cache[$key])) return $cache[$key];
     $cache[$key] = false;
 
     $form = pg_record_file_rows(
-        "SELECT page.page_name, form_fields.label, form_fields.type, form_fields.office_use_only
+        "SELECT page.page_name, form_fields.label, form_fields.type, form_fields.office_use_only, form_fields.rss_field
          FROM page
          LEFT JOIN form_fields ON (form_fields.page_id = page.page_id) AND (form_fields.name = '" . escape($field_name) . "')
          WHERE page.page_id = '" . $custom_form_page_id . "'
@@ -872,6 +893,9 @@ function pg_record_file_designed_access($custom_form_page_id, $form_id, $field_n
     // an upload field not kept for office use.
     $listed         = isset($form[0]['type'], $form[0]['office_use_only'])
         && (string)$form[0]['type'] === 'file upload' && (string)$form[0]['office_use_only'] === '0';
+    // The form's RSS media field: every view of the record counts as
+    // printing it.
+    $media = isset($form[0]['rss_field']) && (string)$form[0]['rss_field'] === 'media';
 
     // The widgets of this form that show its records to everyone, and the
     // detail pages its lists name.
@@ -896,23 +920,27 @@ function pg_record_file_designed_access($custom_form_page_id, $form_id, $field_n
             'form_page_name' => $form_page_name,
             'identifiers'    => $identifiers,
             'listed'         => $listed,
+            'media'          => $media,
             'pages'          => array(),
             'filters'        => 'fail',
         );
     }
     if (!$candidates) return false;
 
-    // Those that print the field, their trees read in one query.
-    foreach (pg_record_file_rows(
-        "SELECT id, tree_json FROM shared_components
-         WHERE id IN (" . implode(',', array_keys($candidates)) . ")") as $row) {
-        $sid = (int)$row['id'];
-        if (isset($candidates[$sid])) $candidates[$sid]['tree'] = (string)$row['tree_json'];
+    // Those that print the field, their trees read in one query; the media
+    // field needs no tree, every one of them prints it.
+    if (!$media) {
+        foreach (pg_record_file_rows(
+            "SELECT id, tree_json FROM shared_components
+             WHERE id IN (" . implode(',', array_keys($candidates)) . ")") as $row) {
+            $sid = (int)$row['id'];
+            if (isset($candidates[$sid])) $candidates[$sid]['tree'] = (string)$row['tree_json'];
+        }
+        foreach ($candidates as $sid => $facts) {
+            if (!pg_record_file_widget_binds($facts['cfg'], $facts['tree'], $identifiers, $listed)) unset($candidates[$sid]);
+        }
+        if (!$candidates) return false;
     }
-    foreach ($candidates as $sid => $facts) {
-        if (!pg_record_file_widget_binds($facts['cfg'], $facts['tree'], $identifiers, $listed)) unset($candidates[$sid]);
-    }
-    if (!$candidates) return false;
 
     $fields = array();
     foreach (pg_record_file_rows(
@@ -930,7 +958,7 @@ function pg_record_file_designed_access($custom_form_page_id, $form_id, $field_n
     $rest = $candidates;
     foreach (array(pg_record_file_unique_ids($known), null) as $page_ids) {
         if (!$rest) break;
-        $pages = pg_record_file_widget_pages(array_keys($rest), $page_ids);
+        $pages = pg_record_file_widget_pages(array_keys($rest), $page_ids, $anonymous);
         foreach ($rest as $sid => $facts) {
             $facts['pages'] = isset($pages[$sid]) ? $pages[$sid] : array();
             if (!pg_record_file_open_page($facts['pages'])) continue;
@@ -958,4 +986,174 @@ function pg_record_file_unique_ids($ids)
         if ($id > 0 && !in_array($id, $out, true)) $out[] = $id;
     }
     return $out;
+}
+
+/**
+ * Whether a classic layout prints the field: its ^^variable^^ in the layout
+ * (the rule of get_file.php's list and item view checks: without case, the
+ * name quoted), or the field being the form's RSS media field, which every
+ * view of the record counts as printing.
+ *
+ * @param string $layout
+ * @param string $field_name
+ * @param bool   $media
+ * @return bool
+ */
+function pg_record_file_layout_prints($layout, $field_name, $media = false)
+{
+    if ($media) return true;
+    $field_name = (string)$field_name;
+    if ($field_name === '') return false;
+    return preg_match('/\^\^' . preg_quote($field_name, '/') . '\^\^/i', (string)$layout) === 1;
+}
+
+/**
+ * Whether a classic form list view, or the form item view it names, shows
+ * the record's file to a visitor who is not signed in: the rule get_file.php
+ * applies to such a visitor, over the view's facts:
+ *
+ *   layout, folder_public, viewer_filter   the list view
+ *   item                                   the item view the list names, or
+ *                                          null: layout, folder_public,
+ *                                          submitter_security
+ *
+ * The list shows it when its layout prints the field
+ * (pg_record_file_layout_prints()) and its folder is public: then its
+ * viewer filter alone decides, and only a signed-in visitor passes one.
+ * Otherwise the item view shows it when that prints the field, in a public
+ * folder, without submitter security.
+ *
+ * @param mixed  $view
+ * @param string $field_name
+ * @param bool   $media the field is the form's RSS media field
+ * @return bool
+ */
+function pg_record_file_classic_view_shows($view, $field_name, $media = false)
+{
+    if (!is_array($view)) return false;
+    $layout = isset($view['layout']) ? (string)$view['layout'] : '';
+    if (pg_record_file_layout_prints($layout, $field_name, $media) && !empty($view['folder_public'])) {
+        return (int)(isset($view['viewer_filter']) ? $view['viewer_filter'] : 0) !== 1;
+    }
+    $item = isset($view['item']) ? $view['item'] : null;
+    if (!is_array($item)) return false;
+    return pg_record_file_layout_prints(isset($item['layout']) ? (string)$item['layout'] : '', $field_name, $media)
+        && !empty($item['folder_public'])
+        && (int)(isset($item['submitter_security']) ? $item['submitter_security'] : 0) !== 1;
+}
+
+/**
+ * Whether a folder is open to a visitor who is not signed in: its access
+ * control is public (get_file.php serves such a visitor a file from no
+ * other kind of folder).
+ *
+ * @param mixed $folder_id
+ * @return bool
+ */
+function pg_record_file_folder_public($folder_id)
+{
+    $type = (string)get_access_control_type($folder_id);
+    return $type === 'public' || $type === '';
+}
+
+/**
+ * Whether a classic 'form list view' page of the form, or the form item
+ * view one of them names, shows the field's file to a visitor who is not
+ * signed in: the rows get_file.php reads, each judged by
+ * pg_record_file_classic_view_shows().
+ *
+ * @param int    $custom_form_page_id
+ * @param string $field_name
+ * @param bool   $media the field is the form's RSS media field
+ * @return bool
+ */
+function pg_record_file_classic_anonymous_access($custom_form_page_id, $field_name, $media = false)
+{
+    $custom_form_page_id = (int)$custom_form_page_id;
+    if ($custom_form_page_id <= 0) return false;
+    $views = pg_record_file_rows(
+        "SELECT form_list_view_pages.layout, form_list_view_pages.form_item_view_page_id,
+                form_list_view_pages.viewer_filter, page.page_folder AS folder_id
+         FROM page
+         LEFT JOIN form_list_view_pages ON page.page_id = form_list_view_pages.page_id
+         WHERE (page.page_type = 'form list view')
+           AND (form_list_view_pages.custom_form_page_id = '" . $custom_form_page_id . "')");
+    foreach ($views as $row) {
+        $view = array(
+            'layout'        => (string)$row['layout'],
+            'folder_public' => pg_record_file_folder_public($row['folder_id']),
+            'viewer_filter' => (int)$row['viewer_filter'],
+            'item'          => null,
+        );
+        if ((int)$row['form_item_view_page_id'] > 0) {
+            $item = pg_record_file_rows(
+                "SELECT form_item_view_pages.layout, form_item_view_pages.submitter_security, page.page_folder AS folder_id
+                 FROM form_item_view_pages
+                 LEFT JOIN page ON form_item_view_pages.page_id = page.page_id
+                 WHERE (form_item_view_pages.page_id = '" . (int)$row['form_item_view_page_id'] . "')
+                   AND (form_item_view_pages.collection = 'a')");
+            if ($item) {
+                $view['item'] = array(
+                    'layout'             => (string)$item[0]['layout'],
+                    'folder_public'      => pg_record_file_folder_public($item[0]['folder_id']),
+                    'submitter_security' => (int)$item[0]['submitter_security'],
+                );
+            }
+        }
+        if (pg_record_file_classic_view_shows($view, $field_name, $media)) return true;
+    }
+    return false;
+}
+
+/**
+ * Whether a visitor who is not signed in may open a file: the answer
+ * get_file.php gives such a visitor, for the places that publish a file's
+ * address to everyone, og:image and the feed's enclosure
+ * (pg_file_open_to_everyone() in includes/fn/seo.php), so that neither
+ * carries an address that answers with the sign-in screen. The file's
+ * folder must be public; a submitted form's upload (files.attachment = 1)
+ * must also be shown by a public view of its record, classic
+ * (pg_record_file_classic_anonymous_access()) or designed
+ * (pg_record_file_designed_access() for such a visitor). A comment
+ * attachment, a file no record holds and a file whose row cannot be read
+ * stay closed. The answer is kept for the request.
+ *
+ * The gates get_file.php keeps for files that are never form uploads (the
+ * DKIM key, ERP documents, workspace files) are not asked here.
+ *
+ * @param int $file_id files.id
+ * @return bool
+ */
+function pg_record_file_anonymous_access($file_id)
+{
+    static $cache = array();
+    $file_id = (int)$file_id;
+    if ($file_id <= 0) return false;
+    if (isset($cache[$file_id])) return $cache[$file_id];
+    $cache[$file_id] = false;
+
+    $file = pg_record_file_rows("SELECT folder, attachment FROM files WHERE id = '" . $file_id . "' LIMIT 1");
+    if (!$file || !pg_record_file_folder_public($file[0]['folder'])) return false;
+    if ((int)$file[0]['attachment'] !== 1) return $cache[$file_id] = true;
+    // A comment attachment opens through its comment, which is not judged
+    // here.
+    if (pg_record_file_rows("SELECT 1 FROM comments WHERE file_id = '" . $file_id . "' LIMIT 1")) return false;
+
+    $record = pg_record_file_rows(
+        "SELECT forms.id, forms.page_id AS custom_form_page_id, form_fields.name AS field_name, form_fields.rss_field
+         FROM form_data
+         LEFT JOIN forms ON form_data.form_id = forms.id
+         LEFT JOIN form_fields ON form_data.form_field_id = form_fields.id
+         WHERE form_data.file_id = '" . $file_id . "'
+         LIMIT 1");
+    if (!$record) return false;
+    $form_page_id = (int)$record[0]['custom_form_page_id'];
+    $form_id      = (int)$record[0]['id'];
+    $field_name   = (string)$record[0]['field_name'];
+    $media        = (string)$record[0]['rss_field'] === 'media';
+    if ($form_page_id <= 0 || $form_id <= 0 || $field_name === '') return false;
+
+    $open = pg_record_file_classic_anonymous_access($form_page_id, $field_name, $media)
+        || pg_record_file_designed_access($form_page_id, $form_id, $field_name, true);
+    return $cache[$file_id] = $open;
 }
