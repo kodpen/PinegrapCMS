@@ -442,6 +442,71 @@ function pg_comment_address_item_facts($page_id, $page_type, $ctx)
     return $facts;
 }
 
+/**
+ * The name a product, product group or calendar event goes by on the site,
+ * from its row, as raw text. Pure.
+ *
+ * A product or group: the title a visitor reads (its short description as
+ * text, the catalog's "Name"), else its name (for a product the SKU). An
+ * event: its name. Any other thread, or no row: ''.
+ *
+ * @param mixed $item_type comments.item_type
+ * @param mixed $row       the item's row: short_description and name
+ * @return string
+ */
+function pg_comment_item_label($item_type, $row)
+{
+    if (!is_array($row) || !in_array($item_type, array('product', 'product_group', 'calendar_event'), true)) {
+        return '';
+    }
+
+    $text = function ($key) use ($row) {
+        return (isset($row[$key]) && is_scalar($row[$key])) ? (string) $row[$key] : '';
+    };
+
+    if ($item_type !== 'calendar_event') {
+        $title = pg_sw_item_text($text('short_description'));
+
+        if ($title !== '') {
+            return $title;
+        }
+    }
+
+    return trim(preg_replace('~[\s\x{00A0}]+~u', ' ', $text('name')));
+}
+
+/**
+ * The name of the product, product group or calendar event a thread is
+ * about (pg_comment_item_label()), '' for a page or record thread or an item
+ * that is gone. Read once per item and request.
+ *
+ * @param mixed $item_type comments.item_type
+ * @param mixed $item_id   comments.item_id
+ * @return string
+ */
+function pg_comment_item_name($item_type, $item_id)
+{
+    static $names = array();
+
+    $tables = array('product' => 'products', 'product_group' => 'product_groups', 'calendar_event' => 'calendar_events');
+    $item_type = is_string($item_type) ? $item_type : '';
+    $item_id = (is_scalar($item_id) && !is_bool($item_id)) ? (int) $item_id : 0;
+
+    if (!isset($tables[$item_type]) || ($item_id <= 0)) {
+        return '';
+    }
+
+    $key = $item_type . ':' . $item_id;
+
+    if (!isset($names[$key])) {
+        $columns = ($item_type === 'calendar_event') ? 'name' : 'name, short_description';
+        $row = db_item("SELECT " . $columns . " FROM " . $tables[$item_type] . " WHERE id = '" . $item_id . "' LIMIT 1");
+        $names[$key] = pg_comment_item_label($item_type, $row);
+    }
+
+    return $names[$key];
+}
+
 // Moderation of a stored comment: which form record it belongs to, and that
 // record's counters.
 //

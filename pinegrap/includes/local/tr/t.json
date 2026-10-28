@@ -1223,6 +1223,8 @@
     "The coming appointments, the conversations with patients and the blog are kept here. To confirm or cancel an appointment, open it and press Change Status.": "Yaklaşan randevular, hastalarla yazışmalar ve blog burada. Bir randevuyu onaylamak ya da iptal etmek için randevuyu açın ve Durumu Değiştir'e basın.",
     "The coming table bookings, the catering requests, the menu and the events are kept here. To confirm a booking or send a quote, open it and press Change Status; what you write under it reaches the guest by e-mail.": "Yaklaşan masa rezervasyonları, catering talepleri, menü ve etkinlikler burada tutulur. Bir rezervasyonu onaylamak ya da teklif göndermek için kaydı açıp Durumu Değiştir'e basın; altına yazdıklarınız misafire e-postayla ulaşır.",
     "The coming week of {var:1}": "{var:1} için önümüzdeki hafta",
+    "The comments are a product's reviews (verified purchases only)": "Yorumlar bir ürünün incelemeleri (yalnız doğrulanmış satın almalar)",
+    "The comments are about a product, product group or event": "Yorumlar bir ürün, ürün grubu ya da etkinlikle ilgili",
     "The comments of the page and the form for adding one.": "Sayfanın yorumları ve yorum ekleme formu.",
     "The comments run over more than one page": "Yorumlar birden fazla sayfaya yayılıyor",
     "The comments waiting for approval turn up on the dashboard now, newest first.": "Onay bekleyen yorumlar artık panelde çıkıyor, en yenisi üstte.",

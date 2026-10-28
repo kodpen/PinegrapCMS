@@ -7,7 +7,8 @@ The Preview: [[comments-widget-preview]].
 
 ## What does the canvas draw?
 - One visitor state at a time (`_sdCommentsCanvasState`, editor only): comments, replying, no comments, member, sign in, closed, staff, e-mail ([[comments-widget-email]]; `_sdCommentsCanvasStates(cfg)`; a recent list's: [[comments-widget-recent-editor]]), picked by chips on the band (`_sdStateChips()`, `sd-chips-wrap`; also the login region's `_sdSessionChips()`) or the panel's "Canvas shows" (`_sdCommentsCanvasSect()`).
-- `_sdCommentsCanvasFacts(state, cfg)` -> `_sdCommentsThreadFlags()`, a line-for-line twin of `pg_comments_widget_thread_flags()` (23 flags, compared under Node): a new PHP flag goes in both (check_bindings misses it).
+- `_sdCommentsCanvasFacts(state, cfg)` -> `_sdCommentsThreadFlags()`, a line-for-line twin of `pg_comments_widget_thread_flags()` (25 flags, compared under Node): a new PHP flag goes in both (check_bindings misses it).
+- The thread a state draws (`_sdCommentsStateThread()`): the page's (`_sdCommentsPageThread()`, by page type: [[comments-widget-item-threads]]); a product's in the states `review` (offered on every page but a catalog detail one, so a node under `is_review_thread` can be drawn and picked) and `not_bought` (catalog detail only: the closed message reads the refusal); none in the e-mail. On a product thread every state but sign in is a signed-in customer (a visitor is asked to sign in, `review_refusal`), never featured; samples are verified. `__comments_item_name` previews a sample product, group or event name, '' on a page's own thread.
 
 ## Hide or fade?
 - Hide (`sd-state-off`, `_sdCommentsFlagOff()` in buildNodeEl; an id's weight beats `d-flex` wrappers): a node whose thread flag the state has false; the loop area without comments. A row flag (`comment_*`) hides only in a sample; the card shows every part.
