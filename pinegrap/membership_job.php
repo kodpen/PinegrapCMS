@@ -18,6 +18,9 @@
 
 require('init.php');
 
+// A job also when a signed-in manager opens it: its contact lines name no one.
+pg_audit_as_job(true);
+
 // get current date
 $current_date = date('Y-m-d');
 
@@ -79,8 +82,10 @@ if ((MEMBERSHIP_EXPIRATION_WARNING_EMAIL == true) && (MEMBERSHIP_EXPIRATION_WARN
                 'body' => $body));
             
             // set expiration date for warning e-mail, so that warning e-mail is not sent again for this same expiration date
+            $audit_before = pg_audit_fetch('contacts', (int) $contact['id']);
             $query = "UPDATE contacts SET warning_expiration_date = ? WHERE id = ?";
             $result = db_q($query, array((string) $contact['expiration_date'], (string) $contact['id'])) or exit(mysqli_error(db::$con));
+            pg_audit_record('update', 'contacts', (int) $contact['id'], $audit_before);
         }
         
         // if membership job e-mailed at least 1 member, then log action
