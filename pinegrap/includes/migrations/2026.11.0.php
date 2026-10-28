@@ -91,6 +91,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_api_device_pairings();    // 11.0.70
 	upgrade_2026_11_0_product_bundles();        // 11.0.54
 	upgrade_2026_11_0_workspace_voice();        // 11.0.89
+	upgrade_2026_11_0_workspace_mail();          // 11.0.82
 
 }
 
@@ -2787,6 +2788,121 @@ function upgrade_2026_11_0_api_device_pairings() {
 
 }
 
+// Incoming e-mail into Workspace channels (2026.11.0, 11.0.82; the parser is
+// includes/fn/mail_parse.php, docs/memory/workspace/mail-tables.md).
+//
+// ws_mail_boxes is a mailbox the site reads (address, transport, its settings
+// with the password sealed by pg_connect_seal(), the channel its mail lands
+// in, where the IMAP read stopped, the last check). ws_mail_conversations is
+// one conversation with one sender: its card message in the channel (the
+// thread is that message's replies), the customer it matched, status,
+// assignee and the response times. ws_mail_items is every mail in and out of
+// a conversation; rfc_message_hash (SHA-256 of the Message-ID, or of the raw
+// mail when it has none) is unique per box, so a mail fetched twice is kept
+// once. ws_messages and ws_message_forwards learn the sender kind 'mail'
+// (sender_id the ws_mail_items row). Nothing is read until a box is added.
+function upgrade_2026_11_0_workspace_mail() {
+
+	install_create_table('ws_mail_boxes', "CREATE TABLE ws_mail_boxes (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name            VARCHAR(100) NOT NULL DEFAULT '',
+		address         VARCHAR(255) NOT NULL DEFAULT '',
+		transport       ENUM('imap','graph','gmail','push') NOT NULL DEFAULT 'imap',
+		settings        TEXT NULL,
+		folder          VARCHAR(255) NOT NULL DEFAULT 'INBOX',
+		after_fetch     ENUM('seen','move') NOT NULL DEFAULT 'seen',
+		channel_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		reply_via       ENUM('box','site','connection') NOT NULL DEFAULT 'box',
+		auto_reply      TINYINT(1) NOT NULL DEFAULT 0,
+		auto_reply_text TEXT NULL,
+		enabled         TINYINT(1) NOT NULL DEFAULT 1,
+		uidvalidity     INT UNSIGNED NOT NULL DEFAULT 0,
+		last_uid        INT UNSIGNED NOT NULL DEFAULT 0,
+		checked_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		ok_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		last_error      VARCHAR(255) NOT NULL DEFAULT '',
+		created_by      INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_channel (channel_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_mail_conversations', "CREATE TABLE ws_mail_conversations (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		box_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		message_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		subject         VARCHAR(255) NOT NULL DEFAULT '',
+		customer_email  VARCHAR(255) NOT NULL DEFAULT '',
+		customer_name   VARCHAR(255) NOT NULL DEFAULT '',
+		contact_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		status          ENUM('open','waiting','closed') NOT NULL DEFAULT 'open',
+		assignee_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		first_in_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		first_reply_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		last_in_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		last_out_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		closed_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_box (box_id, status, last_in_at),
+		KEY idx_channel (channel_id),
+		KEY idx_message (message_id),
+		KEY idx_contact (contact_id),
+		KEY idx_assignee (assignee_id, status)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_mail_items', "CREATE TABLE ws_mail_items (
+		id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		box_id           INT UNSIGNED NOT NULL DEFAULT 0,
+		conversation_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		message_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		direction        ENUM('in','out') NOT NULL DEFAULT 'in',
+		rfc_message_id   VARCHAR(255) NOT NULL DEFAULT '',
+		rfc_message_hash CHAR(64) NOT NULL DEFAULT '',
+		in_reply_to      VARCHAR(255) NOT NULL DEFAULT '',
+		reference_ids    TEXT NULL,
+		from_email       VARCHAR(255) NOT NULL DEFAULT '',
+		from_name        VARCHAR(255) NOT NULL DEFAULT '',
+		to_list          TEXT NULL,
+		cc_list          TEXT NULL,
+		subject          VARCHAR(255) NOT NULL DEFAULT '',
+		body_text        MEDIUMTEXT NULL,
+		auth             ENUM('pass','fail','none') NOT NULL DEFAULT 'none',
+		raw_path         VARCHAR(255) NOT NULL DEFAULT '',
+		refused_files    TEXT NULL,
+		user_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		sent_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_box_message (box_id, rfc_message_hash),
+		KEY idx_conversation (conversation_id, id),
+		KEY idx_sender (box_id, from_email(191), created_at),
+		KEY idx_created (created_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	// An enum is widened only when it does not carry the value yet, so a
+	// second run does not rebuild the tables for nothing.
+	$widen = function ($table, $column, $value, $definition) {
+
+		$info = install_column_info($table, $column);
+
+		if (is_array($info) && (strpos((string) $info['Type'], "'" . $value . "'") === false)) {
+			install_modify_column($table, $column, $definition);
+		} else {
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => $table . '.' . $column . ' ' . $value)));
+		}
+	};
+
+	$widen('ws_messages', 'sender_kind', 'mail', "ENUM('user','app','system','guest','mail') NOT NULL DEFAULT 'user'");
+	$widen('ws_message_forwards', 'source_sender_kind', 'mail', "ENUM('user','app','system','guest','mail') NOT NULL DEFAULT 'user'");
+
+	install_note('Workspace: the tables for incoming e-mail are added (mailboxes, conversations and the mails in them). Nothing is read until a mailbox is added in the Workspace settings.');
+
+}
 
 // Product bundles (2026.11.0, 11.0.54; includes/fn/bundles.php, the product
 // screen's contents card).

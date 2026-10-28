@@ -24,6 +24,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 ## Files
 
 - mail-parse.md: Incoming mail MIME parser pg_mail_parse() (G1a of incoming e-mail): result shape, charset fallback, limits, error codes, what it leaves to ws_mail_ingest()
+- mail-tables.md: Incoming e-mail tables (G1b, step 11.0.82): ws_mail_boxes, ws_mail_conversations, ws_mail_items, sender kind 'mail'; what each column holds and why
 - workspace-ai-rewrite.md: "Rewrite with AI" in the Workspace composer (ai_write target ws_message): what the model reads, the button, Use as one undo step, tags kept, no AI mark
 - workspace-api-callers.md: Which Workspace API writes the person must make themselves: ws_api_person_only() vs ws_api_own_words_only(), whose name a write carries, refusals, which are no MCP tools
 - workspace-api-channel-customer.md: A channel's customer over the Workspace API and MCP (PR #1766): customer_type and customer_id on channels.create and channels.update, one half alone refused, null clears, the user role's contact rule
