@@ -21,6 +21,7 @@
     "PHP error log (php.ini)": "PHP hata günlüğü (php.ini)",
     "PHP errors in an hour": "Bir saatteki PHP hatası",
     "PHP fixes": "PHP düzeltmeleri",
+    "PHP information": "PHP bilgileri",
     "PHP version": "PHP sürümü",
     "PHP {var:1} does not have the fixes for the PHP2Shell flaws (CVE-2026-109618, CVE-2026-109619): anyone who can reach the site can run code on the server. Update PHP to {var:2} or later.": "PHP {var:1}, PHP2Shell açıklarının (CVE-2026-109618, CVE-2026-109619) düzeltmelerini içermiyor: siteye ulaşabilen herkes sunucuda kod çalıştırabilir. PHP'yi {var:2} ya da daha yeni bir sürüme güncelleyin.",
     "PHP {var:1} is numbered before {var:2}, the release with the fixes for the PHP2Shell flaws (CVE-2026-109618, CVE-2026-109619), but it was built on {var:3}, after they were published: Linux distributions add such fixes to their own packages without changing the number. Confirm with your host that this one has them.": "PHP {var:1}, PHP2Shell açıklarının (CVE-2026-109618, CVE-2026-109619) düzeltmelerini getiren {var:2} sürümünden önceki bir numara taşıyor, ama düzeltmeler yayımlandıktan sonra, {var:3} tarihinde derlenmiş: Linux dağıtımları bu tür düzeltmeleri kendi paketlerine sürüm numarasını değiştirmeden ekler. Bu PHP'nin onları içerdiğini sunucu sağlayıcınızdan doğrulayın.",
