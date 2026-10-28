@@ -39,7 +39,8 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - waf-cidr-prefix-validation.md: waf_ip_in_cidr() / waf_ip_matches_simple() must reject empty or non-numeric CIDR prefixes (ctype_digit); the (int) cast bug that banned everyone.
 - waf-connection-held-work-and-silent-rejection.md: Endpoints holding a DB connection while waiting on external services, rate limits vs connection-seconds, and always logging rejections.
 - waf-counter-subjects-and-endpoints.md: A private visitor address is not counted, the web root's index.php is the router, shipworks.php and workspace_guest.php are credential endpoints, the api.php allowance exempts staff only
-- waf-country-restriction.md: Firewall country restriction (waf_handle_country(), 2026.4.10 step 10.2): place in waf_run(), allow/block, unknown country, exemptions, not an offence, save guard, sign-in screens kept to the panel.
+- waf-country-panel-exemption.md: Country restriction's panel exemption: the panel sign-in screens for anyone, every other software-directory script only with staff signed in; site sign-in pages not exempt, staff kept to the panel.
+- waf-country-restriction.md: Firewall country restriction (waf_handle_country()): place in waf_run(), allow/block, unknown country, exemptions (panel sign-in for anyone, other panel scripts for staff only), save guard.
 - waf-csp-builtin-and-reporter.md: Built-in CSP policy (learning mode), waf_csp_policy() allowlist rule for new panel external resources, standalone csp_report.php collector and its storage.
 - waf-db-guard-connection-failures.md: includes/db_guard.php rules: no fatal on DB connect error, only transient errors trip, guard runs before functions.php, circuit breaker with probing.
 - waf-fail2ban-log.md: data/firewall.log fail2ban line format (path= on every line, the rule on BAN), which code paths write it, ip= is always the visitor address, rotation; a line for every new deny path.
