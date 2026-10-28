@@ -84,6 +84,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_reference_price_rule();   // 11.0.49
 	upgrade_2026_11_0_paypal_checkout();        // 11.0.50
 	upgrade_2026_11_0_max_image_preview();      // 11.0.51
+	upgrade_2026_11_0_main_host_redirect();     // 11.0.52
 	upgrade_2026_11_0_workspace_scheduled_anchor(); // 11.0.88
 
 }
@@ -2706,4 +2707,24 @@ function upgrade_2026_11_0_paypal_checkout() {
 	}
 
 	install_note('PayPal can now take payments on its Checkout (Orders v2) API: the visitor approves the payment on PayPal\'s page and the store takes it on the way back. Turn on "PayPal Checkout" in the Ecommerce settings with the REST app\'s client ID and secret; "PayPal Express Checkout" keeps working as before.');
+
+}
+
+// Redirect to the main host (2026.11.0, 11.0.52; pg_main_host_redirect_url()
+// in includes/fn/seo.php, get_page.php, Site Settings › SEO).
+//
+// main_host_redirect answers a page request that arrived on another host name
+// (www.example.com for example.com, or the other way round) with a 301 to the
+// same path on config.hostname, so search engines see one copy of each page.
+// Only GET and HEAD page renders, never an IP address or localhost; the panel,
+// the API, health.php, cron, webhooks and file downloads are left alone. It
+// starts off on every site, new ones included: a site reached by an
+// unexpected name would otherwise send its visitors to a name that may not
+// resolve yet.
+function upgrade_2026_11_0_main_host_redirect() {
+
+	install_add_column('config', 'main_host_redirect', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('SEO: pages opened on another host name of this site (for example with or without www) can now be sent to the site address with a permanent redirect, under Site Settings, SEO, Site Map and Crawling. It stays off until switched on.');
+
 }
