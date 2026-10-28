@@ -660,14 +660,21 @@ function pg_filter_select($name, $options, $current, $opts = array())
 }
 
 /**
- * The unit a date range steps by: a single day, a Sunday-to-Saturday week, a
- * calendar year, or - for a calendar month and any other range - a month.
+ * The unit a date range steps by: a single day, a week (seven days from the
+ * week's first day), a calendar year, or - for a calendar month and any
+ * other range - a month.
  *
- * @param array $range start_month, start_day, start_year, stop_month, stop_day, stop_year
+ * @param array    $range     start_month, start_day, start_year, stop_month, stop_day, stop_year
+ * @param int|null $first_day the day a week starts on, 0 (Sunday) to 6; the
+ *                            panel language's (pg_list_period_week_first_day()) when null
  * @return string day | week | month | year
  */
-function pg_period_unit($range)
+function pg_period_unit($range, $first_day = null)
 {
+    if ($first_day === null) {
+        $first_day = pg_list_period_week_first_day();
+    }
+
     $start = mktime(0, 0, 0, (int) ($range['start_month'] ?? 1), (int) ($range['start_day'] ?? 1), (int) ($range['start_year'] ?? date('Y')));
     $stop = mktime(0, 0, 0, (int) ($range['stop_month'] ?? 1), (int) ($range['stop_day'] ?? 1), (int) ($range['stop_year'] ?? date('Y')));
 
@@ -678,7 +685,7 @@ function pg_period_unit($range)
         return 'day';
     }
 
-    if (($days === 7) && (date('w', $start) === '0')) {
+    if (($days === 7) && ((int) date('w', $start) === (int) $first_day)) {
         return 'week';
     }
 

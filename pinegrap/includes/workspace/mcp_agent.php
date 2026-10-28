@@ -181,6 +181,35 @@ function ws_mcp_agent_conversations_ready()
 }
 
 /**
+ * Has the schema step that keeps a server's preamble switch (2026.11.0,
+ * 11.0.111) run? Before it no server sends the preamble.
+ *
+ * @return bool
+ */
+function ws_mcp_agent_preamble_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = ws_mcp_agent_ready() && waf_table_has_column('ws_mcp_servers', 'agent_preamble');
+    }
+
+    return $ready;
+}
+
+/**
+ * Does the server's agent get the site's preamble before each request: an
+ * administrator turned it on for the server (off by default).
+ *
+ * @param array $server
+ * @return bool
+ */
+function ws_mcp_agent_preamble_on($server)
+{
+    return ws_mcp_agent_preamble_ready() && !empty($server['agent_preamble']);
+}
+
+/**
  * Seconds until a task is asked about again, from the interval the server
  * asked for (milliseconds, 0 when it did not say).
  *
@@ -1231,6 +1260,36 @@ function ws_mcp_agent_request_text($row, $context, $earlier = null, $carried = f
 }
 
 /**
+ * What a request sends its agent when its server sends the preamble: who
+ * the agent is here, now, who asked, where (ws_ai_agent_place()), the
+ * request inside a data block, the language and the rules. The channel's
+ * other messages and the people are not sent.
+ *
+ * @param array  $context as ws_mcp_agent_context() answers it
+ * @param string $text    ws_mcp_agent_request_text()
+ * @return string
+ */
+function ws_mcp_agent_preamble($context, $text)
+{
+    $channel = $context['channel'];
+    $name = $channel ? (string) $channel['name'] : '';
+    $kind = $context['task'] ? 'task' : 'channel';
+
+    if ($channel && ws_channel_is_thread($channel)) {
+        $parent = ws_thread_parent_channel($channel);
+        $name = $parent ? (string) $parent['name'] : '';
+        $kind = $context['task'] ? 'task' : 'thread';
+    }
+
+    return ws_ai_agent_preamble(
+        ws_ai_briefing_head($context['asker'], 'agent', '@' . $context['server']['alias']),
+        ws_ai_agent_place($kind, $name, $context['task'] ? ws_task_number($context['task']['id']) : ''),
+        $text,
+        ws_ai_request_language($text)
+    );
+}
+
+/**
  * Sends one request to its agent and posts the answer. An agent that works
  * on in the background answers with a task instead: the task is kept and
  * asked about from then on (ws_mcp_agent_poll()).
@@ -1258,7 +1317,13 @@ function ws_mcp_agent_run($row, $timeout)
     // the argument its tool takes it in.
     $earlier = ws_mcp_agent_earlier($row, $context);
     $conversation = ($tool['conversation'] !== '') ? ws_mcp_agent_conversation_carried($server, $earlier, (int) $asker['id']) : '';
-    $arguments = array($tool['argument'] => ws_mcp_agent_request_text($row, $context, $earlier, $conversation !== ''));
+    $text = ws_mcp_agent_request_text($row, $context, $earlier, $conversation !== '');
+
+    if (ws_mcp_agent_preamble_on($server)) {
+        $text = ws_mcp_agent_preamble($context, $text);
+    }
+
+    $arguments = array($tool['argument'] => $text);
 
     if ($conversation !== '') {
         $arguments[$tool['conversation']] = $conversation;
@@ -2156,6 +2221,31 @@ function ws_mcp_agent_settings_field($server, $admin)
             <select class="form-control form-control-sm" name="mcp_agent_tool" id="' . $field . '"' . ($admin ? '' : ' disabled') . '>' . $options . '</select>
             <div class="form-text">' . h(lang('A server that is an agent itself - another Pinegrap site, a company\'s own assistant - can answer on its own: a message written to the alias goes to the tool chosen here as it is, with the message it replies to, and the answer comes back under it. A task handed to the alias, or a note on a task that writes it, goes to it with the task\'s title and description, and the answer comes back in the task\'s Assistant part. Pinegrap AI is not needed.')) . ' ' . h($rule) . '</div>
             ' . $problem . '
+        </div>' . ws_mcp_agent_preamble_field($server, $admin);
+}
+
+/**
+ * The switch that sends the site's preamble to a server's agent, on the
+ * settings card: off by default.
+ *
+ * @param array $server
+ * @param bool  $admin
+ * @return string HTML, '' before the schema step
+ */
+function ws_mcp_agent_preamble_field($server, $admin)
+{
+    if (!ws_mcp_agent_preamble_ready()) {
+        return '';
+    }
+
+    $field = 'ws_mcp_' . (int) $server['id'] . '_preamble';
+
+    return '
+        <div class="form-field mb-5">
+            <input type="hidden" name="mcp_agent_preamble" value="0">
+            <div class="switch"><input class="" type="checkbox" name="mcp_agent_preamble" value="1" id="' . $field . '"' . (!empty($server['agent_preamble']) ? ' checked' : '') . ($admin ? '' : ' disabled') . '></div>
+            <label class="" for="' . $field . '">' . h(lang('Tell the agent about this site before each message')) . '</label>
+            <div class="form-text">' . h(lang('A short preamble goes before the message: this site\'s address, the time, who asked, the channel or task by name, the language to answer in and the rules Pinegrap AI follows. Nothing else written in the channel is sent.')) . '</div>
         </div>';
 }
 
@@ -2171,6 +2261,8 @@ function ws_mcp_agent_settings_field($server, $admin)
  */
 function ws_mcp_agent_settings_save($server, $rules, $liveform)
 {
+    ws_mcp_agent_preamble_save($server);
+
     if (!ws_mcp_agent_ready() || !isset($_POST['mcp_agent_tool']) || !is_scalar($_POST['mcp_agent_tool'])) {
         return true;
     }
@@ -2201,4 +2293,25 @@ function ws_mcp_agent_settings_save($server, $rules, $liveform)
     }
 
     return $ok;
+}
+
+/**
+ * Saves the preamble switch of a server, with the tools form.
+ *
+ * @param array $server the row before the save
+ */
+function ws_mcp_agent_preamble_save($server)
+{
+    if (!ws_mcp_agent_preamble_ready() || !isset($_POST['mcp_agent_preamble']) || !is_scalar($_POST['mcp_agent_preamble'])) {
+        return;
+    }
+
+    $wanted = ((string) $_POST['mcp_agent_preamble'] === '1') ? 1 : 0;
+
+    if ($wanted !== (int) ($server['agent_preamble'] ?? 0)) {
+        db("UPDATE ws_mcp_servers SET agent_preamble = '" . $wanted . "', updated_at = '" . time() . "' WHERE id = '" . (int) $server['id'] . "'");
+        ws_mcp_servers(true);
+
+        log_activity(lang(array('string' => $wanted ? 'the MCP server @{var:1} is told about the site before each message' : 'the MCP server @{var:1} is no longer told about the site before each message', 'vars' => $server['alias'])), (string) ($_SESSION['sessionusername'] ?? ''));
+    }
 }

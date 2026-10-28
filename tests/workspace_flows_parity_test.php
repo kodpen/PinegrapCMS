@@ -2566,7 +2566,7 @@ function workspace_flows_parity_table()
 			array(array('log_activity'), 3, 'change box: the run logs its own line'),
 		),
 		'card_buttons' => array(
-			array(array('edit'), 1, 'Scheduled actions section in Flows: Edit opens the form'),
+			array(array('edit'), 1, 'Edit on the card: opens its flow, a row not converted yet converted first, or its problems and Duplicate (ws_flow_scheduled_edit)'),
 			array(array('sa_pause', 'sa_resume'), 1, 'Scheduled actions section in Flows: Pause and Resume'),
 			array(array('sa_run_now'), 1, 'Scheduled actions section in Flows: Run now'),
 			array(array('sa_duplicate'), 1, 'Duplicate on the card: a new draft flow of one\'s own, opened on the canvas (ws_flow_scheduled_copy)'),
@@ -2589,7 +2589,7 @@ function workspace_flows_parity_table()
 			array(array('run.by_hand', 'label sa_by_hand', 'run.source', 'label sa_started_by #2'), 1, 'card: History lines, by hand or started by another action'),
 		),
 		'list_parts' => array(
-			array(array('label sa_title', 'label sa_new_long', 'label sa_help', 'label sa_empty'), 1, 'Scheduled actions section in Flows: title, New, help, an empty list'),
+			array(array('label sa_title', 'label sa_help', 'label sa_empty'), 1, 'Scheduled actions section in Flows: title, help, an empty list; no New, a new rule is a flow'),
 			array(array('label sa_all', 'label sa_state_active', 'label sa_state_paused', 'label sa_state_done', 'label sa_state_failed', 'label sa_state_cancelled'), 1, 'Scheduled actions section in Flows: the state chips'),
 			array(array('label sa_in_channel', 'label sa_in_note', 'item.channel', 'item.channel.id', 'item.channel.name', 'item.note', 'item.note.id', 'item.note.name', 'item.message_id'), 1, 'Scheduled actions section in Flows: "in #channel / in note", linked to the card'),
 			array(array('label sm_title', 'label sm_mine_help'), 1, '?view=scheduled keeps the Messages tab (scheduled messages are not moved)'),
@@ -2611,10 +2611,7 @@ function workspace_flows_parity_table()
 			array(array('order_event', 'form_event', 'stock_event', 'overdue_event', 'approval_event'), 1, 'scheduledForm() event templates, kept in the form (canvas starters come in slice 4)'),
 		),
 		'entry_points' => array(
-			array(array('{} in scheduledList()'), 1, 'New on the list of the scheduled screen; the Scheduled actions section of Flows hides it ({ add: false }) and offers New flow instead (slice 4a)'),
 			array(array('context in scheduledForm()', 'context (sentence) in fill() in saSentenceBox()'), 1, 'inside the form: a template picked, an AI sentence filled in'),
-			array(array('null in scheduledCard()'), 1, 'Edit on the card'),
-			array(array('null in scheduledGraph()'), 2, 'Edit on the canvas view: the same form, the action drawn again once saved'),
 		),
 		'ai_drafts' => array(
 			array(array('tool propose_scheduled_action', 'offered propose_scheduled_action', 'handled propose_scheduled_action'), 4, 'AI drafts on the canvas; until then Pinegrap AI drafts into the form, opened by @ai draft Open'),
@@ -2888,9 +2885,8 @@ function test_workspace_flows_parity_whole_action_uses()
 	}
 }
 
-// In Flows a new rule is made on the canvas: the Scheduled actions section
-// puts New flow in the toolbar and asks the list for no New of its own;
-// the list still offers New where it is called without options.
+// A new rule is made on the canvas: the Scheduled actions section puts New
+// flow in the toolbar, and the list offers no New anywhere.
 function test_workspace_flows_parity_scheduled_section_new_is_a_flow()
 {
 	$flow = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
@@ -2901,12 +2897,13 @@ function test_workspace_flows_parity_scheduled_section_new_is_a_flow()
 	$body = substr($flow, $start, strpos($flow, "\n    }\n", $start) - $start);
 
 	pg_assert_true(strpos($body, 'newFlowButton();') !== false, 'New flow in the section\'s toolbar');
-	pg_assert_true(strpos($body, 'K.scheduledList(ui.scheduled, ui.bar, { add: false });') !== false, 'the list without its New');
+	pg_assert_true(strpos($body, 'K.scheduledList(ui.scheduled);') !== false, 'the list without its New');
 
 	$channels = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$start = strpos($channels, 'function scheduledList(body) {');
 
-	pg_assert_true(strpos($channels, 'function scheduledList(body, bar, options) {') !== false);
-	pg_assert_true(strpos($channels, "if (!options || (options.add !== false)) {") !== false, 'New stays where no options are given');
+	pg_assert_true($start !== false);
+	pg_assert_false(strpos(substr($channels, $start, strpos($channels, 'function load()', $start) - $start), 'sa_new_long') !== false, 'no New in the list');
 }
 
 // Hidden and converted anchors (slice 5): the starts by event and join read

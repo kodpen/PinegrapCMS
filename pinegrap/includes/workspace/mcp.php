@@ -2239,6 +2239,10 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null)
             $asks = !empty($on[(string) $server['agent_tool']]['approve']);
             $details[] = lang(array('string' => $asks ? 'answers on its own through {var:1}, each message approved first' : 'answers on its own through {var:1}', 'vars' => (string) $server['agent_tool']));
             $agents = true;
+
+            if (function_exists('ws_mcp_agent_preamble_on') && ws_mcp_agent_preamble_on($server)) {
+                $details[] = lang('told about the site before each message');
+            }
         }
 
         // The site's sign-in: Connect while it has none or it stopped working,

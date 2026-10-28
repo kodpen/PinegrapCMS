@@ -78,6 +78,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dashboard-welcome-card.md: The dashboard top card (welcome.php, .pg-clockbar): greeting on the left, time and date on the right in one full-width card; phone stacking, themes, ids the scripts read
 - dashboard-widget-files.md: Adding a dashboard widget: includes/dashboard/widgets/widget_<id>.php and its function contract, the welcome.php registry entry, retired ids never reused, the refresh and solo lists, charts.
 - design-file-missing-on-disk.md: What the theme, design file and CSS/JS/text editor screens do when a files row has no file on the disk; the Turkish "noise" theme file and upgrade step 10.5
+- designer-region-shared-form.md: The designer region create and edit screens share includes/forms/designer_region_form.php: what it holds, the label fix, what stays in the screens
 - edit-screen-wide-layout.md: Owner decision for panel edit screens: a wide screen is not spent on one column of stacked cards; form column, sticky status column, sticky save bar, modeled on product_builder.php.
 - email-campaign-profile-shared-form.md: The campaign profile create and edit screens share includes/forms/email_campaign_profile_form.php
 - explorer-grid-tiles.md: Explorer grid tiles (view_folders.php, catalog and files): the tile size scale, picture vs glyph, the missing-picture plate sized from --pg-tile-icon, the narrow pill it fixed (PR #2200)
@@ -93,6 +94,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - inline-feedback-placement.md: Where a panel field's error message goes on Bootstrap 6: pgPlaceInlineFeedback() moves or makes it after an input-group, form-adorn, chip-input or switch; forms that print their own message (#2578)
 - list-and-table-screens.md: Panel list and table rules: the DataTables list markup, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
 - list-period-navigator-and-clock.md: List screens: the month arrows step from the last shown month, the range heading follows the date order (list_period.php), pickers and times follow the 24-hour setting (#2039, #2040, #2058)
+- list-period-week.md: List screens' period navigator: the week starts on Monday in Turkish, Sunday otherwise; the five screens read pg_list_period_week_steps() (#2039)
 - liveform-notices-trap.md: Pitfalls: notices and warnings stay in the session until remove_form(), screens must print them, and a request run twice stacks the same notice.
 - loading-curtain.md: Loading curtain printed by pg_preloader_markup() on every panel screen: structure, PRIVATE_LABEL, logo ids, Visual Editor hold, exit curtain, four ways out, exclusions.
 - login-region-shared-form.md: The login region create and edit screens share includes/forms/login_region_form.php: what it holds, the default, what stays in the screens

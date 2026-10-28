@@ -4,7 +4,7 @@ description: Retiring the scheduled actions form (merge plan R1-R4): the functio
 ---
 
 ## What goes with the form? (line numbers of 2026-10-28)
-- workspace.js: `scheduledForm()`, `saSentenceBox()`, `saTemplates()`, `saFollowRow()` (16086-16851, R3a); `saActionEditor()`, `saActionTypes()`, `saConditionRow()`, `saMetricPicker()`, `saArea()`, `saNumber()`, `saDayPicker()` (15178-16085 less the kept ones, R3b). Its three openers (R2): the list's New (`scheduledList()` without `{ add: false }`, drawn only by `showScheduled()` where Flows are not ready), Edit on a card of a row with no `flow`, Edit in `scheduledGraph()` (and `showAction()`'s `edit` option in workspace_flow.js).
+- workspace.js: `scheduledForm()`, `saSentenceBox()`, `saTemplates()`, `saFollowRow()` (16086-16851, R3a); `saActionEditor()`, `saActionTypes()`, `saConditionRow()`, `saMetricPicker()`, `saArea()`, `saNumber()`, `saDayPicker()` (15178-16085 less the kept ones, R3b). Its three openers were closed in R2 (`workspace-flows-scheduled-ways-in.md`): the list's New is gone, Edit on a card and in `scheduledGraph()` call `scheduledEdit()`; only the form's own template and AI sentence calls remain.
 - workspace_events.js `whenBox()`, `templates()`; `scheduledEditor()` of workspace_approvals.js and workspace_status.js.
 - Panel routes `ws_scheduled_save`, `ws_scheduled_preview`, `ws_scheduled_targets`, `ws_scheduled_draft` (actions.php case and `pg_panel_actions()` row); `ws_scheduled_save()`; `ws_scheduled_draft_saved()`; the form's keys of `ws_scheduled_js_config()` (`draft`, `max_follow`, `depth`, `min_minutes`, `placeholders`, `formats`, `outcomes`: check each against workspace_flow.js and flow_templates.php first) and its strings in `ws_scheduled_js_strings()`, `ws_scheduled_draft_js_strings()`.
 - backend.src.css: the form's `ws-sa-*` classes (about 11578-11652, 13272-13520); keep those the card, list, history and the approval form use.
@@ -22,4 +22,4 @@ description: Retiring the scheduled actions form (merge plan R1-R4): the functio
 - forms, orders and chain: in the gallery since R1b (#2787) with flow semantics (#2753 answer 2a): `workspace-flows-template-format.md`. None is missing now.
 
 ## How big is each step?
-- R1 about 300 lines (flow_templates.php), R2 50-150, R3a about 900, R3b about 970, R4 about 700 (routes 85, save 95, draft saved 35, config and strings about 150, styles about 330). `.min.js` rebuilt each time, not counted.
+- R1 about 300 lines (flow_templates.php), R2 done, R3a about 900, R3b about 970, R4 about 700 (routes 85, save 95, draft saved 35, config and strings about 150, styles about 330). `.min.js` rebuilt each time, not counted.

@@ -16,7 +16,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 ## Files
 
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
-- ai-agent-prompts.md: Plan (2026-10-21, steps 1, 2, 2b, 3, 5 done): Pinegrap AI's briefing for every agent, one rules block for every prompt, untrusted text framed as data, Claude's instructions from the site
+- ai-agent-prompts.md: Plan (2026-10-21, steps 1, 2, 2b, 3, 4, 5 done): Pinegrap AI's briefing for every agent, one rules block for every prompt, untrusted text framed as data, Claude's instructions from the site
 - ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, text buttons, browser model, panel and designer AI marks done): "Write with AI"; image alt text and the __ai_generated token left
 - bootstrap-6-components.md: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped for native Bootstrap 6 components, the conditions research found, what stays as it is
 - bootstrap-6-findings.md: Research of 2026-10-25 behind plans/bootstrap-6-panel.md: old browsers, conflict rates, work size, hot spots, the visual editor split, third-party coupling
@@ -41,7 +41,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
 - graph-canvas-core.md: Plan (2026-10-24, not started, answers open): a reusable box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
-- incoming-email-g2.md: G2 of incoming e-mail (IMAP read) cut into three PRs: G2a client (pure, tested), G2b box card and Test connection, G2c fetch run, inline job, System status row; the read rules decided for G2c
+- incoming-email-g2.md: G2 of incoming e-mail (IMAP read): G2a client, G2b box card and Test connection, G2c1 fetch run and its job (done or open); G2c2 inline pass in job.php and System status row (next)
 - incoming-email-plan.md: Incoming e-mail into Workspace channels (G1 done, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
 - legacy-layouts-in-designer.md: Plan (2026-10-19; Y1-Y4, Y6 done): how a classic page's custom layout (layout_type 'custom', data/layouts/<id>.php) lives on in the visual designer once page_designer.php retires; Y1-Y6
 - legacy-page-designer-l5-list.md: What step L5 (retire page_designer.php) reroutes or removes beyond the three files: Edit Layout links, help row, menu case, panel actions used only by page_designer.js

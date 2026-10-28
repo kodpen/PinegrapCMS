@@ -19,6 +19,7 @@
 include('init.php');
 $user = validate_user();
 validate_area_access($user, 'designer');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/designer_region_form.php');
 
 // Stop early when the screen is opened without an existing record (stale
 // link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
@@ -76,38 +77,12 @@ if (!isset($_POST['name'])) {
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '">
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Options') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
+                    ' . pg_designer_region_form_card($cregion_name, $cregion_content, '
                                         <div class="col-12 md:col-6 my-3">
-                                            <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Designer Region'))) . '</label>
-                                            <div class="input-group">
-                                                <div class="input-group-text">' . h('<cregion>') . '</div>
-                                                <input value="' . h($cregion_name) . '" name="name" id="name" type="text" class="form-control" maxlength="100" />
-                                                <div class="input-group-text">' . h('</cregion>') . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 md:col-6 my-3">
-                                            <label for="name" class="form-label">' . lang('Region Type') . '</label>
+                                            <label for="type" class="form-label">' . lang('Region Type') . '</label>
                                             <select name="type" id="type" class="form-control"><option value="common">' . lang('Common Region') . '</option><option value="designer" selected="selected">' . lang('Designer Region') . '</option></select>
                                             <div class="form-text text-end">' . lang('You can change Region Type') . '</div>
-                                        </div>
-                                        <h5 class="mt-12">' . lang('Shared Content to appear on associated Pages') . '</h5>
-                                        <div class="col-12 my-3">
-                                            <label for="name" class="form-label">' . lang('HTML Code Snippet') . '</label>
-                                            <textarea name="content" id="code" rows="30" cols="60" wrap="off">' . h($cregion_content) . '</textarea>
-                                            ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'mixed')) . '
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                                        </div>') . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -142,7 +117,7 @@ $liveform->remove_form();
         }
         
     } else {
-        $_POST['name'] = trim($_POST['name']);
+        list($name, $content) = pg_designer_region_form_values($_POST);
 
         if ($_POST['type'] == 'common') {
             $cregion_designer_type = 'no';
@@ -159,13 +134,13 @@ $liveform->remove_form();
                 ."WHERE cregion_id = ?";
         // update region
         $result = db_q($query, array(
-            (string) ($_POST['name'] ?? ''),
-            (string) ($_POST['content'] ?? ''),
+            $name,
+            $content,
             (string) $cregion_designer_type,
             (string) $user['id'],
             (string) ($_POST['id'] ?? ''),
         )) or output_error('Query failed');
-        log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('designer region'), $_POST['name']) )), $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('designer region'), $name) )), $_SESSION['sessionusername']);
         
         // if there is not a send to, then prepare notice
         if ($_POST['send_to'] == '') {

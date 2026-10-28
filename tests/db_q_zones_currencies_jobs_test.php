@@ -131,7 +131,7 @@ function db_q_zones_currencies_jobs_test_files()
 		'add_shipping_method.php' => 1,
 		'add_arrival_date.php' => 2,
 		'add_product_group.php' => 2,
-		'edit_orders.php' => 4,
+		'edit_orders.php' => 2,
 		'view_orders_for_contact.php' => 3,
 		'membership_job.php' => 6,
 		'recurring_payment_job.php' => 4,

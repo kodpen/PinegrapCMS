@@ -48,6 +48,7 @@ function privacy_erase_test_scope()
 		'return_ids'       => array(80),
 		'audit_ids'        => array(90),
 		'cell_ids'         => array(95),
+		'wtable_row_ids'   => array(97),
 	);
 }
 
@@ -80,7 +81,7 @@ function test_privacy_erase_tables_are_pinned()
 			'chat_messages' => 'delete', 'chat_conversations' => 'delete', 'address_book' => 'delete',
 			'push_subscriptions' => 'delete', 'user_passkeys' => 'delete', 'user_identities' => 'delete',
 			'user_mfa_recovery' => 'delete', 'user_mfa' => 'delete', 'auth_tokens' => 'delete',
-			'opt_in' => 'delete', 'contacts_contact_groups_xref' => 'delete', 'orders' => 'anonymise', 'contacts' => 'delete',
+			'opt_in' => 'delete', 'contacts_contact_groups_xref' => 'delete', 'ws_wtable_cells' => 'anonymise', 'orders' => 'anonymise', 'contacts' => 'delete',
 			'user' => 'delete',
 		),
 		$actions,
@@ -126,6 +127,7 @@ function test_privacy_erase_tables_are_pinned()
 			'ws_approval_guests' => array('name' => '', 'email' => '{token}', 'decided_ip' => '', 'decided_agent' => ''),
 			'audit_log' => array('label' => ''),
 			'form_data_cells' => array('data' => ''),
+			'ws_wtable_cells' => array('cells' => ''),
 	);
 
 	ksort($expected);
@@ -181,6 +183,7 @@ function test_privacy_erase_find_columns_are_pinned()
 			'auth_tokens' => $user,
 			'opt_in' => array('contact_id' => 'contact_ids'),
 			'contacts_contact_groups_xref' => array('contact_id' => 'contact_ids'),
+			'ws_wtable_cells' => array('id' => 'wtable_row_ids'),
 			'contacts' => array('id' => 'contact_ids'),
 			'user' => $user,
 	);
@@ -460,4 +463,77 @@ function test_privacy_erase_checks_accounts_holding_the_address()
 	pg_assert_contains("_pg_privacy_export_users(_pg_privacy_export_in('user_email', \$found['person']['emails']))", $erase, 'accounts by address');
 	pg_assert_contains("pg_privacy_export_allowed(\$operator['role'] ?? 3, \$operator['id'] ?? 0, \$users)", $erase, 'role check over them');
 	pg_assert_contains("isset(\$users[(int) (\$operator['id'] ?? 0)])", $erase, 'self check over them');
+}
+
+// A workflow table cell names the person when a person cell holds their
+// account, or a record link points at their contact, account or a current
+// account in the scope; a cell of a column the table no longer has is read
+// as either. Other cells, kinds and ids are not theirs.
+function test_privacy_wtable_cell_hits()
+{
+	$scope = privacy_erase_test_scope();
+	$types = array('1' => 'person', '2' => 'link', '3' => 'number', '4' => 'text', '5' => 'link', '6' => 'person');
+
+	pg_assert_same(array('1', '2'), pg_privacy_wtable_cell_hits($types, array(
+		'1' => 7,
+		'2' => array('kind' => 'contact', 'id' => 12),
+		'3' => 7,
+		'4' => '7',
+		'5' => array('kind' => 'order', 'id' => 30),
+		'6' => 8,
+	), $scope), 'person and contact link');
+
+	pg_assert_same(array('2', '5'), pg_privacy_wtable_cell_hits($types, array(
+		'2' => array('kind' => 'user_account', 'id' => 7),
+		'5' => array('kind' => 'erp_account', 'id' => 50),
+	), $scope), 'account and current account links');
+
+	pg_assert_same(array(), pg_privacy_wtable_cell_hits($types, array(
+		'1' => null,
+		'2' => array('kind' => 'contact', 'id' => 13),
+		'5' => array('kind' => 'erp_account', 'id' => 51),
+		'6' => 'x',
+	), $scope), 'nobody else');
+
+	pg_assert_same(array('9', '10'), pg_privacy_wtable_cell_hits($types, array(
+		'9'  => 7,
+		'10' => array('kind' => 'contact', 'id' => 12),
+		'11' => 12,
+		'12' => 'text',
+	), $scope), 'cells of a deleted column');
+
+	$scope['user_ids'] = array();
+	pg_assert_same(array(), pg_privacy_wtable_cell_hits($types, array('1' => 7), $scope), 'no account in the scope');
+}
+
+// The erasure empties only the cells that name the person; the row and its
+// other cells stay with the table's owner.
+function test_privacy_wtable_cells_erased()
+{
+	pg_assert_same(
+		array('3' => 7, '4' => 'note'),
+		pg_privacy_wtable_cells_erased(array('1' => 7, '2' => array('kind' => 'contact', 'id' => 12), '3' => 7, '4' => 'note'), array('1', '2')),
+		'two cells emptied'
+	);
+	pg_assert_same(array('3' => 1), pg_privacy_wtable_cells_erased(array('3' => 1), array()), 'nothing to empty');
+}
+
+// Rows are narrowed in SQL by the ids as JSON writes an integer value (after
+// a colon, before a comma or the closing brace), then read in PHP; no id is
+// no condition at all.
+function test_privacy_wtable_rows_where()
+{
+	privacy_erase_test_db_stub();
+
+	$scope = privacy_erase_test_scope();
+	$where = pg_privacy_wtable_rows_where($scope);
+
+	foreach (array(7, 12, 50) as $id) {
+		pg_assert_contains("`cells` LIKE '%:" . $id . ",%'", $where, 'id ' . $id . ' before a comma');
+		pg_assert_contains("`cells` LIKE '%:" . $id . "}%'", $where, 'id ' . $id . ' before the brace');
+	}
+
+	pg_assert_true(strpos($where, ':30,') === false, 'an order id is not looked for');
+	pg_assert_same('', pg_privacy_wtable_rows_where(array('user_ids' => array(), 'contact_ids' => array(), 'account_ids' => array())), 'no ids');
+	pg_assert_same('', pg_privacy_wtable_rows_where(array()), 'no scope');
 }

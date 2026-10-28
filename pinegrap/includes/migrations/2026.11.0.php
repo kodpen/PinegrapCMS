@@ -93,6 +93,8 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_voice();        // 11.0.89
 	upgrade_2026_11_0_workspace_mail();          // 11.0.82
 	upgrade_2026_11_0_workspace_wtables();      // 11.0.110
+	upgrade_2026_11_0_workspace_mcp_preamble(); // 11.0.111
+	upgrade_2026_11_0_card_security_codes();   // 11.0.56
 
 }
 
@@ -3114,5 +3116,38 @@ function upgrade_2026_11_0_workspace_voice() {
 	install_add_column('config', 'ws_voice_hold_until', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Workspace: voice messages can be written out as text by a transcription service with the site\'s own key, once an administrator switches it on in the Workspace settings; private channels only where their manager allows it.');
+
+}
+
+// The preamble an MCP agent may be sent (2026.11.0, 11.0.111;
+// includes/workspace/mcp_agent.php).
+//
+// A server that is an agent itself (ws_mcp_servers.agent_tool) gets the
+// message alone. ws_mcp_servers.agent_preamble, when an administrator turns
+// it on for the server, puts a short preamble before it: the site, the time,
+// who asked, the channel or task by name, the language of the answer and the
+// assistant rules, with the message inside a data block. 0 for every server,
+// so nothing an agent is sent changes until somebody turns it on.
+function upgrade_2026_11_0_workspace_mcp_preamble() {
+
+	install_add_column('ws_mcp_servers', 'agent_preamble', "TINYINT(1) NOT NULL DEFAULT 0 AFTER agent_tool");
+
+	install_note('Workspace: an MCP server that is an agent itself can be told about the site before each message: the site, who asked, the channel or task by name, the language to answer in and the rules Pinegrap AI follows. It is off for every server until an administrator turns it on.');
+
+}
+
+// Card security codes are never stored (2026.11.0, 11.0.56). The checkout
+// kept the code in clear on an order placed without a payment gateway, and a
+// masked one on a gateway order; both are emptied here. Data only, no schema
+// change; WHERE <> '' makes a second run change nothing. Card numbers of
+// processed orders are masked by the general job (pg_order_card_data_sweep()),
+// which decrypts each one.
+function upgrade_2026_11_0_card_security_codes() {
+
+	db("UPDATE orders SET card_verification_number = '' WHERE card_verification_number <> ''");
+
+	$cleared = max(0, (int) mysqli_affected_rows(db::$con));
+
+	install_note('Orders: card security codes are no longer stored; ' . $cleared . ' stored code(s) were removed. Card numbers of exported and cancelled orders are masked to their last four digits by the general job.');
 
 }

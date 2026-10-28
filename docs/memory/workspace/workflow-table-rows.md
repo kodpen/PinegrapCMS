@@ -1,6 +1,6 @@
 ---
 name: workflow-table-rows
-description: Workflow table rows (wtable_rows.php, T1b): add, change, delete, move; row_count and the 5000 limit in one UPDATE; 409 changed_meanwhile; person/link cells closed; formulas on read
+description: Workflow table rows (wtable_rows.php, T1b): add, change, delete, move; row_count and the 5000 limit in one UPDATE; 409 changed_meanwhile; person/link cells open; formulas on read
 ---
 
 ## Where are rows read and written?
@@ -16,8 +16,8 @@ description: Workflow table rows (wtable_rows.php, T1b): add, change, delete, mo
 - Delete takes `revision` optionally, checked the same way. A move keeps the revision: the cells did not change.
 - Cells are checked against the columns as they are at write time (a deleted column's id is `unknown_column`); the table's own `revision` is not asked.
 
-## Why are person and record-link cells closed?
-- They would hold a person or a contact in JSON that the privacy export and erasure (`core/personal-data-erasure.md`) do not read. A non-empty value is `not_writable_yet`; emptying is allowed. The slice that adds that reader opens them (`ws_wtable_row_closed_types()`).
+## Are person and record-link cells written?
+- Yes, since T1b2: the privacy export and erasure read them (`pg_privacy_wtable_rows()`, `core/personal-data-erasure.md`), so `ws_wtable_row_closed_types()` is empty. A later type holding personal data the privacy paths cannot read goes into that list; its non-empty value is then `not_writable_yet`, emptying allowed.
 
 ## How are formula columns worked out?
 - On every read, never stored (`ws_wtable_formula_values()`). The expression names other columns by name (`Price * Quantity`), bound once per read by `ws_calc_bind()` with the column id as slot, then `ws_calc_evaluate()` per row.

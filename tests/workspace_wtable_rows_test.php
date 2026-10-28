@@ -43,18 +43,21 @@ function ws_wtable_rows_test_columns()
 	return $out;
 }
 
-// A person or a record link is not written while the privacy paths cannot
-// read it; emptying one is.
+// The privacy export and erasure read person and record-link cells, so both
+// are written like any other cell, and emptied too.
 function test_workspace_wtable_rows_closed_cells()
 {
 	$columns = ws_wtable_rows_test_columns();
 
+	pg_assert_same(array(), ws_wtable_row_closed_types(), 'no closed type');
+
 	$check = ws_wtable_row_cells_input($columns, array('4' => 12, '1' => 500));
-	pg_assert_false($check['ok']);
-	pg_assert_same(array('4' => 'not_writable_yet'), $check['errors']);
+	pg_assert_true($check['ok'], 'a person is written');
+	pg_assert_same(12, $check['cells']['4']);
 
 	$check = ws_wtable_row_cells_input($columns, array('5' => array('kind' => 'contact', 'id' => 3)));
-	pg_assert_same(array('5' => 'not_writable_yet'), $check['errors']);
+	pg_assert_true($check['ok'], 'a record link is written');
+	pg_assert_same(array('kind' => 'contact', 'id' => 3), $check['cells']['5']);
 
 	$check = ws_wtable_row_cells_input($columns, array('4' => null, '5' => '', '1' => 500));
 	pg_assert_true($check['ok'], 'emptying is allowed');
