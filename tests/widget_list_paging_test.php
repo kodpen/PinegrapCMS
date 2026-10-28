@@ -117,6 +117,48 @@ function test_list_page_param_canonical()
 	pg_sw_url_filter_state(false);
 }
 
+// A page past the last one is missing only when no list reading that
+// parameter showed it: a short box beside the main list has no veto.
+function test_list_page_past_the_last_one()
+{
+	pg_sw_list_page_requests(false);
+	pg_sw_list_page_requests(array('page_number', '9', 5));
+	pg_assert_true(pg_sw_list_page_past(pg_sw_list_page_requests()), 'page 9 of 5');
+
+	pg_sw_list_page_requests(false);
+	pg_sw_list_page_requests(array('page_number', '2', 0));
+	pg_assert_true(pg_sw_list_page_past(pg_sw_list_page_requests()), 'page 2 of an empty list');
+
+	pg_sw_list_page_requests(false);
+	pg_sw_list_page_requests(array('page_number', '3', 1));
+	pg_sw_list_page_requests(array('page_number', '3', 5));
+	pg_assert_false(pg_sw_list_page_past(pg_sw_list_page_requests()), 'the main list shows page 3');
+
+	pg_sw_list_page_requests(false);
+	pg_sw_list_page_requests(array('topics_page', '3', 5));
+	pg_sw_list_page_requests(array('page_number', '3', 1));
+	pg_assert_true(pg_sw_list_page_past(pg_sw_list_page_requests()), 'another parameter shows nothing for page_number');
+
+	pg_sw_list_page_requests(false);
+	foreach (array('1', '0', '-4', 'abc', array('9'), null) as $asked) {
+		pg_sw_list_page_requests(array('page_number', $asked, 1));
+	}
+	pg_assert_same(array(), pg_sw_list_page_requests(), 'page 1, nothing or no number asks for nothing');
+	pg_assert_false(pg_sw_list_page_past(null));
+	pg_sw_list_page_requests(false);
+}
+
+// The renderer registers the asked page, and the page answers 404 for a
+// page past the last one after its widget pass.
+function test_list_page_past_wiring()
+{
+	pg_assert_contains('pg_sw_list_page_requests(array($page_param, $request[$page_param], $total_pages));', _widget_list_paging_render());
+
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
+	pg_assert_contains("if (function_exists('pg_sw_list_page_requests') && !\$email) pg_sw_list_page_requests(false);", $page);
+	pg_assert_contains('&& pg_sw_list_page_past(pg_sw_list_page_requests())', $page);
+}
+
 // The renderer reads the page from its own parameter, starts after the
 // offset and hands the paging tokens to the surround and the rows.
 function test_list_paging_renderer_wiring()

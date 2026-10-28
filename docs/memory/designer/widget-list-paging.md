@@ -19,12 +19,14 @@ description: Form list widget paging (W12a, #1924): own page parameter (page_par
 - The template installer's preview turns them off (`_pg_tpl_preview_flag_on()`).
 
 ## What does the canonical of a later page carry?
-- `pg_sw_url_filter_page(..., $page_param)` reads the list's own name; `pg_sw_url_filter_state()` stores `page_param` beside `page_number` only when it is not `page_number` (the blank state is unchanged); `pg_sw_url_filter_query()` writes `&<name>=N`.
+- `pg_sw_url_filter_page(..., $page_param)` reads the list's own name; `pg_sw_url_filter_state()` stores `page_param` beside `page_number` only when it is not `page_number` (the blank state is unchanged); `pg_sw_url_filter_query()` writes `<name>=N` after the address values, if any.
+- Every later page is its own canonical (`/blog?page_number=2`), address value or not (#2180: every page pointed at page 1). Not while searching, and only the page as asked (a clamped one is not that address).
 
-## What is left of W12?
-- W12b done: the page links as a list ([[widget-lists-paging]]).
-- W12c done (#1968): the catalog listing and search results ([[widget-list-paging-catalog-search]]). W12d (#1984): their page links list ([[widget-lists-paging]]).
-- Search groups its `__result_count` like the form list (#2245, [[form-list-result-count]]). W12 is done.
+## What does a page past the last one answer?
+- 404 with noindex and no canonical (`pg_sw_item_missing(true)` after the widget pass in `get_page_content()`), not a clamped page answered 200 (#2180, soft 404). Each list registers the asked page with `pg_sw_list_page_requests()` (reset beside the filter state); `pg_sw_list_page_past()` says missing only when some list had fewer pages and no list reading the same parameter showed it, so a short "latest" box sharing `page_number` never 404s page 3 of the main list. A count strip has no say; e-mail, SEO pass and edit mode never 404. Lists still draw their clamped page.
+
+## Is W12 finished?
+- Yes: page links ([[widget-lists-paging]]), catalog and search ([[widget-list-paging-catalog-search]], #1968, #1984), search count ([[form-list-result-count]], #2245).
 
 ## How is it tested?
 - `tests/widget_list_paging_test.php` (helpers, tokens and flags, canonical, renderer wiring, editor), `tests/form_list_result_count_test.php` (count after the offset). No database run.

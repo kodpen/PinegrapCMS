@@ -514,6 +514,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     if (function_exists('pg_sw_item_missing')) pg_sw_item_missing(false);
     // An e-mail drawn while a page is drawn adds nothing and clears nothing.
     if (function_exists('pg_sw_url_filter_state') && !$email) pg_sw_url_filter_state(false);
+    if (function_exists('pg_sw_list_page_requests') && !$email) pg_sw_list_page_requests(false);
     // The pages whose comment thread a comments widget drew in this pass
     // (widgets_comments.php); the classic comments block below leaves them
     // alone.
@@ -537,6 +538,15 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = pg_expand_nested_components($content, $mode, $email);
         if (is_array($pg_cw_prev)) $pg_cw_pages = pg_comments_widget_pages($pg_cw_prev);
         if (is_array($pg_sw_prev_ctx)) pg_sw_render_context($pg_sw_prev_ctx);
+
+        // A list page asked for a page past its last one is not there: a
+        // 404 with noindex and no canonical (pg_sw_item_missing()), not an
+        // empty or repeated page answered 200.
+        if (!$email && ($mode != 'edit') && function_exists('pg_sw_list_page_past')
+            && pg_sw_list_page_past(pg_sw_list_page_requests())
+        ) {
+            pg_sw_item_missing(true);
+        }
     }
 
     // ── Page conditions ─────────────────────────────────────────────────────────
