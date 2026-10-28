@@ -278,10 +278,10 @@
             what.type = 'text';
             what.maxLength = 255;
             what.placeholder = h.t('cust_remind_default', channel.name);
-            day.type = 'date';
+            h.dateField(day, 'date');
             day.required = true;
             day.value = weekAhead();
-            time.type = 'time';
+            h.dateField(time, 'time');
             save.type = 'submit';
 
             box.appendChild(field(h, h.t('cust_remind_what'), what, 'flex-grow-1'));

@@ -305,10 +305,10 @@
         var date = el('input', 'form-control form-control-sm');
         var time = el('input', 'form-control form-control-sm');
 
-        date.type = 'date';
+        h.dateField(date, 'date');
         date.id = h.nextId('ws-apv-date-');
         date.min = h.cfg.today;
-        time.type = 'time';
+        h.dateField(time, 'time');
         time.id = h.nextId('ws-apv-time-');
         time.value = '18:00';
         dateCell.appendChild(h.formRow(t('apv_closes'), date, t('apv_closes_help')));

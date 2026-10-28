@@ -75,3 +75,37 @@ function test_workspace_screens_print_the_date_control()
 	$tags = pg_fields_script_tags();
 	pg_assert_true(strpos($tags, '/assets/js/pg_fields.js') !== false && $tags === pg_fields_script_tags(), 'pg_fields_script_tags() gives the tags on every call');
 }
+
+// The modules of the workspace bundle build their date and time inputs with
+// the dateField helper workspace.js lends them (its pgDateField()).
+function test_workspace_module_date_inputs_carry_their_hook()
+{
+	$counts = array(
+		'workspace_approvals.js' => 2,
+		'workspace_customer.js' => 2,
+		'workspace_recurrence.js' => 1,
+		'workspace_task_time.js' => 2,
+		'workspace_task_approval.js' => 1,
+	);
+
+	foreach ($counts as $file => $count) {
+		$src = workspace_datetime_source('assets/js/' . $file);
+
+		pg_assert_same(0, preg_match_all("/\\.type = '(date|time|datetime-local)'/", $src), $file . ': no date or time input is made without the helper');
+		pg_assert_same($count, preg_match_all("/\\.dateField\\([^;]*?, '(date|time)'\\)/", $src), $file . ': its date and time inputs go through the helper');
+	}
+
+	pg_assert_same(0, preg_match_all("/input\\('date'/", workspace_datetime_source('assets/js/workspace_task_time.js') . workspace_datetime_source('assets/js/workspace_task_approval.js')), 'the small input() builders make no native date');
+
+	$ws = workspace_datetime_source('assets/js/workspace.js');
+	pg_assert_same(3, substr_count($ws, 'dateField: pgDateField'), 'the part, feature and repeat helpers lend pgDateField()');
+}
+
+// The repeat's end date: its box hides with it and is where the focus goes.
+function test_workspace_recurrence_end_date_box()
+{
+	$rec = workspace_datetime_source('assets/js/workspace_recurrence.js');
+
+	pg_assert_true(strpos($rec, "untilBox.classList.toggle('d-none', ends.value !== 'on');") !== false, 'the end date is hidden with the box drawn after it');
+	pg_assert_true(strpos($rec, 'window.pgFields.focus(until);') !== false, 'the focus goes to the box people type in, not the hidden store');
+}
