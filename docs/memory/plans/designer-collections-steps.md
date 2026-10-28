@@ -24,7 +24,7 @@ description: Plan (collections half of designer-interactions-collections, steps 
 - **C4a — lists by kind. Done, #2709:** numeric sort for number; reference filter by address name or code, printing the record's label (`designer/collection-lists.md`).
 
 - **C4b1 — references by kind. Done, #2835:** C1's `ref` defaults from the field's kind and target (needs `style_designer.js`); a `__ref` on a product / page field prints the product's name, link, price, image or the page's name, link.
-- **C4b2 — "records that reference this one". Done, #PRNUM:** server half, the list filter's dynamic value `shown record` (`designer/collection-lists.md`).
+- **C4b2 — "records that reference this one". Done, #2897:** server half, the list filter's dynamic value `shown record` (`designer/collection-lists.md`).
 - **C4b2b — the editor side.** Offer "Shown record" in the filter rows' dynamic values (`style_designer.js`, beside `url parameter`, lists only; `_sdT` key via `tr_add.php`); needs that file free.
 
 - **C5 — slug field and feeds.** A slug field feeds `update_submitted_form_address_name()`; RSS `category` and JSON-LD print a reference's label, not its code.
