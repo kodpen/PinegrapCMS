@@ -310,10 +310,176 @@ function erp_stock_record($move)
 }
 
 /**
+ * Whether a bundle line can be followed into its components: the bundle
+ * schema with its snapshot table (2026.11.0, 11.0.54), which also widened
+ * the ledger's key to one move per component of a line.
+ *
+ * @return bool
+ */
+function erp_stock_bundles_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('pg_bundles_ready') && pg_bundles_ready()
+            && pg_schema_has('erp_invoice_item_components');
+    }
+
+    return $ready;
+}
+
+/**
+ * The contents an invoice's bundle lines were issued with.
+ *
+ * @param int $invoice_id
+ * @return array  line_id => array(product_id => quantity in one bundle)
+ */
+function erp_stock_invoice_components($invoice_id)
+{
+    $out = array();
+
+    foreach ((array) db_items("SELECT line_id, product_id, quantity FROM erp_invoice_item_components
+        WHERE invoice_id = '" . (int) $invoice_id . "'
+        ORDER BY id ASC") as $row) {
+        $out[(int) $row['line_id']][(int) $row['product_id']] = (int) $row['quantity'];
+    }
+
+    return $out;
+}
+
+/**
+ * Keep the contents of a bundle line on the invoice, so a later edit of the
+ * bundle never changes what an issued document moved: the components the
+ * order line was sold with when $order_item_id is given and has them, the
+ * bundle's contents as they stand now otherwise. Runs inside the caller's
+ * transaction.
+ *
+ * @param int $invoice_id
+ * @param int $line_id
+ * @param int $product_id     the bundle on the line
+ * @param int $order_item_id
+ * @return array|false  product_id => quantity in one bundle (empty for a
+ *                      line that is not a bundle); false on a database error
+ */
+function erp_stock_snapshot_components($invoice_id, $line_id, $product_id, $order_item_id = 0)
+{
+    if (!erp_stock_bundles_ready()) {
+        return array();
+    }
+
+    $components = array();
+
+    if ((int) $order_item_id > 0) {
+        foreach ((array) db_items("SELECT product_id, quantity FROM order_item_components
+            WHERE order_item_id = '" . (int) $order_item_id . "'
+            ORDER BY id ASC") as $row) {
+            $components[(int) $row['product_id']] = ($components[(int) $row['product_id']] ?? 0) + max(1, (int) $row['quantity']);
+        }
+    }
+
+    // A line sold before its components were recorded (or typed on a manual
+    // invoice) takes the bundle's contents at the moment of issue.
+    if (empty($components) && ((int) $product_id > 0)
+        && ((int) db_value("SELECT bundle FROM products WHERE id = '" . (int) $product_id . "' LIMIT 1") === 1)) {
+        foreach (pg_bundle_items((int) $product_id) as $item) {
+            $components[(int) $item['product_id']] = ($components[(int) $item['product_id']] ?? 0) + max(1, (int) $item['quantity']);
+        }
+    }
+
+    foreach ($components as $component_id => $quantity) {
+        if (erp_query("INSERT INTO erp_invoice_item_components SET
+                invoice_id = '" . (int) $invoice_id . "',
+                line_id = '" . (int) $line_id . "',
+                product_id = '" . (int) $component_id . "',
+                quantity = '" . (int) $quantity . "'") === false) {
+            return false;
+        }
+    }
+
+    return $components;
+}
+
+/**
+ * A bundle line's cost shared over its components, in proportion to what
+ * each costs (unit cost × quantity); when none has a cost yet, in proportion
+ * to the quantities. The shares add up to the total.
+ *
+ * @param int   $total       the line's cost
+ * @param array $components  key => array('quantity' => float, 'unit_cost' => int)
+ * @return array  key => share
+ */
+function erp_stock_split_by_cost($total, $components)
+{
+    $weights = array();
+    $costed = false;
+
+    foreach ($components as $key => $component) {
+        $weights[$key] = (int) round(max(0, (int) $component['unit_cost']) * (float) $component['quantity']);
+        $costed = $costed || ($weights[$key] > 0);
+    }
+
+    if (!$costed) {
+        foreach ($components as $key => $component) {
+            $weights[$key] = (int) round((float) $component['quantity'] * 10000);
+        }
+    }
+
+    return erp_allocate((int) $total, $weights);
+}
+
+/**
+ * The moves a returned line makes from the moves its invoice line made: each
+ * one (one per component of a bundle line) takes back the returned share of
+ * its quantity and cost, and changes the stock only if the original did and
+ * the share is whole.
+ *
+ * @param array $parent_moves     erp_stock_moves rows of the invoice line:
+ *                                product_id, kind, quantity, cost_total, stock_wanted
+ * @param float $parent_quantity  the invoice line's quantity
+ * @param float $returned         the quantity returned
+ * @return array  list of product_id, kind, direction, quantity, cost_total,
+ *                stock_wanted, purchase_side
+ */
+function erp_stock_return_moves($parent_moves, $parent_quantity, $returned)
+{
+    $parent_quantity = (float) $parent_quantity;
+    $returned = (float) $returned;
+    $out = array();
+
+    if (($parent_quantity <= 0) || ($returned <= 0)) {
+        return $out;
+    }
+
+    foreach ($parent_moves as $parent) {
+        if ((float) $parent['quantity'] <= 0) {
+            continue;
+        }
+
+        $purchase = ((string) $parent['kind'] === 'purchase');
+        $quantity = round((float) $parent['quantity'] * $returned / $parent_quantity, 4);
+
+        $out[] = array(
+            'product_id' => (int) $parent['product_id'],
+            'kind' => $purchase ? 'purchase_return' : 'sales_return',
+            'direction' => $purchase ? 'out' : 'in',
+            'quantity' => $quantity,
+            'cost_total' => (int) round((int) $parent['cost_total'] * $returned / $parent_quantity),
+            'stock_wanted' => ((int) $parent['stock_wanted'] === 1) && erp_stock_whole($quantity),
+            'purchase_side' => $purchase,
+        );
+    }
+
+    return $out;
+}
+
+/**
  * The moves an issued invoice makes: goods in on a purchase invoice, out on a
  * sales invoice. The moves of an invoice raised from an order record the cost
  * and change no count (the order moved the stock); a line with no product
- * behind it makes none. Runs inside the caller's transaction.
+ * behind it makes none. A bundle line moves its components, one move each,
+ * and never the bundle, whose stock is a cache of theirs; on a purchase the
+ * line's net is shared over them by their cost. Runs inside the caller's
+ * transaction.
  *
  * @param int $invoice_id
  * @param int $created_by
@@ -335,33 +501,84 @@ function erp_stock_post_invoice($invoice_id, $created_by = 0)
     $purchase = ((string) $invoice['direction'] === 'purchase');
     $from_order = ((int) $invoice['order_id'] > 0);
     $foreign = (strtoupper((string) $invoice['currency']) !== erp_base_currency());
+    $bundles = erp_stock_bundles_ready();
+    $snapshots = $bundles ? erp_stock_invoice_components((int) $invoice['id']) : array();
 
-    foreach ((array) db_items("SELECT i.id, i.product_id, i.quantity, i.line_total, i.discount_amount, p.inventory
+    foreach ((array) db_items("SELECT i.id, i.product_id, i.quantity, i.line_total, i.discount_amount, p.inventory,
+            " . ($bundles ? "p.bundle" : "0 AS bundle") . "
         FROM erp_invoice_items i
         INNER JOIN products p ON p.id = i.product_id
         WHERE i.invoice_id = '" . (int) $invoice['id'] . "' AND i.product_id > 0 AND i.quantity > 0
         ORDER BY i.line_no ASC, i.id ASC") as $line) {
 
         $net = (int) $line['line_total'] - (int) $line['discount_amount'];
+        // What the goods cost the store, in its own currency and without the
+        // VAT it takes back; a sale leaves at the average.
+        $cost = $purchase ? ($foreign ? erp_to_base($net, (float) $invoice['exchange_rate']) : $net) : null;
+        $moves = array();
 
-        $ok = erp_stock_record(array(
-            'product_id' => (int) $line['product_id'],
-            'invoice_id' => (int) $invoice['id'],
-            'line_id' => (int) $line['id'],
-            'kind' => $purchase ? 'purchase' : 'sale',
-            'direction' => $purchase ? 'in' : 'out',
-            'quantity' => (float) $line['quantity'],
-            // What the goods cost the store, in its own currency and without
-            // the VAT it takes back; a sale leaves at the average.
-            'cost_total' => $purchase ? ($foreign ? erp_to_base($net, (float) $invoice['exchange_rate']) : $net) : null,
-            'stock_wanted' => !$from_order && erp_stock_documents_on() && ((int) $line['inventory'] === 1) && erp_stock_whole($line['quantity']),
-            'doc_date' => (string) $invoice['issue_date'],
-            'created_by' => (int) $created_by,
-            'purchase_side' => $purchase,
-        ));
+        if ($bundles && (isset($snapshots[(int) $line['id']]) || ((int) $line['bundle'] === 1))) {
+            $components = $snapshots[(int) $line['id']]
+                ?? erp_stock_snapshot_components((int) $invoice['id'], (int) $line['id'], (int) $line['product_id']);
 
-        if (!$ok) {
-            return false;
+            if ($components === false) {
+                return false;
+            }
+
+            $products = empty($components) ? array() : (array) db_items("SELECT id, inventory FROM products
+                WHERE id IN (" . implode(',', array_map('intval', array_keys($components))) . ")");
+            $tracked = array();
+            foreach ($products as $product) {
+                $tracked[(int) $product['id']] = ((int) $product['inventory'] === 1);
+            }
+
+            $shares = array();
+            foreach ($components as $component_id => $per_bundle) {
+                $known = erp_stock_cost($component_id);
+                $unit = is_array($known) ? (int) $known['avg_cost'] : 0;
+                $shares[$component_id] = array(
+                    'quantity' => (float) $line['quantity'] * $per_bundle,
+                    'unit_cost' => ($unit > 0) ? $unit : (is_array($known) ? (int) $known['last_cost'] : 0),
+                );
+            }
+
+            $split = $purchase ? erp_stock_split_by_cost($cost, $shares) : array();
+
+            foreach ($shares as $component_id => $share) {
+                $moves[] = array(
+                    'product_id' => $component_id,
+                    'quantity' => $share['quantity'],
+                    'cost_total' => $purchase ? (int) $split[$component_id] : null,
+                    'tracked' => !empty($tracked[$component_id]),
+                );
+            }
+        } else {
+            $moves[] = array(
+                'product_id' => (int) $line['product_id'],
+                'quantity' => (float) $line['quantity'],
+                'cost_total' => $cost,
+                'tracked' => ((int) $line['inventory'] === 1),
+            );
+        }
+
+        foreach ($moves as $move) {
+            $ok = erp_stock_record(array(
+                'product_id' => $move['product_id'],
+                'invoice_id' => (int) $invoice['id'],
+                'line_id' => (int) $line['id'],
+                'kind' => $purchase ? 'purchase' : 'sale',
+                'direction' => $purchase ? 'in' : 'out',
+                'quantity' => $move['quantity'],
+                'cost_total' => $move['cost_total'],
+                'stock_wanted' => !$from_order && erp_stock_documents_on() && $move['tracked'] && erp_stock_whole($move['quantity']),
+                'doc_date' => (string) $invoice['issue_date'],
+                'created_by' => (int) $created_by,
+                'purchase_side' => $purchase,
+            ));
+
+            if (!$ok) {
+                return false;
+            }
         }
     }
 
@@ -370,10 +587,10 @@ function erp_stock_post_invoice($invoice_id, $created_by = 0)
 
 /**
  * The moves a return makes: each returned line takes back its share of the
- * move the invoice line made, at that move's cost, and changes the stock only
- * if that move did. A line of an invoice that made no move (issued before
- * stock was kept) makes none when it comes back. Runs inside the caller's
- * transaction.
+ * moves the invoice line made (one per component of a bundle line), at their
+ * cost, and changes the stock only where they did. A line of an invoice that
+ * made no move (issued before stock was kept) makes none when it comes back.
+ * Runs inside the caller's transaction.
  *
  * @param int $return_id
  * @param int $created_by
@@ -394,33 +611,27 @@ function erp_stock_post_return($return_id, $created_by = 0)
     foreach ((array) db_items("SELECT id, parent_line_id, quantity FROM erp_invoice_items
         WHERE invoice_id = '" . (int) $return['id'] . "' AND parent_line_id > 0 AND quantity > 0") as $line) {
 
-        $parent = db_item("SELECT id, product_id, kind, quantity, cost_total, stock_wanted FROM erp_stock_moves
+        $parents = (array) db_items("SELECT id, product_id, kind, quantity, cost_total, stock_wanted FROM erp_stock_moves
             WHERE line_id = '" . (int) $line['parent_line_id'] . "' AND kind IN ('purchase', 'sale')
-            LIMIT 1");
+            ORDER BY id ASC");
 
-        if (!is_array($parent) || ((float) $parent['quantity'] <= 0)) {
+        if (empty($parents)) {
             continue;
         }
 
-        $purchase = ((string) $parent['kind'] === 'purchase');
-        $quantity = (float) $line['quantity'];
+        $parent_quantity = (float) db_value("SELECT quantity FROM erp_invoice_items WHERE id = '" . (int) $line['parent_line_id'] . "' LIMIT 1");
 
-        $ok = erp_stock_record(array(
-            'product_id' => (int) $parent['product_id'],
-            'invoice_id' => (int) $return['id'],
-            'line_id' => (int) $line['id'],
-            'kind' => $purchase ? 'purchase_return' : 'sales_return',
-            'direction' => $purchase ? 'out' : 'in',
-            'quantity' => $quantity,
-            'cost_total' => (int) round((int) $parent['cost_total'] * $quantity / (float) $parent['quantity']),
-            'stock_wanted' => ((int) $parent['stock_wanted'] === 1) && erp_stock_whole($quantity),
-            'doc_date' => (string) $return['issue_date'],
-            'created_by' => (int) $created_by,
-            'purchase_side' => $purchase,
-        ));
+        foreach (erp_stock_return_moves($parents, $parent_quantity, (float) $line['quantity']) as $move) {
+            $ok = erp_stock_record(array_merge($move, array(
+                'invoice_id' => (int) $return['id'],
+                'line_id' => (int) $line['id'],
+                'doc_date' => (string) $return['issue_date'],
+                'created_by' => (int) $created_by,
+            )));
 
-        if (!$ok) {
-            return false;
+            if (!$ok) {
+                return false;
+            }
         }
     }
 
@@ -429,7 +640,9 @@ function erp_stock_post_return($return_id, $created_by = 0)
 
 /**
  * The moves a cancellation makes: every move the document made, turned
- * round, at the same quantity and cost. Runs inside the caller's transaction.
+ * round, at the same quantity and cost, each paired with the move it turns
+ * round by reverses_id (a bundle line's components one by one). Runs inside
+ * the caller's transaction.
  *
  * @param int $invoice_id  The invoice or return being cancelled
  * @param int $created_by

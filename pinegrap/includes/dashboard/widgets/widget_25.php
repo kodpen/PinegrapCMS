@@ -97,8 +97,13 @@ function pg_dashboard_widget_25($request, $user)
         $cm_stars = '';
 
         if ((int) $cm_item['rating'] > 0) {
+            // The stars are read as "4 out of 5", not as four
+            // "black star" characters.
+            $cm_rating = min(5, (int) $cm_item['rating']);
             $cm_stars = '<span class="fg-warning ms-1 flex-shrink-0" style="font-size:10px">'
-                . str_repeat('★', min(5, (int) $cm_item['rating'])) . '</span>';
+                . '<span aria-hidden="true">' . str_repeat('★', $cm_rating) . '</span>'
+                . '<span class="visually-hidden">' . h(lang(array('string' => '{var:1} out of 5', 'vars' => $cm_rating))) . '</span>'
+                . '</span>';
         }
 
         $cm_where_text = ($cm_item['page_name'] != '')

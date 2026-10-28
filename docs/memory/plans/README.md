@@ -44,8 +44,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
 - graph-canvas-core.md: Plan (2026-10-24, not started, answers open): a reusable box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
-- incoming-email-g1-slices.md: Incoming e-mail slice G1 (core) cut into G1a-G1d of about 1,000 product lines each: MIME parser, schema, ingest, card and .eml upload
-- incoming-email-plan.md: Incoming e-mail into Workspace channels (starting, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
+- incoming-email-plan.md: Incoming e-mail into Workspace channels (G1 done, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
 - legacy-layouts-in-designer.md: Plan (2026-10-19; Y1-Y4, Y6 done): how a classic page's custom layout (layout_type 'custom', data/layouts/<id>.php) lives on in the visual designer once page_designer.php retires; Y1-Y6
 - legacy-page-designer-l5-list.md: What step L5 (retire page_designer.php) reroutes or removes beyond the three files: Edit Layout links, help row, menu case, panel actions used only by page_designer.js
 - legacy-page-designer-parity.md: L4 parity list (2026-10-26): what page_designer.php does that the visual designer lacks, and the owner's build-or-drop answer per item (#2484)
@@ -62,10 +61,10 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - prototype-sharing.md: Plan (2026-10-24; slices 1-4 done: #1867, #1579, #1595, #1578; 5 later): drafts play as a clickable prototype shared by a view-only link; flows with the team
 - refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
 - reverse-oauth-leftovers.md: Remaining outside-account connections (calendar, notes, cloud picker, Meta, Merchant, GA4, Business Profile, social, AI), the connect.pinegrap.com broker and open decisions
-- security-findings-2026-10-waf.md: Security findings of the 2026-10-20 firewall and helper scan: 1, 3, 5, 7 done; 2 (proxy headers), 4 (bot rate exemption), 6 (country rule) decided by the owner 2026-10-28; one PR each
+- security-findings-2026-10-waf.md: Security findings of the 2026-10-20 firewall and helper scan: 1, 3, 4, 5, 7 done; 2 (proxy headers), 6 (country rule) decided by the owner 2026-10-28; one PR each
 - security-findings-2026-10.md: 2026-10-19 security audit: fixed by that day's PRs and #713; items 2-8 decided by the owner 2026-10-28 (labels, CVV, escape_like, sign-in message, gateway secrets, ERP host, rich text)
 - shipping-carrier-labels.md: Plan (approved 2026-10-19, step 1 done): carrier APIs for label/barcode creation, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct
-- shipping-management.md: Shipping plan (2026-10-08; phases 1-4, 5, 6 and 7a done, phase 1 waits for new carriers): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
+- shipping-management.md: Shipping plan (2026-10-08; phases 1-4, 5, 6 and 7 done, phase 1 waits for new carriers): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
 - sms-and-iys.md: Plan (approved 2026-10-19): SMS layer, order messages, consent writers, İYS client and card, consents API done; left: first İYS live run
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19, watch list): public storefront API (cart, checkout, customer auth) as the base for agentic commerce bindings (OpenAI ACP checkout_sessions, Google UCP manifest)
 - storefront-bundles-design.md: Bundles design note (storefront-conversion-pack step 6, for the owner's review): model, stock, price, schema; hooks and steps in storefront-bundles-hooks.md
@@ -83,7 +82,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - widget-designability.md: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in widgets
 - workspace-agent-discussion-follow.md: Plan (2026-10-21, step 1 done #1121, answers open): an assistant a discussion is about, or was asked in it, answers each later message there without its @name; channels unchanged
 - workspace-agent-handles.md: Plan (2026-10-21, step 1 done, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
-- workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1 (#1462), 2 (#1523), 3 (#1726) done; answers 1-4 given): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
+- workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1-3 (#1462, #1523, #1726) and question 6 done): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
 - workspace-canvas-workflow-tables.md: Plan (2026-10-23, S1 #1708, S2 #1858, S2b #1987, question 2 open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 - workspace-composer-tools.md: Plan (2026-10-23; 1-9 and 11 done, 10 waits on the owner: schema): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
 - workspace-crm-seams.md: Plan (2026-10-23; 1-8 done, PRs #1621 to #2643; answers 2-4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources

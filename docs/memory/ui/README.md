@@ -40,6 +40,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - ai-write.md: "Write with AI" drafts for product, page and form record fields (ai_write panel action, includes/fn/ai_write.php): targets, context, model, quota guards, who may ask, reading the answer
 - arrival-date-shared-form.md: The arrival date create and edit screens share includes/forms/arrival_date_form.php: what it holds, what stays in the screens
 - ascii-names-in-urls-iis.md: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish-named files 404 (pg_ascii_file_name); Windows drops a trailing dot, so no stored file name ends in one
+- audit-log-paging.md: The audit trail list (view_audit_log.php) paged, sorted and searched on the server; changes read when a line's fold opens; filters stay in the address
 - bootstrap-6-button-alignment.md: Shell rule .btn:where(.text-start|.text-end) in backend.src.css: why text-start buttons came out centred under Bootstrap 6, how the rule keeps utilities winning, the ellipsis limit
 - bootstrap-6-codemod.md: tools/bs6_migrate.php, the switch fixes and tools/check_bs6.php: contexts read, what is rewritten or reported, sizes converted once, scope, how the switch keeps the v5 look
 - bootstrap-6-collapse-switcher.md: Sections behind a panel switch (input.collapse-switcher) on Bootstrap 6: why they stayed 0 px high, the .show that pgCollapseSwitcherShow() adds with the display, why switch callouts lost their arrow
@@ -69,6 +70,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dark-theme-panel-css.md: backend.src.css swept for fixed light fills and dark text after Bootstrap 6: .pg-table-light on tokens (black head text in dark), tone rows' band under the card fill, what stays fixed
 - dark-theme-text-colour.md: Panel text on the page background is fg-body, never fg-black (black in both themes); a menu inside a scrolling table gets data-bs-strategy="fixed"
 - dashboard-card-figures.md: Dashboard card figures: the brief's "this week", visitor "Last 12 Months", open-ended offers, currency rates, Activity job rows, job summaries kept out of the site log
+- dashboard-keyboard.md: Dashboard keyboard and screen-reader access: Online Engagement rows, focusable System Status chips, focus kept across the refresh, '{var:1}%' figures, empty sentences
 - dashboard-sales-map-data.md: Dashboard sales map widget 1 data side: files, map assets, adding a country, region-name resolution, matching, opening view, number definition, quantile steps.
 - dashboard-sales-map-panel.md: Dashboard sales map widget 1 panel behavior: corner menu with fixed Popper, card colour, permission gates, link gating, brief line signals, reused id 1.
 - dashboard-welcome-card.md: The dashboard top card (welcome.php, .pg-clockbar): greeting on the left, time and date on the right in one full-width card; phone stacking, themes, ids the scripts read
@@ -126,7 +128,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - pg-combobox-menu-instance.md: Why every Bootstrap 6 combobox logged "more than one instance per element" and built an unbound Menu on each arrow key, and the two guards in pg_fields.js that keep the console clean (#2520)
 - pg-combobox-server-search.md: data-pg-source combobox (google_product_category) on Bootstrap 6 Combobox with our own server search (#2362): engine, search box, debounce, free text, keys
 - pg-combobox.md: data-pg-combobox on Bootstrap 6 Combobox (B9b, #2243, #2362): toggle and menu after the hidden select, silent fill, native change, empty item instead of clear, server search for data-pg-source
-- pg-datepicker.md: data-pg-date, data-pg-datetime and data-pg-time on Bootstrap 6 Datepicker and <input type="time"> (B9c, #2262): own parse, the hidden store, the clone dispose leaves, dialogs and drawers
+- pg-datepicker.md: data-pg-date, data-pg-datetime and data-pg-time on the calendar of pg_datetime.js (vanilla-calendar-pro) and <input type="time">: own parse, the hidden store, keys, theme, dialogs and drawers
 - pg-field-wrappers.md: pgChips, pgCombobox, pgDatePicker, pgDateTimeField (pg_fields.js): data-pg-* hooks, the posted field as store, own date parse, change event, engines, screens
 - pg-ui-adapter.md: pgUI (assets/js/pg_ui.js), the panel's one door to Bootstrap's JavaScript on 5.3 and 6: kinds, promises, both event names, dialog markup, overlay host, readiness, the Bootstrap 6 bridge
 - print-views-light-paper.md: The order print view and packing slip force the light theme (they stand for the paper), carry their own title and the store icon; the e-mail campaign popups' title and icon
@@ -136,6 +138,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - product-list-paging.md: The products list (view_products.php) paged on the server: views and their columns, quick edits on paged rows, search, barcode button, export, what moved where (PR #2655)
 - range-value-bubble.md: Panel sliders as the Bootstrap 6 Range with a value bubble (step B9e, #2207): markup, pgUI.range.bubble(), data-pg-range, where it is used, the site Range that stays v5
 - referral-source-shared-form.md: add_referral_source.php and edit_referral_source.php draw the referral source card and read its posted values through includes/forms/referral_source_form.php; what each screen keeps
+- report-screen-controls.md: Order, visitor and shipping report controls on Bootstrap 6: period changer groups, named arrows, labelled layout selects, the 100 % cell, named date filter selects (#2716)
 - rich-text-source-dialog.md: The rich text editor's Source dialog with the code editor: isolated in a shadow root (the dialog resets every element), sized like its textarea, Enter, Tab and used keys kept from the dialog
 - server-paged-lists.md: DataTables lists paged on the server (users, submitted forms, contacts, products): data-pg-list-action, the JSON page action, search, counts, row cells, what select all and bulk buttons act on
 - settings-card-chrome.md: Settings dialog visual details: acrylic glass mode (advanced-visuals, pg-settings-open) and the pg-alert-dismissible padding rule.

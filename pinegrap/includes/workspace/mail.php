@@ -598,3 +598,133 @@ function ws_mail_ingest($raw, $box)
         'message_id'      => (int) $message_id,
     ));
 }
+
+/* ---------------------------------------------------------------------------
+   The card in the channel (messages.php draws it)
+   --------------------------------------------------------------------------- */
+
+/**
+ * The mails and conversations a page of messages names: one query each for
+ * the whole page.
+ *
+ * @param array[] $rows ws_messages rows
+ * @return array item id => ws_mail_items row, with a 'conversation' key (the
+ *               ws_mail_conversations row or null)
+ */
+function ws_mail_items_map($rows)
+{
+    $ids = array();
+
+    foreach ((array) $rows as $row) {
+        if ((string) $row['sender_kind'] === 'mail') {
+            $ids[(int) $row['sender_id']] = (int) $row['sender_id'];
+        }
+    }
+
+    if (!$ids || !pg_schema_has('ws_mail_items')) {
+        return array();
+    }
+
+    $items = array();
+    $conversation_ids = array();
+
+    foreach ((array) db_items("SELECT * FROM ws_mail_items WHERE id IN (" . implode(',', $ids) . ")") as $item) {
+        $items[(int) $item['id']] = $item + array('conversation' => null);
+        $conversation_ids[(int) $item['conversation_id']] = (int) $item['conversation_id'];
+    }
+
+    $conversation_ids = array_filter($conversation_ids);
+
+    if ($conversation_ids) {
+        $conversations = array();
+
+        foreach ((array) db_items("SELECT * FROM ws_mail_conversations WHERE id IN (" . implode(',', $conversation_ids) . ")") as $conversation) {
+            $conversations[(int) $conversation['id']] = $conversation;
+        }
+
+        foreach ($items as $id => $item) {
+            $items[$id]['conversation'] = $conversations[(int) $item['conversation_id']] ?? null;
+        }
+    }
+
+    return $items;
+}
+
+/**
+ * Who a mail's message is drawn under: the sender as the mail names them,
+ * with letters for a picture, like a guest of a room.
+ *
+ * @param array|null $item ws_mail_items row
+ * @return array
+ */
+function ws_mail_sender($item)
+{
+    $email = is_array($item) ? (string) $item['from_email'] : '';
+    $name = (is_array($item) && (trim((string) $item['from_name']) !== '')) ? (string) $item['from_name'] : (($email !== '') ? $email : lang('E-mail'));
+    $seed = 'mail' . md5(strtolower($email));
+
+    return array(
+        'id'          => 0,
+        'name'        => $name,
+        'username'    => '',
+        'role'        => 3,
+        'title'       => $email,
+        'avatar'      => function_exists('pg_initials_avatar_url') ? pg_initials_avatar_url(pg_initials($name, ''), 'contact', $seed) : '',
+        'avatar_kind' => 'contact',
+        'presence'    => 'offline',
+        'mail'        => true,
+    ) + (function_exists('pg_avatar_letters') ? pg_avatar_letters(pg_initials($name, ''), $seed) : array());
+}
+
+/**
+ * What a mail's message shows: whether the sender was verified, the address,
+ * the subject on the conversation's card, the text as plain text (never as
+ * HTML or Workspace markup), the whole text behind "Show all" when the
+ * message holds less, and the attachments that were not taken in. A message
+ * that only carries an attachment shows nothing of its own.
+ *
+ * @param array      $row  ws_messages row
+ * @param array|null $item ws_mail_items_map() entry
+ * @return string HTML
+ */
+function ws_mail_card_html($row, $item)
+{
+    if (!is_array($item)) {
+        return '<p class="fg-secondary">' . h(lang('This e-mail is no longer available.')) . '</p>';
+    }
+
+    if (((int) $row['file_id'] > 0) && (trim((string) $row['body']) === '')) {
+        return '';
+    }
+
+    $conversation = $item['conversation'];
+    $card = is_array($conversation) && ((int) $conversation['message_id'] === (int) $row['id']);
+    $badge = ((string) $item['auth'] === 'pass')
+        ? '<span class="badge theme-info"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . h(lang('E-mail')) . '</span>'
+        : '<span class="badge theme-warning"><i class="bi bi-envelope-exclamation me-1" aria-hidden="true"></i>' . h(lang('Sender not verified')) . '</span>';
+
+    $html = '<div class="ws-mail-card">'
+        . '<div class="small fg-secondary mb-1">' . $badge . ' <span class="ms-1">' . h((string) $item['from_email']) . '</span></div>';
+
+    if ($card && ((string) $item['subject'] !== '')) {
+        $html .= '<div class="fw-semibold mb-1">' . h((string) $item['subject']) . '</div>';
+    }
+
+    $html .= '<div>' . nl2br(h((string) $row['body']), false) . '</div>';
+
+    $full = (string) $item['body_text'];
+
+    if (mb_strlen($full) > mb_strlen((string) $row['body'])) {
+        $html .= '<details class="mt-1"><summary class="small">' . h(lang('Show all')) . '</summary><div class="mt-1">'
+            . nl2br(h(mb_substr($full, 0, 100000)), false) . '</div></details>';
+    }
+
+    $refused = array_filter(explode("\n", (string) $item['refused_files']), 'strlen');
+
+    if ($refused) {
+        $html .= '<div class="small fg-secondary mt-1"><i class="bi bi-paperclip me-1" aria-hidden="true"></i>'
+            . h(lang(array('string' => 'Not taken in: {var:1}', 'vars' => implode(', ', $refused)))) . '</div>';
+    }
+
+    return $html . '</div>';
+}

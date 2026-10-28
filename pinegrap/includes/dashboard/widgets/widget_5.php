@@ -357,7 +357,7 @@ function pg_dashboard_widget_5($request, $user)
               <div class="alert theme-info py-1 px-3 mb-0 d-flex align-items-center gap-3" style="font-size:11px">
                 <i class="bi bi-hourglass-split flex-shrink-0"></i>
                 <span class="flex-grow-1">' . lang('Historical visitor summaries are still being built. Figures for earlier periods will be incomplete until this finishes.') . '</span>
-                <span class="badge bg-subtle-info fg-emphasis-info flex-shrink-0">' . (int) $vs5_pct . '%</span>
+                <span class="badge bg-subtle-info fg-emphasis-info flex-shrink-0">' . h(lang(array('string' => '{var:1}%', 'vars' => (int) $vs5_pct))) . '</span>
               </div>
             </div>';
         }
@@ -434,7 +434,7 @@ function pg_dashboard_widget_5($request, $user)
             }
             $direction = ($pct >= 0) ? 'up' : 'down';
             $arrow = ($pct >= 0) ? '&#9650;' : '&#9660;';
-            return '<span class="pg-vs-pill ' . $direction . '">' . $arrow . ' %' . abs($pct) . '</span>';
+            return '<span class="pg-vs-pill ' . $direction . '">' . $arrow . ' ' . h(lang(array('string' => '{var:1}%', 'vars' => abs($pct)))) . '</span>';
         };
 
         // Today's busiest page, under the period's. Two different
@@ -449,7 +449,7 @@ function pg_dashboard_widget_5($request, $user)
         }
 
         $vs5_cell = function ($key, $label, $value, $pct_badge, $active = false) {
-            return '<button type="button" class="pg-vs-cell' . ($active ? ' is-active' : '') . '" data-vs5="' . $key . '">'
+            return '<button type="button" class="pg-vs-cell' . ($active ? ' is-active' : '') . '" data-vs5="' . $key . '" aria-pressed="' . ($active ? 'true' : 'false') . '">'
                 . '<span class="pg-vs-cell-label">' . $label . '</span>'
                 . '<span class="pg-vs-cell-value">' . $value . ' ' . $pct_badge . '</span>'
                 // Chart.js sizes a responsive canvas from its
@@ -501,7 +501,7 @@ function pg_dashboard_widget_5($request, $user)
               ' . $vs5_cell('w', lang('This Week'), pg_format_number($kpi_tw, 0), $vs5_badge($vs5_week_pct)) . '
               ' . $vs5_cell('m', lang('This Month'), pg_format_number($kpi_tm, 0), $vs5_badge($vs5_month_pct)) . '
               ' . $vs5_cell('y', lang('Last 12 Months'), pg_format_number($kpi_pm, 0), '') . '
-              <button type="button" class="pg-vs-cell pg-vs-top" data-vs5="p" title="' . h(lang('Top Pages')) . '">
+              <button type="button" class="pg-vs-cell pg-vs-top" data-vs5="p" aria-pressed="false" title="' . h(lang('Top Pages')) . '">
                 <span class="pg-vs-cell-label">' . lang('Most Visited') . ' <i class="bi bi-list-ol"></i></span>
                 ' . ($tp_tm
                     ? '<span class="pg-vs-page">' . $tp_tm['name'] . '</span>'
@@ -543,7 +543,8 @@ function pg_dashboard_widget_5($request, $user)
           var T = {
             byThisTime:   ' . json_encode(lang(array('string' => 'by this time yesterday {var:1}', 'vars' => '%N%'))) . ',
             allYesterday: ' . json_encode(lang(array('string' => 'all of yesterday {var:1}', 'vars' => '%N%'))) . ',
-            topPages:     ' . json_encode(lang('Top Pages · Last 7 Days')) . '
+            topPages:     ' . json_encode(lang('Top Pages · Last 7 Days')) . ',
+            percent:      ' . json_encode(lang(array('string' => '{var:1}%', 'vars' => '{n}'))) . '
           };
 
           // Each period carries both series against one label set,
@@ -693,7 +694,7 @@ function pg_dashboard_widget_5($request, $user)
             var pill = "";
             if (pct !== null) {
               pill = \'<span class="pg-vs-pill \' + (pct >= 0 ? "up" : "down") + \'">\'
-                   + (pct >= 0 ? "▲" : "▼") + " %" + Math.abs(pct) + "</span>";
+                   + (pct >= 0 ? "▲" : "▼") + " " + T.percent.replace("{n}", Math.abs(pct)) + "</span>";
             }
             var text = (mode === "d")
               ? T.byThisTime.replace("%N%", "<b>" + fmtN(p.cmp) + "</b>")
@@ -755,7 +756,9 @@ function pg_dashboard_widget_5($request, $user)
               // reader in a period with no way back.
               mode = (mode === next) ? "d" : next;
               document.querySelectorAll("[data-vs5]").forEach(function(b){
-                b.classList.toggle("is-active", b.getAttribute("data-vs5") === mode);
+                var pressed = (b.getAttribute("data-vs5") === mode);
+                b.classList.toggle("is-active", pressed);
+                b.setAttribute("aria-pressed", pressed ? "true" : "false");
               });
               pages(mode === "p");
               if (mode !== "p") { build(); head(); }

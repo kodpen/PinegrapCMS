@@ -431,12 +431,16 @@ pg_page_shell(array(
                 ' . $output_view_pills('flow') . '
                 ' . $output_group_filter . '
                 ' . $output_period_filter . '
-                <form method="get" action="erp_cashflow.php" class="d-flex align-items-center gap-3 mb-0">
+                <form method="get" action="erp_cashflow.php" class="d-flex flex-wrap align-items-center gap-3 row-gap-2 mb-0">
                     <input type="hidden" name="group" value="' . h($options['group_chosen'] ? $options['group'] : '') . '" />
-                    <label for="from" class="small fg-secondary text-nowrap mb-0">' . lang('Start') . '</label>
-                    <input type="date" id="from" name="from" class="form-control form-control-sm w-auto" value="' . h($options['from']) . '" max="' . h(date('Y-m-d')) . '" />
-                    <label for="to" class="small fg-secondary text-nowrap mb-0">' . lang('End') . '</label>
-                    <input type="date" id="to" name="to" class="form-control form-control-sm w-auto" value="' . h($options['to']) . '" max="' . h(date('Y-m-d')) . '" />
+                    <span class="d-inline-flex align-items-center gap-2">
+                        <label for="from" class="small fg-secondary text-nowrap mb-0">' . lang('Start') . '</label>
+                        <input type="date" id="from" name="from" class="form-control form-control-sm w-auto" value="' . h($options['from']) . '" max="' . h(date('Y-m-d')) . '" />
+                    </span>
+                    <span class="d-inline-flex align-items-center gap-2">
+                        <label for="to" class="small fg-secondary text-nowrap mb-0">' . lang('End') . '</label>
+                        <input type="date" id="to" name="to" class="form-control form-control-sm w-auto" value="' . h($options['to']) . '" max="' . h(date('Y-m-d')) . '" />
+                    </span>
                     <select id="till" name="till" class="form-control form-control-sm w-auto" aria-label="' . lang('Till') . '">' . $output_till_options . '</select>
                     <button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . lang('Apply') . '"><i class="bi bi-arrow-right-circle"></i></button>
                 </form>

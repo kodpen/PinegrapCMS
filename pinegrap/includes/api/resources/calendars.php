@@ -753,7 +753,7 @@ function api_calendar_event_fields_in($params) {
 	// arrives from outside is cut down to the formatting the editor makes.
 	if (isset($params['description'])) {
 
-		$set['full_description'] = prepare_rich_text_editor_content_for_input(pg_sanitize_rich_text((string)$params['description']));
+		$set['full_description'] = prepare_rich_text_editor_content_for_input(pg_sanitize_rich_text((string)$params['description'], 'staff'));
 
 	}
 

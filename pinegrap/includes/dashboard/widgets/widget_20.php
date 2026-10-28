@@ -63,7 +63,7 @@ function pg_dashboard_widget_20($request, $user)
         $output_data = '
         <div class="card-body p-0 overflow-auto">
             ' . get_calendar('', $calendars, '', '', $user, '', '', $number_of_upcoming_events = '', $return = 'html', $output_minimal_calendar = true) . '
-            <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/calendars.php?date=&calendar_id=&view=monthly&status=" class=" stretched-link this-after-top-30"></a>
+            <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/calendars.php?date=&calendar_id=&view=monthly&status=" class="stretched-link this-after-top-30" aria-label="' . h(lang('Calendars')) . '"></a>
         </div>';
 
         //return success json output

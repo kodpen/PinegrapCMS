@@ -3848,9 +3848,9 @@ function waf_is_client_metadata_request($script = null)
  *     report thousands of daily "visitors" that are all itself.
  *
  *   - It is not privileged. A user agent is a claim anyone can type, so this
- *     never skips rate limiting or any rule. Wiring it to IS_BOT would do
- *     exactly that, because IS_BOT also exempts a request from the rate
- *     limiter — which is how a convenience turns into a bypass.
+ *     never skips rate limiting or any rule. Only a crawler whose address
+ *     proves its name skips the rate limits (waf_bot_rate_exempt()), and a
+ *     Pinegrap installation has no such proof.
  */
 function waf_is_pinegrap_client()
 {
@@ -4691,8 +4691,8 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
     // judged as a crawler it read as a forged one and was refused - and
     // counted towards a ban - right after it had been given a token.
     //
-    // Returning before the good-bot branch also leaves IS_BOT undefined, so
-    // a crawler name buys no relief from the rate limits on these endpoints.
+    // Returning before the good-bot branch also leaves the crawler unverified,
+    // so a crawler name buys no relief from the rate limits on these endpoints.
     // api.php is not among them: it answers the site's own pages without a
     // credential, and the bot policy below still guards it.
     if (waf_is_api_request() && !waf_is_site_api_request()) {
@@ -4795,7 +4795,7 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
 /**
  * Whether the bot classification proved this request's crawler to be the one
  * its name claims (waf_verify_bot() answered 'verified'). Set once by
- * waf_handle_bot(), read by the country restriction.
+ * waf_handle_bot(), read by the country restriction and the rate limits.
  *
  * @param bool|null $set true to record the proof
  * @return bool
@@ -4811,6 +4811,23 @@ function waf_bot_verified($set = null)
     return $verified;
 }
 
+
+/**
+ * Whether a request skips the rate limits and the in-flight cap as a bot.
+ *
+ * Only a crawler proven to be the one its name claims (waf_bot_verified())
+ * is exempt. IS_BOT is not enough: it also marks curl, an empty user agent,
+ * any "bot" token and a good-bot name that could not be verified, all of
+ * which anyone can send. With bot verification off nothing is proven, so no
+ * bot is exempt.
+ *
+ * @param mixed $verified the answer of waf_bot_verified()
+ * @return bool
+ */
+function waf_bot_rate_exempt($verified)
+{
+    return $verified === true;
+}
 
 /* ─────────────────────────────────────────────────────────────────────────
    COUNTRY RESTRICTION
@@ -5103,8 +5120,8 @@ function waf_country_keeps_to_panel_decision($waf_mode, $config, $code, $allowed
 
 function waf_handle_rate_global($ip, $blocking)
 {
-    // A verified good bot crawling fast is doing its job.
-    if (defined('IS_BOT') && IS_BOT) {
+    // A crawler whose address proved its name is doing its job crawling fast.
+    if (waf_bot_rate_exempt(waf_bot_verified())) {
         return;
     }
 
@@ -5136,7 +5153,7 @@ function waf_handle_rate_global($ip, $blocking)
 
 function waf_handle_rate_sensitive($ip, $blocking)
 {
-    if (defined('IS_BOT') && IS_BOT) {
+    if (waf_bot_rate_exempt(waf_bot_verified())) {
         return;
     }
 
@@ -5220,7 +5237,7 @@ function waf_handle_rate_api($ip, $blocking)
         return;
     }
 
-    if (defined('IS_BOT') && IS_BOT) {
+    if (waf_bot_rate_exempt(waf_bot_verified())) {
         return;
     }
 
@@ -5274,7 +5291,7 @@ function waf_handle_inflight($ip, $blocking)
         return;
     }
 
-    if (defined('IS_BOT') && IS_BOT) {
+    if (waf_bot_rate_exempt(waf_bot_verified())) {
         return;
     }
 

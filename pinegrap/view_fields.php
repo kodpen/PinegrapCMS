@@ -389,7 +389,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     // The information text is rich text and is shown as markup; a label is
     // the plain text the field editor accepted and is escaped.
     if ($row['type'] == 'information') {
-        $label_or_information = pg_sanitize_rich_text($row['information']);
+        $label_or_information = pg_sanitize_rich_text($row['information'], 'staff');
     } else {
         $label_or_information = h($row['label']);
     }

@@ -97,7 +97,7 @@ if (!$_POST) {
     // if the visitor report is being viewed
     if (isset($_GET['id']) == true) {
         $output_edit_button = '
-        <nav id="button_bar" class="navigation " aria-label="Button Bar">
+        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
             <div class=" btn-group flex-wrap">
                 <a class="btn btn-solid theme-primary"  href="#" id="edit_button" onclick="document.getElementById(\'button_bar\').style.display = \'none\'; document.getElementById(\'edit_form\').style.display = \'block\'; return false;" ><span class="material-icons me-1">edit</span>' . lang('Edit') . '</a>
             </div>
@@ -680,28 +680,31 @@ if (!$_POST) {
             $output_date_range .= ' - ' . $stop_date;
         }
         
+        // One group per unit: previous period, the current one, next period.
+        // The pieces carry a v6 variant, as the group, join and size rules
+        // only select [class*=btn-] children.
+        $date_changer_link = function ($range) use ($output_date_changer_query_string_id) {
+            return 'view_visitor_report.php?start_month=' . $range['start_month'] . '&start_day=' . $range['start_day'] . '&start_year=' . $range['start_year'] . '&stop_month=' . $range['stop_month'] . '&stop_day=' . $range['stop_day'] . '&stop_year=' . $range['stop_year'] . $output_date_changer_query_string_id;
+        };
+
+        $output_date_changer_groups = '';
+
+        foreach (array(
+            array(lang('Year'), $decrease_year, $current_year, $increase_year),
+            array(lang('Month'), $decrease_month, $current_month, $increase_month),
+            array(lang('Week'), $decrease_week, $current_week, $increase_week),
+            array(lang('Day'), $decrease_day, $current_day, $increase_day),
+        ) as $date_changer_unit) {
+            $output_date_changer_groups .= '
+            <div class="btn-group btn-group-sm col-auto py-0 px-1 my-1" role="group" aria-label="' . h($date_changer_unit[0]) . '">
+                <a class="btn btn-outline theme-secondary" href="' . h($date_changer_link($date_changer_unit[1])) . '" title="' . h(lang('Previous')) . '" aria-label="' . h(lang('Previous')) . '"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
+                <a class="btn btn-outline theme-secondary" href="' . h($date_changer_link($date_changer_unit[2])) . '">' . h($date_changer_unit[0]) . '</a>
+                <a class="btn btn-outline theme-secondary" href="' . h($date_changer_link($date_changer_unit[3])) . '" title="' . h(lang('Next')) . '" aria-label="' . h(lang('Next')) . '"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+            </div>';
+        }
+
         $output_date_changer = '
-        <div class="row justify-content-center md:justify-content-end">
-            <div class="btn-group btn-group-sm col-auto py-0 px-1 my-1">
-                <a class="btn py-0 px-1 border-start border-top border-bottom" href="view_visitor_report.php?start_month=' . $decrease_year['start_month'] . '&start_day=' . $decrease_year['start_day'] . '&start_year=' . $decrease_year['start_year'] . '&stop_month=' . $decrease_year['stop_month'] . '&stop_day=' . $decrease_year['stop_day'] . '&stop_year=' . $decrease_year['stop_year'] . $output_date_changer_query_string_id . '"><</a>
-                <a class="btn py-0 px-1 border-bottom border-top" href="view_visitor_report.php?start_month=' . $current_year['start_month'] . '&start_day=' . $current_year['start_day'] . '&start_year=' . $current_year['start_year'] . '&stop_month=' . $current_year['stop_month'] . '&stop_day=' . $current_year['stop_day'] . '&stop_year=' . $current_year['stop_year'] . $output_date_changer_query_string_id . '">' . lang('Year') . '</a>
-                <a class="btn py-0 px-1 border-end border-top border-bottom" href="view_visitor_report.php?start_month=' . $increase_year['start_month'] . '&start_day=' . $increase_year['start_day'] . '&start_year=' . $increase_year['start_year'] . '&stop_month=' . $increase_year['stop_month'] . '&stop_day=' . $increase_year['stop_day'] . '&stop_year=' . $increase_year['stop_year'] . $output_date_changer_query_string_id . '">></a>
-            </div>
-            <div class="btn-group btn-group-sm col-auto py-0 px-1 my-1">
-                <a class="btn py-0 px-1 border-start border-top border-bottom" href="view_visitor_report.php?start_month=' . $decrease_month['start_month'] . '&start_day=' . $decrease_month['start_day'] . '&start_year=' . $decrease_month['start_year'] . '&stop_month=' . $decrease_month['stop_month'] . '&stop_day=' . $decrease_month['stop_day'] . '&stop_year=' . $decrease_month['stop_year'] . $output_date_changer_query_string_id . '"><</a>
-                <a class="btn py-0 px-1 border-bottom border-top" href="view_visitor_report.php?start_month=' . $current_month['start_month'] . '&start_day=' . $current_month['start_day'] . '&start_year=' . $current_month['start_year'] . '&stop_month=' . $current_month['stop_month'] . '&stop_day=' . $current_month['stop_day'] . '&stop_year=' . $current_month['stop_year'] . $output_date_changer_query_string_id . '">' . lang('Month') . '</a>
-                <a class="btn py-0 px-1 border-end border-top border-bottom" href="view_visitor_report.php?start_month=' . $increase_month['start_month'] . '&start_day=' . $increase_month['start_day'] . '&start_year=' . $increase_month['start_year'] . '&stop_month=' . $increase_month['stop_month'] . '&stop_day=' . $increase_month['stop_day'] . '&stop_year=' . $increase_month['stop_year'] . '">></a>
-            </div>
-            <div class="btn-group btn-group-sm col-auto py-0 px-1 my-1">    
-                <a class="btn py-0 px-1 border-start border-top border-bottom" href="view_visitor_report.php?start_month=' . $decrease_week['start_month'] . '&start_day=' . $decrease_week['start_day'] . '&start_year=' . $decrease_week['start_year'] . '&stop_month=' . $decrease_week['stop_month'] . '&stop_day=' . $decrease_week['stop_day'] . '&stop_year=' . $decrease_week['stop_year'] . $output_date_changer_query_string_id . '"><</a>
-                <a class="btn py-0 px-1 border-bottom border-top" href="view_visitor_report.php?start_month=' . $current_week['start_month'] . '&start_day=' . $current_week['start_day'] . '&start_year=' . $current_week['start_year'] . '&stop_month=' . $current_week['stop_month'] . '&stop_day=' . $current_week['stop_day'] . '&stop_year=' . $current_week['stop_year'] . $output_date_changer_query_string_id . '">' . lang('Week') . '</a>
-                <a class="btn py-0 px-1 border-end border-top border-bottom" href="view_visitor_report.php?start_month=' . $increase_week['start_month'] . '&start_day=' . $increase_week['start_day'] . '&start_year=' . $increase_week['start_year'] . '&stop_month=' . $increase_week['stop_month'] . '&stop_day=' . $increase_week['stop_day'] . '&stop_year=' . $increase_week['stop_year'] . $output_date_changer_query_string_id . '">></a>
-            </div>
-            <div class="btn-group btn-group-sm col-auto py-0 px-1 my-1">    
-                <a class="btn py-0 px-1 border-start border-top border-bottom" href="view_visitor_report.php?start_month=' . $decrease_day['start_month'] . '&start_day=' . $decrease_day['start_day'] . '&start_year=' . $decrease_day['start_year'] . '&stop_month=' . $decrease_day['stop_month'] . '&stop_day=' . $decrease_day['stop_day'] . '&stop_year=' . $decrease_day['stop_year'] . $output_date_changer_query_string_id . '"><</a>
-                <a class="btn py-0 px-1 border-bottom border-top" href="view_visitor_report.php?start_month=' . $current_day['start_month'] . '&start_day=' . $current_day['start_day'] . '&start_year=' . $current_day['start_year'] . '&stop_month=' . $current_day['stop_month'] . '&stop_day=' . $current_day['stop_day'] . '&stop_year=' . $current_day['stop_year'] . $output_date_changer_query_string_id . '">' . lang('Day') . '</a>
-                <a class="btn py-0 px-1 border-end border-top border-bottom" href="view_visitor_report.php?start_month=' . $increase_day['start_month'] . '&start_day=' . $increase_day['start_day'] . '&start_year=' . $increase_day['start_year'] . '&stop_month=' . $increase_day['stop_month'] . '&stop_day=' . $increase_day['stop_day'] . '&stop_year=' . $increase_day['stop_year'] . $output_date_changer_query_string_id . '">></a>
-            </div>    
+        <div class="row justify-content-center md:justify-content-end">' . $output_date_changer_groups . '
         </div>
         <p class="text-center md:text-end p-0 m-0">
             <span class="badge fg-body fw-light border-2">    ' . $output_date_range . '</span>
@@ -1291,23 +1294,23 @@ if (!$_POST) {
                                             <h4 class="fw-bold fg-secondary">' . lang('Visitor Report Layout') . '</h4>
                                         </div>
                                         <div class="col-12 lg:col-8 my-3">
-                                            <div class="input-group-text row my-3">
-                                                <div class="col-12 md:col">' . lang('Summarize by') . '</div>
-                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_1', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
-                                                <div class="col-12 md:col">' . lang('order by') . '</div>
-                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_1', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
+                                            <div class="row g-2 align-items-center my-3">
+                                                <label for="summarize_by_1" class="col-12 md:col form-label mb-0">' . lang('Summarize by') . '</label>
+                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_1', 'id'=>'summarize_by_1', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
+                                                <label for="order_by_1" class="col-12 md:col form-label mb-0">' . lang('order by') . '</label>
+                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_1', 'id'=>'order_by_1', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
                                             </div>
-                                            <div class="input-group-text row my-3">
-                                                <div class="col-12 md:col">' . lang('and then by') . '</div>
-                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_2', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
-                                                <div class="col-12 md:col">' . lang('order by') . '</div>
-                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_2', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
+                                            <div class="row g-2 align-items-center my-3">
+                                                <label for="summarize_by_2" class="col-12 md:col form-label mb-0">' . lang('and then by') . '</label>
+                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_2', 'id'=>'summarize_by_2', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
+                                                <label for="order_by_2" class="col-12 md:col form-label mb-0">' . lang('order by') . '</label>
+                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_2', 'id'=>'order_by_2', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
                                             </div>
-                                            <div class="input-group-text row my-3">
-                                                <div class="col-12 md:col">' . lang('and finally by') . '</div>
-                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_3', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
-                                                <div class="col-12 md:col">' . lang('order by') . '</div>
-                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_3', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
+                                            <div class="row g-2 align-items-center my-3">
+                                                <label for="summarize_by_3" class="col-12 md:col form-label mb-0">' . lang('and finally by') . '</label>
+                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_3', 'id'=>'summarize_by_3', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
+                                                <label for="order_by_3" class="col-12 md:col form-label mb-0">' . lang('order by') . '</label>
+                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_3', 'id'=>'order_by_3', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
                                             </div>
                                         </div>
                                         <div class="col-12 my-3">
@@ -1365,7 +1368,7 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="submit_save" name="submit_save" value="Save &amp; Run" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save & Run') ) . '</span></button>
@@ -1727,11 +1730,11 @@ if (!$_POST) {
         unset($pager_params['detail_page']);
         $pager_base = 'view_visitor_report.php?' . (empty($pager_params) ? '' : http_build_query($pager_params) . '&') . 'detail_page=';
 
-        $pager_link = function ($page, $label, $disabled) use ($pager_base) {
+        $pager_link = function ($page, $label, $name, $disabled) use ($pager_base) {
             if ($disabled) {
-                return '<li class="page-item disabled"><span class="page-link">' . $label . '</span></li>';
+                return '<li class="page-item disabled"><span class="page-link" aria-label="' . h($name) . '">' . $label . '</span></li>';
             }
-            return '<li class="page-item"><a class="page-link" href="' . h($pager_base . (int) $page) . '">' . $label . '</a></li>';
+            return '<li class="page-item"><a class="page-link" href="' . h($pager_base . (int) $page) . '" aria-label="' . h($name) . '">' . $label . '</a></li>';
         };
 
         $csv_params = $_GET;
@@ -1752,14 +1755,14 @@ if (!$_POST) {
                     <a class="btn btn-sm btn-outline theme-secondary" href="' . h($csv_url) . '">
                         <i class="bi bi-filetype-csv me-1"></i>' . lang('Export All to CSV') . '
                     </a>
-                    <nav><ul class="pagination pagination-sm mb-0">'
-                        . $pager_link(1, '&laquo;', $detail_page <= 1)
-                        . $pager_link($detail_page - 1, '&lsaquo;', $detail_page <= 1)
+                    <nav aria-label="' . h(lang('Pagination')) . '"><ul class="pagination pagination-sm mb-0">'
+                        . $pager_link(1, '&laquo;', lang('First page'), $detail_page <= 1)
+                        . $pager_link($detail_page - 1, '&lsaquo;', lang('Previous page'), $detail_page <= 1)
                         . '<li class="page-item disabled"><span class="page-link">'
                         . h(lang(array('string' => 'Page {var:1} of {var:2}', 'vars' => array(pg_format_number($detail_page, 0), pg_format_number($detail_pages, 0)))))
                         . '</span></li>'
-                        . $pager_link($detail_page + 1, '&rsaquo;', $detail_page >= $detail_pages)
-                        . $pager_link($detail_pages, '&raquo;', $detail_page >= $detail_pages)
+                        . $pager_link($detail_page + 1, '&rsaquo;', lang('Next page'), $detail_page >= $detail_pages)
+                        . $pager_link($detail_pages, '&raquo;', lang('Last page'), $detail_page >= $detail_pages)
                     . '</ul></nav>
                 </div>
             </div>';
@@ -1777,16 +1780,16 @@ if (!$_POST) {
                             <td class="align-middle text-nowrap" colspan="' . $number_of_summarize_bys . '">' . lang('Grand Total') . '</td>
                             ' . $output_report_detail_cells . '
                             <td class="align-middle text-end">' . pg_format_number($grand_count, 0) . '</td>
-                            <td class="align-middle text-end">100.00%</td>
+                            <td class="align-middle text-end">' . pg_format_number(100, 2) . '%</td>
                             <td class="align-middle text-end">' . pg_format_number($grand_page_views, 0) . '</td>
-                            <td class="align-middle text-end">100.00%</td>
+                            <td class="align-middle text-end">' . pg_format_number(100, 2) . '%</td>
                             <td class="align-middle text-end">' . pg_format_number($grand_custom_form_submitted_percentage, 2) . '%</td>
                             <td class="align-middle text-end">' . pg_format_number($grand_order_created_percentage, 2) . '%</td>
                             <td class="align-middle text-end">' . pg_format_number($grand_order_retrieved_percentage, 2) . '%</td>
                             <td class="align-middle text-end">' . pg_format_number($grand_order_checked_out_percentage, 2) . '%</td>
                             <td class="align-middle text-end">' . pg_format_number($grand_order_completed_percentage, 2) . '%</td>
                             <td class="align-middle text-end">' . prepare_amount($grand_order_total / 100) . '</td>
-                            <td class="align-middle text-end">100.00%</td>
+                            <td class="align-middle text-end">' . pg_format_number(100, 2) . '%</td>
                             <td class="align-middle text-end">' . prepare_amount($grand_average_order_total / 100) . '</td>
                         </tr>
                     </tbody>

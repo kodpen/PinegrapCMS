@@ -2253,7 +2253,7 @@ function output_header($properties = false)
                     <button type="button" class="clear btn btn-sm btn-link fg-secondary no-popover d-none position-absolute end-0 bi bi-x-lg" title="' . lang('Reset') . '"></button>
                 </form>
                 <span class="fg-secondary small flex-shrink-0 d-none md:d-inline opacity-50 user-select-none">Ctrl+K</span>
-                <button type="button" class="btn-close ms-1 flex-shrink-0" data-bs-dismiss="dialog" aria-label="Close"></button>
+                <button type="button" class="btn-close ms-1 flex-shrink-0" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
               </div>
               <div class="dialog-body px-5 py-5" style="min-height:200px;max-height:65vh;overflow-y:auto;">
                 <div class="search_results_empty_box text-center py-12 fg-secondary">
@@ -2458,6 +2458,26 @@ function pg_account_menu($user, $options = array())
 
     if ($oauth_on && (mysqli_num_rows($oauth_on) > 0)) {
         $output .= $row($software_url . '/connected_apps.php', 'bi-plug', lang('Connected applications'), $parent_target);
+    }
+
+    // Pair a device (device_pairing.php), offered while a device application
+    // is switched on and the account has something a device could be used
+    // for: the same two conditions the screen and POST /auth/pair ask. The
+    // cheap query comes first, so the API files load only on sites that use
+    // devices.
+    $device_on = @mysqli_query(db::$con, "SELECT 1 FROM api_apps WHERE kind = 'device' AND status = 'active' AND (expires_at = 0 OR expires_at > " . time() . ") LIMIT 1");
+
+    if ($device_on && (mysqli_num_rows($device_on) > 0)) {
+        if (!defined('PG_API_PANEL')) {
+            define('PG_API_PANEL', true);
+        }
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/api/scopes.php');
+        require_once(PG_FUNCTIONS_DIR . '/includes/api/devices.php');
+
+        if (api_device_account_has_rights($user)) {
+            $output .= $row($software_url . '/device_pairing.php', 'bi-qr-code', lang('Pair a device'), $parent_target);
+        }
     }
 
     // Calendar subscription (workspace_calendar_feed.php), offered to the

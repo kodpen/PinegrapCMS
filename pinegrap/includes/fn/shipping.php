@@ -469,9 +469,15 @@ function pg_shipment_record($order_id, $ship_to_id, $number, $opts = array())
         WHERE " . $same_parcel . "
         LIMIT 1");
 
-    $carrier = pg_shipping_method_carrier($opts['carrier']);
+    // A carrier someone chose (the order screen's select, the API's carrier)
+    // is kept as typed when the store does not know it; a carrier another
+    // writer passes along (a marketplace's or a label service's text) only
+    // when it is known, so those rows keep the recognised one.
+    $carrier = empty($opts['carrier_chosen'])
+        ? pg_shipping_method_carrier($opts['carrier'])
+        : pg_shipment_carrier_value($opts['carrier']);
 
-    if (($carrier === '') && empty($opts['carrier_chosen']) && $existing && pg_shipping_carrier_exists($existing['carrier'])) {
+    if (($carrier === '') && empty($opts['carrier_chosen']) && $existing && (trim((string) $existing['carrier']) !== '')) {
         $carrier = (string) $existing['carrier'];
     }
 
@@ -770,6 +776,11 @@ function pg_shipment_rows($ship_to_id)
  * the site's default and the number's shape, the way every screen has always
  * worked them out.
  *
+ * A row may hold a carrier the store does not know, kept as it was typed
+ * (pg_shipment_carrier_value()): it is named, with no key and no link but the
+ * row's own, and nothing is guessed in its place, since the guess would name
+ * a carrier that never had the parcel.
+ *
  * @param  array  $row     a row of pg_shipment_rows()
  * @param  string $method  ship_tos.shipping_method_code
  * @param  string $default the site's default carrier (pg_shipping_default_carrier())
@@ -782,11 +793,18 @@ function pg_shipment_view($row, $method, $default)
     $number = isset($row['number']) ? trim((string) $row['number']) : '';
     $carriers = pg_shipping_carriers();
 
-    $carrier = isset($row['carrier']) ? pg_shipping_carrier_text($row['carrier']) : '';
+    $typed = isset($row['carrier']) ? trim((string) $row['carrier']) : '';
+    $carrier = pg_shipping_carrier_text($typed);
     $named = isset($carriers[$carrier]);
+    $name = $named ? $carriers[$carrier]['name'] : '';
 
-    if (!$named) {
+    if (!$named && ($typed !== '')) {
+        $carrier = '';
+        $named = true;
+        $name = $typed;
+    } elseif (!$named) {
         $carrier = pg_shipping_carrier($number, (string) $method, (string) $default);
+        $name = ($carrier !== '') ? $carriers[$carrier]['name'] : '';
     }
 
     $url = isset($row['tracking_url']) ? pg_shipment_tracking_url_clean($row['tracking_url']) : '';
@@ -801,7 +819,7 @@ function pg_shipment_view($row, $method, $default)
         'number'       => $number,
         'carrier'      => $carrier,
         'named'        => $named,
-        'carrier_name' => ($carrier !== '') ? $carriers[$carrier]['name'] : '',
+        'carrier_name' => $name,
         'url'          => $url,
         'status'       => $status,
         'warning'      => !empty($row['format_warning']),
@@ -881,11 +899,63 @@ function pg_shipment_api_parcels($ship_to_id, $method = null, $number = null)
 }
 
 /**
+ * What a parcel row keeps for a carrier someone chose: the key of a carrier
+ * the store knows (pg_shipping_method_carrier()), else the name as typed, cut
+ * to the 20 characters of shipping_tracking_numbers.carrier.
+ *
+ * @param  mixed $carrier a carrier key or name
+ * @return string key, typed name or ''
+ */
+function pg_shipment_carrier_value($carrier)
+{
+    $carrier = trim((string) $carrier);
+    $key = pg_shipping_method_carrier($carrier);
+
+    return ($key !== '') ? $key : trim(mb_substr($carrier, 0, 20, 'UTF-8'));
+}
+
+/**
+ * The carrier part of the POST /orders/{id}/shipment answer. A carrier the
+ * store knows gives its key and name; any other is accepted and kept as typed
+ * (a local courier, a marketplace's own code), so the answer gives no key,
+ * the name and a warning that it brings no tracking link. Nothing sent gives
+ * three nulls.
+ *
+ * @param  mixed $carrier the carrier the call sent
+ * @return array carrier (key or null), carrier_name, warning (string or null)
+ */
+function pg_shipment_api_carrier($carrier)
+{
+    $carrier = trim((string) $carrier);
+
+    if ($carrier === '') {
+        return array('carrier' => null, 'carrier_name' => null, 'warning' => null);
+    }
+
+    $key = pg_shipping_method_carrier($carrier);
+
+    if ($key !== '') {
+        $carriers = pg_shipping_carriers();
+
+        return array('carrier' => $key, 'carrier_name' => $carriers[$key]['name'], 'warning' => null);
+    }
+
+    return array(
+        'carrier'      => null,
+        'carrier_name' => pg_shipment_carrier_value($carrier),
+        'warning'      => lang(array(
+            'string' => 'The carrier {var:1} is not one this store recognises: it was kept as sent, and its tracking numbers get no tracking link.',
+            'vars'   => array($carrier),
+        )),
+    );
+}
+
+/**
  * The tracking numbers of a POST /orders/{id}/shipment call as update_order()
- * takes them, with the carrier the call names on each one. Only a carrier
- * the store knows (pg_shipping_method_carrier()) is passed on: free text is
- * no carrier for a row, so the numbers then go plain and each row keeps the
- * carrier it had.
+ * takes them, with the carrier the call names on each one: the key of a
+ * carrier the store knows, else the name as typed (pg_shipment_carrier_value()),
+ * which the parcel keeps without a link. No carrier sends the numbers plain,
+ * so each row keeps the carrier it had.
  *
  * @param  string[] $numbers
  * @param  string   $carrier a carrier key or name, or ''
@@ -894,7 +964,7 @@ function pg_shipment_api_parcels($ship_to_id, $method = null, $number = null)
 function pg_shipment_numbers_with_carrier($numbers, $carrier)
 {
     $numbers = array_values((array) $numbers);
-    $carrier = pg_shipping_method_carrier((string) $carrier);
+    $carrier = pg_shipment_carrier_value($carrier);
 
     if ($carrier === '') {
         return $numbers;
@@ -1030,19 +1100,31 @@ function pg_shipment_status_class($status)
  * carrier it currently resolves to when there is one, then every carrier.
  * Labels are escaped here, because the select prints them as they are.
  *
+ * A carrier the row keeps as typed (one the store does not know) is offered
+ * too, so saving the screen keeps it; its value is escaped like its label,
+ * because the select prints values as they are as well.
+ *
  * @param  string $automatic the carrier name "Automatic" resolves to, or ''
+ * @param  string $typed     the row's carrier when it is no key, or ''
  * @return array label => value, as liveform::output_field() takes them
  */
-function pg_shipment_carrier_options($automatic)
+function pg_shipment_carrier_options($automatic, $typed = '')
 {
     $automatic = trim((string) $automatic);
+    $typed = trim((string) $typed);
 
     $options = array(
         h(($automatic !== '') ? lang(array('string' => 'Automatic ({var:1})', 'vars' => array($automatic))) : lang('Automatic')) => '',
     );
 
-    foreach (pg_shipping_carriers() as $carrier => $entry) {
+    $carriers = pg_shipping_carriers();
+
+    foreach ($carriers as $carrier => $entry) {
         $options[h($entry['name'])] = $carrier;
+    }
+
+    if (($typed !== '') && !isset($carriers[$typed])) {
+        $options[h($typed)] = h($typed);
     }
 
     return $options;

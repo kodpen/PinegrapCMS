@@ -23,13 +23,13 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * Lines on one page of the screen, and the most lines one CSV export holds.
+ * The most lines one CSV export holds.
  *
- * @return array  page, export
+ * @return array  export
  */
 function pg_audit_view_limits()
 {
-    return array('page' => 50, 'export' => 50000);
+    return array('export' => 50000);
 }
 
 /**
@@ -107,10 +107,58 @@ function pg_audit_view_query(array $filters)
 }
 
 /**
- * The WHERE clause of the filters. The dates are whole days in the site's
- * time zone; the user is a user id when it is a number, otherwise part of
- * the name the line was written under (an API line carries the app's name);
- * the text search looks in the record's name.
+ * The condition of the filters with its values as ? placeholders, for
+ * db_q(). The dates are whole days in the site's time zone; the user is a
+ * user id when it is a number, otherwise part of the name the line was
+ * written under (an API line carries the app's name); the text search looks
+ * in the record's name. Every value is bound as a string.
+ *
+ * @param array $filters  from pg_audit_view_filters()
+ * @return array  sql ('1' when nothing is filtered), params
+ */
+function pg_audit_view_condition(array $filters)
+{
+    $where = array();
+    $params = array();
+
+    if ($filters['from'] !== '') {
+        $where[] = 'created_at >= ?';
+        $params[] = (string) (int) strtotime($filters['from'] . ' 00:00:00');
+    }
+
+    if ($filters['to'] !== '') {
+        $where[] = 'created_at < ?';
+        $params[] = (string) (int) strtotime($filters['to'] . ' 00:00:00 +1 day');
+    }
+
+    foreach (array('source' => 'source', 'action' => 'action', 'type' => 'entity_type', 'request' => 'request_id') as $key => $column) {
+        if ($filters[$key] !== '') {
+            $where[] = $column . ' = ?';
+            $params[] = (string) $filters[$key];
+        }
+    }
+
+    if ($filters['id'] > 0) {
+        $where[] = 'entity_id = ?';
+        $params[] = (string) (int) $filters['id'];
+    }
+
+    if ($filters['user'] !== '') {
+        $where[] = ctype_digit($filters['user']) ? 'user_id = ?' : 'username LIKE ?';
+        $params[] = ctype_digit($filters['user']) ? (string) (int) $filters['user'] : '%' . pg_audit_view_like($filters['user']) . '%';
+    }
+
+    if ($filters['q'] !== '') {
+        $where[] = 'label LIKE ?';
+        $params[] = '%' . pg_audit_view_like($filters['q']) . '%';
+    }
+
+    return array('sql' => $where ? '(' . implode(') AND (', $where) . ')' : '1', 'params' => $params);
+}
+
+/**
+ * The WHERE clause of the filters (pg_audit_view_condition()) with its
+ * values written in, for a query built as text.
  *
  * @param array    $filters  from pg_audit_view_filters()
  * @param callable $escape   escapes a value for a quoted SQL string
@@ -118,37 +166,9 @@ function pg_audit_view_query(array $filters)
  */
 function pg_audit_view_where(array $filters, $escape = 'e')
 {
-    $where = array();
+    $condition = pg_audit_view_condition($filters);
 
-    if ($filters['from'] !== '') {
-        $where[] = "created_at >= '" . (int) strtotime($filters['from'] . ' 00:00:00') . "'";
-    }
-
-    if ($filters['to'] !== '') {
-        $where[] = "created_at < '" . (int) strtotime($filters['to'] . ' 00:00:00 +1 day') . "'";
-    }
-
-    foreach (array('source' => 'source', 'action' => 'action', 'type' => 'entity_type', 'request' => 'request_id') as $key => $column) {
-        if ($filters[$key] !== '') {
-            $where[] = $column . " = '" . call_user_func($escape, $filters[$key]) . "'";
-        }
-    }
-
-    if ($filters['id'] > 0) {
-        $where[] = "entity_id = '" . (int) $filters['id'] . "'";
-    }
-
-    if ($filters['user'] !== '') {
-        $where[] = ctype_digit($filters['user'])
-            ? "user_id = '" . (int) $filters['user'] . "'"
-            : "username LIKE '%" . call_user_func($escape, pg_audit_view_like($filters['user'])) . "%'";
-    }
-
-    if ($filters['q'] !== '') {
-        $where[] = "label LIKE '%" . call_user_func($escape, pg_audit_view_like($filters['q'])) . "%'";
-    }
-
-    return $where ? '(' . implode(') AND (', $where) . ')' : '1';
+    return (string) pg_db_bind($condition['sql'], $condition['params'], $escape);
 }
 
 /**
@@ -417,14 +437,13 @@ function pg_audit_view_live_records(array $rows)
 }
 
 /**
- * The name a record type or an action is shown under; the stored word for
- * one written later than this list.
+ * The names record types, actions and sources are shown under, by stored
+ * word.
  *
  * @param string $kind  type | action | source
- * @param string $word
- * @return string
+ * @return array  word => name
  */
-function pg_audit_view_label($kind, $word)
+function pg_audit_view_labels($kind)
 {
     $labels = array(
         'type' => array(
@@ -466,5 +485,18 @@ function pg_audit_view_label($kind, $word)
         ),
     );
 
-    return $labels[$kind][$word] ?? (string) $word;
+    return $labels[$kind] ?? array();
+}
+
+/**
+ * The name a record type or an action is shown under; the stored word for
+ * one written later than pg_audit_view_labels().
+ *
+ * @param string $kind  type | action | source
+ * @param string $word
+ * @return string
+ */
+function pg_audit_view_label($kind, $word)
+{
+    return pg_audit_view_labels($kind)[$word] ?? (string) $word;
 }

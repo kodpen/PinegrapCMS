@@ -794,22 +794,22 @@ if (!$_POST) {
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">
-                                            <div class="input-group-text row my-3">
-                                                <div class="col-12 md:col">' . lang('Summarize by') . '</div>
+                                            <div class="row g-2 align-items-center my-3">
+                                                <label for="order_by_1" class="col-12 md:col form-label mb-0">' . lang('Summarize by') . '</label>
                                                 <div class="col-12 md:col"><select class="form-control" id="order_by_1" name="order_by_1" onchange="change_order_by(1)">' . select_order_by($order_by_1, $standard_fields, $custom_fields, TRUE) . '</select></div>
-                                                <div class="col-12 md:col">' . lang('order by') . '</div>
+                                                <label for="order_by_1_type" class="col-12 md:col form-label mb-0">' . lang('order by') . '</label>
                                                 <div class="col-12 md:col"><select class="form-control" id="order_by_1_type" name="order_by_1_type"' . $output_order_by_1_type_style . '>' . select_order_by_type($order_by_1_type) . '</select></div>
                                             </div>
-                                            <div class="input-group-text row my-3">
-                                                <div class="col-12 md:col">' . lang('and then by') . '</div>
+                                            <div class="row g-2 align-items-center my-3">
+                                                <label for="order_by_2" class="col-12 md:col form-label mb-0">' . lang('and then by') . '</label>
                                                 <div class="col-12 md:col"><select class="form-control" id="order_by_2" name="order_by_2" onchange="change_order_by(2)">' . select_order_by($order_by_2, $standard_fields, $custom_fields, FALSE) . '</select></div>
-                                                <div class="col-12 md:col">' . lang('order by') . '</div>
+                                                <label for="order_by_2_type" class="col-12 md:col form-label mb-0">' . lang('order by') . '</label>
                                                 <div class="col-12 md:col"><select class="form-control" id="order_by_2_type" name="order_by_2_type"' . $output_order_by_2_type_style . '>' . select_order_by_type($order_by_2_type) . '</select></div>
                                             </div>
-                                            <div class="input-group-text row my-3">
-                                                <div class="col-12 md:col">' . lang('and finally by') . '</div>
+                                            <div class="row g-2 align-items-center my-3">
+                                                <label for="order_by_3" class="col-12 md:col form-label mb-0">' . lang('and finally by') . '</label>
                                                 <div class="col-12 md:col"><select class="form-control" id="order_by_3" name="order_by_3" onchange="change_order_by(3)">' . select_order_by($order_by_3, $standard_fields, $custom_fields, FALSE) . '</select></div>
-                                                <div class="col-12 md:col">' . lang('order by') . '</div>
+                                                <label for="order_by_3_type" class="col-12 md:col form-label mb-0">' . lang('order by') . '</label>
                                                 <div class="col-12 md:col"><select class="form-control" id="order_by_3_type" name="order_by_3_type"' . $output_order_by_3_type_style . '>' . select_order_by_type($order_by_3_type) . '</select></div>
                                             </div>
                                         </div>
@@ -959,7 +959,7 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>

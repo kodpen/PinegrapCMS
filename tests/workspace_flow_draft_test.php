@@ -327,3 +327,41 @@ function test_ws_flow_ai_wiring()
 	pg_assert_false(ws_flow_ai_offered($row, null), 'nobody asking');
 	pg_assert_false(ws_flow_ai_offered(array('task_id' => 9) + $row, array('id' => 1, 'role' => 0)), 'not on a task');
 }
+
+// A patch opened on the canvas marks the boxes it added or changed, in its
+// order; one it removed, or that is gone from the draft, is not marked; an
+// added box it then sets stays added. The flow's detail carries the marks to
+// whoever may change it, read from that person's opened cards since the last
+// publish.
+function test_ws_flow_patch_marks()
+{
+	$graph = array('nodes' => array(array('id' => 'start'), array('id' => 'task_1'), array('id' => 'tell'), array('id' => 'ask')));
+	$ops = array(
+		array('op' => 'add', 'id' => 'tell', 'kind' => 'notify'),
+		array('op' => 'connect', 'from' => 'task_1', 'to' => 'tell', 'on' => 'done'),
+		array('op' => 'set', 'id' => 'task_1', 'settings' => array()),
+		array('op' => 'set', 'id' => 'tell', 'label' => 'Tell'),
+		array('op' => 'add', 'id' => 'gone', 'kind' => 'task'),
+		array('op' => 'set', 'id' => 'old', 'settings' => array()),
+		array('op' => 'remove', 'id' => 'old'),
+		array('op' => 'remove', 'from' => 'start', 'to' => 'ask'),
+		array('op' => 'set', 'id' => 'ask', 'settings' => array()),
+		'not a change',
+	);
+
+	pg_assert_same(array(
+		array('id' => 'tell', 'mark' => 'added'),
+		array('id' => 'task_1', 'mark' => 'changed'),
+		array('id' => 'ask', 'mark' => 'changed'),
+	), ws_flow_patch_marks($ops, $graph), 'added, changed, in order; removed and gone left out');
+	pg_assert_same(array(), ws_flow_patch_marks(null, $graph), 'no patch');
+
+	$detail = workspace_flow_draft_code('ws_flow_detail');
+	pg_assert_contains("'ai_marks'", $detail, 'the detail carries the marks');
+	pg_assert_contains('$edit', substr($detail, strpos($detail, "'ai_marks'")), 'only to an editor');
+
+	$marks = workspace_flow_draft_code('ws_flow_ai_marks');
+	pg_assert_contains("decided_by", $marks, 'the person\'s own opened cards');
+	pg_assert_contains("'published_at'", $marks, 'until the flow is published');
+	pg_assert_contains("['base']['flow_id']", $marks, 'of this flow');
+}

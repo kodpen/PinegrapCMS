@@ -140,7 +140,7 @@ function pg_dashboard_widget_21($request, $user)
         $waf_action_badges = array(
             'block'       => array('danger',            lang('Blocked')),
             'rate'        => array('danger',            lang('Rate limited')),
-            'ban'         => array('dark',              lang('Banned')),
+            'ban'         => array('inverse',           lang('Banned')),
             'would-block' => array('warning',           lang('Would block')),
             'would-rate'  => array('warning',           lang('Would rate limit')),
             'would-ban'   => array('warning',           lang('Would ban')),

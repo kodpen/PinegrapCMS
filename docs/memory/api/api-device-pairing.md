@@ -19,7 +19,7 @@ description: Pairing a team device with a QR code (device_pairing.php, POST /aut
 - 401 `pairing_invalid` for unknown, used, expired or wrong-application codes (in `api_error_catalogue()`). Ten failures per address (`waf_ip_subject()`, counted addresses only) in 15 min → 429 with `Retry-After`, logged with `waf_log_event()`, no firewall offence. Ten codes per person per hour.
 - Site Log in the person's name: "showed a device pairing code", "signed in from a device with a pairing code ({var:1})".
 
-## What is still to come?
-- A user menu row to `device_pairing.php` beside Connected applications (`includes/fn/output.php`); until then the screen is reached by its address, which the team app's guide names.
+## Where is the screen reached from?
+- The account menu's "Pair a device" row (`pg_account_menu()` in `includes/fn/output.php`), under Connected applications. It shows while a device application is active and not expired and `api_device_account_has_rights()` accepts the person; a cheap `api_apps` query comes first, so `scopes.php`/`devices.php` load only on sites with devices.
 
-Tests: `tests/api_device_pairing_test.php`. Issue #1640.
+Tests: `tests/api_device_pairing_test.php`, the menu row in `tests/panel_leftovers_test.php`. Issue #1640.

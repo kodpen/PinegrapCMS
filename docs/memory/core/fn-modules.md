@@ -8,6 +8,7 @@ description: Generated from the module field of the memory files: each includes/
 ## Which memory file describes an `includes/fn/` module?
 - `a11y`: [[accessibility-report]]
 - `audit`: [[consent-log-and-audit-trail]]
+- `audit_list`: [[audit-log-paging]]
 - `audit_view`: [[audit-trail-screen]]
 - `backup`: [[fn-module-errors-mail-backup-consent]]
 - `bundles`: [[product-bundles]]
@@ -23,6 +24,7 @@ description: Generated from the module field of the memory files: each includes/
 - `core`: [[error-screen-language-and-status]]
 - `designer_fx`: [[designer-interactions]]
 - `designer_vocab`: [[designer-bootstrap-vocabulary]]
+- `editor`: [[rich-text-profiles]]
 - `errors`: [[fn-module-errors-mail-backup-consent]]
 - `events`: [[workspace-flows-event-depth]]
 - `lang_files`: [[lang-files]]
