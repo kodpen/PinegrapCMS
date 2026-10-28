@@ -10,7 +10,7 @@ description: The panel's focus ring on Bootstrap 6's focus-ring tokens (step B9k
 - `--bs-focus-ring-offset` has no alias: Bootstrap sets it per component (1px, -1px, 0) and no panel ring uses it.
 - Both sit in the token block of `assets/css/backend.src.css`; `designer_home.css` reads them too.
 
-## What changed in B9k (#PR)?
+## What changed in B9k (#2561)?
 - Rules in `backend.src.css` and `designer_home.css` read `--pg-focus-ring-*`, not `--bs-focus-ring-*` or `rgba(var(--pg-primary-rgb), .35)` (the global WCAG ring). The designer home's `#0d6efd` fallbacks went.
 - The ring colour was declared twice: the v5 `rgba()` in the layered first `:root` block and the `color-mix()` in the unlayered bridge, which always won. The layered one went.
 - Checked in Chromium with the old and new stylesheets: 46 elements (links, buttons, fields, `.form-adorn`, pagination, `.btn-close`, `.pg-sale-ig`, role card, designer home cards, template palette, skip link), light and dark plus a nested opposite theme, at rest and `:focus-visible`, transitions off. Computed styles (colours compared as 8-bit RGBA, since `color-mix()` serialises as `color(srgb …)`) and element screenshots were equal. A unit test cannot render CSS; `tests/bs6_focus_ring_test.php` guards the source.

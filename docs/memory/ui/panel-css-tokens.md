@@ -16,7 +16,7 @@ description: The panel's --pg-* CSS token layer (Bootstrap 6 step B3): names rul
 ## Why is the alias block on `:root, [data-bs-theme]`?
 - A `var()` in a custom property resolves where declared and is inherited resolved. Declared on `:root` only, a nested `data-bs-theme="dark"` subtree (pg_ai_write.js sets one) would keep the light values. Declaring the aliases on every `[data-bs-theme]` element resolves them again there.
 - A rule that sets a Bootstrap variable on a subtree (`.bg-software-navbar .border-end { --bs-border-color }`) does not reach the tokens: set the `--pg-*` token there instead.
-- Focus ring: `--pg-focus-ring-*` (B9k, #PR), never an alias of `--bs-focus-ring-color` (`panel-focus-ring.md`).
+- Focus ring: `--pg-focus-ring-*` (B9k, #2561), never an alias of `--bs-focus-ring-color` (`panel-focus-ring.md`).
 - An alias never names itself or a `--bs-*` variable the bridge fills from the same alias: that is a cycle and both turn invalid.
 
 ## Which stylesheets have the block?
