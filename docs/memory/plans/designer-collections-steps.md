@@ -19,12 +19,13 @@ description: Plan (collections half of designer-interactions-collections, steps 
 
 - **C3b — radio and check box references, image preview. Done, #2694** (`designer/collection-inputs.md`).
 
-- **C3c — product and page pickers. Done, #2814:** new kinds `product` and `page` (VARCHAR needs no migration) in `pg_coll_kinds()` **and** its twin `_CF_KINDS` in `assets/js/style_designer.js` (a test compares them, so the step needs that file free); a pick list of products / pages held to them on the server.
+- **C3c — product and page pickers. Done, #2814:** kinds `product` and `page` in `pg_coll_kinds()` and its twin `_CF_KINDS` (`style_designer.js`, a test compares them); pick lists held to them on the server.
 
-- **C4a — lists by kind. Done, #2709:** numeric sort for number; reference filter by address name or code, printing the record's label (`designer/collection-lists.md`). Image output already gets `pg_img_responsive_html()` (every widget's output).
+- **C4a — lists by kind. Done, #2709:** numeric sort for number; reference filter by address name or code, printing the record's label (`designer/collection-lists.md`).
 
 - **C4b1 — references by kind. Done, #2835:** C1's `ref` defaults from the field's kind and target (needs `style_designer.js`); a `__ref` on a product / page field prints the product's name, link, price, image or the page's name, link.
-- **C4b2 — "records that reference this one"** on a detail page (a list filtered by the shown record's code).
+- **C4b2 — "records that reference this one". Done, #2897:** server half, the list filter's dynamic value `shown record` (`designer/collection-lists.md`).
+- **C4b2b — the editor side.** Offer "Shown record" in the filter rows' dynamic values (`style_designer.js`, beside `url parameter`, lists only; `_sdT` key via `tr_add.php`); needs that file free.
 
 - **C5 — slug field and feeds.** A slug field feeds `update_submitted_form_address_name()`; RSS `category` and JSON-LD print a reference's label, not its code.
 
@@ -39,4 +40,4 @@ description: Plan (collections half of designer-interactions-collections, steps 
 - Q4 `forms.publish_at` / `unpublish_at`: not added; the templates' `publish_date` field and live filter cover it.
 
 ## Where to start?
-- C1–C4b1 are done. Next is C4b2 (records that reference this one; a detail page's list filtered by the shown record's code, `designer/collection-lists.md` has the filter). C5 does not depend on it. C5 does not depend on it.
+- C1–C4b2 are done. Next is C4b2b (the editor's "Shown record" dynamic value, needs `style_designer.js` free) or C5; neither depends on the other.

@@ -67,3 +67,63 @@ function test_collections_list_wiring()
 	pg_assert_contains('pg_coll_number_order_sql($alias, $direction)', $widgets, 'a number field sorts as a number');
 	pg_assert_contains("'exact' => '', 'labels' => array()", $widgets, 'labels start empty');
 }
+
+// -- records that reference this one (C4b2) -----------------------------------------
+
+// A filter valued from the record the detail page shows.
+function _collections_lists_shown_row($operator = 'is equal to', $value = '')
+{
+	return array('field' => 'reference_code', 'operator' => $operator, 'value' => $value, 'dynamic_value' => 'shown record', 'dynamic_value_attribute' => '');
+}
+
+function test_collections_shown_record_code()
+{
+	pg_assert_same('AB12CD', pg_coll_shown_record_code(array('r' => ' AB12CD ')), 'the code ?r= names, trimmed');
+	pg_assert_same('', pg_coll_shown_record_code(array()), 'no record shown');
+	pg_assert_same('', pg_coll_shown_record_code(array('r' => array('x'))), 'an array is no code');
+	pg_assert_same('', pg_coll_shown_record_code(array('r' => "a\x00b")), 'control characters are no code');
+	pg_assert_same('', pg_coll_shown_record_code(null), 'no address');
+	pg_assert_same(100, strlen(pg_coll_shown_record_code(array('r' => str_repeat('a', 150)))), 'at most 100 characters');
+}
+
+function test_collections_shown_record_filter()
+{
+	_collections_lists_db_stub();
+	$sql = pg_sw_form_list_filter_sql(12, array(_collections_lists_shown_row()), array('r' => 'AB12CD', 'author' => 'x'));
+	pg_assert_same(" AND (IFNULL(forms.reference_code, '') = 'AB12CD')", $sql['where'], 'compared with the shown code');
+	pg_assert_same(array(), $sql['params'], 'not an address filter of the page');
+	pg_assert_same('', $sql['exact']);
+	pg_assert_false(pg_sw_filter_sql_closed($sql));
+
+	$other = pg_sw_form_list_filter_sql(12, array(_collections_lists_shown_row('is not equal to')), array('r' => 'AB12CD'));
+	pg_assert_same(" AND (IFNULL(forms.reference_code, '') != 'AB12CD')", $other['where'], 'every other record');
+
+	$none = pg_sw_form_list_filter_sql(12, array(_collections_lists_shown_row()), array());
+	pg_assert_same('', $none['where'], 'no record shown: left out, as an address value is');
+	pg_assert_same(0, $none['address']);
+
+	$record_view = pg_sw_form_list_filter_sql(12, array(_collections_lists_shown_row()), null);
+	pg_assert_same(1, $record_view['address'], 'no address: counted');
+	pg_assert_true(pg_sw_filter_sql_closed($record_view, true), 'a record view closes on it');
+
+	$fixed = pg_sw_form_list_filter_sql(12, array(_collections_lists_shown_row('is equal to', 'R1')), array('r' => 'AB12CD'));
+	pg_assert_same(" AND (IFNULL(forms.reference_code, '') = 'R1')", $fixed['where'], 'a fixed value wins');
+}
+
+function test_collections_shown_record_record_files()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/record_files.php');
+	_collections_lists_db_stub();
+	$fields = array('category' => array('id' => 5, 'name' => 'category', 'type' => 'pick list', 'multiple' => 0));
+	$row = array('field' => 'category', 'operator' => 'is equal to', 'value' => '', 'dynamic_value' => 'shown record');
+	pg_assert_same('', pg_record_file_filter_sql(array($row), $fields)['where'], 'a list leaves it out');
+	pg_assert_true(pg_record_file_filter_sql(array($row), $fields, true)['closed'], 'a record view closes');
+}
+
+function test_collections_shown_record_wiring()
+{
+	$widgets = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php');
+	pg_assert_contains("'url parameter', 'shown record',", $widgets, 'a known dynamic value');
+	pg_assert_contains('pg_coll_shown_record_code($request)', $widgets, 'read from the shown record');
+	pg_assert_contains('$reference === null || $reference[\'code\'] !== $value', $widgets, 'a reference must name the shown record by its code');
+}

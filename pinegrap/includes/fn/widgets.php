@@ -1435,6 +1435,15 @@ function pg_sw_filter_form_fields($custom_form_page_id)
 // text box of several codes is compared by membership. An address value
 // that names a record prints that record's label (`labels`, name => text)
 // instead of the value; the canonical keeps the value.
+//
+// The dynamic value 'shown record' (lists only) takes the code of the
+// record the detail page shows (pg_coll_shown_record_code()): a list of the
+// posts whose category is the shown category, or, on reference_code with
+// "is not equal to", the other records. On a reference field the code must
+// name a complete record of the target form, else the list shows nothing.
+// It is not an address filter of the page: no `params`, no label. Without
+// a shown record it is left out and without an address counted in
+// `address`, as 'url parameter' is.
 function pg_sw_form_list_filter_sql($custom_form_page_id, $filters, $request = null)
 {
     $out = array('where' => '', 'tokens' => array(), 'missing' => 0, 'invalid' => 0,
@@ -1447,7 +1456,7 @@ function pg_sw_form_list_filter_sql($custom_form_page_id, $filters, $request = n
     );
     $dynamic_values = array(
         'current date', 'current date and time', 'current time', 'days ago',
-        'viewer', 'viewers email address', 'url parameter',
+        'viewer', 'viewers email address', 'url parameter', 'shown record',
     );
     $size_operators = array('is less than', 'is less than or equal to', 'is greater than', 'is greater than or equal to');
     $standard = pg_sw_standard_fields();
@@ -1489,6 +1498,22 @@ function pg_sw_form_list_filter_sql($custom_form_page_id, $filters, $request = n
                 $url_value = $value;
             }
         }
+        // The record the detail page shows (lists only): its code, compared
+        // like a fixed value. Without one the filter is left out, as an
+        // address value is; without an address it is counted.
+        $shown = false;
+        if ($dynamic === 'shown record') {
+            $dynamic = '';
+            if ($value === '') {
+                if ($request === null) {
+                    $out['address']++;
+                    continue;
+                }
+                $value = pg_coll_shown_record_code($request);
+                if ($value === '') continue;
+                $shown = true;
+            }
+        }
         $dynamic_attribute = isset($filter['dynamic_value_attribute']) ? (int)$filter['dynamic_value_attribute'] : 0;
         // The byte-for-byte twin of an address value's "is equal to", for
         // the `exact` condition.
@@ -1522,6 +1547,12 @@ function pg_sw_form_list_filter_sql($custom_form_page_id, $filters, $request = n
                 && pg_coll_field_kind(isset($custom[$key]['collection_kind']) ? $custom[$key]['collection_kind'] : '', $type) === 'reference'
                 && !empty($custom[$key]['reference_page_id'])) {
                 $reference = pg_coll_reference_lookup((int)$custom[$key]['reference_page_id'], $value);
+                // The shown record must be a complete record of the target
+                // form, named by its code (the record view reads codes only).
+                if ($shown && ($reference === null || $reference['code'] !== $value)) {
+                    $out['where'] .= ' AND (TRUE = FALSE)';
+                    continue;
+                }
                 if ($reference !== null) {
                     $value = $reference['code'];
                     if ($url_param !== '') $out['labels'][$url_param] = $reference['label'];
