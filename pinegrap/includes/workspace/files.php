@@ -710,6 +710,9 @@ function ws_message_send_file_bytes($viewer, $channel, $body, $original_name, $b
     // no message, no file.
     if (!$result['ok']) {
         ws_upload_discard($stored['file_id']);
+    } elseif (function_exists('ws_voice_queue')) {
+        // A voice message waits to be written out (voice.php).
+        ws_voice_queue($channel, $result['message_id'], $stored['file_id'], $stored['name']);
     }
 
     return $result;

@@ -1445,6 +1445,11 @@ function ws_message_delete($viewer, $message)
     // A decision of a discussion takes its copy in the channel with it.
     ws_thread_copy_sync($message['id']);
 
+    // A voice message takes its recording and transcript with it (voice.php).
+    if (function_exists('ws_voice_message_deleted')) {
+        ws_voice_message_deleted($message);
+    }
+
     if (!$mine) {
         log_activity(lang(array('string' => 'a workspace message by {var:1} was deleted', 'vars' => (($message['sender_kind'] === 'guest') && function_exists('ws_guest_sender'))
             ? ws_guest_sender((int) $message['sender_id'])['name']
