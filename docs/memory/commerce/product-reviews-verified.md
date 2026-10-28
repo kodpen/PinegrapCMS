@@ -6,7 +6,7 @@ module: reviews
 
 ## Which comments are product reviews?
 - Comments with `item_type = 'product'`, or `'product_group'` when the group's `display_type` is `select` (a product with options): `pg_review_item_is_product()`, `pg_review_gate_applies()` in `includes/fn/reviews.php`. A browsing group's comments are about the category and are not gated.
-- Only on `catalog detail` (and `catalog`) pages, classic block or comments widget; a post naming them elsewhere is refused ([[comment-thread-verify]]). A `standard` designer product page has page-level comments: nothing gated or counted.
+- Only on `catalog detail` (and `catalog`) pages, classic block or comments widget, and designed product pages (catalog_item_view, [[comments-widget-product-page]]); a post naming them elsewhere is refused ([[comment-thread-verify]]).
 
 ## Who may write one, and why?
 - Ticari Reklam Yönetmeliği 28/B (RG 33297, in force 2026-08-01): only buyers review; a review whose purchase was not verified may not be published or used in advertising; a refused review is told to its author at once.
@@ -28,7 +28,7 @@ module: reviews
 ## When does the markup carry aggregateRating?
 - `pg_review_aggregate_jsonld()`: only with at least one review and an average of 1-5; never invented (`platform/structured-data-open-graph.md`).
 - Only the legacy catalog detail block of `get_page_content.php` (System region), when the page shows comments with stars (`comments`, `comments_rating`): markup describes only reviews a visitor can read there. Also when the comments widget draws them.
-- `_pg_build_product_jsonld()` (`standard` designer pages) adds none: no product reviews show there. A catalog detail page with a catalog_item_view widget and no System region gets no Product markup; not covered.
+- `_pg_build_product_jsonld()` (`standard` designer pages) adds none yet: plan step 2c2. A catalog detail page with a catalog_item_view widget and no System region gets no Product markup; not covered.
 
 ## What is not done yet?
 - Store reply: `commerce/product-review-store-reply.md`. Order (#2426): `commerce/product-review-order.md`. Request e-mail, verified filter: `commerce/product-review-request-email.md`. Not done: the API (`plans/storefront-conversion-pack.md`).

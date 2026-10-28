@@ -4251,6 +4251,12 @@ function _pg_comments_widget_email($tree, $widget_id, $cfg, $ctx)
     $page = _pg_comments_widget_page_row(_pg_comments_row_int($comment, 'page_id'));
     $type = _pg_comments_row_text($comment, 'item_type');
     $item = _pg_comments_row_int($comment, 'item_id');
+
+    // A designed page showing one product holds that product's reviews, as
+    // a catalog detail page does.
+    if (is_array($page) && ($type !== 'submitted_form')) {
+        $page['page_type'] = pg_comment_thread_page_type((int) $page['page_id'], $page['page_type']);
+    }
     $is_item = ($type !== '') && ($type !== 'submitted_form');
     $review = $is_item && pg_review_gate_applies($type, $item);
 
@@ -4547,6 +4553,9 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         return '';
     }
 
+    // A designed page showing one product reads as a catalog detail page.
+    $thread_type = ($record === null) ? pg_comment_thread_page_type($page_id, $page['page_type']) : (string) $page['page_type'];
+
     if ($record !== null) {
         if (empty($record['visible']) || !is_array($record['form'])) {
             return '';
@@ -4555,11 +4564,12 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         $post_type = 'submitted_form';
         $post_id = (int) $record['form']['id'];
         $read_thread = array('item_type' => 'submitted_form', 'item_id' => $post_id);
-    } elseif (pg_comment_classic_item_types($page['page_type']) !== array()) {
+    } elseif (pg_comment_classic_item_types($thread_type) !== array()) {
         // A catalog, catalog detail or calendar event view page shows the
         // thread of the item in its address, picked as the classic block
         // picks it, and only one add_comment.php would take for this page.
-        $item = pg_comment_address_item($page['page_type'], pg_comment_address_item_facts($page_id, $page['page_type'], $ctx));
+        // A designed page showing one product reads as catalog detail.
+        $item = pg_comment_address_item($thread_type, pg_comment_address_item_facts($page_id, $thread_type, $ctx, $thread_type !== $page['page_type']));
 
         if ($item === null) {
             return '';
