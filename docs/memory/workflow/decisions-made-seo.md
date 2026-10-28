@@ -1,6 +1,6 @@
 ---
 name: decisions-made-seo
-description: Decisions list, SEO part (2026-10-27/28): large image preview, site icon, main-host redirect, per-form structured-data type and author source; settings whose defaults keep running sites
+description: Decisions list, SEO part (2026-10-27/28): large image preview, site icon, main-host redirect, per-form structured-data type, author source and share-image field; defaults keep running sites
 ---
 
 ## Where do these come from?
@@ -12,6 +12,7 @@ description: Decisions list, SEO part (2026-10-27/28): large image preview, site
 - Author of a record page's BlogPosting (#2473, #2177): a per-form choice (one `custom_form_pages` column): the record's contact (default, today's rule in `platform/structured-data-open-graph.md`) / the site as Organization with `url` the site root / a form field. The default keeps running sites' output; the operator matches the schema to the visible byline.
 - Redirect to the main host (#2474, #2179): one `config` setting, off by default. When on, a 301 only for GET and HEAD page renders whose Host is not `HOSTNAME_SETTING`; never for language domains, an IP or localhost Host, the panel, the API, `health.php`, cron, webhooks or file downloads.
 - Structured-data type of record pages (#2475, #2182): one `custom_form_pages` column: BlogPosting (default) / Article / NewsArticle / None. Same builder, another `@type`; None leaves the page's own JSON-LD as the only block. WebApplication / SoftwareApplication only if a later plan asks.
+- Share image of a record page whose form has no RSS media field (#2891, architect 2026-10-28, from #2174): one `custom_form_pages` column, `share_image_field_id` INT UNSIGNED DEFAULT 0 (the RSS media field, then the site default, as today); an operator picks one of the form's file fields, used only when its upload is an image an anonymous visitor can open (#2629); a notice when neither exists; the built-in blog, news and magazine templates preset their cover field for new forms. No automatic guess from other fields or rich text: running sites change nothing.
 
 ## Which columns do these add?
 - `workflow/decisions-made-schema.md` lists them; each lands through a migration step of the open version.
