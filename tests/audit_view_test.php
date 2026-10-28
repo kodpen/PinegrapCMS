@@ -163,3 +163,26 @@ function test_audit_view_record_url()
 	pg_assert_same('', pg_audit_view_record_url('settings', 0), 'settings');
 	pg_assert_same('', pg_audit_view_record_url('person', 5), 'person');
 }
+
+function test_audit_view_record_ids_grouped_by_type()
+{
+	$rows = array(
+		array('entity_type' => 'page', 'entity_id' => '1116'),
+		array('entity_type' => 'page', 'entity_id' => 1116),
+		array('entity_type' => 'page', 'entity_id' => 7),
+		array('entity_type' => 'file', 'entity_id' => 7070),
+		array('entity_type' => 'settings', 'entity_id' => 0),
+		array('entity_type' => 'api_key', 'entity_id' => 2),
+		array('entity_type' => 'product', 'entity_id' => 0),
+	);
+
+	pg_assert_same(array('page' => array(1116, 7), 'file' => array(7070)), pg_audit_view_record_ids($rows), 'one list per type with an edit screen, each id once');
+	pg_assert_same(array(), pg_audit_view_record_ids(array()), 'an empty page');
+
+	// Every type with an edit screen link is looked up, so a deleted one loses its "Open" link.
+	foreach (array_keys(pg_audit_view_record_tables()) as $type) {
+		pg_assert_true(pg_audit_view_record_url($type, 5) !== '', $type . ' has an edit screen');
+	}
+
+	pg_assert_contains('pg_audit_view_live_records(', file_get_contents(dirname(__DIR__) . '/pinegrap/view_audit_log.php'), 'the screen asks which records still exist');
+}
