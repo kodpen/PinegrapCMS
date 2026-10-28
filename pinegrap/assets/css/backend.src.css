@@ -5732,7 +5732,7 @@ div#software_image_picker_container {
 .pg-vs-unit {
   font-size: 11px;
   font-weight: 500;
-  opacity: 0.7;
+  color: var(--pg-fg-2);
 }
 .pg-vs-compare {
   display: flex;
@@ -5750,13 +5750,15 @@ div#software_image_picker_container {
   font-weight: 700;
   line-height: 1.5;
 }
+/* The ink is pulled a fifth toward the strongest text colour: the plain ink
+   sat near 4:1 on the tinted pill, 4.5:1 is the floor for 10px text. */
 .pg-vs-pill.up {
   background: rgba(16, 185, 129, 0.16);
-  color: #10b981;
+  color: color-mix(in srgb, var(--pg-success-fg-emphasis) 80%, var(--pg-fg-emphasis));
 }
 .pg-vs-pill.down {
   background: rgba(248, 113, 113, 0.16);
-  color: #f87171;
+  color: color-mix(in srgb, var(--pg-danger-fg-emphasis) 80%, var(--pg-fg-emphasis));
 }
 .pg-vs-cmp {
   font-size: 11.5px;
@@ -6823,12 +6825,12 @@ html[data-bs-theme="dark"] .card.widget ::-webkit-scrollbar-track {
 .widget[widget-id="1"]  { --bs-card-border-color: rgba(13,148,136,.30);  background: #f0fdfa; --pg-accent: #0d9488; --pg-accent-ink: #fff; }
 .widget[widget-id="1"]  .card-header i { color: #0d9488; }
 .widget[widget-id="3"]  { --bs-card-border-color: rgba(16,185,129,.30);  background: #ecfdf5; --pg-accent: #10b981; --pg-accent-ink: #18181b; }
-.widget[widget-id="3"]  .card-header i { color: #10b981; }
+.widget[widget-id="3"]  .card-header i { color: #059669; }
 .widget[widget-id="3"]  .pg-ec-val { color: #047857; }
 .widget[widget-id="3"]  .pg-ec-warn { color: #b45309; }
 .widget[widget-id="3"]  .pg-row-total { background: rgba(16,185,129,.10); }
 .widget[widget-id="4"]  { --bs-card-border-color: rgba(6,182,212,.30);   background: #ecfeff; --pg-accent: #06b6d4; --pg-accent-ink: #18181b; }
-.widget[widget-id="4"]  .card-header i { color: #06b6d4; }
+.widget[widget-id="4"]  .card-header i { color: #0891b2; }
 /* Visitor summaries was left transparent and borderless while it was three
    panels sharing the page background. It is one card with one chart now, and a
    card that stops at the page colour has no edge to sit inside -- it reads as
@@ -6850,7 +6852,7 @@ html[data-bs-theme="dark"] .card.widget ::-webkit-scrollbar-track {
 .widget[widget-id="12"] { --bs-card-border-color: rgba(239,68,68,.30);   background: #fef2f2; --pg-accent: #ef4444; --pg-accent-ink: #18181b; }
 .widget[widget-id="12"] .card-header i { color: #ef4444; }
 .widget[widget-id="13"] { --bs-card-border-color: rgba(14,165,233,.30);  background: #f0f9ff; --pg-accent: #0ea5e9; --pg-accent-ink: #18181b; }
-.widget[widget-id="13"] .card-header i { color: #0ea5e9; }
+.widget[widget-id="13"] .card-header i { color: #0284c7; }
 .widget[widget-id="14"] { --bs-card-border-color: rgba(124,58,237,.30);  background: #f5f3ff; --pg-accent: #7c3aed; --pg-accent-ink: #fff; }
 .widget[widget-id="14"] .card-header i { color: #7c3aed; }
 .widget[widget-id="15"] { --bs-card-border-color: rgba(217,119,6,.30);   background: #fefce8; --pg-accent: #d97706; --pg-accent-ink: #18181b; }
@@ -6860,7 +6862,7 @@ html[data-bs-theme="dark"] .card.widget ::-webkit-scrollbar-track {
 .widget[widget-id="17"] { --bs-card-border-color: rgba(100,116,139,.30); background: #f8fafc; --pg-accent: #64748b; --pg-accent-ink: #fff; }
 .widget[widget-id="17"] .card-header i { color: #64748b; }
 .widget[widget-id="18"] { --bs-card-border-color: rgba(202,138,4,.30);   background: #fefce8; --pg-accent: #ca8a04; --pg-accent-ink: #18181b; }
-.widget[widget-id="18"] .card-header i { color: #ca8a04; }
+.widget[widget-id="18"] .card-header i { color: #a16207; }
 .widget[widget-id="19"] { --bs-card-border-color: rgba(225,29,72,.30);   background: #fff1f2; --pg-accent: #e11d48; --pg-accent-ink: #fff; }
 .widget[widget-id="19"] .card-header i { color: #e11d48; }
 .widget[widget-id="20"] { --bs-card-border-color: rgba(37,99,235,.30);   background: #eff6ff; --pg-accent: #2563eb; --pg-accent-ink: #fff; }
@@ -6873,11 +6875,11 @@ html[data-bs-theme="dark"] .card.widget ::-webkit-scrollbar-track {
    unfinished -- which is what they were. Same three declarations as the rest,
    same shape, no special case. */
 .widget[widget-id="21"] { --bs-card-border-color: rgba(16,185,129,.30);  background: #ecfdf6; --pg-accent: #10b981; --pg-accent-ink: #18181b; }
-.widget[widget-id="21"] .card-header i { color: #10b981; }
+.widget[widget-id="21"] .card-header i { color: #059669; }
 .widget[widget-id="23"] { --bs-card-border-color: rgba(139,92,246,.30);  background: #f6f4ff; --pg-accent: #8b5cf6; --pg-accent-ink: #fff; }
 .widget[widget-id="23"] .card-header i { color: #8b5cf6; }
 .widget[widget-id="25"] { --bs-card-border-color: rgba(14,165,233,.30);  background: #eff9ff; --pg-accent: #0ea5e9; --pg-accent-ink: #18181b; }
-.widget[widget-id="25"] .card-header i { color: #0ea5e9; }
+.widget[widget-id="25"] .card-header i { color: #0284c7; }
 .widget[widget-id="26"] { --bs-card-border-color: rgba(236,72,153,.30);  background: #fdf2f8; --pg-accent: #ec4899; --pg-accent-ink: #18181b; }
 .widget[widget-id="26"] .card-header i { color: #ec4899; }
 
@@ -6889,7 +6891,7 @@ html[data-bs-theme="dark"] .card.widget ::-webkit-scrollbar-track {
 .widget[widget-id="29"] { --bs-card-border-color: rgba(2,132,199,.30);   background: #f0f9ff; --pg-accent: #0284c7; --pg-accent-ink: #fff; }
 .widget[widget-id="29"] .card-header i { color: #0284c7; }
 .widget[widget-id="30"] { --bs-card-border-color: rgba(101,163,13,.30);  background: #f7fee7; --pg-accent: #65a30d; --pg-accent-ink: #fff; }
-.widget[widget-id="30"] .card-header i { color: #65a30d; }
+.widget[widget-id="30"] .card-header i { color: #4d7c0f; }
 
 /* Waiting on Me: a mention or reply not read yet carries a dot after the
    sender's name; read ones stay in the list without it. */
@@ -6906,7 +6908,7 @@ html[data-bs-theme="dark"] .card.widget ::-webkit-scrollbar-track {
 
 /* ── Dark theme ──────────────────────────────────────────────────── */
 
-html[data-bs-theme="dark"] .widget[widget-id="1"]  { --bs-card-border-color: rgba(13,148,136,.28); background: #0a1413; --pg-accent: #14b8a6; }
+html[data-bs-theme="dark"] .widget[widget-id="1"]  { --bs-card-border-color: rgba(13,148,136,.28); background: #0a1413; --pg-accent: #14b8a6; --pg-accent-ink: #18181b; }
 html[data-bs-theme="dark"] .widget[widget-id="1"]  .card-header i { color: #2dd4bf; }
 html[data-bs-theme="dark"] .widget[widget-id="3"]  { --bs-card-border-color: rgba(16,185,129,.28); background: #0c1410; }
 html[data-bs-theme="dark"] .widget[widget-id="3"]  .card-header i { color: #34d399; }
@@ -7309,8 +7311,8 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
   text-align: center;
 }
 .pg-filter-count.is-urgent {
-  background: var(--pg-danger);
-  color: #fff;
+  background: var(--pg-danger-bg-subtle);
+  color: var(--pg-danger-fg-emphasis);
 }
 .pg-filter-count.is-clear {
   background: color-mix(in srgb, #10b981 18%, transparent);
@@ -7474,11 +7476,11 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
 }
 .pg-lanes .pg-filter-count.is-urgent {
   background: none;
-  color: var(--pg-danger);
+  color: var(--pg-danger-fg-emphasis);
 }
 .pg-lanes .pg-filter-count.is-clear {
   background: none;
-  color: #10b981;
+  color: var(--pg-success-fg-emphasis);
 }
 @container pgwidget (max-width: 30rem) {
   .pg-lanes .pg-filter {
@@ -7823,7 +7825,7 @@ html[data-bs-theme="dark"] [data-widget-theme="glass"] .pg-clockbar {
 }
 .pg-brief-ws-item.is-late .bi,
 .pg-brief-ws-item.is-late .pg-brief-ws-label {
-  color: var(--pg-danger);
+  color: var(--pg-danger-fg-emphasis);
 }
 /* A timer that is running: a green dot that breathes, so the one item that
    goes on counting by itself looks alive. */
@@ -8779,22 +8781,20 @@ button.no-popover:focus-visible {
 }
 .pg-perm-none {
   color: var(--pg-fg-2);
-  opacity: 0.75;
 }
 .pg-perm-open {
   flex: 0 0 auto;
 }
-/* Off: the row stays readable but stops competing with the ones that are on.
-   The gate itself keeps full contrast so it can still be found and clicked. */
-.pg-perm.is-off .pg-perm-icon,
-.pg-perm.is-off .pg-perm-text,
-.pg-perm.is-off .pg-perm-summary {
-  opacity: 0.45;
+/* Off: the row steps back to the secondary text colour instead of an opacity,
+   which took the title, description and "Choose" button under 3:1; every
+   label stays 4.5:1 in both themes because a new user starts with all rows
+   off and picks by reading them. The icon loses its group colour. */
+.pg-perm.is-off .pg-perm-icon {
+  color: var(--pg-fg-2);
+  background: color-mix(in srgb, var(--pg-fg-2) 12%, transparent);
 }
-/* Dimmed, not hidden: the panel is where the first selection is made, so a
-   group that is off still has to be reachable. */
-.pg-perm.is-off .pg-perm-open {
-  opacity: 0.55;
+.pg-perm.is-off .pg-perm-text b {
+  color: var(--pg-fg-2);
 }
 
 /* The whole block is hidden for the roles that carry every right; the notice
@@ -11334,23 +11334,29 @@ button.ws-thread-bar:hover {
 .ws-channel-link .ws-ch-icon {
   color: var(--pg-fg-2);
 }
+/* Palette tones are fills (white text sits on them); as a sign or a label
+   on the sidebar they are pulled toward the strongest text colour: darker in
+   the light theme, lighter in the dark one, 3:1 for icons and 4.5:1 for the
+   group name on every tone. */
 .ws-channel-link[data-ws-colored] .ws-ch-icon {
-  color: var(--ws-ch);
+  color: color-mix(in srgb, var(--ws-ch) 75%, var(--pg-fg-emphasis));
 }
-.ws-channel-link[data-ws-nav="home"] > .bi { color: #4a7fa8; }
-.ws-channel-link[data-ws-nav="inbox"] > .bi { color: #3e8a7a; }
-.ws-channel-link[data-ws-nav="tasks"] > .bi { color: #4f8a5b; }
-.ws-channel-link[data-ws-nav="notes"] > .bi { color: #c2913a; }
+/* Each tone keeps 3:1 on the active row's tint (#ded6ef), not only on the
+   sidebar ground. */
+.ws-channel-link[data-ws-nav="home"] > .bi { color: #4679a0; }
+.ws-channel-link[data-ws-nav="inbox"] > .bi { color: #3a8071; }
+.ws-channel-link[data-ws-nav="tasks"] > .bi { color: #498055; }
+.ws-channel-link[data-ws-nav="notes"] > .bi { color: #936e2c; }
 .ws-channel-link[data-ws-nav="board"] > .bi { color: #6b5ca5; }
 .ws-channel-link[data-ws-nav="calendar"] > .bi,
 .ws-channel-link[data-ws-nav="calendar_feed"] > .bi { color: #a5578e; }
-.ws-channel-link[data-ws-nav="scheduled"] > .bi { color: #c9774a; }
+.ws-channel-link[data-ws-nav="scheduled"] > .bi { color: #a7633d; }
 .ws-channel-link[data-ws-nav="timeline"] > .bi { color: #5468a8; }
-.ws-channel-link[data-ws-nav="archived"] > .bi { color: #7a7f87; }
+.ws-channel-link[data-ws-nav="archived"] > .bi { color: #70757c; }
 .ws-channel-link[data-ws-nav="audit"] > .bi { color: #b5534b; }
 .ws-channel-link[data-ws-nav="settings"] > .bi { color: #6f6a5e; }
 .ws-channel-link[data-ws-nav="flows"] > .bi,
-.ws-channel-link[data-ws-nav="mcp"] > .bi { color: #3f8599; }
+.ws-channel-link[data-ws-nav="mcp"] > .bi { color: #3b7d90; }
 /* The same tones lifted for the dark theme, where the ones above sink. */
 html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="home"] > .bi { color: #8fbde3; }
 html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="inbox"] > .bi { color: #7fc9b8; }
@@ -11412,7 +11418,7 @@ html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="mcp"] > .bi { color: #8
   height: 1.3rem;
   border-radius: var(--ws-radius-xs);
   background: color-mix(in srgb, var(--ws-group, var(--pg-fg-2)) 16%, transparent);
-  color: var(--ws-group, var(--pg-fg-2));
+  color: color-mix(in srgb, var(--ws-group, var(--pg-fg-2)) 75%, var(--pg-fg-emphasis));
   font-size: .75rem;
 }
 html[data-bs-theme="dark"] .ws-group-icon {
@@ -11424,7 +11430,7 @@ html[data-bs-theme="dark"] .ws-group-icon {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--ws-group, var(--pg-fg-2));
+  color: color-mix(in srgb, var(--ws-group, var(--pg-fg-2)) 60%, var(--pg-fg-emphasis));
 }
 .ws-group-access {
   display: inline-flex;

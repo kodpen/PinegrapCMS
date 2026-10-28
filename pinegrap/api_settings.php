@@ -1566,11 +1566,13 @@ echo pg_page_shell(array(
 .api-name { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .api-name i { opacity: .7; }
 .api-name b { font-size: 13px; display: block; }
-.api-name code { font-size: 10.5px; opacity: .55; }
+/* Secondary text colour rather than opacity: faded chips and codes read
+   under 3:1 on the light card. */
+.api-name code { font-size: 10.5px; color: var(--pg-fg-2); }
 .api-chips { display: flex; flex-wrap: wrap; gap: 4px; }
-.api-chip { font-size: 10px; padding: 2px 6px; border-radius: 5px; border: 1px solid var(--pg-border-color); opacity: .85; }
-.api-chip.w { border-color: var(--pg-primary); color: var(--pg-primary); }
-.api-chip.muted { opacity: .45; }
+.api-chip { font-size: 10px; padding: 2px 6px; border-radius: 5px; border: 1px solid var(--pg-border-color); }
+.api-chip.w { border-color: var(--pg-primary); color: var(--pg-primary-fg-emphasis); }
+.api-chip.muted { color: var(--pg-fg-2); }
 .api-status { font-size: 10.5px; padding: 3px 9px; border-radius: 20px; font-weight: 600;
 	border: 1px solid var(--pg-border-color); display: inline-block; }
 .api-status.on { color: var(--pg-success); border-color: color-mix(in srgb, var(--pg-success) 35%, transparent); }
