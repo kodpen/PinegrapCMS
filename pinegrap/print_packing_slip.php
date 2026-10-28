@@ -281,11 +281,18 @@ foreach ($order_items as $order_item) {
             </tr>';
     }
 }
-$title = '<title>' . h(lang('Packing Slip')) . '</title>';
-
     echo 
-    output_header_secure() . '
-    '.$title.'
+    output_header_secure(array('title' => lang('Packing Slip'), 'icon' => 'store')) . '
+    <script>
+        // A print view stands for the paper: light whatever the stored panel
+        // theme. Set again on DOMContentLoaded, after backend.src.js (a
+        // synchronous head script) has applied the stored theme.
+        (function () {
+            var pgPrintLight = function () { document.documentElement.setAttribute("data-bs-theme", "light"); };
+            pgPrintLight();
+            document.addEventListener("DOMContentLoaded", pgPrintLight);
+        })();
+    </script>
     <style type="text/css">@layer custom {
         body{
             background-color: white;

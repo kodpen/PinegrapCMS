@@ -1469,6 +1469,18 @@ function output_error($error_message, $response_code = 0)
 
     $content = '<div style="color: red">' . lang('Error') . ': ' . $error_message . '<br />' . $debug_message . '</div>';
 
+    // A panel screen's error is drawn in the site's design, which has no
+    // way back to the panel: give a panel user one.
+    $panel_link = pg_error_panel_link(
+        (string) ($_SERVER['SCRIPT_NAME'] ?? ''),
+        defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '',
+        defined('USER_ROLE') ? USER_ROLE : null
+    );
+
+    if ($panel_link !== '') {
+        $content .= '<p><a href="' . h($panel_link) . '">' . h(lang('Back to the control panel')) . '</a></p>';
+    }
+
     // If the db connection failed or there was an error, then just output error message content
     // without error page, in order to avoid infinite errors.
     if (!db::$con or $mysql_error != '') {
@@ -1501,9 +1513,35 @@ function output_error($error_message, $response_code = 0)
         if (function_exists('pg_sw_error_context')) {
             pg_sw_error_context($error_message, $response_code);
         }
-        echo get_error_screen($content);
+        $screen = get_error_screen($content);
+        // The screen leaves the way a page does (get_page.php): the language
+        // of the site, or of the language the address was asked in with the
+        // prefix on its links, and the language switchers drawn. The design
+        // tree's output says lang="en" whatever the site's language, and the
+        // browser changes case by it: "MÜŞTERİ" in Turkish, "MÜŞTERI" in
+        // English.
+        if (function_exists('pg_tr_finalize')) {
+            $screen = pg_tr_finalize($screen);
+        }
+        echo $screen;
         exit();
     }
+}
+// The control panel address an error screen links back to: for a user of
+// role 0-2 (role 3 includes site members) on a script of the software
+// directory other than the page renderer, whose errors are the site's own.
+// '' otherwise.
+function pg_error_panel_link($script_name, $software_directory, $role)
+{
+    $parts = explode('/', trim(str_replace('\\', '/', (string) $script_name), '/'));
+    $script = (string) array_pop($parts);
+    $directory = (string) array_pop($parts);
+
+    if (($role === null) || ($role === '') || ((int) $role > 2) || ((string) $software_directory === '') || ($directory !== (string) $software_directory) || in_array($script, array('', 'get_page.php', 'router.php', 'index.php'), true)) {
+        return '';
+    }
+
+    return (defined('PATH') ? PATH : '/') . $software_directory . '/welcome.php';
 }
 // The following function is used to return our standard error styling around
 // an error message.  This is used when we want to show an error on the page

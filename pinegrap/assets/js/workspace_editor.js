@@ -414,6 +414,28 @@
         return (match[1] === '>') ? 'quote' : ((match[1] === '1.') ? 'number' : 'bullet');
     }
 
+    // A note's heading, "# " to "### " at the very start of a line, as
+    // { level, text }, or null; a rule, a line of three dashes or more. The
+    // twins of ws_heading_line() and ws_rule_line() (includes/workspace/
+    // render.php); only a box with options.headings (a note's) reads them.
+    function headingLine(line) {
+        var match = /^(#{1,3})[ \t]+([^ \t\n\x0B\f\r][^\n]*)$/.exec(String(line || ''));
+
+        return match ? { level: match[1].length, text: match[2].replace(/[ \t\n\r\0\x0B]+$/, '') } : null;
+    }
+
+    function ruleLine(line) {
+        return /^[ \t]*-{3,}[ \t]*$/.test(String(line || ''));
+    }
+
+    // Autoformat: the heading level "# ", "## " or "### " alone on a line
+    // opens once its space is typed, or 0.
+    function autoHeading(line) {
+        var match = /^(#{1,3})[ \u00a0]$/.exec(String(line || ''));
+
+        return match ? match[1].length : 0;
+    }
+
     // Autoformat: the highlight a line's words before the caret have just
     // closed, as { length, words } (length: the pair with its signs), or
     // null. The pairs are read from the line's start as inlineNodes() reads
@@ -614,8 +636,9 @@
     }
 
     // A text split into lines of words and the blocks among them; the lines
-    // of a list or a quote one block.
-    function parseBlocks(markup) {
+    // of a list or a quote one block. headings: a note's text, whose
+    // headings and rules are blocks too.
+    function parseBlocks(markup, headings) {
         var lines = String(markup || '').replace(/\r\n?/g, '\n').split('\n');
         var out = [];
 
@@ -670,6 +693,18 @@
 
                 i--;
                 out.push({ kind: 'checklist', markup: heading + items.join('\n') });
+                continue;
+            }
+
+            var head = headings ? headingLine(line) : null;
+
+            if (head) {
+                out.push({ kind: 'heading', level: head.level, markup: head.text });
+                continue;
+            }
+
+            if (headings && ruleLine(line)) {
+                out.push({ kind: 'rule', markup: '---' });
                 continue;
             }
 
@@ -1266,6 +1301,14 @@
                 });
 
                 fragment.appendChild(list);
+            } else if (block.kind === 'heading') {
+                // A heading and a rule are lines of their own, ended by a
+                // break as a card is.
+                fragment.appendChild(inlineNodes(block.markup, labels, headingNode(block.level)));
+                fragment.appendChild(el('br'));
+            } else if (block.kind === 'rule') {
+                fragment.appendChild(el('hr', 'ws-rule'));
+                fragment.appendChild(el('br'));
             } else {
                 fragment.appendChild(blockNode(block.kind, block.markup));
                 fragment.appendChild(el('br'));
@@ -1277,7 +1320,23 @@
 
     // ── Nodes → markup ─────────────────────────────────────────────────
 
-    var BLOCKS = /^(DIV|P|LI|UL|OL|H[1-6]|BLOCKQUOTE|PRE|TABLE|TR)$/;
+    var BLOCKS = /^(DIV|P|LI|UL|OL|H[1-6]|BLOCKQUOTE|PRE|TABLE|TR|HR)$/;
+
+    // A note's heading in the box: "#" an <h2>, "##" an <h3>, "###" an <h4>,
+    // as ws_heading_html() draws them.
+    function headingNode(level) {
+        return el('h' + (level + 1), 'ws-heading h' + (level + 3));
+    }
+
+    // The level (1 to 3) of a heading of the box, or 0.
+    function headingLevel(node) {
+        return (node && (node.nodeType === 1) && /^H[234]$/.test(node.tagName) && node.classList.contains('ws-heading')) ? parseInt(node.tagName.charAt(1), 10) - 1 : 0;
+    }
+
+    // A heading or a rule: a line of its own, which ends itself.
+    function lineBlock(node) {
+        return !!headingLevel(node) || (!!node && (node.nodeType === 1) && (node.tagName === 'HR'));
+    }
 
     // The words of an element as markup. Emphasis wraps each line on its
     // own, since the markup does not carry it across a line break.
@@ -1342,17 +1401,26 @@
         }
 
         var tag = node.tagName;
+        var level = headingLevel(node);
+
+        // A heading's words stay on its one line; an empty one is an empty line.
+        if ((level || (tag === 'HR')) && !singleLine) {
+            var own = (sofar === '' || /\n$/.test(sofar)) ? '' : '\n';
+            var said = level ? serializeChildren(node, false).replace(/\s*\n\s*/g, ' ').trim() : '';
+
+            return own + ((tag === 'HR') ? '---' : (said ? new Array(level + 1).join('#') + ' ' + said : '')) + '\n';
+        }
 
         if (tag === 'BR') {
-            // The line break after a card ends the card's own line, which the
-            // card already did.
+            // The line break after a card, a heading or a rule ends its own
+            // line, which it already did.
             var previous = node.previousSibling;
 
             while (previous && previous.nodeType === 3 && previous.nodeValue.replace(/[\u200b]/g, '') === '') {
                 previous = previous.previousSibling;
             }
 
-            if (!singleLine && previous && previous.nodeType === 1 && previous.classList.contains('ws-rich-block')) {
+            if (!singleLine && previous && previous.nodeType === 1 && (previous.classList.contains('ws-rich-block') || lineBlock(previous))) {
                 return '';
             }
 
@@ -1431,7 +1499,7 @@
             next = next.nextSibling;
         }
 
-        return !!next && !((next.nodeType === 1) && ((next.tagName === 'BR') || next.classList.contains('ws-rich-block')));
+        return !!next && !((next.nodeType === 1) && ((next.tagName === 'BR') || next.classList.contains('ws-rich-block') || lineBlock(next)));
     }
 
     function serialize(root, singleLine) {
@@ -2653,6 +2721,183 @@
         return true;
     }
 
+    // The heading of the box a node is in, or null.
+    function headingAt(surface, node) {
+        for (var at = node; at && (at !== surface); at = at.parentNode) {
+            if (headingLevel(at) && (at.parentNode === surface)) {
+                return at;
+            }
+        }
+
+        return null;
+    }
+
+    // The heading a line of boxLines() is, or null.
+    function lineHeading(line) {
+        return (line.nodes || []).filter(function (node) { return !!headingLevel(node); })[0] || null;
+    }
+
+    // The note row's H1, H2 and H3: the lines the selection touches made
+    // headings of that level, or, when all of them are already, lines again.
+    // An item leaves its list first; cards, blocks and rules stay as they are.
+    function toggleHeading(surface, level) {
+        var range = selectionRange();
+
+        if (!range || !surface.contains(range.startContainer) || !surface.contains(range.endContainer)) {
+            return false;
+        }
+
+        var all = boxLines(surface);
+        var from = lineIndex(surface, all, range.startContainer, range.startOffset);
+        var to = range.collapsed ? from : lineIndex(surface, all, range.endContainer, range.endOffset);
+        var lines = all.slice(from, to + 1).filter(function (line) { return !line.fixed || !!lineHeading(line); });
+        var off = lines.length && lines.every(function (line) { return headingLevel(lineHeading(line)) === level; });
+        var held = holdSelection();
+        var fallback = null;
+
+        if (!lines.length) {
+            return false;
+        }
+
+        lines.forEach(function (line) {
+            var head = lineHeading(line);
+            var made;
+
+            if (head && off) {
+                // Back to a line: its words before the break that ends it.
+                if (!hasWords(head)) {
+                    head.innerHTML = '';
+                }
+
+                while (isBreak(head.lastChild)) {
+                    head.removeChild(head.lastChild);
+                }
+
+                var next = head.nextSibling;
+
+                while (head.firstChild) {
+                    surface.insertBefore(head.firstChild, head);
+                }
+
+                head.remove();
+                fallback = fallback || [surface, next ? indexIn(next) : surface.childNodes.length];
+                return;
+            }
+
+            made = headingNode(level);
+
+            if (head) {
+                while (head.firstChild) {
+                    made.appendChild(head.firstChild);
+                }
+
+                surface.replaceChild(made, head);
+            } else {
+                var lifted = line.item ? liftItem(surface, line.item) : line;
+
+                surface.insertBefore(made, lifted.nodes[0] || lifted.br || null);
+                lifted.nodes.forEach(function (node) { made.appendChild(node); });
+
+                if (!lifted.br) {
+                    surface.insertBefore(el('br'), made.nextSibling);
+                }
+            }
+
+            fallback = fallback || [fillEmpty(made), 0];
+        });
+
+        putSelection(surface, held, fallback);
+
+        return true;
+    }
+
+    // Enter in a heading: the words after the caret go on a line of their
+    // own below it, as words, not a second heading.
+    function headingEnter(surface) {
+        var range = selectionRange();
+        var head = range ? headingAt(surface, range.startContainer) : null;
+
+        if (!head || (headingAt(surface, range.endContainer) !== head)) {
+            return false;
+        }
+
+        range.deleteContents();
+
+        var tail = document.createRange();
+        var end = head.nextSibling;
+
+        tail.setStart(range.startContainer, range.startOffset);
+        tail.setEnd(head, head.childNodes.length);
+
+        var words = tail.extractContents();
+
+        fillEmpty(head);
+
+        if (!isBreak(end)) {
+            end = el('br');
+            surface.insertBefore(end, head.nextSibling);
+        }
+
+        var at = indexIn(end) + 1;
+        var after = end.nextSibling;
+
+        if (hasWords(words)) {
+            surface.insertBefore(words, after);
+        }
+
+        surface.insertBefore(el('br'), after);
+        select(surface, at, surface, at);
+
+        return true;
+    }
+
+    // The note row's rule: a line of its own below the caret's line, or in
+    // its place when that line is empty. The caret goes on below it.
+    function insertRule(surface) {
+        var range = selectionRange();
+
+        if (!range || !surface.contains(range.startContainer)) {
+            return false;
+        }
+
+        var all = boxLines(surface);
+        var line = all[lineIndex(surface, all, range.startContainer, range.startOffset)];
+        var rule = el('hr', 'ws-rule');
+        var end = el('br');
+        var before;
+
+        if (line.item) {
+            before = line.item.parentNode.nextSibling;
+        } else if (!line.fixed && !line.nodes.some(hasWords) && !line.nodes.some(function (node) { return node.nodeType === 1 && !isBreak(node); })) {
+            line.nodes.forEach(function (node) { node.remove(); });
+            before = line.br || null;
+
+            if (line.br) {
+                end = line.br;
+                before = line.br;
+            }
+        } else if (line.br) {
+            before = line.br.nextSibling;
+        } else {
+            surface.appendChild(el('br'));
+            before = null;
+        }
+
+        surface.insertBefore(rule, before);
+
+        if (end !== before) {
+            surface.insertBefore(end, rule.nextSibling);
+        }
+
+        if (!end.nextSibling) {
+            surface.appendChild(el('br'));
+        }
+
+        select(surface, indexIn(end) + 1, surface, indexIn(end) + 1);
+
+        return true;
+    }
+
     // Enter in an item: the words after the caret go on in a new item of
     // the same mark; an empty item ends the list there. A selection goes
     // first: over two items it leaves both, the caret at the later one.
@@ -3438,7 +3683,9 @@
     /**
      * options: placeholder, previews (cards drawn as what they hold, see
      * drawPreviews), onInput(), onEnter(event), onKeydown(event) → true when
-     * handled, onBlockOpen(kind, markup, done), onHistory(canUndo, canRedo)
+     * handled, onBlockOpen(kind, markup, done), onHistory(canUndo, canRedo),
+     * headings (a note's box: "# " to "### " lines are headings, "---" a
+     * rule, as the server draws a note)
      *
      * The box keeps its own undo history: the browser's own cannot follow
      * the cards, chips and results the box draws into itself, and loses its
@@ -3527,7 +3774,7 @@
                 return;
             }
 
-            if (self.listKey(event)) {
+            if (self.listKey(event) || self.headingKey(event)) {
                 return;
             }
 
@@ -3545,7 +3792,7 @@
             // Enter sends.
             event.preventDefault();
 
-            if (self.listEnter()) {
+            if (self.listEnter() || self.headingEnter()) {
                 return;
             }
 
@@ -3603,7 +3850,7 @@
 
         isEmpty: function () {
             return (this.node.textContent || '').replace(/[\s ​]/g, '') === ''
-                && !this.node.querySelector('[data-token], .ws-rich-block, ul, ol, blockquote');
+                && !this.node.querySelector('[data-token], .ws-rich-block, ul, ol, blockquote, hr, .ws-heading');
         },
 
         // An emptied box keeps no stray <br>, so the placeholder shows again.
@@ -3921,7 +4168,72 @@
                 state[name] = !!item && (listKind(item.parentNode) === kind);
             });
 
+            if (this.options.headings) {
+                var level = range ? headingLevel(headingAt(this.node, range.startContainer)) : 0;
+
+                [1, 2, 3].forEach(function (one) { state['heading' + one] = (level === one); });
+            }
+
             return state;
+        },
+
+        // A heading of a level (1 to 3) on the lines of the selection, or off
+        // them, in a note's box (options.headings); a step of the box's undo.
+        heading: function (level) {
+            var self = this;
+
+            if (!self.options.headings || [1, 2, 3].indexOf(level) === -1) {
+                return false;
+            }
+
+            self.restore();
+
+            return self.change(function () { return toggleHeading(self.node, level); });
+        },
+
+        // A rule below the caret's line in a note's box; a step of the undo.
+        rule: function () {
+            var self = this;
+
+            if (!self.options.headings) {
+                return false;
+            }
+
+            self.restore();
+
+            return self.change(function () { return insertRule(self.node); });
+        },
+
+        // Backspace at a heading's start makes it a line of words again, as
+        // it takes an item out of its list; true when handled.
+        headingKey: function (event) {
+            var self = this;
+            var range = selectionRange();
+            var head = range ? headingAt(self.node, range.startContainer) : null;
+
+            if (!head || (event.key !== 'Backspace') || event.shiftKey || event.ctrlKey || event.metaKey || event.altKey || event.isComposing
+                || !range.collapsed || !atItemStart(head, range)) {
+                return false;
+            }
+
+            event.preventDefault();
+            self.change(function () { return toggleHeading(self.node, headingLevel(head)); });
+
+            return true;
+        },
+
+        // Enter in a heading (headingEnter()); true when the caret was in one.
+        headingEnter: function () {
+            var self = this;
+            var range = selectionRange();
+
+            if (!self.options.headings || !range || !headingAt(self.node, range.startContainer)) {
+                return false;
+            }
+
+            self.change(function () { return headingEnter(self.node); });
+
+            return true;
         },
 
         // A list or a quote (bullets, numbers, quote) on the lines of the
@@ -4048,7 +4360,7 @@
         // any other starts the history afresh.
         setMarkup: function (markup, labels, asStep) {
             var node = this.node;
-            var blocks = parseBlocks(markup);
+            var blocks = parseBlocks(markup, !!this.options.headings);
 
             if (asStep && this.history.pending) {
                 this.record();
@@ -4305,7 +4617,7 @@
                 return false;
             }
 
-            var blocks = parseBlocks(markup);
+            var blocks = parseBlocks(markup, !!this.options.headings);
 
             if (blocks.length === 1 && blocks[0].kind === 'table') {
                 this.pasteTable(blocks[0].markup);
@@ -4582,9 +4894,10 @@
             }
 
             var kind = autoList(line);
-            var start = kind ? placeOf(self.node, before.length - line.length) : null;
+            var level = self.options.headings ? autoHeading(line) : 0;
+            var start = (kind || level) ? placeOf(self.node, before.length - line.length) : null;
 
-            if (!start || self.inListItem()) {
+            if (!start || self.inListItem() || headingAt(self.node, caret)) {
                 return false;
             }
 
@@ -4601,7 +4914,7 @@
                 typed.deleteContents();
                 select(typed.startContainer, typed.startOffset, typed.startContainer, typed.startOffset);
 
-                return toggleList(self.node, kind);
+                return level ? toggleHeading(self.node, level) : toggleList(self.node, kind);
             });
         },
 
@@ -4868,6 +5181,10 @@
         bullets: { icon: 'bi-list-ul', label: 'tool_bullets', list: 'bullet' },
         numbers: { icon: 'bi-list-ol', label: 'tool_numbers', list: 'number' },
         quote: { icon: 'bi-quote', label: 'tool_quote', list: 'quote' },
+        heading1: { icon: 'bi-type-h1', label: 'tool_heading1', heading: 1 },
+        heading2: { icon: 'bi-type-h2', label: 'tool_heading2', heading: 2 },
+        heading3: { icon: 'bi-type-h3', label: 'tool_heading3', heading: 3 },
+        rule: { icon: 'bi-hr', label: 'tool_rule', rule: true },
         checklist: { icon: 'bi-ui-checks', label: 'tool_checklist', block: 'checklist' },
         table: { icon: 'bi-table', label: 'tool_table', block: 'table' },
         calc: { icon: 'bi-calculator', label: 'tool_calc', block: 'calc' },
@@ -4875,8 +5192,8 @@
     };
 
     // What "/" offers in a note's box (options.slashInserts), in order: the
-    // box's own tools, which do the insert. No heading or rule: the server
-    // draws neither.
+    // box's own tools, which do the insert. Headings and the rule have their
+    // own buttons on the note's row and keys typed at a line's start.
     var SLASH = ['bullets', 'numbers', 'quote', 'checklist', 'table', 'calc', 'codeblock', 'highlight'];
 
     // A word in plain and in Turkish lower case: "İşaretle" and "işa" meet
@@ -4954,7 +5271,8 @@
      * items, in order, each one of:
      *   - the name of one of the box's own tools: undo, redo, bold, italic,
      *     strike, highlight, code, link, bullets, numbers, quote, checklist, table,
-     *     calc, codeblock;
+     *     calc, codeblock, and for a note's box (options.headings) heading1,
+     *     heading2, heading3, rule;
      *   - a node the caller made (attach, emoji, voice, send), put in as it is;
      *   - an array of those, drawn as a group of options.groupClass.
      * options: className (the row's class), groupClass, label (the row's name
@@ -4998,7 +5316,7 @@
                 pressed[spec.mark] = node;
             }
 
-            if (spec.list) {
+            if (spec.list || spec.heading) {
                 node.setAttribute('aria-pressed', 'false');
                 pressed[name] = node;
             }
@@ -5016,6 +5334,10 @@
                     editor.format(spec.mark);
                 } else if (spec.list) {
                     editor.list(name);
+                } else if (spec.heading) {
+                    editor.heading(spec.heading);
+                } else if (spec.rule) {
+                    editor.rule();
                 } else {
                     insertFrom(editor, spec.block, opts);
                 }

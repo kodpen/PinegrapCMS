@@ -115,3 +115,19 @@ function test_list_period_picker_scripts_carry_the_clock_format()
 	pg_assert_contains($expected, get_time_picker_format(), 'time picker options');
 	pg_assert_false(strpos(get_date_picker_format() . get_date_time_picker_format() . get_time_picker_format(), 'h:mm TT') !== false && pg_picker_time_format() !== 'h:mm TT', 'no 12-hour literal on the 24-hour clock');
 }
+
+function test_list_period_every_list_screen_steps_from_the_last_shown_month()
+{
+	// Each screen once computed "start month - 1" itself; from "26 September -
+	// 27 October" that showed August.
+	foreach (array('view_orders.php', 'view_contacts.php', 'view_visitor_report.php', 'view_submitted_forms.php', 'view_order_report.php') as $screen) {
+		$source = file_get_contents(dirname(__DIR__) . '/pinegrap/' . $screen);
+
+		pg_assert_contains('pg_list_period_month_steps(', $source, $screen . ' reads the month steps');
+		pg_assert_false(strpos($source, "\$decrease_month['new_time']") !== false, $screen . ' has no month arithmetic of its own');
+	}
+
+	foreach (array('view_orders.php', 'view_contacts.php', 'view_submitted_forms.php') as $screen) {
+		pg_assert_contains('pg_list_period_heading(', file_get_contents(dirname(__DIR__) . '/pinegrap/' . $screen), $screen . ' writes the range in the site date order');
+	}
+}

@@ -21,5 +21,9 @@ description: Per-element custom style: a User Styles rule keyed by a pgs- class,
 - A copied element keeps the class and so shares the rule; the card says "N elements use this style" (every page's tree) with Split (`_sdSplitCustomStyle()`: a new class, a copy of the rule, one undo step).
 - Off, with the reason shown, for a component placement and inside a system widget or a shared component (`_sdCustomStyleOff()`): their trees are not the page's.
 
+## Which choices are the owner's?
+- Owner (2026-10-24): a growing textarea with the light dropdown, no CM6 in panel inputs; off inside shared components and system widgets with the reason shown.
+- Defaults the owner may change: `pgs-` + six characters, a copy shares the rule, Export keeps the rules, `!important` allowed with a warning.
+
 ## How is it tested?
 - `tests/designer_custom_style_test.php` (Node with pg_user_styles.js), `_sdCustomStyleOff()` on stand-ins. The card and row are DOM work, not unit tested.

@@ -8752,6 +8752,7 @@ function get_tables() {
 		'affiliate_sign_up_form_pages',
 		'allow_new_comments_for_items',
 		'api_apps',
+		'api_device_pairings',
 		'api_device_rate',
 		'api_devices',
 		'api_idempotency',

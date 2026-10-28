@@ -310,7 +310,7 @@ $pg_settings_cards[] = '
                                             <div class="form-text">' . lang('Full addresses starting with https://. The OpenAI feed passes them on with every product.') . '</div>
                                         </div>
                                         <div class="pg-f-lg">
-                                            <label for="product_feed_excluded_groups" class="form-label">' . lang('Leave out these product groups') . '</label>
+                                            <label' . (($product_feeds_group_options !== '') ? ' for="product_feed_excluded_groups"' : '') . ' class="form-label">' . lang('Leave out these product groups') . '</label>
                                             ' . (($product_feeds_group_options !== '')
                                                 ? '<select multiple size="6" name="product_feed_excluded_groups[]" id="product_feed_excluded_groups" class="form-control">' . $product_feeds_group_options . '</select>
                                             <div class="form-text">' . lang('A product in a chosen group, or in a group under it, is in no feed. Hold Ctrl (or ⌘) to choose several.') . '</div>'

@@ -4804,27 +4804,80 @@ function pg_design_ai_looks_left($row, $state)
 }
 
 /**
- * Does this class name come with the framework the page is built on? Read by
- * the families Bootstrap 5.3 and Bootstrap Icons name their classes in, not
- * a full list: the point is to catch a made-up name, such as "neon-glow",
- * that no stylesheet defines.
+ * Does this class name come with the framework the page is built on? A
+ * Bootstrap 5 page knows exactly the classes of the shipped Bootstrap copy
+ * (its designer vocabulary, assets/js/designer_vocab/bootstrap5.json), so a
+ * made-up name such as "text-neon" or a misspelt "btn-primry" is caught;
+ * Bootstrap Icons, the state classes and the site's own pg-* classes are
+ * known too. Without the vocabulary file the class families decide
+ * (pg_design_ai_known_class_family()).
  *
  * @param string $word
  * @param string $framework
+ * @param string $vocab_file the vocabulary to read; '' for the shipped one
  * @return bool
  */
-function pg_design_ai_known_class($word, $framework)
+function pg_design_ai_known_class($word, $framework, $vocab_file = '')
 {
     if ($framework === 'custom') {
         return false;
     }
 
-    // State classes the editor and Bootstrap set, and the site's own.
-    if (preg_match('/^(active|show|fade|disabled|collapsed|lead|small|mark|initialism|clearfix|vr|hstack|vstack|stretched-link|sticky-top|sticky-bottom|fixed-top|fixed-bottom|pg-.+)$/', $word)) {
+    // State classes the editor and Bootstrap set, the site's own, and
+    // Bootstrap Icons (a separate sheet the vocabulary does not cover).
+    if (preg_match('/^(active|show|fade|disabled|collapsed|pg-.+|bi|bi-[a-z0-9]+(-[a-z0-9]+)*)$/', $word)) {
         return true;
     }
 
-    return (bool) preg_match('/^(container|row|col|g[xy]?-|[mp][trblxyse]?-|d-|flex-|justify-content-|align-(items|self|content)-|order-|offset-|text-|bg-|border|rounded|shadow|fw-|fst-|fs-|lh-|display-|h[1-6]$|w-|h-|mw-|mh-|vw-|vh-|min-v[wh]-|position-|top-|bottom-|start-|end-|translate-|z-|overflow|opacity-|link-|icon-link|img-|figure|ratio|visually-hidden|gap-|row-gap-|column-gap-|float-|object-fit-|user-select-|pe-|font-|list-|table|form-|input-group|btn|card|navbar|nav|badge|alert|breadcrumb|dropdown|collapse|accordion|modal|offcanvas|carousel|pagination|page-|progress|spinner-|toast|tooltip|popover|placeholder|focus-ring|bi$|bi-|blockquote|close|was-validated|is-(valid|invalid)|invalid-|valid-)/', $word);
+    $classes = ($framework === 'bootstrap5') ? pg_design_ai_vocab_classes($vocab_file) : null;
+
+    if ($classes === null) {
+        return pg_design_ai_known_class_family($word);
+    }
+
+    return isset($classes[$word]);
+}
+
+/**
+ * The class names of the Bootstrap 5 vocabulary as array(name => true), or
+ * null when the file is missing or unreadable. Read once per request.
+ *
+ * @param string $file the vocabulary file; '' for the shipped one
+ * @return array|null
+ */
+function pg_design_ai_vocab_classes($file = '')
+{
+    static $cache = array();
+
+    if ($file === '') {
+        $file = PG_FUNCTIONS_DIR . '/assets/js/designer_vocab/bootstrap5.json';
+    }
+
+    if (!array_key_exists($file, $cache)) {
+        $vocab = is_file($file) ? json_decode((string) @file_get_contents($file), true) : null;
+        $cache[$file] = (is_array($vocab) && !empty($vocab['classes']) && is_array($vocab['classes']))
+            ? array_fill_keys(array_keys($vocab['classes']), true)
+            : null;
+    }
+
+    return $cache[$file];
+}
+
+/**
+ * The fallback check: does the name start like a Bootstrap 5.3 class family?
+ * Only the prefix is read, so a made-up "text-neon" passes; it catches a
+ * name of no family, such as "neon-glow".
+ *
+ * @param string $word
+ * @return bool
+ */
+function pg_design_ai_known_class_family($word)
+{
+    if (preg_match('/^(lead|small|mark|initialism|clearfix|vr|hstack|vstack|stretched-link|sticky-top|sticky-bottom|fixed-top|fixed-bottom)$/', $word)) {
+        return true;
+    }
+
+    return (bool) preg_match('/^(container|row|col|g[xy]?-|[mp][trblxyse]?-|d-|flex-|justify-content-|align-(items|self|content)-|order-|offset-|text-|bg-|border|rounded|shadow|fw-|fst-|fs-|lh-|display-|h[1-6]$|w-|h-|mw-|mh-|vw-|vh-|min-v[wh]-|position-|top-|bottom-|start-|end-|translate-|z-|overflow|opacity-|link-|icon-link|img-|figure|ratio|visually-hidden|gap-|row-gap-|column-gap-|float-|object-fit-|user-select-|pe-|font-|list-|table|form-|input-group|btn|card|navbar|nav|badge|alert|breadcrumb|dropdown|collapse|accordion|modal|offcanvas|carousel|pagination|page-|progress|spinner-|toast|tooltip|popover|placeholder|focus-ring|blockquote|close|was-validated|is-(valid|invalid)|invalid-|valid-)/', $word);
 }
 
 /**

@@ -2674,7 +2674,6 @@ if (!$_POST) {
             'breadcrumb' => array(array('label' => lang('All Orders'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php'), array('label' => lang('View Order'))),
         )
     ) . '<main id="content" class="container-fluid">' . get_date_picker_format() . '
-        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
 
                 <div class="row">
             <div class="col-12">

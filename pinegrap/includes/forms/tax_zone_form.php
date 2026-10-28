@@ -78,9 +78,12 @@ function pg_tax_zone_form_choices($tax_zone_id = 0)
     $zone_country_ids = array();
     $zone_state_ids = array();
 
-    foreach (db_items("SELECT id, name FROM countries ORDER BY name") as $row) {
-        $countries[] = array('id' => $row['id'], 'label' => $row['name']);
+    foreach (db_items("SELECT id, name, code FROM countries") as $row) {
+        $countries[] = array('id' => $row['id'], 'label' => pg_geo_country_label($row['name'], $row['code']));
     }
+
+    // Named and ordered in the panel's language (pg_geo_country_label()).
+    $countries = pg_geo_sort_by_label($countries);
 
     $rows = db_items(
         "SELECT states.id, states.name, countries.name AS country_name

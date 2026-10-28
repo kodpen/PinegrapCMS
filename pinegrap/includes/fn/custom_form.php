@@ -2566,7 +2566,35 @@ function pg_cf_reconcile_page_form($page_id, $user_id, $settings = array())
         $res['seeded'] = pg_cf_seed_sample_records($page_id, is_array($sample) ? $sample : (string)$sample, (int)$user_id);
     }
 
+    // A template's form may name its BlogPosting author (`schema_author`,
+    // 'field:<field name>' for a field). It is written once, into the form
+    // this save created; the form screen's Schema Author choice owns it
+    // after that, and the editor never sends the key again.
+    if (!$had_form && is_array($settings) && isset($settings['schema_author']) && pg_blogposting_author_setting_ready()) {
+        db("UPDATE custom_form_pages
+            SET schema_author = '" . e(pg_cf_template_schema_author($settings['schema_author'], $ids_by_name)) . "'
+            WHERE page_id = '$page_id' LIMIT 1");
+    }
+
     return $res;
+}
+
+/**
+ * The custom_form_pages.schema_author value a design template's form setting
+ * names: 'contact', 'organization' or 'field:<field name>', the name turned
+ * into the id of the form's field ($ids_by_name: lowercased name => id). A
+ * field the form does not have, or anything else, is the contact, the
+ * column's default (pg_blogposting_author_setting_value(), includes/fn/seo.php).
+ */
+function pg_cf_template_schema_author($wanted, $ids_by_name)
+{
+    $wanted = is_scalar($wanted) ? trim((string)$wanted) : '';
+    if (strpos($wanted, 'field:') === 0) {
+        $name = mb_strtolower(pg_cf_clean_field_name(substr($wanted, 6)), 'UTF-8');
+        $id   = (is_array($ids_by_name) && $name !== '' && isset($ids_by_name[$name])) ? (int)$ids_by_name[$name] : 0;
+        return pg_blogposting_author_setting_value('field', $id);
+    }
+    return pg_blogposting_author_setting_value($wanted, 0);
 }
 
 /**
