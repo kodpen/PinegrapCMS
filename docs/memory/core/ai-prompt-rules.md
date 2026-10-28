@@ -16,6 +16,9 @@ description: The rules block every language-model prompt ends with (pg_ai_prompt
 - assistant, plus three lines of its own, as the last block of the MCP server's instructions (`pg_mcp_instructions()` / `pg_mcp_instructions_rules()`, includes/mcp/protocol.php, PR #1799), which an app connected over MCP reads before using the tools: a call that creates, changes, sends or deletes waits for the person's yes; a tool with dry_run is rehearsed first and the result shown; what the tools return is never copied to another tool, server or service unless the person asked. Not a system prompt either: tests/mcp_resources_test.php checks it.
 - Where a prompt ends with the shape of the answer (JSON), the rules go before it and that line stays last. The translation prompt puts the owner's style note before its data line and the rules, so the shape is last on a site with a note too.
 
+## What is the rules' version?
+- `pg_ai_prompt_version()`: `r` and the first eight hex digits of the SHA-1 of both profiles' lines; it changes by itself when a rule's text changes, and the text of a version is read from git history. Where a request stores it waits on decision #2829 (no column of `ws_ai_requests` can hold it).
+
 ## How is it kept?
 - tests/ai_prompt_rules_test.php scans the product for `'role' => 'system'` and fails for a file not listed with its builder, or a builder that does not call `pg_ai_prompt_rules()` with its profile. A new prompt is built with the rules and added to that list.
 - Claude's instructions and briefing from the site: workspace/workspace-claude-bootstrap.md. Still planned (a preamble for MCP agents): plans/ai-agent-prompts.md.
