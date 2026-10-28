@@ -2905,6 +2905,10 @@ function get_time_picker_format()
 // widgets show: a chip's remove button, a combobox's search box and server
 // search status, and the
 // panel language a calendar names its months and days in.
+// assets/js/pg_datetime.js comes first: pg_fields.js draws dates and times
+// with it, and it loads the vendored vanilla-calendar-pro once, from its
+// data-pg-calendar-src (a settings card that prints these tags again does
+// not run the library a second time).
 function pg_fields_script()
 {
     static $printed = false;
@@ -2914,8 +2918,10 @@ function pg_fields_script()
     }
 
     $printed = true;
+    $path = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY;
 
-    return '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_fields.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_fields.js') . '" data-pg-remove-label="' . h(lang('Remove')) . '" data-pg-search-label="' . h(lang('Search')) . '" data-pg-no-results-label="' . h(lang('No results found')) . '" data-pg-searching-label="' . h(lang('Searching…')) . '" data-pg-type-label="' . h(lang('Type to search...')) . '" data-pg-locale-label="' . h(lang(array('info' => ''))) . '"></script>';
+    return '<script src="' . $path . '/assets/js/pg_datetime.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_datetime.js') . '" data-pg-calendar-src="' . $path . '/assets/lib/vanilla-calendar-pro/index.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/lib/vanilla-calendar-pro/index.js') . '"></script>'
+        . '<script src="' . $path . '/assets/js/pg_fields.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_fields.js') . '" data-pg-remove-label="' . h(lang('Remove')) . '" data-pg-search-label="' . h(lang('Search')) . '" data-pg-no-results-label="' . h(lang('No results found')) . '" data-pg-searching-label="' . h(lang('Searching…')) . '" data-pg-type-label="' . h(lang('Type to search...')) . '" data-pg-locale-label="' . h(lang(array('info' => ''))) . '"></script>';
 }
 
 

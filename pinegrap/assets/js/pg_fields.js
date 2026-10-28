@@ -5,8 +5,9 @@
  * pgDatePicker and pgDateTimeField.
  *
  * The panel moves to Bootstrap 6 (docs/memory/plans/bootstrap-6-panel.md),
- * whose Chips, Combobox and Datepicker replace tagin, select2 and the jQuery
- * UI pickers. Screens mark a field with a data-pg-* hook and read or write it
+ * whose Chips and Combobox replace tagin and select2; dates and times run on
+ * the one date-and-time control of pg_datetime.js, which replaced the jQuery
+ * UI pickers and Bootstrap 6 Datepicker. Screens mark a field with a data-pg-* hook and read or write it
  * through these objects, so the swap changes the engine here, not the
  * screens. Every kind runs on Bootstrap 6 ('v6'); only a page without it that
  * has select2 (a site page) draws a combobox that searches the server as a
@@ -22,11 +23,11 @@
  *                                         or {error: text};
  *                                         data-pg-min-length, data-pg-free-text (a typed
  *                                         value is kept), data-placeholder
- *   <input data-pg-date>                  Bootstrap 6 Datepicker on the field, site date
+ *   <input data-pg-date>                  the calendar of pg_datetime.js on the field, site date
  *                                         format, names in the panel language
  *   <input data-pg-date="plain">          the same with English names
  *   <input data-pg-datetime>              date and time: the field hidden, a date box with
- *                                         a Datepicker and an <input type="time"> after it
+ *                                         the calendar and an <input type="time"> after it
  *   <input data-pg-time>                  time only: an <input type="time"> after the
  *                                         hidden field
  *
@@ -47,9 +48,8 @@
  * set() fires a native change event that bubbles; listen with onChange() or
  * jQuery .on('change'): select2 (site pages) announces a pick only through
  * jQuery.
- * Bootstrap 6 Datepicker reads an input's date with Date(), which takes
- * 5/3/2026 as May; it is given our own parse instead and writes our own
- * format.
+ * Dates never go through Date() parsing, which takes 5/3/2026 as May: the
+ * calendar is given our own parse and writes our own format.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -91,105 +91,14 @@
         return target;
     }
 
-    function pad(n) {
-        return ('0' + n).slice(-2);
-    }
-
     // ------------------------------------------------------------ formats
 
-    // 'month_day' or 'day_month', from the format the screen printed with
-    // get_date_picker_format() ('m/d/yy' or 'd/m/yy').
-    function dateOrder() {
-        var f = window.date_picker_format
-            || (window.datetimepicker_options && window.datetimepicker_options.dateFormat)
-            || 'd/m/yy';
-        return /^m/i.test(String(f)) ? 'month_day' : 'day_month';
-    }
-
-    function validDate(y, m, d) {
-        if (m < 1 || m > 12 || d < 1) {
-            return false;
-        }
-        var days = [31, (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-        return d <= days[m - 1];
-    }
-
-    // Site text ('26/10/2026', '10/26/2026'; '-' and '.' are read as '/') to
-    // '2026-10-26'; '' when it is not a whole, real date.
-    function parseDate(text, order) {
-        var p = String(text || '').trim().split(/[\/\-.]/);
-        if (p.length !== 3 || !/^\d{4}$/.test(p[2]) || !/^\d{1,2}$/.test(p[0]) || !/^\d{1,2}$/.test(p[1])) {
-            return '';
-        }
-        var y = parseInt(p[2], 10);
-        var m = parseInt((order || dateOrder()) === 'month_day' ? p[0] : p[1], 10);
-        var d = parseInt((order || dateOrder()) === 'month_day' ? p[1] : p[0], 10);
-        return validDate(y, m, d) ? (p[2] + '-' + pad(m) + '-' + pad(d)) : '';
-    }
-
-    // '2026-10-26' to the site text without leading zeros, as the picker
-    // writes it ('26/10/2026'); '' for anything else.
-    function formatDate(iso, order) {
-        var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
-        if (!m || !validDate(+m[1], +m[2], +m[3])) {
-            return '';
-        }
-        var d = String(+m[3]), mo = String(+m[2]);
-        return ((order || dateOrder()) === 'month_day' ? (mo + '/' + d) : (d + '/' + mo)) + '/' + m[1];
-    }
-
-    // '5:00 PM', '5 pm', '17:00' or '17:00:00' to '17:00'; '' otherwise.
-    // 12 AM is midnight, 12 PM noon.
-    function parseTime(text) {
-        var m = /^(\d{1,2})(?::(\d{2}))?(?::\d{2})?\s*([ap])?\.?\s*m?\.?$/i.exec(String(text || '').trim());
-        if (!m || (!m[2] && !m[3])) {
-            return '';
-        }
-        var h = parseInt(m[1], 10), min = m[2] ? parseInt(m[2], 10) : 0;
-        if (min > 59) {
-            return '';
-        }
-        if (m[3]) {
-            if (h < 1 || h > 12) {
-                return '';
-            }
-            h = (h % 12) + (m[3].toLowerCase() === 'p' ? 12 : 0);
-        } else if (h > 23) {
-            return '';
-        }
-        return pad(h) + ':' + pad(min);
-    }
-
-    // '17:00' to '5:00 PM', the picker's "h:mm TT".
-    function formatTime(hhmm) {
-        var m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || ''));
-        if (!m || +m[1] > 23 || +m[2] > 59) {
-            return '';
-        }
-        var h = +m[1];
-        return ((h % 12) || 12) + ':' + m[2] + ' ' + (h < 12 ? 'AM' : 'PM');
-    }
-
-    // '26/10/2026 5:00 PM' to '2026-10-26 17:00'; a date alone reads as
-    // midnight. '' when either part is wrong.
-    function parseDateTime(text, order) {
-        var m = /^(\S+)(?:\s+(.+))?$/.exec(String(text || '').trim());
-        if (!m) {
-            return '';
-        }
-        var date = parseDate(m[1], order);
-        var time = m[2] ? parseTime(m[2]) : '00:00';
-        return (date && time) ? (date + ' ' + time) : '';
-    }
-
-    function formatDateTime(value, order) {
-        var m = /^(\d{4}-\d{2}-\d{2})[ T](\d{1,2}:\d{2})/.exec(String(value || ''));
-        if (!m) {
-            return '';
-        }
-        var date = formatDate(m[1], order), time = formatTime(m[2]);
-        return (date && time) ? (date + ' ' + time) : '';
-    }
+    // Parse and format live in pg_datetime.js, which pg_fields_script()
+    // prints before this file.
+    var DT = window.pgDateTime;
+    var dateOrder = DT.order, parseDate = DT.parseDate, formatDate = DT.formatDate,
+        parseTime = DT.parseTime, formatTime = DT.formatTime,
+        parseDateTime = DT.parseDateTime, formatDateTime = DT.formatDateTime;
 
     // ------------------------------------------------------------ engines
 
@@ -198,7 +107,27 @@
     // value written into that field, and destroy(el), which removes the
     // widget and leaves the field. A kind the v6 engine has runs on it. A v6 kind
     // has later(): true while Bootstrap's module has not run yet, so the
-    // field is drawn once pgUI.ready() fires.
+    // field is drawn once pgUI.ready() fires; a date kind has wait(), which
+    // gives how it waits for its library too.
+
+    // Dates and times need Bootstrap 6 (the calendar's look and the panel's
+    // overlay host) and the calendar library, which pg_datetime.js loads.
+    function calendarReady() {
+        return !!(window.pgUI && window.pgUI.version() === 6) && DT.ready();
+    }
+
+    // How a date field waits for both; null on a page without Bootstrap 6,
+    // where it stays a plain field.
+    function calendarWait() {
+        var v = window.pgUI ? window.pgUI.version() : -1;
+        if (v !== 6 && v !== 0) {
+            return null;
+        }
+        return function (fn) {
+            window.pgUI.ready(function () { DT.whenReady(fn); });
+        };
+    }
+
     var ENGINES = {
         v6: {
             chips: {
@@ -225,8 +154,8 @@
                 destroy: removeCombobox
             },
             date: {
-                ready: function () { return !!(window.pgUI && window.pgUI.version() === 6); },
-                later: function () { return !!(window.pgUI && window.pgUI.version() === 0); },
+                ready: calendarReady,
+                wait: calendarWait,
                 init: drawDate,
                 // The field's own change listener already moved the calendar
                 // to the written date.
@@ -234,8 +163,8 @@
                 destroy: removeDate
             },
             datetime: {
-                ready: function () { return !!(window.pgUI && window.pgUI.version() === 6); },
-                later: function () { return !!(window.pgUI && window.pgUI.version() === 0); },
+                ready: calendarReady,
+                wait: calendarWait,
                 init: drawDateTime,
                 redraw: showDateTime,
                 destroy: removeParts
@@ -825,131 +754,53 @@
         return lang === 'tr' ? 1 : 0;
     }
 
-    // Datepicker options for a field; the date it shows is our own parse of
-    // the site text and what it writes is our own format, so the order of
-    // day and month never goes through Date() parsing.
-    function datepickerOptions(el, iso, inline) {
-        // "plain" keeps the screens that never passed the translated names:
-        // English, Sunday first.
-        var plain = el.getAttribute(HOOKS.date) === 'plain', lang = plain ? 'en' : locale();
-        return {
-            locale: lang,
-            firstWeekday: plain ? 0 : firstWeekday(lang),
-            inline: inline,
-            placement: 'left',
-            selectedDates: iso ? [iso] : [],
-            dateFormat: function (date) {
-                return formatDate(date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()));
-            },
-            // A second click on the chosen day keeps it, as before.
-            vcpOptions: { enableDateToggle: false }
-        };
-    }
-
     // In a drawer the calendar is drawn open under the field: a popup there
     // would hang off the drawer's scrolling body.
     function inlineIn(el) {
         return !!(el.closest && el.closest('.drawer'));
     }
 
-    // A Datepicker over the typed input `box` (the posted field itself for a
-    // date, the date part of a date and time). Bootstrap reads an input's
-    // value with Date() when it is created, so the box is empty for that
-    // moment and gets its text back after. In a drawer the calendar is a
-    // block after the box instead.
-    function makeDatepicker(el, box, onPick) {
-        var text = box.value, iso = parseDate(text), inline = inlineIn(el), target = box, wrap = null, offs = [];
-        // The calendar takes over the element it is drawn in, classes
-        // included, so it gets a box of its own inside ours.
-        if (inline) {
-            wrap = document.createElement('div');
-            wrap.className = 'pg-date-inline';
-            target = document.createElement('div');
-            wrap.appendChild(target);
-            box.parentNode.insertBefore(wrap, box.nextSibling);
-        }
-        box.value = '';
-        var picker = window.pgUI.datepicker.get(target, datepickerOptions(el, iso, inline));
-        box.value = text;
-        offs.push(window.pgUI.datepicker.on(target, 'change', function (event) {
-            var dates = (event && event.dates) || picker.getSelectedDates();
-            box.value = dates.length ? formatDate(dates[0]) : '';
-            onPick();
-        }));
-        if (!inline) {
-            offs.push(placeInOverlayHost(box, picker));
-        }
-        // A typed date moves the calendar to it when the box is left.
+    // The calendar over the typed input `box` (the posted field itself for a
+    // date, the date part of a date and time), from pg_datetime.js: it
+    // shows our own parse of the box and a pick writes our own format. In a
+    // drawer the calendar is drawn open after the box.
+    function makeCalendar(el, box, onPick) {
+        // "plain" keeps the screens that never passed the translated names:
+        // English, Sunday first.
+        var plain = el.getAttribute(HOOKS.date) === 'plain', lang = plain ? 'en' : locale();
+        var control = DT.attach(box, {
+            iso: parseDate(box.value),
+            locale: lang,
+            firstWeekday: plain ? 0 : firstWeekday(lang),
+            inline: inlineIn(el),
+            host: window.pgUI && window.pgUI.overlayHost ? window.pgUI.overlayHost : null,
+            onPick: function (iso) {
+                box.value = formatDate(iso);
+                onPick();
+            }
+        });
+        // A typed date moves the calendar to it when the box is left; text
+        // that is not a date is kept for the server to refuse.
         var typed = function () {
             if (!box.pgDatePicking) {
-                showDate(el, box);
+                control.set(parseDate(box.value));
             }
         };
         box.addEventListener('change', typed);
-        offs.push(function () { box.removeEventListener('change', typed); });
-        box.pgDatepicker = { picker: picker, target: target, wrap: wrap, offs: offs };
-        return picker;
+        box.pgCalendar = {
+            control: control,
+            off: function () { box.removeEventListener('change', typed); }
+        };
     }
 
-    function disposeDatepicker(box) {
-        var d = box && box.pgDatepicker;
-        if (!d) {
+    function disposeCalendar(box) {
+        var c = box && box.pgCalendar;
+        if (!c) {
             return;
         }
-        d.offs.forEach(function (off) { off(); });
-        // Disposing puts a copy of the input as it was at creation in its
-        // place; the field itself, with its value and listeners, goes back.
-        var parent = box.parentNode, index = parent ? Array.prototype.indexOf.call(parent.childNodes, box) : -1;
-        window.pgUI.datepicker.dispose(d.target);
-        if (parent && box.parentNode !== parent && parent.childNodes[index]) {
-            parent.replaceChild(box, parent.childNodes[index]);
-        }
-        if (d.wrap && d.wrap.parentNode) {
-            d.wrap.parentNode.removeChild(d.wrap);
-        }
-        box.pgDatepicker = null;
-    }
-
-    // The calendar shows the date in `box`: Datepicker moves its month only
-    // when it is created, so it is created again. A box whose text is not a
-    // date keeps that text for the server to refuse.
-    function showDate(el, box) {
-        if (!box.pgDatepicker) {
-            return;
-        }
-        var onPick = box.pgDatePick;
-        disposeDatepicker(box);
-        makeDatepicker(el, box, onPick);
-    }
-
-    // Bootstrap hangs the popup calendar off <body>, under an open dialog in
-    // the top layer; it goes into the dialog holding the field and is placed
-    // under the field there (the dialog is its containing block).
-    function placeInOverlayHost(box, picker) {
-        var place = function () {
-            window.setTimeout(function () {
-                // Datepicker gives no way to its calendar box but its own field.
-        var cal = picker._calendar && picker._calendar.context && picker._calendar.context.mainElement;
-                var host = window.pgUI.overlayHost(box);
-                if (!cal || cal === box || host === document.body || cal.hasAttribute('data-vc-calendar-hidden')) {
-                    return;
-                }
-                if (cal.parentNode !== host) {
-                    host.appendChild(cal);
-                }
-                var f = box.getBoundingClientRect(), h = host.getBoundingClientRect();
-                cal.style.top = (f.bottom - h.top - host.clientTop + host.scrollTop) + 'px';
-                cal.style.left = Math.max(0, f.left - h.left - host.clientLeft + host.scrollLeft) + 'px';
-            }, 0);
-        };
-        box.addEventListener('click', place);
-        box.addEventListener('focus', place);
-        window.addEventListener('resize', place);
-        return function () {
-            box.removeEventListener('click', place);
-            box.removeEventListener('focus', place);
-            window.removeEventListener('resize', place);
-        };
+        c.off();
+        c.control.destroy();
+        box.pgCalendar = null;
     }
 
     // A pick writes the box and fires its native change once; the box's own
@@ -964,13 +815,11 @@
     }
 
     function drawDate(el) {
-        el.pgDatePick = function () { announce(el); };
-        makeDatepicker(el, el, el.pgDatePick);
+        makeCalendar(el, el, function () { announce(el); });
     }
 
     function removeDate(el) {
-        disposeDatepicker(el);
-        el.pgDatePick = null;
+        disposeCalendar(el);
     }
 
     // The posted field's classes a part takes over: sizes, validation,
@@ -1006,7 +855,7 @@
         }
     }
 
-    // Date and time: a date box with a Datepicker and an <input type="time">
+    // Date and time: a date box with the calendar and an <input type="time">
     // in a group after the hidden field, which gets the two composed in the
     // site text ('26/10/2026 5:00 PM') on every change.
     function drawDateTime(el) {
@@ -1033,8 +882,7 @@
             }
             fireChange(el);
         };
-        date.pgDatePick = compose;
-        makeDatepicker(el, date, compose);
+        makeCalendar(el, date, compose);
         date.addEventListener('change', function () {
             if (!date.pgDatePicking) {
                 compose();
@@ -1052,7 +900,9 @@
     function showDateTime(el) {
         if (el.pgParts) {
             fillDateTime(el);
-            showDate(el, el.pgParts.date);
+            if (el.pgParts.date.pgCalendar) {
+                el.pgParts.date.pgCalendar.control.set(parseDate(el.pgParts.date.value));
+            }
         }
     }
 
@@ -1082,7 +932,7 @@
             return;
         }
         if (p.date) {
-            disposeDatepicker(p.date);
+            disposeCalendar(p.date);
         }
         if (p.group.parentNode) {
             p.group.parentNode.removeChild(p.group);
@@ -1133,9 +983,10 @@
         }
         var e = engine(kind, el);
         if (!e.ready()) {
-            if (e.later && e.later() && !el.pgFieldWaiting) {
+            var wait = e.wait ? e.wait() : ((e.later && e.later()) ? function (fn) { window.pgUI.ready(fn); } : null);
+            if (wait && !el.pgFieldWaiting) {
                 el.pgFieldWaiting = true;
-                window.pgUI.ready(function () {
+                wait(function () {
                     el.pgFieldWaiting = false;
                     initField(el, kind);
                 });
