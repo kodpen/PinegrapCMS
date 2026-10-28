@@ -104,7 +104,7 @@ $pg_settings_cards[] = '
                                                             <div class="form-field">
                                                                 <div class="switch"><input value="1"' . $waf_rate_limit_checked . ' class="collapse-switcher" type="checkbox" id="waf_rate_limit" name="waf_rate_limit" data-bs-target="#waf_rate_limit_row"/></div>
                                                                 <label class="" for="waf_rate_limit">' . lang('Rate Limiting') . '</label>
-                                                                <div class="form-text">' . lang('Caps how many requests one address may make per minute. Bots the firewall lets through are exempt. All Requests counts pages and files before the session starts, so it spares a signed-in user only on the software\'s own screens and endpoints; the other limits spare staff only.') . '</div>
+                                                                <div class="form-text">' . lang('Caps how many requests one address may make per minute. Only crawlers whose address proves their name are exempt; with bot verification off, no bot is. All Requests counts pages and files before the session starts, so it spares a signed-in user only on the software\'s own screens and endpoints; the other limits spare staff only.') . '</div>
                                                             </div>
                                                             <div class="collapse popover fade bs-popover-bottom p-0  w-100" id="waf_rate_limit_row">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(52px, 0px);"></div>

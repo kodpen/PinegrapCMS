@@ -35,6 +35,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - waf-ban-notice.md: The operator's e-mail per automatic ban (queued by waf.php in data/temp/, sent after waf_run init), one notice per rule burst, ban rows linked to the filtered firewall log (#2167)
 - waf-ban-shield-mirror.md: The ban shield mirror data/temp/ban_shield.txt: line types B/P/A/L, the ban's end on B lines, who writes it, staleness asymmetry, allow-list lines, the shield's page, shield_pending.log and drain.
 - waf-bot-policy-credential-endpoints.md: Which endpoints skip the WAF bot policy because they admit a caller by its credential (integration, mcp, oauth, workspace_ical, feed, marketplace_webhook), why, where the return sits, why not api.php.
+- waf-bot-rate-exemption.md: Only a crawler waf_bot_verified() proved skips the global, sensitive, api.php and in-flight limits (waf_bot_rate_exempt()); IS_BOT buys no rate relief (#2731).
 - waf-cidr-prefix-validation.md: waf_ip_in_cidr() / waf_ip_matches_simple() must reject empty or non-numeric CIDR prefixes (ctype_digit); the (int) cast bug that banned everyone.
 - waf-connection-held-work-and-silent-rejection.md: Endpoints holding a DB connection while waiting on external services, rate limits vs connection-seconds, and always logging rejections.
 - waf-counter-subjects-and-endpoints.md: A private visitor address is not counted, the web root's index.php is the router, shipworks.php and workspace_guest.php are credential endpoints, the api.php allowance exempts staff only
