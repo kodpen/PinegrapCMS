@@ -5,7 +5,7 @@ description: Incoming e-mail into Workspace channels (G1-G3 done, owner 2026-10-
 
 ## What is it and where does it stand?
 - Mail to `support@company.com` becomes a card in a Workspace channel; the team discusses, opens tasks and replies by e-mail from there. Research note `notes/workspace-arastirma.md` §4, item 2.3.
-- G1 (core) is done: parser #2586, tables #2676, ingest #2710, card and `.eml` upload on the Mailboxes card #2738 (`workspace/mail-parse.md`, `mail-tables.md`, `mail-ingest.md`, `mail-card.md`). G2 (IMAP read) is done: #2764, #2788, #2806, #2828 (`workspace/mail-imap-client.md`, `mail-fetch.md`). G3 (reply by e-mail) is done: #2846, #2872, #2885 (`workspace/mail-reply.md`, `mail-sent-and-bounces.md`). Next: G6 (routing).
+- G1 (core) is done: parser #2586, tables #2676, ingest #2710, card and `.eml` upload on the Mailboxes card #2738 (`workspace/mail-parse.md`, `mail-tables.md`, `mail-ingest.md`, `mail-card.md`). G2 (IMAP read) is done: #2764, #2788, #2806, #2828 (`workspace/mail-imap-client.md`, `mail-fetch.md`). G3 (reply by e-mail) is done: #2846, #2872, #2885 (`workspace/mail-reply.md`, `mail-sent-and-bounces.md`). G6 (routing) is #2904 (`workspace/mail-routing.md`). Next: G5.
 - Naming: "gelen kutusu" / `ws_inbox` / `GET /workspace/inbox` already means notifications. This feature is "Gelen e-posta" / "E-posta kutuları" in the UI, `ws_mail_*` in code, `/workspace/mail/*` in the API; never "inbox".
 - Out of scope: own mail server or piping, POP3, IMAP IDLE (holds a PHP worker), HTML rendering, customer portal, knowledge base, WhatsApp.
 - Design details: docs/memory/plans/incoming-email-design.md
