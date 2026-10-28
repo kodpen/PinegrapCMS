@@ -1,6 +1,6 @@
 ---
 name: bootstrap-6-redesign
-description: Steps B10-B12 of plans/bootstrap-6-panel.md: token tuning, the redesign of legacy form screens and tables, jQuery UI out of the panel; decisions and open points
+description: Steps B10-B12 of plans/bootstrap-6-panel.md: token tuning, the redesign of legacy form screens and tables (open), jQuery UI out of the panel (done); decisions and open points
 ---
 
 ## How are the tokens tuned (B10)?
@@ -11,12 +11,5 @@ description: Steps B10-B12 of plans/bootstrap-6-panel.md: token tuning, the rede
 - Target: the product_builder pattern (`ui/edit-screen-wide-layout.md`: form column, sticky status column, sticky save bar) with v6 `form-field`, form-adorn and cards. One screen per PR, before and after screenshots, the owner's approval before merge.
 - Tables: the owner finds their structure fine. `table.chart` and DataTables stay; density, header, row actions and empty states may change (`.table-card` once B0b is in).
 
-## What leaves with jQuery UI (B12)?
-- After B9c no jQuery UI picker is left in the panel. Then `.sortable()` (backend.src.js `.pg-sortable`, product_builder.js, welcome.php `#widgets`, the view_menu_items.php tree) and `.dialog()` (`#edit_cell_properties` in backend.src.js, theme_designer.php, get_theme_designer_module.php) go, and with them the jQuery UI sheets and script in `output_control_panel_header_includes()`.
-- Progress: the `#edit_cell_properties` layout-cell dialog in backend.src.js was dead code (`initialize_style_designer()` had no caller) and is removed (#2360). The theme designer dialogs (theme_designer.php, get_theme_designer_module.php) and the `.sortable()` replacement wait on the owner; jQuery UI stays in the panel header until both are done.
-- Theme designer: decided in #2512. Its four entries (add_theme_file.php after a new theme, edit_theme_file.php, edit_design_file.php, the preview's edit link in `includes/fn/output.php`) open `edit_theme_css.php` (#2542); theme_designer.php and get_theme_designer_module.php stay on the disk unlinked (#2437), so the theme designer no longer blocks jQuery UI's removal.
-- Timepicker add-on: out of the panel. No panel code calls `.datetimepicker()`, `.timepicker()` or `$.timepicker`, and no panel file loads it: removed from 12 screens and the backend `picker_scripts` of `get_form_content()` (#2510), add/edit_calendar_event.php and add/edit_submitted_form.php (#2543), includes/settings/commerce.php (#2623) and view_order.php (#2639); the `get_*_picker_format()` options stay for `pg_fields.js`. `tests/bs6_timepicker_addon_test.php` fails on any PHP file outside its site list that loads the add-on.
-- Left for B12: the last slice, the jQuery UI sheets and script out of `output_control_panel_header_includes()` in `includes/fn/output.php`, the unused `.pg-sortable` block in backend.src.js and the `.ui-sortable-handle` rule in backend.src.css. All three files are held by draft #2545, so the slice waits for it.
-- Dialogs move to `pgUI` dialogs. The sortable replacement (own pointer-event code or a library) is open: ask the owner; a library goes through `core/`. Rewrite `ui/sortable-init-pitfall.md`.
-- Site pages keep loading jQuery UI. Until B12 jQuery UI owns `$.fn.tooltip` under v6, so panel code never calls `$().tooltip()` or `$().popover()` after B2.
-- Sortable: decided in #2511 (option 2), vendored SortableJS through `core/` (`core/sortablejs-library.md`). welcome.php, product_builder.js and the view_menu_items.php tree moved (#2538). Left for the last slice, with the jQuery UI includes: the `.pg-sortable` block in backend.src.js and the `.ui-sortable-handle` cursor rule in backend.src.css.
+## Is B12 (jQuery UI out of the panel) done?
+- Yes, #2762: the panel header loads no jQuery UI; before it the pickers (B9c), the timepicker add-on (#2510 … #2639), the sortables (SortableJS, #2511, #2538), the layout-cell dialog (#2360) and the theme designer entries (#2512, #2542) left. What stays true is in `ui/panel-without-jquery-ui.md`; theme_designer.php and get_theme_designer_module.php stay on the disk unlinked (#2437).

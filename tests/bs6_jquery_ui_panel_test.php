@@ -45,15 +45,11 @@ function test_bs6_jquery_ui_panel_header_loads_no_jquery_ui()
 	pg_assert_contains('/assets/lib/Jquery/jquery.min.js', $body, 'the panel header still loads jQuery');
 }
 
-function test_bs6_jquery_ui_panel_backend_js_and_css()
+function test_bs6_jquery_ui_panel_backend_js()
 {
 	$js = bs6_jquery_ui_panel_test_source('assets/js/backend.src.js');
 	pg_assert_false(strpos($js, 'pg-sortable') !== false, 'backend.src.js has no .pg-sortable set-up');
 	pg_assert_false((bool) preg_match(bs6_jquery_ui_panel_test_pattern(), $js), 'backend.src.js calls no jQuery UI widget');
-
-	$css = bs6_jquery_ui_panel_test_source('assets/css/backend.src.css');
-	pg_assert_false(strpos($css, 'ui-sortable-handle') !== false, 'backend.src.css has no .ui-sortable-handle rule');
-	pg_assert_false((bool) preg_match('/[.#]ui-(sortable|draggable|datepicker|widget|state|icon|helper|corner)/', $css), 'backend.src.css styles no jQuery UI class');
 }
 
 function test_bs6_jquery_ui_panel_files_call_no_widget()

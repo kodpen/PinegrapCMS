@@ -1,6 +1,6 @@
 ---
 name: sortable-init-pitfall
-description: Drag-to-reorder in the panel: SortableJS set up per screen (welcome, product builder, menu tree), the jQuery UI .pg-sortable leftover, the global-sortable trap
+description: Drag-to-reorder in the panel: SortableJS set up per screen (welcome, product builder, menu tree), no shared or jQuery UI sortable, the global-sortable trap
 ---
 
 ## How do the panel screens drag now?
@@ -9,11 +9,11 @@ description: Drag-to-reorder in the panel: SortableJS set up per screen (welcome
 - `assets/js/product_builder.js` image tiles: items `.item`, no delay, `forceFallback` (the tiles carry `user-drag: none`, so a native drag never starts; it would also light up the upload drop area), filter `button, a, input` with `preventOnFilter: false` so the remove button's click lands; `onUpdate` moves the Cover badge to the first tile.
 - `view_menu_items.php` tree: one Sortable per `.sort-group`, a shared `group` so an item can change level, handle `.sort-drag-handle`, `ghostClass: 'sort-placeholder'`; `onAdd` re-indents the moved item and its children. Built once, on the first Sort Items click (a `sortableReady` flag); Save Order reads the tree as before.
 
-## What jQuery UI sortable is left?
-- `backend.src.js` still sets up lists marked `.pg-sortable` with jQuery UI (no screen uses the class), and `backend.src.css` keeps a `.card.widget .ui-sortable-handle` cursor rule; both go with the last B12 slice, together with the jQuery UI includes of `output_control_panel_header_includes()`.
+## Is any jQuery UI sortable left?
+- No. The panel header stopped loading jQuery UI in #2762, which also removed the last `.pg-sortable` set-up from `backend.src.js` (no screen used the class). `$().sortable()` is undefined on panel screens; a list that drags creates its own `Sortable` as above.
 
 ## What was the old trap?
-- `backend.src.js` once ran `$(".ui-sortable").sortable({...})` on ready. jQuery UI adds `ui-sortable` to every sortable it builds, and `.sortable({...})` on a live widget OVERWRITES its options: nothing could be dragged (`items: "a"`) or an interrupted drag left a copy (`helper: 'clone'`).
+- `backend.src.js` once ran `$(".ui-sortable").sortable({...})` on ready (jQuery UI era). jQuery UI adds `ui-sortable` to every sortable it builds, and `.sortable({...})` on a live widget OVERWRITES its options: nothing could be dragged (`items: "a"`) or an interrupted drag left a copy (`helper: 'clone'`).
 - Never set up drag lists globally by a class a library adds itself; each screen creates its own.
 
 Related: docs/memory/ui/panel-layout-pitfalls.md, docs/memory/core/sortablejs-library.md
