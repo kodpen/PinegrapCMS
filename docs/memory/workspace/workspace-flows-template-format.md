@@ -12,7 +12,7 @@ description: Flow templates (G1 #2161, flow_templates.php): format, the schedule
 - Setting types: channel (id), person (id list), time (HH:MM), url, address; the setup panel asks them (`workspace-flows-template-setup.md`). Each template also carries `motion`.
 
 ## Which came over, and how?
-- From `saTemplates()`: task_mail, morning, digest, uptime, ssl, overdue, stock, invoices, monthly. Titles and texts are the same `sa_tpl_*` sentences (a test compares them with `ws_scheduled_js_strings()`).
+- From the form's ready ones (`saTemplates()`, removed in R3a): task_mail, morning, digest, uptime, ssl, overdue, stock, invoices, monthly. Titles and texts are the same `sa_tpl_*` sentences (a test compares them with `ws_scheduled_js_strings()`).
 - "when" → a schedule box, each condition → a condition box (yes arrow), the step → its step box (task → `task_open`), a follow-up → a box on the failed arrow. Text sent to the channel open, else a notify to the person (the gallery has no channel: notify).
 - A follow-up's `{{result}}` becomes `{{node.check.text}}`: a flow fills no `{{result}}`, the box's sentence is the same text.
 - A template needing a count the person cannot read is left out (digest needs one of its counts, overdue, stock, invoices theirs).

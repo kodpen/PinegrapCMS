@@ -403,7 +403,7 @@ $output_lock_card = '
                         ' . get_token_field() . '
                         <div class="col-12 sm:col-7">
                             <label class="form-label" for="lock_date">' . lang('Lock up to and including') . '</label>
-                            <input type="date" class="form-control" id="lock_date" name="lock_date" value="' . h($lock_default) . '" max="' . h(date('Y-m-d', strtotime('-1 day'))) . '" required />
+                            <input type="date" data-pg-date class="form-control" id="lock_date" name="lock_date" value="' . h($lock_default) . '" max="' . h(date('Y-m-d', strtotime('-1 day'))) . '" required />
                         </div>
                         <div class="col-12 sm:col-5 d-flex gap-3">
                             <button type="submit" name="erp_action" value="lock" class="btn btn-sm btn-solid theme-warning text-nowrap"><i class="bi bi-lock me-1" aria-hidden="true"></i>' . lang('Lock') . '</button>
@@ -451,8 +451,8 @@ pg_page_shell(array(
                                     <label class="" for="range_dates">' . lang('From - to') . '</label>
                                 </div>
                                 <div class="d-flex gap-3 mt-1">
-                                    <input type="date" class="form-control" name="from" value="' . h($last_month['from']) . '" aria-label="' . h(lang('Start')) . '" />
-                                    <input type="date" class="form-control" name="to" value="' . h($last_month['to']) . '" aria-label="' . h(lang('End')) . '" />
+                                    <input type="date" data-pg-date class="form-control" name="from" value="' . h($last_month['from']) . '" aria-label="' . h(lang('Start')) . '" />
+                                    <input type="date" data-pg-date class="form-control" name="to" value="' . h($last_month['to']) . '" aria-label="' . h(lang('End')) . '" />
                                 </div>
                             </div>
                             <div class="col-12 md:col-3">
@@ -496,7 +496,7 @@ pg_page_shell(array(
         </div>
     </div>
 </main>
-' .
+' . get_date_picker_format() . pg_fields_script() .
 output_footer();
 
 $liveform->remove_form();

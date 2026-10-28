@@ -875,8 +875,7 @@ if (defined('PATH') == FALSE) {
 // then update the path in the database, so that the next time the e-mail campaign job runs,
 // it will have the correct path
 } else if ((PATH != $row['path']) && empty($pg_path_guessed)) {
-    $query = "UPDATE config SET path = '" . escape(PATH) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q("UPDATE config SET path = ?", array((string) PATH)) or output_error('Query failed.');
 }
 
 // A form posted from a page served in another language (/en/...) carries

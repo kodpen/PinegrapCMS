@@ -97,8 +97,8 @@ $step_form = function ($step, $title, $button, $class, $fields, $note) use ($che
         </form>';
 };
 
-$date_field = '<div class="col-6 md:col-3"><label class="form-label small">' . lang('Date') . '</label><input type="date" class="form-control form-control-sm" name="date" value="' . date('Y-m-d') . '" /></div>';
-$bank_field = '<div class="col-6 md:col-4"><label class="form-label small">' . lang('Bank account') . '</label><select class="form-control form-control-sm" name="bank_till_id">' . $tills . '</select></div>';
+$date_field = '<div class="col-6 md:col-3"><label class="form-label small">' . lang('Date') . '</label><input type="date" data-pg-date class="form-control form-control-sm" name="date" value="' . date('Y-m-d') . '" /></div>';
+$bank_field = '<div class="col-6 md:col-4"><label class="form-label small">' . lang('Bank account') . '</label><select class="form-control form-control-sm" name="bank_till_id" aria-label="' . h(lang('Bank account')) . '">' . $tills . '</select></div>';
 
 $output_steps = '';
 if (!$readonly) {
@@ -107,7 +107,7 @@ if (!$readonly) {
     }
     if ($received && in_array($status, array('portfolio', 'deposited'), true)) {
         $output_steps .= $step_form('collect', lang('Collected'), lang('Collected'), 'btn-solid theme-success', $date_field . $bank_field, lang('The amount moves from the portfolio to the bank account.'));
-        $output_steps .= $step_form('bounce', lang('Bounced'), lang('Bounced'), 'btn-outline theme-danger', $date_field . '<div class="col-12 md:col-6"><label class="form-label small">' . lang('Reason') . '</label><input type="text" class="form-control form-control-sm" name="reason" maxlength="150" /></div>', lang('The amount leaves the portfolio and goes back on the customer\'s account: they owe it again.'));
+        $output_steps .= $step_form('bounce', lang('Bounced'), lang('Bounced'), 'btn-outline theme-danger', $date_field . '<div class="col-12 md:col-6"><label class="form-label small">' . lang('Reason') . '</label><input type="text" class="form-control form-control-sm" name="reason" maxlength="150" aria-label="' . h(lang('Reason')) . '" /></div>', lang('The amount leaves the portfolio and goes back on the customer\'s account: they owe it again.'));
     }
     if ($received && ($status === 'portfolio')) {
         $output_steps .= $step_form('endorse', lang('Passed on to a supplier'), lang('Pass on'), 'btn-outline theme-secondary', $date_field . '<div class="col-12 md:col-6"><label class="form-label small" for="erp_endorse_account_id">' . lang('Account') . '</label><select class="form-control form-control-sm" data-pg-combobox id="erp_endorse_account_id" name="account_id"><option value="">' . lang('Choose an account') . '</option>' . $accounts . '</select>' . erp_account_quick_link('#erp_endorse_account_id', 'supplier') . '</div>', lang('A payment to that account out of the portfolio: what the store owes it comes down.'));
@@ -181,7 +181,7 @@ pg_page_shell([
         </div>
     </div>
 </main>
-' . pg_fields_script() .
+' . get_date_picker_format() . pg_fields_script() .
 output_footer();
 
 $liveform->remove_form();

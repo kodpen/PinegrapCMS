@@ -161,3 +161,24 @@ function test_liveform_forwards_inputmask_options()
 		pg_assert_contains(' data-inputmask-mask="&quot;&gt;&lt;b&gt;"', $escaped, 'the value escaped');
 	});
 }
+
+// A field given an aria-label prints it, escaped; one without prints none, so
+// the ERP line fields that pass one get a name and site forms do not change.
+function test_liveform_output_field_aria_label()
+{
+	_test_liveform_with_session(function ($form) {
+		$types = array('text', 'number', 'textarea', 'password', 'checkbox', 'radio', 'select');
+		foreach ($types as $type) {
+			$field = array('type' => $type, 'name' => 'f_' . $type);
+			if ($type === 'select') $field['options'] = array('A' => 'a');
+			pg_assert_false(strpos($form->output_field($field), 'aria-label') !== false, $type . ' without an aria-label');
+
+			$field['aria-label'] = 'Unit "price" <b>';
+			$html = $form->output_field($field);
+			pg_assert_contains(' aria-label="Unit &quot;price&quot; &lt;b&gt;"', $html, $type . ' with an aria-label');
+			pg_assert_same(1, substr_count($html, 'aria-label='), $type . ': written once');
+		}
+
+		pg_assert_false(strpos($form->output_field(array('type' => 'hidden', 'name' => 'h', 'aria-label' => 'x')), 'aria-label') !== false, 'hidden prints none');
+	});
+}

@@ -1,25 +1,19 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Workspace - what happens on the site, in the screens: the "when something
- * happens" step of a scheduled action, the ready-made actions that use it,
- * and a channel's switch for hearing about the records tied to it.
+ * Workspace - what happens on the site, in the screens: a channel's switch
+ * for hearing about the records tied to it.
  *
- * assets/js/workspace.js draws the scheduled action's form and the channel's
- * settings and asks this file for the pieces:
+ * assets/js/workspace.js draws the channel's settings and asks this file for
+ * the pieces:
  *
- * - PGWsEvents.whenBox(rule) returns the node of the event rule (what
- *   happens, and the form, the order or task status, the outcome of an
- *   approval request or the channel it is narrowed to) and a read() giving
- *   the rule the server takes;
- * - PGWsEvents.templates(context) returns ready-made actions in the shape
- *   saTemplates() lists them (context: channelId, me, tell);
+ * - PGWsEvents.icon is the sign of an event start on a scheduled action's
+ *   card;
  * - PGWsEvents.watchField(channel) returns the switch and its value(), or
  *   null where the channel cannot watch.
  *
- * The server checks everything again (includes/workspace/scheduled.php,
- * includes/workspace/watch.php); the lists and every text come from the
- * #ws-config block.
+ * The server checks everything again (includes/workspace/watch.php); the
+ * texts come from the #ws-config block.
  *
  * Served minified inside assets/js/workspace.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
@@ -42,7 +36,6 @@
         CFG = {};
     }
 
-    var EVENTS = (CFG.scheduled && CFG.scheduled.events) || null;
     var S = CFG.strings || {};
     var uid = 0;
 
@@ -62,168 +55,6 @@
         }
 
         return node;
-    }
-
-    function select(options, value) {
-        var node = el('select', 'form-control form-control-sm');
-
-        options.forEach(function (option) {
-            var item = el('option', '', option[1]);
-
-            item.value = option[0];
-
-            if (String(option[0]) === String(value)) {
-                item.selected = true;
-            }
-
-            node.appendChild(item);
-        });
-
-        return node;
-    }
-
-    function labelled(label, node, help) {
-        var wrap = el('div', 'ws-sa-field');
-
-        wrap.appendChild(el('label', 'form-label small mb-1', label));
-        wrap.appendChild(node);
-
-        if (help) {
-            wrap.appendChild(el('div', 'form-text mt-0', help));
-        }
-
-        return wrap;
-    }
-
-    // The event rule: what happens, and its filters when it has them. A
-    // workspace event brings the values of its own filter (options, label,
-    // any) and may be narrowed to a channel.
-    function whenBox(rule) {
-        var list = (EVENTS && EVENTS.list) || {};
-        var keys = Object.keys(list);
-        var box = el('div', 'ws-sa-when-event');
-        var given = rule || {};
-        var which = select(keys.map(function (key) { return [key, list[key].label]; }), given.event || keys[0]);
-        var filterBox = el('div', 'ws-sa-when-event-filter');
-        var filter = null;
-        var channel = null;
-
-        function draw() {
-            var info = list[which.value] || {};
-            var same = (which.value === given.event);
-
-            while (filterBox.firstChild) {
-                filterBox.removeChild(filterBox.firstChild);
-            }
-
-            filter = null;
-            channel = null;
-
-            if (info.filter === 'page') {
-                filter = select([[0, text('sa_event_any_form')]].concat(EVENTS.forms || []), same ? (given.page_id || 0) : 0);
-                filterBox.appendChild(labelled(text('sa_event_form'), filter));
-            } else if (info.filter === 'status') {
-                filter = select([['', text('sa_event_any_status')]].concat(EVENTS.statuses || []), same ? (given.status || '') : '');
-                filterBox.appendChild(labelled(text('sa_event_status'), filter));
-            } else if (info.options) {
-                filter = select([['', info.any || '']].concat(info.options), same ? (given.status || '') : '');
-                filterBox.appendChild(labelled(info.filter_label || text('sa_event_status'), filter));
-            }
-
-            if (info.channel) {
-                channel = select([[0, text('sa_event_any_channel')]].concat(EVENTS.channels || []), same ? (given.channel_id || 0) : 0);
-                filterBox.appendChild(labelled(text('sa_event_channel'), channel, text('sa_event_channel_help')));
-            }
-
-            filterBox.hidden = !filter && !channel;
-        }
-
-        which.addEventListener('change', draw);
-
-        box.appendChild(labelled(text('sa_event'), which, text('sa_event_help')));
-        box.appendChild(filterBox);
-        draw();
-
-        return {
-            node: box,
-            read: function () {
-                var info = list[which.value] || {};
-                var out = { type: 'event', event: which.value };
-
-                if (filter && (info.filter === 'page')) {
-                    out.page_id = parseInt(filter.value, 10) || 0;
-                } else if (filter) {
-                    out.status = filter.value;
-                }
-
-                if (channel) {
-                    out.channel_id = parseInt(channel.value, 10) || 0;
-                }
-
-                return out;
-            }
-        };
-    }
-
-    // Ready-made actions started by an event. tell(text) is where a text
-    // goes: the channel the form was opened in, or the person's inbox.
-    function templates(context) {
-        var list = (EVENTS && EVENTS.list) || {};
-        var out = [];
-        var channelId = context.channelId || 0;
-
-        // The tag alone: each member sees of the order what their rights
-        // show; {{customer}} and {{amount}} would be read by all of them.
-        if (list['order.created']) {
-            out.push({ key: 'order_event', label: text('sa_tpl_order_event'), icon: 'bi-bag-plus', help: text('sa_tpl_order_event_help'), data: {
-                name: text('sa_tpl_order_event'),
-                rules: [{ type: 'event', event: 'order.created' }],
-                action: context.tell(text('sa_tpl_order_event_text')),
-                follow: []
-            } });
-        }
-
-        // The fields are drawn by the form's card under the message, for the
-        // members who may open the submission; the text only tags it.
-        if (list['form.submitted']) {
-            out.push({ key: 'form_event', label: text('sa_tpl_form_event'), icon: 'bi-ui-checks', help: text('sa_tpl_form_event_help'), data: {
-                name: text('sa_tpl_form_event'),
-                rules: [{ type: 'event', event: 'form.submitted', page_id: 0 }],
-                action: context.tell('{{record}}'),
-                follow: []
-            } });
-        }
-
-        if (list['stock.low']) {
-            out.push({ key: 'stock_event', label: text('sa_tpl_stock_event'), icon: 'bi-box-seam', help: text('sa_tpl_stock_event_help'), data: {
-                name: text('sa_tpl_stock_event'),
-                rules: [{ type: 'event', event: 'stock.low' }],
-                action: { type: 'task', title: text('sa_tpl_stock_event_task'), description: '{{record}}\n{{record_link}}', priority: 'high', assignees: context.me ? [context.me] : [], channel_id: channelId, due_in: 2 },
-                follow: []
-            } });
-        }
-
-        // The channel's own tasks that go past their due date, a line each.
-        if (list['workspace.task.overdue']) {
-            out.push({ key: 'overdue_event', label: text('sa_tpl_overdue_event'), icon: 'bi-alarm', help: text('sa_tpl_overdue_event_help'), data: {
-                name: text('sa_tpl_overdue_event'),
-                rules: [{ type: 'event', event: 'workspace.task.overdue', channel_id: channelId }],
-                action: context.tell(text('sa_tpl_overdue_event_text')),
-                follow: []
-            } });
-        }
-
-        // An approval request of the channel approved: the next step as a task.
-        if (list['workspace.approval.decided']) {
-            out.push({ key: 'approval_event', label: text('sa_tpl_approval_event'), icon: 'bi-patch-check', help: text('sa_tpl_approval_event_help'), data: {
-                name: text('sa_tpl_approval_event'),
-                rules: [{ type: 'event', event: 'workspace.approval.decided', status: 'approved', channel_id: channelId }],
-                action: { type: 'task', title: text('sa_tpl_approval_event_task'), description: '{{record}}\n{{record_link}}', priority: 'normal', assignees: context.me ? [context.me] : [], channel_id: channelId, due_in: 2 },
-                follow: []
-            } });
-        }
-
-        return out;
     }
 
     // The channel's switch: hear about its customer's orders and the records
@@ -256,10 +87,7 @@
     }
 
     window.PGWsEvents = {
-        ready: !!(EVENTS && EVENTS.list && Object.keys(EVENTS.list).length),
         icon: 'bi-broadcast',
-        whenBox: whenBox,
-        templates: templates,
         watchField: watchField
     };
 })();

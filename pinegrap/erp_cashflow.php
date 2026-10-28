@@ -435,11 +435,11 @@ pg_page_shell(array(
                     <input type="hidden" name="group" value="' . h($options['group_chosen'] ? $options['group'] : '') . '" />
                     <span class="d-inline-flex align-items-center gap-2">
                         <label for="from" class="small fg-secondary text-nowrap mb-0">' . lang('Start') . '</label>
-                        <input type="date" id="from" name="from" class="form-control form-control-sm w-auto" value="' . h($options['from']) . '" max="' . h(date('Y-m-d')) . '" />
+                        <input type="date" data-pg-date id="from" name="from" class="form-control form-control-sm w-auto" value="' . h($options['from']) . '" max="' . h(date('Y-m-d')) . '" />
                     </span>
                     <span class="d-inline-flex align-items-center gap-2">
                         <label for="to" class="small fg-secondary text-nowrap mb-0">' . lang('End') . '</label>
-                        <input type="date" id="to" name="to" class="form-control form-control-sm w-auto" value="' . h($options['to']) . '" max="' . h(date('Y-m-d')) . '" />
+                        <input type="date" data-pg-date id="to" name="to" class="form-control form-control-sm w-auto" value="' . h($options['to']) . '" max="' . h(date('Y-m-d')) . '" />
                     </span>
                     <select id="till" name="till" class="form-control form-control-sm w-auto" aria-label="' . lang('Till') . '">' . $output_till_options . '</select>
                     <button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . lang('Apply') . '"><i class="bi bi-arrow-right-circle"></i></button>
@@ -567,7 +567,7 @@ pg_page_shell(array(
         </div>
     </div>
 </main>
-' .
+' . get_date_picker_format() . pg_fields_script() .
 output_footer();
 
 $liveform->remove_form();

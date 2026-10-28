@@ -383,18 +383,22 @@ function pg_cron_jobs()
             'lane'        => 'light',
         ),
         // Workspace mailboxes read over IMAP (includes/workspace/mail_fetch.php).
-        // Every minute, so a customer's mail reaches its channel soon; a box is
-        // read at most once a minute whatever the schedule, and a site without
-        // a mailbox that has a server costs one indexed read. stale_after is
-        // generous for the same reason as the marketplace job: a site that
-        // reads no mailbox should not be told the job is overdue.
+        // Inline and with no switch, like the scheduled actions: job.php reads
+        // the boxes on every tick while one has a server, so a customer's mail
+        // reaches its channel within a minute and adding a mailbox is all an
+        // operator does. A box is read at most once a minute whatever the
+        // schedule. dispatch false keeps it off the settings screen's switches
+        // and out of the rotation; workspace_mail_job.php stays a script for a
+        // dedicated cron entry. stale_after is generous: a site whose last box
+        // was removed stops recording runs and should not be told at once.
         'workspace_mail_job' => array(
             'label'       => lang('Incoming e-mail'),
             'script'      => 'workspace_mail_job.php',
             'interval'    => 60,
             'stale_after' => 86400,
-            'dispatch'    => true,
+            'dispatch'    => false,
             'lane'        => 'light',
+            'inline'      => true,
         ),
         // "Update translations" jobs the server engines work (Google Cloud
         // Translation), and the ones left open for a day to close. Every five

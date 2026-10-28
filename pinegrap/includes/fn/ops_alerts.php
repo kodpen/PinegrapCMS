@@ -647,7 +647,8 @@ function pg_ops_cron_stalled(array $jobs, array $runs, $now, array $dispatched, 
 
         if (!empty($job['inline'])) {
 
-            // The mail pass has no switch: job.php runs it on every tick.
+            // The mail queue and mailbox passes have no switch: job.php runs
+            // them on every tick.
             if (!empty($job['dispatch']) && !in_array($key, $dispatched, true)) {
                 continue;
             }

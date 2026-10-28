@@ -14,6 +14,7 @@ description: What each hooked date/time field keeps (site text, ISO on native in
 ## How does the box write it?
 - Every store but a site-text date is hidden (`.pg-field-native`) behind one typed box in the site's order and clock (`.pg-date-box`, `.pg-datetime-box`, `.pg-time-box`). An empty box empties the store, a date alone is midnight.
 - Text that says no date or time: a text store keeps it as typed for the server to refuse; a native input cannot hold it and is emptied.
+- Focus a hooked field with `pgFields.focus(el)`: it lands on the box (whose calendar opens on focus), never on the hidden store (comment publish schedule, #2832).
 - The selects: a pick writes all three and fires a change on each that moved; a typed date the selects cannot hold (a year outside the list) is taken back.
 
 ## What bounds the calendar?
@@ -22,5 +23,11 @@ description: What each hooked date/time field keeps (site text, ISO on native in
 
 ## How is a field built by a script drawn?
 - Put the hooked field in the document, then `pgFields.init(field)` (or a node around it). A select wrapper drawn before its selects are inside stays undrawn until the next `init()`.
+
+## Which panel fields reach the control outside the shared forms (P4)?
+- The form preview's `time` row (`get_form_info()`, panel only) has `data-pg-time`; `pg_form_info_picker_format()` gives the options its hooked rows need. The site rows stay plain until S2.
+- List filter rows (`update_value_cell()` in `backend.src.js`, drawn where the screen prints `pg_fields_script()`: the form list view; the order and visitor reports wait for P8): the value box of a date, date-and-time or time field gets its hook (site text); the old box's control is destroyed before the cell is redrawn, and a dynamic value empties it through `pg_filter_value_clear()`.
+- A box with `data-pg-add-to-chips="<id>"` adds a picked date to those chips once and empties itself (shipping method excluded dates; it has no name, so it does not post).
+- The commerce settings' hour-of-day select (`settings/prep.php` options, `%02d:00`) still ignores the clock: left for P8.
 
 Related: docs/memory/ui/pg-datepicker.md, docs/memory/ui/pg-field-wrappers.md

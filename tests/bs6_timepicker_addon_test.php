@@ -102,9 +102,9 @@ function test_bs6_timepicker_addon_form_content_branches()
 	$source = bs6_timepicker_addon_test_source('includes/fn/content.php');
 
 	// The panel branch: the scripts printed once after a backend form.
-	$start = strpos($source, "\$form_info['picker_scripts'] = '';");
-	pg_assert_true($start !== false, 'content.php builds picker_scripts');
-	$end = strpos($source, 'return $form_info;', (int) $start);
+	pg_assert_contains("\$form_info['picker_scripts'] = pg_form_info_picker_format(\$picker_kinds);", $source, 'content.php builds picker_scripts');
+	$start = strpos($source, 'function pg_form_info_picker_format(');
+	$end = strpos($source, "\n}\n", (int) $start);
 	$panel = substr($source, (int) $start, (int) $end - (int) $start);
 	pg_assert_false(strpos($panel, 'timepicker-addon') !== false, 'the backend picker_scripts do not load the add-on');
 	pg_assert_contains('get_date_time_picker_format()', $panel, 'the backend picker_scripts keep the date and time options');

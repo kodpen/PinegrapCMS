@@ -585,9 +585,9 @@ function pg_order_folder_access_extends($rights, $expiration_date)
  * decided from); a later line of the same product (another recipient)
  * carries on from what the line above left, kept in $stock_left.
  *
- * @param array  $line       an order line joined to its product: product_id,
- *                           product_name, short_description, quantity,
- *                           inventory, inventory_quantity
+ * @param array  $line       an order line joined to its product: order_item_id,
+ *                           product_id, product_name, short_description,
+ *                           quantity, inventory, inventory_quantity
  * @param array  $stock_left product id => stock left, carried between lines
  * @param string $actor      user name on the out-of-stock notification
  * @return void
@@ -595,6 +595,15 @@ function pg_order_folder_access_extends($rights, $expiration_date)
 function pg_order_complete_line_stock(array $line, array &$stock_left, $actor)
 {
     $product_id = $line['product_id'];
+
+    // A bundle takes its components' stock and keeps the contents it was
+    // sold with (includes/fn/bundles.php); its own cached stock follows from
+    // the refresh the components' announcements run.
+    if (pg_bundle_sale_takes_components($product_id, $line['order_item_id'] ?? 0, pg_bundle_ids_among(array($product_id)))) {
+        pg_bundle_take_stock($line['order_item_id'], $product_id, $line['quantity'], 'checkout', $stock_left);
+        return;
+    }
+
     $inventory = $line['inventory'];
     $inventory_quantity = $line['inventory_quantity'];
 

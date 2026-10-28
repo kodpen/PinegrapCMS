@@ -1866,7 +1866,6 @@ html[data-bs-theme="dark"] #menu .pg-mi {
 #menu .pg-mi.workspace-color { --pg-mi-2: var(--workspace-color-highlight); --pg-mi-2-dark: var(--workspace-color); }
 #menu .pg-mi.folders-color { --pg-mi-2: var(--folders-color-highlight); --pg-mi-2-dark: var(--folders-color); }
 #menu .pg-mi.pages-color { --pg-mi-2: var(--pages-color-highlight); --pg-mi-2-dark: var(--pages-color); }
-#menu .pg-mi.files-color { --pg-mi-2: var(--files-color-highlight); --pg-mi-2-dark: var(--files-color); }
 #menu .pg-mi.calendars-color { --pg-mi-2: var(--calendars-color-highlight); --pg-mi-2-dark: var(--calendars-color); }
 #menu .pg-mi.forms-color { --pg-mi-2: var(--forms-color-highlight); --pg-mi-2-dark: var(--forms-color); }
 #menu .pg-mi.statistics-color { --pg-mi-2: var(--statistics-color-highlight); --pg-mi-2-dark: var(--statistics-color); }
@@ -1885,7 +1884,6 @@ html[data-bs-theme="dark"] #menu .pg-mi {
 #menu .pg-mi-notes { --pg-mi-a: var(--pg-mi-teal); }
 #menu .pg-mi-folders { --pg-mi-a: var(--pg-mi-sky); }
 #menu .pg-mi-pages { --pg-mi-a: var(--pg-mi-orange); }
-#menu .pg-mi-files { --pg-mi-a: var(--pg-mi-amber); }
 #menu .pg-mi-calendars { --pg-mi-a: var(--pg-mi-rose); }
 #menu .pg-mi-forms { --pg-mi-a: var(--pg-mi-lime); }
 #menu .pg-mi-statistics { --pg-mi-a: var(--pg-mi-pink); }
@@ -1993,19 +1991,6 @@ html[data-bs-theme="dark"] #menu .pg-mi .pg-mi-2 {
   }
   #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-pages .pg-mi-content {
     animation: pg-mi-scroll 0.75s ease-in-out;
-  }
-
-  /* Files: the two photos fan apart and the sun comes up. */
-  #menu .pg-mi-files .pg-mi-back { transform-origin: 14px 9px; }
-  #menu .pg-mi-files .pg-mi-front { transform-origin: 3px 20px; }
-  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-files .pg-mi-back {
-    transform: translate(1.2px, -1.2px) rotate(7deg);
-  }
-  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-files .pg-mi-front {
-    transform: rotate(-5deg);
-  }
-  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-files .pg-mi-sun {
-    transform: translateY(-1.8px) scale(1.25);
   }
 
   /* Calendars: the page swings on its rings and the date pops. */
@@ -2479,6 +2464,46 @@ body:not(.toolbar) .software-content {
     right: 0.1875rem;
     font-size: 0.5rem;
     opacity: 0.75;
+  }
+}
+
+/* ── Category headings ───────────────────────────────────────────────────
+   output_menu() draws a heading (pg_menu_heading()) over each category of
+   rows the person has, and none over a category they have no row in. With
+   the labels showing (expanded, and the phone drawer) it is a small title in
+   the same type as the Workspace list's section titles; on the rail it is a
+   short line between the icons, the name kept for screen readers. The rows
+   above the first heading (the dashboard, the workspace) have none. */
+#menu .pg-menu-heading {
+  padding: 0.875rem 0.625rem 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--pg-fg-2);
+  user-select: none;
+}
+@media (min-width: 1024px) {
+  #menu:not(.expanded) .pg-menu-heading {
+    position: relative;
+    width: 1.75rem;
+    height: 0;
+    margin: 0.4375rem auto 0.5rem;
+    padding: 0;
+    border-top: var(--pg-border-width) solid var(--pg-border-color);
+  }
+  #menu:not(.expanded) .pg-menu-heading-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 }
 
@@ -4359,8 +4384,8 @@ table.chart thead th {
 }
 
 /* Date and time fields on Bootstrap 6 (pg_fields.js): the posted input is
-   hidden the same way; a date box and a time box side by side take its place.
-   In a drawer the calendar is drawn open under the field. */
+   hidden the same way; one typed box after it takes its place (its look is in
+   pg_datetime.css). In a drawer the calendar is drawn open under the field. */
 .pg-field-native {
   position: absolute;
   width: 1px;
@@ -4371,32 +4396,6 @@ table.chart thead th {
   clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
-}
-
-.pg-datetime {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: .5rem;
-  max-width: 100%;
-}
-
-.pg-datetime > .pg-datetime-date {
-  flex: 1 1 9rem;
-  width: auto;
-  min-width: 9rem;
-}
-
-.pg-datetime > .pg-time,
-.pg-time {
-  flex: 0 1 8rem;
-  width: auto;
-  min-width: 7rem;
-}
-
-.input-group > .pg-datetime,
-.input-group > .pg-time {
-  flex: 1 1 auto;
-  width: 1%;
 }
 
 .pg-date-inline {

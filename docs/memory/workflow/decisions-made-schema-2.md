@@ -1,0 +1,16 @@
+---
+name: decisions-made-schema-2
+description: Decisions list, schema part 2: tables and columns approved from 2026-10-28 on (incoming e-mail, workflow tables, MCP preamble, gateway secret widths, AI prompt version); part 1 has the rules
+---
+
+## Where are the rules and the earlier steps?
+- `decisions-made-schema.md`: the ENUM-append rule, the steps of 2026-10-27, who decides schema. Reasons are on the issues.
+
+## Which schema was approved on 2026-10-28?
+- Incoming e-mail G1b (#2677, architect, step 11.0.82): `ws_mail_boxes`, `ws_mail_conversations` (G5's status, assignee and response-time columns included), `ws_mail_items` (`UNIQUE (box_id, rfc_message_hash)` for de-duplication); `'mail'` appended to `ws_messages.sender_kind` and `ws_message_forwards.source_sender_kind` by a guarded widening carrying every value (`workspace/mail-tables.md`).
+- Workflow tables T1a (#2746, architect, step 11.0.110): `ws_wtables`, `ws_wtable_columns` (`type` VARCHAR(16)), `ws_wtable_rows` (`cells` MEDIUMTEXT JSON by column id, money in minor units, `revision`), `ws_wtable_shares` in the `ws_flow_shares` shape; limits 50/5000/500 in PHP; no MySQL JSON functions. JSON person and record-link cells need an export and erasure reader before they are filled.
+- MCP agent preamble switch (#2765, architect, step 11.0.111): `ws_mcp_servers.agent_preamble TINYINT(1) NOT NULL DEFAULT 0` by `install_add_column()`, read behind `waf_table_has_column()` like `agent_tool`.
+- Gateway secret columns (#2792): the four VARCHAR(100) `config` columns stay; a sealed secret fits 47 plain characters, longer new values are refused. Widening them to VARCHAR(255) by `install_modify_column()` is approved in advance should a gateway ever need it.
+- AI request prompt version (#2829, architect, step 11.0.112): `ws_ai_requests.prompt_version` VARCHAR(16) NOT NULL DEFAULT '' by `install_add_column()`, read behind `waf_table_has_column()` like the table's other added columns; the value is `pg_ai_prompt_version()` (derived from the rules text), old rows stay '' (unknown); no table of rule texts, git history holds them.
+
+Related: docs/memory/workflow/decisions-made-schema.md

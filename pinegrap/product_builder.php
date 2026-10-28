@@ -6576,6 +6576,12 @@ function pg_pb_quick_update($product_id, $field, $value)
             break;
 
         case 'inventory_quantity':
+            // A bundle's stock follows its components (includes/fn/bundles.php):
+            // a typed number would only last until the next refresh.
+            if (pg_bundle_ids_among(array($product_id))) {
+                return array('ok' => false, 'code' => 'bundle', 'message' => lang('This product is a bundle: its stock follows the products in it. Change their stock instead.'));
+            }
+
             if ((string) $current['inventory'] !== '1') {
                 return array('ok' => false, 'code' => 'not_tracked', 'message' => lang('This product does not track stock. Turn stock tracking on in the product first.'));
             }

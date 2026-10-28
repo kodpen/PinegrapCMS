@@ -756,6 +756,27 @@ if (
 
 }
 
+// Workspace mailboxes read over IMAP (includes/workspace/mail_fetch.php), on
+// every tick for the same reason as the scheduled actions above: the
+// dispatcher's rotation would leave a customer's mail waiting its turn. One
+// small read on a site with no mailbox that has a server; the reader and
+// its IMAP client are loaded only when one exists. The budget keeps the
+// general job short: a box needs fifteen seconds at most, and the boxes left
+// over are read on the next tick, longest waiting first.
+if (
+    defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED
+    && function_exists('ws_mail_ready') && ws_enabled() && ws_mail_ready()
+    && db_value("SELECT id FROM ws_mail_boxes WHERE enabled = 1 AND transport = 'imap' AND settings LIKE '%\"host\":\"_%' LIMIT 1")
+) {
+
+    require_once(dirname(__FILE__) . '/includes/workspace/mail_fetch.php');
+
+    ws_mail_fetch_run(20);
+
+    pg_cron_ran('workspace_mail_job');
+
+}
+
 // The visitor location database (includes/fn/geo.php): this month's list,
 // fetched while a setting reads the visitor's location. The look is a file
 // read; the fetch happens about once a month, and a failed one is tried again

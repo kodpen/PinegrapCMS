@@ -46,7 +46,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - classic-style-to-design.md: A classic style opened in the visual designer (L2, #2370): the style list button, the frame as one shared component, page trees placing it, what Save writes and what stays
 - code-view-tab-search.md: Search in all tabs of the designer's code view (page and file tabs): the bar, PgCodeEditor.findAll(), why it searches only and does not replace
 - collection-fields.md: Collection forms and field kinds (11.0.43, C2): the three columns, where the kind is written and read, which kinds each field type may have, why the slug kind waits for C5
-- collection-inputs.md: Inputs of a collection's fields by kind (C3, C3b): number, image and reference controls on the site form and the panel, references drawn as radios or boxes, image preview, server checks
+- collection-inputs.md: Inputs of a collection's fields by kind (C3, C3b, C3c): number, image, reference, product and page controls on the site form and the panel, radios and boxes, image preview, server checks
 - collection-lists.md: A collection's fields in form lists (C4a): number fields sorted as numbers, reference filters by address name or code (?category=news) printing the record's label, image output
 - collection-references.md: A form list or detail element prints a field of the record a reference points at (__ref binding, spec, one read per form, escaping, what is never read)
 - comment-counters-recount.md: Upgrade step 11.0.33 (data only) counts the comments of form records on designed pages again: two walks, a time pause, a per-database data/temp progress file with a done marker
@@ -68,6 +68,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - comments-widget-pages.md: Pages and permalinks of the comments widget: per_page units, ?comments_page and ?comment=, the pagination section and fallback, the URL builders, comment=<id> in the redirect, mails and panel
 - comments-widget-panel.md: The comments widget's panel: page comment settings shared with the fixed block, display options, inner-node shortcut, the 15 page settings (pg_comment_editor_keys), save, templates
 - comments-widget-preview.md: The comments widget in the designer's Preview: the editor's unsaved comment settings, the page id and ?r= it draws with, an unsaved page, lists of recent comments, anonymous background renders
+- comments-widget-product-page.md: Product reviews on a designed product page (standard page with a catalog_item_view widget, 2c1, PR #2817): read as catalog detail for the thread, add_comment.php, links, e-mails and recent lists
 - comments-widget-recent-editor.md: The recent comments list in the editor: the kind twin, palette, Change type and copies, template starters, default layout, bind lists, fades, canvas states and samples
 - comments-widget-recent-gates.md: Which source pages a list of recent comments reads and why one adds nothing (sign-in pages, record filters included), who sees which comment, the record gate in SQL, 'mine' from the account's creation
 - comments-widget-recent-panel.md: The recent comments list's panel section: what it shows, the pages it offers and how each is labelled, tabs whose components are not loaded yet, notes, record filters, the stored page list

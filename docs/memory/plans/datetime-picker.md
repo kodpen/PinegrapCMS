@@ -22,6 +22,6 @@ description: Plan (decided in #2693, 2026-10-28): one date-and-time control for 
 - Each step about 1,000 product lines; claim as `[plan:datetime-picker] P<n> — <topic>`.
 
 ## Where to start?
-- P1-P3 are done (#2737, #2757, #2785): every engine mode exists (`ui/pg-datepicker.md`, `ui/pg-date-stores.md`). Next, after the claim check (`CLAUDE.md`, Claim work): any of P4, P5, P6, P9, P11 whose files no open PR holds; P7 last before P11, P8 once `backend.src.js`/`.css` are free, P10 after P9.
+- P1-P5 are done (#2737, #2757, #2785, #2810, #2833): every engine mode exists (`ui/pg-datepicker.md`, `ui/pg-date-stores.md`). Next, after the claim check (`CLAUDE.md`, Claim work): any of P6, P9, P11 whose files no open PR holds; P7 last before P11, P8 once `backend.src.js`/`.css` are free, P10 after P9.
 
 Related: docs/memory/plans/datetime-picker-steps.md, docs/memory/plans/datetime-picker-site-steps.md, docs/memory/ui/pg-datepicker.md, docs/memory/ui/pg-date-stores.md, docs/memory/ui/pg-field-wrappers.md, docs/memory/workflow/decisions-made-panel.md

@@ -15,11 +15,8 @@ description: Decisions list, schema part: steps approved in advance (ENUM append
 - Voice messages V3 (#2417): transcripts in `ws_voice`; a `ws_channels` column in the `ai_access` shape (private channels closed until an administrator allows).
 - SEO and record-page settings (#2471-#2475): three `config` and two `custom_form_pages` columns; behaviour: `decisions-made-seo.md`.
 
-## Which schema was approved on 2026-10-28?
-- Incoming e-mail G1b (#2677, architect, step 11.0.82): `ws_mail_boxes`, `ws_mail_conversations` (G5's status, assignee and response-time columns included), `ws_mail_items` (`UNIQUE (box_id, rfc_message_hash)` for de-duplication); `'mail'` appended to `ws_messages.sender_kind` and `ws_message_forwards.source_sender_kind` by a guarded widening carrying every value (`workspace/mail-tables.md`).
-- Workflow tables T1a (#2746, architect, step 11.0.110): `ws_wtables`, `ws_wtable_columns` (`type` VARCHAR(16)), `ws_wtable_rows` (`cells` MEDIUMTEXT JSON by column id, money in minor units, `revision`), `ws_wtable_shares` in the `ws_flow_shares` shape; limits 50/5000/500 in PHP; no MySQL JSON functions. JSON person and record-link cells need an export and erasure reader before they are filled.
-- MCP agent preamble switch (#2765, architect, step 11.0.111): `ws_mcp_servers.agent_preamble TINYINT(1) NOT NULL DEFAULT 0` by `install_add_column()`, read behind `waf_table_has_column()` like `agent_tool`.
-- Gateway secret columns (#2792): the four VARCHAR(100) `config` columns stay; a sealed secret fits 47 plain characters, longer new values are refused. Widening them to VARCHAR(255) by `install_modify_column()` is approved in advance should a gateway ever need it.
+## Which schema was approved on 2026-10-28 and later?
+- `decisions-made-schema-2.md`.
 
 ## Who decides schema?
 - The owner (CLAUDE.md fixed rule 5): the architect asks a schema question as a selectable list and records the answer (`workflow/architect.md`). The 2026-10-27 steps: architect, confirmed by the owner on 2026-10-28; reasons on the issues.

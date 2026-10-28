@@ -67,3 +67,38 @@ function test_ws_voice_assistants_are_wired()
 
 	pg_assert_contains('$text = ws_voice_with_transcript($text, $heard[(int) $row[\'file_id\']], 400);', $read('includes/workspace/briefing.php'), 'recaps');
 }
+
+// A bell row or banner: words as they are for any other message, a
+// recording's transcript after its words once written out, the label before.
+function test_ws_voice_excerpt_text()
+{
+	pg_assert_same('Hello', ws_voice_excerpt_text('Hello', false, '', 140, 'Voice message'), 'not a recording');
+	pg_assert_same('Voice message', ws_voice_excerpt_text('', true, '', 140, 'Voice message'), 'a recording not written out yet');
+	pg_assert_same('@Ayşe', ws_voice_excerpt_text(' @Ayşe ', true, '', 140, 'Voice message'), 'its words before the transcript');
+	pg_assert_same('Voice message: Ship it on Friday.', ws_voice_excerpt_text('', true, 'Ship it on Friday.', 140, 'Voice message'), 'the transcript');
+	pg_assert_same('@Ayşe · Voice message: Ship it', ws_voice_excerpt_text('@Ayşe', true, 'Ship it', 140, 'Voice message'), 'words, then the transcript');
+	pg_assert_same('Voice message: abc…', ws_voice_excerpt_text('', true, 'abcdefgh', 19, 'Voice message'), 'cut at the length');
+}
+
+// The search answer says it was the transcript that matched.
+function test_ws_voice_found_in_transcript()
+{
+	pg_assert_same('Ship it on Friday', ws_voice_found_in_transcript('', 'Ship it on Friday', 'friday'), 'found in the transcript alone');
+	pg_assert_same('', ws_voice_found_in_transcript('Friday it is', 'Ship it on Friday', 'friday'), 'the words matched as well');
+	pg_assert_same('', ws_voice_found_in_transcript('', 'Ship it on Friday', 'monday'), 'not in the transcript');
+	pg_assert_same('', ws_voice_found_in_transcript('', '', 'friday'), 'no transcript');
+	pg_assert_same('', ws_voice_found_in_transcript('', 'Ship it', '  '), 'no search words');
+}
+
+// Bells, banners and both searches carry the transcript.
+function test_ws_voice_push_and_search_are_wired()
+{
+	$read = function ($path) {
+		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
+	};
+
+	pg_assert_same(2, substr_count($read('includes/workspace/notify.php'), 'ws_voice_excerpt($viewer, $message, 140)'), 'the mention and the read-receipt reminder');
+	pg_assert_contains("(body LIKE '%\" . \$like . \"%'\" . ws_voice_search_or(\$like) . \")\"", $read('includes/workspace/messages.php'), 'the message search');
+	pg_assert_contains("body LIKE '%\" . \$like . \"%'\" . ws_voice_search_or(\$like) . \")\"", $read('includes/workspace/palette.php'), 'the files group');
+	pg_assert_contains('ws_voice_found_in_transcript($text, $heard[(int) $row[\'file_id\']], $query)', $read('includes/workspace/palette.php'), 'the answer shows the transcript');
+}

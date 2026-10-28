@@ -177,7 +177,7 @@ if ((string) $statement['status'] === 'mapping') {
             $options .= '<option value="' . $i . '"' . (((int) ($mapping[$key] ?? -1) === $i) ? ' selected' : '') . '>' . h(lang(array('string' => 'Column {var:1}', 'vars' => $i + 1))) . '</option>';
         }
 
-        return '<div class="col-6 md:col-2"><label class="form-label small">' . $label . '</label><select class="form-control form-control-sm" name="' . $name . '">' . $options . '</select></div>';
+        return '<div class="col-6 md:col-2"><label class="form-label small" for="' . $name . '">' . $label . '</label><select class="form-control form-control-sm" name="' . $name . '" id="' . $name . '">' . $options . '</select></div>';
     };
 
     $head = '<tr>';
@@ -212,7 +212,7 @@ if ((string) $statement['status'] === 'mapping') {
                     ' . $select('col_amount', 'amount', lang('Amount (+/−)'), true) . '
                     ' . $select('col_debit', 'debit', lang('Money out'), true) . '
                     ' . $select('col_credit', 'credit', lang('Money in'), true) . '
-                    <div class="col-6 md:col-2"><label class="form-label small">' . lang('Dates are written') . '</label><select class="form-control form-control-sm" name="date_order"><option value="dmy">' . lang('day first') . '</option><option value="mdy"' . (((string) ($mapping['date_order'] ?? 'dmy') === 'mdy') ? ' selected' : '') . '>' . lang('month first') . '</option></select></div>
+                    <div class="col-6 md:col-2"><label class="form-label small" for="date_order">' . lang('Dates are written') . '</label><select class="form-control form-control-sm" id="date_order" name="date_order"><option value="dmy">' . lang('day first') . '</option><option value="mdy"' . (((string) ($mapping['date_order'] ?? 'dmy') === 'mdy') ? ' selected' : '') . '>' . lang('month first') . '</option></select></div>
                     <div class="col-12"><div class="form-field"><input class="check" type="checkbox" id="header" name="header" value="1"' . (!empty($mapping['header']) ? ' checked' : '') . ' /><label class="" for="header">' . lang('The first line is the column names') . '</label></div></div>
                     <div class="col-12 form-text">' . lang('Either one amount column, with money out as a minus, or a money-out and a money-in column. Lines without a date or an amount (totals, balances, headings) are left out.') . '</div>
                     <div class="col-12"><button type="submit" class="btn btn-solid theme-primary">' . lang('Take the lines in') . '</button></div>
@@ -267,7 +267,7 @@ if ((string) $statement['status'] === 'mapping') {
                             $categories .= '<option value="' . (int) $category['id'] . '">' . h((string) $category['name']) . '</option>';
                         }
                     }
-                    $action .= '<div class="mt-1">' . $post_form($hidden . '<input type="hidden" name="erp_action" value="expense" /><select class="form-control form-control-sm" name="category_id" style="max-width:16rem" required><option value="">' . lang('Expense category') . '</option>' . $categories . '</select>',
+                    $action .= '<div class="mt-1">' . $post_form($hidden . '<input type="hidden" name="erp_action" value="expense" /><select class="form-control form-control-sm" name="category_id" style="max-width:16rem" required aria-label="' . h(lang('Expense category')) . '"><option value="">' . lang('Expense category') . '</option>' . $categories . '</select>',
                         lang('Record as an expense'), 'btn-outline theme-primary') . '</div>';
                 }
             } else {

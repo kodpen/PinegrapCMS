@@ -12,7 +12,7 @@ description: tests/workspace_flows_parity_test.php maps every scheduled-action k
 - `ws_events_catalog()`, `ws_task_statuses()`, `ws_events_order_statuses()`, `ws_events_approval_outcomes()`.
 - Any call in the product of `ws_event()`, `ws_scheduled_run()`, `ws_scheduled_due()`, `ws_scheduled_execute()`, `ws_events_process()`, `ws_events_start()` or `ws_scheduled_joined()`, a new one or one moved to another function or `case`.
 - A `ws_scheduled_*` case of includes/workspace/actions.php, its `pg_panel_actions()` row, an `api('ws_scheduled_...')` call in workspace.js.
-- `scheduledCard()`, `showScheduled()`, `scheduledForm()`, `saTemplates()` in workspace.js, `templates()` in workspace_events.js; `ws_nav_groups()`, `ws_tour_steps()`, `ws_inbox_describe()`, the inbox route's kinds in api.php; Pinegrap AI's `propose_scheduled_action`. The `api_routes` group went with the API's scheduled-action routes (#2107).
+- `scheduledCard()`, `showScheduled()` in workspace.js; `ws_nav_groups()`, `ws_tour_steps()`, `ws_inbox_describe()`, the inbox route's kinds in api.php; Pinegrap AI's `propose_scheduled_action`. The `api_routes` group went with the API's scheduled-action routes (#2107); `templates` and `entry_points`, and the form's keys of `request`, with the form's code (R3a).
 
 ## How is a call site keyed?
 - `name(first argument) in file function case '...'`, a repeat in the same place numbered `#2`.

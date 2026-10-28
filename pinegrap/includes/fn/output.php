@@ -2851,20 +2851,6 @@ function pg_menu_icon($name, $color_class = '')
                 '</g>';
             break;
 
-        case 'files':
-            $body =
-                '<g class="pg-mi-a pg-mi-back">' .
-                '<path' . $a . ' d="M7 6.8V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-.7V8.8a2 2 0 0 0-2-2z"/>' .
-                '<path d="M7 6.8V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-.7" stroke-width="1.5"/>' .
-                '</g>' .
-                '<g class="pg-mi-front">' .
-                '<rect' . $d . ' x="3" y="8" width="14" height="12" rx="2"/>' .
-                '<rect x="3" y="8" width="14" height="12" rx="2"/>' .
-                '<path d="M3.4 18.2l4.3-4.3a1 1 0 0 1 1.4 0l3.9 3.9M12 16.8l1.3-1.3a1 1 0 0 1 1.4 0l2 2" stroke-width="1.5"/>' .
-                '<circle' . $f . ' class="pg-mi-a pg-mi-sun" cx="13.1" cy="11.5" r="1.5"/>' .
-                '</g>';
-            break;
-
         case 'calendars':
             $extra = ' data-pg-day="1"';
             $body =
@@ -3094,7 +3080,14 @@ function output_menu($properties = false)
     // Appearance.
 
     if (($user['role'] < 3) || (no_acl_check($user['id']) == true)) {
-        //FOLDERS
+        // FILE MANAGER. The row opens the explorer itself; its panel holds the
+        // explorer's views across every file and the ways to add to it. The
+        // files live in the file manager: the Files and Pictures entries open
+        // its views across every file, and the two actions under them open the
+        // same screen with the upload window, or a new file, already in hand
+        // (view_files.php, add_file.php and create_file.php are not linked
+        // from here). Slot 3, the Files row these came from, is retired and
+        // never reused.
         $menu_items[1]['id'] = 1;
         $menu_items[1]['href'] = 'view_folders.php';
         $menu_items[1]['menu_icon'] = 'folders';
@@ -3103,6 +3096,11 @@ function output_menu($properties = false)
         $menu_items[1]['context'] = true;
         $menu_items[1]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-folder bi-me-2\'>' . lang('File Manager') . '</a>';
         $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_folder.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Folder'))) . '</a>';
+        $menu_items[1]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
+        $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark bi-me-2\'>' . lang('Files') . '</a>';
+        $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=images\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-images bi-me-2\'>' . lang('Pictures') . '</a>';
+        $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files&upload=1\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-upload bi-me-2\'>' . lang('Upload Files or Folders') . '</a>';
+        $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files&create=file\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang('Create File') . '</a>';
         // PAGES
         $menu_items[2]['id'] = 2;
         $menu_items[2]['href'] = 'view_pages.php';
@@ -3148,22 +3146,6 @@ function output_menu($properties = false)
         // PAGES > Comments
         $menu_items[2]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
         $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_comments.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-chat-square-quote bi-me-2\'>' . lang('Comments') . '</a>';
-        // FILES
-        $menu_items[3]['id'] = 3;
-        // The files live in the file manager now: the Files entry opens its
-        // view across every file, and the two actions under it open the same
-        // screen with the upload window, or a new file, already in hand.
-        // view_files.php, add_file.php and create_file.php are no longer
-        // linked from here.
-        $menu_items[3]['href'] = 'view_folders.php?view=files';
-        $menu_items[3]['menu_icon'] = 'files';
-        $menu_items[3]['color_class'] = 'files-color';
-        $menu_items[3]['title'] = 'Files';
-        $menu_items[3]['context'] = true;
-        $menu_items[3]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark bi-me-2\'>' . lang('Files') . '</a>';
-        $menu_items[3]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=images\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-images bi-me-2\'>' . lang('Pictures') . '</a>';
-        $menu_items[3]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files&upload=1\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-upload bi-me-2\'>' . lang('Upload Files or Folders') . '</a>';
-        $menu_items[3]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files&create=file\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang('Create File') . '</a>';
 
     }
 
@@ -3307,9 +3289,14 @@ function output_menu($properties = false)
             $menu_items[10]['href'] = 'view_orders.php';
             $menu_items[10]['menu_icon'] = 'orders';
             $menu_items[10]['color_class'] = 'ecommerce-color';
-            $menu_items[10]['title'] = 'All Orders';
+            // The Ecommerce heading over the store rows says what they are,
+            // so each row is named for its subject. The first entry keeps its
+            // "All ..." name and carries the row's name in data-pg-menu-label,
+            // which markMenuCurrent() compares with the row's, so the row
+            // shows no hint on its own list screen.
+            $menu_items[10]['title'] = 'Orders';
             $menu_items[10]['context'] = true;
-            $menu_items[10]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-bag-check bi-me-2\'>' . lang('All Orders') . '</a>';
+            $menu_items[10]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php\'' . $output_parent_target . ' data-pg-menu-label=\'' . h(lang('Orders')) . '\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-bag-check bi-me-2\'>' . lang('All Orders') . '</a>';
             $menu_items[10]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php?status=incomplete\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-basket bi-me-2\'>' . lang('Shopping Carts') . '</a>';
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php?type=online\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart bi-me-2\'>' . lang('All Online Orders') . '</a>';
@@ -3342,12 +3329,12 @@ function output_menu($properties = false)
             $menu_items[11]['href'] = 'view_products.php';
             $menu_items[11]['menu_icon'] = 'products';
             $menu_items[11]['color_class'] = 'ecommerce-color';
-            $menu_items[11]['title'] = 'All Products';
+            $menu_items[11]['title'] = 'Products';
             $menu_items[11]['context'] = true;
-            $menu_items[11]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-seam bi-me-2\'>' . lang('All Products') . '</a>';
+            $menu_items[11]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php\'' . $output_parent_target . ' data-pg-menu-label=\'' . h(lang('Products')) . '\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-seam bi-me-2\'>' . lang('All Products') . '</a>';
             $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_product.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Product'))) . '</a>';
             $menu_items[11]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?filter=all_products\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-seam bi-me-2\'>' . lang('All Products') . '</a>';
+            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?filter=all_products\'' . $output_parent_target . ' data-pg-menu-label=\'' . h(lang('Products')) . '\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-seam bi-me-2\'>' . lang('All Products') . '</a>';
             $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?filter=out_of_stock_products\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart-x bi-me-2\'>' . lang('All Out of Stock Products') . '</a>';
 
             // ECOMMERCE > Barcode
@@ -3373,8 +3360,8 @@ function output_menu($properties = false)
             // the catalog explorer: the tree, the products inside each group,
             // the variant sets, the bin and the import / export all live here.
             //
-            // "Manager" to match the File Manager above it, because the two are
-            // the same screen with different tables behind them -- the tree,
+            // "Manager" to match the File Manager, because the two are the
+            // same screen with different tables behind them -- the tree,
             // the grid, the right button, F2, Ctrl+Z and the bin all behave the
             // same in both. The name is the cheapest way to say so.
             $menu_items[12]['title'] = 'Catalog Manager';
@@ -3390,9 +3377,9 @@ function output_menu($properties = false)
             $menu_items[14]['href'] = 'view_offers.php';
             $menu_items[14]['menu_icon'] = 'offers';
             $menu_items[14]['color_class'] = 'ecommerce-color';
-            $menu_items[14]['title'] = 'All Offers';
+            $menu_items[14]['title'] = 'Offers';
             $menu_items[14]['context'] = true;
-            $menu_items[14]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_offers.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-percent bi-me-2\'>' . lang('All Offers') . '</a>';
+            $menu_items[14]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_offers.php\'' . $output_parent_target . ' data-pg-menu-label=\'' . h(lang('Offers')) . '\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-percent bi-me-2\'>' . lang('All Offers') . '</a>';
             $menu_items[14]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_offer.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Offer'))) . '</a>';
             // ECOMMERCE > Gift Cards
             $menu_items[14]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
@@ -3421,12 +3408,12 @@ function output_menu($properties = false)
         $menu_items[15]['href'] = 'view_shipping_methods.php';
         $menu_items[15]['menu_icon'] = 'shipping';
         $menu_items[15]['color_class'] = 'ecommerce-color';
-        $menu_items[15]['title'] = 'All Shipping Methods';
+        $menu_items[15]['title'] = 'Shipping';
         $menu_items[15]['context'] = true;
         $menu_items[15]['data-bs-content'] = '';
 
         if (USER_MANAGE_ECOMMERCE and ECOMMERCE_SHIPPING) {
-            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_methods.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-truck bi-me-2\'>' . lang('All Shipping Methods') . '</a>';
+            $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_methods.php\'' . $output_parent_target . ' data-pg-menu-label=\'' . h(lang('Shipping')) . '\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-truck bi-me-2\'>' . lang('All Shipping Methods') . '</a>';
             $menu_items[15]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_shipping_method.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Shipping Method'))) . '</a>';
             // ECOMMERCE > Zones
             $menu_items[15]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
@@ -3766,14 +3753,18 @@ function output_menu($properties = false)
         case 'welcome.php':
             $active_menu = 0;
             break;
+        // The file manager and the screens of its files and folders, every
+        // view of the explorer included: the File Manager row's panel marks
+        // the view that is open.
         case 'view_folders.php':
-            // The same screen answers for the Files entry when it is opened
-            // on one of its views across every file.
-            $active_menu = (isset($_GET['view']) && in_array($_GET['view'], array('files', 'images'), true)) ? 3 : 1;
-            break;
         case 'add_folder.php':
         case 'edit_folder.php':
         case 'duplicate_folder.php':
+        case 'view_files.php':
+        case 'add_file.php':
+        case 'edit_file.php':
+        case 'image_editor_edit.php':
+        case 'editor_select_image.php':
             $active_menu = 1;
             break;
         case 'view_pages.php':
@@ -3795,13 +3786,6 @@ function output_menu($properties = false)
         case 'view_comments.php':
         case 'edit_comment.php':
             $active_menu = 2;
-            break;
-        case 'view_files.php':
-        case 'add_file.php':
-        case 'edit_file.php':
-        case 'image_editor_edit.php':
-        case 'editor_select_image.php':
-            $active_menu = 3;
             break;
         case 'calendars.php':
         case 'view_calendars.php':
@@ -3956,10 +3940,11 @@ function output_menu($properties = false)
         case 'duplicate_product_group.php':
             $active_menu = 12;
             break;
+        // The attribute screens are in the Products panel (there is no row 13).
         case 'view_product_attributes.php':
         case 'add_product_attribute.php':
         case 'edit_product_attribute.php':
-            $active_menu = 13;
+            $active_menu = 11;
             break;
 
         case 'view_offers.php':
@@ -4122,50 +4107,22 @@ function output_menu($properties = false)
             break;
     }
 
-    // Where the moved rows sit in the rail: the workspace right under the
-    // dashboard and My Notes, when pinned, right under the workspace; the ERP
-    // after the campaigns, the Visual Page Editor between the file manager
-    // and the pages. The rows are built in the order of their ids above and
-    // drawn in the order of the array, so they are moved
-    // here; the ids, which the active-row switch reads, stay. When the row to
-    // follow is not there (no access to it), the nearest one before it is
-    // followed.
-    foreach (array(23 => array(0), 24 => array(23, 0), 22 => array(9, 8, 7, 6, 5, 4, 3, 2, 1, 0), 21 => array(1, 0)) as $move => $after_ids) {
-        if (!isset($menu_items[$move])) {
-            continue;
+    // The rows come in categories (pg_menu_categories()), drawn in the order
+    // of that table, not the order they were built in above; the ids, which
+    // the active-row switch reads, stay. Only the rows built above are laid
+    // out, so a category whose rows this person may not reach, or whose
+    // module is off, gets no heading (pg_menu_layout()).
+    $menu_drawn = array();
+    foreach ($menu_items as $key => $options) {
+        if (isset($options['id'])) {
+            $menu_drawn[] = (int) $key;
         }
-
-        $after = null;
-
-        foreach ($after_ids as $candidate) {
-            if (isset($menu_items[$candidate])) {
-                $after = $candidate;
-                break;
-            }
-        }
-
-        if ($after === null) {
-            continue;
-        }
-
-        $moved = $menu_items[$move];
-        unset($menu_items[$move]);
-        $reordered = array();
-
-        foreach ($menu_items as $key => $options) {
-            $reordered[$key] = $options;
-
-            if ($key === $after) {
-                $reordered[$move] = $moved;
-            }
-        }
-
-        $menu_items = $reordered;
     }
 
-    $output_all_menu_items = '';
+    $menu_rows = array();
     $output_menu_panels = '';
-    foreach ($menu_items as $key => $options) {
+    foreach ($menu_drawn as $key) {
+        $options = $menu_items[$key];
 
         //also add active class for full menu item that user viewed.
         $active_menu_class = '';
@@ -4225,7 +4182,7 @@ function output_menu($properties = false)
 
         // no-popover: the row keeps the browser's own title hint, which names
         // the icon on the rail, instead of a hover popover (pgBindTitlePopovers()).
-        $output_all_menu_items .= '<a id="menu_item_' . $options['id'] . '"' . $output_menu_row_panel . ' class="list-group-item list-group-item-action border-0 no-popover' . (($menu_panel_id !== '') ? ' pg-menu-parent' : '') . $active_menu_class . '" title="' . lang($options['title']) . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $options['href'] . '" ' . $output_parent_target . '>' . $output_menu_item_icon . '<span class="list-group-text">' . lang($options['title']) . '</span>' . $output_menu_item_badge . $output_menu_row_end . '</a>';
+        $menu_rows[$key] = '<a id="menu_item_' . $options['id'] . '"' . $output_menu_row_panel . ' class="list-group-item list-group-item-action border-0 no-popover' . (($menu_panel_id !== '') ? ' pg-menu-parent' : '') . $active_menu_class . '" title="' . lang($options['title']) . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $options['href'] . '" ' . $output_parent_target . '>' . $output_menu_item_icon . '<span class="list-group-text">' . lang($options['title']) . '</span>' . $output_menu_item_badge . $output_menu_row_end . '</a>';
 
 
     }
@@ -4243,9 +4200,116 @@ function output_menu($properties = false)
 
     // The rows, then the panels they open; backend.src.js shows one of the
     // two at a time.
+    // Each category's heading, then its rows; the untitled block at the top
+    // (the dashboard and the workspace) has none.
+    $output_all_menu_items = '';
+    foreach (pg_menu_layout($menu_drawn, pg_menu_categories()) as $block) {
+        if ($block['label'] !== '') {
+            $output_all_menu_items .= pg_menu_heading($block['key'], lang($block['label']));
+        }
+
+        foreach ($block['slots'] as $slot) {
+            $output_all_menu_items .= $menu_rows[$slot];
+        }
+    }
+
     return '<div class="pg-menu-main list-group list-group-flush" style="--bs-list-group-bg:transparent;">' . $output_all_menu_items . '</div>'
         . (($output_menu_panels !== '') ? '<div class="pg-menu-panels">' . $output_menu_panels . '</div>' : '')
         . $menu_tail;
+}
+
+/**
+ * The categories of the main menu's rows, in the order they are drawn.
+ *
+ * Each category is a heading (an English lang() source) over its rows, named
+ * by the slot ids output_menu() builds them under; the rows come in the order
+ * listed. The untitled first one is drawn without a heading. Slots 3, 13, 18
+ * and 19 are retired and never come back; a new row gets a place here, or is
+ * drawn at the end without a heading (pg_menu_layout()).
+ *
+ * @return array key => label (lang() source, '' for none), slots (ids)
+ */
+function pg_menu_categories()
+{
+    return array(
+        ''           => array('label' => '', 'slots' => array(0, 23, 24)),
+        'content'    => array('label' => 'Content', 'slots' => array(2, 1, 4, 5)),
+        'design'     => array('label' => 'Design', 'slots' => array(21, 17)),
+        'ecommerce'  => array('label' => 'Ecommerce', 'slots' => array(10, 11, 12, 14, 15)),
+        // The ERP has its own switch and rights, and runs without the store.
+        'accounting' => array('label' => 'Accounting', 'slots' => array(22)),
+        'marketing'  => array('label' => 'Marketing', 'slots' => array(6, 7, 9, 16)),
+        'system'     => array('label' => 'System', 'slots' => array(8, 20)),
+    );
+}
+
+/**
+ * The rows a person gets, laid out in the menu's categories.
+ *
+ * Built only from the rows output_menu() built, each under its own gate, so a
+ * category none of whose rows is there is left out with its heading: nothing
+ * is checked a second time here. A row no category lists goes into an
+ * untitled block at the end instead of being lost.
+ *
+ * @param array $drawn      the slot ids of the rows built, in any order
+ * @param array $categories pg_menu_categories()
+ * @return array of blocks: key, label ('' for none), slots (in the table's order)
+ */
+function pg_menu_layout($drawn, $categories)
+{
+    $here = array();
+
+    foreach ($drawn as $slot) {
+        $here[(int) $slot] = true;
+    }
+
+    $blocks = array();
+    $listed = array();
+
+    foreach ($categories as $key => $category) {
+        $slots = array();
+
+        foreach ($category['slots'] as $slot) {
+            $listed[$slot] = true;
+
+            if (isset($here[$slot])) {
+                $slots[] = $slot;
+            }
+        }
+
+        if (!empty($slots)) {
+            $blocks[] = array('key' => (string) $key, 'label' => $category['label'], 'slots' => $slots);
+        }
+    }
+
+    $rest = array();
+
+    foreach ($drawn as $slot) {
+        if (!isset($listed[(int) $slot])) {
+            $rest[] = (int) $slot;
+        }
+    }
+
+    if (!empty($rest)) {
+        $blocks[] = array('key' => '', 'label' => '', 'slots' => $rest);
+    }
+
+    return $blocks;
+}
+
+/**
+ * A category heading of the main menu: its name over the rows while the
+ * labels show, a short line between the icons on the rail (backend.src.css).
+ * Not a link and not a .list-group-item, so the menu's scripts, the loading
+ * curtain and the current-entry marking pass it by.
+ *
+ * @param string $key   the category's key (pg_menu_categories())
+ * @param string $label its name, translated
+ * @return string
+ */
+function pg_menu_heading($key, $label)
+{
+    return '<div class="pg-menu-heading" id="menu_heading_' . h($key) . '"><span class="pg-menu-heading-text">' . h($label) . '</span></div>';
 }
 
 /**

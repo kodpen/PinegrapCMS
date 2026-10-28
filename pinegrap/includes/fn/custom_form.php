@@ -527,8 +527,7 @@ function pg_cf_form_fields_has_column($column)
     if (isset($seen[$column])) return $seen[$column];
     $seen[$column] = false;
     if (!db::$con) return false;
-    $r = @mysqli_query(db::$con,
-        "SHOW COLUMNS FROM form_fields WHERE Field = '" . e($column) . "'");
+    $r = db_q("SHOW COLUMNS FROM form_fields WHERE Field = ?", array((string)$column));
     $seen[$column] = ($r && mysqli_num_rows($r) > 0);
     return $seen[$column];
 }
@@ -1763,7 +1762,8 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
 
             // A field's kind draws its control: a number field takes decimal
             // numbers, an image field offers images; a reference pick list
-            // lists the records of the form it points into, below the
+            // lists the records of the form it points into (a product or
+            // page pick list the products or pages), below the
             // designer's empty-valued prompt row (one whose form is gone
             // keeps its drawn choices). The server checks them again
             // (pg_coll_check_field()). A reference radio button or check box
@@ -1904,21 +1904,20 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
 }
 
 /**
- * The records a reference field's control offers (pg_coll_reference_options()),
- * or null when its choices stay the drawn ones: the field is not a
- * reference, or the form it points into is gone. The row's
- * reference_options, when given, stand for that read.
+ * The choices a reference, product or page field's control offers
+ * (pg_coll_kind_options()), or null when its choices stay the drawn ones:
+ * the field has none of those kinds, or the form a reference points into
+ * is gone. The row's reference_options, when given, stand for that read.
  *
  * @param array $row form_fields row (pg_cf_field_map())
- * @return array|null reference code => label
+ * @return array|null value => label
  */
 function pg_cf_reference_choices_for($row)
 {
     $kind = pg_coll_field_kind(isset($row['collection_kind']) ? $row['collection_kind'] : '', isset($row['type']) ? (string)$row['type'] : '');
-    if ($kind !== 'reference') return null;
-    if (isset($row['reference_options']) && is_array($row['reference_options'])) return $row['reference_options'];
-    if (!empty($row['reference_page_id'])) return pg_coll_reference_options((int)$row['reference_page_id']);
-    return null;
+    $field = array('kind' => $kind, 'reference_page_id' => isset($row['reference_page_id']) ? (int)$row['reference_page_id'] : 0);
+    if (isset($row['reference_options']) && is_array($row['reference_options'])) $field['options'] = $row['reference_options'];
+    return pg_coll_kind_options($field);
 }
 
 /**

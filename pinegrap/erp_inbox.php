@@ -159,9 +159,9 @@ if ($provider !== '') {
                     ' . get_token_field() . '
                     <input type="hidden" name="erp_action" value="fetch" />
                     <input type="hidden" name="state" value="' . h($state) . '" />
-                    <input type="date" name="from" value="' . h($default_from) . '" class="form-control form-control-sm w-auto" aria-label="' . lang('Start date') . '" required />
+                    <input type="date" data-pg-date name="from" value="' . h($default_from) . '" class="form-control form-control-sm w-auto" aria-label="' . lang('Start date') . '" required />
                     <span class="fg-secondary">&ndash;</span>
-                    <input type="date" name="to" value="' . h($default_to) . '" class="form-control form-control-sm w-auto" aria-label="' . lang('End date') . '" required />
+                    <input type="date" data-pg-date name="to" value="' . h($default_to) . '" class="form-control form-control-sm w-auto" aria-label="' . lang('End date') . '" required />
                     <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 text-nowrap"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . lang('Read from the provider') . '</button>
                 </form>') . '
                 ' . (($read_at > 0)
@@ -213,7 +213,7 @@ pg_page_shell([
         </div>
     </div>
 </main>
-' .
+' . get_date_picker_format() . pg_fields_script() .
 output_footer();
 
 $liveform->remove_form();

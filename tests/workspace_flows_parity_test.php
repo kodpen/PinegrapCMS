@@ -1999,43 +1999,12 @@ function workspace_flows_parity_read_routes()
 	return $out;
 }
 
-// What the form sends and the routes take: the keys request() of
-// scheduledForm() in workspace.js builds (scheduledForm.key), and those each
-// route of scheduled actions reads from the request
-// (ws_scheduled_save.key); the scheduled messages' routes are left out.
+// What the routes of scheduled actions take: the keys each reads from the
+// request (ws_scheduled_save.key); the scheduled messages' routes are left
+// out.
 function workspace_flows_parity_read_request()
 {
-	$form = workspace_flows_parity_js_function('assets/js/workspace.js', 'scheduledForm');
-	$start = strpos($form, 'function request(');
-
-	if ($start === false) {
-		throw new RuntimeException('scheduledForm() in workspace.js has no function request(): teach workspace_flows_parity_read_request() where the form builds what it sends.');
-	}
-
-	$request = substr($form, $start, workspace_flows_parity_js_close($form, strpos($form, '{', $start)) - $start + 1);
-	$literal = strpos($request, 'var out = {');
-
-	if ($literal === false) {
-		throw new RuntimeException('request() of scheduledForm() no longer starts its answer with var out = {...}: teach workspace_flows_parity_read_request() to read it.');
-	}
-
-	// The literal's own keys: its inner brackets taken out first, so only
-	// the keys at its top are left.
-	$open = $literal + strlen('var out = ');
-	$inner = substr($request, $open + 1, workspace_flows_parity_js_close($request, $open) - $open - 1);
-
-	do {
-		$inner = preg_replace('/\([^()]*\)|\[[^\[\]]*\]|\{[^{}]*\}/', '', $inner, -1, $taken);
-	} while ($taken > 0);
-
-	preg_match_all('/(?:^|,)\s*([A-Za-z_][A-Za-z0-9_]*)\s*:/', $inner, $keys);
-	preg_match_all('/\bout\.([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)/', $request, $set);
-
 	$out = array();
-
-	foreach (array_unique(array_merge($keys[1], $set[1])) as $key) {
-		$out[] = 'scheduledForm.' . $key;
-	}
 
 	foreach (workspace_flows_parity_cases(workspace_flows_parity_file('includes/workspace/actions.php')) as $route => $code) {
 		if ((strpos($route, 'ws_scheduled_') !== 0) || (strpos($route, 'message') !== false)) {
@@ -2048,37 +2017,6 @@ function workspace_flows_parity_read_request()
 	}
 
 	return $out;
-}
-
-// The ready-made actions the form offers (saTemplates() in workspace.js and
-// the events' in workspace_events.js), by key.
-function workspace_flows_parity_read_templates()
-{
-	preg_match_all("/\bkey: '([a-z_]+)'/", workspace_flows_parity_js_function('assets/js/workspace.js', 'saTemplates') . workspace_flows_parity_js_function('assets/js/workspace_events.js', 'templates'), $keys);
-
-	return array_values(array_unique($keys[1]));
-}
-
-// The places that open the form (scheduledForm() in workspace.js), by what
-// they open it with (its first argument, and the preset's key when it has
-// one) and the functions they are in; a second call written the same way in
-// the same place numbered.
-function workspace_flows_parity_read_entry_points()
-{
-	$js = workspace_flows_parity_file('assets/js/workspace.js');
-	$out = array();
-
-	foreach (workspace_flows_parity_js_calls($js, 'scheduledForm') as $offset => $args) {
-		$key = $args[0];
-
-		if (preg_match("/^\{ key: '([a-z_]+)'/", $args[3] ?? '', $preset)) {
-			$key .= ' (' . $preset[1] . ')';
-		}
-
-		$out[] = $key . ' in ' . workspace_flows_parity_js_enclosing($js, $offset);
-	}
-
-	return workspace_flows_parity_numbered($out);
 }
 
 // Pinegrap AI drafting a scheduled action: its tool, as named
@@ -2250,7 +2188,7 @@ function workspace_flows_parity_groups()
 {
 	return array(
 		'action'              => array('Action', array(1, 2, 3), 'workspace_flows_parity_read_action', 'the $data and follow-up keys of ws_scheduled_input(), ws_scheduled_save() and ws_scheduled_save_check(), the row it gives back, the columns of ws_scheduled_decode()'),
-		'request'             => array('Action', array(1, 2, 3), 'workspace_flows_parity_read_request', 'request() of scheduledForm() in workspace.js and the $request keys of the scheduled actions\' routes in includes/workspace/actions.php'),
+		'request'             => array('Action', array(1, 2, 3), 'workspace_flows_parity_read_request', 'the $request keys of the scheduled actions\' routes in includes/workspace/actions.php'),
 		'when'                => array('When', array(3), 'workspace_flows_parity_read_when', 'the "when" kinds of ws_scheduled_input()'),
 		'repeats'             => array('When', array(3), 'workspace_flows_parity_read_repeats', 'ws_scheduled_repeats()'),
 		'rule_options'        => array('When, Conditions', array(3), 'workspace_flows_parity_read_rule_options', 'the $rule keys of each branch of ws_scheduled_rule_input()'),
@@ -2285,8 +2223,6 @@ function workspace_flows_parity_groups()
 		'list_parts'          => array('Screen', array(1), 'workspace_flows_parity_read_list_parts', 'the labels and the item fields of showScheduled() and scheduledList() in workspace.js'),
 		'card_places'         => array('Screen', array(1), 'workspace_flows_parity_read_card_places', 'the scheduledCard() calls of workspace.js and the functions they are in'),
 		'routes'              => array('Screen', array(1), 'workspace_flows_parity_read_routes', 'the ws_scheduled_* branches of includes/workspace/actions.php, their pg_panel_actions() rows and the api() calls of workspace.js'),
-		'templates'           => array('Screen', array(1), 'workspace_flows_parity_read_templates', 'saTemplates() in workspace.js and templates() in workspace_events.js'),
-		'entry_points'        => array('Entry points', array(1, 2), 'workspace_flows_parity_read_entry_points', 'the scheduledForm() calls of workspace.js and the functions they are in'),
 		'ai_drafts'           => array('Entry points', array(1, 4), 'workspace_flows_parity_read_ai_drafts', 'Pinegrap AI\'s tool in ai.php and the functions that treat, mark or write a draft of the kind scheduled'),
 		'links_in'            => array('Links in', array(1), 'workspace_flows_parity_read_links_in', 'ws_inbox_describe(), ws_nav_groups(), workspace.js, ws_tour_steps()'),
 		'inbox_kinds'         => array('API', array(5), 'workspace_flows_parity_read_inbox_kinds', 'the inbox route of includes/workspace/api.php'),
@@ -2323,14 +2259,14 @@ function workspace_flows_parity_table()
 			array(array('data.then_action'), 'form', 'the one follow-up an old form sends, which the check takes as a follow-up on done'),
 		),
 		'request' => array(
-			array(array('scheduledForm.id', 'ws_scheduled_save.id', 'ws_scheduled_preview.id'), 1, 'Edit on the card: the same action saved, its sentence and next runs'),
-			array(array('scheduledForm.name', 'ws_scheduled_save.name', 'ws_scheduled_preview.name'), 1, 'the form, opened in the Scheduled actions section of Flows: the name'),
-			array(array('scheduledForm.rules', 'ws_scheduled_save.rules', 'ws_scheduled_preview.rules'), 1, 'the form: the "when" and the conditions'),
-			array(array('scheduledForm.main_action', 'ws_scheduled_save.main_action', 'ws_scheduled_preview.main_action'), 1, 'the form: the step, sent as main_action ("action" names the request itself)'),
-			array(array('scheduledForm.follow', 'ws_scheduled_save.follow', 'ws_scheduled_preview.follow'), 1, 'the form: the follow-ups by outcome'),
-			array(array('scheduledForm.then_action', 'ws_scheduled_save.then_action', 'ws_scheduled_preview.then_action'), 'form', 'the one follow-up the form sends on a site without the 5.85 chains, which the check takes as a follow-up on done'),
-			array(array('scheduledForm.channel_id', 'scheduledForm.note_id', 'ws_scheduled_save.channel_id', 'ws_scheduled_save.note_id', 'ws_scheduled_preview.channel_id', 'ws_scheduled_preview.note_id'), 1, 'where it lives: the channel it was opened in (composer, @ai draft, Duplicate) or the note'),
-			array(array('scheduledForm.draft_change_id', 'ws_scheduled_save.draft_change_id'), 1, 'a form opened with a draft\'s change id marks the draft\'s card applied on Save (ws_scheduled_draft_saved()); the card opens a flow since slice 4c2, the form retires in slice 5'),
+			array(array('ws_scheduled_save.id', 'ws_scheduled_preview.id'), 1, 'Edit on the card: the same action saved, its sentence and next runs'),
+			array(array('ws_scheduled_save.name', 'ws_scheduled_preview.name'), 1, 'the form, opened in the Scheduled actions section of Flows: the name'),
+			array(array('ws_scheduled_save.rules', 'ws_scheduled_preview.rules'), 1, 'the form: the "when" and the conditions'),
+			array(array('ws_scheduled_save.main_action', 'ws_scheduled_preview.main_action'), 1, 'the form: the step, sent as main_action ("action" names the request itself)'),
+			array(array('ws_scheduled_save.follow', 'ws_scheduled_preview.follow'), 1, 'the form: the follow-ups by outcome'),
+			array(array('ws_scheduled_save.then_action', 'ws_scheduled_preview.then_action'), 'form', 'the one follow-up the form sends on a site without the 5.85 chains, which the check takes as a follow-up on done'),
+			array(array('ws_scheduled_save.channel_id', 'ws_scheduled_save.note_id', 'ws_scheduled_preview.channel_id', 'ws_scheduled_preview.note_id'), 1, 'where it lives: the channel it was opened in (composer, @ai draft, Duplicate) or the note'),
+			array(array('ws_scheduled_save.draft_change_id'), 1, 'a form opened with a draft\'s change id marks the draft\'s card applied on Save (ws_scheduled_draft_saved()); the card opens a flow since slice 4c2, the form retires in slice 5'),
 			array(array('ws_scheduled_list.status', 'ws_scheduled_list.channel_id'), 1, 'Scheduled actions section in Flows: the list by state chip, or one channel\'s'),
 			array(array('ws_scheduled_get.id'), 1, 'History on the card'),
 			array(array('ws_scheduled_draft.text', 'ws_scheduled_draft.channel_id'), 1, 'the form: the AI sentence, for the channel it is opened in'),
@@ -2603,15 +2539,9 @@ function workspace_flows_parity_table()
 		'routes' => array(
 			array(array('route ws_scheduled_list', 'panel ws_scheduled_list', 'api ws_scheduled_list'), 1, 'Scheduled actions section in Flows: the list, by state'),
 			array(array('route ws_scheduled_get', 'panel ws_scheduled_get', 'api ws_scheduled_get', 'route ws_scheduled_status', 'panel ws_scheduled_status', 'api ws_scheduled_status', 'route ws_scheduled_run_now', 'panel ws_scheduled_run_now', 'api ws_scheduled_run_now'), 1, 'card buttons: History, Pause/Resume and Cancel, Run now'),
-			array(array('route ws_scheduled_targets', 'panel ws_scheduled_targets', 'api ws_scheduled_targets', 'route ws_scheduled_preview', 'panel ws_scheduled_preview', 'api ws_scheduled_preview', 'route ws_scheduled_draft', 'panel ws_scheduled_draft', 'api ws_scheduled_draft', 'route ws_scheduled_save', 'panel ws_scheduled_save', 'api ws_scheduled_save'), 1, 'the form: what it can start, the sentence and next runs, the AI sentence, Save'),
+			array(array('route ws_scheduled_targets', 'panel ws_scheduled_targets', 'api ws_scheduled_targets'), 1, 'the form\'s step editor: what it can start'),
+			array(array('route ws_scheduled_preview', 'panel ws_scheduled_preview', 'route ws_scheduled_draft', 'panel ws_scheduled_draft', 'route ws_scheduled_save', 'panel ws_scheduled_save'), 1, 'the retired form\'s sentence and next runs, AI sentence and Save: no screen asks them, the routes go with ws_scheduled_save()'),
 			array(array('route ws_scheduled_messages', 'panel ws_scheduled_messages', 'api ws_scheduled_messages', 'route ws_scheduled_message_save', 'panel ws_scheduled_message_save', 'api ws_scheduled_message_save', 'route ws_scheduled_message_delete', 'panel ws_scheduled_message_delete', 'api ws_scheduled_message_delete', 'route ws_scheduled_message_send', 'panel ws_scheduled_message_send', 'api ws_scheduled_message_send'), 'form', 'scheduled messages\' routes: scheduled messages are not moved into Flows'),
-		),
-		'templates' => array(
-			array(array('welcome', 'task_mail', 'morning', 'digest', 'uptime', 'ssl', 'overdue', 'forms', 'stock', 'orders', 'invoices', 'monthly', 'chain'), 1, 'scheduledForm() templates, kept in the form (canvas starters come in slice 4)'),
-			array(array('order_event', 'form_event', 'stock_event', 'overdue_event', 'approval_event'), 1, 'scheduledForm() event templates, kept in the form (canvas starters come in slice 4)'),
-		),
-		'entry_points' => array(
-			array(array('context in scheduledForm()', 'context (sentence) in fill() in saSentenceBox()'), 1, 'inside the form: a template picked, an AI sentence filled in'),
 		),
 		'ai_drafts' => array(
 			array(array('tool propose_scheduled_action', 'offered propose_scheduled_action', 'handled propose_scheduled_action'), 4, 'AI drafts on the canvas; until then Pinegrap AI drafts into the form, opened by @ai draft Open'),

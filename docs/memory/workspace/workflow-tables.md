@@ -16,7 +16,7 @@ description: Workflow tables (11.0.110, #2746): the four ws_wtable* tables colum
 
 ## Who reaches a table?
 - `ws_wtable_access()` → owner | edit | view | '' (`ws_wtable_access_level()` is the pure rule, #2424): the owner; a person shared at view or edit; a channel share gives view to the channel's readers. No role gives access: an administrator reaches a personal table only through a share.
-- Owner gone (no user row, `ws_profiles.excluded`, no workspace right: `ws_rights_for_id()['member']` false) → nobody reaches it, shares included. Its flows pause (later slice).
+- Owner gone (no user row, `ws_profiles.excluded`, no workspace right: `ws_rights_for_id()['member']` false) → nobody reaches it, shares included. A flow box on it pauses (`ws_wtable_flow_gate()`, `workflow-table-shares.md`).
 - `ws_wtable_may()`: read view+, write edit+ (name, description, columns, rows), manage owner only (delete, shares).
 
 ## How do column changes behave?
