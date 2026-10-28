@@ -1,6 +1,6 @@
 ---
 name: workspace-voice-messages
-description: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, answers open): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
+description: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, answers #2417, V3a in progress): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -12,7 +12,7 @@ description: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, ans
 - get_file.php answers `Range` with 206 (#1717, platform/get-file-byte-ranges.md).
 - Not blocked: `Permissions-Policy: microphone=(self)` (`waf_send_security_headers()`, waf.php), keep `(self)`; CSP `media-src` has `blob:`.
 
-## What is proposed? (not approved yet)
+## What is proposed? (answered in #2417)
 - A voice message: a message with an audio file, by the existing upload path and read rules (no site member). Mic in place of Send while the box is empty; vanilla `assets/js/workspace_voice.js` (proposed) in `workspace.min.js`; labels via `ws_voice_js_strings()` (proposed), keys added with `php tools/tr_add.php`.
 - Transcription: admin switch, off by default, named provider ("audio is sent to OpenAI"), sealed key; a private channel only where its manager allowed (like `ai_access`); `pg_audit()` line. One OpenAI-compatible `/audio/transcriptions` call (`pg_curl_tls()`, `pinegrap_user_agent()`); the provider card of plans/workspace-agent-handles.md step 3 if built first.
 - Owns recordings and transcripts; plans/workspace-composer-tools.md (in writing) owns live dictation. Erasure (plans/privacy-data-pack-audit-log.md step 4) covers both.
@@ -22,7 +22,10 @@ description: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, ans
 1. Done (#1457): V1 record, send, play (no schema; `files.create` takes them already).
 2. Done (#1717): V1b `Range` 206 in get_file.php (no schema, no `lang()`).
 3. Done (#1494): V2 quick voice reply (no schema): a mic on a voice message (tap: a phone's long press opens the menu) sends with `parent_id`; `ws_attach` and `files.create` (dry run too) learn it; quote "Voice message".
-4. V3 transcripts (schema, ask first): table `ws_voice` (proposed: duration, peaks, transcript, status), settings card, `ws_voice_transcribe()` (proposed) run like `ws_ai_kick`/`ws_ai_job()`, then `ws_message_touch()`; `file.voice` (proposed) in `ws_api_message_file_schema()` (MCP reads it); `workspace.message.transcribed` (proposed) with `channel_id`, public channels only.
+4. V3 transcripts (schema approved in #2417), three PRs, each after the previous merges:
+   - V3a (in progress, branch `feature/ws-voice-v3-k1`): schema 11.0.89 (`ws_voice`, `ws_channels.voice_access`, two config columns, texts in `config_text`), the settings card, `ws_voice_channel_allowed()`: workspace/workspace-voice-transcripts.md.
+   - V3b: a `ws_voice` row on a voice upload, `ws_voice_transcribe()` run like `ws_ai_kick`/`ws_ai_job()` (pinned HTTPS call, 5-minute cap, hold after failures), then `ws_message_touch()`; delete for everyone removes the row and the text; the channel menu switch (`ws_channel_voice`, private-channel consent naming the provider) and the transcript under the player (`workspace.js`, `actions.php`: wait for draft #2545 or settle with it).
+   - V3c: `file.voice` in `ws_api_message_file_schema()` (MCP reads it), `voice_transcripts` on the channel API writes, `workspace.message.transcribed` with `channel_id`, public channels only.
 5. V4 assistants hear it: transcript in Pinegrap AI's context, `ws_api_claude_request_present()`, `ws_api_channel_context()`, recaps, push, search; a recording with typed tags (mic kept while the box holds only tags) or answering an assistant asks once transcribed.
 6. V5 (optional) answers read aloud by `speechSynthesis`; V6 a recording in a note (`ws_note_file`).
 
@@ -34,4 +37,4 @@ description: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, ans
 5. Cap 5 minutes.
 
 ## Where to start?
-- V3 (schema approved in #2417): `ws_voice`, the settings card, the `ws_channels` allow column in the `ai_access` shape.
+- V3b once V3a has merged.

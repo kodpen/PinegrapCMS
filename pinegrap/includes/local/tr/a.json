@@ -2298,6 +2298,7 @@
     "Any other style that uses this file breaks there too.": "Bu dosyayı kullanan başka stiller varsa orada da kırılır.",
     "Any position": "Herhangi bir pozisyon",
     "Any public channel": "Herkese açık herhangi bir kanal",
+    "Any service that answers like OpenAI's /audio/transcriptions. Left empty, OpenAI is used.": "OpenAI'ın /audio/transcriptions adresi gibi yanıt veren herhangi bir hizmet. Boş bırakılırsa OpenAI kullanılır.",
     "Any status": "Herhangi bir durum",
     "Any time: Settings, Design, Theme. The look and the colour palette change every page at once and leave the content as it is.": "İstediğiniz zaman: Ayarlar, Tasarım, Tema. Görünüm ve renk paleti bütün sayfaları birlikte değiştirir, içeriğe dokunmaz.",
     "Anyone can drop off an old device at the lab. The students wipe its data before any repair starts.": "Herkes eski bir cihazını atölyeye bırakabilir. Öğrenciler onarıma başlamadan önce cihazdaki verileri siliyor.",
