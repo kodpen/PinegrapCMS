@@ -62,6 +62,11 @@ function test_menu_mode_button_carries_every_picture_and_label()
 		pg_assert_contains('data-label-' . $label . '="', $html, 'label ' . $label . ' for the script');
 	}
 
+	// The hidden menu is drawn as an empty side panel, like the shut drawer
+	// on a phone: an empty square read as an unticked check box.
+	pg_assert_contains('bi bi-layout-sidebar pg-mt-hidden', $html, 'hidden is the empty side panel');
+	pg_assert_false(strpos($html, 'bi-square ') !== false, 'no empty square');
+
 	pg_assert_false(strpos($html, 'data-pg-menu-mode') !== false, 'no menu of three any more');
 	pg_assert_false(strpos($html, 'd-lg-none') !== false, 'on every width');
 }
