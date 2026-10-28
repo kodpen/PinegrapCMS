@@ -93,6 +93,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - redirect-validator-context.md: Redirect validation corner rules: leave escape_url() alone, validators are context-bound (pg_safe_back_url vs go()), go() hardening, no hand-written checks.
 - router-no-functions-php.md: What runs before functions.php is loaded (router.php, the firewall's router phase, get_file.php), why lang() is unavailable there, and the waf_text() / get_file_text() wrappers.
 - scheduled-jobs-command-line-render.md: Why the search index and SEO structure jobs render pages from the command line (crontab or general job) without PHP warnings, and what a command line render lacks.
+- server-config-compression-cache.md: Web-root server rules for compression and browser caching (PR #2848): static files only, a week, IIS clientCache inside the one staticContent, nginx static location after the deny rules
 - server-config-paths-and-detection.md: server_config.php path semantics: patterns carry no PATH but actions do, folder name measured (retarget), server type detection, X-Powered-By removal.
 - server-config-web-root-rules.md: includes/server_config.php: why web-root web.config/.htaccess rules live in one list, how to add a block, default-must-pass-detect invariant, repair rules.
 - short-link-csv.md: Short links as a CSV file (2026.11.0): the list's export (from,to,code), import_short_links.php and its line rules, the reader's encodings, separators and heading, the formula guard.

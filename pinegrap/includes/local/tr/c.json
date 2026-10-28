@@ -1325,6 +1325,7 @@
     "Compress only, keep the original size": "Yalnızca sıkıştır, orijinal boyutu koru",
     "Compress, and shrink anything wider than {var:1} pixels": "Sıkıştır ve {var:1} pikselden geniş olanları küçült",
     "Compressing": "Sıkıştırılıyor",
+    "Compression for static files": "Statik dosyalar için sıkıştırma",
     "Computer": "Bilgisayar",
     "Conclude the discussion": "Tartışmayı sonuçlandır",
     "Conclude the discussion? It is kept, read only, for 30 days and then deleted. The decisions and tasks it produced stay in the channel.": "Tartışma sonuçlandırılsın mı? 30 gün salt okunur olarak saklanır, sonra silinir. Ortaya çıkan kararlar ve görevler kanalda kalır.",
