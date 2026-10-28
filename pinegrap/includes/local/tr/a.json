@@ -1913,6 +1913,7 @@
     "Allergy tests": "Alerji testleri",
     "Allocate": "Tahsis",
     "Allocate to open invoices": "Açık faturalara tahsis et",
+    "Allocate to {var:1}": "{var:1} faturasına tahsis",
     "Allocations": "Tahsisler",
     "Allow": "İzin Ver",
     "Allow AI Assistant Fetchers (IP Verified)": "Yapay Zekâ Asistan Botlarına İzin Ver (IP Doğrulamalı)",

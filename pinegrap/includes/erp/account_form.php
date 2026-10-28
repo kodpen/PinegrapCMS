@@ -427,7 +427,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
             <div class="row">
                 <div class="col-12 my-3">
                     ' . $liveform->output_field(array(
-                        'type' => 'textarea', 'id' => 'notes', 'name' => 'notes',
+                        'type' => 'textarea', 'id' => 'notes', 'name' => 'notes', 'aria-label' => lang('Notes'),
                         'class' => 'form-control', 'rows' => '3')) . '
                 </div>
             </div>
@@ -693,7 +693,7 @@ function erp_currency_form_row($liveform, $locked, $help)
 
     if ($locked) {
         $field = '<input type="hidden" name="currency" value="' . h($current) . '" />
-                    <input class="form-control" type="text" value="' . h($current) . '" readonly="readonly" />
+                    <input class="form-control" type="text" id="currency_locked" value="' . h($current) . '" readonly="readonly" />
                     <div class="form-text">' . lang('Cannot be changed once there are movements.') . '</div>';
     } else {
         $options = erp_fx_currency_options();
@@ -711,7 +711,7 @@ function erp_currency_form_row($liveform, $locked, $help)
     return '
             <div class="row">
                 <div class="col-12 sm:col-6 lg:col-3 my-3">
-                    <label for="currency" class="form-label">' . lang('Currency') . '</label>
+                    <label for="' . ($locked ? 'currency_locked' : 'currency') . '" class="form-label">' . lang('Currency') . '</label>
                     ' . $field . '
                 </div>
             </div>';

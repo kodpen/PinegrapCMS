@@ -163,19 +163,28 @@ function _parasut_pagination($current, $total, $tab, $extra_params = []) {
     foreach ($extra_params as $k => $v) {
         if ($v !== '') $base .= '&' . urlencode($k) . '=' . urlencode($v);
     }
-    $out = '<nav><ul class="pagination pagination-sm justify-content-center mt-5">';
-    $out .= '<li class="page-item' . ($current <= 1 ? ' disabled' : '') . '">
-        <a class="page-link" href="' . $base . '&pg=' . ($current - 1) . '">&laquo;</a></li>';
+    // A disabled arrow and the current page are no links, so Tab skips them.
+    $arrow = function ($page, $enabled, $label, $glyph) use ($base) {
+        $inner = '<span aria-hidden="true">' . $glyph . '</span>';
+        if (!$enabled) {
+            return '<li class="page-item disabled"><span class="page-link" aria-label="' . h($label) . '">' . $inner . '</span></li>';
+        }
+        return '<li class="page-item"><a class="page-link" href="' . $base . '&pg=' . $page . '" aria-label="' . h($label) . '">' . $inner . '</a></li>';
+    };
+    $out = '<nav aria-label="' . h(lang('Pagination')) . '"><ul class="pagination pagination-sm justify-content-center mt-5">';
+    $out .= $arrow($current - 1, $current > 1, lang('Previous page'), '&laquo;');
     $start = max(1, $current - 2);
     $end   = min($total, $current + 2);
     if ($start > 1) $out .= '<li class="page-item disabled"><span class="page-link">…</span></li>';
     for ($i = $start; $i <= $end; $i++) {
-        $out .= '<li class="page-item' . ($i === $current ? ' active' : '') . '">
-            <a class="page-link" href="' . $base . '&pg=' . $i . '">' . $i . '</a></li>';
+        if ($i === $current) {
+            $out .= '<li class="page-item active" aria-current="page"><span class="page-link">' . $i . '</span></li>';
+        } else {
+            $out .= '<li class="page-item"><a class="page-link" href="' . $base . '&pg=' . $i . '">' . $i . '</a></li>';
+        }
     }
     if ($end < $total) $out .= '<li class="page-item disabled"><span class="page-link">…</span></li>';
-    $out .= '<li class="page-item' . ($current >= $total ? ' disabled' : '') . '">
-        <a class="page-link" href="' . $base . '&pg=' . ($current + 1) . '">&raquo;</a></li>';
+    $out .= $arrow($current + 1, $current < $total, lang('Next page'), '&raquo;');
     $out .= '</ul></nav>';
     return $out;
 }
@@ -183,7 +192,8 @@ function _parasut_pagination($current, $total, $tab, $extra_params = []) {
 // ------------------------------------------------------------------
 // Build status badge helper
 // ------------------------------------------------------------------
-function _parasut_status_badge($status) {
+// Class and translated label of a Paraşüt payment status code.
+function _parasut_status_info($status) {
     $map = [
         'open'         => ['bg-warning fg-black', lang('Open')],
         'overdue'      => ['bg-danger',             lang('Overdue')],
@@ -192,14 +202,19 @@ function _parasut_status_badge($status) {
         'cancelled'    => ['bg-secondary',          lang('Cancelled')],
         'deleted'      => ['bg-black fg-white',      lang('Deleted')],
     ];
-    $info  = $map[$status] ?? ['bg-secondary', ucfirst(str_replace('_', ' ', $status))];
+    return $map[$status] ?? ['bg-secondary', ucfirst(str_replace('_', ' ', $status))];
+}
+
+function _parasut_status_badge($status) {
+    $info = _parasut_status_info($status);
     return '<span class="badge ' . $info[0] . '">' . h($info[1]) . '</span>';
 }
 
 // ------------------------------------------------------------------
 // Build item_type badge helper
 // ------------------------------------------------------------------
-function _parasut_type_badge($type) {
+// Class and translated label of a Paraşüt item type code.
+function _parasut_type_info($type) {
     $map = [
         'invoice'       => ['bg-primary',           lang('Invoice')],
         'e_invoice'     => ['bg-success',           lang('E-Invoice')],
@@ -208,7 +223,11 @@ function _parasut_type_badge($type) {
         'basic'         => ['bg-secondary',         lang('Basic')],
         'refund'        => ['bg-danger',             lang('Refund')],
     ];
-    $info  = $map[$type] ?? ['bg-secondary', ucfirst(str_replace('_', ' ', $type))];
+    return $map[$type] ?? ['bg-secondary', ucfirst(str_replace('_', ' ', $type))];
+}
+
+function _parasut_type_badge($type) {
+    $info = _parasut_type_info($type);
     return '<span class="badge ' . $info[0] . '">' . h($info[1]) . '</span>';
 }
 
@@ -279,7 +298,9 @@ if ($tab === 'incoming') {
                         data-date="' . h($issue_date) . '"
                         data-due="' . h($due_date) . '"
                         data-type="' . h($item_type) . '"
+                        data-type-label="' . h(_parasut_type_info($item_type)[1]) . '"
                         data-status="' . h($status) . '"
+                        data-status-label="' . h(_parasut_status_info($status)[1]) . '"
                         data-before-vat="' . $before_vat . '"
                         data-vat="' . $vat . '"
                         data-withheld="' . $withheld . '"
@@ -299,7 +320,7 @@ if ($tab === 'incoming') {
 
     $output_tab_content = $output_date_filter . '
     <div class="card">
-        <div class="card-body p-0">
+        <div class="card-body p-0 table-responsive">
             <table class="table table-hover table-sm mb-0">
                 <thead class="pg-table-light">
                     <tr>
@@ -364,7 +385,9 @@ if ($tab === 'outgoing') {
                         data-date="' . h($issue_date) . '"
                         data-due="' . h($due_date) . '"
                         data-type="' . h($item_type) . '"
+                        data-type-label="' . h(_parasut_type_info($item_type)[1]) . '"
                         data-status="' . h($status) . '"
+                        data-status-label="' . h(_parasut_status_info($status)[1]) . '"
                         data-before-vat="' . $before_vat . '"
                         data-vat="' . $vat . '"
                         data-withheld="' . $withheld . '"
@@ -384,7 +407,7 @@ if ($tab === 'outgoing') {
 
     $output_tab_content = $output_date_filter . '
     <div class="card">
-        <div class="card-body p-0">
+        <div class="card-body p-0 table-responsive">
             <table class="table table-hover table-sm mb-0">
                 <thead class="pg-table-light">
                     <tr>
@@ -507,8 +530,8 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("modal-contact").textContent = btn.dataset.contact || "—";
         document.getElementById("modal-date").textContent    = btn.dataset.date    || "—";
         document.getElementById("modal-due").textContent     = btn.dataset.due     || "—";
-        document.getElementById("modal-type").textContent    = btn.dataset.type    || "—";
-        document.getElementById("modal-status").textContent  = btn.dataset.status  || "—";
+        document.getElementById("modal-type").textContent    = btn.dataset.typeLabel   || "—";
+        document.getElementById("modal-status").textContent  = btn.dataset.statusLabel || "—";
         document.getElementById("modal-before-vat").textContent = btn.dataset.beforeVat || "—";
         document.getElementById("modal-vat").textContent     = btn.dataset.vat     || "—";
         document.getElementById("modal-total").textContent   = btn.dataset.total   || "—";
@@ -549,7 +572,7 @@ echo pg_page_shell([
             <div class="row mb-3 flex-wrap">
                 <div class="col-12 text-center md:text-start">
                     
-                    <nav id="button_bar" class="navigation" aria-label="Button Bar">
+                    <nav id="button_bar" class="navigation" aria-label="' . h(lang('Button Bar')) . '">
                         <a class="btn btn-sm btn-outline theme-secondary"
                            href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_parasut_inbox.php?tab=' . h($tab) . '"
                            title="' . lang('Refresh') . '">
