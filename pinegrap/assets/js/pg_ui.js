@@ -155,7 +155,9 @@
     }
 
     // Open state as the markup shows it: a v6 <dialog> is open, a v5 modal,
-    // offcanvas, menu or collapse carries .show.
+    // offcanvas, menu or collapse carries .show. Bootstrap 6 adds .hiding on
+    // hide() and calls close() only after the animation, so a <dialog> on its
+    // way out is still [open] for a moment: it counts as closed.
     function isOpen(kind, target) {
         var el = node(target);
         names(kind);
@@ -163,7 +165,7 @@
             return false;
         }
         if (el.tagName === 'DIALOG') {
-            return !!el.open;
+            return !!el.open && !(el.classList && el.classList.contains('hiding'));
         }
         if (kind === 'menu' && el.getAttribute && el.getAttribute('aria-expanded') !== null) {
             return el.getAttribute('aria-expanded') === 'true';
@@ -173,8 +175,8 @@
 
     function anyOpen(kind) {
         var selectors = {
-            dialog: 'dialog.dialog[open], .modal.show',
-            drawer: 'dialog.drawer[open], .offcanvas.show'
+            dialog: 'dialog.dialog[open]:not(.hiding), .modal.show',
+            drawer: 'dialog.drawer[open]:not(.hiding), .offcanvas.show'
         };
         names(kind);
         return !!(selectors[kind] && document.querySelector(selectors[kind]));
@@ -251,7 +253,9 @@
      * container) is appended. Bootstrap 6 dialogs sit in the browser's top
      * layer and make the rest of the page inert, so a layer for something
      * inside an open dialog must be inside that dialog. Under Bootstrap 5
-     * z-index still works and the body stays the host.
+     * z-index still works and the body stays the host. A dialog that is
+     * closing (.hiding) is never chosen as the top one: it leaves the top
+     * layer a moment later and takes the layer with it.
      */
     function overlayHost(target) {
         var el = node(target), open;
@@ -264,7 +268,7 @@
                 return open;
             }
         }
-        open = document.querySelectorAll('dialog[open]');
+        open = document.querySelectorAll('dialog[open]:not(.hiding)');
         return open.length ? open[open.length - 1] : document.body;
     }
 
