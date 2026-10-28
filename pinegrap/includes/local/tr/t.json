@@ -1115,6 +1115,7 @@
     "The carrier label service refused the request.": "Kargo etiket hizmeti isteği reddetti.",
     "The carrier tax number has to be 10 or 11 digits.": "Taşıyıcı vergi numarası 10 ya da 11 haneli olmalıdır.",
     "The carrier tax number:": "Taşıyıcı vergi numarası:",
+    "The carrier {var:1} is not one this store recognises: it was kept as sent, and its tracking numbers get no tracking link.": "{var:1} taşıyıcısı bu mağazanın tanıdığı bir taşıyıcı değil: gönderildiği gibi saklandı, takip numaraları için takip bağlantısı oluşturulmaz.",
     "The carrier's VKN / TCKN does not pass the check digits; it is probably mistyped.": "Taşıyıcının VKN / TCKN'sinin kontrol haneleri tutmuyor; büyük olasılıkla yanlış yazıldı.",
     "The cart has a recurring product": "Sepette düzenli ödemeli ürün var",
     "The cart has a shippable product": "Sepette kargoya verilecek ürün var",

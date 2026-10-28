@@ -621,6 +621,7 @@ function api_openapi_objects()
         'Product'      => 'api_product_schema',
         'ProductGroup' => 'api_product_group_schema',
         'Order'        => 'api_order_schema',
+        'OrderShipment' => 'api_order_shipment_schema',
         'OrderDocument' => 'api_order_document_schema',
         'OrderReturn'  => 'api_order_return_schema',
         'OrderReturnRefund' => 'api_order_return_refund_schema',

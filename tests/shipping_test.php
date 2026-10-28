@@ -285,6 +285,17 @@ function test_shipment_view()
 	pg_assert_same('', $unknown['carrier'], 'no carrier');
 	pg_assert_same('', $unknown['url'], 'no link');
 	pg_assert_same('created', $unknown['status'], 'an unknown status reads as created');
+
+	// A name the store does not know, kept as typed: shown as it is, never
+	// replaced by a guess from the method code or the default, no link.
+	$typed = pg_shipment_view(array('number' => '12345678901', 'carrier' => 'Bizim Kurye'), 'MNG Ertesi Gün', 'yurtici');
+	pg_assert_same('', $typed['carrier'], 'no carrier key');
+	pg_assert_true($typed['named'], 'the row names it');
+	pg_assert_same('Bizim Kurye', $typed['carrier_name'], 'the typed name');
+	pg_assert_same('', $typed['url'], 'no link');
+
+	$typed_link = pg_shipment_view(array('number' => '12345678901', 'carrier' => 'Bizim Kurye', 'tracking_url' => 'https://kurye.example/12345678901'), '', 'yurtici');
+	pg_assert_same('https://kurye.example/12345678901', $typed_link['url'], 'the row\'s own link still');
 }
 
 // The badge of each status.
@@ -381,14 +392,20 @@ function test_shipment_api_parcel()
 	pg_assert_same(null, $guessed['delivered_at']);
 
 	// Nothing known: null rather than an empty string.
-	$unknown = pg_shipment_api_parcel(array('number' => 'ABC-12345', 'carrier' => 'nope'), 'Standart Teslimat', '');
+	$unknown = pg_shipment_api_parcel(array('number' => 'ABC-12345', 'carrier' => ''), 'Standart Teslimat', '');
 	pg_assert_same(null, $unknown['carrier']);
 	pg_assert_same(null, $unknown['carrier_name']);
 	pg_assert_same(null, $unknown['tracking_url']);
+
+	// A carrier kept as typed: no key, its name, no link.
+	$typed = pg_shipment_api_parcel(array('number' => 'ABC-12345', 'carrier' => 'Bizim Kurye'), 'Standart Teslimat', 'yurtici');
+	pg_assert_same(null, $typed['carrier']);
+	pg_assert_same('Bizim Kurye', $typed['carrier_name']);
+	pg_assert_same(null, $typed['tracking_url']);
 }
 
-// The carrier POST /orders/{id}/shipment names goes on each number it sends,
-// but only a carrier the store knows: free text is no carrier for the row.
+// The carrier POST /orders/{id}/shipment names goes on each number it sends:
+// the key of a carrier the store knows, else the name as typed.
 function test_shipment_numbers_with_carrier()
 {
 	pg_assert_same(array(
@@ -399,8 +416,53 @@ function test_shipment_numbers_with_carrier()
 	pg_assert_same(array(array('number' => '111', 'carrier' => 'ups')),
 		pg_shipment_numbers_with_carrier(array('111'), 'ups'));
 
-	// Unknown or empty: the plain numbers, so each row keeps its own carrier.
-	pg_assert_same(array('111'), pg_shipment_numbers_with_carrier(array('111'), 'Bizim Kurye'));
+	// Unknown: the typed name, cut to the column.
+	pg_assert_same(array(array('number' => '111', 'carrier' => 'Bizim Kurye')),
+		pg_shipment_numbers_with_carrier(array('111'), '  Bizim Kurye '));
+	pg_assert_same(array(array('number' => '111', 'carrier' => str_repeat('ş', 20))),
+		pg_shipment_numbers_with_carrier(array('111'), str_repeat('ş', 30)));
+
+	// Empty: the plain numbers, so each row keeps its own carrier.
 	pg_assert_same(array('111'), pg_shipment_numbers_with_carrier(array('111'), ''));
+	pg_assert_same(array('111'), pg_shipment_numbers_with_carrier(array('111'), '   '));
 	pg_assert_same(array(), pg_shipment_numbers_with_carrier(array(), 'aras'));
+}
+
+// What a parcel row keeps for a carrier someone chose: the key of a known
+// one, else the typed name cut to the 20 characters of the column.
+function test_shipment_carrier_value()
+{
+	pg_assert_same('aras', pg_shipment_carrier_value('Aras Kargo'));
+	pg_assert_same('yurtici', pg_shipment_carrier_value(' YURTİÇİ '));
+	pg_assert_same('Bizim Kurye', pg_shipment_carrier_value(' Bizim Kurye '));
+	pg_assert_same(str_repeat('ğ', 20), pg_shipment_carrier_value(str_repeat('ğ', 25)));
+	pg_assert_same('', pg_shipment_carrier_value('  '));
+	pg_assert_same('', pg_shipment_carrier_value(null));
+}
+
+// The carrier part of the POST /orders/{id}/shipment answer: the key and name
+// of a known carrier, else null, the name as typed and a warning.
+function test_shipment_api_carrier()
+{
+	pg_assert_same(array('carrier' => 'aras', 'carrier_name' => 'Aras Kargo', 'warning' => null),
+		pg_shipment_api_carrier('aras kargo'));
+
+	$typed = pg_shipment_api_carrier(' Bizim Kurye ');
+	pg_assert_same(null, $typed['carrier'], 'no key');
+	pg_assert_same('Bizim Kurye', $typed['carrier_name'], 'as typed');
+	pg_assert_contains('Bizim Kurye', (string) $typed['warning'], 'the warning names it');
+
+	pg_assert_same(array('carrier' => null, 'carrier_name' => null, 'warning' => null), pg_shipment_api_carrier(''));
+	pg_assert_same(array('carrier' => null, 'carrier_name' => null, 'warning' => null), pg_shipment_api_carrier(null));
+}
+
+// The panel select offers a name kept as typed, so a save keeps it.
+function test_shipment_carrier_options_typed()
+{
+	$options = pg_shipment_carrier_options('', 'Bizim <Kurye>');
+	pg_assert_same(count(pg_shipping_carriers()) + 2, count($options), 'one more option');
+	pg_assert_contains('Bizim &lt;Kurye&gt;', array_values($options), 'the typed name as the value, escaped');
+	pg_assert_contains('Bizim &lt;Kurye&gt;', array_keys($options), 'and as the label');
+
+	pg_assert_same(count(pg_shipping_carriers()) + 1, count(pg_shipment_carrier_options('', 'aras')), 'a key adds nothing');
 }
