@@ -1,6 +1,6 @@
 ---
 name: update-tls-verification
-description: TLS on outgoing cURL: pg_curl_tls() / da_curl_tls(), no silent downgrade, CURL_CA_BUNDLE, ALLOW_INSECURE_UPDATE_TLS; gateways, carriers and the package download use it, Stripe and iyzico do not.
+description: TLS on outgoing cURL: pg_curl_tls() / da_curl_tls(), no silent downgrade, CURL_CA_BUNDLE, ALLOW_INSECURE_UPDATE_TLS; who uses it (classic Stripe and iyzico do not).
 ---
 
 ## Why must the update channel verify TLS?
@@ -14,11 +14,11 @@ description: TLS on outgoing cURL: pg_curl_tls() / da_curl_tls(), no silent down
 - `pg_curl_tls_hint()` turns cURL errors 60/77/35 into a sentence the operator can act on (their own CA bundle, not the other side).
 
 ## Are payment and carrier calls covered?
-- Yes, all but two SDKs. The card gateways written in `submit_order.php` (Authorize.Net, ClearCommerce, First Data, PayPal Payflow Pro / Payments Pro / Express Checkout, Sage; every `curl_init()` there), PayPal in `recurring_payment_job.php`, Givex (`send_givex_request()`, through `pg_curl_run()` since #2124) and the carriers (`pg_carrier_api_http()`: every USPS, UPS and FedEx call) go through `pg_curl_tls()`.
-- Stripe and iyzico (the card form and the Pay With Iyzico driver `includes/payments/iyzico.php`) run inside their bundled libraries (`includes/stripe/`, `includes/iyzipay-php/`; their HTTP clients are not edited): verification is on with the library's own CA file (iyzipay's `cacert.pem`; Stripe retries with its `ca-certificates.crt` after a certificate error), and the two config settings do not reach them.
+- Yes, all but two SDKs (below). The card gateways written in `submit_order.php` (Authorize.Net, ClearCommerce, First Data, PayPal Payflow Pro / Payments Pro / Express Checkout, Sage; every `curl_init()` there), PayPal in `recurring_payment_job.php`, Givex (`send_givex_request()`, through `pg_curl_run()` since #2124) and the carriers (`pg_carrier_api_http()`: every USPS, UPS and FedEx call) go through `pg_curl_tls()`.
+- The Stripe PaymentIntents driver (`includes/payments/stripe.php`) uses `pg_curl_tls()` through `pg_curl_run()` (#2743). Classic Stripe and iyzico (the card form and the Pay With Iyzico driver `includes/payments/iyzico.php`) run inside their bundled libraries (`includes/stripe/`, `includes/iyzipay-php/`; their HTTP clients are not edited): verification is on with the library's own CA file (iyzipay's `cacert.pem`; Stripe retries with its `ca-certificates.crt` after a certificate error), and the two config settings do not reach them.
 
 ## Which other calls go through pg_curl_tls()?
-- Through `pg_curl_run()`: the vendor-host calls, the package download of Software Update and Repair Software (#2074), Mailchimp, the IndexNow ping, Givex, StopForumSpam, currency rates, AI bot ranges, SMS and İYS, Paraşüt, e-documents, licence checks, CAPTCHA, `migration.php` (`curl-run-callers.md`). `api_http_request()`: `import_design.php`. Directly: the location database, S3 backups, time stamps. New calls use one.
+- Through `pg_curl_run()`: the vendor-host calls, the package download of Software Update and Repair Software (#2074), Mailchimp, the IndexNow ping, Givex, StopForumSpam, currency rates, AI bot ranges, SMS and İYS, Paraşüt, e-documents, licence checks, CAPTCHA, `migration.php`, the PayPal Checkout and Stripe drivers (`curl-run-callers.md`). `api_http_request()`: `import_design.php`. Directly: the location database, S3 backups, time stamps. New calls use one.
 - https only: an İşbaşı API address typed as `http://` fails since #1921 (`curl-run-wrapper.md`).
 
 ## Which calls do not?

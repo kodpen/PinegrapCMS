@@ -6,12 +6,12 @@ description: Stripe on PaymentIntents (gateway 'Stripe PaymentIntents', 11.0.24,
 ## What is it?
 - `includes/payments/stripe.php`, key `stripe`, card driver for the gateway value `Stripe PaymentIntents` (appended to the `config.ecommerce_payment_gateway` ENUM by 11.0.24). `Stripe` stays the classic Charges code ("Stripe (classic)").
 - `connect_apps` `payment_stripe`: `publishable_key`, `secret_key` and `webhook_secret` (sealed), `link`. Mode from the keys; Transaction Type Authorize → `capture_method=manual`.
-- No SDK: `pg_curl_tls()`, `Stripe-Version: 2024-06-20`; each operation has a `*_with($…, $settings, $http)` twin for tests.
+- No SDK: `pg_curl_run()` (#2743), `Stripe-Version: 2024-06-20`; each operation has a `*_with($…, $settings, $http)` twin for tests.
 
 ## How does a card payment go?
-- The express order widget draws `_eo_hosted_card_html()` when `pg_payment_hosted_card_driver()` answers. `prepare()` gives script, publishable key, amount (Stripe units), currency, method types, capture method, locale.
+- The express order widget draws `_eo_hosted_card_html()` when `pg_payment_hosted_card_driver()` answers; `prepare()` gives script, publishable key, amount (Stripe units), currency, method types, capture method, locale.
 - `assets/js/payment_hosted.js` (bundle `payment_hosted.min.js`) moves the box into `[data-pg-eo-cc-fields]`, disables the site's card inputs, mounts the Payment Element (deferred mode), and on submit puts a ConfirmationToken into `payment_token` and calls `requestSubmit()` (the form's handlers run once).
-- `stripe.elements()` gets `captureMethod` and `allowedPaymentMethodTypes` from `prepare()`; they must equal the `capture_method` and `payment_method_types` `authorize()` sends, or Stripe refuses every confirmation (Authorize mode failed so before #937). A test compares them.
+- `stripe.elements()` gets `captureMethod` and `allowedPaymentMethodTypes` from `prepare()`; they must equal the `capture_method` and `payment_method_types` `authorize()` sends, or Stripe refuses every confirmation (Authorize mode failed so, #937). A test compares them.
 - `authorize()` creates and confirms the intent for the order total (metadata order id; idempotency key from order + token + amount). succeeded → paid, requires_capture → authorized, processing → pending, `redirect_to_url` → redirect with state; other next actions are cancelled and refused.
 - Return `?mode=stripe_return`: `complete()` reads the intent from the session state, checks order, amount and currency. A changed total voids it (cancel, or full refund once taken); if the void fails the visitor reads that the store will refund it, not "cancelled", and the log says MANUAL REFUND REQUIRED.
 - Return modes: `pg_payment_return_modes()`, `pg_payment_is_return_mode()`, `pg_payment_return_method()`. Classic order preview and express order draw it too (`payment-hosted-classic-pages.md`); no token is refused ("Please enter your card details.").
@@ -30,6 +30,6 @@ description: Stripe on PaymentIntents (gateway 'Stripe PaymentIntents', 11.0.24,
 - Completing an incomplete order from the webhook: `plans/order-completion-function.md` (intent and amount on the order: #2199). Apple Pay: domain in the Dashboard; Link is set there.
 
 ## How was it verified?
-- `tests/payment_stripe_test.php` (stand-in HTTP caller), `payment_stripe_webhook_test.php`, `payment_hosted_classic_test.php`; jsdom and a fake Stripe.js; no real account.
+- `tests/payment_stripe_test.php` (stand-in HTTP caller), `payment_stripe_webhook_test.php`, `payment_hosted_classic_test.php`; jsdom, fake Stripe.js; no real account.
 
 Related: docs/memory/commerce/payment-drivers.md, docs/memory/commerce/payment-refunds.md, docs/memory/plans/payment-driver-layer.md
