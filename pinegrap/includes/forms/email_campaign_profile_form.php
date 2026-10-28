@@ -372,7 +372,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                             <label class="form-label" for="schedule_time">' . lang('Send at a specific time') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'schedule_time', 'id'=>'schedule_time', 'class'=>'form-control', 'maxlength'=>'8', 'data-pg-time' => '')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                            <div class="text-end form-text">' . lang('h:mm AM/PM, leave blank to send at any time.') . '</div>
+                                            <div class="text-end form-text">' . ((pg_time_format_code() === 'H:i') ? lang('HH:mm, leave blank to send at any time.') : lang('h:mm AM/PM, leave blank to send at any time.')) . '</div>
                                             ' . get_time_picker_format() . pg_fields_script() . '
                                         </div>
                                     </div>

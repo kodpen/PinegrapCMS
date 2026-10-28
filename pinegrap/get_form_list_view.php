@@ -1734,7 +1734,7 @@ function get_form_list_view($properties) {
 
                             // If the help has not been disabled, then show help for time fields
                             if (($field['help'] !== FALSE) && ($field['type'] == 'time')) {
-                                $output_help = ' ' . lang('(Format: h:mm AM/PM)');
+                                $output_help = ' ' . ((pg_time_format_code() === 'H:i') ? lang('(Format: HH:mm)') : lang('(Format: h:mm AM/PM)'));
                             }
 
                             $output_field = $liveform->output_field(array(

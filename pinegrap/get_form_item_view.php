@@ -761,7 +761,7 @@ function get_form_item_view($properties) {
                             $output_fields .=
                                 '<tr' . $row_class . '>
                                     <td style="vertical-align: top' . $output_label_column_width . '">' . $field['label'] . '</td>
-                                    <td style="vertical-align: top">' . $liveform->output_field(array('type'=>'text', 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'maxlength'=>'11', 'class'=>'software_input_text')) . ' ' . lang('(Format: h:mm AM/PM)') . '</td>
+                                    <td style="vertical-align: top">' . $liveform->output_field(array('type'=>'text', 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'maxlength'=>'11', 'class'=>'software_input_text')) . ' ' . ((pg_time_format_code() === 'H:i') ? lang('(Format: HH:mm)') : lang('(Format: h:mm AM/PM)')) . '</td>
                                 </tr>';
                             break;
                     }

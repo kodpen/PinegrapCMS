@@ -147,6 +147,7 @@
     "%{var:1} off shipping ({var:2})": "kargoya %{var:1} indirim ({var:2})",
     "& Time": "ve Saati",
     "'No Thanks' Option": "'Hayır Teşekkürler' Seçeneği",
+    "(Format: HH:mm)": "(Biçim: SS:dd)",
     "(Format: h:mm AM/PM)": "(Biçim: h:mm AM/PM)",
     "(It is not used on any page.)": "(Hiçbir sayfada kullanılmıyor.)",
     "(The widget definition is kept.)": "(Widget tanımı saklı kalır.)",

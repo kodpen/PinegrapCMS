@@ -498,15 +498,15 @@ function pg_shipping_method_save_links($shipping_method_id, $post)
 
 /**
  * The help text under a time field: the hour format the site's time format
- * setting names, h:mm AM/PM for twelve_hours and HH:mm otherwise, as
- * get_relative_time() reads that setting.
+ * setting names, HH:mm for twenty_four_hours and h:mm AM/PM otherwise
+ * (pg_time_format_help()).
  *
  * @param string $time_format  TIME_FORMAT
  * @return string
  */
 function pg_shipping_method_form_time_help($time_format)
 {
-    return ($time_format == 'twelve_hours') ? lang('h:mm AM/PM') : lang('HH:mm');
+    return pg_time_format_help($time_format);
 }
 
 /**
@@ -827,7 +827,7 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                             <h5 class="fg-secondary mt-5">' . lang('Available on') . '</h5>
                                             <div class="row row-cols-1 sm:row-cols-2 md:row-cols-3 lg:row-cols-4 xl:row-cols-5">' . $output_available_days . '
                                             </div>
-                                            <h6><em>' . lang(array('string'=>'For reference, the current site time is {var:1}.','vars'=>date("g:i A"))) . '</em></h6>
+                                            <h6><em>' . lang(array('string'=>'For reference, the current site time is {var:1}.','vars'=>date(pg_time_format_code()))) . '</em></h6>
                                         </div>
 
                                     </div>

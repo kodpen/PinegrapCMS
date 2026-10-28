@@ -2804,6 +2804,12 @@ function pg_time_format_code($time_format = null)
 
     return ($time_format === 'twenty_four_hours') ? 'H:i' : 'g:i A';
 }
+// The help text that shows how a time is typed on the site's clock:
+// 'HH:mm' with the 24-hour clock, 'h:mm AM/PM' otherwise.
+function pg_time_format_help($time_format = null)
+{
+    return (pg_time_format_code($time_format) === 'H:i') ? lang('HH:mm') : lang('h:mm AM/PM');
+}
 // The jQuery UI timepicker's timeFormat for the same clock: 'HH:mm' or
 // 'h:mm TT'. The picker scripts below and the site's checkout pages print
 // it, so every picker shows the hours the way the site's settings say.

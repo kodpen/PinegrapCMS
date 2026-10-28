@@ -242,7 +242,7 @@ function generate_form_layout_content($properties) {
                 }
 
                 if ($field['type'] == 'time') {
-                    $help = ' ' . lang('(Format: h:mm AM/PM)');
+                    $help = ' ' . ((pg_time_format_code() === 'H:i') ? lang('(Format: HH:mm)') : lang('(Format: h:mm AM/PM)'));
                 } else {
                     $help = '';
                 }
