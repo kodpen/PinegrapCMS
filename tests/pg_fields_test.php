@@ -6,7 +6,9 @@
  * interface (pgChips, pgCombobox, pgDatePicker, pgDateTimeField), run under
  * Node with a small fake document and jQuery stand-in: our own date and time
  * parse and format, the posted field as the store, the native change event,
- * the hooks drawn once by the loaded engine, chips on Bootstrap 6 Chips. Also the liveform side
+ * the hooks drawn once by the loaded engine, chips on Bootstrap 6 Chips,
+ * dates on the calendar of pg_datetime.js (a vanilla-calendar-pro stand-in).
+ * Also the liveform side
  * that prints the hooks.
  *
  * @author      Erdal Güral (Kodpen)
@@ -53,6 +55,7 @@ function pg_fields_test_run()
 	}
 
 	$script = 'var PG_FIELDS_SOURCE = require("fs").readFileSync(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/pg_fields.js') . ', "utf8");' . "\n"
+		. 'var PG_DATETIME_SOURCE = require("fs").readFileSync(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/pg_datetime.js') . ', "utf8");' . "\n"
 		. pg_fields_test_harness();
 	file_put_contents($file, $script);
 
@@ -120,12 +123,17 @@ FakeElement.prototype.insertBefore = function (c, ref) {
     if (i < 0) { this.children.push(c); } else { this.children.splice(i, 0, c); }
     return c;
 };
+FakeElement.prototype.replaceChild = function (c, old) { var i = this.children.indexOf(old); if (i >= 0) { this.children[i] = c; c.parentNode = this; old.parentNode = null; } return old; };
 FakeElement.prototype.removeChild = function (c) { this.children = this.children.filter(function (x) { return x !== c; }); this.options = this.options.filter(function (x) { return x !== c; }); c.parentNode = null; return c; };
 Object.defineProperty(FakeElement.prototype, 'childNodes', { get: function () { return this.children; } });
-// Only '.class' up the parents, as the drawer test needs.
+// Only '.class' or '[attribute]' up the parents, as the drawer and theme
+// tests need.
 FakeElement.prototype.closest = function (sel) {
-    var cls = sel.replace(/^\./, ''), n = this;
-    while (n) { if ((' ' + (n.className || '') + ' ').indexOf(' ' + cls + ' ') >= 0) { return n; } n = n.parentNode; }
+    var attr = /^\[([\w-]+)\]$/.exec(sel), cls = sel.replace(/^\./, ''), n = this;
+    while (n) {
+        if (attr ? (n.hasAttribute && n.hasAttribute(attr[1])) : (' ' + (n.className || '') + ' ').indexOf(' ' + cls + ' ') >= 0) { return n; }
+        n = n.parentNode;
+    }
     return null;
 };
 Object.defineProperty(FakeElement.prototype, 'nextSibling', { get: function () {
@@ -143,7 +151,12 @@ FakeElement.prototype.setAttribute = function (k, v) { this.attributes[k] = Stri
 FakeElement.prototype.removeAttribute = function (k) { delete this.attributes[k]; };
 FakeElement.prototype.addEventListener = function (t, f) { (this.listeners[t] = this.listeners[t] || []).push(f); };
 FakeElement.prototype.removeEventListener = function (t, f) { this.listeners[t] = (this.listeners[t] || []).filter(function (x) { return x !== f; }); };
-FakeElement.prototype.dispatchEvent = function (e) { var self = this; (this.listeners[e.type] || []).slice().forEach(function (f) { f.call(self, e); }); return true; };
+FakeElement.prototype.dispatchEvent = function (e) {
+    var self = this, stopped = false;
+    e.stopImmediatePropagation = function () { stopped = true; };
+    (this.listeners[e.type] || []).slice().forEach(function (f) { if (!stopped) { f.call(self, e); } });
+    return true;
+};
 FakeElement.prototype.matches = function (sel) {
     var self = this;
     return sel.split(',').some(function (one) { var m = /^\[([\w-]+)\]$/.exec(one.trim()); return !!m && self.hasAttribute(m[1]); });
@@ -152,6 +165,7 @@ FakeElement.prototype.matches = function (sel) {
 function makeDocument() {
     var doc = { all: [], readyState: 'complete', clicked: [], activeElement: null };
     doc.create = function (tag, attrs) { return new FakeElement(doc, tag, attrs); };
+    doc.head = doc.create('head', {});
     doc.querySelectorAll = function (sel) { return doc.all.filter(function (el) { return el.matches(sel); }); };
     doc.querySelector = function (sel) {
         var lab = /^label\[for="([^"]+)"\]$/.exec(sel);
@@ -243,30 +257,37 @@ function makePgUI(calls, late) {
             },
             on: function (toggle, name, fn) { toggle.addEventListener(name + '.bs.combobox', fn); return function () { toggle.removeEventListener(name + '.bs.combobox', fn); }; },
             dispose: function (toggle) { calls.push(['combobox-dispose', toggle.className]); }
-        },
-        // Datepicker over an input or an inline box: records its options and
-        // the input's value when it was created; pick(iso) fires
-        // change.bs.datepicker with the dates as Bootstrap does.
-        datepicker: {
-            get: function (target, opts) {
-                calls.push(['datepicker', target.attributes.id || target.className, opts]);
-                var picked = opts.selectedDates.slice();
-                target.valueAtCreate = target.value;
-                target.instance = {
-                    opts: opts,
-                    getSelectedDates: function () { return picked.slice(); },
-                    pick: function (iso) {
-                        picked = [iso];
-                        (target.listeners['change.bs.datepicker'] || []).forEach(function (f) { f({ dates: [iso] }); });
-                    }
-                };
-                return target.instance;
-            },
-            on: function (t, name, fn) { t.addEventListener(name + '.bs.datepicker', fn); return function () { t.removeEventListener(name + '.bs.datepicker', fn); }; },
-            dispose: function (t) { calls.push(['datepicker-dispose', t.attributes.id || t.className]); }
         }
     };
     return ui;
+}
+
+// vanilla-calendar-pro stand-in: new Calendar(target, opts) records its
+// options; init() binds the library's own arrow-key listener on an input
+// (recorded as vcp-key), set() and destroy() are recorded, destroy() puts a
+// copy of the input in its place as the library does; pick(iso) clicks a day.
+function makeCalendarLibrary(calls) {
+    function Calendar(target, opts) {
+        var self = this, id = target.attributes.id || target.className;
+        calls.push(['calendar', id, opts]);
+        this.opts = opts;
+        this.hidden = 0;
+        this.context = { mainElement: target, selectedDates: (opts.selectedDates || []).slice() };
+        target.instance = this;
+        this.init = function () {
+            if (opts.inputMode) { target.addEventListener('keydown', function (e) { calls.push(['vcp-key', id, e.key]); }); }
+            if (opts.onInit) { opts.onInit(self); }
+        };
+        this.set = function (o) { calls.push(['calendar-set', id, o]); if (o.selectedDates) { self.context.selectedDates = o.selectedDates.slice(); } };
+        this.hide = function () { self.hidden++; if (opts.onHide) { opts.onHide(self); } };
+        this.destroy = function () {
+            calls.push(['calendar-destroy', id]);
+            var p = target.parentNode;
+            if (opts.inputMode && p) { var copy = new FakeElement(target.ownerDocument, 'input', {}); p.insertBefore(copy, target); p.removeChild(target); }
+        };
+        this.pick = function (iso) { self.context.selectedDates = [iso]; opts.onClickDate(self, {}); };
+    }
+    return { Calendar: Calendar };
 }
 
 function load(opts) {
@@ -276,6 +297,8 @@ function load(opts) {
     if (opts.jquery) { win.jQuery = makeJQuery(calls); }
     if (opts.format) { win.date_picker_format = opts.format; win.datetimepicker_options = { dateFormat: opts.format }; }
     if (!opts.noBootstrap) { win.pgUI = makePgUI(calls, opts.late); }
+    if (!opts.noCalendar) { win.VanillaCalendarPro = makeCalendarLibrary(calls); }
+    win.makeCalendarLibrary = function () { return makeCalendarLibrary(calls); };
     // fetch() records the URL and answers when the test resolves it;
     // setTimeout() waits for flush(), as a typing pause would.
     if (opts.fetch) {
@@ -290,7 +313,7 @@ function load(opts) {
         win.clearTimeout = function (id) { if (win.timers[id - 1]) { win.timers[id - 1].fn = null; } };
         win.flush = function () { var t = win.timers.splice(0); t.forEach(function (x) { if (x.fn) { x.fn(); } }); return t.filter(function (x) { return x.fn; }).map(function (x) { return x.ms; }); };
     }
-    var form = doc.create('form', {});
+    var form = doc.create('form', opts.formAttrs || {});
     (opts.fields || []).forEach(function (f) { form.appendChild(doc.create(f[0], f[1])); });
     (opts.options || []).forEach(function (o) {
         var host = doc.querySelector('#' + o[0]), group = o[2] ? host.children.filter(function (g) { return g.getAttribute('label') === o[2]; })[0] : null;
@@ -300,6 +323,8 @@ function load(opts) {
     (opts.labels || []).forEach(function (l) { form.appendChild(doc.create('label', l)); });
     if (opts.firstDay !== undefined) { win.datetimepicker_options.firstDay = opts.firstDay; }
     if (opts.label) { doc.create('script', { 'data-pg-remove-label': opts.label, 'data-pg-search-label': 'Ara', 'data-pg-no-results-label': 'Sonuç bulunamadı', 'data-pg-locale-label': 'tr', 'data-pg-searching-label': 'Aranıyor…', 'data-pg-type-label': 'Aramak için yazın...' }); }
+    if (opts.calendarSrc) { doc.create('script', { 'data-pg-calendar-src': opts.calendarSrc }); }
+    new Function('window', 'document', PG_DATETIME_SOURCE)(win, doc);
     new Function('window', 'document', PG_FIELDS_SOURCE)(win, doc);
     return { win: win, doc: doc, calls: calls };
 }
@@ -336,8 +361,8 @@ function main() {
     var site = load({ jquery: true, noBootstrap: true });
     out.engine_site = [site.win.pgFields.engine('combobox', site.doc.create('select', { 'data-pg-source': 'x.php' })), site.win.pgFields.engine('combobox')];
     out.init_calls = a.calls.map(function (c) { return c[0] + ':' + c[1]; });
-    var dayOpts = a.calls.filter(function (c) { return c[0] === 'datepicker'; })[0][2];
-    out.date_options = [dayOpts.locale, dayOpts.firstWeekday, dayOpts.inline, dayOpts.selectedDates, dayOpts.vcpOptions];
+    var dayOpts = a.calls.filter(function (c) { return c[0] === 'calendar'; })[0][2];
+    out.date_options = [dayOpts.locale, dayOpts.firstWeekday, dayOpts.inputMode, dayOpts.selectedDates, dayOpts.enableDateToggle, dayOpts.selectedMonth, dayOpts.selectedYear, dayOpts.selectedTheme];
     out.chips_options = a.calls.filter(function (c) { return c[0] === 'chips'; }).map(function (c) { return c[2]; });
 
     var get = function (id) { return a.doc.querySelector('#' + id); };
@@ -430,7 +455,7 @@ function main() {
     c5.win.pgFields.init();
     var catOpts = c5.calls.filter(function (x) { return x[0] === 'select2'; })[0][2];
     out.select2_theme = catOpts.theme;
-    var plainOpts = c.calls.filter(function (x) { return x[0] === 'datepicker'; })[0][2];
+    var plainOpts = c.calls.filter(function (x) { return x[0] === 'calendar'; })[0][2];
     out.plain_date = [plainOpts.locale, plainOpts.firstWeekday];
     out.remote = {
         url: catOpts.ajax.url,
@@ -508,10 +533,11 @@ function main() {
     l.win.pgFields.destroy(k);
     out.late.destroyed = { children: parent.children.length, calls: l.calls.map(function (c) { return c[0]; }), value: k.value };
 
-    // Dates on Bootstrap 6: our own parse and format around Datepicker, the
-    // posted field the store; date and time, and time only, as boxes after
-    // the hidden field; a drawer's calendar open under the field.
-    var dp = load({ label: 'Kaldır', format: 'd/m/yy', firstDay: 1, labels: [{ 'for': 'dt', text: 'Start' }], fields: [
+    // Dates on the control of pg_datetime.js: our own parse and format
+    // around the calendar, the posted field the store; date and time, and
+    // time only, as boxes after the hidden field; a drawer's calendar open
+    // under the field.
+    var dp = load({ label: 'Kaldır', format: 'd/m/yy', firstDay: 1, formAttrs: { 'data-bs-theme': 'dark' }, labels: [{ 'for': 'dt', text: 'Start' }], fields: [
         ['input', { id: 'd', 'data-pg-date': '', value: '5/3/2026', 'class': 'form-control' }],
         ['input', { id: 'dt', 'data-pg-datetime': '', value: '26/10/2026 5:00 PM', 'class': 'form-control form-control-sm' }],
         ['input', { id: 't', 'data-pg-time': '', value: '5:30 PM', tabindex: '3' }],
@@ -527,15 +553,17 @@ function main() {
     var dOpts = q('d').instance.opts;
     out.dp_draw = {
         calls: dp.calls.map(function (c) { return c[0] + ':' + c[1]; }),
-        options: [dOpts.locale, dOpts.firstWeekday, dOpts.inline, dOpts.selectedDates],
-        // Bootstrap's own Date() reading of the input is kept out.
-        value_at_create: q('d').valueAtCreate,
-        value: q('d').value,
-        format: dOpts.dateFormat(new Date(2026, 2, 5))
+        options: [dOpts.locale, dOpts.firstWeekday, dOpts.inputMode, dOpts.selectedDates, dOpts.selectedMonth, dOpts.selectedYear, dOpts.selectedTheme, dOpts.themeAttrDetect],
+        value: q('d').value
     };
     dp.calls.length = 0;
     q('d').instance.pick('2026-03-12');
-    out.dp_pick = { value: q('d').value, heard: dHeard.slice(), redrawn: dp.calls.length };
+    out.dp_pick = { value: q('d').value, heard: dHeard.slice(), redrawn: dp.calls.length, hidden: q('d').instance.hidden };
+    // Left and Right move the text cursor in the box; the other arrows go
+    // into the open calendar, as the library has them.
+    ['ArrowLeft', 'ArrowRight', 'ArrowDown', 'Tab'].forEach(function (key) { q('d').dispatchEvent({ type: 'keydown', key: key }); });
+    out.dp_keys = dp.calls.filter(function (c) { return c[0] === 'vcp-key'; }).map(function (c) { return c[2]; });
+    dp.calls.length = 0;
     q('d').value = '7/4/2026';
     q('d').dispatchEvent({ type: 'change', bubbles: true });
     q('d').value = 'tomorrow';
@@ -572,11 +600,28 @@ function main() {
     dp.win.pgFields.destroy(dt);
     out.dp_destroy = { t: [t.className, t.getAttribute('tabindex'), t.nextSibling === tPart], dt: [dt.className, dt.nextSibling === group, dt.value] };
     var wrap = drawerField.nextSibling;
-    out.dp_drawer = { wrap: wrap.className, inline: wrap.children[0].instance.opts.inline };
+    out.dp_drawer = { wrap: wrap.className, popup: wrap.children[0].instance.opts.inputMode };
     wrap.children[0].instance.pick('2027-02-09');
     out.dp_drawer.value = drawerField.value;
     dp.win.pgFields.destroy(drawerField);
     out.dp_drawer.after = drawerField.nextSibling === null;
+    // destroy() of a popup calendar puts the field itself back, not the
+    // library's copy of it.
+    var dParent = q('d').parentNode, dIndex = dParent.children.indexOf(q('d'));
+    dp.win.pgFields.destroy(q('d'));
+    out.dp_destroy.d = [dParent.children[dIndex] === q('d'), q('d').value];
+
+    // The library is not on the page yet: pg_datetime.js adds its tag once,
+    // and the fields are drawn when it has run.
+    var lib = load({ noCalendar: true, calendarSrc: '/lib/vcp.js', format: 'd/m/yy', fields: [['input', { id: 'ld', 'data-pg-date': '', value: '1/2/2026' }]] });
+    lib.win.pgFields.init();
+    lib.win.pgFields.init();
+    new Function('window', 'document', PG_DATETIME_SOURCE)(lib.win, lib.doc);
+    var tags = lib.doc.head.children.map(function (t) { return t.src; }), ld = lib.doc.querySelector('#ld');
+    var drawnBefore = !!ld.pgFieldKind;
+    lib.win.VanillaCalendarPro = lib.win.makeCalendarLibrary();
+    lib.doc.head.children[0].dispatchEvent({ type: 'load' });
+    out.dp_late = { tags: tags, before: drawnBefore, after: ld.pgFieldKind, calls: lib.calls.map(function (c) { return c[0] + ':' + c[1]; }) };
 
     return out;
 }
@@ -736,12 +781,12 @@ function test_pg_fields_hooks_drawn_by_their_engine()
 	pg_assert_same(array('v6', 'v6', 'v6', 'v6'), $r['engine'], 'every kind on Bootstrap 6, a server-searched combobox too');
 	pg_assert_same(array('v5', 'v6'), $r['engine_site'], 'a site page without Bootstrap 6 keeps select2 for a server-searched combobox');
 	pg_assert_same(
-		array('chips:chip-input pg-chips min-height-tagin border-subtle-danger', 'chips:chip-input pg-chips pg-chips-sm', 'combobox:form-control combobox-toggle pg-combobox', 'datepicker:day', 'datepicker:form-control pg-datetime-date'),
+		array('chips:chip-input pg-chips min-height-tagin border-subtle-danger', 'chips:chip-input pg-chips pg-chips-sm', 'combobox:form-control combobox-toggle pg-combobox', 'calendar:day', 'calendar:form-control pg-datetime-date'),
 		$r['init_calls'],
 		'each hook once (a time field has no calendar), the plain field untouched, a second init() draws nothing'
 	);
 	pg_assert_same('bootstrap-5', $r['select2_theme'], 'on a site page a server-searched combobox is a select2 as before');
-	pg_assert_same(array('en', 0, false, array('2026-10-26'), array('enableDateToggle' => false)), $r['date_options'], 'no language on the tag: English, Sunday first; the stored date parsed by us');
+	pg_assert_same(array('en', 0, true, array('2026-10-26'), false, 9, 2026, 'system'), $r['date_options'], 'no language on the tag: English, Sunday first; a popup on the stored date parsed by us, its month shown; a second click keeps the day; the system theme outside a data-bs-theme');
 	pg_assert_same(array(array('separator' => ','), array('separator' => ' ')), $r['chips_options'], 'Chips gets the data-pg-separator, a comma without one');
 	pg_assert_same(array('chips' => array('a', 'b', 'c'), 'classes' => array('one', 'two'), 'date' => '2026-10-26', 'datetime' => '2026-10-26 17:00', 'time' => '17:00'), $r['get']);
 	pg_assert_same(array('kind' => array(null, null), 'calls' => 0), $r['no_library'], 'no library: a plain field');
@@ -756,7 +801,7 @@ function test_pg_fields_switch_kind_and_destroy()
 	}
 
 	pg_assert_same(
-		array('datepicker-dispose:form-control pg-datetime-date', 'datepicker:start', 'datepicker-dispose:start', 'datepicker:form-control pg-datetime-date', 'datepicker:plain', 'combobox-dispose:form-control combobox-toggle pg-combobox'),
+		array('calendar-destroy:form-control pg-datetime-date', 'calendar:start', 'calendar-destroy:start', 'calendar:form-control pg-datetime-date', 'calendar:plain', 'combobox-dispose:form-control combobox-toggle pg-combobox'),
 		$r['switch_kind']['calls'],
 		'the old widget destroyed, the new one drawn, the same kind again a no-op'
 	);
@@ -916,7 +961,7 @@ function test_pg_fields_combobox_on_bootstrap_6()
 	);
 }
 
-function test_pg_fields_dates_on_bootstrap_6()
+function test_pg_fields_dates_on_the_calendar_control()
 {
 	$r = pg_fields_test_result();
 	if (!$r) {
@@ -925,20 +970,19 @@ function test_pg_fields_dates_on_bootstrap_6()
 
 	pg_assert_same(
 		array(
-			'calls' => array('datepicker:d', 'datepicker:form-control pg-datetime-date form-control-sm', 'datepicker:'),
-			'options' => array('tr', 1, false, array('2026-03-05')),
-			'value_at_create' => '',
+			'calls' => array('calendar:d', 'calendar:form-control pg-datetime-date form-control-sm', 'calendar:'),
+			'options' => array('tr', 1, true, array('2026-03-05'), 2, 2026, 'dark', '[data-bs-theme]'),
 			'value' => '5/3/2026',
-			'format' => '5/3/2026',
 		),
 		$r['dp_draw'],
-		'5/3/2026 is 5 March in a day-first site, read by our parse; the panel language, Monday first; the input empty while Bootstrap is created'
+		'5/3/2026 is 5 March in a day-first site, read by our parse, its month shown; the panel language, Monday first; the theme of the nearest data-bs-theme'
 	);
-	pg_assert_same(array('value' => '12/3/2026', 'heard' => array('12/3/2026'), 'redrawn' => 0), $r['dp_pick'], 'a pick writes the site text and fires one change');
+	pg_assert_same(array('value' => '12/3/2026', 'heard' => array('12/3/2026'), 'redrawn' => 0, 'hidden' => 1), $r['dp_pick'], 'a pick writes the site text, fires one change and closes the popup');
+	pg_assert_same(array('ArrowDown', 'Tab'), $r['dp_keys'], 'Left and Right keep moving the text cursor; Down and Tab go into the calendar');
 	pg_assert_same(
-		array('calls' => array('datepicker-dispose:d:null', 'datepicker:d:["2026-04-07"]', 'datepicker-dispose:d:null', 'datepicker:d:[]'), 'value' => 'tomorrow'),
+		array('calls' => array('calendar-set:d:["2026-04-07"]', 'calendar-set:d:[]'), 'value' => 'tomorrow'),
 		$r['dp_typed'],
-		'a typed date moves the calendar; text that is no date is kept for the server to refuse'
+		'a typed date moves the calendar without drawing it again; text that is no date is kept for the server to refuse'
 	);
 	pg_assert_same(
 		array(
@@ -963,11 +1007,16 @@ function test_pg_fields_dates_on_bootstrap_6()
 		'time only: an <input type="time"> writing h:mm AM into the hidden field'
 	);
 	pg_assert_same(
-		array('t' => array('', '3', false), 'dt' => array('form-control form-control-sm', false, '2/1/2027 11:45 PM')),
+		array('t' => array('', '3', false), 'dt' => array('form-control form-control-sm', false, '2/1/2027 11:45 PM'), 'd' => array(true, 'tomorrow')),
 		$r['dp_destroy'],
-		'destroy() leaves the field visible with its own tab order and value'
+		'destroy() leaves the field itself in its place, visible with its own tab order and value'
 	);
-	pg_assert_same(array('wrap' => 'pg-date-inline', 'inline' => true, 'value' => '9/2/2027', 'after' => true), $r['dp_drawer'], 'in a drawer the calendar is drawn open after the field');
+	pg_assert_same(array('wrap' => 'pg-date-inline', 'popup' => false, 'value' => '9/2/2027', 'after' => true), $r['dp_drawer'], 'in a drawer the calendar is drawn open after the field');
+	pg_assert_same(
+		array('tags' => array('/lib/vcp.js'), 'before' => false, 'after' => 'date', 'calls' => array('calendar:ld')),
+		$r['dp_late'],
+		'the library tag is added once, however often the files run, and the field is drawn when it has loaded'
+	);
 }
 
 function test_pg_fields_combobox_server_search()
