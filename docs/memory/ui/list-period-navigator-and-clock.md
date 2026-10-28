@@ -1,6 +1,6 @@
 ---
 name: list-period-navigator-and-clock
-description: The list screens' month arrows step from the last month on screen and the range heading follows the date order (includes/fn/list_period.php); the pickers and time displays follow the 24-hour setting (#2039, #2040, #2058)
+description: List screens: the month arrows step from the last shown month, the range heading follows the date order (list_period.php), pickers and times follow the 24-hour setting (#2039, #2040, #2058)
 module: list_period
 ---
 
