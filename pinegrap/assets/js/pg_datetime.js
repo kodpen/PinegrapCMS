@@ -214,7 +214,7 @@
         var left = f.left - h.left - host.clientLeft + host.scrollLeft;
         // A field near the right edge of a narrow dialog: the calendar stays
         // inside it rather than being cut off.
-        var right = host.scrollLeft + host.clientWidth - cal.offsetWidth;
+        var right = host.scrollLeft + host.clientWidth - (cal.offsetWidth || 0);
         cal.style.top = (f.bottom - h.top - host.clientTop + host.scrollTop) + 'px';
         cal.style.left = Math.max(0, Math.min(left, right)) + 'px';
     }

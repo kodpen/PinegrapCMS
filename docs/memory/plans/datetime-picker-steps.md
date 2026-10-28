@@ -10,7 +10,7 @@ description: Panel steps P1-P11 of plans/datetime-picker.md: what each changes, 
 
 - P2 (M) done (#2757). Date-and-time and time-only in one popup. Spike first: time-only layout with only `<#ControlTime />`. One box in site order and clock; time row under the calendar; open after a date click; our Done, Escape, outside click. `.pg-datetime` group goes; store keeps 12-hour text; `selectionTimeMode` and lang() labels on the tag; time-row CSS in a new `assets/css/pg_datetime.css` (`@layer custom`, `--pg-*`). Files: P1's JS, `core.php`, the CSS, tr shards via `tr_add.php`. Tests: `pg_fields_test.php` 919-972 rewritten.
 
-- P3 (M) Engine modes. Hooked native date/datetime-local/time inputs stay ISO stores (min/max → dateMin/dateMax); select-triplet wrapper; `HH:MM` text store (waybill); JS entry for JS-built fields; right-edge clamp in the overlay. Files: `pg_datetime.js`, `pg_fields.js`, `ui/pg-field-wrappers.md`. Tests: each store format.
+- P3 (M) done (#2785). Engine modes. Hooked native date/datetime-local/time inputs stay ISO stores (min/max → dateMin/dateMax); select-triplet wrapper; `HH:MM` text store (waybill); JS entry for JS-built fields; right-edge clamp in the overlay. Files: `pg_datetime.js`, `pg_fields.js`, `ui/pg-field-wrappers.md`. Tests: each store format.
 
 - P4 (S) PHP leftovers: `content.php` backend 'time' row (1397-1412), waybill `ship_time` (`erp/waybill_form.php` 299-305, HH:MM), filter-row value boxes (`backend.src.js` `create_filter` 5004: only when backend.src.js is free, else P8), excluded transit dates chips (`shipping_method_form.php` 811), hour-of-day select (`settings/commerce.php` 679). After P3; not beside S2.
 

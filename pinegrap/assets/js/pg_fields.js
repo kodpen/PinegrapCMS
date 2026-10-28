@@ -802,7 +802,9 @@
             dateMin: bounds ? bounds.min : '',
             dateMax: bounds ? bounds.max : '',
             inline: inlineIn(el),
-            host: window.pgUI && window.pgUI.overlayHost ? window.pgUI.overlayHost : null,
+            host: function (b) {
+                return window.pgUI && window.pgUI.overlayHost ? window.pgUI.overlayHost(b) : null;
+            },
             onPick: onPick
         });
         // Typed text moves the calendar to it when the box is left; text
@@ -1138,7 +1140,11 @@
     // cannot hold is taken back.
     function drawSelects(el) {
         var t = triplet(el);
+        // A wrapper whose selects a script has not put in yet stays undrawn:
+        // pgFields.init() draws it once they are there.
         if (!t) {
+            el.pgFieldKind = '';
+            el.pgFieldEngine = '';
             return;
         }
         var box = document.createElement('input');
