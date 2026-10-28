@@ -2789,14 +2789,22 @@ else
 		$output_css = '
         <style>
 		
+			/* A strip on the right edge, centred: the top corner is where themes
+			   put the account menu, cart and language switch, the bottom one the
+			   back-to-top and chat buttons. Centred with both insets and auto
+			   margins, not a transform: a transform would become the containing
+			   block of the fixed save/cancel pair inside it. */
 			#software_pinegrap_button_container{
     			position: fixed;
 				display:flex;
-				flex-direction:row;
+				flex-direction:column;
+				align-items:center;
 				overflow:hidden;
     			right: 0px;
     			top: 0px;
-				height:50px;
+				bottom: 0px;
+				margin: auto 0;
+				height: fit-content;
     			z-index: 9999999;
     			width: auto;
 			}
@@ -2805,17 +2813,13 @@ else
 			#software_pinegrap_button_container:not(.collapsed){
 				background: var(--pg-sp-bg, #fff);
     			border: 1px solid var(--pg-sp-border, #00000033);
-				border-top: 0px;
     			border-right: 0px;
-				border-radius: 0;
-				border-bottom-left-radius: 3px;
+				border-radius: 3px 0 0 3px;
+				padding: 4px 0 2px;
 			}
 			.up_button,
         	.down_button{
-				margin-bottom:0;
-				margin-top: 6px;
-				margin-left:auto;
-				margin-right:7px;
+				margin: 2px 7px;
         	    width: 32px;
 				height: 40px;
 				background: var(--pg-sp-bg, #fff) url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0iYmkgYmktYXJyb3ctYmFyLWRvd24iIHZpZXdCb3g9IjAgMCAxNiAxNiI+DQogIDxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzE5NzZkMiIgZD0iTTEgMy41YS41LjUgMCAwIDEgLjUtLjVoMTNhLjUuNSAwIDAgMSAwIDFoLTEzYS41LjUgMCAwIDEtLjUtLjV6TTggNmEuNS41IDAgMCAxIC41LjV2NS43OTNsMi4xNDYtMi4xNDdhLjUuNSAwIDAgMSAuNzA4LjcwOGwtMyAzYS41LjUgMCAwIDEtLjcwOCAwbC0zLTNhLjUuNSAwIDAgMSAuNzA4LS43MDhMNy41IDEyLjI5M1Y2LjVBLjUuNSAwIDAgMSA4IDZ6Ii8+DQo8L3N2Zz4NCg==") no-repeat center;
@@ -2827,10 +2831,7 @@ else
 
 			.toggle_button_off,
 			.toggle_button_on {
-				margin-bottom:0;
-				margin-top: 6px;
-				margin-left:7px;
-				margin-right:0px;
+				margin: 2px 7px;
         	    width: 32px;
 				height: 40px;
 				background: var(--pg-sp-bg, #fff) url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0iYmkgYmktcGVuY2lsLXNxdWFyZSIgdmlld0JveD0iMCAwIDE2IDE2Ij4NCiAgPHBhdGggZmlsbD0iI2MyMTg1YiIgZD0iTTE1LjUwMiAxLjk0YS41LjUgMCAwIDEgMCAuNzA2TDE0LjQ1OSAzLjY5bC0yLTJMMTMuNTAyLjY0NmEuNS41IDAgMCAxIC43MDcgMGwxLjI5MyAxLjI5M3ptLTEuNzUgMi40NTYtMi0yTDQuOTM5IDkuMjFhLjUuNSAwIDAgMC0uMTIxLjE5NmwtLjgwNSAyLjQxNGEuMjUuMjUgMCAwIDAgLjMxNi4zMTZsMi40MTQtLjgwNWEuNS41IDAgMCAwIC4xOTYtLjEybDYuODEzLTYuODE0eiIvPg0KICA8cGF0aCBmaWxsPSIjYzIxODViIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xIDEzLjVBMS41IDEuNSAwIDAgMCAyLjUgMTVoMTFhMS41IDEuNSAwIDAgMCAxLjUtMS41di02YS41LjUgMCAwIDAtMSAwdjZhLjUuNSAwIDAgMS0uNS41aC0xMWEuNS41IDAgMCAxLS41LS41di0xMWEuNS41IDAgMCAxIC41LS41SDlhLjUuNSAwIDAgMCAwLTFIMi41QTEuNSAxLjUgMCAwIDAgMSAyLjV2MTF6Ii8+DQo8L3N2Zz4=") no-repeat center;
@@ -2853,12 +2854,10 @@ else
 			}
 
 			.grid_toggle_button_vh{
-				height: 28px;
-				padding-left: .25rem;
-				padding-right: .25rem;
-				margin-top: auto;
-				margin-bottom: auto;
-				border-right: 1px solid var(--pg-sp-border, #00000033);
+				width: 28px;
+				height: 0;
+				margin: 3px auto;
+				border-top: 1px solid var(--pg-sp-border, #00000033);
 			}
 
 
@@ -2871,6 +2870,7 @@ else
 				display:none;
 			}
 
+			/* Beside the strip, at its middle. */
 			#software_inline_editing_buttons{			
 				display: inline-flex;
 				position: fixed;
@@ -2878,15 +2878,15 @@ else
 				border: 1px solid #00000033;
     			border-radius: 3px;
     			overflow: hidden;
-    			right: 35px;
-				top: 46px;
+    			right: 52px;
+				top: 50%;
+				transform: translateY(-50%);
 				transition: right .3s ease;
 			}
 
 			#software_pinegrap_button_container.collapsed #software_inline_editing_buttons{
-				right: 1px;
+				right: 24px;
 				transition: right .3s ease;
-				top: 68px;
 			}
 
 			#software_inline_editing_save_button,
@@ -2910,34 +2910,23 @@ else
 			}
 
 
+			/* The last button of the strip, and all that is left of it once
+			   collapsed: pointing left (open) or right (into the edge). */
 			#softwareminimizebuttons{
 				padding: 0;
-				right: 0px;
-				top: 49px;
-				position: fixed;
+				margin: 3px auto 2px;
 				height: 18px;
 				width: 18px;
-				z-index: 99999999;
 				background: var(--pg-sp-bg, #fff);
-				border-radius: 0px;
 				color: #898989;
 				border-radius: 3px;
 				line-height: 16px;
-				transform: rotate(90deg);
-				transition: all .3s ease;
+				transform: rotate(180deg);
+				transition: transform .3s ease;
 				border: 1px solid var(--pg-sp-border, #00000033);
-
 			}
 			#softwareminimizebuttons.active{
-				transform: rotate(-90deg);
-				transition: transform .3s ease;
-				border-right: 0;
-    			border-bottom: 0;
-				border-radius: 0;
-				border-top-left-radius: 3px;
-				border-left: 1px solid var(--pg-sp-border, #00000033);
-    			border-top: 1px solid var(--pg-sp-border, #00000033);
-				transition: all .3s ease;
+				transform: none;
 			}
 			.software_pinegrap_inline_edit_button {
 				cursor: pointer !important;
@@ -3121,7 +3110,7 @@ else
 		// prepare to add toolbar and buttons below toolbar
 		$output_toolbar = '
 			<iframe id="software_toolbar" scrolling="no" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/toolbar.php?page_id=' . $page_id . '&amp;style_id=' . STYLE_ID . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '" style="position: fixed; top: 0; right: 0; left: 0; z-index: 999999999; padding: 0; margin: 0; width: 100%; display: none; color-scheme: light;" frameborder="0"></iframe>
-            <div id="software_pinegrap_button_container">
+            <div id="software_pinegrap_button_container" role="toolbar" aria-orientation="vertical" aria-label="' . h(lang('Page editing controls')) . '">
 				' . $output_seo_toolbar['button'] . '
 				' . $output_grid_button . '
 				<button type="button" class="' . $fullscreen_toggle . '" id="software_fullscreen_toggle" title="' . $fullscreen_toggle_title . '" ></button>
@@ -3142,29 +3131,24 @@ else
 					// last change - it ran on every page load, so hiding them
 					// could not outlive a minute of browsing.
 					function toggle_control_buttons(update = false){
-						var timenow = Math.floor(Date.now() / 1000);
+						var state = sessionStorage.getItem("toggle_control_buttons");
 
-						if( sessionStorage.getItem("toggle_control_buttons") == undefined
-							|| sessionStorage.getItem("toggle_control_buttons") == "hide"
-							&& update === true){
-							sessionStorage.setItem("toggle_control_buttons","show");
-							sessionStorage.setItem("toggle_control_buttons_time",timenow);
-
-						}else if(sessionStorage.getItem("toggle_control_buttons") === "show" && update === true){
-							sessionStorage.setItem("toggle_control_buttons","hide");
-							sessionStorage.setItem("toggle_control_buttons_time",timenow);
+						// No choice yet: open, except on a narrow screen,
+						// where the strip would sit on the page itself. The
+						// default is not stored, so a wider window opens it.
+						if (state !== "show" && state !== "hide") {
+							state = window.matchMedia("(max-width: 767.98px)").matches ? "hide" : "show";
 						}
 
-						if(sessionStorage.getItem("toggle_control_buttons") === "show"){
-						
-							toggle_softwareminimizebuttons.classList.add("active");
-							button_container.classList.remove("collapsed");
-						}else{
-						
-							toggle_softwareminimizebuttons.classList.remove("active");
-							button_container.classList.add("collapsed");
+						if (update === true) {
+							state = (state === "show") ? "hide" : "show";
+							sessionStorage.setItem("toggle_control_buttons", state);
+							sessionStorage.setItem("toggle_control_buttons_time", Math.floor(Date.now() / 1000));
 						}
-						
+
+						toggle_softwareminimizebuttons.classList.toggle("active", state === "show");
+						toggle_softwareminimizebuttons.setAttribute("aria-expanded", (state === "show") ? "true" : "false");
+						button_container.classList.toggle("collapsed", state !== "show");
 					}
 					toggle_control_buttons();	
 

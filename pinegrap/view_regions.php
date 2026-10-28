@@ -161,12 +161,12 @@ switch ($filter) {
                 
                 // if slideshow is enabled, then prepare to output slideshow values
                 if ($slideshow == 1) {
-                    $output_slideshow = '<span class="material-icons">task_alt</span>';
+                    $output_slideshow = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
                     $output_slideshow_interval = $slideshow_interval;
 
                     // If the slideshow is continuous, then output check mark.
                     if ($slideshow_continuous == 1) {
-                        $output_slideshow_continuous = '<span class="material-icons">task_alt</span>';
+                        $output_slideshow_continuous = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
                     }
                 }
             }
@@ -296,14 +296,15 @@ switch ($filter) {
 
 
             
+            // Previews are cut here and escaped in their cells, so stored markup never renders in the list.
             // if not_logged_in_header is longer than 50 characters
             if (mb_strlen($not_logged_in_header) > 50) {
-                $not_logged_in_header = h(mb_substr($not_logged_in_header, 0, 50) . '...');
+                $not_logged_in_header = mb_substr($not_logged_in_header, 0, 50) . '...';
             }
             
             // if login form is enabled, then output check mark
             if ($login_form == 1) {
-                $login_form = '<span class="material-icons">task_alt</span>';
+                $login_form = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
                 
             // else login form is disabled, so do not output check mark
             } else {
@@ -312,17 +313,17 @@ switch ($filter) {
             
             // if not_logged_in_footer is longer than 50 characters
             if (mb_strlen($not_logged_in_footer) > 50) {
-                $not_logged_in_footer = h(mb_substr($not_logged_in_footer, 0, 50) . '...');
+                $not_logged_in_footer = mb_substr($not_logged_in_footer, 0, 50) . '...';
             }
             
             // if logged_in_header is longer than 50 characters
             if (mb_strlen($logged_in_header) > 50) {
-                $logged_in_header = h(mb_substr($logged_in_header, 0, 50) . '...');
+                $logged_in_header = mb_substr($logged_in_header, 0, 50) . '...';
             }
             
             // if logged_in_footer is longer than 50 characters
-            if (mb_strlen($logged_in_footer) > 100) {
-                $logged_in_footer = h(mb_substr($logged_in_footer, 0, 50) . '...');
+            if (mb_strlen($logged_in_footer) > 50) {
+                $logged_in_footer = mb_substr($logged_in_footer, 0, 50) . '...';
             }
             
             // output link url
@@ -338,11 +339,11 @@ switch ($filter) {
                         <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     </td>
                     <td class="align-middle chart_label text-nowrap">' . h($name) . '</td>
-                    <td class="align-middle">' . $not_logged_in_header . '</td>
-                    <td class="align-middle tex-center">' . $login_form . '</td>
-                    <td class="align-middle">' . $not_logged_in_footer . '</td>
-                    <td class="align-middle">' . $logged_in_header . '</td>
-                    <td class="align-middle">' . $logged_in_footer . '</td>
+                    <td class="align-middle">' . h($not_logged_in_header) . '</td>
+                    <td class="align-middle text-center">' . $login_form . '</td>
+                    <td class="align-middle">' . h($not_logged_in_footer) . '</td>
+                    <td class="align-middle">' . h($logged_in_header) . '</td>
+                    <td class="align-middle">' . h($logged_in_footer) . '</td>
                     <td class="align-middle">' . get_relative_time(array('timestamp' => $created_timestamp)) . ' ' . $created_username . '</td>
                     <td class="align-middle">' . get_relative_time(array('timestamp' => $last_modified_timestamp)) . ' ' . $last_modified_username . '</td>
                 </tr>';

@@ -197,7 +197,7 @@ foreach ($menu_items as $menu_item) {
         ($menu_item['security'] == 1)
         && ($menu_item['link_page_id'] != 0)
     ) {
-        $output_security_check_mark = '<span class="material-icons">task_alt</span>';
+        $output_security_check_mark = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
     }
 
     if($menu_item['created_username'] != ''){

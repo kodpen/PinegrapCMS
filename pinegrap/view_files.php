@@ -350,7 +350,7 @@ if ($files) {
         $optimized = '';
 
         if ($file['optimized']) {
-            $optimized = '<span class="material-icons">task_alt</span>';
+            $optimized = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
         }
 
         // Resolved once per row. Two things below need it — the resize button,
@@ -378,7 +378,7 @@ if ($files) {
             ($file['design'] == 0)
             || ($user['role'] <= 1)
         ) {
-            $output_check_box = '<input class="check" type="checkbox" name="files[]" value="' . $file['id'] . '" class="checkbox" />';
+            $output_check_box = '<input class="check" type="checkbox" name="files[]" value="' . $file['id'] . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($file['name'])))) . '" />';
             $output_unselectable_class = '';
 
             // Image actions. Two separate buttons, because they do two
@@ -464,7 +464,7 @@ if ($files) {
             //default show image
 		    $show_image = true;
 		    if($show_image == true){
-                $output_thumbnail ='<img style="width: 50px;height:50px;" title="' . $output_image_dimensions . '" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' .  PATH . $file['name'] . '" />';
+                $output_thumbnail ='<img style="width: 50px;height:50px;object-fit:cover;" title="' . $output_image_dimensions . '" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(PATH . encode_url_path($file['name'])) . '" />';
 		    }
         } else {
             $output_thumbnail ='';
@@ -483,14 +483,14 @@ if ($files) {
             <td class="select-all align-middle text-start">' . $output_check_box . '</td>
 			<td class="align-middle text-start action-buttons">
                 ' . $output_edit_buttons . '
-                <a class="m-1 btn-data-control btn btn-outline theme-warning border-2 " title="' . lang('Download') . '" download="' . h($file['type']) . '" href="' . OUTPUT_PATH. h($file['name']) . '" ><i class="bi bi-file-earmark-arrow-down"></i></a>
+                <a class="m-1 btn-data-control btn btn-outline theme-warning border-2 " title="' . lang('Download') . '" download="' . h($file['name']) . '" href="' . OUTPUT_PATH. h($file['name']) . '" ><i class="bi bi-file-earmark-arrow-down"></i></a>
             </td>
             ' . $output_thumbnail_cell . '
             <td class="align-middle chart_label' . $output_design_class . '" title="' . h($file['name']) . '">' . h($file['name']) . '</td>
             <td class="align-middle ' . $output_design_class . '">' . h($file['type']) . '</td>
             <td class="align-middle ' . $output_design_class . '">' . h($file['size']) . '</td>
             <td class="align-middle text-center ' . $output_design_class . '" style="text-align: center">' . $optimized . '</td>
-            <td class="align-middle text-start ' . $file['folder_access_control_type'] . '" title="' . h($file['folder_name']) . '"><span class="d-block overflow-hidden text-truncate" style="width: 100px;max-width:100%;"><span class="material-icons d-inline">folder</span><span class="badge fw-light fg-reset d-inline">' . h($file['folder_name']) . '</span></span></td>
+            <td class="align-middle text-start ' . $file['folder_access_control_type'] . '" title="' . h($file['folder_name']) . '"><span class="d-block overflow-hidden text-truncate" style="width: 100px;max-width:100%;"><span class="material-icons d-inline" aria-hidden="true">folder</span><span class="badge fw-light fg-reset d-inline">' . h($file['folder_name']) . '</span></span></td>
             <td class="align-middle ' . $output_design_class . '" title="' . nl2br(h($file['description'])) . '"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">' . nl2br(h($file['description'])) . '</span></td>
             <td class="align-middle ' . $output_design_class . '">' . get_relative_time(array('timestamp' => $file['timestamp'])) . ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($file['user_username'] ?? '') ) ) ) . '</td>
         </tr>';
