@@ -412,6 +412,8 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
                 'office'   => function_exists('pg_office_kind') && (pg_office_kind($row['file_name']) !== ''),
                 'message_id' => (int) $id,
                 'versions' => (int) ($extra['versions'][$id] ?? 0),
+                // A recording's length, waveform and transcript (voice.php).
+                'voice'    => (($kind === 'audio') && function_exists('ws_voice_panel_present')) ? ws_voice_panel_present((int) $row['file_id']) : null,
             );
         }
     }

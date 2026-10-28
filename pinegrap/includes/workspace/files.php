@@ -676,7 +676,8 @@ function ws_message_send_file($viewer, $channel, $body, $original_name, $data, $
  * @param string       $body          the words beside the file, may be empty
  * @param string       $original_name
  * @param string|false $binary        false when the bytes could not be decoded
- * @param array        $options       as for ws_message_send(), file_id and file_name aside
+ * @param array        $options       as for ws_message_send(), file_id and file_name aside;
+ *                                    voice: duration_ms and peaks a recorder measured
  * @return array ok, error, message_id
  */
 function ws_message_send_file_bytes($viewer, $channel, $body, $original_name, $binary, $options = array())
@@ -711,8 +712,9 @@ function ws_message_send_file_bytes($viewer, $channel, $body, $original_name, $b
     if (!$result['ok']) {
         ws_upload_discard($stored['file_id']);
     } elseif (function_exists('ws_voice_queue')) {
-        // A voice message waits to be written out (voice.php).
-        ws_voice_queue($channel, $result['message_id'], $stored['file_id'], $stored['name']);
+        // A voice message waits to be written out (voice.php), with the
+        // length and waveform its recorder measured.
+        ws_voice_queue($channel, $result['message_id'], $stored['file_id'], $stored['name'], (array) ($options['voice'] ?? array()));
     }
 
     return $result;

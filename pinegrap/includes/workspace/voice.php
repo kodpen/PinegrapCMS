@@ -352,6 +352,75 @@ function ws_voice_channel_rule($kind, $access)
     return ($kind === 'public');
 }
 
+/**
+ * What the channel screen's menu shows of transcripts here: null while they
+ * are off, in a guest room, a channel shared with guests or a discussion
+ * (which follows its channel); otherwise whether its recordings are written
+ * out and the service they go to, named in the private channel's question.
+ *
+ * @param array $channel
+ * @return array|null allowed, provider
+ */
+function ws_voice_channel_state($channel)
+{
+    if (!ws_voice_schema_ready() || !ws_voice_config()['enabled'] || !ws_voice_channel_switchable($channel)) {
+        return null;
+    }
+
+    return array(
+        'allowed'  => ws_voice_channel_allowed($channel),
+        'provider' => (string) ws_voice_config()['provider'],
+    );
+}
+
+/**
+ * Can a manager switch transcripts on or off in this channel? Not where the
+ * rule never allows them (a guest room, a channel shared with guests), nor
+ * in a discussion, which follows its channel.
+ *
+ * @param array $channel
+ * @return bool
+ */
+function ws_voice_channel_switchable($channel)
+{
+    $kind = (string) ($channel['kind'] ?? '');
+
+    if (($kind === 'guest') || ($kind === 'thread')) {
+        return false;
+    }
+
+    return !(function_exists('ws_channel_share_open') && ws_channel_share_open($channel));
+}
+
+/**
+ * Lets a channel's recordings be written out, or stops it, as a manager of
+ * the channel chooses; the channel reads a line saying who did it. What was
+ * already written out stays.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @param bool  $allowed
+ * @return array ok, error
+ */
+function ws_voice_channel_set($viewer, $channel, $allowed)
+{
+    if (!ws_voice_schema_ready() || !ws_voice_channel_switchable($channel)) {
+        return array('ok' => false, 'error' => lang('Invalid request.'));
+    }
+
+    if (!ws_can_manage_channel($viewer, $channel)) {
+        return array('ok' => false, 'error' => lang('Access denied.'));
+    }
+
+    db("UPDATE ws_channels SET voice_access = '" . ($allowed ? 1 : 2) . "' WHERE id = '" . (int) $channel['id'] . "'");
+
+    ws_message_system($channel['id'], $allowed
+        ? lang(array('string' => '{var:1} allowed voice messages to be transcribed in this channel.', 'vars' => ws_person_name($viewer['id'])))
+        : lang(array('string' => '{var:1} stopped voice messages being transcribed in this channel.', 'vars' => ws_person_name($viewer['id']))));
+
+    return array('ok' => true, 'error' => '');
+}
+
 /* ---------------------------------------------------------------------------
    The settings card (workspace_settings.php)
    --------------------------------------------------------------------------- */
@@ -570,6 +639,34 @@ function ws_voice_is_recording($name)
 }
 
 /**
+ * The most waveform levels a recording keeps (ws_voice.peaks).
+ */
+define('WS_VOICE_PEAKS', 120);
+
+/**
+ * The length and waveform the recorder measured, as they are kept: the
+ * length in milliseconds within the recorder's cap, the levels one digit
+ * each (0 silence to 9 loudest), at most WS_VOICE_PEAKS of them. Anything
+ * else the browser sent is dropped, never stored.
+ *
+ * @param mixed $duration_ms
+ * @param mixed $peaks
+ * @return array duration_ms, peaks
+ */
+function ws_voice_measure_clean($duration_ms, $peaks)
+{
+    // A second over the cap: the recorder stops on its own tick. Held there
+    // before the cast, so a huge number cannot wrap round.
+    $duration = (is_numeric($duration_ms) && ((float) $duration_ms > 0)) ? min((float) $duration_ms, (WS_VOICE_MAX_SECONDS + 1) * 1000) : 0;
+    $levels = is_string($peaks) ? $peaks : '';
+
+    return array(
+        'duration_ms' => (int) round($duration),
+        'peaks'       => preg_match('/^[0-9]{1,' . WS_VOICE_PEAKS . '}$/', $levels) ? $levels : '',
+    );
+}
+
+/**
  * Notes a recording just posted: queued to be written out when transcripts
  * are on and its channel allows them, otherwise kept as never asked. Called
  * by both uploads (ws_message_send_file_bytes(), the API's files.create).
@@ -577,19 +674,22 @@ function ws_voice_is_recording($name)
  * @param array  $channel
  * @param int    $message_id
  * @param int    $file_id
- * @param string $name the name it was posted with
+ * @param string $name    the name it was posted with
+ * @param array  $measure duration_ms and peaks the recorder sent, if any
  */
-function ws_voice_queue($channel, $message_id, $file_id, $name)
+function ws_voice_queue($channel, $message_id, $file_id, $name, $measure = array())
 {
     if (!ws_voice_schema_ready() || ((int) $file_id <= 0) || !ws_voice_is_recording($name)) {
         return;
     }
 
     $queued = ws_voice_config()['enabled'] && ws_voice_channel_allowed($channel);
+    $measured = ws_voice_measure_clean($measure['duration_ms'] ?? 0, $measure['peaks'] ?? '');
     $now = time();
 
-    db("INSERT IGNORE INTO ws_voice (file_id, message_id, channel_id, status, created_at, updated_at)
-        VALUES ('" . (int) $file_id . "', '" . (int) $message_id . "', '" . (int) $channel['id'] . "', '" . ($queued ? 'queued' : '') . "', '" . $now . "', '" . $now . "')");
+    db("INSERT IGNORE INTO ws_voice (file_id, message_id, channel_id, duration_ms, peaks, status, created_at, updated_at)
+        VALUES ('" . (int) $file_id . "', '" . (int) $message_id . "', '" . (int) $channel['id'] . "', '" . (int) $measured['duration_ms'] . "', '" . e($measured['peaks']) . "',
+            '" . ($queued ? 'queued' : '') . "', '" . $now . "', '" . $now . "')");
 
     if ($queued) {
         ws_voice_carry_on();
@@ -766,6 +866,7 @@ function ws_voice_run($row)
 
             // Screens and apps holding the message read it again.
             ws_message_touch((int) $row['message_id']);
+            ws_voice_announce($message, $channel, $row, $outcome, $config['provider'], $model);
 
             if ($config['error'] !== '') {
                 pg_config_text_save('ws_voice_error', '');
@@ -794,6 +895,42 @@ function ws_voice_run($row)
         default:
             return ws_voice_finish($row, 'failed', $outcome['error']);
     }
+}
+
+/**
+ * Tells the subscriptions a recording was written out, in a public channel
+ * only, as workspace.message.created is: a private channel's words never
+ * leave the site through a subscription, and a discussion is not announced.
+ *
+ * @param array  $message  the message carrying the recording
+ * @param array  $channel  its channel
+ * @param array  $row      ws_voice
+ * @param array  $outcome  ws_voice_answer()'s, done
+ * @param string $provider
+ * @param string $model
+ */
+function ws_voice_announce($message, $channel, $row, $outcome, $provider, $model)
+{
+    if (((string) ($channel['kind'] ?? '') !== 'public') || !function_exists('pg_announce')) {
+        return;
+    }
+
+    $app = ((string) $message['sender_kind'] === 'app');
+
+    pg_announce('workspace.message.transcribed', array(
+        'id'          => (int) $message['id'],
+        'channel_id'  => (int) $channel['id'],
+        'channel'     => (string) $channel['name'],
+        'sender_id'   => $app ? 0 : (int) $message['sender_id'],
+        'app_id'      => $app ? (int) $message['sender_id'] : 0,
+        'file_id'     => (int) $row['file_id'],
+        'file_name'   => (string) $message['file_name'],
+        'duration_ms' => (int) $row['duration_ms'],
+        'transcript'  => (string) $outcome['text'],
+        'language'    => ($outcome['language'] !== '') ? (string) $outcome['language'] : null,
+        'provider'    => (string) $provider,
+        'model'       => (string) $model,
+    ));
 }
 
 /**
@@ -997,5 +1134,38 @@ function ws_voice_api_present($file_id)
         'provider'       => $done ? (string) $row['provider'] : null,
         'model'          => $done ? (string) $row['model'] : null,
         'transcribed_at' => $done ? api_time((int) $row['transcribed_at']) : null,
+    );
+}
+
+/**
+ * A recording as the channel screen's player draws it, inside the message's
+ * file: its length and waveform, and once written out the transcript, marked
+ * as machine text with the service that wrote it. null for any other file.
+ *
+ * @param int $file_id
+ * @return array|null status, duration_ms, peaks, transcript, language, provider, model
+ */
+function ws_voice_panel_present($file_id)
+{
+    if (!ws_voice_schema_ready() || ((int) $file_id <= 0)) {
+        return null;
+    }
+
+    $row = db_item("SELECT status, duration_ms, peaks, transcript, language, provider, model FROM ws_voice WHERE file_id = '" . (int) $file_id . "'");
+
+    if (!is_array($row)) {
+        return null;
+    }
+
+    $done = ($row['status'] === 'done');
+
+    return array(
+        'status'      => ((string) $row['status'] !== '') ? (string) $row['status'] : 'none',
+        'duration_ms' => (int) $row['duration_ms'],
+        'peaks'       => (string) $row['peaks'],
+        'transcript'  => $done ? (string) $row['transcript'] : '',
+        'language'    => $done ? (string) $row['language'] : '',
+        'provider'    => $done ? (string) $row['provider'] : '',
+        'model'       => $done ? (string) $row['model'] : '',
     );
 }
