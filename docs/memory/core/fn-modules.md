@@ -38,6 +38,7 @@ description: Generated from the module field of the memory files: each includes/
 - `seo`: [[sitemap-listed-pages]]
 - `shipment_lookup`: [[guest-shipment-lookup]]
 - `stock_notify`: [[back-in-stock-notices]]
+- `submitted_form_list`: [[server-paged-lists]]
 - `user_list`: [[server-paged-lists]]
 - `waf_notice`: [[waf-ban-notice]]
 - `waf_rescue`: [[waf-self-rescue]]
