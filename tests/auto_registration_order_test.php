@@ -112,5 +112,8 @@ function test_order_account_has_no_password_and_customer_copy_is_secret()
 
 	pg_assert_same(1, preg_match('/create_member_user\(array\(/', $source), 'account is created');
 	pg_assert_same(0, preg_match('/create_member_user\(array\((?:(?!\)\);).)*\'password\'/s', $source), 'no password passed');
-	pg_assert_contains("'secret' => ((\$receipt_copy['audience'] === 'customer') && (pg_order_new_account_email() !== ''))", $source, 'customer copy is secret');
+	// The receipt is e-mailed by pg_order_complete_receipt(), told by
+	// submit_order() whether the order opened an account.
+	pg_assert_contains("\$billing_email_address,\n        pg_order_new_account_email() !== ''\n    );", $source, 'the receipt is told about the new account');
+	pg_assert_contains("'secret' => ((\$receipt_copy['audience'] === 'customer') && \$new_account)", file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php'), 'customer copy is secret');
 }
