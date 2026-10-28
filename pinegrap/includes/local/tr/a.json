@@ -2637,6 +2637,8 @@
     "Assign to Ad Region": "Reklam Bölgesine Ata",
     "Assign work to others": "Başkalarına iş verebilir",
     "Assistant": "Asistan",
+    "Assistant answers are no longer read aloud.": "Asistan yanıtları artık sesli okunmuyor.",
+    "Assistant answers to your messages will be read aloud in this browser.": "Mesajlarınıza gelen asistan yanıtları bu tarayıcıda sesli okunacak.",
     "Assistant: {var:1}": "Asistan: {var:1}",
     "Assistants ({var:1}): let in by the firewall.": "Asistanlar ({var:1}): güvenlik duvarı içeri alıyor.",
     "Assistants ({var:1}): turned away by the firewall.": "Asistanlar ({var:1}): güvenlik duvarı geri çeviriyor.",

@@ -4,7 +4,8 @@
  * Workspace - voice messages: the recording started from the microphone of
  * the writing box (a red dot, the time, Stop to send it, Discard), and the
  * player every sound file in a conversation is drawn with (play and pause,
- * the time, the speed, the download link).
+ * the time, the speed, the download link), and the assistants' answers read
+ * aloud by the browser's own speech for a person who switched it on.
  *
  * assets/js/workspace.js draws the writing box and the messages and calls in
  * here with its own helpers. A recording leaves as an ordinary file through
@@ -58,6 +59,16 @@
     // One recording at a time, and one player sounding at a time.
     var recording = null;
     var sounding = null;
+
+    // Reading answers aloud: switched on per site and person in this browser
+    // only (nothing is kept on the server), off until switched on. An answer
+    // longer than SPEAK_MAX characters is read up to a sentence end before.
+    var SPEAK_KEY = 'ws-voice-speak';
+    var SPEAK_MAX = 1500;
+
+    // The choice made on this screen, by key, for a browser that keeps
+    // nothing.
+    var speakChosen = {};
 
     // Recording needs a secure context (getUserMedia is missing outside one)
     // and an engine with MediaRecorder.
@@ -763,6 +774,8 @@
         });
         audio.addEventListener('timeupdate', draw);
         audio.addEventListener('play', function () {
+            speakStop();
+
             if (sounding && (sounding !== audio)) {
                 sounding.pause();
             }
@@ -850,11 +863,115 @@
         return !!recording;
     }
 
+    // ── Answers read aloud (speechSynthesis) ──
+
+    function speakSupported() {
+        return !!(window.speechSynthesis && window.SpeechSynthesisUtterance);
+    }
+
+    // One switch per site and person, so two people sharing a browser each
+    // keep their own.
+    function speakKey(site, viewer) {
+        return SPEAK_KEY + ':' + String(site || '') + ':' + String(viewer || 0);
+    }
+
+    function speakOn(site, viewer) {
+        var key = speakKey(site, viewer);
+
+        if (Object.prototype.hasOwnProperty.call(speakChosen, key)) {
+            return speakChosen[key];
+        }
+
+        try {
+            return window.localStorage.getItem(key) === 'on';
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function speakSet(site, viewer, on) {
+        var key = speakKey(site, viewer);
+
+        speakChosen[key] = !!on;
+
+        try {
+            if (on) {
+                window.localStorage.setItem(key, 'on');
+            } else {
+                window.localStorage.removeItem(key);
+            }
+        } catch (error) {
+            // Nothing to remember it in; it holds for this screen.
+        }
+
+        if (!on) {
+            speakStop();
+        }
+    }
+
+    // The words an answer is read with: its text as shown, white space
+    // folded; a long one cut at the last sentence end before SPEAK_MAX, or at
+    // a word when there is none.
+    function speakText(text, max) {
+        var words = String(text || '').replace(/\s+/g, ' ').trim();
+        var limit = max || SPEAK_MAX;
+
+        if (words.length <= limit) {
+            return words;
+        }
+
+        var cut = words.slice(0, limit);
+        var end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '), cut.lastIndexOf('… '));
+
+        if (end > limit / 3) {
+            return cut.slice(0, end + 1);
+        }
+
+        var space = cut.lastIndexOf(' ');
+
+        return ((space > limit / 3) ? cut.slice(0, space) : cut) + '…';
+    }
+
+    // Reads the text in the screen's language, after whatever is read now;
+    // false when there is nothing to read or no speech.
+    function speak(text, locale) {
+        var words = speakText(text);
+
+        if (!speakSupported() || (words === '')) {
+            return false;
+        }
+
+        var utterance = new window.SpeechSynthesisUtterance(words);
+
+        if (locale) {
+            utterance.lang = locale;
+        }
+
+        if (sounding && !sounding.paused) {
+            sounding.pause();
+        }
+
+        window.speechSynthesis.speak(utterance);
+
+        return true;
+    }
+
+    function speakStop() {
+        if (speakSupported()) {
+            window.speechSynthesis.cancel();
+        }
+    }
+
     window.PGWsVoice = {
         supported: supported,
         busy: busy,
         start: start,
         player: player,
-        isVoice: isVoice
+        isVoice: isVoice,
+        speakSupported: speakSupported,
+        speakOn: speakOn,
+        speakSet: speakSet,
+        speak: speak,
+        speakStop: speakStop
     };
 })();

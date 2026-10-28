@@ -147,3 +147,68 @@ function test_ws_voice_reply_reaches_the_upload()
 	pg_assert_contains('parent_id: parent ? parent.id : 0', $screen, 'a recording answers the reply bar\'s message');
 	pg_assert_contains('if (options && options.reply)', ws_voice_test_function($voice, 'player'), 'the reply microphone needs an answer to make');
 }
+
+// Answers are read aloud only for a person who switched it on in this
+// browser: off by default, kept per site and person, a long answer cut at a
+// sentence end. Run under Node with a stub window; skipped without Node.
+function test_ws_voice_speak_choice_and_text()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	$script = ws_voice_test_source('assets/js/workspace_voice.js');
+	$file = tempnam(sys_get_temp_dir(), 'pgspeak') . '.js';
+	$probe = 'var store = {}; var spoken = []; var cancelled = 0;' . "\n"
+		. 'global.window = { localStorage: { getItem: function (k) { return store.hasOwnProperty(k) ? store[k] : null; }, setItem: function (k, v) { store[k] = String(v); }, removeItem: function (k) { delete store[k]; } },'
+		. ' speechSynthesis: { speak: function (u) { spoken.push(u); }, cancel: function () { cancelled++; } }, SpeechSynthesisUtterance: function (text) { this.text = text; } };' . "\n"
+		. $script . "\n"
+		. 'var v = window.PGWsVoice; var out = {};' . "\n"
+		. 'out.off = v.speakOn("s", 3);' . "\n"
+		. 'v.speakSet("s", 3, true); out.on = v.speakOn("s", 3); out.other = v.speakOn("s", 4); out.keys = Object.keys(store);' . "\n"
+		. 'out.read = v.speak("  Hello\n there.  ", "tr"); out.text = spoken[0].text; out.lang = spoken[0].lang;' . "\n"
+		. 'out.empty = v.speak("   ", "tr");' . "\n"
+		. 'var long = ""; for (var i = 0; i < 400; i++) { long += "Word word. "; } v.speak(long, ""); out.cut = spoken[1].text.length <= 1500 && /\.$/.test(spoken[1].text);' . "\n"
+		. 'v.speakSet("s", 3, false); out.after = v.speakOn("s", 3); out.cancelled = cancelled; out.left = Object.keys(store).length;' . "\n"
+		. 'console.log(JSON.stringify(out));';
+
+	file_put_contents($file, $probe);
+	$lines = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $lines, $code);
+	@unlink($file);
+
+	pg_assert_same(0, $code, implode("\n", $lines));
+	$result = json_decode(implode("\n", $lines), true);
+
+	pg_assert_false($result['off'], 'off until switched on');
+	pg_assert_true($result['on'], 'switched on');
+	pg_assert_false($result['other'], 'another person on the same browser keeps their own');
+	pg_assert_same(array('ws-voice-speak:s:3'), $result['keys']);
+	pg_assert_true($result['read']);
+	pg_assert_same('Hello there.', $result['text'], 'white space folded');
+	pg_assert_same('tr', $result['lang']);
+	pg_assert_false($result['empty'], 'nothing to read');
+	pg_assert_true($result['cut'], 'a long answer is cut at a sentence end');
+	pg_assert_false($result['after'], 'switched off');
+	pg_assert_true($result['cancelled'] >= 1, 'switching off stops the reading');
+	pg_assert_same(0, $result['left'], 'off leaves nothing stored');
+}
+
+// The screen reads only an assistant's answer to the viewer's own message,
+// arrived live, and stops when another channel opens or a sound plays.
+function test_ws_voice_speak_wiring()
+{
+	$screen = ws_voice_test_source('assets/js/workspace.js');
+	$script = ws_voice_test_source('assets/js/workspace_voice.js');
+
+	pg_assert_contains("self.speakAnswer(message, self.pane.lastElementChild);", $screen);
+	pg_assert_contains('!parent || !parent.mine', $screen);
+	pg_assert_contains("(message.sender_kind !== 'app') || !(sender.claude || sender.ai || sender.mcp)", $screen);
+	pg_assert_contains('window.PGWsVoice.speakStop();', $screen);
+	pg_assert_contains("t('voice_speak')", $screen);
+	pg_assert_contains("audio.addEventListener('play', function () {\n            speakStop();", $script);
+}

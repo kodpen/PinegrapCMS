@@ -53,6 +53,9 @@ function ws_voice_js_strings()
         'voice_transcribing' => lang('Transcribing…'),
         'voice_allow'       => lang('Voice messages are transcribed here'),
         'voice_allow_private' => ws_js_template('Voice messages in this private channel will be sent to {var:1} to be transcribed. Allow it?', 1),
+        'voice_speak'       => lang('Read assistant answers to me aloud'),
+        'voice_speak_on'    => lang('Assistant answers to your messages will be read aloud in this browser.'),
+        'voice_speak_off'   => lang('Assistant answers are no longer read aloud.'),
     );
 }
 
