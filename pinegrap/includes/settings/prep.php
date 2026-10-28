@@ -737,6 +737,36 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // nothing is worse than no control at all.
     $output_share_image_pickers = '';
     $output_app_icon_picker = '';
+    $output_site_icon_picker = '';
+
+    // The site's own icon (includes/fn/site_icon.php): a PNG or SVG of the
+    // Files screen, kept in config_text. A stored name that no longer
+    // matches a file is kept as its own option, so saving cannot clear it.
+    if (pg_schema_has('config_text')) {
+        $site_icon = pg_site_icon_name();
+        $site_icon_options = '<option value="">' . lang('(not selected)') . '</option>';
+        $site_icon_matched = ($site_icon === '');
+
+        foreach (db_items("SELECT name FROM files WHERE ((type = 'png') || (type = 'svg')) AND (attachment = 0) ORDER BY name ASC") as $site_icon_file) {
+            $site_icon_options .= '<option value="' . h($site_icon_file['name']) . '"' . (($site_icon_file['name'] === $site_icon) ? ' selected="selected"' : '') . '>' . h($site_icon_file['name']) . '</option>';
+
+            if ($site_icon_file['name'] === $site_icon) {
+                $site_icon_matched = true;
+            }
+        }
+
+        if (!$site_icon_matched) {
+            $site_icon_options .= '<option value="' . h($site_icon) . '" selected="selected">' . h($site_icon) . '</option>';
+        }
+
+        $output_site_icon_picker = '
+                                        <div id="pgsub-site-icon" class="col-12  mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Site Icon') . '</h6></div>
+                                        <div class="pg-f-md">
+                                            <label for="site_icon" class="form-label">' . lang('Site Icon') . '</label>
+                                            <select name="site_icon" id="site_icon" class="form-control">' . $site_icon_options . '</select>
+                                            <div class="form-text">' . lang('Shown in browser tabs, in search results and on home screens. Choose a square PNG of at least 512x512 (the smaller sizes are made from it) or an SVG. Leave it empty to keep the design\'s own icon.') . '</div>
+                                        </div>';
+    }
     $output_structured_data_dependent = '';
 
     if (waf_table_has_column('config', 'og_default_image')) {

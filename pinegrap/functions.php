@@ -175,3 +175,4 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/order_status.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/order_list.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/order_view.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_icon.php');
