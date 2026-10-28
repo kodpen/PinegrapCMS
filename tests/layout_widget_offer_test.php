@@ -109,3 +109,74 @@ function test_layout_widget_seed_types_reading_their_row()
 		pg_assert_same(array(), pg_layout_widget_seed($type, array('next_page_id' => '3')), $type . ': the widget reads its page itself');
 	}
 }
+
+// One function of style_designer.js, from its declaration to its closing
+// brace; '' when it is not there.
+function _layout_widget_js_function($js, $name)
+{
+	$start = strpos($js, "\n    function " . $name . '(');
+	$end = ($start === false) ? false : strpos($js, "\n    }\n", $start);
+
+	return (($start === false) || ($end === false)) ? '' : substr($js, $start, $end - $start + 6);
+}
+
+function test_layout_widget_editor()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	pg_assert_contains("_sdLayoutPropsHtml() + _sdLayoutWidgetPropsHtml(n)", $js, 'offered in the system region\'s panel');
+	pg_assert_contains("_sdLegacyRegionOwn(n)) return null;", $js, 'only for the page\'s own region');
+	pg_assert_contains("_sdLayoutWidgetPlace(selectedNode)", $js, 'the offer button is wired');
+	pg_assert_contains("_sdLayoutRegionRemove(selectedNode)", $js, 'the removal button is wired');
+	pg_assert_contains("parent.children.splice(idx + 1, 0, ref);", _layout_widget_js_function($js, '_sdLayoutWidgetPlace'), 'placed after the region, which stays');
+	pg_assert_contains("window.confirm(", _layout_widget_js_function($js, '_sdLayoutRegionRemove'), 'the region goes only after asking');
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+	if ($code !== 0) {
+		return;
+	}
+
+	$src = '';
+	foreach (array('_sdLayoutWidgetPlaced', '_sdLayoutWidgetCfg') as $name) {
+		$body = _layout_widget_js_function($js, $name);
+		pg_assert_true($body !== '', 'style_designer.js has ' . $name . '()');
+		$src .= $body . "\n";
+	}
+	$script = $src . <<<'JS'
+function _swTypeDefaults(cfg, type) { cfg.regionType = type; if (cfg.max_results === undefined) cfg.max_results = 50; return cfg; }
+var kinds = { 1: 'catalog_listing', 2: 'form_list_view' };
+var kindOf = function (sid) { return kinds[sid] || ''; };
+var tree = { type: 'root', children: [
+    { type: 'region', props: { regionType: 'system' }, children: [] },
+    { type: 'container', props: {}, children: [ { type: 'shared_ref', props: { sharedId: 2 }, children: [] } ] }
+] };
+var seed = { kind: 'form_list_view', cfg: { form_page_id: 5, max_results: 0, ids: [1, 2] } };
+var cfg = _sdLayoutWidgetCfg(seed);
+cfg.ids.push(3);
+console.log(JSON.stringify({
+    nested: _sdLayoutWidgetPlaced(tree, 'form_list_view', kindOf),
+    other: _sdLayoutWidgetPlaced(tree, 'catalog_listing', kindOf),
+    empty: _sdLayoutWidgetPlaced(null, 'catalog_listing', kindOf),
+    cfg: _sdLayoutWidgetCfg(seed),
+    copied: seed.cfg.ids.length,
+    emptyCfg: _sdLayoutWidgetCfg({ kind: 'catalog_listing', cfg: [] })
+}));
+JS;
+	$file = tempnam(sys_get_temp_dir(), 'pglwo');
+	file_put_contents($file, $script);
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+	pg_assert_same(0, $code, 'the Node script runs: ' . implode("\n", array_slice($out, 0, 8)));
+	$res = json_decode(implode("\n", $out), true);
+	if (!pg_assert_true(is_array($res), 'the script answers')) {
+		return;
+	}
+	pg_assert_same(true, $res['nested'], 'a widget nested in a container counts');
+	pg_assert_same(false, $res['other'], 'a widget of another kind does not');
+	pg_assert_same(false, $res['empty']);
+	pg_assert_same(array('form_page_id' => 5, 'max_results' => 0, 'ids' => array(1, 2), 'regionType' => 'form_list_view'), $res['cfg'], 'the carried settings win over the defaults');
+	pg_assert_same(2, $res['copied'], 'the offer is not changed by the widget made from it');
+	pg_assert_same(array('regionType' => 'catalog_listing', 'max_results' => 50), $res['emptyCfg'], 'no settings (an empty PHP array): the defaults');
+}
