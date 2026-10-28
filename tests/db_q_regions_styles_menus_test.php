@@ -134,7 +134,7 @@ function db_q_regions_styles_menus_test_built($text)
 
 function test_db_q_regions_styles_menus_value_queries_use_db_q()
 {
-	$expected = array('edit_calendar_event_location.php' => 6, 'duplicate_calendar_event.php' => 6, 'edit_ad.php' => 4, 'view_ads.php' => 1, 'edit_login_region.php' => 4, 'edit_common_region.php' => 3, 'view_styles.php' => 0, 'duplicate_style.php' => 4, 'edit_design_file.php' => 5, 'view_menu_items.php' => 4, 'add_menu_item.php' => 2, 'view_fields.php' => 2, 'edit_files.php' => 4);
+	$expected = array('edit_calendar_event_location.php' => 6, 'duplicate_calendar_event.php' => 6, 'edit_ad.php' => 4, 'view_ads.php' => 1, 'edit_login_region.php' => 3, 'edit_common_region.php' => 3, 'view_styles.php' => 0, 'duplicate_style.php' => 4, 'edit_design_file.php' => 5, 'view_menu_items.php' => 4, 'add_menu_item.php' => 2, 'view_fields.php' => 2, 'edit_files.php' => 4);
 
 	foreach ($expected as $path => $minimum) {
 		$db_q = 0;
