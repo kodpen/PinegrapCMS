@@ -4632,10 +4632,6 @@ nav.buttons.navigation .btn-solid.theme-secondary {
   border-color: unset !important;
 }
 
-.ui-datepicker {
-  z-index: 999 !important;
-}
-
 .action-buttons {
   width: 70px;
   max-width: 100%;
@@ -5311,11 +5307,6 @@ div#software_image_picker_container {
 .card.widget .card-body {
   position: relative;
 }
-.ui-draggable-handle,
-.card.widget .ui-sortable-handle {
-  cursor: grab;
-}
-
 .card.widget #editor {
   color: inherit;
   height: inherit;
@@ -9277,14 +9268,6 @@ body.pg-side-panel-open .pg-chat-launcher {
   color: var(--pg-fg-2);
   white-space: nowrap;
 }
-/* jQuery UI hangs the calendar off <body> with an inline z-index it works out
-   from the field's ancestors - 999 here, which is under Bootstrap's offcanvas
-   (1045) and modal (1055). The panel would cover the calendar it just opened,
-   so the value has to be forced past both. */
-#ui-datepicker-div {
-  z-index: 1065 !important;
-}
-
 
 /* ══ Site Settings: the hub and the category screens ══════════════════════
    The settings were one screen with sixteen cards until 2026-09-12; they are
