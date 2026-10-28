@@ -642,7 +642,7 @@ if (!$_POST) {
                         <h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Date Range') . '</h5>
                     </div>
                     <div class="col-12">
-                        <label class="form-label">' . lang('From') . '</label>
+                        <label class="form-label">' . lang('Start') . '</label>
                         <select class="form-control my-1" name="start_month">' . select_month($saved_start_month) . '</select>
                         <div class="input-group input-group-sm">
                             <select class="form-control my-1" name="start_day">' . select_day($saved_start_day) . '</select>
@@ -650,7 +650,7 @@ if (!$_POST) {
                         </div>
                     </div>
                     <div class="col-12">
-                        <label class="form-label">' . lang('To') . '</label>
+                        <label class="form-label">' . lang('End') . '</label>
                         <select class="form-control my-1" name="stop_month">' . select_month($saved_stop_month) . '</select>
                         <div class="input-group input-group-sm">
                             <select class="form-control my-1" name="stop_day">' . select_day($saved_stop_day) . '</select>

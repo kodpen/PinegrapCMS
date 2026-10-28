@@ -270,11 +270,11 @@ $audit_view_toolbar = '
                     ' . $audit_view_hidden . '
                     <div class="row g-3 align-items-end">
                         <div class="col-6 md:col-4 xl:col-2">
-                            <label for="audit_from" class="form-label small mb-1">' . h(lang('From')) . '</label>
+                            <label for="audit_from" class="form-label small mb-1">' . h(lang('Start')) . '</label>
                             <input type="text" class="form-control form-control-sm" id="audit_from" name="from" value="' . h($audit_view_date_value('from')) . '" autocomplete="off" data-pg-date>
                         </div>
                         <div class="col-6 md:col-4 xl:col-2">
-                            <label for="audit_to" class="form-label small mb-1">' . h(lang('To')) . '</label>
+                            <label for="audit_to" class="form-label small mb-1">' . h(lang('End')) . '</label>
                             <input type="text" class="form-control form-control-sm" id="audit_to" name="to" value="' . h($audit_view_date_value('to')) . '" autocomplete="off" data-pg-date>
                         </div>
                         <div class="col-6 md:col-4 xl:col-2">

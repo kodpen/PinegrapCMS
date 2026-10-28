@@ -19,3 +19,6 @@ module: list_period
 - The folder/calendar/form/group access menus (`pg_user_list_names_cell()`, `includes/fn/user_list.php`) print their names in `fg-body` instead of `fg-black` (unreadable in the dark theme) and open with `data-bs-strategy="fixed"`, so the menu is not clipped by the table's scroll box (#2058; the other screens were done in #2481).
 
 Test: `tests/list_period_test.php` (month steps around a month, from the last shown month, across the year, without a range; the heading in both orders; the clock codes; the picker scripts carry the format).
+
+## Which words label a date range filter?
+- "Start" / "End" ("Başlangıç" / "Bitiş"), not "From" / "To": those keys also name e-mail senders and recipients, so one Turkish value could not fit both (#2052). Orders, site log, audit trail, profit, expenses, accountant package, ERP export and the Workspace rule hours use them; the submitted forms, contacts and commissions filters still say "From" / "To" (their files were held by open PRs).
