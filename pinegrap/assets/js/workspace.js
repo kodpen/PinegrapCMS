@@ -3046,6 +3046,7 @@
             placeholder: options.placeholder || '',
             previews: !!options.previews,
             slashInserts: options.slashInserts,
+            headings: !!options.headings,
             pasteFiles: options.pasteFiles,
             onInput: function () {
                 field.pickerCheck();
@@ -22753,6 +22754,7 @@
                 ['undo', 'redo'],
                 ['bold', 'italic', 'strike', 'highlight'],
                 ['bullets', 'numbers', 'quote'],
+                ['heading1', 'heading2', 'heading3', 'rule'],
                 blocks,
                 tags,
                 [picker, tool('bi-paperclip', t('notes_attach'), function () { picker.click(); }), emoji]
@@ -22826,6 +22828,8 @@
                 previews: true,
                 // "/" lists the inserts of the box (PGWsEditor).
                 slashInserts: { insertLabel: t('insert_to_note') },
+                // Headings and rules, which a note draws and a message does not.
+                headings: true,
                 // A picture pasted into the note is attached, as a dropped one.
                 pasteFiles: function (files) { attach(files); },
                 onKeydown: function (event) {

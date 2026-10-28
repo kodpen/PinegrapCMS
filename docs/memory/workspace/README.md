@@ -140,6 +140,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-scheduled-draft-proposals.md: A connected app proposes a scheduled action as a draft card (type scheduled in workspace.changes.propose): body, the save check, how it is kept, why never on a task
 - workspace-tag-card.md: A Workspace message that is one record tag and nothing else drawn as a card per reader (ws_tag_card_html(), PR #2150): which bodies, what the card shows, rights, where it is drawn, what stays text
 - workspace-task-command.md: The /task (/görev) command in the composer: Enter on its preview card creates the task (same text, card on screen, no leave clash), the / picker finds every Turkish and English name, /help is listed
+- workspace-text-headings.md: Headings "#" to "###" and "---" rules in Workspace notes only (#2649): server rule and fast path, plain text, editor twins, tools, Enter/Backspace, "# " autoformat, the import
 - workspace-text-highlight.md: ==x== as a highlight (<mark>): the pair rule, old shapes that stay text, server and editor twins, plain text, guest page, notes import, sums, table cells
 - workspace-text-lists.md: Lists and quotes in Workspace texts drawn by the server (#1725): which shapes become a list, which stay text so old messages look the same, plain text, guest page, approval mail
 - workspace-ui-notes.md: Where the Workspace screens are drawn and styled, its tokens, colour picker vs plan board legend class names, Turkish initials in the rail, what a closed sidebar section lists, cosmetic leftovers
