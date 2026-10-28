@@ -22,10 +22,12 @@ description: Plan (2026-10-23): voice messages in the Workspace, a quick voice r
    - Done: V4a (#2798): `ws_voice_transcripts()`, `ws_voice_with_transcript()`; the transcript in Pinegrap AI's context and request (`ws_ai_channel_context()`, `ws_ai_heard_text()`, the MCP ask), `ws_api_claude_request_present()` (`message.transcript`), `ws_api_channel_context()` (`messages[].transcript`), recaps: workspace/workspace-voice-assistants.md.
    - Done: V4b (#2815): push (the line a voice message sends reads its transcript once written out, or "Voice message") and search (`ws_voice.transcript` found as its message, same reach rules).
    - Done: V4c (#2839): a recording with typed tags (the mic kept while the box holds only tags; the tags ride the upload as the body) and a voice reply to an assistant's answer: the assistant is asked once the transcript is done (from `ws_voice_run()`), or with "[voice message, not transcribed]" when it failed or transcripts are off.
-6. V5 (optional) answers read aloud by `speechSynthesis`; V6 a recording in a note (`ws_note_file`).
+6. V5 answers read aloud: a per-person browser switch, off by default, no schema (PR pending): workspace/workspace-voice-read-aloud.md.
+7. V6 a recording in a note (`ws_note_file`).
 
 ## Which questions are answered?
 - #2417: transcript in `ws_voice`; the site's own OpenAI-compatible key (a gateway preset later); private channels off until a manager allows; delete for everyone removes recording and transcript; cap 5 minutes.
 
 ## Where to start?
-- V5 (optional) next; memory: workspace/workspace-voice-asks.md, workspace/workspace-voice-transcripts.md, workspace-voice-transcript-job.md and workspace-voice-screen.md.
+- V6 next; memory: workspace/workspace-notes.md, workspace/workspace-voice-recording.md, workspace/workspace-voice-screen.md.
+- The voice event as a Flows trigger (point 4) belongs to the Flows plans, not here.

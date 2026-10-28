@@ -71,6 +71,7 @@
     "Read More": "Devamını Oku",
     "Read again": "Yeniden oku",
     "Read and write": "Okuma ve yazma",
+    "Read assistant answers to me aloud": "Asistan yanıtlarını bana sesli oku",
     "Read at most {var:1} days at a time.": "Tek seferde en çok {var:1} gün okunabilir.",
     "Read from the <code>&lt;label&gt;</code> bound to the control; what you type here is written there.": "Kontrole bağlı <code>&lt;label&gt;</code>'dan okunur; burada yazdığınız oraya yazılır.",
     "Read from the account the invoice goes to, or from the contact while the order has no account. A VKN or a TCKN counts; the final consumer number 11111111111 does not. An order without one waits for Issue the Invoice on its screen.": "Numara faturanın kesileceği cariden, sipariş henüz bir cariye bağlı değilse kişi kaydından okunur. VKN de TCKN de sayılır; nihai tüketici numarası 11111111111 sayılmaz. Numarası olmayan sipariş kendi ekranında Faturayı Kes adımını bekler.",
