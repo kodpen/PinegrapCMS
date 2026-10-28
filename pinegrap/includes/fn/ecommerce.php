@@ -7811,6 +7811,19 @@ function check_quantity($liveform)
 // create function for checking if order items are still valid based on inventory levels
 function check_inventory($liveform)
 {
+    // A cart with a bundle is checked against one stock pool, so a component
+    // in a bundle and bought alone counts once (includes/fn/bundles.php).
+    if (pg_bundles_ready()) {
+        $cart_order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
+        $bundle_ids = pg_bundle_ids_among(db_values(
+            "SELECT DISTINCT order_items.product_id FROM order_items WHERE (order_items.order_id = '" . $cart_order_id . "')" . pg_order_item_active_sql()));
+
+        if ($bundle_ids) {
+            pg_bundle_check_inventory($liveform, $cart_order_id, $bundle_ids);
+            return;
+        }
+    }
+
     // get all of the products that are in the order that have inventory enabled
     $query = "SELECT
 

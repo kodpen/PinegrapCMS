@@ -20,6 +20,11 @@ module: bundles
 - `import_products.php` ends with `pg_bundle_refresh_all()`, which also overwrites a stock or price the file gave a bundle.
 - Not yet refused (sale-paths step): quick edit, bulk edit, barcode and the inventory API can still write a bundle's stock; the next refresh replaces it.
 
+## How is a bundle sold? (#2691)
+- Counter sale (`local_sale_complete()`): a bundle line calls `pg_bundle_take_stock()` instead of the plain decrement: one `order_item_components` row per component (quantity per bundle, `erp_product_costs.avg_cost` as unit_cost when the ERP table exists), then each tracked component with stock goes down by quantity × line quantity, out-of-stock flag and `pg_product_stock_changed()` as a plain sale; `$stock_left` is shared with plain lines.
+- Checkout does not yet: its stock loop moves into the order completion function first (plan step 2c).
+- `check_inventory()`: a cart holding a bundle goes to `pg_bundle_check_inventory()`, which checks every line against one stock pool (`pg_bundle_cart_allowance()`, lines in id order); a cart without one keeps the old loop unchanged.
+
 ## What does the product screen do?
 - Edit screen only: the Bundle card (`pg_pb_render_bundle_card()`, `assets/js/product_bundle.js`), search through `add_order.php?request=search_products` (enabled products only). Hidden `bundle_card` marks a save that carries it.
 - `pg_pb_validate_product_post()` refuses bad contents before writing (`pg_bundle_items_problem()`: not found, a bundle, donation, gift card, recurring; a component cannot become a bundle). While on, the posted stock fields are ignored and the stored cache kept; switching off empties the contents.
