@@ -14,7 +14,7 @@ description: Panel steps P1-P11 of plans/datetime-picker.md: what each changes, 
 
 - P4 (S) done (#2810): preview 'time' row, waybill `ship_time`, filter-row boxes, excluded dates into their chips. Two leftovers moved to P8.
 
-- P5 (M) ERP native dates, ISO kept: `erp_accountant`, `erp_aging`, `erp_audit`, `erp_cashflow`, `erp_cheque`, `erp_expenses`, `erp_inbox`, `erp_profit`, `erp_reconciliation`, `erp_vat_report`, `edit_erp_invoice`. Add `pg_fields_script()` and `get_date_picker_format()` where missing (only two print the script). After P3.
+- P5 (S) done (#2833): every `type="date"` input on the ERP screens has `data-pg-date` (ISO store kept); each screen prints `get_date_picker_format() . pg_fields_script()` once, at its end (`edit_erp_invoice.php` no longer only with the snooze form). Test: `erp_date_fields_test.php`.
 
 - P6 (M) Other native inputs: `cloudflare.php`, `api_settings.php` (drawer), `view_parasut_inbox.php`, `workspace/workdays.php`, `settings/general.php` 628 (store exactly `Y-m-d\TH:i`), `view_folders.php` (needs its own `pg_fields_script()`). After P3.
 

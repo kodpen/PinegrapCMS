@@ -162,11 +162,11 @@ pg_page_shell([
                 <div class="card-body row g-3 align-items-end">
                     <div class="col-6 md:col-2">
                         <label class="form-label small" for="audit_from">' . lang('Start date') . '</label>
-                        <input type="date" class="form-control form-control-sm" id="audit_from" name="from" value="' . h($filters['from']) . '" />
+                        <input type="date" data-pg-date class="form-control form-control-sm" id="audit_from" name="from" value="' . h($filters['from']) . '" />
                     </div>
                     <div class="col-6 md:col-2">
                         <label class="form-label small" for="audit_to">' . lang('End date') . '</label>
-                        <input type="date" class="form-control form-control-sm" id="audit_to" name="to" value="' . h($filters['to']) . '" />
+                        <input type="date" data-pg-date class="form-control form-control-sm" id="audit_to" name="to" value="' . h($filters['to']) . '" />
                     </div>
                     <div class="col-6 md:col-2">
                         <label class="form-label small" for="audit_user">' . lang('User') . '</label>
@@ -207,7 +207,7 @@ pg_page_shell([
         </div>
     </div>
 </main>
-' .
+' . get_date_picker_format() . pg_fields_script() .
 output_footer();
 
 $liveform->remove_form();

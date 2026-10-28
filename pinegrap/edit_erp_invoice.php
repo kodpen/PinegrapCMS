@@ -791,7 +791,7 @@ if (($reminder['phase'] !== 'off') || ($reminder['notified_at'] > 0) || ($remind
                                     'type' => 'text', 'id' => 'snooze_until', 'data-pg-date' => '', 'name' => 'snooze_until',
                                     'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                                     'autocomplete' => 'off')) . '
-                                ' . get_date_picker_format() . pg_fields_script() . '                            </div>
+                            </div>
                             <div class="col-12 sm:col-5">
                                 <button type="submit" name="submit_snooze" value="Snooze" class="btn btn-outline theme-secondary w-100"><i class="bi bi-bell-slash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Put off') . '</span></button>
                             </div>
@@ -1349,11 +1349,11 @@ if (function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_read
                         </div>
                         <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_first">' . lang('Next invoice on') . '</label>
-                            <input type="date" class="form-control form-control-sm" id="recur_first" name="recur_first" value="' . h(erp_expense_recurring_step((string) $invoice['issue_date'], 1, (int) substr((string) $invoice['issue_date'], 8, 2))) . '" required />
+                            <input type="date" data-pg-date class="form-control form-control-sm" id="recur_first" name="recur_first" value="' . h(erp_expense_recurring_step((string) $invoice['issue_date'], 1, (int) substr((string) $invoice['issue_date'], 8, 2))) . '" required />
                         </div>
                         <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_end">' . lang('Until (optional)') . '</label>
-                            <input type="date" class="form-control form-control-sm" id="recur_end" name="recur_end" />
+                            <input type="date" data-pg-date class="form-control form-control-sm" id="recur_end" name="recur_end" />
                         </div>
                         <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_mode">' . lang('Each invoice is') . '</label>
@@ -1647,7 +1647,7 @@ pg_page_shell([
         </div>
     </div>
 </main>
-' .
+' . get_date_picker_format() . pg_fields_script() .
 output_footer();
 
 $liveform->remove_form();
