@@ -133,6 +133,41 @@ input.btn-check {
   clip: rect(0, 0, 0, 0);
   pointer-events: none;
 }
+/* v6 styles only a label.btn-check that wraps its input; the v5 sibling
+   label takes the checked, focus and disabled looks from its input, and the
+   first label of a group keeps its start corners. */
+input.btn-check:checked + .btn {
+  color: var(--bs-btn-active-color);
+  background-color: var(--bs-btn-active-bg, var(--bs-bg-3));
+  background-image: none;
+  border-color: var(--bs-btn-active-border-color);
+  box-shadow: var(--bs-btn-active-shadow);
+}
+input.btn-check:focus-visible + .btn {
+  outline: 2px solid var(--pg-primary-ink);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 var(--pg-focus-ring-width) var(--pg-focus-ring-color);
+}
+input.btn-check:disabled + .btn {
+  color: var(--bs-btn-disabled-color);
+  pointer-events: none;
+  background-color: var(--bs-btn-disabled-bg, var(--bs-bg-1));
+  background-image: none;
+  border-color: var(--bs-btn-disabled-border-color);
+  opacity: var(--bs-btn-disabled-opacity, 0.65);
+  box-shadow: none;
+}
+.btn-group > input.btn-check:checked + .btn {
+  z-index: 2;
+}
+.btn-group > input.btn-check:focus-visible + .btn {
+  z-index: 3;
+}
+.btn-group > input.btn-check:first-child + .btn {
+  margin-inline-start: 0;
+  border-start-start-radius: var(--bs-btn-border-radius);
+  border-end-start-radius: var(--bs-btn-border-radius);
+}
 /* v5's headings: its sizes (min() is v5's responsive size, fixed from
    1200 px), weight and line height. */
 :where(h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6) {
@@ -421,6 +456,39 @@ input.btn-check {
 .dialog.pg-dialog-centered,
 .dialog.dialog-fullscreen {
   margin-top: auto;
+}
+/* A full-screen dialog has no corners or border: the radius rules below
+   sit above Bootstrap's components layer and would keep them. */
+.dialog.dialog-fullscreen,
+.dialog-fullscreen :is(.dialog-header, .dialog-footer) {
+  border-radius: 0;
+}
+@media (max-width: 575.98px) {
+  .dialog.sm-down\:dialog-fullscreen {
+    border-width: 0;
+    border-radius: 0;
+  }
+  .sm-down\:dialog-fullscreen :is(.dialog-header, .dialog-footer) {
+    border-radius: 0;
+  }
+}
+@media (max-width: 767.98px) {
+  .dialog.md-down\:dialog-fullscreen {
+    border-width: 0;
+    border-radius: 0;
+  }
+  .md-down\:dialog-fullscreen :is(.dialog-header, .dialog-footer) {
+    border-radius: 0;
+  }
+}
+@media (max-width: 1023.98px) {
+  .dialog.lg-down\:dialog-fullscreen {
+    border-width: 0;
+    border-radius: 0;
+  }
+  .lg-down\:dialog-fullscreen :is(.dialog-header, .dialog-footer) {
+    border-radius: 0;
+  }
 }
 /* A closed .dialog keeps display: flex (Bootstrap 6 hides it with visibility),
    so the UA's absolute position would let a tall one stretch the page. */
@@ -15766,10 +15834,12 @@ a.ws-chip:hover {
   margin-top: .15rem;
 }
 
-/* Context menus: the panel's own look, placed at the pointer. */
+/* Context menus: the panel's own look, placed at the pointer. Built
+   without .show, which is what gives a Bootstrap 6 .popover its opacity. */
 .ws-ctx.contextmenu.popover {
   position: fixed;
   z-index: 1095;
+  opacity: 1;
   max-width: 19rem;
   min-width: 12rem;
   border-radius: var(--ws-radius-sm);

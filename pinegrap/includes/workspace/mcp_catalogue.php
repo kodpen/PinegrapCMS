@@ -734,9 +734,9 @@ function ws_mcp_settings_catalogue($self_url, $servers)
     $added = ws_mcp_catalogue_added($servers);
     $labels = ws_mcp_catalogue_auth_labels();
     $badges = array(
-        'none'   => 'text-bg-success-subtle fg-emphasis-success',
-        'oauth'  => 'text-bg-primary-subtle fg-emphasis-primary',
-        'bearer' => 'text-bg-warning-subtle fg-emphasis-warning',
+        'none'   => 'bg-subtle-success fg-emphasis-success',
+        'oauth'  => 'bg-subtle-primary fg-emphasis-primary',
+        'bearer' => 'bg-subtle-warning fg-emphasis-warning',
     );
     $hints = array(
         'none'   => lang('Adds it and reads its tools at once.'),

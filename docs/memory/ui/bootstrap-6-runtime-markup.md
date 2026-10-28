@@ -15,6 +15,8 @@ module: returns
 - Return status badges: `pg_return_badge_class()` keeps `badge text-bg-*` for site output (`pg_return_present()`, the widget parts). The panel (`view_returns.php`, `view_return.php`, `pg_returns_panel_card_html()`) uses `pg_return_panel_badge_class()` → `badge theme-<tone>`, the same tone per status, secondary for an unknown one.
 - `text-primary` / `text-success` with no v6 class: `erp_dashboard.php`'s card header and `toolbar.php`'s homepage icon are `fg-primary` / `fg-success`.
 - Visual editor Settings rail (`includes/designer_screen.php`, `nav#settingsTabs`): `data-bs-toggle="pill"` did nothing, since the v6 Tab data API listens only to `[data-bs-toggle="tab"]`; the buttons are `tab` now, still drawn as pills by `nav-pills`.
+- Workspace menus built as `.ws-ctx.contextmenu.popover` (context menus, emoji and table-size pickers, the block editor's menus) have no `.show`, and v6 gives a `.popover` without it opacity 0: they faded out but stayed clickable. The rule sets `opacity: 1`. `ctxMenu()` and `floatBox()` in `workspace.js` append to `ctxHost()` (`pgUI.overlayHost()`), so a menu opened in a drawer is above it, not under the top layer; a capture-phase Escape closes only the menu.
+- MCP badges (`includes/workspace/mcp.php`, `mcp_catalogue.php`): `text-bg-<tone>-subtle` exists in neither version (coloured text, no fill); now `bg-subtle-<tone> fg-emphasis-<tone>`.
 
 ## What was not checked in a browser?
 - None of these was run in a sandbox: the toasts are transient, the column menu and the Settings rail need a running panel. The class choices were checked against `assets/lib/bootstrap-6/css` and `js` only.

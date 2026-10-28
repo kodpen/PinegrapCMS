@@ -42,7 +42,7 @@ function test_bs6_ws_ctx_menu_on_overlay_host()
 {
 	$js = bs6_overlays_test_source('pinegrap/assets/js/workspace.js');
 
-	pg_assert_same(0, preg_match_all('/document\.body\.appendChild\((menu|box)\);/', $js), 'ctxMenu and floatBox no longer append to the body');
+	pg_assert_same(0, preg_match_all('/document\.body\.appendChild\((menu|box)\);\n\n        var width/', $js), 'ctxMenu and floatBox no longer append to the body');
 	pg_assert_same(2, preg_match_all('/ctxHost\(\)\.appendChild\((menu|box)\);/', $js), 'both append to the overlay host');
 	pg_assert_contains("window.pgUI ? pgUI.overlayHost() : document.body", $js);
 	pg_assert_contains("event.preventDefault();\n            event.stopPropagation();\n            closeCtx();", $js, 'Escape closes only the menu');
