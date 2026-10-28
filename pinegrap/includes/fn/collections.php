@@ -620,3 +620,74 @@ function pg_coll_check_field($liveform, $field, $kinds)
         $liveform->mark_error($field['id'], lang(array('string' => 'Please choose one of the listed items for {var:1}', 'vars' => $label)));
     }
 }
+
+/**
+ * The ORDER BY part that sorts a number field's stored text (joined as
+ * $alias, pg_coll_number_value() wrote it) as the number it shows; a
+ * record without a value comes last in either direction.
+ *
+ * @param string $alias     the joined form_data alias
+ * @param string $direction ASC or DESC
+ * @return string
+ */
+function pg_coll_number_order_sql($alias, $direction)
+{
+    $alias     = preg_replace('/[^a-z0-9_]/i', '', (string)$alias);
+    $direction = (strtoupper((string)$direction) === 'ASC') ? 'ASC' : 'DESC';
+    return "($alias.data IS NULL OR $alias.data = '') ASC, CAST($alias.data AS DECIMAL(65,15)) $direction";
+}
+
+/**
+ * The comparison a filter on a reference text box makes: whether the
+ * comma-joined codes of $data_sql hold $code. Codes never hold a comma.
+ *
+ * @param string $data_sql SQL giving the stored value
+ * @param string $code
+ * @return string SQL, 1 when held, else 0
+ */
+function pg_coll_reference_holds_sql($data_sql, $code)
+{
+    return "(FIND_IN_SET('" . e((string)$code) . "', REPLACE(IFNULL($data_sql, ''), ', ', ',')) > 0)";
+}
+
+/**
+ * The record of form page $page_id a filter value names, by address name
+ * or reference code, byte for byte: array('code' => its reference code,
+ * 'label' => its Title field, else the code), complete records only; null
+ * when none has it. A list filtered by ?category=news compares the code
+ * and prints the label.
+ *
+ * @param int    $page_id
+ * @param string $value
+ * @return array|null
+ */
+function pg_coll_reference_lookup($page_id, $value)
+{
+    $page_id = (int)$page_id;
+    $value   = (string)$value;
+    if ($page_id <= 0 || $value === '' || strlen($value) > 255) return null;
+
+    $row = db_item(
+        "SELECT
+            forms.reference_code,
+            (SELECT form_data.data
+             FROM form_data
+             JOIN form_fields ON form_data.form_field_id = form_fields.id
+             WHERE form_data.form_id = forms.id
+               AND form_fields.rss_field = 'title'
+               AND form_fields.office_use_only = 0
+             LIMIT 1) AS title
+         FROM forms
+         WHERE forms.page_id = '$page_id'
+           AND forms.complete = 1
+           AND forms.reference_code != ''
+           AND (CAST(forms.address_name AS BINARY) = CAST('" . e($value) . "' AS BINARY)
+                OR CAST(forms.reference_code AS BINARY) = CAST('" . e($value) . "' AS BINARY))
+         ORDER BY (CAST(forms.address_name AS BINARY) = CAST('" . e($value) . "' AS BINARY)) DESC, forms.id ASC
+         LIMIT 1");
+    if (!$row) return null;
+
+    $code  = (string)$row['reference_code'];
+    $title = trim((string)$row['title']);
+    return array('code' => $code, 'label' => ($title !== '') ? $title : $code);
+}
