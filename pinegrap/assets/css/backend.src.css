@@ -8779,22 +8779,20 @@ button.no-popover:focus-visible {
 }
 .pg-perm-none {
   color: var(--pg-fg-2);
-  opacity: 0.75;
 }
 .pg-perm-open {
   flex: 0 0 auto;
 }
-/* Off: the row stays readable but stops competing with the ones that are on.
-   The gate itself keeps full contrast so it can still be found and clicked. */
-.pg-perm.is-off .pg-perm-icon,
-.pg-perm.is-off .pg-perm-text,
-.pg-perm.is-off .pg-perm-summary {
-  opacity: 0.45;
+/* Off: the row steps back to the secondary text colour instead of an opacity,
+   which took the title, description and "Choose" button under 3:1; every
+   label stays 4.5:1 in both themes because a new user starts with all rows
+   off and picks by reading them. The icon loses its group colour. */
+.pg-perm.is-off .pg-perm-icon {
+  color: var(--pg-fg-2);
+  background: color-mix(in srgb, var(--pg-fg-2) 12%, transparent);
 }
-/* Dimmed, not hidden: the panel is where the first selection is made, so a
-   group that is off still has to be reachable. */
-.pg-perm.is-off .pg-perm-open {
-  opacity: 0.55;
+.pg-perm.is-off .pg-perm-text b {
+  color: var(--pg-fg-2);
 }
 
 /* The whole block is hidden for the roles that carry every right; the notice
