@@ -46,8 +46,8 @@ function pg_test_form_adorn_cases()
 	$root = dirname(__DIR__) . '/pinegrap/';
 
 	$cases = array(
-		array($root . 'add_gift_card.php', "'id' => 'amount'", '<label for="amount"', 'form-adorn-end', ''),
-		array($root . 'edit_gift_card.php', "'id' => 'balance'", '<label for="balance"', 'form-adorn-end', ''),
+		// The gift card amount (create) and balance (edit), drawn by the shared form.
+		array($root . 'includes/forms/gift_card_form.php', '\'id\' => $field', '<label for="\' . $field . \'"', 'form-adorn-end', ''),
 		array($root . 'workspace_template.php', 'id="ws_tpl_icon"', 'for="ws_tpl_icon"', '', 'id="ws_tpl_icon_preview"'),
 		array($root . 'includes/workspace/mcp_catalogue.php', 'id="ws_mcp_probe_alias"', 'for="ws_mcp_probe_alias"', 'form-control-sm', '>@</span>'),
 		array($root . 'includes/workspace/mcp.php', 'id="\' . $prefix . \'alias"', 'for="\' . $prefix . \'alias"', 'form-control-sm', '>@</span>'),
@@ -172,7 +172,7 @@ function test_bs6_form_adorn_wraps_the_single_add_on_fields()
 function test_bs6_form_adorn_keeps_the_input_attributes()
 {
 	$root = dirname(__DIR__) . '/pinegrap/';
-	$gift = (string) file_get_contents($root . 'add_gift_card.php');
+	$gift = (string) file_get_contents($root . 'includes/forms/gift_card_form.php');
 	$mcp = (string) file_get_contents($root . 'includes/workspace/mcp.php');
 	$catalogue = (string) file_get_contents($root . 'includes/workspace/mcp_catalogue.php');
 

@@ -24,28 +24,18 @@ $user = validate_user();
 validate_ecommerce_access($user);
 
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/gift_card_form.php');
 $liveform = new liveform('add_gift_card');
 
 // If the form has not been submitted, then output it.
 if (!$_POST) {
     // If the form has not been submitted yet, then prefill default value.
     if ($liveform->field_in_session('amount') == false) {
-        // If a number of validity days has been entered in the settings,
-        // then prefill expiration date field with an appropriate date.
-        if (ECOMMERCE_GIFT_CARD_VALIDITY_DAYS) {
-            // If the date format is month and then day, then use that format.
-            if (DATE_FORMAT == 'month_day') {
-                $month_and_day_format = 'n/j';
+        // Prefill the expiration date with the number of validity days set
+        // in the settings, if any.
+        $expiration_date = pg_gift_card_form_default_expiration(ECOMMERCE_GIFT_CARD_VALIDITY_DAYS, DATE_FORMAT, time());
 
-            // Otherwise the date format is day and then month, so use that format.
-            } else {
-                $month_and_day_format = 'j/n';
-            }
-            
-            // Set the default expiration date to the number of validity days
-            // from today's date.
-            $expiration_date = date($month_and_day_format . '/Y', strtotime('+' . ECOMMERCE_GIFT_CARD_VALIDITY_DAYS . ' day'));
-
+        if ($expiration_date !== '') {
             $liveform->assign_field_value('expiration_date', $expiration_date);
         }
 
@@ -87,70 +77,10 @@ if (!$_POST) {
                     ' . $liveform->field(array(
                         'type' => 'hidden',
                         'name' => 'limit')) . '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Gift Card Options') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 sm:col-4 lg:col-3 xl:col-2 my-3">
-                                            <label for="amount" class="form-label">' . lang('Amount') . '</label>
-                                            <label class="form-control form-adorn form-adorn-end">
-                                                <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
-                                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'amount', 'name' => 'amount', 'class' => 'form-ghost text-end', 'maxlength'=>'12', 'inputmode'=>'numeric', 'required'=>'required') + pg_money_mask_attributes()) . '
-                                            </label>
-                                           
-                                            <script>$("#amount").focus()</script>
-                                        </div>
-                                        <div class="col-12 sm:col-4 xl:col-3 my-3">
-                                            <label for="expiration_date" class="form-label">' . lang('Expiration Date') . '</label>
-                                            ' . $liveform->output_field(array(
-                                                'type' => 'text',
-                                                'id' => 'expiration_date',
-                                                'name' => 'expiration_date',
-                                                'size' => '10',
-                                                'maxlength' => '10',
-                                                'class'=>'form-control',
-                                                'autocomplete'=>'off',
-                                                'data-pg-date' => '')) . '
-                                                ' . get_date_picker_format() . pg_fields_script() . '
-                                            <div class="form-text text-end">' . lang('leave blank for no expiration') . '</div>
-                                        </div>
-                                        <div class="col-12 sm:col-4 xl:col-3 my-3">
-                                            <label for="quantity" class="form-label">' . lang('Quantity') . '</label>
-                                            <div class="input-group number-controls">
-                                                <button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>
-                                                ' . $liveform->output_field(array(
-                                                    'type' => 'text',
-                                                    'name' => 'quantity',
-                                                    'id' => 'quantity',
-                                                    'value' => '1',
-                                                    'min' => '1',
-                                                    'max' => $quantity_max,
-                                                    'class' => 'form-control text-center border-start-0 border-end-0',
-                                                    'inputmode'=>'numeric',
-                                                    'data-inputmask-alias'=>'decimal',
-                                                    'data-inputmask-placeholder'=>'0')) . '
-                                                <button class="btn material-icons plus border border-start-0" type="button" aria-label="' . h(lang('Increase')) . '">add</button>
-                                            </div>
-                                            
-                                            <div class="text-end form-text">' . lang('increase quantity to create multiple gift cards at once') . '</div>
-                                        </div>
-                                        <div class="col-12 xl:col-8 my-3">
-                                            <label for="notes" class="form-label">' . lang('Notes') . '</label>
-                                            ' . $liveform->output_field(array(
-                                                'type' => 'textarea',
-                                                'name' => 'notes',
-                                                'id' => 'notes',
-                                                'class' => 'form-control')) . '
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    ' . pg_gift_card_form_card($liveform, 'add', array(
+                        'symbol' => BASE_CURRENCY_SYMBOL,
+                        'scripts' => get_date_picker_format() . pg_fields_script(),
+                        'quantity_max' => $quantity_max)) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -173,36 +103,16 @@ if (!$_POST) {
     
     $liveform->add_fields_to_session();
 
-    $amount = $liveform->get_field_value('amount');
     $expiration_date = $liveform->get_field_value('expiration_date');
     $notes = $liveform->get_field_value('notes');
     $quantity = $liveform->get_field_value('quantity');
-    
-    $liveform->validate_required_field('amount', lang(array('string'=>'{var:1} is required','vars'=>lang('Amount'))) );
+
+    $amount = pg_gift_card_form_check($liveform, 'add');
+
     $liveform->validate_required_field('quantity', lang(array('string'=>'{var:1} is required','vars'=>lang('Quantity'))) );
 
-    // Read the amount either way it is typed (12,50 / 1.234,56 / 1,234.56);
-    // remove commas from quantity.
-    $amount = pg_normalize_amount($amount);
+    // Remove commas from quantity.
     $quantity = str_replace(',', '', $quantity);
-
-    // If there is not already an error for the amount field,
-    // and value is not a number greater than 0, then add error.
-    if (
-        ($liveform->check_field_error('amount') == false)
-        &&
-        (
-            (is_numeric($amount) == false)
-            || ($amount <= 0)
-        )
-    ) {
-        $liveform->mark_error('amount', lang('Please enter a valid amount.'));
-    }
-
-    // If an expiration date was entered and it is not valid, then add error.
-    if (($expiration_date != '') && (validate_date($expiration_date) == false)) {
-        $liveform->mark_error('expiration_date', lang('Please enter a valid expiration date.'));
-    }
 
     // If there is not already an error for the quantity field,
     // and value is not a number greater than 0, then add error.
