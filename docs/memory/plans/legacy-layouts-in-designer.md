@@ -1,6 +1,6 @@
 ---
 name: legacy-layouts-in-designer
-description: "Plan (2026-10-19; Y1-Y4, Y5a, Y6 done): a classic page's custom layout in the visual designer"
+description: "Plan (2026-10-19; Y1-Y4, Y5a-b, Y6 done): a classic page's custom layout in the visual designer"
 ---
 
 ## What is a layout, and why is it the hardest part of the retirement?
@@ -15,7 +15,7 @@ description: "Plan (2026-10-19; Y1-Y4, Y5a, Y6 done): a classic page's custom la
 ## What is left?
 - Y5 Replace with widget, opt-in per page: a system widget of the matching type with its default tree beside the region; the designer restyles it by hand and removes the `system` node when they say so. Never automatic. Cut in three:
   - Y5a done (#2838, server): `pg_layout_widget_offers()` → `_design.layoutWidgets`, the kind and the type settings carried into its config ([[layout-widget-offer]]).
-  - Y5b (open PR, `style_designer.js`): on the region's panel of a page in `_design.layoutWidgets`, "Put a widget beside it": `_swCreateRow()` with the seed then `_swTypeDefaults()` and `_buildStarterTree(kind)`, the `shared_ref` placed after the region node (as `_sdLayoutConvert()`), one undo step; a hint that the region stays until deleted. Once a widget of that kind sits on the page, a "Remove the classic region" button (confirm) deletes the `system` node; the layout file stays.
+  - Y5b done (#2857, `style_designer.js`): on the region's panel of a page in `_design.layoutWidgets`, "Put a widget beside it": `_swCreateRow()` with the seed then `_swTypeDefaults()` and `_buildStarterTree(kind)`, the `shared_ref` placed after the region node (as `_sdLayoutConvert()`), one undo step; a hint that the region stays until deleted. Once a widget of that kind sits on the page, a "Remove the classic region" button (confirm) deletes the `system` node; the layout file stays.
   - Y5c (only if needed): 301s. Not needed while the page keeps its type (see [[layout-widget-offer]] "Are 301s needed?"); check again after Y5b and drop the step if nothing changes the type.
 
 ## Decisions?
