@@ -73,8 +73,6 @@ function test_bs6_timepicker_addon_only_site_files_load_it()
 		'includes/fn/content.php',
 		'includes/fn/widgets_comments.php',
 	);
-	// The order view still loads it; it leaves in its own change.
-	$pending = array('view_order.php');
 
 	$root = dirname(__DIR__) . '/pinegrap/';
 	$found = array();
@@ -93,9 +91,8 @@ function test_bs6_timepicker_addon_only_site_files_load_it()
 	}
 	sort($found);
 
-	$expected = array_merge($site, $pending);
-	sort($expected);
-	pg_assert_same($expected, $found, 'only the site files load the timepicker add-on');
+	sort($site);
+	pg_assert_same($site, $found, 'only the site files load the timepicker add-on');
 }
 
 function test_bs6_timepicker_addon_form_content_branches()
