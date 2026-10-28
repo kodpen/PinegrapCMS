@@ -90,7 +90,9 @@ $reviewed = array(
 	'assets/js/page_designer.js' => array('btn-danger -> btn-solid theme-danger' => 1),
 	// The form validation script sets v5's class; panel CSS styles it.
 	// A theme stem whose values are v6 themes (`'bg-' + tone`).
-	'assets/js/backend.src.js' => array('bg-"' => 1, 'was-validated' => 1),
+	// The DataTables column menu keeps dropdown-menu / dropdown-item beside
+	// menu / menu-item: DataTables' own rule for them keeps the list in flow.
+	'assets/js/backend.src.js' => array('bg-"' => 1, 'was-validated' => 1, 'dropdown-menu' => 1, 'dropdown-item' => 1),
 	'includes/fn/output.php' => array("bg-'" => 2),
 	'includes/workspace/render.php' => array("text-'" => 1),
 	// removeClass() naming both themes the status line switches between.

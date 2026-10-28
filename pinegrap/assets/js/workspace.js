@@ -345,7 +345,10 @@
             document.body.appendChild(toastRoot);
         }
 
-        var box = el('div', 'toast align-items-center border-0 text-bg-' + (kind || 'dark'));
+        // Bootstrap 6 has no text-bg-*: the fill and its ink are two
+        // classes, and the dark notice is the inverse surface.
+        var tone = (!kind || kind === 'dark') ? 'inverse' : kind;
+        var box = el('div', 'toast align-items-center border-0 bg-' + tone + ' fg-contrast-' + tone);
         box.setAttribute('role', 'status');
 
         var row = el('div', 'd-flex');
@@ -360,7 +363,7 @@
 
         row.appendChild(text);
 
-        var close = button('btn-close fg-white me-3 m-auto', '', '', t('close'));
+        var close = button('btn-close me-3 m-auto', '', '', t('close'));
         close.setAttribute('data-bs-dismiss', 'toast');
         row.appendChild(close);
         box.appendChild(row);

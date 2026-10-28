@@ -1408,6 +1408,17 @@ $(document).ready(function () {
         });
     }
 
+    // The Buttons integration draws the column visibility list as a v5
+    // dropdown; Bootstrap 6 styles it as a menu. dropdown-menu stays, since
+    // DataTables' own rule for it keeps the list in place instead of the
+    // menu's absolute position.
+    if ($.fn.dataTable && $.fn.dataTable.Buttons) {
+        $.extend(true, $.fn.dataTable.Buttons.defaults.dom.collection, {
+            container: { content: { className: 'dropdown-menu menu show' } },
+            button: { liner: { className: 'dropdown-item menu-item' } }
+        });
+    }
+
     var options = {};
     // The panel language's DataTables 2 texts from the local copy; English
     // is DataTables' own. The CDN's 1.13.6 Turkish file was loaded for every
@@ -1735,9 +1746,10 @@ $(document).ready(function () {
                     var $status = $card.find(".pg-parasut-status").first();
                     var tone = answer.status.tone || "secondary";
 
+                    // The box is coloured by theme-<tone> (Bootstrap 6), not alert-*.
                     $status.removeClass(function (index, classes) {
-                        return (classes.match(/(^|\s)alert-\S+/g) || []).join(" ");
-                    }).addClass("alert-" + tone);
+                        return (classes.match(/(^|\s)theme-\S+/g) || []).join(" ");
+                    }).addClass("theme-" + tone);
                     $status.find("i").attr("class", "bi " + (tone === "success" ? "bi-check-circle" : "bi-plug"));
                     $status.find("span").text(answer.status.text);
                 }
@@ -2327,7 +2339,7 @@ function software_image_picker(properties) {
                             <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent">\
                                 <button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="remove" onclick=" $(this).closest(\'.item\').remove();"></button>\
                             </div>\
-                            <div class="card-body overflow-hidden position-relative rounded-4 ratio ratio-2x1 w-100" style="--bs-aspect-ratio: 80%;background: radial-gradient(transparent, #00000024);" title="' + properties.image_name + '">\
+                            <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' + properties.image_name + '">\
                                 <input type="hidden" name="' + $output_input_name + '" value="' + $output_input_value + '"/>\
                                 <img class="object-fit-contain w-100 h-100" src="' + _img_src + '" />\
                             </div>\
@@ -8515,7 +8527,8 @@ function pg_background_calls_allowed() {
 
         var container = ensureToastContainer();
         var el = document.createElement('div');
-        el.className = 'toast align-items-center text-bg-' + variant + ' border-0';
+        // Bootstrap 6 has no text-bg-*: the fill and its ink are two classes.
+        el.className = 'toast align-items-center bg-' + variant + ' fg-contrast-' + variant + ' border-0';
         el.setAttribute('role', variant === 'danger' ? 'alert' : 'status');
         el.setAttribute('aria-live', variant === 'danger' ? 'assertive' : 'polite');
         el.setAttribute('aria-atomic', 'true');
@@ -8525,7 +8538,7 @@ function pg_background_calls_allowed() {
                     '<i class="bi ' + iconMap[variant] + ' me-3" aria-hidden="true"></i>' +
                     escapeHtml(message) +
                 '</div>' +
-                '<button type="button" class="btn-close fg-white me-3 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>' +
+                '<button type="button" class="btn-close me-3 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>' +
             '</div>';
         container.appendChild(el);
 

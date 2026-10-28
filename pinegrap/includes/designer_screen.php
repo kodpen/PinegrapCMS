@@ -2118,7 +2118,7 @@ function pg_designer_settings_modal($ctx)
 
     $rail = function ($pane, $icon, $label, $scope, $active, $hidden = false) use ($design_hidden) {
         return '<button class="nav-link text-start' . ($active ? ' active' : '') . ($scope === 'design' ? $design_hidden : '') . ($hidden ? ' d-none' : '') . '" id="tab-' . $pane . '-btn"
-                    data-bs-toggle="pill" data-bs-target="#tab-' . $pane . '" type="button" role="tab"
+                    data-bs-toggle="tab" data-bs-target="#tab-' . $pane . '" type="button" role="tab"
                     aria-controls="tab-' . $pane . '" aria-selected="' . ($active ? 'true' : 'false') . '" data-sd-settings-scope="' . $scope . '">
                     <span class="bi ' . $icon . '" aria-hidden="true"></span><span class="sd-settings-nav-txt">' . $label . '</span>
                 </button>';
@@ -2399,10 +2399,12 @@ function pg_designer_settings_modal($ctx)
                     <div class="dialog-body sd-settings-main">
 
                         <div class="sd-settings-nav">
-                            <!-- ONE tablist: Bootstrap deactivates the previous pill by looking
+                            <!-- ONE tablist: Bootstrap deactivates the previous tab by looking
                                  for the active sibling inside the same tablist, so two separate
-                                 navs would leave both panes showing. The group headings are plain
-                                 divs the pill logic ignores. -->
+                                 navs would leave both panes showing. The rail buttons are
+                                 data-bs-toggle="tab" (the Bootstrap 6 Tab listens to no "pill"),
+                                 drawn as pills by nav-pills. The group headings are plain
+                                 divs the tab logic ignores. -->
                             <nav class="nav nav-pills" id="settingsTabs" role="tablist">
                                 <div class="sd-settings-nav-title' . $design_hidden . '" data-sd-settings-scope="design">' . lang('Shared by all pages') . '</div>
                                 ' . $rail('style', 'bi-palette', lang('General'), 'design', $full) . '

@@ -2280,11 +2280,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function toast(message, ok, action) {
         var container = document.getElementById('explorer_toasts');
         var element = document.createElement('div');
-        element.className = 'toast align-items-center border-0 text-bg-' + (ok === false ? 'danger' : 'success');
+        var tone = ok === false ? 'danger' : 'success';
+        element.className = 'toast align-items-center border-0 bg-' + tone + ' fg-contrast-' + tone;
         element.setAttribute('role', 'status');
         element.innerHTML = '<div class="d-flex"><div class="toast-body"></div>' +
             (action ? '<button type="button" class="btn btn-sm btn-subtle theme-secondary my-auto me-1 text-nowrap" data-role="toast-action"></button>' : '') +
-            '<button type="button" class="btn-close fg-white me-3 m-auto" data-bs-dismiss="toast"></button></div>';
+            '<button type="button" class="btn-close me-3 m-auto" data-bs-dismiss="toast"></button></div>';
         element.querySelector('.toast-body').textContent = message;
         container.appendChild(element);
         var instance = pgUI.toast.get(element, { delay: action ? 9000 : 3500 });

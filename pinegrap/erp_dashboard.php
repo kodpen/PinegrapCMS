@@ -230,7 +230,7 @@ if ($output_top === '') {
                         <tr data-pg-sort-fixed><td colspan="3" class="fg-secondary">' . lang('Nothing is overdue.') . '</td></tr>';
 }
 
-$card_header = 'card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold';
+$card_header = 'card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold';
 
 // ------------------------------------------------------------- e-documents
 // The counts are the lengths of the register's e-document views, so a click

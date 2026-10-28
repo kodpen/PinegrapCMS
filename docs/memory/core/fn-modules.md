@@ -35,6 +35,7 @@ description: Generated from the module field of the memory files: each includes/
 - `privacy_retention`: [[privacy-log-retention]]
 - `prototype`: [[designer-prototype-viewer]]
 - `prototype_links`: [[designer-prototype-share-links]]
+- `returns`: [[bootstrap-6-runtime-markup]]
 - `reviews`: [[product-reviews-verified]]
 - `seo`: [[sitemap-listed-pages]]
 - `shipment_lookup`: [[guest-shipment-lookup]]
