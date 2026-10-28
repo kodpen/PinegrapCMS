@@ -22,6 +22,6 @@ description: Plan (decided in #2693, 2026-10-28): one date-and-time control for 
 - Each step about 1,000 product lines; claim as `[plan:datetime-picker] P<n> — <topic>`.
 
 ## Where to start?
-- P2 (P1 is done, #2737), after the claim check (`CLAUDE.md`, Claim work).
+- P1, after the claim check (`CLAUDE.md`, Claim work).
 
 Related: docs/memory/plans/datetime-picker-steps.md, docs/memory/plans/datetime-picker-site-steps.md, docs/memory/ui/pg-datepicker.md, docs/memory/ui/pg-field-wrappers.md, docs/memory/workflow/decisions-made-panel.md
