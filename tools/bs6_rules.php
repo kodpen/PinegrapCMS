@@ -1421,3 +1421,41 @@ function bs6_scope_files($root)
 
 	return $files;
 }
+
+// Offsets of every `.form-floating` wrapper whose <label> comes after its
+// field. Bootstrap 6 floats the label with `label:has(~ .form-control…)`, a
+// selector that looks only at later siblings, so the label must come first;
+// one after its field stays full size on top of the value. The wrapper runs
+// from its class to the next </div>; the field is a <select>, <input> or
+// <textarea> tag or a liveform output_field() call.
+function bs6_floating_labels_after_control($source)
+{
+	$found = array();
+
+	if (!preg_match_all('/class\s*=\s*\\\\?["\'][^"\'\n]*(?<![\w-])form-floating(?![\w-])/', $source, $matches, PREG_OFFSET_CAPTURE)) {
+		return $found;
+	}
+
+	foreach ($matches[0] as $match) {
+		$start = $match[1];
+		$open = strpos($source, '>', $start);
+
+		if ($open === false) {
+			continue;
+		}
+
+		$close = strpos($source, '</div>', $open);
+		$body = substr($source, $open + 1, ($close === false ? strlen($source) : $close) - $open - 1);
+
+		if (!preg_match('/<label\b/', $body, $label, PREG_OFFSET_CAPTURE)
+			|| !preg_match('/<(select|input|textarea)\b|->output_field\(/', $body, $control, PREG_OFFSET_CAPTURE)) {
+			continue;
+		}
+
+		if ($label[0][1] > $control[0][1]) {
+			$found[] = $start;
+		}
+	}
+
+	return $found;
+}
