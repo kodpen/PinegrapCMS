@@ -4,7 +4,7 @@ description: How the iyzico card driver's complete() finishes the 3-D Secure ret
 ---
 
 ## Who finishes the 3-D Secure return?
-- The card driver's `complete()` (`pg_payment_iyzico_complete_with()`, includes/payments/iyzico.php) since PR #1710; before, the Iyzipay block of submit_order.php did, with the same request, sentences and log lines (that block is now reached by no request).
+- The card driver's `complete()` (`pg_payment_iyzico_complete_with()`, includes/payments/iyzico.php) since PR #1710; before, the Iyzipay block of submit_order.php did, with the same request, sentences and log lines (that block was removed in PR #2770).
 - The start (`authorize`) writes the `iyzipay_3ds_state` row before iyzico is asked (`pg_payment_iyzico_threeds_keep()`: conversation id, order id, base total, instalment charge, discount) and keeps the visitor's instalment choice as the driver's session state.
 
 ## What does the return check, in order?
