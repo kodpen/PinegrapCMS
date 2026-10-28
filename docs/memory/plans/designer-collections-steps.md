@@ -21,7 +21,7 @@ description: Plan (collections half of designer-interactions-collections, steps 
 
 - **C3c — product and page pickers.** New kinds `product` and `page` (VARCHAR needs no migration) in `pg_coll_kinds()` **and** its twin `_CF_KINDS` in `assets/js/style_designer.js` (a test compares them, so the step needs that file free); a pick list of products / pages held to them on the server.
 
-- **C4a — lists by kind. Done, #C4A:** numeric sort for number; reference filter by address name or code, printing the record's label (`designer/collection-lists.md`). Image output already gets `pg_img_responsive_html()` (every widget's output).
+- **C4a — lists by kind. Done, #2709:** numeric sort for number; reference filter by address name or code, printing the record's label (`designer/collection-lists.md`). Image output already gets `pg_img_responsive_html()` (every widget's output).
 
 - **C4b — detail by kind.** C1's `ref` defaults from the field (needs `style_designer.js`); "records that reference this one" on a detail page; product/page reference tokens (name, link, price, image) after C3c.
 
