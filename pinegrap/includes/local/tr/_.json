@@ -649,6 +649,7 @@
     "{var:1} gave {var:2} to {var:3}": "{var:1}, {var:2} görevini verdi: {var:3}",
     "{var:1} gift cards were created": "{var:1} hediye kartı oluşturuldu",
     "{var:1} goes into {var:2}": "{var:1}, {var:2} alanına gidiyor",
+    "{var:1} group(s) of duplicate contacts were not merged: more than one contact of the group has a current account.": "{var:1} yinelenen kişi grubu birleştirilmedi: grubun birden fazla kişisinin cari hesabı var.",
     "{var:1} group(s), {var:2} product(s)": "{var:1} grup, {var:2} ürün",
     "{var:1} h": "{var:1} sa",
     "{var:1} h a day": "Günde {var:1} sa",
