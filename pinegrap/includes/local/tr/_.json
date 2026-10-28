@@ -294,6 +294,7 @@
     "^^__quick_add_label^^. The heading text of the quick add block.": "^^__quick_add_label^^. Hızlı ekle bloğunun başlık metni.",
     "^^__special_offer_code_message^^. The description above the offer code input.": "^^__special_offer_code_message^^. Teklif kodu inputunun üstündeki açıklama.",
     "^^__update_button_label^^. The label of the button that saves quantity changes.": "^^__update_button_label^^. Miktar değişikliklerini kaydeden butonun etiketi.",
+    "^^store^^: Your code to confirm your cash-on-delivery order is ^^code^^. Do not share it with anyone.": "^^store^^: Kapıda ödemeli siparişinizi onaylama kodunuz ^^code^^. Bu kodu kimseyle paylaşmayın.",
     "^^store^^: Your order ^^order_number^^ has been delivered.": "^^store^^: ^^order_number^^ numaralı siparişiniz teslim edildi.",
     "^^store^^: Your order ^^order_number^^ has been received. Total: ^^total^^.": "^^store^^: ^^order_number^^ numaralı siparişiniz alındı. Tutar: ^^total^^.",
     "^^store^^: Your order ^^order_number^^ has been shipped. ^^carrier^^ ^^tracking_number^^ ^^tracking_url^^": "^^store^^: ^^order_number^^ numaralı siparişiniz kargoya verildi. ^^carrier^^ ^^tracking_number^^ ^^tracking_url^^",

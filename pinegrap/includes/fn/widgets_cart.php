@@ -2573,8 +2573,12 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     // A card gateway whose driver takes the card in the service's own fields
     // draws them instead of the card inputs, for the total the card pays.
     $_eo_hosted_card_html = ($total_cents > 0) ? _eo_hosted_card_html($total_with_surcharge_cents) : '';
+    // The cash-on-delivery code's field follows the payment methods
+    // (includes/fn/sms_codes.php); a tree that draws both payment sections
+    // keeps the first one's.
+    $_eo_cod_html = ($total_cents > 0) ? pg_sms_cod_field_html() : '';
     $payment_html = ($total_cents > 0)
-        ? _eo_render_payment_methods($_eo_lf, $cfg, $_eo_hosted_card_html)
+        ? _eo_render_payment_methods($_eo_lf, $cfg, $_eo_hosted_card_html) . $_eo_cod_html
         : '<div class="alert alert-info mb-3">' . h(lang('No payment is required for this order.')) . '</div>';
 
     // ── Section: Order totals sidebar ────────────────────────────────────────
@@ -2604,7 +2608,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         'billing'                => $billing_html,            // legacy full block
         'billing_country_select' => _eo_render_billing_country_select($_eo_lf),
         'payment'                => $payment_html,            // legacy full block
-        'payment_methods'        => _eo_render_payment_methods_only($_eo_lf, $_eo_hosted_card_html),
+        'payment_methods'        => _eo_render_payment_methods_only($_eo_lf, $_eo_hosted_card_html) . $_eo_cod_html,
         'installment'            => _eo_render_installment_box($_eo_lf),
         'terms'                  => _eo_render_terms_section($_eo_lf),
         'totals'                 => $totals_html,
