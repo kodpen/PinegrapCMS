@@ -14,10 +14,10 @@ description: A labelled panel field carries no title: Bootstrap 6 copies a popov
 - A label that is only an icon (a Material Icons ligature such as `visibility`, or `<i class="bi …">`): give the field its own `aria-label="' . h(lang('…')) . '"` with the title's text; the title may stay for the hover (`#filter_select` in `view_products.php`, `#status` of the variant sets list in `product_builder.php`).
 
 ## How is it kept?
-- `tests/panel_title_label_override_test.php` scans panel PHP and JS (not `lib/`, `vendor/`, `.min.js`) for an input, select or textarea with a title, no `.no-popover`, no `aria-label`, and a `<label for>` on its id (a PHP or JS id expression included) or `aria-labelledby`. Its known list holds the fields not fixed yet and only shrinks.
+- `tests/panel_title_label_override_test.php` scans panel PHP and JS (not `lib/`, `vendor/`, `.min.js`) for an input, select or textarea with a title, no `.no-popover`, no `aria-label`, and a `<label for>` on its id (a PHP or JS id expression included) or `aria-labelledby`. Its known list holds the fields not fixed yet, only shrinks and is empty now.
 
 ## What is left?
-- The known list: `editor_select_page_or_file.php` (`folder_id`, `access_control_type`), `workdays.php` (`ws_hol_to`), `view_ads.php`, `view_contacts.php`, `view_files.php`, `view_pages.php`, `view_submitted_forms.php`, `view_users.php`; files another change was editing at the time.
+- Nothing labelled: the known list is empty since the "Select All" switches of `view_contacts.php` and `view_submitted_forms.php` lost their title (the panel prints that markup; the multiselect library only reads it). The other fields it held got their own `aria-label` in #2668; the Group and Custom Form selects' titles now say their own name, not "Content that viewed".
 - Unlabelled fields with a title (the list screens' `#select_all`, the image picker's folder and access selects) are named by the title, but their hint is still hover-only.
 
 Related: docs/memory/ui/panel-accessible-names.md, docs/memory/ui/panel-hint-tooltip-or-popover.md

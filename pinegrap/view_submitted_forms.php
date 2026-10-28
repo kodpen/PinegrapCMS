@@ -524,7 +524,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         
         $output_custom_form_selection = '
             <label class="input-group-text material-icons" title="' . lang('Custom Form') . '" for="custom_form">format_list_bulleted</label>
-            <select id="custom_form" aria-label="' . h(lang('Custom Form')) . '" name="custom_form" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'advanced_filters_form\')">' . $output_custom_form_options . '</select>';
+            <select id="custom_form" aria-label="' . h(lang('Custom Form')) . '" name="custom_form" class="form-control" title="' . lang('Custom Form') . '" onchange="submit_form(\'advanced_filters_form\')">' . $output_custom_form_options . '</select>';
         $output_advanced_filters_value = 'true';
         $output_advanced_filters_label = lang('Add Advanced Filters');
         $output_advanced_filters = '';
@@ -537,7 +537,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
        
         $output_custom_form_selection = '
         <label class="input-group-text material-icons" title="' . lang('Custom Form') . '" for="custom_form_fake">format_list_bulleted</label>
-        <select id="custom_form_fake" aria-label="' . h(lang('Custom Form')) . '" name="custom_form_fake" disabled class="form-control disabled" title="' . lang('Content that viewed') . '"><option value="">' . lang('Disabled') . '</option></select>';
+        <select id="custom_form_fake" aria-label="' . h(lang('Custom Form')) . '" name="custom_form_fake" disabled class="form-control disabled" title="' . lang('Custom Form') . '"><option value="">' . lang('Disabled') . '</option></select>';
         $output_advanced_filters_value = 'false';
         $output_advanced_filters_label = lang('Remove Advanced Filters');
         $advanced_filters_icon = 'bi-funnel-fill';
@@ -659,7 +659,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                             <div class="card multiselect-checkbox-container rounded-0">
                                 <div class="card-header border-0 bg-reset">
                                     <div class="form-field">
-                                        <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox"></div>
+                                        <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" type="checkbox"></div>
                                         <label for="multiselect-checkbox-checker-0" class="">' . lang('Select All') . '</label>
                                     </div>
                                 </div>

@@ -1202,14 +1202,14 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $server_timezone_label = SERVER_TIMEZONE;
     }
 
-    $output_timezone_options = '<option value="">Server Default: ' . h($server_timezone_label) . '</option>';
+    $output_timezone_options = '<option value="">' . lang(array('string' => 'Server Default: {var:1}', 'vars' => array(h($server_timezone_label)))) . '</option>';
 
     // If there is a value for the current timezone setting and it is not in our list of supported timezones,
     // then output a custom option for it.  We add this feature so that if someone needs
     // to use a timezone that is not in our list, they can manually set it in the database,
     // and they can continue to save the site settings without the value getting wiped out.
     if (($timezone != '') && (in_array($timezone, $timezones) == false)) {
-        $output_timezone_options .= '<option value="' . h($timezone) . '" selected="selected">Custom: ' . h($timezone) . '</option>';
+        $output_timezone_options .= '<option value="' . h($timezone) . '" selected="selected">' . lang(array('string' => 'Custom: {var:1}', 'vars' => array(h($timezone)))) . '</option>';
     }
 
     // Loop through the time zones in order to prepare options for pick list.

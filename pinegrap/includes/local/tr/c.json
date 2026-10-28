@@ -2021,6 +2021,7 @@
     "Custom shipping form fields (hidden when the page has none)": "Özel teslimat formu alanları (sayfada yoksa gizlenir)",
     "Custom shipping form title": "Özel teslimat formu başlığı",
     "Custom style": "Özel stil",
+    "Custom: {var:1}": "Özel: {var:1}",
     "Customer": "Müşteri",
     "Customer ({var:1}) was changed through the API by the application {var:2} (key {var:3}).": "({var:1}) numaralı müşteri API üzerinden {var:2} uygulaması (anahtar {var:3}) tarafından değiştirildi.",
     "Customer ({var:1}) was created through the API by the application {var:2} (key {var:3}).": "({var:1}) numaralı müşteri API üzerinden {var:2} uygulaması (anahtar {var:3}) tarafından oluşturuldu.",

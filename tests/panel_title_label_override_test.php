@@ -25,14 +25,6 @@ if (!defined('PG_TEST_RUNNER')) {
 function panel_title_label_override_known()
 {
 	return array(
-		'editor_select_page_or_file.php' => array('folder_id', 'access_control_type'),
-		'includes/workspace/workdays.php' => array('ws_hol_to'),
-		'view_ads.php' => array('ad_region_id'),
-		'view_contacts.php' => array('filter', 'contact_group', 'multiselect-checkbox-checker-0'),
-		'view_files.php' => array('filter_select'),
-		'view_pages.php' => array('filter_select'),
-		'view_submitted_forms.php' => array('custom_form', 'custom_form_fake', 'multiselect-checkbox-checker-0'),
-		'view_users.php' => array('filter_select'),
 	);
 }
 
@@ -145,4 +137,22 @@ function test_panel_title_label_override_named_selects()
 
 	$translations = file_get_contents(PG_FUNCTIONS_DIR . '/translations.php');
 	pg_assert_true((bool) preg_match('/id="pg_tr_engine" data-bs-toggle="tooltip"/', $translations), 'translations: #pg_tr_engine hint is a tooltip');
+}
+
+// A select named by its own aria-label keeps a hover title that says the
+// same, not another screen's hint.
+function test_panel_title_label_override_title_matches_name()
+{
+	$cases = array(
+		'view_contacts.php' => array('contact_group' => 'Group'),
+		'view_submitted_forms.php' => array('custom_form' => 'Custom Form', 'custom_form_fake' => 'Custom Form'),
+	);
+
+	foreach ($cases as $path => $selects) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
+
+		foreach ($selects as $id => $name) {
+			pg_assert_true((bool) preg_match('/<select id="' . $id . '"[^>]*\stitle="\' \. lang\(\'' . preg_quote($name, '/') . '\'\) \. \'"/', $source), $path . ': #' . $id . ' title is ' . $name);
+		}
+	}
 }
