@@ -14,6 +14,7 @@
  *   commission_profile_list_rows
  *                              a page of the recurring commission profiles
  *                              (view_recurring_commission_profiles.php)
+ *   site_log_list_rows         a page of the Site Log (view_log.php)
  *
  * Each action answers DataTables' page request (includes/fn/list_paging.php)
  * behind the gate of the screen it pages.
@@ -225,6 +226,46 @@ function pg_panel_commission_profile_list_rows($request, $action)
     validate_token();
 
     $page = pg_commission_profile_list_page(
+        pg_list_search_terms($request['search'] ?? ''),
+        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100));
+
+    if ($page === false) {
+        http_response_code(500);
+        respond(array('status' => 'error', 'message' => lang('Query failed.')));
+    }
+
+    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
+}
+
+function pg_panel_site_log_list_rows($request, $action)
+{
+    // Kept global: helpers read the session user through `global $user`;
+    // see includes/panel/actions.php.
+    global $user;
+
+    // The general gate has checked the session (any_role). The screen's own
+    // gate is validate_area_access($user, 'manager'), answered here in JSON.
+    $user = validate_user();
+
+    if ((int) $user['role'] > 2) {
+        http_response_code(403);
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    validate_token();
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_log_list.php');
+
+    // The range the screen shows; the sort is the one it kept in the session.
+    $range = pg_site_log_list_range($request['start_time'] ?? null, $request['stop_time'] ?? null);
+
+    if ($range === null) {
+        http_response_code(400);
+        respond(array('status' => 'error', 'message' => lang('Query failed.')));
+    }
+
+    $page = pg_site_log_list_page(
+        $range,
         pg_list_search_terms($request['search'] ?? ''),
         pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100));
 
