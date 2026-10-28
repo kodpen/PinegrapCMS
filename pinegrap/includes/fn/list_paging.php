@@ -136,7 +136,12 @@ function pg_list_like_pattern($term)
  *
  * @param array $terms   pg_list_search_terms()'s answer
  * @param array $columns SQL expressions the words are looked for in; written
- *                       into the query as they are, so never from a request
+ *                       into the query as they are, so never from a request.
+ *                       A column may instead be array('expr' => SQL
+ *                       expression, 'term' => callable): the callable turns
+ *                       the word into what the column holds (a shown amount
+ *                       into stored digits), or answers '' when the word
+ *                       cannot be in that column
  * @param array $labels  list of array('expr' => SQL expression,
  *                       'labels' => stored value => shown label)
  * @return array array('sql' => '(…) AND (…)' or '', 'params' => values for
@@ -152,8 +157,19 @@ function pg_list_search_where($terms, $columns, $labels = array())
         $alternatives = array();
 
         foreach ($columns as $column) {
+            $column_term = $term;
+
+            if (is_array($column)) {
+                $column_term = (string) call_user_func($column['term'], $term);
+                $column = $column['expr'];
+
+                if ($column_term === '') {
+                    continue;
+                }
+            }
+
             $alternatives[] = $column . ' LIKE ?';
-            $params[] = pg_list_like_pattern($term);
+            $params[] = pg_list_like_pattern($column_term);
         }
 
         foreach ($labels as $label_column) {
@@ -180,13 +196,21 @@ function pg_list_search_where($terms, $columns, $labels = array())
 /**
  * One cell of a list row.
  *
- * @param string $html  the cell's content, already escaped
- * @param string $class the cell's classes
+ * @param string $html       the cell's content, already escaped
+ * @param string $class      the cell's classes
+ * @param array  $attributes further attributes of the cell, name => value,
+ *                           not escaped (a quick edit's data-pg-edit, a tip)
  * @return array
  */
-function pg_list_cell($html, $class = 'align-middle')
+function pg_list_cell($html, $class = 'align-middle', $attributes = array())
 {
-    return array('class' => (string) $class, 'html' => (string) $html);
+    $cell = array('class' => (string) $class, 'html' => (string) $html);
+
+    if ($attributes) {
+        $cell['attributes'] = array_map('strval', $attributes);
+    }
+
+    return $cell;
 }
 
 /**
@@ -201,7 +225,13 @@ function pg_list_row_html($row)
     $output = '<tr' . (isset($row['id']) ? ' id="' . h($row['id']) . '"' : '') . ' class="' . h($row['class'] ?? '') . '">';
 
     foreach ($row['cells'] as $cell) {
-        $output .= '<td' . (($cell['class'] !== '') ? ' class="' . h($cell['class']) . '"' : '') . '>' . $cell['html'] . '</td>';
+        $output .= '<td' . (($cell['class'] !== '') ? ' class="' . h($cell['class']) . '"' : '');
+
+        foreach ($cell['attributes'] ?? array() as $name => $value) {
+            $output .= ' ' . h($name) . '="' . h($value) . '"';
+        }
+
+        $output .= '>' . $cell['html'] . '</td>';
     }
 
     return $output . '</tr>';
@@ -211,7 +241,8 @@ function pg_list_row_html($row)
  * A list row as DataTables takes it from the server: the cells' content by
  * column number, the row's classes in DT_RowClass, its id (when it has one)
  * in DT_RowId and the cells' classes in DT_RowData, which backend.src.js puts
- * back on the cells it draws.
+ * back on the cells it draws; so are the cells' other attributes, by column
+ * number, when a cell has any.
  *
  * @param array $row as pg_list_row_html() takes it
  * @return array
@@ -220,10 +251,15 @@ function pg_list_row_data($row)
 {
     $data = array();
     $classes = array();
+    $attributes = array();
 
     foreach (array_values($row['cells']) as $number => $cell) {
         $data[(string) $number] = $cell['html'];
         $classes[] = $cell['class'];
+
+        if (!empty($cell['attributes'])) {
+            $attributes[(string) $number] = $cell['attributes'];
+        }
     }
 
     $data['DT_RowClass'] = (string) ($row['class'] ?? '');
@@ -232,6 +268,10 @@ function pg_list_row_data($row)
         $data['DT_RowId'] = (string) $row['id'];
     }
     $data['DT_RowData'] = array('pgCells' => $classes);
+
+    if ($attributes) {
+        $data['DT_RowData']['pgAttrs'] = $attributes;
+    }
 
     return $data;
 }
