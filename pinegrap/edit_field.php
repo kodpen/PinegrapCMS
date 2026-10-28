@@ -208,7 +208,7 @@ if ($designer_form) {
     // The information text is rich text and is shown as markup; a label is
     // plain text and is escaped.
     if ($field['type'] == 'information') {
-        $output_label_or_information = pg_sanitize_rich_text($field['information']);
+        $output_label_or_information = pg_sanitize_rich_text($field['information'], 'staff');
     } else {
         $output_label_or_information = h($field['label']);
     }
