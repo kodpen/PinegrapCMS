@@ -339,8 +339,9 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                             (form_data.form_id = '" . escape($form_id) . "')
                             AND (form_data.form_field_id = '" . $field['id'] . "')");
 
-                    // If there is an existing file for this field, then output info for that.
-                    if ($file['name'] != '') {
+                    // If there is an existing file for this field, then output info for
+                    // that. A submission without a row for the field gives null here.
+                    if ($file && $file['name'] != '') {
                         $output_file_info = '
                         <a class=" btn btn-subtle theme-secondary border" href="' . OUTPUT_PATH . h(encode_url_path($file['name'])) . '" target="_blank">
                             <span class="material-icons">attach_file</span>
