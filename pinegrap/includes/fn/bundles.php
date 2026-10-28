@@ -254,8 +254,53 @@ function pg_bundle_items($bundle_id)
 }
 
 /**
- * Replace a bundle's contents. Every component is checked first and nothing
- * is written when one is refused.
+ * Why a bundle cannot hold these contents, '' when it can: every component
+ * must exist and may go into a bundle, and a product that is itself in a
+ * bundle cannot be one.
+ *
+ * @param int   $bundle_id
+ * @param array $items cleaned contents (pg_bundle_items_normalize())
+ * @return string the reason, in English for lang()
+ */
+function pg_bundle_items_problem($bundle_id, $items)
+{
+    if ($items && pg_bundle_is_component($bundle_id)) {
+        return 'A product that is part of a bundle cannot be a bundle itself.';
+    }
+
+    $ids = array();
+
+    foreach ((array) $items as $item) {
+        $ids[] = (int) $item['product_id'];
+    }
+
+    if (!$ids) {
+        return '';
+    }
+
+    $found = db_items(
+        "SELECT id, bundle, selection_type, gift_card, recurring
+        FROM products
+        WHERE id IN (" . implode(',', $ids) . ")");
+
+    if (count($found) !== count($ids)) {
+        return 'A product in the bundle could not be found.';
+    }
+
+    foreach ($found as $product) {
+        $problem = pg_bundle_component_problem($product);
+
+        if ($problem !== '') {
+            return $problem;
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Replace a bundle's contents. Nothing is written when a component is
+ * refused.
  *
  * @param int   $bundle_id
  * @param array $items rows with product_id and quantity
@@ -270,30 +315,10 @@ function pg_bundle_items_save($bundle_id, $items)
     }
 
     $items = pg_bundle_items_normalize($items, $bundle_id);
+    $problem = pg_bundle_items_problem($bundle_id, $items);
 
-    if ($items) {
-        $ids = array();
-
-        foreach ($items as $item) {
-            $ids[] = $item['product_id'];
-        }
-
-        $found = db_items(
-            "SELECT id, bundle, selection_type, gift_card, recurring
-            FROM products
-            WHERE id IN (" . implode(',', array_map('intval', $ids)) . ")");
-
-        if (count($found) !== count($ids)) {
-            return 'A product in the bundle could not be found.';
-        }
-
-        foreach ($found as $product) {
-            $problem = pg_bundle_component_problem($product);
-
-            if ($problem !== '') {
-                return $problem;
-            }
-        }
+    if ($problem !== '') {
+        return $problem;
     }
 
     if (db_q("DELETE FROM product_bundle_items WHERE bundle_id = ?", array($bundle_id)) === false) {

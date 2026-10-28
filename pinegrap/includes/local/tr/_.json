@@ -757,6 +757,7 @@
     "{var:1} is only taken with cash_account_id.": "{var:1} yalnız cash_account_id ile birlikte alınır.",
     "{var:1} is overdue": "{var:1} gecikti",
     "{var:1} is overdue: this copy comes only if it is done before this copy starts.": "{var:1} gecikti: bu kopya ancak o, bu kopyanın başlangıcından önce biterse açılır.",
+    "{var:1} is part of a bundle. Take it out of the bundle before deleting it.": "{var:1} bir paketin parçası. Silmeden önce paketten çıkarın.",
     "{var:1} is registered for e-Invoice at GİB{var:2}.": "{var:1} GİB'de e-Fatura mükellefi{var:2}.",
     "{var:1} is required": "{var:1} gerekli",
     "{var:1} is required.": "{var:1} gerekli.",

@@ -113,7 +113,10 @@ if ($_POST) {
 
         } else {
 
-            pg_pb_delete_product($product_id);
+            if (!pg_pb_delete_product($product_id)) {
+                $liveform->mark_error('', lang('This product is part of a bundle. Take it out of the bundle before deleting it.'));
+                go(PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . $product_id);
+            }
 
             $deleted_message = array('string' => 'product ({var:1}) was deleted', 'vars' => array($deleted_name));
         }

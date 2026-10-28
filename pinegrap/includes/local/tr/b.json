@@ -557,6 +557,8 @@
     "Bulk edit pages ({var:1})": "Sayfaları toplu düzenle ({var:1})",
     "Bulk edit products ({var:1})": "Ürünleri toplu düzenle ({var:1})",
     "Bulleted list": "Madde işaretli liste",
+    "Bundle": "Paket",
+    "Bundle Price": "Paket Fiyatı",
     "Burgundy": "Bordo",
     "Busiest channels": "En hareketli kanallar",
     "Busiest day: {var:1} ({var:2} tasks, {var:3} messages)": "En yoğun gün: {var:1} ({var:2} görev, {var:3} mesaj)",

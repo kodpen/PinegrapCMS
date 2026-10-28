@@ -4329,7 +4329,9 @@ function ws_change_write_product($viewer, $action, $record, $values)
         // The panel's own deletion: the row, its images, group links, zones,
         // attributes, barcodes, form fields, keywords, SEO findings, and the
         // product.deleted webhook.
-        pg_pb_delete_product($id);
+        if (!pg_pb_delete_product($id)) {
+            return array('ok' => false, 'error' => lang('This product is part of a bundle. Take it out of the bundle before deleting it.'), 'id' => 0);
+        }
 
         ws_change_log(lang(array('string' => 'product ({var:1}) was deleted', 'vars' => array($record['name']))));
 
