@@ -732,6 +732,9 @@ function pg_privacy_erase_tables()
         'auth_tokens'                  => array('find' => $user, 'action' => 'delete', 'fields' => array()),
         'opt_in'                       => array('find' => array('contact_id' => 'contact_ids'), 'action' => 'delete', 'fields' => array()),
         'contacts_contact_groups_xref' => array('find' => array('contact_id' => 'contact_ids'), 'action' => 'delete', 'fields' => array()),
+        // A workflow table row keeps its place in its owner's table; only the
+        // cells naming the person are emptied (_pg_privacy_erase_apply_ws_wtable_cells()).
+        'ws_wtable_cells'              => array('table' => 'ws_wtable_rows', 'find' => array('id' => 'wtable_row_ids'), 'action' => 'anonymise', 'fields' => array('cells' => '')),
         // Orders go late: the person's other records are found through them,
         // so a run stopped half-way still reaches those records.
         'orders' => array('find' => array('id' => 'order_ids'), 'action' => 'anonymise', 'fields' => array(
@@ -806,6 +809,7 @@ function pg_privacy_erase_labels()
         'auth_tokens'                  => lang('Sign-in sessions'),
         'opt_in'                       => lang('Opt-in answers'),
         'contacts_contact_groups_xref' => lang('Contact groups'),
+        'ws_wtable_cells'              => lang('Workflow table cells naming the person'),
         'orders'                       => lang('Orders'),
         'contacts'                     => lang('Contact'),
         'user'                         => lang('User account'),
@@ -885,7 +889,7 @@ function pg_privacy_erase_set(array $fields, $name, $token)
  * @param array $found  see pg_privacy_export_find()
  * @return array  user_ids, contact_ids, emails, tokens, phones, order_ids,
  *                form_ids, account_ids, conversation_ids, file_ids,
- *                return_ids, audit_ids, cell_ids
+ *                return_ids, audit_ids, cell_ids, wtable_row_ids
  */
 function pg_privacy_erase_scope(array $found)
 {
@@ -905,6 +909,7 @@ function pg_privacy_erase_scope(array $found)
         'return_ids'       => array(),
         'audit_ids'        => array(),
         'cell_ids'         => array(),
+        'wtable_row_ids'   => array(),
     );
 
     // A counter sale keeps the cashier in user_id and its buyer in contact_id,
@@ -1032,7 +1037,190 @@ function pg_privacy_erase_scope(array $found)
         }
     }
 
+    // Workflow table rows with a cell naming the person or their records.
+    $scope['wtable_row_ids'] = _pg_privacy_export_column(pg_privacy_wtable_rows($scope)['rows'], 'id');
+
     return $scope;
+}
+
+/**
+ * The record-link kinds of a workflow table cell that point at a person, and
+ * the list of the erasure's scope (pg_privacy_erase_scope()) the linked id is
+ * matched against. A current account is the person's only when it is in the
+ * list: a company account stays with the company. Pure.
+ *
+ * @return array  kind => scope key
+ */
+function pg_privacy_wtable_link_kinds()
+{
+    return array('contact' => 'contact_ids', 'user_account' => 'user_ids', 'erp_account' => 'account_ids');
+}
+
+/**
+ * The cells of one workflow table row that name the person: a person cell
+ * holding one of their accounts, a record link to their contact, account or
+ * current account. A cell of a column the table no longer has stays in the
+ * JSON until the row's next write, so it is read as either. Pure.
+ *
+ * @param array $types  column id => type, every column the table has
+ * @param array $cells  column id => value, as stored
+ * @param array $scope  user_ids, contact_ids, account_ids
+ * @return string[]  column ids, in the row's order
+ */
+function pg_privacy_wtable_cell_hits(array $types, array $cells, array $scope)
+{
+    $kinds = pg_privacy_wtable_link_kinds();
+    $hits = array();
+
+    foreach ($cells as $id => $value) {
+        $id = (string) $id;
+        $type = isset($types[$id]) ? (string) $types[$id] : 'gone';
+        $targets = array();
+
+        if (($type === 'person') || ($type === 'gone')) {
+            $targets[] = array('user_ids', $value);
+        }
+
+        if ((($type === 'link') || ($type === 'gone')) && is_array($value) && isset($value['kind'], $value['id']) && is_string($value['kind']) && isset($kinds[$value['kind']])) {
+            $targets[] = array($kinds[$value['kind']], $value['id']);
+        }
+
+        foreach ($targets as $target) {
+            $list = isset($scope[$target[0]]) ? _pg_privacy_export_ids((array) $scope[$target[0]]) : array();
+            $wanted = (is_int($target[1]) || (is_string($target[1]) && ctype_digit($target[1]))) ? (int) $target[1] : 0;
+
+            if (($wanted > 0) && in_array($wanted, $list, true)) {
+                $hits[] = $id;
+                break;
+            }
+        }
+    }
+
+    return $hits;
+}
+
+/**
+ * A row's cells without those that name the person. Pure.
+ *
+ * @param array    $cells  column id => value
+ * @param string[] $hits   see pg_privacy_wtable_cell_hits()
+ * @return array
+ */
+function pg_privacy_wtable_cells_erased(array $cells, array $hits)
+{
+    foreach ($hits as $id) {
+        unset($cells[(string) $id]);
+    }
+
+    return $cells;
+}
+
+/**
+ * The condition that narrows workflow table rows to those whose JSON may hold
+ * one of the person's ids: JSON writes an integer value after a colon and
+ * before a comma or the closing brace, so a row without such text names
+ * nobody of the scope. The cells are then read in PHP
+ * (pg_privacy_wtable_cell_hits()). Pure.
+ *
+ * @param array $scope  user_ids, contact_ids, account_ids
+ * @return string  '' when there is no id, so nothing is read
+ */
+function pg_privacy_wtable_rows_where(array $scope)
+{
+    $ids = array();
+
+    foreach (array_unique(array_values(pg_privacy_wtable_link_kinds())) as $key) {
+        $ids = array_merge($ids, isset($scope[$key]) ? (array) $scope[$key] : array());
+    }
+
+    $conditions = array();
+
+    foreach (_pg_privacy_export_ids($ids) as $id) {
+        $conditions[] = "`cells` LIKE '%:" . $id . ",%'";
+        $conditions[] = "`cells` LIKE '%:" . $id . "}%'";
+    }
+
+    return _pg_privacy_export_any($conditions);
+}
+
+/**
+ * The workflow table rows with a cell naming the person, read in batches of
+ * id order.
+ *
+ * @param array $scope   user_ids, contact_ids, account_ids
+ * @param int   $limit   the most rows to give, 0 for all
+ * @param int[] $ids     only these rows, when given
+ * @return array  rows (id, table_id, revision, cells, hits, created_at,
+ *                updated_at), columns (table id => column id => name, type),
+ *                truncated
+ */
+function pg_privacy_wtable_rows(array $scope, $limit = 0, array $ids = array())
+{
+    $result = array('rows' => array(), 'columns' => array(), 'truncated' => false);
+    $where = pg_privacy_wtable_rows_where($scope);
+
+    if (($where === '') || !pg_schema_has('ws_wtable_rows', 'cells') || !pg_schema_has('ws_wtable_columns', 'type')) {
+        return $result;
+    }
+
+    if ($ids) {
+        $where .= " AND " . _pg_privacy_export_in('id', _pg_privacy_export_ids($ids));
+    }
+
+    $after = 0;
+
+    do {
+        $batch = db_items("SELECT id, table_id, revision, cells, created_at, updated_at FROM ws_wtable_rows WHERE (id > '" . $after . "') AND " . $where . " ORDER BY id LIMIT 500");
+        $missing = array();
+
+        foreach ($batch as $row) {
+            if (!isset($result['columns'][(int) $row['table_id']])) {
+                $missing[(int) $row['table_id']] = (int) $row['table_id'];
+            }
+        }
+
+        if ($missing) {
+            foreach ($missing as $table_id) {
+                $result['columns'][$table_id] = array();
+            }
+
+            foreach (db_items("SELECT id, table_id, name, type FROM ws_wtable_columns WHERE " . _pg_privacy_export_in('table_id', array_values($missing))) as $column) {
+                $result['columns'][(int) $column['table_id']][(string) $column['id']] = array('name' => (string) $column['name'], 'type' => (string) $column['type']);
+            }
+        }
+
+        foreach ($batch as $row) {
+            $after = (int) $row['id'];
+            $cells = is_string($row['cells']) ? json_decode($row['cells'], true) : null;
+            $cells = is_array($cells) ? $cells : array();
+            $types = array_map(function ($column) {
+                return $column['type'];
+            }, $result['columns'][(int) $row['table_id']]);
+            $hits = pg_privacy_wtable_cell_hits($types, $cells, $scope);
+
+            if (!$hits) {
+                continue;
+            }
+
+            if ($limit && (count($result['rows']) >= $limit)) {
+                $result['truncated'] = true;
+
+                return $result;
+            }
+
+            $result['rows'][] = array(
+                'id'         => (int) $row['id'],
+                'table_id'   => (int) $row['table_id'],
+                'revision'   => (int) $row['revision'],
+                'cells'      => $cells,
+                'hits'       => $hits,
+                'created_at' => (int) $row['created_at'],
+                'updated_at' => (int) $row['updated_at'],
+            );
+        }
+    } while (count($batch) === 500);
+
+    return $result;
 }
 
 /**
@@ -1409,6 +1597,34 @@ function _pg_privacy_erase_apply_user($where, array $fields, array $scope, $name
     foreach ($links as $table => $column) {
         if (pg_schema_has($table, $column)) {
             _pg_privacy_erase_write($table, _pg_privacy_export_in($column, $scope['user_ids']), array(), $name);
+        }
+    }
+}
+
+/**
+ * A workflow table row loses only the cells naming the person, each row in
+ * one write against the revision it was read at, so a change made meanwhile
+ * is read again rather than lost; the bumped revision tells an open screen
+ * the row changed.
+ */
+function _pg_privacy_erase_apply_ws_wtable_cells($where, array $fields, array $scope, $name)
+{
+    $pending = $scope['wtable_row_ids'];
+
+    for ($attempt = 0; $pending && ($attempt < 3); $attempt++) {
+        $read = pg_privacy_wtable_rows($scope, 0, $pending);
+        $pending = array();
+
+        foreach ($read['rows'] as $row) {
+            $cells = pg_privacy_wtable_cells_erased($row['cells'], $row['hits']);
+            $json = json_encode((object) $cells, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION);
+
+            db("UPDATE ws_wtable_rows SET cells = '" . e(($json === false) ? '{}' : $json) . "', revision = revision + 1, updated_at = '" . time() . "'
+                WHERE id = '" . $row['id'] . "' AND revision = '" . $row['revision'] . "'");
+
+            if ((int) mysqli_affected_rows(db::$con) !== 1) {
+                $pending[] = $row['id'];
+            }
         }
     }
 }

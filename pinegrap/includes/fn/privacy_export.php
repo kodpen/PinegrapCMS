@@ -1044,8 +1044,9 @@ function pg_privacy_export_collect(array $found)
         $sections['erp_documents'] = $documents;
     }
 
-    // Workspace: the channels kept about the person (by reference) and the
-    // approvals they were asked for by e-mail.
+    // Workspace: the channels kept about the person (by reference), the
+    // approvals they were asked for by e-mail and the workflow table cells
+    // naming them.
     $workspace = array('rows' => array(), 'truncated' => false);
 
     if (pg_schema_has('ws_channels', 'contact_id')) {
@@ -1060,9 +1061,64 @@ function pg_privacy_export_collect(array $found)
         $workspace['truncated'] = $workspace['truncated'] || $part['truncated'];
     }
 
+    // Workflow table rows with a cell naming the person or their records.
+    if (pg_schema_has('ws_wtables', 'name')) {
+        $read = pg_privacy_wtable_rows(array(
+            'user_ids'    => $user_ids,
+            'contact_ids' => $contact_ids,
+            'account_ids' => isset($sections['erp_accounts']) ? _pg_privacy_export_column($sections['erp_accounts']['rows'], 'id') : array(),
+        ), $limit);
+
+        $names = array();
+        $table_ids = _pg_privacy_export_column($read['rows'], 'table_id');
+
+        if ($table_ids) {
+            foreach (db_items("SELECT id, name FROM ws_wtables WHERE " . _pg_privacy_export_in('id', $table_ids)) as $table) {
+                $names[(int) $table['id']] = (string) $table['name'];
+            }
+        }
+
+        foreach ($read['rows'] as $row) {
+            $workspace['rows'][] = pg_privacy_export_wtable_row($row, isset($names[$row['table_id']]) ? $names[$row['table_id']] : '', $read['columns'][$row['table_id']]);
+        }
+
+        $workspace['truncated'] = $workspace['truncated'] || $read['truncated'];
+    }
+
     $sections['workspace'] = $workspace;
 
     return $sections;
+}
+
+/**
+ * A workflow table row as the pack gives it: the cells that name the person
+ * under their column names (a deleted column's under its id), and the table
+ * it is in. The row's other cells are the table owner's and are left out.
+ * Pure.
+ *
+ * @param array  $row      see pg_privacy_wtable_rows()
+ * @param string $table    the table's name
+ * @param array  $columns  column id => name, type
+ * @return array
+ */
+function pg_privacy_export_wtable_row(array $row, $table, array $columns)
+{
+    $cells = array();
+
+    foreach ($row['hits'] as $id) {
+        $id = (string) $id;
+        $cells[isset($columns[$id]['name']) ? (string) $columns[$id]['name'] : $id] = $row['cells'][$id];
+    }
+
+    return array(
+        'record'     => 'table_row',
+        'id'         => (int) $row['id'],
+        'table_id'   => (int) $row['table_id'],
+        'table'      => (string) $table,
+        'cells'      => $cells,
+        'created_at' => (int) $row['created_at'],
+        'updated_at' => (int) $row['updated_at'],
+    );
 }
 
 /**
