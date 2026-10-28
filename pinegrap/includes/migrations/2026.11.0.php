@@ -86,6 +86,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_max_image_preview();      // 11.0.51
 	upgrade_2026_11_0_main_host_redirect();     // 11.0.52
 	upgrade_2026_11_0_blogposting_author();     // 11.0.53
+	upgrade_2026_11_0_record_schema_type();     // 11.0.55
 	upgrade_2026_11_0_workspace_scheduled_anchor(); // 11.0.88
 
 }
@@ -2742,5 +2743,16 @@ function upgrade_2026_11_0_blogposting_author() {
 	install_add_column('custom_form_pages', 'schema_author', "VARCHAR(64) NOT NULL DEFAULT 'contact'");
 
 	install_note('Custom forms: the author named in the structured data of a record page is now chosen per form in the form settings, next to Enable Pretty URLs: the contact of the record as before, the site as an organization, or a field of the form. Nothing changes until a form picks one.');
+
+}
+// The schema type of a custom form's record pages (2026.11.0, 11.0.55;
+// includes/fn/seo.php, the custom form's settings): BlogPosting, Article,
+// NewsArticle, or none for no record block. The default keeps every form's
+// output as it was.
+function upgrade_2026_11_0_record_schema_type() {
+
+	install_add_column('custom_form_pages', 'schema_type', "VARCHAR(32) NOT NULL DEFAULT 'BlogPosting'");
+
+	install_note('Custom forms: the structured data type of a record page is now chosen per form in the form settings: BlogPosting as before, Article, NewsArticle, or None to leave the page\'s own structured data as its only description. Nothing changes until a form picks one.');
 
 }

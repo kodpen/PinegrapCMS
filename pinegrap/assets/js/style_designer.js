@@ -35435,6 +35435,20 @@ const StyleDesigner = (function () {
                                 esc(_sdT('Each field can then be given a kind (number, image, a reference to another form) in Form Field → Kind. The records stay this form\'s submissions.')) +
                             '</div>'
                         ) +
+                        // How the structured data of the record pages names
+                        // them (pg_record_schema_type() in includes/fn/seo.php);
+                        // None leaves the page's own JSON-LD as the only one.
+                        row(_sdT('Schema Type'),
+                            '<select class="form-control form-control-sm sd-cf-s" data-s="schema_type">' +
+                                ['BlogPosting', 'Article', 'NewsArticle', 'none'].map(function (t) {
+                                    return '<option value="' + t + '"' + ((_cfFS.schema_type || 'BlogPosting') === t ? ' selected' : '') + '>' +
+                                        esc(t === 'none' ? _sdT('None') : t) + '</option>';
+                                }).join('') +
+                            '</select>' +
+                            '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
+                                esc(_sdT('How the structured data of the record pages describes them. None leaves the page\'s own structured data as their only description.')) +
+                            '</div>'
+                        ) +
                         row(_sdT('Notification email'),
                             '<input type="text" class="form-control form-control-sm sd-cf-s" data-s="notify_email" value="' + esc(_cfFS.notify_email || '') + '" maxlength="255" placeholder="' + esc(_sdT('sample@site.com')) + '">' +
                             '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Notified when the form is submitted. Separate several addresses with commas. Leave it empty and no notification is sent.')) + '</div>' +
