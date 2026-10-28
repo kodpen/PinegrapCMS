@@ -39,7 +39,7 @@ function test_blogposting_author_schema_step_is_called_once_under_a_label_of_its
 {
 	$source = blogposting_author_schema_test_source();
 
-	pg_assert_same(1, preg_match_all('#^\tupgrade_2026_11_0_blogposting_author\(\); +// 11\.0\.51$#m', $source), 'called once from upgrade_to_2026_11_0() under 11.0.52');
+	pg_assert_same(1, preg_match_all('#^\tupgrade_2026_11_0_blogposting_author\(\); +// 11\.0\.52$#m', $source), 'called once from upgrade_to_2026_11_0() under 11.0.52');
 
 	preg_match('/function upgrade_to_2026_11_0\(\) \{(.*?)\n\}\n/s', $source, $entry);
 	preg_match_all('#// (11\.0\.\d+)\n#', isset($entry[1]) ? $entry[1] : '', $labels);
