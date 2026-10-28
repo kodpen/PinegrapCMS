@@ -2654,7 +2654,7 @@ function pg_pb_render_image_picker($images = array(), $extra_action = '')
                     <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent">
                         <button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="' . lang('Remove') . '" onclick="$(this).closest(\'.item\').remove();"></button>
                     </div>
-                    <div class="card-body overflow-hidden position-relative rounded-4 ratio ratio-2x1 w-100" style="--bs-aspect-ratio: 80%;background: radial-gradient(transparent, #00000024);">
+                    <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);">
                         <input type="hidden" name="selected_images[]" value="' . h($image) . '" />
                         <img class="object-fit-contain w-100 h-100" src="' . h($source) . '" alt="" draggable="false" />
                     </div>

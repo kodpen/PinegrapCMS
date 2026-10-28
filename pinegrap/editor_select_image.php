@@ -972,7 +972,7 @@ function esiRenderUnsplash(photos) {
         col.className = \'col\';
         col.innerHTML =
             \'<div class="card border-0 shadow-none hoverable">\' +
-                \'<div class="overflow-hidden position-relative rounded-4 ratio cursor-pointer" style="--bs-aspect-ratio:80%"\' +
+                \'<div class="overflow-hidden position-relative rounded-4 cursor-pointer" style="aspect-ratio: 5 / 4"\' +
                     \' onclick="esiSelectUnsplash(\\\'\' + photo.urls.regular + \'\\\', \\\'\' + photo.links.download_location + \'\\\')">\' +
                     \'<img src="\' + photo.urls.small + \'" class="object-fit-cover w-100 h-100" alt="\' + (photo.alt_description || \'\') + \'" loading="lazy">\' +
                 \'</div>\' +

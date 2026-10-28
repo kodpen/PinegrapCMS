@@ -54,7 +54,7 @@ if (check_view_access($page_folder) == false) {
 }
 
 if ($page_home == 'yes') {
-    $page_name = '<span class="bi bi-house text-success ms-2" title="' . lang('Homepage') . '"> ' . $page_name . '</span>';
+    $page_name = '<span class="bi bi-house fg-success ms-2" title="' . lang('Homepage') . '"> ' . $page_name . '</span>';
 } else {
     $page_name = '<span class="bi bi-window pages-color ms-2" title="' . lang('Page') . '"> ' . $page_name . '</span>';
 }

@@ -1653,6 +1653,29 @@ function pg_return_badge_class($status)
 }
 
 /**
+ * The panel's badge classes of a status: the same tone as
+ * pg_return_badge_class(), written for Bootstrap 6, which has no text-bg-*.
+ * pg_return_badge_class() stays for site output (Bootstrap 5).
+ *
+ * @param string $status
+ * @return string
+ */
+function pg_return_panel_badge_class($status)
+{
+    $tones = array(
+        'requested' => 'warning',
+        'approved'  => 'info',
+        'rejected'  => 'danger',
+        'shipped'   => 'primary',
+        'received'  => 'primary',
+        'refunded'  => 'success',
+        'closed'    => 'secondary',
+    );
+
+    return 'badge theme-' . ((is_string($status) && isset($tones[$status])) ? $tones[$status] : 'secondary');
+}
+
+/**
  * One return as the customer reads it: labels instead of codes, dates as the
  * page shows them, the carrier by its name, and what the customer may still
  * do about it.
@@ -2929,7 +2952,7 @@ function pg_returns_panel_card_html($rows, $add_url = '')
         $lines .= '<div class="row align-items-center mb-1">
                         <span class="col"><a class="pg-link-secondary" href="view_return.php?id=' . (int) $row['id'] . '">' . h(lang(array('string' => 'Return request #{var:1}', 'vars' => array((int) $row['id'])))) . '</a>'
                         . '<span class="d-block small fg-secondary">' . h(pg_return_time_text($row['requested_at'])) . ' · ' . h(lang(array('string' => '{var:1} item(s)', 'vars' => array($quantity)))) . '</span></span>
-                        <span class="col-auto text-end"><span class="' . h(pg_return_badge_class($status)) . '">' . h(pg_return_status_label($status)) . '</span></span>
+                        <span class="col-auto text-end"><span class="' . h(pg_return_panel_badge_class($status)) . '">' . h(pg_return_status_label($status)) . '</span></span>
                     </div>';
     }
 
