@@ -28,7 +28,7 @@ No schema; one PR each.
 10 (#1829): connect_client.php skips the bot policy and the country restriction (`waf_is_client_metadata_request()`); never seen refused live.
 11. Catalogue, its GET (Q1, Q5). 12. URL-only add, probe. 13. Three-state rules, bulk declare (Q3): panel #1471, API #1800.
 
-## Which questions are answered? (owner, 2026-10-24: 1 a, 3 b, 4 b; 2, 5 open)
+## Which questions are answered? (owner 2026-10-24: 1 a, 3 b, 4 b; #2423: 2 a, 5 a)
 1. Catalogue: (a) bundled list, (b) MCP Registry fetch, (c) a plus a registry search → a.
 2. Redirect: (a) never, name it, (b) follow once to https, same host, after `api_http_check_url()` → a.
 3. After Connect: (a) all off (today), (b) read-only ones on, the rest by a warned "declare all read-only" → b.

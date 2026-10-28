@@ -15,7 +15,7 @@ description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b, 4a, 5 done; 4b, 4c ope
 - PayTR: iframe/redirect flow, hash verification, installment table, refund API, callback endpoint `payment_callback.php?driver=paytr`.
 - PayPal: Checkout v2 driver beside classic Express Checkout (kept).
 - Saved cards/wallets: PSP tokens only, never PAN; later.
-- 2026-10-20: a new gateway or method value is appended to the `config.ecommerce_payment_gateway` / `orders.payment_method` ENUM by its step's migration (4.48 `install_column_info` append); no VARCHAR change, so add-ons cannot add one. Refund and cancel go to the order's own driver, card orders included (`commerce/payment-refunds.md`).
+- 2026-10-20: a new gateway or method value is appended to the `config.ecommerce_payment_gateway` / `orders.payment_method` ENUM by its step's migration (4.48 `install_column_info` append), approved in advance (`workflow/decisions-made-schema.md`, #2389); no VARCHAR change, so add-ons cannot add one. Refund and cancel go to the order's own driver, card orders included (`commerce/payment-refunds.md`).
 - 2026-10-27 (3b): a verified `payment_intent.succeeded` for an incomplete order completes it from the webhook (owner: "en makül güncel yol olsun … global pinegrap kullanıcıları ihtiyaç duyabilir") as Stripe advises: the visitor may never return. Only when intent, amount and currency match; exactly once. How (#2382): `plans/order-completion-function.md`.
 
 ## What remains?
@@ -27,8 +27,8 @@ description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b, 4a, 5 done; 4b, 4c ope
 
 ## Open questions?
 - Sipay/Param after PayTR by demand; prefer a PSP that fronts the banks over per-bank vPOS.
-- Since 2b no request reaches submit_order.php's inline Iyzipay and Pay With Iyzico code: remove it or keep it? Owner.
-- Stripe's fields are drawn only by the designer's express order widget; classic checkout pages and order preview too? Owner.
+- Answered (#2438): the unreachable inline Iyzipay and Pay With Iyzico code goes, after a test pins both values to the driver branch.
+- Answered (#2407): the driver's fields are drawn on the classic checkout pages and classic express order too, a step after 3b.
 
 ## Where to start?
 - 4b: `commerce/payment-method-lists.md` (what a new redirect method still needs: the ENUM step), then `commerce/payment-drivers.md`.
