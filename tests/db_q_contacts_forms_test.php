@@ -128,6 +128,8 @@ function db_q_contacts_forms_test_files()
 		'view_contacts.php' => 7,
 		'edit_submitted_form.php' => 13,
 		'view_submitted_forms.php' => 11,
+		'includes/fn/submitted_form_list.php' => 4,
+		'includes/fn/contact_list.php' => 5,
 		'edit_field.php' => 8,
 		'edit_contact_group.php' => 10,
 		'edit_contacts.php' => 8,

@@ -284,7 +284,7 @@ $(document).ready(function () {
                 if (value == 'Export Orders For Parasut') {
                     pgUI.dialog.hide('#xlsl_setup_modal');
                     //reload this page to show user exported orders.
-                    $('body').prepend('<div id="couldown_for_order_exporting_10000" style="z-index: 999;background: #e3e3e3ab;position: fixed;left: 0;top: 0;width: 100%;height: 100%;text-align: center;line-height: 100vh;backdrop-filter: blur(4px);font-size: 40px;">' + lang('Please Wait') + '...</div>');
+                    $('body').prepend('<div id="couldown_for_order_exporting_10000" style="z-index: 999;background: color-mix(in srgb, var(--pg-bg-body) 70%, transparent);color: var(--pg-fg-body);position: fixed;left: 0;top: 0;width: 100%;height: 100%;text-align: center;line-height: 100vh;backdrop-filter: blur(4px);font-size: 40px;">' + lang('Please Wait') + '...</div>');
                     $('body').attr('style', 'overflow:hidden');
                     setTimeout(function () {
                         window.location.reload();
@@ -465,15 +465,20 @@ $(document).ready(function () {
                     show_draw_lines();
                     break;
                 case 'q':
-                    var notifications = $('#notifications');
-                    if (notifications.length) {
+                    var notification_toggle = document.getElementById('notification_toggle');
+                    if (notification_toggle && $('#notifications').length) {
                         event.preventDefault();
                         // CTRL+Q on toolbar and backend shows notification panel. tested in chrome,edge(95.0+) and firefox.
                         // Timeout is necessary in order to workaround Firefox bug
                         // with Ctrl+Q where it would still open find area,
                         // even though we run preventDefault above.
+                        // The bell is clicked rather than the menu toggled: a
+                        // Bootstrap 6 Menu made on the .menu box is a second
+                        // instance that ignores the bell's data-bs-display,
+                        // positions the panel inline for good and leaves its
+                        // own aria-expanded on the box.
                         setTimeout(function () {
-                            pgUI.menu.toggle(notifications);
+                            notification_toggle.click();
                         }, 0);
                     }
 
@@ -595,11 +600,28 @@ $(document).ready(function () {
         });
     });
     //classic popover
+    // An empty data-bs-title or data-bs-content (a title a script fills in
+    // later) reads as null in Bootstrap, whose type check then throws; an
+    // empty string given here wins over the attribute. One element that still
+    // fails must not stop the rest of this ready block (the main menu below).
     $('[data-bs-toggle="popover"]:not([ data-bs-custom-class="contextmenu"])').each(function () {
-        pgUI.popover.get(this, {
+        var popoverOptions = {
             placement: 'auto',
             html: true
-        });
+        };
+        if (this.getAttribute('data-bs-title') === '') {
+            popoverOptions.title = '';
+        }
+        if (this.getAttribute('data-bs-content') === '') {
+            popoverOptions.content = '';
+        }
+        try {
+            pgUI.popover.get(this, popoverOptions);
+        } catch (error) {
+            if (window.console) {
+                console.error(error);
+            }
+        }
     });
 
 
@@ -1334,15 +1356,9 @@ $(document).ready(function () {
 
 
 
-    var output_system_language_name;
-    switch (software_system_language) {
-        case "tr":
-            output_system_language_name = "Turkish";
-            break;
-        default:
-            //default is english so we use default.
-            output_system_language_name = "English";
-    }
+    // Panel languages with a file in assets/lib/DataTables/i18n/.
+    var DATATABLES_LANGUAGES = { tr: true };
+
 
 
     /*
@@ -1397,10 +1413,27 @@ $(document).ready(function () {
         });
     }
 
+    // The Buttons integration draws the column visibility list as a v5
+    // dropdown; Bootstrap 6 styles it as a menu. dropdown-menu stays, since
+    // DataTables' own rule for it keeps the list in place instead of the
+    // menu's absolute position.
+    if ($.fn.dataTable && $.fn.dataTable.Buttons) {
+        $.extend(true, $.fn.dataTable.Buttons.defaults.dom.collection, {
+            container: { content: { className: 'dropdown-menu menu show' } },
+            button: { liner: { className: 'dropdown-item menu-item' } }
+        });
+    }
+
     var options = {};
-    options["language"] = {
-        url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/tr.json"
-    };
+    // The panel language's DataTables 2 texts from the local copy; English
+    // is DataTables' own. The CDN's 1.13.6 Turkish file was loaded for every
+    // language, lacked the 2.x keys ("All", pagination names) and held the
+    // table back until a third party answered.
+    if (DATATABLES_LANGUAGES[software_system_language]) {
+        options["language"] = {
+            url: path + software_directory + "/assets/lib/DataTables/i18n/" + software_system_language + ".json"
+        };
+    }
 
     options["stateSave"] = false;
     options["serverside"] = false;
@@ -1562,13 +1595,14 @@ $(document).ready(function () {
             $('#notifications').scrollTop(0);
         }
     });
+    // Bootstrap 6 fires the menu events on the toggle, not on the .menu box.
     //shown #notifications
-    pgUI.menu.on('#notifications', 'shown', function () {
+    pgUI.menu.on('#notification_toggle', 'shown', function () {
         $('#notification_toggle').addClass('show');
         get_notifications(true);
     });
     //hidden #notifications
-    pgUI.menu.on('#notifications', 'hidden', function () {
+    pgUI.menu.on('#notification_toggle', 'hidden', function () {
         $('#notification_toggle').removeClass('show');
         $('#notifications').scrollTop(0);
     });
@@ -1617,6 +1651,7 @@ $(document).ready(function () {
             $("input[name=" + $(this).attr("name") + "]").each(function () {
                 if ($(this).attr("id") != multi_switcher_this_id) {
                     $($(this).attr("data-bs-target")).toggle(false);
+                    pgCollapseSwitcherShow($(this).attr("data-bs-target"), false);
                 }
             });
         }
@@ -1631,6 +1666,7 @@ $(document).ready(function () {
             returned = this.checked;
         }
         $(target).toggle(returned);
+        pgCollapseSwitcherShow(target, returned);
     });
 
     /* The e-document card's "test the connection".
@@ -1718,9 +1754,10 @@ $(document).ready(function () {
                     var $status = $card.find(".pg-parasut-status").first();
                     var tone = answer.status.tone || "secondary";
 
+                    // The box is coloured by theme-<tone> (Bootstrap 6), not alert-*.
                     $status.removeClass(function (index, classes) {
-                        return (classes.match(/(^|\s)alert-\S+/g) || []).join(" ");
-                    }).addClass("alert-" + tone);
+                        return (classes.match(/(^|\s)theme-\S+/g) || []).join(" ");
+                    }).addClass("theme-" + tone);
                     $status.find("i").attr("class", "bi " + (tone === "success" ? "bi-check-circle" : "bi-plug"));
                     $status.find("span").text(answer.status.text);
                 }
@@ -2310,7 +2347,7 @@ function software_image_picker(properties) {
                             <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent">\
                                 <button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="remove" onclick=" $(this).closest(\'.item\').remove();"></button>\
                             </div>\
-                            <div class="card-body overflow-hidden position-relative rounded-4 ratio ratio-2x1 w-100" style="--bs-aspect-ratio: 80%;background: radial-gradient(transparent, #00000024);" title="' + properties.image_name + '">\
+                            <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' + properties.image_name + '">\
                                 <input type="hidden" name="' + $output_input_name + '" value="' + $output_input_value + '"/>\
                                 <img class="object-fit-contain w-100 h-100" src="' + _img_src + '" />\
                             </div>\
@@ -2421,9 +2458,13 @@ function pgListServerOptions(options, $table) {
         }
     };
 
-    // Hints and menus of the rows that just arrived.
+    // Hints, menus and lazy pictures of the rows that just arrived.
     $table.on('draw.dt', function () {
         pgInitInjected($table.find('tbody'));
+
+        if ($.fn.Lazy) {
+            $table.find('img.lazy:not(.delayed)').Lazy();
+        }
     });
 }
 
@@ -2598,7 +2639,7 @@ function pg_push_watch() {
         }
     });
 
-    pgUI.menu.on('#notifications', 'shown', function () {
+    pgUI.menu.on('#notification_toggle', 'shown', function () {
         pg_push_refresh();
     });
 }
@@ -3192,7 +3233,7 @@ function check_unread_notifications(refresh_type) {
 
 
                     //if notifications active, edit callback and there is no notifications, get it. fix a issue when last notification removed.
-                    if (pgUI.menu.isOpen('#notifications')) {
+                    if (pgUI.menu.isOpen('#notification_toggle')) {
                         if (refresh_type == 'editcallback_check') {
                             if ($('#notifications .menu-scroll-area .list-group li.software_notification').length <= 1) {
                                 get_notifications();
@@ -3206,7 +3247,7 @@ function check_unread_notifications(refresh_type) {
                     // this check system dont get notifications we dont wanna more traffic.
                     if ($unreads > 0) {
                         // if notification view menu is active than we also get notifications and update all but we dont set notifications readed, because maybe sceen is forgetten and user close and go we be sure to readed.
-                        if (pgUI.menu.isOpen('#notifications')) {
+                        if (pgUI.menu.isOpen('#notification_toggle')) {
                             if ($unreads > $unreadsCallback && refresh_type != 'editcallback_check') {
                                 get_notifications();
                             }
@@ -7649,7 +7690,7 @@ function bindPageRenameRedirect(ids) {
 
             // Element-specific properties
             const props = document.createElement('div');
-            props.style.cssText = 'background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;padding:10px;font-size:13px;';
+            props.style.cssText = 'background:var(--pg-bg-1);border:1px solid var(--pg-border-color);border-radius:6px;padding:10px;font-size:13px;';
 
             const title = document.createElement('div');
             title.style.cssText = 'font-weight:600;margin-bottom:8px;text-transform:capitalize;';
@@ -7705,7 +7746,7 @@ function bindPageRenameRedirect(ids) {
                 // Product image field: src is resolved dynamically per product — no URL editing
                 if (el.field === 'product_image') {
                     const note = document.createElement('div');
-                    note.style.cssText = 'margin-top:6px;font-size:12px;color:#6c757d;padding:4px 0;';
+                    note.style.cssText = 'margin-top:6px;font-size:12px;color:var(--pg-fg-2);padding:4px 0;';
                     note.innerHTML = `<i class="bi bi-image me-1"></i>${pgLang('Product Image')} <span class="fg-secondary fst-italic">(${pgLang('Dynamic (changes per product)')})</span>`;
                     props.appendChild(note);
                     this.panel.appendChild(props);
@@ -7768,7 +7809,7 @@ function bindPageRenameRedirect(ids) {
         _buildLabelSizePanel() {
             const lbl = this.template.label;
             const div = document.createElement('div');
-            div.style.cssText = 'background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;padding:10px;font-size:13px;';
+            div.style.cssText = 'background:var(--pg-bg-1);border:1px solid var(--pg-border-color);border-radius:6px;padding:10px;font-size:13px;';
             div.innerHTML = `<div style="font-weight:600;margin-bottom:8px;">${pgLang('Label Size')}</div>`;
             div.appendChild(this._fieldRow(pgLang('Width (mm)'), 'number', lbl.width, v => { lbl.width = +v; this._applyCanvasSize(); this.render(); this._fireChange(); }, 1));
             div.appendChild(this._fieldRow(pgLang('Height (mm)'), 'number', lbl.height, v => { lbl.height = +v; this._applyCanvasSize(); this.render(); this._fireChange(); }, 1));
@@ -7796,7 +7837,7 @@ function bindPageRenameRedirect(ids) {
             lbl.textContent = label;
             const inp = document.createElement('input');
             inp.type = type; inp.value = value;
-            inp.style.cssText = 'flex:1;min-width:0;height:24px;border:1px solid #ced4da;border-radius:4px;padding:0 4px;font-size:12px;';
+            inp.style.cssText = 'flex:1;min-width:0;height:24px;border:1px solid var(--pg-border-color);border-radius:4px;padding:0 4px;font-size:12px;background:var(--pg-bg-body);color:var(--pg-fg-body);';
             if (step) inp.step = step;
             inp.addEventListener('input', () => onChange(inp.value));
             if (type === 'color') inp.addEventListener('change', () => onChange(inp.value));
@@ -7811,7 +7852,7 @@ function bindPageRenameRedirect(ids) {
             lbl.style.cssText = 'flex:0 0 90px;font-size:12px;';
             lbl.textContent = label;
             const sel = document.createElement('select');
-            sel.style.cssText = 'flex:1;min-width:0;height:24px;border:1px solid #ced4da;border-radius:4px;padding:0 4px;font-size:12px;';
+            sel.style.cssText = 'flex:1;min-width:0;height:24px;border:1px solid var(--pg-border-color);border-radius:4px;padding:0 4px;font-size:12px;background:var(--pg-bg-body);color:var(--pg-fg-body);';
             options.forEach(o => {
                 const opt = document.createElement('option');
                 opt.value = o; opt.textContent = o;
@@ -8493,8 +8534,14 @@ function pg_background_calls_allowed() {
         };
 
         var container = ensureToastContainer();
+        // An open dialog's backdrop would cover a body-level toast: the
+        // container goes into the top dialog until it hides.
+        if (window.pgUI && pgUI.hostLayer) {
+            pgUI.hostLayer(container);
+        }
         var el = document.createElement('div');
-        el.className = 'toast align-items-center text-bg-' + variant + ' border-0';
+        // Bootstrap 6 has no text-bg-*: the fill and its ink are two classes.
+        el.className = 'toast align-items-center bg-' + variant + ' fg-contrast-' + variant + ' border-0';
         el.setAttribute('role', variant === 'danger' ? 'alert' : 'status');
         el.setAttribute('aria-live', variant === 'danger' ? 'assertive' : 'polite');
         el.setAttribute('aria-atomic', 'true');
@@ -8504,7 +8551,7 @@ function pg_background_calls_allowed() {
                     '<i class="bi ' + iconMap[variant] + ' me-3" aria-hidden="true"></i>' +
                     escapeHtml(message) +
                 '</div>' +
-                '<button type="button" class="btn-close fg-white me-3 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>' +
+                '<button type="button" class="btn-close me-3 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>' +
             '</div>';
         container.appendChild(el);
 
@@ -8587,6 +8634,80 @@ function pg_background_calls_allowed() {
         });
     };
 
+    // Wrappers that lay the field and its add-ons out in one row (no wrap): an
+    // error message inside one squeezes the field to a sliver, so it goes
+    // after the wrapper.
+    var PG_FEEDBACK_WRAPPERS = '.input-group, .form-adorn, .chip-input, .switch';
+
+    function pgIsFeedback(node) {
+        return !!(node && node.classList && node.classList.contains('invalid-feedback'));
+    }
+
+    // Puts an invalid field's error message where it can be read: right after
+    // the field, or after the row wrapper holding it (a switch inside a
+    // .form-field: at the end of the .form-field). A message liveform printed
+    // after the field is moved there; one is made from errs (field name ->
+    // text) when the page has none. Runs for the output_errors() inline call
+    // and again on DOMContentLoaded, so a message already in place is kept
+    // and never doubled.
+    function pgPlaceInlineFeedback(el, errs) {
+        if (el.dataset.pgFeedbackInjected === '1') return;
+
+        var wrapper = el.closest ? el.closest(PG_FEEDBACK_WRAPPERS) : null;
+        var field = (wrapper && wrapper.classList.contains('switch') && wrapper.closest) ? wrapper.closest('.form-field') : null;
+        var own = pgIsFeedback(el.nextElementSibling) ? el.nextElementSibling : null;
+        var ownMovable = !!(own && own.classList.contains('pg-inline-feedback'));
+        var placed = null;
+
+        function put(feedback) {
+            if (field) {
+                field.appendChild(feedback);
+            } else if (wrapper) {
+                wrapper.insertAdjacentElement('afterend', feedback);
+            } else {
+                el.insertAdjacentElement('afterend', feedback);
+            }
+        }
+
+        if (wrapper) {
+            placed = field ? field.lastElementChild : wrapper.nextElementSibling;
+            if (!pgIsFeedback(placed) || placed === own) placed = null;
+        }
+
+        if (placed) {
+            if (ownMovable) own.remove();
+            el.dataset.pgFeedbackInjected = '1';
+            return;
+        }
+
+        if (own) {
+            // A static message of the page's own stays where the page put it.
+            if (wrapper && ownMovable) put(own);
+            el.dataset.pgFeedbackInjected = '1';
+            return;
+        }
+
+        if (!errs) return;
+        var name = el.getAttribute('name');
+        if (!name) return;
+        // Strip [] suffix used for array-valued inputs
+        var key = name.replace(/\[\]$/, '');
+        var msg = errs[name] || errs[key];
+        if (!msg) return;
+
+        var feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback d-block pg-inline-feedback';
+        feedback.textContent = msg;
+        var fid = el.id || ('pg-field-' + Math.random().toString(36).slice(2, 8));
+        if (!el.id) el.id = fid;
+        feedback.id = fid + '-feedback';
+        if (!el.hasAttribute('aria-describedby')) {
+            el.setAttribute('aria-describedby', feedback.id);
+        }
+        put(feedback);
+        el.dataset.pgFeedbackInjected = '1';
+    }
+
     // Auto-injectors: aria-invalid for .is-invalid fields and required-marker on labels.
     // Runs after DOM is ready and once on Bootstrap form re-renders aren't expected here.
     function pgInjectAriaAndRequiredMarkers(root) {
@@ -8599,32 +8720,7 @@ function pg_background_calls_allowed() {
         invalids.forEach(function (el) {
             if (!el.hasAttribute('aria-invalid')) el.setAttribute('aria-invalid', 'true');
 
-            // Faz 3c: inline per-field feedback from window.__pgFieldErrors map
-            var errs = window.__pgFieldErrors;
-            if (!errs || el.dataset.pgFeedbackInjected === '1') return;
-            var name = el.getAttribute('name');
-            if (!name) return;
-            // Strip [] suffix used for array-valued inputs
-            var key = name.replace(/\[\]$/, '');
-            var msg = errs[name] || errs[key];
-            if (!msg) return;
-            // Avoid duplicate injection if the page already renders an invalid-feedback sibling
-            var sibling = el.nextElementSibling;
-            if (sibling && sibling.classList && sibling.classList.contains('invalid-feedback')) {
-                el.dataset.pgFeedbackInjected = '1';
-                return;
-            }
-            var feedback = document.createElement('div');
-            feedback.className = 'invalid-feedback d-block pg-inline-feedback';
-            feedback.textContent = msg;
-            var fid = el.id || ('pg-field-' + Math.random().toString(36).slice(2, 8));
-            if (!el.id) el.id = fid;
-            feedback.id = fid + '-feedback';
-            if (!el.hasAttribute('aria-describedby')) {
-                el.setAttribute('aria-describedby', feedback.id);
-            }
-            el.insertAdjacentElement('afterend', feedback);
-            el.dataset.pgFeedbackInjected = '1';
+            pgPlaceInlineFeedback(el, window.__pgFieldErrors);
         });
 
         // Faz 4a: auto-bind <label> elements that have no `for` attribute to a
@@ -9323,6 +9419,18 @@ function pgBindTitlePopovers(scope) {
 
 
 /**
+ * Set .show on a switcher's plain .collapse section together with its display.
+ *
+ * Bootstrap 6 hides `.collapse:not(.show)` with display:none and block-size:0
+ * outside any layer, so an inline display alone leaves the section 0 px high.
+ * A callout (.collapse.popover) keeps its own .show toggle.
+ */
+function pgCollapseSwitcherShow(target, shown) {
+    $(target).filter('.collapse:not(.popover)').toggleClass('show', !!shown);
+}
+
+
+/**
  * Draw every collapse pair in the state its own control is in.
  *
  * The controls themselves are driven by two delegated listeners in the ready
@@ -9344,6 +9452,7 @@ function pgSyncCollapseSwitchers(scope) {
         }
 
         $(target).toggle(returned);
+        pgCollapseSwitcherShow(target, returned);
 
         if ($(target).hasClass('popover')) {
             $(target).toggleClass('show');

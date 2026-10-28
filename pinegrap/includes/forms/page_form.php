@@ -738,7 +738,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
     }
 
     // The Schema author choice of the form's record pages, drawn only once
-    // the 11.0.51 column is there.
+    // the 11.0.52 column is there.
     $custom_form_schema_author_rows = '';
 
     if (pg_blogposting_author_setting_ready()) {
@@ -2051,7 +2051,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="popover-body">
                         <div class="row">
                             <div class="col-12 md:col-12 my-1">
-                                <label for="update_address_book_address_type_page_id" class="form-label">' . lang('Quiz Pass Percentage') . '</label>
+                                <label for="custom_form_quiz_pass_percentage" class="form-label">' . lang('Quiz Pass Percentage') . '</label>
                                 <label class="form-control form-adorn form-adorn-end">
                                     <span class="form-adorn-text" aria-hidden="true">%</span>
                                     <input value="' . h($custom_form_properties['quiz_pass_percentage'] ?? '') . '" type="text" name="custom_form_quiz_pass_percentage" id="custom_form_quiz_pass_percentage" maxlength="3" class="form-ghost" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
@@ -3082,7 +3082,7 @@ function pg_page_form_type_properties_from_post($page_type, $page_id)
                 'pretty_urls' => $field('custom_form_pretty_urls', 0)
             );
 
-            // Written only once the 11.0.51 column is there: every key here
+            // Written only once the 11.0.52 column is there: every key here
             // becomes a column of the save query.
             if (pg_blogposting_author_setting_ready()) {
                 $properties['schema_author'] = pg_blogposting_author_setting_value($field('custom_form_schema_author'), $field('custom_form_schema_author_field_id'));

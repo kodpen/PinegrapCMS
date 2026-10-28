@@ -1268,7 +1268,7 @@ function pg_og_default_image()
 
 /**
  * Whether custom_form_pages carries the Schema author choice (2026.11.0,
- * 11.0.51). Files land before the upgrade runs, so the column is probed
+ * 11.0.52). Files land before the upgrade runs, so the column is probed
  * before it is read or written.
  */
 function pg_blogposting_author_setting_ready()
@@ -1973,17 +1973,24 @@ function pg_page_canonical_href($stored, $base)
  * A page closed to search engines says only that (noindex, with follow or
  * nofollow): the other directives describe how an indexed page is shown,
  * and a page out of the index shows nothing. Otherwise noarchive and
- * max-snippet are written when the page asks for them; nofollow alone is
- * never written (page-noindex-switch).
+ * max-snippet are written when the page asks for them, and
+ * max-image-preview:large when the site allows large image previews
+ * (config.max_image_preview_large); nofollow alone is never written
+ * (page-noindex-switch).
  *
  * @param bool            $noindex
  * @param bool            $nofollow
  * @param bool            $noarchive
  * @param int|string|null $max_snippet as stored: null or '' for none
+ * @param bool|null       $large_image_preview null reads the site setting
  * @return string
  */
-function pg_page_robots_content($noindex, $nofollow, $noarchive, $max_snippet)
+function pg_page_robots_content($noindex, $nofollow, $noarchive, $max_snippet, $large_image_preview = null)
 {
+    if ($large_image_preview === null) {
+        $large_image_preview = defined('MAX_IMAGE_PREVIEW_LARGE') && MAX_IMAGE_PREVIEW_LARGE;
+    }
+
     if ($noindex) {
         return 'noindex, ' . ($nofollow ? 'nofollow' : 'follow');
     }
@@ -1998,6 +2005,10 @@ function pg_page_robots_content($noindex, $nofollow, $noarchive, $max_snippet)
 
     if ($snippet['ok'] && ($snippet['value'] !== null)) {
         $directives[] = 'max-snippet:' . $snippet['value'];
+    }
+
+    if ($large_image_preview) {
+        $directives[] = 'max-image-preview:large';
     }
 
     return implode(', ', $directives);

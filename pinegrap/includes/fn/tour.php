@@ -353,7 +353,7 @@ function pg_tour_shell_head($toolbar = false)
             // drawer, above it a column, and the two are different enough to
             // be worth different words.
             function narrow() {
-                return (window.matchMedia) ? window.matchMedia("(max-width: 991.98px)").matches : (window.innerWidth < 992);
+                return (window.matchMedia) ? window.matchMedia("(max-width: 1023.98px)").matches : (window.innerWidth < 1024);
             }
 
             function drawer() { return document.getElementById("menu_mode_toggle"); }

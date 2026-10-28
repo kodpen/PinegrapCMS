@@ -19,13 +19,13 @@ description: A page's own canonical address and noarchive / max-snippet (page.ca
 - `pg_tr_render_finalize()` reads the canonical link to know the page (alternates, index verdict). When the head names another address, `get_page_content()` keeps the own one in `pg_page_own_url()` (reset on every draw that is not an e-mail) and the language pass asks there first. A same-host override gets the language prefix like any link; another host is left alone.
 
 ## How are the robots directives written?
-- `pg_page_robots_content()`: noindex wins and says only `noindex, follow|nofollow`; otherwise `noarchive`, `max-snippet:N`; '' writes no tag. For every address the page draws, items included; spliced before `</head>` when the placeholder is gone, like noindex.
+- `pg_page_robots_content()`: noindex wins and says only `noindex, follow|nofollow`; otherwise `noarchive`, `max-snippet:N`, then the site's `max-image-preview:large` (`robots-large-image-preview.md`); '' writes no tag. For every address the page draws, items included; spliced before `</head>` when the placeholder is gone, like noindex.
 
 ## Who edits them, and where?
 - `edit_page.php` (classic pages; a visual page redirects to the designer), SEO card. Hidden `seo_extras=1` says the form carried the three; a refused value goes back as typed (`mark_error` + `assign_field_value`) and nothing is written.
 - Visual designer: Settings > Search Engines > Indexing (`designer_screen.php`). Keys `page_canonical_url`, `page_noarchive`, `page_max_snippet` are in `_PG_PAGE_FIELDS` and every page literal (a missing key is read back as '' and wipes the value). `pg_designer_save_page()` refuses in its dry run and writes through `$c_extra`, which now takes NULL, only when sent. Every role that may edit the title.
 - JS twin: `_sdCanonicalCheck()` / `_sdMaxSnippetCheck()` mirror the PHP checks; change both together.
-- Unicode: both trim Unicode white space and zero-width characters (U+00A0, U+FEFF, U+200B…) at the ends and refuse `\p{Z}` / `\p{Cf}` inside (`chars`); a port above 65535 or not a number is `scheme` in both. `pg_page_canonical_href()` re-checks a stored value. Before PR #1112 (issue #861) `…/urun` + U+00A0 printed as `…/urun%C2%A0`. Tests compare PHP and JS on one list.
+- Unicode: both trim Unicode white space and zero-width characters (U+00A0, U+FEFF, U+200B…) at the ends and refuse `\p{Z}` / `\p{Cf}` inside (`chars`); a port above 65535 or not a number is `scheme` in both. `pg_page_canonical_href()` re-checks a stored value. Before PR #1112 `…/urun` + U+00A0 printed as `…/urun%C2%A0`.
 - Copied by duplicate page, duplicate design and the designer's tab copies; part of a revision's settings.
 
 ## What is not covered yet?

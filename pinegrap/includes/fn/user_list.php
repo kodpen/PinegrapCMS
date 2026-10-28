@@ -486,13 +486,13 @@ function pg_user_list_names_cell($names, $icon)
     $items = '';
 
     foreach ($names as $name) {
-        $items .= '<li><span class="menu-text badge fg-black fw-light py-3" >' . $name . '</span></li>';
+        $items .= '<li><span class="menu-text badge fg-body fw-light py-3" >' . $name . '</span></li>';
     }
 
     return pg_list_cell(
         '<div class="row row-cols-2 align-middle">
             <div class="pg-menu-wrap col">
-                <button type="button" class="m-1 btn btn-sm p-1 no-popover pg-menu-caret" data-bs-auto-close="outside" data-bs-toggle="menu" aria-expanded="false"><span class="material-icons d-inline">' . $icon . '</span></button>
+                <button type="button" class="m-1 btn btn-sm p-1 no-popover pg-menu-caret" data-bs-auto-close="outside" data-bs-strategy="fixed" data-bs-toggle="menu" aria-expanded="false"><span class="material-icons d-inline">' . $icon . '</span></button>
                 <ul class="menu">' . $items . '</ul>
             </div>
         </div>',

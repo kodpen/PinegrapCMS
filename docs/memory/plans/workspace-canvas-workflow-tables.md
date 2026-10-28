@@ -22,9 +22,9 @@ description: Plan (2026-10-23, S1 #1708, S2 #1858, S2b #1987, question 2 open): 
 5. T6 CSV, note-table import; JSON starters: contact pipeline, checklist.
 - Schema (ask first): T1; `upgrade_2026_11_0_<topic>()`, next free Workspace label, `get_tables()`.
 
-## Open questions (recommendation)
+## Which questions are answered?
 1. Answered (owner, 2026-10-26, #1708): b, staff on their own team devices session (`'mcp' => false`), connected apps a change card (S2b); an action runs as its creator (`workflow/decisions-made-product.md`).
-2. Admins on personal tables: (a) never, like notes, (b) board holders → a. Owner deleted or `ws_profiles.excluded`: tables stay invisible, their flows pause.
+2. Answered (#2424): administrators see a personal table only through a share, like notes (a). Owner deleted or `ws_profiles.excluded`: tables stay invisible, their flows pause.
 
 ## Where to start?
 - T1 needs the owner's schema approval first.

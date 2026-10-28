@@ -1,6 +1,6 @@
 ---
 name: erp-parasut-open-work
-description: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three owner questions, small fixes; where to start
+description: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), small fixes; where to start
 ---
 
 ## Where does it stand?
@@ -19,10 +19,10 @@ description: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#16
   - #1682: the refusal texts.
 - How: as the "How was it checked live?" sections of the `erp-parasut-*` files did it. Run the branch code against the dev database, with dev's `pinegrap/data/config.php` copied over temporarily and never committed. Ledger every record created, delete them all at the end, and compare the demo with a baseline taken first. Dev orders 438-444 (contact 140) are the test orders: record and restore every column a run changes.
 
-## What does the owner decide?
-1. **Payment at Paraşüt.** Nothing records an order's payment on its Paraşüt sales invoice, so it stays an open receivable there. v4 takes `POST sales_invoices/{id}/payments` with a cash or bank account (`GET accounts` lists them). That needs a setting (a schema column) and `registry.php`, which is the owner's area.
-2. **A reused buyer card** (the driver, and the legacy buttons since #1543) keeps its old address and e-mail. Should each invoice update it?
-3. **A `sent` e-Invoice whose conversion failed** cannot be cancelled from the ERP. #1626 left that out as unsafe: `erp/erp-parasut-sent-cancel.md`.
+## What was decided? (#2440, #2441, #2442)
+1. **Payment at Paraşüt:** a "Payment account" pick on the Paraşüt card from `GET accounts` (a non-VARCHAR `config` column, empty = today); when set, the order's paid moment posts `POST sales_invoices/{id}/payments`; verified live when a demo key comes.
+2. **A reused buyer card** (the driver, and the legacy buttons since #1543): only its empty fields are filled; a value it has is never overwritten.
+3. **A `sent` e-Invoice whose conversion failed** keeps refusing Cancel (first Ask After the Status; `erp/erp-parasut-sent-cancel.md`); reconsidered once the live round confirms the #2025 guard.
 
 ## Which small fixes are left? (one PR each, unit tests)
 - #1628: done in #2032 (the deleted ERP record and the pre-2026.4.4 "Sent" flag: `erp-parasut-legacy-order-gates-limits.md`).

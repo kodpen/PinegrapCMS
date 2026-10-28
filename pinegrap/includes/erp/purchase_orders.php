@@ -76,7 +76,7 @@ function erp_purchase_order_statuses()
         'sent' => array(lang('Sent to the supplier'), 'info'),
         'partial' => array(lang('Partly received'), 'warning'),
         'received' => array(lang('Received in full'), 'success'),
-        'cancelled' => array(lang('Cancelled'), 'dark'),
+        'cancelled' => array(lang('Cancelled'), 'inverse'),
     );
 }
 

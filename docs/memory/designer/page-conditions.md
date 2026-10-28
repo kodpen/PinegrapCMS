@@ -11,7 +11,7 @@ module: page_facts
 ## What is the page's record? (W18b)
 - The record the address opens: the product of a product page, the event of an event page, the record of a form record page. Its widget publishes it while it draws (`pg_page_record_publish()` in the catalog item view, the event view, the form item view; the first one counts). Tokens (`pg_page_record_tokens()`): `__record_found` ('1' or '') and `__record` + each allow-listed token of [[widget-entity-fields]] (`__record__is_free_shipping`, `__record__event_reservations_open`, `__record__quiz_score`); no record: every one ''.
 - `get_page_content.php` starts each draw with no record and gives the earlier slot back after (`pg_page_record_begin()` / `_end()`), so an e-mail drawn meanwhile keeps neither's.
-- Conditions only for now; showing the record's values outside the widget is W17. The reading of the owner's "the page's own record" is the coordinator's; the owner is asked to confirm (#2334).
+- Its values printed outside the widget: [[page-record-values]] (W17).
 
 ## How is it drawn?
 - `_render_tree_node()` outside a widget scope writes `<!--pg-pf:ID:SPEC-->` node `<!--/pg-pf:ID-->` (`pg_page_fact_wrap()`, `includes/fn/page_facts.php`): SPEC is the rows as URL-safe base64 JSON, ID twelve hex characters of a hash of SPEC and the node, so a body drawn again from the same tree is the same bytes and the stored body and a shared component drawn now never share an id.
@@ -29,7 +29,7 @@ module: page_facts
 - Bind Data's "Show only when a value…" rows (`_sdConditionRows()`) on any element outside a widget, in a section "Show by the visit"; the list is `SD_PAGE_FACTS` (= `pg_page_fact_tokens()`, `tests/page_facts_test.php`) and, when the page holds a detail widget, the record's (`_sdPageRecordOptions()`: found, then "Record: <value>" of the kinds present). A hand-written row on another value is listed and the note says the element always shows. The canvas names the condition with the chip and keeps drawing the element.
 
 ## What is left?
-- Showing the record's values outside the widget (W17); facts inside a widget's tree; a canvas state for the facts.
+- Facts inside a widget's tree; a canvas state for the facts.
 
 ## Tests?
 - `tests/page_facts_test.php`.
