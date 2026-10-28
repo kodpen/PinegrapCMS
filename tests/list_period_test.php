@@ -131,3 +131,14 @@ function test_list_period_every_list_screen_steps_from_the_last_shown_month()
 		pg_assert_contains('pg_list_period_heading(', file_get_contents(dirname(__DIR__) . '/pinegrap/' . $screen), $screen . ' writes the range in the site date order');
 	}
 }
+
+function test_list_period_date_filters_say_start_and_end()
+{
+	// "From" / "To" also name e-mail senders and recipients; one Turkish
+	// value cannot fit both.
+	foreach (array('view_orders.php', 'view_log.php', 'view_audit_log.php', 'erp_profit.php', 'erp_expenses.php', 'erp_accountant.php', 'erp_export.php') as $screen) {
+		$source = file_get_contents(dirname(__DIR__) . '/pinegrap/' . $screen);
+
+		pg_assert_false(strpos($source, "lang('From')") !== false || strpos($source, "lang('To')") !== false, $screen . ' labels its date range Start / End');
+	}
+}
