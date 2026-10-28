@@ -4,13 +4,13 @@ description: Collection forms and field kinds (11.0.43, C2): the three columns, 
 ---
 
 ## What is stored?
-- `custom_form_pages.collection` (TINYINT, 0): the form is a collection; its records are items other forms' records point at. `form_fields.collection_kind` (VARCHAR(32), ''): `number`, `image` or `reference`; `form_fields.reference_page_id` (INT, 0): the form page a reference points into. Step `upgrade_2026_11_0_collections()` (11.0.43); owner's approval recorded in `plans/designer-collections-steps.md`.
+- `custom_form_pages.collection` (TINYINT, 0): the form is a collection; its records are items other forms' records point at. `form_fields.collection_kind` (VARCHAR(32), ''): `number`, `image`, `reference`, `product` or `page`; `form_fields.reference_page_id` (INT, 0): the form page a reference points into. Step `upgrade_2026_11_0_collections()` (11.0.43); owner's approval recorded in `plans/designer-collections-steps.md`.
 - VARCHAR, not ENUM, so a new kind needs no migration; `form_fields.type` is never altered (classic screens read it).
 - Every reader and writer probes `pg_coll_ready()` (all three columns): before the upgrade nothing changes.
 
 ## Where is the kind written?
 - The canvas is the record: `props._cf.kind` and `props._cf.ref` on the control (`_pg_cf_node_record()`), carried by `_pg_cf_controls()` as `kind` / `reference_page_id`, written by `pg_cf_sync_page_form()` on every design save. Not three-state: a control without `_cf.kind` writes ''. The legacy field screens and the API never set it.
-- `pg_coll_field_kind()` keeps a kind only on a type that can have it (`pg_coll_kinds()`; twin `_CF_KINDS`, a test compares them): number → text box, image → file upload, reference → text box, pick list, radio button, check box. A field changed to another type loses it.
+- `pg_coll_field_kind()` keeps a kind only on a type that can have it (`pg_coll_kinds()`; twin `_CF_KINDS`, a test compares them): number → text box, image → file upload, reference → text box, pick list, radio button, check box; product, page → pick list (C3c, the id is stored). A field changed to another type loses it.
 - `reference_page_id` is kept only for a reference and only while that page has a `custom_form_pages` row (`pg_coll_reference_target()`).
 - The collection flag is a form setting (`pg_cf_load_page_form_settings()` / `pg_cf_write_form_settings()`, key `collection`), the switch "Use as a collection" beside Pretty URLs.
 

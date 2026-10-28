@@ -19,7 +19,7 @@ description: Plan (collections half of designer-interactions-collections, steps 
 
 - **C3b — radio and check box references, image preview. Done, #2694** (`designer/collection-inputs.md`).
 
-- **C3c — product and page pickers.** New kinds `product` and `page` (VARCHAR needs no migration) in `pg_coll_kinds()` **and** its twin `_CF_KINDS` in `assets/js/style_designer.js` (a test compares them, so the step needs that file free); a pick list of products / pages held to them on the server.
+- **C3c — product and page pickers. Done, #2814:** new kinds `product` and `page` (VARCHAR needs no migration) in `pg_coll_kinds()` **and** its twin `_CF_KINDS` in `assets/js/style_designer.js` (a test compares them, so the step needs that file free); a pick list of products / pages held to them on the server.
 
 - **C4a — lists by kind. Done, #2709:** numeric sort for number; reference filter by address name or code, printing the record's label (`designer/collection-lists.md`). Image output already gets `pg_img_responsive_html()` (every widget's output).
 
@@ -38,4 +38,4 @@ description: Plan (collections half of designer-interactions-collections, steps 
 - Q4 `forms.publish_at` / `unpublish_at`: not added; the templates' `publish_date` field and live filter cover it.
 
 ## Where to start?
-- C1–C4a are merged. C3c (product and page kinds) and C4b both edit `assets/js/style_designer.js` (the `_CF_KINDS` twin; the `ref` default); claim C3c first once no open PR holds that file. C4b's product/page tokens follow C3c; C5 does not depend on them.
+- C1–C4a and C3c are done. Next is C4b (edits `assets/js/style_designer.js` for the `ref` default; claim it once no open PR holds that file); its product/page tokens read the ids C3c stores (`designer/collection-inputs.md`). C5 does not depend on it.
