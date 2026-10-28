@@ -11,7 +11,7 @@ description: Generated from the module field of the memory files: each includes/
 - `audit_view`: [[audit-trail-screen]]
 - `backup`: [[fn-module-errors-mail-backup-consent]]
 - `carrier_labels`: [[carrier-label-drivers]]
-- `classic_style_design`: [[classic-style-to-design]]
+- `classic_style_design`: [[classic-style-design-files]], [[classic-style-to-design]]
 - `collections`: [[collection-references]]
 - `comments`: [[comment-replies]], [[comment-thread-rules]], [[comment-thread-verify]], [[comments-moderation-counters]], [[comments-widget-pages]], [[designed-page-comment-names]], [[product-review-order]]
 - `config_text`: [[config-table-no-varchar]]
