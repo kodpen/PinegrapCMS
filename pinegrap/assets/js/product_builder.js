@@ -111,11 +111,14 @@
 
         /* SortableJS (assets/lib/sortablejs/), loaded by product_builder.php.
            A tile is dragged as soon as it moves: the grid wraps, so the drag
-           is on both axes. */
+           is on both axes. forceFallback keeps it on mouse events: the tiles
+           turn the native drag off (user-drag: none in product_builder.php),
+           and a native drag would also light up the upload drop area. */
         if (typeof Sortable !== 'undefined') {
             Sortable.create($container[0], {
                 draggable: '.item',
                 animation: 100,
+                forceFallback: true,
                 /* Otherwise a press on the remove button starts a sort, and
                    the click that was meant to delete the tile never lands.
                    preventOnFilter stays off so that click still goes through. */
