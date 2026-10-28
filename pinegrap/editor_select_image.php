@@ -825,7 +825,7 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
                 <input type="text" id="unsplash_query" class="form-control"
                     placeholder="' . lang('Search') . ' Unsplash..."
                     onkeydown="if(event.key===\'Enter\'){esiUnsplashSearch();}" />
-                <button class="btn btn-solid theme-primary" type="button" onclick="esiUnsplashSearch()">
+                <button class="btn btn-solid theme-primary" type="button" onclick="esiUnsplashSearch()" aria-label="' . h(lang('Search')) . '">
                     <i class="bi bi-search"></i>
                 </button>
             </div>
