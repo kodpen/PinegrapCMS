@@ -5522,19 +5522,13 @@ function pg_page_preview_tools($page_id, $style_id, $user, $send_to = null)
     $theme_url = $software . 'preview_theme.php?mode=preview&send_to=' . $send_to . $token . '&id=';
 
     // Only a designer edits a theme, and only a real one - the "none" theme
-    // has no file behind it. A system theme opens the theme designer, anything
-    // else its stylesheet.
+    // has no file behind it. Every theme, a system theme too, opens its
+    // stylesheet in the CSS editor.
     $edit_theme = '';
 
     if ($preview_theme_id && ($user['role'] < 2)) {
 
-        $is_system_theme = ((int) db_value(
-            "SELECT COUNT(id) FROM system_theme_css_rules WHERE file_id = '" . escape($preview_theme_id) . "' LIMIT 1")) > 0;
-
-        $edit_theme_url = $is_system_theme
-            ? ($software . 'theme_designer.php?id=' . urlencode($preview_theme_id) . '&send_to=' . $send_to
-                . '&clear_theme_designer_session=true&page_to_preview_id=' . $page_id)
-            : ($software . 'edit_theme_css.php?id=' . urlencode($preview_theme_id) . '&send_to=' . $send_to);
+        $edit_theme_url = $software . 'edit_theme_css.php?id=' . urlencode($preview_theme_id) . '&send_to=' . $send_to;
 
         $edit_theme = '<a class="pg_pi_btn pg_pi_btn_narrow" target="_parent" href="' . h($edit_theme_url) . '" title="' . h(lang('Edit Theme')) . '">&#9998;</a>';
     }
