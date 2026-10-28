@@ -1,6 +1,6 @@
 ---
 name: decisions-made-schema
-description: Decisions list, schema part: steps approved in advance (ENUM appends of payment methods and gateways in the 4.48 shape), the collections columns, the scheduled-action anchor mark
+description: Decisions list, schema part: steps approved in advance (ENUM appends in the 4.48 shape), the tables and columns approved on 2026-10-27 and 2026-10-28, who decides schema
 ---
 
 ## Which schema steps are approved in advance?
@@ -11,5 +11,10 @@ description: Decisions list, schema part: steps approved in advance (ENUM append
 - Collections (#2393, 11.0.43): `custom_form_pages.collection` TINYINT(1) UNSIGNED NOT NULL DEFAULT 0, `form_fields.collection_kind` VARCHAR(32) NOT NULL DEFAULT '', `form_fields.reference_page_id` INT UNSIGNED NOT NULL DEFAULT 0: pickers, lists, feeds, filters and the API find a collection and read a field's kind and target without loading the design tree; VARCHAR, not ENUM, so a new kind needs no migration. `record_revisions` (C7) is asked when its step comes.
 - Scheduled actions (#2396): `ws_scheduled_actions.anchor` VARCHAR(12) NOT NULL DEFAULT '' (`''` a plain action, `hidden` a flow's own trigger box, `converted` a former action run through a flow), added in the open version after the flows tables' steps; the same step marks today's hidden anchors (`flow_id <> 0`) with a re-runnable UPDATE. Filters stay plain SQL; a VARCHAR, so a later value needs no MODIFY.
 
-## Who decided these?
-- The architect, under the owner's rule of 2026-10-27 that only big architectural changes are asked (`workflow/architect.md`); the reasons are on the issues.
+- Team-device pairing (#2470, #1640): the table `api_device_pairings` (`id`, `app_id`, `user_id`, `code_hash` CHAR(64) UNIQUE, `created_timestamp`, `expires_timestamp`, `used_timestamp`, `device_id`, `created_ip` VARCHAR(45), index `user_id`) by `install_create_table()` in an `upgrade_to_2026_11_0()` sub-step on a free API label; the Application Access switch half may land first in its own PR. API expansion is approved by the architect (owner's standing rule, 2026-10-27).
+- Paraşüt payment account (#2440): one non-VARCHAR `config` column naming the collection account (empty = today's behaviour); when set, the order's paid moment posts a payment on its sales invoice.
+- Voice messages V3 (#2417): transcripts in `ws_voice`; a `ws_channels` column in the `ai_access` shape (private channels closed until an administrator allows), added in the V3 step.
+- SEO and record-page settings (#2471-#2475): three `config` columns (large image preview, site icon source, redirect to the main host) and two `custom_form_pages` columns (structured-data type, author source); the behaviour: `decisions-made-seo.md`.
+
+## Who decides schema?
+- The owner (CLAUDE.md fixed rule 5): the architect asks a schema question as a selectable list and records the answer (`workflow/architect.md`). The steps above were decided by the architect on 2026-10-27 under that day's rule and confirmed by the owner on 2026-10-28; the reasons are on the issues.
