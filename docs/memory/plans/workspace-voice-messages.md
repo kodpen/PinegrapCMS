@@ -1,6 +1,6 @@
 ---
 name: workspace-voice-messages
-description: Plan (2026-10-23): voice messages in the Workspace, a quick voice reply, transcripts the assistants read; V1-V3 done, V4a #2798, V4b #2815, V4c #PR
+description: Plan (2026-10-23): voice messages in the Workspace, a quick voice reply, transcripts the assistants read; V1-V3 done, V4a #2798, V4b #2815, V4c #2839
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -21,7 +21,7 @@ description: Plan (2026-10-23): voice messages in the Workspace, a quick voice r
 5. V4 assistants hear it, three PRs, each after the previous merges:
    - Done: V4a (#2798): `ws_voice_transcripts()`, `ws_voice_with_transcript()`; the transcript in Pinegrap AI's context and request (`ws_ai_channel_context()`, `ws_ai_heard_text()`, the MCP ask), `ws_api_claude_request_present()` (`message.transcript`), `ws_api_channel_context()` (`messages[].transcript`), recaps: workspace/workspace-voice-assistants.md.
    - Done: V4b (#2815): push (the line a voice message sends reads its transcript once written out, or "Voice message") and search (`ws_voice.transcript` found as its message, same reach rules).
-   - Done: V4c (#PR): a recording with typed tags (the mic kept while the box holds only tags; the tags ride the upload as the body) and a voice reply to an assistant's answer: the assistant is asked once the transcript is done (from `ws_voice_run()`), or with "[voice message, not transcribed]" when it failed or transcripts are off.
+   - Done: V4c (#2839): a recording with typed tags (the mic kept while the box holds only tags; the tags ride the upload as the body) and a voice reply to an assistant's answer: the assistant is asked once the transcript is done (from `ws_voice_run()`), or with "[voice message, not transcribed]" when it failed or transcripts are off.
 6. V5 (optional) answers read aloud by `speechSynthesis`; V6 a recording in a note (`ws_note_file`).
 
 ## Which questions are answered?
