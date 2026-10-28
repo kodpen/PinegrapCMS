@@ -566,30 +566,6 @@ $(document).ready(function () {
     });
 
 
-    // Default sortable for lists that opt in with the "pg-sortable" class and
-    // bring no sortable set-up of their own. The selector is deliberately not
-    // ".ui-sortable": jQuery UI puts that class on every container it has made
-    // sortable, so selecting it here would find the lists other screens
-    // configure themselves (dashboard widgets, product images, menu items) and
-    // overwrite their options after the fact.
-    $(".pg-sortable").sortable({
-        containment: "parent",
-        helper: 'clone',
-        dropOnEmpty: false,
-        delay: 300,
-        revert: '300',
-        animation: 1350,
-        axis: 'y',
-        swapThreshold: 1,
-        tolerance: 'pointer',
-        items: "a",
-        zIndex: 9999,
-        cursor: "move",
-        scroll: false,
-        update: function (event, ui) {
-        }
-    }).disableSelection();
-
     //classic Tooltips
     var classicTooltips = $('[data-bs-toggle="tooltip"]').each(function () {
         pgUI.tooltip.get(this, { placement: 'auto' });
@@ -2474,7 +2450,18 @@ function software_image_picker(properties) {
                     </div>');
 
             } else {
-                $('#software_image_picker_container [name="selected_images[]"][value="' + decodeURIComponent(properties.image_name) + '"]').closest('.item').effect("shake", { direction: "up left", times: 4, distance: 5 }, 1000);
+                // The image is already picked: shake its tile (four times,
+                // 5px, one second) instead of adding it again.
+                $('#software_image_picker_container [name="selected_images[]"][value="' + decodeURIComponent(properties.image_name) + '"]').closest('.item').each(function () {
+                    if (typeof this.animate === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                        var frames = [{ transform: 'none' }];
+                        for (var i = 0; i < 4; i++) {
+                            frames.push({ transform: 'translateX(-5px)' }, { transform: 'translateX(5px)' });
+                        }
+                        frames.push({ transform: 'none' });
+                        this.animate(frames, { duration: 1000, easing: 'ease-in-out' });
+                    }
+                });
             }
 
         }

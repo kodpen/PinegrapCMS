@@ -23,4 +23,3 @@ description: Inline light colours in panel markup and scripts (label designer, d
 
 ## What is left?
 - The `.pg-table-light` rule in `backend.src.css` (kept fixed at the switch to match v5) needs a PR with before/after screenshots.
-- The `.pg-sortable` block of `backend.src.js` (a later B12 slice).

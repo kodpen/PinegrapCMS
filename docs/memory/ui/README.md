@@ -124,6 +124,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-times-user-time-zone.md: Which time zone get_relative_time() and get_absolute_time() draw in (the person's or the site's, pg_time_in_user_zone()), and how stored zone names are read (pg_timezone_canonical(), old IANA links)
 - panel-top-bar-phone.md: Panel top bar (#header) below 768px: the logo item (li.pg-brand-item) and the page heading (.pg-navhead) are hidden, why, what stays, the test that keeps it
 - panel-validation-state.md: Invalid and valid fields in the panel on Bootstrap 6: why v6's own state was invisible, the panel rules on --pg-danger/--pg-success, focus ring, what stays on the bridge
+- panel-without-jquery-ui.md: The panel loads no jQuery UI (#2762): what is undefined on panel screens, what replaces each widget, the test that keeps it out, who still loads it
 - password-strength-js.md: pg_password_strength.js, the panel copy of validate_password_strength() and the Bootstrap 6 Strength meter it drives (#1698, #2211, installer #2274): scoring on and off, where it shows, tests
 - pg-chips.md: Chips fields (data-pg-chips) on Bootstrap 6 Chips since B9a (#2208): the box drawn after the hidden input, silent fill, change back into the input, the translated Remove label, init timing
 - pg-combobox-menu-instance.md: Why every Bootstrap 6 combobox logged "more than one instance per element" and built an unbound Menu on each arrow key, and the two guards in pg_fields.js that keep the console clean (#2520)
@@ -166,7 +167,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - short-link-shared-form.md: The short link create and edit screens share includes/forms/short_link_form.php: what it holds, what stays in the screens
 - site-log-paging.md: The Site Log (view_log.php) database view paged and searched on the server; the error_log view stays printed whole; what is left of issue #2054
 - site-page-toolbar-theme.md: The editor toolbar over a site page (toolbar.php in #software_toolbar): why its root stays light and its body takes the theme under Bootstrap 6, the unreadable dark toolbar it fixed (PR #2448)
-- sortable-init-pitfall.md: Drag-to-reorder in the panel: SortableJS set up per screen (welcome, product builder, menu tree), the jQuery UI .pg-sortable leftover, the global-sortable trap
+- sortable-init-pitfall.md: Drag-to-reorder in the panel: SortableJS set up per screen (welcome, product builder, menu tree), no shared or jQuery UI sortable, the global-sortable trap
 - state-shared-form.md: add_state.php and edit_state.php draw the state/province options card and read its posted values through includes/forms/state_form.php; what each screen keeps
 - step-rail.md: Numbered steps on panel screens: Bootstrap 6 .stepper (edit_offer cards, installer, ERP import), why every edit_offer item is .active, theme-reset on the cards, the workspace flow's own .pg-step rail
 - submitted-form-shared-form.md: The submitted form create and edit screens share includes/forms/submitted_form_form.php
