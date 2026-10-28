@@ -4,7 +4,7 @@ description: The panel loads no jQuery UI (#2762): what is undefined on panel sc
 ---
 
 ## What does the panel load?
-- `output_control_panel_header_includes()` loads jQuery without jQuery UI since #2762 (step B12 of the Bootstrap 6 plan). Every screen printed through `output_header()` or `output_header_secure()` has no `$().dialog()`, `.sortable()`, `.draggable()`, `.effect()`, `.datepicker()`, `.disableSelection()`, `$.ui` or `$.widget`.
+- `output_control_panel_header_includes()` loads jQuery without jQuery UI since #2762 (step B12 of the Bootstrap 6 plan). Before it the pickers, the timepicker add-on, the sortables (SortableJS), the layout-cell dialog and the theme designer entries left, one PR each; #2789 removed the last `.ui-*` / `#ui-*` rules from `backend.src.css`. Every screen printed through `output_header()` or `output_header_secure()` has no `$().dialog()`, `.sortable()`, `.draggable()`, `.effect()`, `.datepicker()`, `.disableSelection()`, `$.ui` or `$.widget`.
 - Bootstrap 6 has no jQuery plugins either, so `$().tooltip()` and `$().popover()` are undefined too (jQuery UI's `$.fn.tooltip` owned that name until #2762).
 
 ## What replaces each widget?
@@ -19,5 +19,6 @@ description: The panel loads no jQuery UI (#2762): what is undefined on panel sc
 
 ## What keeps it out?
 - `tests/bs6_jquery_ui_panel_test.php`: the header prints no `Jquery/ui/` file, and no PHP or JS file outside its site and theme designer list calls a jQuery UI widget chained off a call (`).dialog(`, `).effect(` …) or `$.ui` / `$.widget`. A new site renderer that uses jQuery UI joins the list.
+- The same test keeps `assets/css/backend.src.css` free of `.ui-*` / `#ui-*` selectors (comments ignored). The dashboard widget's grab cursor is welcome.php's own `.pg-widget-handle`.
 
 Related: docs/memory/ui/bootstrap-6.md, docs/memory/ui/pg-ui-adapter.md, docs/memory/ui/sortable-init-pitfall.md
