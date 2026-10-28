@@ -24,7 +24,7 @@ description: Panel steps P1-P11 of plans/datetime-picker.md: what each changes, 
 
 - P9 (L) done (#2867). Workspace fields through `pgDateField()`, drawn by a watcher; the control on every workspace screen and in the lazy record loader (`workspace/workspace-date-fields.md`).
 
-- P10 (M) Workspace modules: approvals, customer, recurrence, task_time, task_approval; rebuild bundle. After P9.
+- P10 (M) done (#2881). Workspace modules: approvals, customer, recurrence, task_time, task_approval; rebuild bundle. After P9.
 
 - P11 (S) done (#2854). Page schedule boxes and widget filter value boxes on the control (`ui/pg-date-stores.md`); `pgFields.refresh()` for values a script writes.
 

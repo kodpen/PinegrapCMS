@@ -22,6 +22,6 @@ description: Plan (decided in #2693, 2026-10-28): one date-and-time control for 
 - Each step about 1,000 product lines; claim as `[plan:datetime-picker] P<n> — <topic>`.
 
 ## Where to start?
-- P1-P6 and P8 are done (#2737, #2757, #2785, #2810, #2833, #2853, #2832): every engine mode exists (`ui/pg-datepicker.md`, `ui/pg-date-stores.md`). Next, after the claim check (`CLAUDE.md`, Claim work): P9 or P11, whichever no open PR holds; P7 last before P11, P10 after P9.
+- The panel is done: P1-P11 merged (P7 #2862, P9 #2867, P10 #2881 last). Next, after the claim check (`CLAUDE.md`, Claim work): S1 (`datetime-picker-site-steps.md`); F1 is the Flows team's.
 
 Related: docs/memory/plans/datetime-picker-steps.md, docs/memory/plans/datetime-picker-site-steps.md, docs/memory/ui/pg-datepicker.md, docs/memory/ui/pg-date-stores.md, docs/memory/ui/pg-field-wrappers.md, docs/memory/workflow/decisions-made-panel.md
