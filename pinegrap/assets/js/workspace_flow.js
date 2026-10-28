@@ -130,7 +130,9 @@
         approval: { icon: 'bi-patch-check', name: 'fl_kind_approval', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
         condition: { icon: 'bi-signpost-split', name: 'fl_kind_condition', into: true, out: ['yes', 'no'] },
         delay: { icon: 'bi-hourglass', name: 'fl_kind_delay', into: true, out: ['done'] },
-        end: { icon: 'bi-flag', name: 'fl_kind_end', into: true, out: [] }
+        end: { icon: 'bi-flag', name: 'fl_kind_end', into: true, out: [] },
+        // A value box: no arrows, its values reach the boxes through threads.
+        constants: { icon: 'bi-tag', name: 'fl_kind_constants', into: false, out: [], pure: true }
     };
 
     // What an arrow is taken on, as its box says it.
@@ -178,6 +180,7 @@
         ['change', 'bi-pencil-square', 'fl_kind_change'],
         ['lead', 'bi-person-vcard', 'fl_kind_lead'],
         ['approval', 'bi-patch-check', 'fl_kind_approval'],
+        ['constants', 'bi-tag', 'fl_kind_constants'],
         ['end', 'bi-flag', 'fl_add_end']
     ];
 
@@ -447,6 +450,12 @@
 
     function metaOf(node) {
         var config = node.config || {};
+
+        if (node.kind === 'constants') {
+            var names = (config.rows || []).map(function (row) { return row.key; }).filter(Boolean);
+
+            return names.length ? names.join(', ') : t('fl_constants_none');
+        }
 
         if (node.kind === 'manual') {
             var subject = (FL.subjects || []).filter(function (item) { return item.key === config.subject; })[0];
@@ -3015,6 +3024,17 @@
             }
         };
 
+        // A value box gives its rows (ws_flow_constants_outputs()).
+        if (kindOf(node).pure) {
+            (node.config.rows || []).forEach(function (row) {
+                if (/^[a-z_][a-z0-9_]{0,31}$/.test(row.key || '')) {
+                    add('node.' + node.id + '.', { key: row.key, label: row.key, type: (row.type === 'number') ? 'number' : 'text' });
+                }
+            });
+
+            return list;
+        }
+
         if (!kindOf(node).into) {
             ((outputs.kinds || {})[node.kind] || []).forEach(function (item) { add('trigger.', item); });
 
@@ -3072,9 +3092,11 @@
         var before = boxesBefore(into, node.id);
 
         orderedNodes().forEach(function (other) {
-            var start = !kindOf(other).into;
+            // A value box gives to every box, read whenever it is.
+            var pure = !!kindOf(other).pure;
+            var start = !kindOf(other).into && !pure;
 
-            if ((other.id === node.id) || (!start && !before[other.id])) {
+            if ((other.id === node.id) || (!start && !pure && !before[other.id])) {
                 return;
             }
 
@@ -3085,7 +3107,7 @@
             }
 
             sure = sure || sureBefore(maps);
-            groups.push({ node: other, values: values, skipped: !start && !!sure[node.id] && !sure[node.id][other.id] });
+            groups.push({ node: other, values: values, skipped: !start && !pure && !!sure[node.id] && !sure[node.id][other.id] });
         });
 
         return groups;
@@ -3613,6 +3635,10 @@
 
         if (node.kind === 'delay') {
             delayFields(box, node);
+        }
+
+        if (node.kind === 'constants') {
+            constantsFields(box, node);
         }
 
         if (node.kind === 'start_flow') {
@@ -4269,6 +4295,85 @@
 
     // How many times a step box tries again on its own after a failure,
     // and the minutes before each try (ws_flow_retry_normalize()).
+    // A constants box's rows: a name (the key a thread reads), a type and a
+    // value each; a name keeps to small letters, digits and _ as it is typed.
+    function constantsFields(box, node) {
+        var config = node.config;
+        var list = el('div', 'wsf-constants');
+        var redraw = function () {
+            if (state.outline) {
+                drawOutline();
+            } else {
+                drawSettings();
+            }
+        };
+
+        config.rows = Array.isArray(config.rows) ? config.rows : [];
+        list.setAttribute('role', 'group');
+        list.setAttribute('aria-label', t('fl_constants_rows'));
+
+        config.rows.forEach(function (row, index) {
+            var line = el('div', 'wsf-constant');
+            var name = textInput(row.key, 32, function (value) {
+                var clean = value.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').slice(0, 32);
+
+                row.key = clean;
+
+                if (name.value !== clean) {
+                    name.value = clean;
+                }
+
+                refreshNode(node);
+            });
+            var type = K.select([['text', t('fl_constants_text')], ['number', t('fl_constants_number')]], (row.type === 'number') ? 'number' : 'text');
+            var value = textInput(row.value, 500, function (text) {
+                row.value = text;
+                refreshNode(node);
+            });
+            var remove = K.button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('fl_constants_remove', row.key || String(index + 1)));
+
+            name.placeholder = t('fl_constants_name');
+            name.setAttribute('aria-label', t('fl_constants_name'));
+            name.setAttribute('data-refocus', 'constant-' + node.id + '-' + index);
+            type.setAttribute('aria-label', t('fl_constants_type'));
+            type.addEventListener('change', function () {
+                row.type = type.value;
+                refreshNode(node);
+            });
+            value.placeholder = t('fl_constants_value');
+            value.setAttribute('aria-label', t('fl_constants_value'));
+            value.inputMode = (row.type === 'number') ? 'decimal' : 'text';
+            remove.addEventListener('click', function () {
+                config.rows.splice(index, 1);
+                state.refocus = 'constants-add-' + node.id;
+                refreshNode(node);
+                redraw();
+            });
+
+            line.appendChild(name);
+            line.appendChild(type);
+            line.appendChild(value);
+            line.appendChild(remove);
+            list.appendChild(line);
+        });
+
+        box.appendChild(el('div', 'form-label small fw-semibold', t('fl_constants_rows')));
+        box.appendChild(list);
+
+        var add = K.button('btn btn-sm btn-outline theme-secondary mb-5', t('fl_constants_add'), 'bi-plus-lg');
+
+        add.setAttribute('data-refocus', 'constants-add-' + node.id);
+        add.disabled = config.rows.length >= ((FL.limits && FL.limits.constants) || 20);
+        add.addEventListener('click', function () {
+            config.rows.push({ key: '', type: 'text', value: '' });
+            state.refocus = 'constant-' + node.id + '-' + (config.rows.length - 1);
+            refreshNode(node);
+            redraw();
+        });
+        box.appendChild(add);
+        box.appendChild(el('p', 'small fg-secondary', t('fl_constants_help')));
+    }
+
     function retryFields(box, node) {
         var retry = (FL.steps || {}).retry || {};
 
@@ -5414,6 +5519,8 @@
             config = { target_id: 0, delay: 0 };
         } else if (kind === 'change') {
             config = { record: '', action: 'update', id: 0, fields: {} };
+        } else if (kind === 'constants') {
+            config = { rows: [{ key: '', type: 'text', value: '' }] };
         } else if (kind === 'lead') {
             config = { private: false, user_ids: [] };
         } else if (kind === 'condition') {

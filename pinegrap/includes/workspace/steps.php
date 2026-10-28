@@ -1063,7 +1063,7 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         return;
     }
 
-    $values = ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
+    $values = ws_flow_pure_values($graph) + ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
         WHERE run_id = '" . (int) $run['id'] . "' AND status IN ('done', 'failed', 'skipped')"));
     $context = ws_flow_run_context($run);
     $values[WS_STEP_TRIGGER] = ws_step_trigger_values_for($owner, $context);
@@ -1186,8 +1186,8 @@ function ws_flow_box_try($viewer, $flow, $data)
     }
 
     // The values of the boxes a run of the person's choice has settled; a
-    // box it has not reached gives none.
-    $values = array();
+    // box it has not reached gives none. The value boxes give theirs always.
+    $values = ws_flow_pure_values($graph);
     $run_id = (int) ($data['run_id'] ?? 0);
 
     if ($run_id > 0) {
@@ -1197,7 +1197,7 @@ function ws_flow_box_try($viewer, $flow, $data)
             return ws_flow_refusal(lang('That run could not be found.'), 404, 'run_id');
         }
 
-        $values = ws_step_node_values(array_filter(ws_flow_run_steps($run_id), function ($row) {
+        $values = ws_flow_pure_values($graph) + ws_step_node_values(array_filter(ws_flow_run_steps($run_id), function ($row) {
             return ws_flow_step_settled((string) $row['status']);
         }));
         $values[WS_STEP_TRIGGER] = ws_step_trigger_values_for($owner, ws_flow_run_context($run));
