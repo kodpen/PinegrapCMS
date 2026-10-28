@@ -890,6 +890,7 @@
     "Claude is working on it": "Claude üzerinde çalışıyor",
     "Claude is working on it…": "Claude üzerinde çalışıyor…",
     "Claude may be asked here": "Claude bu kanalda çağrılabilir",
+    "Claude may not be asked in the channel of this task.": "Claude bu görevin kanalında çağrılamaz.",
     "Claude may not be asked in this channel.": "Bu kanalda Claude çağrılamaz.",
     "Claude's key could not be made.": "Claude'un anahtarı oluşturulamadı.",
     "Claude's key needs writing in the Workspace and the Tasks, which your account cannot hand on.": "Claude'un anahtarı Çalışma Alanı'na ve Görevler'e yazabilmeli; hesabınız bu izni devredemiyor.",
