@@ -14787,6 +14787,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     });
 
     document.getElementById('quicklook_close').addEventListener('click', closeQuickLook);
+
+    // Escape closes Quick Look in one press, taken on the window before the
+    // tooltip of the focused Close button, whose own capture handler on the
+    // document would spend the first Escape hiding itself.
+    window.addEventListener('keydown', function (event) {
+        if ((event.key !== 'Escape') || !quickLookIsOpen() || document.querySelector('.dialog[open], .drawer[open]')) { return; }
+
+        event.preventDefault();
+        event.stopPropagation();
+        closeQuickLook();
+    }, true);
     document.getElementById('quicklook_prev').addEventListener('click', function () { stepQuickLook(-1); });
     document.getElementById('quicklook_next').addEventListener('click', function () { stepQuickLook(1); });
 

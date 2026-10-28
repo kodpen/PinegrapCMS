@@ -98,6 +98,7 @@ function test_explorer_quick_look_is_named_and_holds_focus()
 
 	pg_assert_contains("if (key === 'Tab') { trapQuickLookTab(event); return; }", $source, 'Tab stays inside Quick Look');
 	pg_assert_contains("if ((key === 'Enter') && onControl) { return; }", $source, 'Enter presses a focused Quick Look control');
+	pg_assert_contains("if ((event.key !== 'Escape') || !quickLookIsOpen()", $source, 'Escape closes Quick Look before the Close tooltip takes it');
 }
 
 function test_explorer_context_menu_opens_from_the_keyboard()
