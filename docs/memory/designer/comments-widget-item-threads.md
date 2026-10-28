@@ -27,10 +27,12 @@ module: comments
 
 ## What does the editor show? (20b)
 - The canvas reads the thread from the page type on screen (`_sdCommentsPageThread()`): catalog detail = a product's reviews, catalog = a group, calendar event view = an event. States: [[comments-widget-canvas]].
-- Canvas Preview and Make designable say whose comments such a page shows and that e-mails about them keep the fixed markup (`_sdCommentsPageThreadText()`).
+- Canvas Preview and Make designable say whose comments such a page shows and where e-mails about them link (`_sdCommentsPageThreadText()`).
 
 ## What stays out?
-- Recent lists refuse those pages as sources ([[comments-widget-recent-gates]]); e-mails keep the fixed markup (links from the page's address).
+- Recent lists refuse those pages as sources ([[comments-widget-recent-gates]]).
+
+- Comment e-mails about an item: [[comments-widget-email-items]].
 
 ## Where is it tested?
 - `tests/comments_widget_threads_test.php`: the address table, the review and item flags, the name, the renderer's order; the canvas: `comments_widget_designer_test.php`.

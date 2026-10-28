@@ -7,7 +7,7 @@ Designing it (E-mail canvas state, the link the card must keep, save warnings): 
 
 ## Which e-mails can the widget draw?
 - Only the submitter and watcher e-mails (`includes/fn/mail.php`), and only to an e-mail page that places a comments widget (`pg_comments_page_has_widget()`: the save warnings' census, cached per request). They pass `array('comment_id' => id)`, read as `pg_sw_render_context()['comment_id']`; any other page gets the old call, byte for byte.
-- `_pg_comments_widget_email()` draws when `pg_comments_email_decision()` allows: published; thread `''` or `submitted_form` (product, group, event threads keep the fixed markup); the e-mail page is the thread page's watcher page, or its submitter page for a record's comment.
+- `_pg_comments_widget_email()` draws when `pg_comments_email_decision()` allows: published; thread `''`, `submitted_form`, or a product, group or event its page shows ([[comments-widget-email-items]]); the e-mail page is the thread page's watcher page, or its submitter page for a record's comment.
 
 ## When does the fixed markup stay?
 - `get_page_content.php` appends `$extra_system_content` unless `pg_comments_email_keeps_fixed_markup()` finds the e-mail page claimed in this pass. The branch claims only after `pg_comments_email_drew()` finds the row's `id="c-<id>"` and an href to its permalink. A list behind a visitor flag (`is_signed_in`, `comments_open`), no link to the comment, a refused comment: nothing drawn or claimed, the markup and its View or Reply link stay.

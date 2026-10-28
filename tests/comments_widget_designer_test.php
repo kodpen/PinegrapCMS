@@ -2479,7 +2479,8 @@ JS;
 	pg_assert_true($product['sign_in']['must_sign_in'] && !$product['sign_in']['can_comment'] && $product['sign_in']['is_signed_out'], 'a visitor is asked to sign in');
 	pg_assert_true($product['not_bought']['comments_closed'] && !$product['not_bought']['comments_open'] && !$product['not_bought']['can_comment'], 'not bought: the form is closed');
 	pg_assert_true($product['closed']['comments_closed'], 'closed for everyone');
-	pg_assert_false($product['email']['is_review_thread'], 'no review thread in an e-mail');
+	pg_assert_true($product['email']['is_review_thread'] && $product['email']['is_email'], 'an e-mail about a review keeps its thread');
+	pg_assert_false($product['email']['can_comment'] || $product['email']['has_featured'], 'with no form and nothing featured');
 
 	pg_assert_true($res['catalog']['flags']['comments']['is_item_thread'] && !$res['catalog']['flags']['comments']['is_review_thread'], 'a group\'s comments are no reviews');
 	pg_assert_true($res['catalog']['flags']['sign_in']['must_sign_in'], 'a group asks for a sign-in only when the page does');
@@ -2491,11 +2492,13 @@ JS;
 	pg_assert_same(array('Linen Shirt', 'Only customers who bought this product can review it.'), $res['catalog detail']['names']['not_bought'], 'not bought: the refusal in the closed message');
 	pg_assert_same('Summer Collection', $res['catalog']['names']['comments'][0], 'a group\'s name');
 	pg_assert_same('Spring Open Day', $res['calendar event view']['names']['member'][0], 'an event\'s name');
-	pg_assert_same('', $res['calendar event view']['names']['email'][0], 'none in an e-mail');
+	pg_assert_same('Spring Open Day', $res['calendar event view']['names']['email'][0], 'and in an e-mail about it');
+	pg_assert_same('', $res['standard']['names']['email'][0], 'none in an e-mail about a page\'s own thread');
 
 	pg_assert_same('', $res['standard']['text'], 'no thread note on a page');
 	pg_assert_contains('product or product group in the address', $res['catalog detail']['text'], 'the product page says whose comments it shows');
-	pg_assert_contains('fixed comment markup', $res['calendar event view']['text'], 'and that e-mails keep their markup');
+	pg_assert_contains('link to the event\'s address', $res['calendar event view']['text'], 'and where e-mails about them link');
+	pg_assert_false(strpos($res['catalog']['text'], 'fixed comment markup'), 'e-mails no longer keep the fixed markup');
 	pg_assert_same(array(false, false, false), $res['standard']['verified'], 'a page\'s samples are not verified');
 	pg_assert_same(array(true, true, true), $res['standard']['review_verified'], 'a review thread\'s samples are verified purchases');
 	pg_assert_same(array(true, true, true), $res['catalog detail']['verified'], 'and on a product page');

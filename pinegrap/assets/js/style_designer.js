@@ -11846,10 +11846,9 @@ const StyleDesigner = (function () {
     }
 
     // The thread a canvas state draws: the page's, a product's for the
-    // review states, none for a comment e-mail (an e-mail about an item
-    // keeps its fixed markup).
+    // review states. A comment e-mail draws the page's too: one about a
+    // product, group or event keeps its item (pg_comments_email_draw_data()).
     function _sdCommentsStateThread(state) {
-        if (state === 'email') return '';
         if (state === 'review' || state === 'not_bought') return 'product';
         return _sdCommentsPageThread();
     }
@@ -32979,13 +32978,13 @@ const StyleDesigner = (function () {
     function _sdCommentsPageThreadText() {
         var thread = _sdCommentsPageThread();
         if (thread === 'product') {
-            return _sdT('On this catalog detail page it shows the comments of the product or product group in the address. A product\'s are reviews: verified purchases only, newest first, written by a customer who bought it. E-mails about them keep the fixed comment markup.');
+            return _sdT('On this catalog detail page it shows the comments of the product or product group in the address. A product\'s are reviews: verified purchases only, newest first, written by a customer who bought it. E-mails about them link to the item\'s address.');
         }
         if (thread === 'group') {
-            return _sdT('On this catalog page it shows the comments of the product group in the address, else of the page\'s own group. E-mails about them keep the fixed comment markup.');
+            return _sdT('On this catalog page it shows the comments of the product group in the address, else of the page\'s own group. E-mails about them link to the group\'s address.');
         }
         if (thread === 'event') {
-            return _sdT('On this calendar event view page it shows the comments of the event in the address. E-mails about them keep the fixed comment markup.');
+            return _sdT('On this calendar event view page it shows the comments of the event in the address. E-mails about them link to the event\'s address.');
         }
         return '';
     }

@@ -157,6 +157,64 @@ function test_comments_widget_email_decision_table()
 	}
 }
 
+// A product's, a group's or an event's comment is drawn when its page type
+// shows that item in the address; under a product only a verified purchase,
+// the only comment the page shows there.
+function test_comments_widget_email_decision_item_threads()
+{
+	if (!comments_widget_email_test_has(array('pg_comments_email_decision', 'pg_comments_email_item_page_ok'))) {
+		return;
+	}
+
+	$page = function ($type) {
+		return comments_widget_email_test_page(array('page_type' => $type));
+	};
+	$c = function ($type, $over = array()) {
+		return comments_widget_email_test_comment($over + array('item_type' => $type, 'item_id' => '3'));
+	};
+	$verified = array('verified_order_id' => '40');
+
+	$rows = array(
+		array('a product on a catalog detail page', $c('product', $verified), $page('catalog detail'), true, true),
+		array('a product review not verified', $c('product'), $page('catalog detail'), true, false),
+		array('a product review, order id 0 as a number', $c('product', array('verified_order_id' => 0)), $page('catalog detail'), true, false),
+		array('a product\'s comment outside a review thread', $c('product'), $page('catalog detail'), false, true),
+		array('a product on a catalog page', $c('product', $verified), $page('catalog'), true, false),
+		array('a product on a standard page', $c('product', $verified), $page('standard'), true, false),
+		array('a group on a catalog page', $c('product_group'), $page('catalog'), false, true),
+		array('a group on a catalog detail page', $c('product_group'), $page('catalog detail'), false, true),
+		array('a group with options, verified', $c('product_group', $verified), $page('catalog detail'), true, true),
+		array('a group with options, not verified', $c('product_group'), $page('catalog detail'), true, false),
+		array('a group on an event page', $c('product_group'), $page('calendar event view'), false, false),
+		array('an event on its view page', $c('calendar_event'), $page('calendar event view'), false, true),
+		array('an event on a catalog page', $c('calendar_event'), $page('catalog'), false, false),
+		array('an event on a standard page', $c('calendar_event'), $page('standard'), false, false),
+		array('an unknown item type', $c('order'), $page('catalog detail'), false, false),
+		array('an event, not published', $c('calendar_event', array('published' => '0')), $page('calendar event view'), false, false),
+		array('an event, another e-mail page', $c('calendar_event'), $page('calendar event view'), false, false, 7),
+		array('an event through the submitter page alone', $c('calendar_event'), $page('calendar event view'), false, false, 8),
+		array('a page\'s own thread on an event page', $c(''), $page('calendar event view'), false, true),
+		array('a page without a page type', $c('product', $verified), array_diff_key($page('catalog detail'), array('page_type' => 1)), true, false),
+	);
+
+	foreach ($rows as $row) {
+		pg_assert_same($row[4], pg_comments_email_decision($row[1], $row[2], isset($row[5]) ? $row[5] : 9, $row[3]), $row[0]);
+	}
+
+	pg_assert_same(true, pg_comments_email_decision($c(''), $page('standard'), 9), 'the review fact defaults to no');
+
+	$pairs = array(
+		array('product', 'catalog detail', true), array('product', 'catalog', false), array('product_group', 'catalog', true),
+		array('product_group', 'catalog detail', true), array('calendar_event', 'calendar event view', true), array('calendar_event', 'calendar view', false),
+		array('', 'catalog detail', false), array('submitted_form', 'form item view', false), array(null, 'catalog', false), array('product', null, false),
+		array('product', array('catalog detail'), false),
+	);
+
+	foreach ($pairs as $pair) {
+		pg_assert_same($pair[2], pg_comments_email_item_page_ok($pair[0], $pair[1]), var_export($pair[0], true) . ' on ' . var_export($pair[1], true));
+	}
+}
+
 // The one comment as the flat layout draws it: depth 0, no replies, quoting
 // the comment it answers when that one is given.
 function test_comments_widget_email_entry()
@@ -267,7 +325,7 @@ function test_comments_widget_email_thread_values()
 	$values = pg_comments_email_thread_values(pg_comments_settings(comments_widget_email_test_page()));
 	pg_assert_same(array('__comments_title', '__comments_count', '__comments_label', '__comments_label_plural', '__comments_intro',
 		'__comments_closed_message', '__comments_show_all_url', '__comments_show_featured_url', '__login_url', '__comment_author_name',
-		'__reply_to_name', '__watcher_count_text'), array_keys($values), 'the twelve thread tokens');
+		'__reply_to_name', '__watcher_count_text', '__comments_item_name'), array_keys($values), 'the thirteen thread tokens');
 	pg_assert_same('1 Comment', $values['__comments_title'], 'the title');
 	pg_assert_same('1', $values['__comments_count'], 'one comment');
 	pg_assert_same('Comment', $values['__comments_label'], 'the label');
@@ -283,6 +341,9 @@ function test_comments_widget_email_thread_values()
 	pg_assert_same('1 Answer', $own['__comments_title'], 'the page\'s label');
 	pg_assert_same('Answers', $own['__comments_label_plural'], 'and its plural');
 	pg_assert_same('Closed now.', $own['__comments_closed_message'], 'the page\'s closed message');
+	pg_assert_same('', $values['__comments_item_name'], 'no item name by default');
+	pg_assert_same('Linen Shirt', pg_comments_email_thread_values(array(), 'Linen Shirt')['__comments_item_name'], 'the item\'s name, raw');
+	pg_assert_same('', pg_comments_email_thread_values(array(), array('x'))['__comments_item_name'], 'a name that is not a value reads as none');
 }
 
 // The thread flags of an e-mail: no visitor, no form, no state.
@@ -497,6 +558,24 @@ function test_comments_widget_email_draw_data()
 	pg_assert_false($featured['rows'][0]['flags']['comment_is_featured'], 'featured none ignores the mark');
 	$badge = comments_widget_email_test_data(array('comment' => array('user_badge' => '1')), array('badge_label' => 'Moderator'));
 	pg_assert_same('Moderator', $badge['rows'][0]['values']['__comment_badge'], 'the site\'s badge label');
+
+	pg_assert_false($data['thread_flags']['is_item_thread'] || $data['thread_flags']['is_review_thread'], 'a record\'s comment is no item thread');
+	pg_assert_same('', $data['thread_values']['__comments_item_name'], 'and names no item');
+
+	$event = comments_widget_email_test_data(array('comment' => array('item_type' => 'calendar_event', 'featured' => '1')),
+		array('item' => true, 'item_name' => 'Spring Open Day', 'query' => '?id=3'));
+	pg_assert_true($event['thread_flags']['is_item_thread'] && !$event['thread_flags']['is_review_thread'], 'an event\'s comment is an item thread');
+	pg_assert_same('Spring Open Day', $event['thread_values']['__comments_item_name'], 'named by the event');
+	pg_assert_true($event['rows'][0]['flags']['comment_is_featured'], 'its featured mark counts');
+	pg_assert_same('https://example.com/topic?id=3&comments=all&comment=12#c-12', $event['rows'][0]['values']['__comment_url'], 'the link carries the event');
+
+	$review = comments_widget_email_test_data(array('comment' => array('item_type' => 'product', 'featured' => '1', 'verified_order_id' => '40')),
+		array('item' => true, 'review' => true, 'item_name' => 'Linen Shirt', 'query' => '/linen-shirt', 'reply_ok' => false));
+	pg_assert_true($review['thread_flags']['is_item_thread'] && $review['thread_flags']['is_review_thread'], 'a product review');
+	pg_assert_false($review['rows'][0]['flags']['comment_is_featured'], 'never featured, as on the page');
+	pg_assert_true($review['rows'][0]['flags']['comment_is_verified'], 'a verified purchase');
+	pg_assert_same('https://example.com/topic/linen-shirt?comments=all&comment=12#c-12', $review['rows'][0]['values']['__comment_url'], 'the link carries the product\'s address');
+	pg_assert_same('', $review['rows'][0]['values']['__comment_reply_url'], 'no reply link');
 }
 
 // An attachment and stars in an e-mail: the file on the site's absolute
@@ -1148,6 +1227,17 @@ function test_comments_widget_email_renderer_wiring()
 	}
 
 	pg_assert_same(1, substr_count($branch, 'pg_comments_widget_claim('), 'one claim');
+
+	// Item threads: the review fact before the decision, an item without an
+	// address drawn by nobody, no reply link under a product.
+	$gate = strpos($branch, 'pg_review_gate_applies($type, $item)');
+	$decision = strpos($branch, 'pg_comments_email_decision($comment, $page, $email_page, $review)');
+	$gone = strpos($branch, "if (\$is_item && (\$query === '')) {");
+	pg_assert_true(($gate !== false) && ($decision !== false) && ($gate < $decision), 'the review fact feeds the decision');
+	pg_assert_true(($gone !== false) && ($gone < strpos($branch, 'pg_comments_widget_draw(')), 'an item whose address is gone is not drawn');
+	pg_assert_contains('$reply_ok = !$review && pg_comments_email_reply_ok(', $branch, 'no reply link under a product');
+	pg_assert_contains("'query' => \$query,", $branch, 'the links take the item\'s address');
+	pg_assert_contains("'item_name' => \$is_item ? pg_comment_item_name(\$type, \$item) : '',", $branch, 'the item\'s name');
 	pg_assert_same(1, substr_count($branch, 'pg_comments_widget_draw('), 'one draw');
 
 	$data = comments_widget_email_test_php_body('pg_comments_email_draw_data');

@@ -1,6 +1,6 @@
 ---
 name: designable-comments
-description: Plan (1-19, 3b, 20a and 20b done; 20c open): comments as a designable system widget kind; the steps of slice 20 (product and event threads) and where to start
+description: Plan (1-19, 3b, 20a, 20b and 20c done): comments as a designable system widget kind; the steps of slice 20 (product and event threads)
 ---
 
 ## What did the owner decide (2026-10-23)?
@@ -20,10 +20,10 @@ description: Plan (1-19, 3b, 20a and 20b done; 20c open): comments as a designab
 - 20. Product and event threads in the widget, in steps of about 1,000 product lines:
   - 20a (server side, done #2678): `pg_comments_widget_classic_thread()` keeps only `form item view`; the widget reads the item in the address (`pg_comment_address_item()`), checks it with `pg_comment_thread_verify()`, keeps the review rules (verified only, newest first, the buyer gate), the search index's per-event comments. [[comments-widget-item-threads]].
   - 20b (done #2778): canvas states and samples for a product, a group and an event thread; dedicated tokens and flags (review thread, item name) in the PHP and JS lists together; the panel and Make designable offering catalog, catalog detail and calendar event view pages.
-  - 20c (if needed): comment e-mails for item threads (links to the item's address); `aggregateRating` on designer product pages (`commerce/product-reviews-verified.md`).
+  - 20c (done #PR): the widget draws comment e-mails of product, group and event threads, links on the item's address, no reply link under a product ([[comments-widget-email]]). `aggregateRating`: already covered, no code (`commerce/product-reviews-verified.md`).
 
 ## What was decided for slice 20? (#2410)
 - Build it (M): the widget reads the item in the address on catalog detail and event pages, with a canvas state; product reviews become designable.
 
 ## Where to start?
-- 20c: read [[comments-widget-item-threads]] and [[comments-widget-email]]; for `aggregateRating`, `commerce/product-reviews-verified.md`.
+- Nothing left; the plan moves its lasting decisions to memory and is deleted.

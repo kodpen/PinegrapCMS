@@ -56,8 +56,10 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - comments-moderation-counters.md: Comment moderation on designed record pages: the stored row decides, edit_comment.php and the API rebuild submitted_form_info and mail the record's submitter unless they wrote it
 - comments-watcher-mail.md: Who gets the watcher e-mail about a new comment: each watcher's address once, never the comment's own writer, on every path that publishes it
 - comments-widget-canvas.md: The comments widget on the canvas: visitor states (the e-mail one too), the thread flag twin, hide versus fade, picking a node, sample comments, token previews
+- comments-widget-contract.md: The comments widget's contract (2026-10-23): what is stored where, token, flag and control names, thread order, the security rules every change to it keeps
 - comments-widget-conversion.md: Fixed comments block to the Comments widget and back (which widget is the design's, also on tabs not opened yet; featured filter on a new one), templates shipping the kind
 - comments-widget-email-design.md: Designing the comments widget for a comment e-mail page: the E-mail canvas state, the link to the comment the card must keep, the canvas note without it, mail-safe styles, save warnings
+- comments-widget-email-items.md: Comment e-mails about a product, group or event drawn by the comments widget (20c): which page shows which item, verified reviews only, links on the item's address
 - comments-widget-email.md: The comments widget on a comment e-mail page: the one comment mail.php names, when the fixed markup stays, absolute links and dates in the site's zone, no forms
 - comments-widget-form.md: The comments widget's add-comment form: bindings, slots, server sections and their fallbacks, binding-off twins, Messages, frontend init
 - comments-widget-hand-off.md: How the comments widget and the classic comments block share a page: the page type left to the classic block, the per-pass claim record, what a claim silences, lists that never claim

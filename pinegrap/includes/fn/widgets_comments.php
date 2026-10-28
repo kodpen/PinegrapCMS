@@ -3408,10 +3408,13 @@ function pg_comments_widget_draw($tree, $data)
  * - the e-mail page is a page id (_pg_comments_widget_page_key()) and the
  *   comment has an id;
  * - the comment is published;
- * - it belongs to a page's own thread (item type '') or to a form record's
- *   ('submitted_form'): product, product group and event threads keep the
- *   fixed markup, as the e-mail builds its links from the page's address
- *   and the item's address is not part of it;
+ * - it belongs to a page's own thread (item type ''), to a form record's
+ *   ('submitted_form'), or to a product, product group or event that its
+ *   page type shows in the address (pg_comments_email_item_page_ok()): the
+ *   links then carry the item's address;
+ * - in a product's reviews ($review, pg_review_gate_applies()) it is a
+ *   verified purchase: the page shows no other comment there, so a link to
+ *   any other would lead nowhere;
  * - $page is the row of the page the comment was posted on;
  * - the e-mail page is that page's watcher e-mail page, or, for a record's
  *   comment, its submitter e-mail page. A comment named to any other page is
@@ -3420,9 +3423,10 @@ function pg_comments_widget_draw($tree, $data)
  * @param mixed $comment       the comment's row (pg_comments_email_rows())
  * @param mixed $page          its thread page's row
  * @param mixed $email_page_id the e-mail page being drawn
+ * @param bool  $review        the comment's thread is a product's reviews
  * @return bool
  */
-function pg_comments_email_decision($comment, $page, $email_page_id)
+function pg_comments_email_decision($comment, $page, $email_page_id, $review = false)
 {
     $email_page = _pg_comments_widget_page_key($email_page_id);
 
@@ -3436,7 +3440,11 @@ function pg_comments_email_decision($comment, $page, $email_page_id)
 
     $type = _pg_comments_row_text($comment, 'item_type');
 
-    if (!in_array($type, array('', 'submitted_form'), true)) {
+    if (!in_array($type, array('', 'submitted_form'), true) && !pg_comments_email_item_page_ok($type, _pg_comments_row_text($page, 'page_type'))) {
+        return false;
+    }
+
+    if ($review && (_pg_comments_row_int($comment, 'verified_order_id') <= 0)) {
         return false;
     }
 
@@ -3450,6 +3458,29 @@ function pg_comments_email_decision($comment, $page, $email_page_id)
 
     return ($settings['watcher_email_page_id'] === $email_page)
         || (($type === 'submitted_form') && ($settings['submitter_email_page_id'] === $email_page));
+}
+
+/**
+ * Whether a page of type $page_type shows the item a comment of item type
+ * $item_type is about, from its address (pg_comment_address_item()): a
+ * product on a catalog detail page, a product group on a catalog or
+ * catalog detail page, an event on a calendar event view page. A comment
+ * e-mail links to such a comment with the item's address
+ * (get_query_string_for_page_url()). Pure.
+ *
+ * @param mixed $item_type comments.item_type
+ * @param mixed $page_type the thread page's page_type
+ * @return bool
+ */
+function pg_comments_email_item_page_ok($item_type, $page_type)
+{
+    $pages = array(
+        'product' => array('catalog detail'),
+        'product_group' => array('catalog', 'catalog detail'),
+        'calendar_event' => array('calendar event view'),
+    );
+
+    return is_string($item_type) && isset($pages[$item_type]) && is_string($page_type) && in_array($page_type, $pages[$item_type], true);
 }
 
 /**
@@ -3563,14 +3594,17 @@ function pg_comments_email_reply_ok($enabled, $allow_new, $replies_ready, $widge
 
 /**
  * The thread tokens of a comment e-mail, raw: one comment, the thread
- * page's label, intro and closed message; the visitor's (the featured and
- * sign-in links, the name they post as, the comment they answer, the
- * watcher count) are ''. Pure but for the translation.
+ * page's label, intro and closed message, the name of the product, group
+ * or event the thread is about ('' for a page's or a record's); the
+ * visitor's (the featured and sign-in links, the name they post as, the
+ * comment they answer, the watcher count) are ''. Pure but for the
+ * translation.
  *
- * @param mixed $settings pg_comments_settings() of the thread page
+ * @param mixed $settings  pg_comments_settings() of the thread page
+ * @param mixed $item_name pg_comment_item_name() of the thread
  * @return array
  */
-function pg_comments_email_thread_values($settings)
+function pg_comments_email_thread_values($settings, $item_name = '')
 {
     $settings = is_array($settings) ? $settings : array();
     $text = function ($key) use ($settings) {
@@ -3591,6 +3625,7 @@ function pg_comments_email_thread_values($settings)
         '__comment_author_name' => '',
         '__reply_to_name' => '',
         '__watcher_count_text' => '',
+        '__comments_item_name' => (is_scalar($item_name) && !is_bool($item_name)) ? (string) $item_name : '',
     );
 }
 
@@ -3839,7 +3874,9 @@ function _pg_comments_email_strip_walk(&$node, $depth)
  * reads go in $env: widget_id, allow_new (pg_comments_allow_new()),
  * reply_ok (pg_comments_email_reply_ok()), base and query
  * (pg_comments_email_link_values()), site (the site's absolute address),
- * dates (pg_comments_email_row_values()), badge_label (the site's).
+ * dates (pg_comments_email_row_values()), badge_label (the site's), item
+ * (a product, group or event thread), review (a product's reviews: never
+ * featured, as on the page) and item_name (pg_comment_item_name()).
  * ^^__comment_datetime^^ is always given: the comment's time, which the
  * draw writes with pg_comments_email_fill_datetime() (flag is_email).
  *
@@ -3860,6 +3897,12 @@ function pg_comments_email_draw_data($comment, $parent, $page, $cfg, $env)
     $allow_new = !empty($env['allow_new']);
     $reply_ok = !empty($env['reply_ok']);
     $badge_label = (isset($env['badge_label']) && is_scalar($env['badge_label'])) ? (string) $env['badge_label'] : '';
+    $review = !empty($env['review']);
+
+    if ($review) {
+        $options['featured'] = 'none';
+    }
+
     $entry = pg_comments_email_entry($comment, $parent, $options['featured']);
 
     $thread_flags = pg_comments_widget_thread_flags(array(
@@ -3870,6 +3913,8 @@ function pg_comments_email_draw_data($comment, $parent, $page, $cfg, $env)
         'rating_on' => $settings['rating'],
         'files_on' => $settings['attachments'],
         'watching_on' => ($settings['watcher_email_page_id'] > 0),
+        'item' => !empty($env['item']),
+        'review' => $review,
     ));
     $row_flags = pg_comments_widget_row_flags($comment, $entry['featured'],
         array('is_staff' => false, 'sees_pending' => false, 'own_ids' => array(), 'rating_on' => $settings['rating'], 'badge_label' => $badge_label),
@@ -3885,7 +3930,7 @@ function pg_comments_email_draw_data($comment, $parent, $page, $cfg, $env)
     return array(
         'widget_id' => isset($env['widget_id']) ? (int) $env['widget_id'] : 0,
         'thread_flags' => $thread_flags,
-        'thread_values' => pg_comments_email_thread_values($settings),
+        'thread_values' => pg_comments_email_thread_values($settings, isset($env['item_name']) ? $env['item_name'] : ''),
         'rows' => array(array(
             'id' => $entry['id'],
             'flags' => $row_flags,
@@ -4166,8 +4211,9 @@ function _pg_comments_email_row($id)
  * drawn in the widget's layout for nobody.
  *
  * Nothing is drawn, and nothing claimed, for a comment the e-mail page may
- * not draw (pg_comments_email_decision(): unpublished, a product, product
- * group or event thread, an e-mail page that is not the thread page's), nor
+ * not draw (pg_comments_email_decision(): unpublished, an item its page
+ * does not show, an unverified comment under a product, an e-mail page
+ * that is not the thread page's), for an item whose address is gone, nor
  * when the draw leaves the comment or its link out (pg_comments_email_drew():
  * a list shown only to a visitor, a design without a link to the comment):
  * the e-mail then keeps its fixed comment markup. Once drawn, the e-mail
@@ -4203,15 +4249,26 @@ function _pg_comments_widget_email($tree, $widget_id, $cfg, $ctx)
     }
 
     $page = _pg_comments_widget_page_row(_pg_comments_row_int($comment, 'page_id'));
+    $type = _pg_comments_row_text($comment, 'item_type');
+    $item = _pg_comments_row_int($comment, 'item_id');
+    $is_item = ($type !== '') && ($type !== 'submitted_form');
+    $review = $is_item && pg_review_gate_applies($type, $item);
 
-    if (!pg_comments_email_decision($comment, $page, $email_page)) {
+    if (!pg_comments_email_decision($comment, $page, $email_page, $review)) {
+        return '';
+    }
+
+    // What the page needs to show the item: '?r=' for a record, the
+    // product's or group's address name, the event's ?id=. An item whose
+    // address is gone has no page to link to.
+    $query = get_query_string_for_page_url(($type === 'submitted_form') ? 'form item view' : (string) $page['page_type'], $item, $type);
+
+    if ($is_item && ($query === '')) {
         return '';
     }
 
     $settings = pg_comments_settings($page);
     $thread_page = (int) $page['page_id'];
-    $type = _pg_comments_row_text($comment, 'item_type');
-    $item = _pg_comments_row_int($comment, 'item_id');
 
     // The comment it answers is quoted only when everybody may read it:
     // published and in the same thread.
@@ -4220,7 +4277,8 @@ function _pg_comments_widget_email($tree, $widget_id, $cfg, $ctx)
     if ($read['parent'] !== null) {
         $check = pg_comment_parent_ok(_pg_comments_row_int($read['parent'], 'id'), $read['parent'], $thread_page, $type, $item, array());
 
-        if ($check['accept'] && ($check['parent_id'] > 0)) {
+        // Under a product only a verified purchase shows.
+        if ($check['accept'] && ($check['parent_id'] > 0) && (!$review || (_pg_comments_row_int($read['parent'], 'verified_order_id') > 0))) {
             $parent = $read['parent'];
         }
     }
@@ -4228,8 +4286,10 @@ function _pg_comments_widget_email($tree, $widget_id, $cfg, $ctx)
     $allow_new = pg_comments_allow_new($thread_page, $type, $item, $settings['allow_new']);
 
     // A reply link only where the thread page's own comments widget takes
-    // ?reply_to=; a page that keeps its classic block ignores it.
-    $reply_ok = pg_comments_email_reply_ok($settings['enabled'], $allow_new, pg_comment_replies_ready(),
+    // ?reply_to=; a page that keeps its classic block ignores it. None under
+    // a product: an answer there is a review, which only a buyer with a
+    // purchase left to review may write (pg_review_eligibility()).
+    $reply_ok = !$review && pg_comments_email_reply_ok($settings['enabled'], $allow_new, pg_comment_replies_ready(),
         pg_comments_page_has_widget($thread_page) && !pg_comments_widget_classic_thread($page['page_type'], ($type === 'submitted_form')));
 
     // Absolute dates in the site's time zone, as the fixed markup writes
@@ -4250,13 +4310,16 @@ function _pg_comments_widget_email($tree, $widget_id, $cfg, $ctx)
         'allow_new' => $allow_new,
         'reply_ok' => $reply_ok,
         'base' => $site . encode_url_path((string) $page['page_name']),
-        'query' => get_query_string_for_page_url(($type === 'submitted_form') ? 'form item view' : (string) $page['page_type'], $item, $type),
+        'query' => $query,
         'site' => $site,
         'dates' => array(
             'date' => ($created > 0) ? $absolute($created) : '',
             'seller_reply_date' => ($reply_at > 0) ? $absolute($reply_at) : '',
         ),
         'badge_label' => defined('BADGE_LABEL') ? (string) BADGE_LABEL : '',
+        'item' => $is_item,
+        'review' => $review,
+        'item_name' => $is_item ? pg_comment_item_name($type, $item) : '',
     ));
 
     // As on the page, a node bound to a token only a list of recent
