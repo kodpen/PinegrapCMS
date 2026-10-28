@@ -49,7 +49,7 @@ function pg_login_region_form_card($liveform, $defaults = false)
                                         </div>
                                         <h5 class="mt-12">' . lang('Not Logged In') . '</h5>
                                         <div class="col-12 my-3">
-                                            <label for="name" class="form-label">' . lang('Header') . '</label>
+                                            <label for="not_logged_in_header" class="form-label">' . lang('Header') . '</label>
                                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'not_logged_in_header', 'id'=>'not_logged_in_header', 'style'=>'width: 600px; height: 200px')) . '
                                             ' . pg_code_editor_attach(array('id' => 'not_logged_in_header', 'code_type' => 'mixed', 'height' => '200px')) . '
                                         </div>
@@ -60,18 +60,18 @@ function pg_login_region_form_card($liveform, $defaults = false)
                                             </div>
                                         </div>
                                         <div class="col-12 my-3">
-                                            <label for="name" class="form-label">' . lang('Footer') . '</label>
+                                            <label for="not_logged_in_footer" class="form-label">' . lang('Footer') . '</label>
                                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'not_logged_in_footer', 'id'=>'not_logged_in_footer', 'style'=>'width: 600px; height: 200px')) . '
                                             ' . pg_code_editor_attach(array('id' => 'not_logged_in_footer', 'code_type' => 'mixed', 'height' => '200px')) . '
                                         </div>
                                         <h5 class="mt-12">' . lang('Logged In') . '</h5>
                                         <div class="col-12 my-3">
-                                            <label for="name" class="form-label">' . lang('Header') . '</label>
+                                            <label for="logged_in_header" class="form-label">' . lang('Header') . '</label>
                                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'logged_in_header', 'id'=>'logged_in_header', 'style'=>'width: 600px; height: 200px')) . '
                                             ' . pg_code_editor_attach(array('id' => 'logged_in_header', 'code_type' => 'mixed', 'height' => '200px')) . '
                                         </div>
                                         <div class="col-12 my-3">
-                                            <label for="name" class="form-label">' . lang('Footer') . '</label>
+                                            <label for="logged_in_footer" class="form-label">' . lang('Footer') . '</label>
                                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'logged_in_footer', 'id'=>'logged_in_footer', 'style'=>'width: 600px; height: 200px')) . '
                                             ' . pg_code_editor_attach(array('id' => 'logged_in_footer', 'code_type' => 'mixed', 'height' => '200px')) . '
                                         </div>

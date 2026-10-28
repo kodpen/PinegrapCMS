@@ -922,7 +922,7 @@ function pg_field_form_cards($liveform, $field, $context)
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 md:col-12 lg:col-6">
-                                            <textarea name="options" id="options" placeholder="' . lang('Please Enter Values Here') . '" class="form-control rounded-4 bg-1" style="min-height: calc(20em + .75rem + 2px);height:100%;" wrap="off">' . h($field['options']) . '</textarea>
+                                            <textarea name="options" id="options" aria-label="' . h(lang('Value Options')) . '" placeholder="' . lang('Please Enter Values Here') . '" class="form-control rounded-4 bg-1" style="min-height: calc(20em + .75rem + 2px);height:100%;" wrap="off">' . h($field['options']) . '</textarea>
                                             ' . pg_code_editor_attach(array('id' => 'options', 'code_type' => 'plain')) . '
                                         </div>
                                         <div class="col-12 md:col-12 lg:col-6">

@@ -146,7 +146,7 @@ if (!$_POST) {
                   <label class="" for="optimize">' . lang('Optimize Images') . '</label>
                 </div>
                 <div class="mt-3">
-                    <select class="form-control" id="optimize_mode">
+                    <select class="form-control" id="optimize_mode" aria-label="' . h(lang('Optimize Images')) . '">
                         <option value="optimize">' . lang('Compress only, keep the original size') . '</option>
                         <option value="resize">' . lang(array('string' => 'Compress, and shrink anything wider than {var:1} pixels', 'vars' => array($optimize_resize_trigger))) . '</option>
                     </select>

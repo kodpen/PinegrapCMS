@@ -256,14 +256,14 @@ if (!$_POST) {
                             <div class="row">
                                 <div class="col-12">
                                     <div class="card my-7">
-                                        <label for="name" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Field Options') . '
-                                        </label>
+                                        </div>
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-12 lg:col-8 2xl:col-9 order-1 my-3">
                                                     <div class="form-text text-start">' . lang(array('string'=>'Display layout of submitted form data fields within View{var:1}','vars'=>$collection_field_marker)) . '</div>
-                                                    <textarea id="layout" name="layout">' . h($layout) . '</textarea>
+                                                    <textarea id="layout" name="layout" aria-label="' . h(lang('Layout')) . '">' . h($layout) . '</textarea>
                                                     ' . pg_code_editor_attach(array('id' => 'layout', 'code_type' => 'mixed')) . '
                                                 </div>
                                                 <div class="col-12 lg:col-4 2xl:col-3 order-2 my-3" id="pg_fiv_variables">
