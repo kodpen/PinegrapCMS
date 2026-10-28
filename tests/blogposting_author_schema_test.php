@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the 2026.11.0 step that gives a custom form its Schema author
- * choice (upgrade_2026_11_0_blogposting_author(), 11.0.52): it is called
+ * choice (upgrade_2026_11_0_blogposting_author(), 11.0.53): it is called
  * once under its own label, adds custom_form_pages.schema_author through
  * the idempotent helper with contact as the default, writes no ALTER of its
  * own and ends with a note for the operator. The step itself needs a
@@ -39,12 +39,12 @@ function test_blogposting_author_schema_step_is_called_once_under_a_label_of_its
 {
 	$source = blogposting_author_schema_test_source();
 
-	pg_assert_same(1, preg_match_all('#^\tupgrade_2026_11_0_blogposting_author\(\); +// 11\.0\.52$#m', $source), 'called once from upgrade_to_2026_11_0() under 11.0.52');
+	pg_assert_same(1, preg_match_all('#^\tupgrade_2026_11_0_blogposting_author\(\); +// 11\.0\.53$#m', $source), 'called once from upgrade_to_2026_11_0() under 11.0.53');
 
 	preg_match('/function upgrade_to_2026_11_0\(\) \{(.*?)\n\}\n/s', $source, $entry);
 	preg_match_all('#// (11\.0\.\d+)\n#', isset($entry[1]) ? $entry[1] : '', $labels);
 
-	pg_assert_same(1, count(array_keys($labels[1], '11.0.52', true)), 'no other step carries 11.0.52');
+	pg_assert_same(1, count(array_keys($labels[1], '11.0.53', true)), 'no other step carries 11.0.53');
 }
 
 function test_blogposting_author_schema_step_adds_the_column_through_the_helper()

@@ -2592,6 +2592,7 @@
     "saved. The design still needs saving to keep this address.": "kaydedildi. Bu adresin kalıcı olması için tasarımı da kaydedin.",
     "say-hi": "merhaba-de",
     "scheduled": "zamanlanmış",
+    "scheduled action “{var:1}” now runs as a flow": "“{var:1}” programlanmış işi artık bir akış olarak çalışıyor",
     "scheduled action “{var:1}” was created in the Workspace": "Çalışma Alanı'nda “{var:1}” programlanmış işlemi oluşturuldu",
     "scheduled action “{var:1}”: {var:2}": "“{var:1}” programlanmış işlemi: {var:2}",
     "scheduled for {var:1}": "{var:1} için planlandı",

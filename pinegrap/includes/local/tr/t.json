@@ -4367,6 +4367,7 @@
     "This runs {var:1} on @{var:2} with your own account.": "Bu, @{var:2} üzerinde {var:1} aracını kendi hesabınızla çalıştırır.",
     "This runs {var:1} on @{var:2} with your own account. It may delete things there.": "Bu, @{var:2} üzerinde {var:1} aracını kendi hesabınızla çalıştırır. Orada bir şeyleri silebilir.",
     "This sale has already been completed.": "Bu satış zaten tamamlandı.",
+    "This scheduled action runs as a flow now: change it on the flow canvas.": "Bu programlanmış iş artık bir akış olarak çalışıyor: akış tuvalinde değiştirin.",
     "This screen is not built yet.": "Bu ekran henüz yapılmadı.",
     "This season's coffee": "Bu mevsimin kahvesi",
     "This season's most talked-about novel, in a cloth-bound hardback with a ribbon marker.": "Bu mevsimin en çok konuşulan romanı; kumaş ciltli, kurdele ayraçlı.",

@@ -738,7 +738,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
     }
 
     // The Schema author choice of the form's record pages, drawn only once
-    // the 11.0.52 column is there.
+    // the 11.0.53 column is there.
     $custom_form_schema_author_rows = '';
 
     if (pg_blogposting_author_setting_ready()) {
@@ -3082,7 +3082,7 @@ function pg_page_form_type_properties_from_post($page_type, $page_id)
                 'pretty_urls' => $field('custom_form_pretty_urls', 0)
             );
 
-            // Written only once the 11.0.52 column is there: every key here
+            // Written only once the 11.0.53 column is there: every key here
             // becomes a column of the save query.
             if (pg_blogposting_author_setting_ready()) {
                 $properties['schema_author'] = pg_blogposting_author_setting_value($field('custom_form_schema_author'), $field('custom_form_schema_author_field_id'));
