@@ -136,7 +136,10 @@ function test_ai_prompt_rules_every_prompt_takes_them()
 
 	pg_assert_true(count($found) >= 8, 'the scan finds the prompts it knows (' . count($found) . ')');
 
+	// Claude's instructions and its briefing, served by the site, are no
+	// system prompt of the product but take the rules all the same.
 	$builders['includes/workspace/claude.php'] = array('ws_claude_routine_prompt', 'assistant');
+	$builders['ws_ai_briefing_text'] = array('ws_ai_briefing_text', 'assistant');
 
 	foreach ($builders as $relative => $builder) {
 		list($function, $profile) = $builder;

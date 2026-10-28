@@ -167,9 +167,43 @@ function test_ws_voice_is_wired()
 		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
 	};
 
-	pg_assert_contains('ws_voice_queue($channel, $result[\'message_id\'], $stored[\'file_id\'], $stored[\'name\'])', $read('includes/workspace/files.php'), 'the panel upload');
+	pg_assert_contains('ws_voice_queue($channel, $result[\'message_id\'], $stored[\'file_id\'], $stored[\'name\'], (array) ($options[\'voice\'] ?? array()))', $read('includes/workspace/files.php'), 'the panel upload, with what the recorder measured');
 	pg_assert_contains('ws_voice_queue($channel, $result[\'message_id\'], $stored[\'file_id\'], $stored[\'name\'])', $read('includes/workspace/api_resources.php'), 'files.create');
 	pg_assert_contains('ws_voice_message_deleted($message)', $read('includes/workspace/messages.php'), 'delete for everyone');
 	pg_assert_contains('ws_voice_job()', $read('workspace_recurring_job.php'), 'the hourly job');
 	pg_assert_contains("'voice' => 'WorkspaceMessageVoice?'", $read('includes/workspace/api_resources.php'), 'the file schema');
+	pg_assert_contains("ws_voice_panel_present((int) \$row['file_id'])", $read('includes/workspace/messages.php'), 'the panel\'s file part');
+	pg_assert_contains("\$brief['voice'] = function_exists('ws_voice_channel_state')", $read('includes/workspace/channels.php'), 'the channel screen');
+	pg_assert_contains("ws_voice_announce(\$message, \$channel, \$row, \$outcome", $read('includes/workspace/voice.php'), 'announced once written out');
+}
+
+// What the recorder measured is kept only in its own shape: a length within
+// the cap, the levels as digits, no more of them than the column is given.
+function test_ws_voice_measure_clean()
+{
+	pg_assert_same(array('duration_ms' => 4200, 'peaks' => '0139'), ws_voice_measure_clean(4200, '0139'), 'as sent');
+	pg_assert_same(array('duration_ms' => 4201, 'peaks' => ''), ws_voice_measure_clean('4200.6', ''), 'a fraction rounded, no waveform');
+	pg_assert_same(array('duration_ms' => 0, 'peaks' => ''), ws_voice_measure_clean(-5, array('1')), 'below zero, not a string');
+	pg_assert_same(array('duration_ms' => 0, 'peaks' => ''), ws_voice_measure_clean('abc', '12a'), 'not a number, not digits');
+	pg_assert_same((WS_VOICE_MAX_SECONDS + 1) * 1000, ws_voice_measure_clean(PHP_INT_MAX, '')['duration_ms'], 'held to the cap');
+	pg_assert_same(str_repeat('5', WS_VOICE_PEAKS), ws_voice_measure_clean(1000, str_repeat('5', WS_VOICE_PEAKS))['peaks'], 'as many levels as kept');
+	pg_assert_same('', ws_voice_measure_clean(1000, str_repeat('5', WS_VOICE_PEAKS + 1))['peaks'], 'one more is refused whole');
+	pg_assert_true(WS_VOICE_PEAKS <= 255, 'the levels fit ws_voice.peaks');
+}
+
+// The event is in the catalogue an application subscribes from, carries the
+// channel a narrowed subscription is matched by, and leaves private channels
+// and discussions out.
+function test_ws_voice_transcribed_event()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
+
+	pg_assert_true(isset(ws_webhook_events()['workspace.message.transcribed']), 'in the catalogue');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/voice.php');
+	$start = strpos($source, 'function ws_voice_announce(');
+	$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+
+	pg_assert_contains("((string) (\$channel['kind'] ?? '') !== 'public')", $body, 'public channels only');
+	pg_assert_contains("'channel_id'  => (int) \$channel['id']", $body, 'with its channel');
 }

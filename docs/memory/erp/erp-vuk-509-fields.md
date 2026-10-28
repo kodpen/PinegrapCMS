@@ -9,7 +9,7 @@ Fields e-Arşiv treats as mandatory live on `erp_invoices`. `erp_order_sale_fiel
 | Field | Source |
 |---|---|
 | `is_internet_sale` | `erp_order_internet_sale()`: `orders.type` `local` → 0, anything else (web, marketplace, older rows) → 1 |
-| `web_address` | the same, internet sale only: `ERP_WEB_ADDRESS`; if empty `URL_SCHEME . HOSTNAME` |
+| `web_address` | the same, internet sale only: `ERP_WEB_ADDRESS`; if empty `URL_SCHEME . HOSTNAME_SETTING` (never the request's Host header) |
 | `payment_method` | `erp_order_payment_method_code()`: `DIGER` for an order put on the account (`orders.erp_on_account`, 10.60), else `erp_payment_method_code()` → GİB `OdemeSekli`: card `KREDIKARTI/BANKAKARTI`, PayPal and Pay With Iyzico `ODEMEARACISI`, Offline Payment `EFT/HAVALE`, unknown '' |
 | `payment_date` | `erp_order_payment_date()` → `orders.paid_at`; else, with `transaction_id` filled, `order_date` |
 | `shipment_date` / `carrier_title` / `carrier_vkn` | `erp_order_shipment()`: earliest non-zero `ship_tos.ship_date` of a complete recipient, if not later than today; carrier from that recipient's shipping method, or before anything ships from the first recipient with a method; title falls back to the method name |

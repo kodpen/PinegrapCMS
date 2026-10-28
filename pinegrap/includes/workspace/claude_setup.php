@@ -228,7 +228,7 @@ function ws_claude_setup_credentials_text()
  *
  * @param string   $base   the panel's address, for the links
  * @param string   $host   this site's domain
- * @param string   $prompt the routine's prompt
+ * @param string   $prompt the routine's short prompt (ws_claude_bootstrap_prompt())
  * @param callable $copy   ($id, $value, $rows): a read-only field with a copy button
  * @return string HTML: the items of an <ol>
  */
@@ -245,7 +245,7 @@ function ws_claude_setup_guide($base, $host, $prompt, $copy)
             'art'   => 'routine',
             'title' => h(lang('A routine on claude.ai')),
             'text'  => ws_claude_setup_text(
-                lang(array('string' => 'Open {var:1} and press {var:2}. Name it {var:3}, paste this prompt into the {var:4} box and choose a model in the box\'s selector. If the form asks for a repository, any small private repository will do; the routine does not change it.', 'vars' => ws_claude_setup_marks(4))),
+                lang(array('string' => 'Open {var:1} and press {var:2}. Name it {var:3}, paste this prompt into the {var:4} box and choose a model in the box\'s selector. The prompt is short: it signs in and reads the rest of its instructions from this site, so they keep up with every update; copy it again only when this card asks. If the form asks for a repository, any small private repository will do; the routine does not change it.', 'vars' => ws_claude_setup_marks(4))),
                 array('claude.ai/code/routines', 'New routine', 'Pinegrap Workspace', 'Instructions')
             ),
             'extra' => '<a class="btn btn-sm btn-outline theme-secondary mb-3" href="https://claude.ai/code/routines" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>claude.ai/code/routines</a>'

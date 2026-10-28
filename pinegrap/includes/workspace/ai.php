@@ -2883,9 +2883,10 @@ function ws_ai_author($row)
  * @param array $viewer the person who asked
  * @param array $channel
  * @param int   $limit  how many of the latest messages
+ * @param string $more  how the reader reads the messages left out
  * @return string
  */
-function ws_ai_channel_context($viewer, $channel, $limit = 40, $per = 800, $budget = 0)
+function ws_ai_channel_context($viewer, $channel, $limit = 40, $per = 800, $budget = 0, $more = 'read_channel reads them')
 {
     $limit = max(1, min(100, (int) $limit));
     $per = max(100, (int) $per);
@@ -2969,7 +2970,7 @@ function ws_ai_channel_context($viewer, $channel, $limit = 40, $per = 800, $budg
     $out[] = 'Latest messages (oldest first):';
 
     if ($left_out > 0) {
-        $out[] = '(' . $left_out . ' earlier messages are left out; read_channel reads them.)';
+        $out[] = '(' . $left_out . ' earlier messages are left out; ' . $more . '.)';
     }
 
     $out = array_merge($out, $lines);
@@ -3160,12 +3161,8 @@ function ws_ai_system_prompt($row, $asker, $readable)
     $note = ((int) ($row['note_id'] ?? 0) > 0);
     $task = ((int) ($row['task_id'] ?? 0) > 0);
     $name = ws_person_name($asker['id']);
-    $today = date('Y-m-d') . ' (' . date('l') . '), ' . date('H:i') . ' ' . date_default_timezone_get();
 
-    $lines = array(
-        'You are Pinegrap AI, the assistant people call with @ai in the Workspace of the Pinegrap site ' . HOSTNAME_SETTING . '.',
-        'Now: ' . $today . '.',
-        'The request comes from ' . $name . ' <@user:' . (int) $asker['id'] . '>.',
+    $lines = array_merge(ws_ai_briefing_head($asker, 'ai'), array(
         '',
         'How to work:',
         $note
@@ -3179,7 +3176,7 @@ function ws_ai_system_prompt($row, $asker, $readable)
         '- Write in the language of the request (on this site usually ' . ws_ai_language_name() . '), short and concrete, to the person who asked. Markdown is shown, but use no headings, do not repeat the request and add no titles such as "Answer": say what was asked for in a few sentences or a short list.',
         '- Mention people as <@user:ID> and records as tags such as <#order:ID>, <#product:ID> or <#task:ID>. A tag is shown with its name, so do not write the name again next to it. Use only IDs you have read; never make one up.',
         '- When the answer holds figures that follow from other figures (totals, sums, differences, shares, percentages), do not work them out yourself: the site does. In a Markdown table a cell that starts with = is a formula: columns are letters, rows are numbers, the header is row 1 (=B2*C2, =SUM(D2:D5)). Or use a ```hesap block: one value a line, "Name = expression"; a later line may use an earlier name (Total = Rent + Dues). Both know + - * / ^, brackets, percentages (18%), SUM, AVERAGE, MIN, MAX, COUNT, ROUND(x; places) and ABS; arguments are separated by ;. Write the figures you were given as they are.',
-    );
+    ));
 
     if ($note) {
         $lines[] = '- Answer with text only. Your answer is written into the note under the line that asked, so write it as part of the note, without addressing anybody.';
@@ -3260,40 +3257,77 @@ function ws_ai_request_language($text)
 }
 
 /**
- * The first two messages of a request's conversation.
+ * The first lines of an assistant's briefing: who it is, now, who asked.
  *
- * @param array $row
- * @return array ok, error, state
+ * @param array  $asker
+ * @param string $agent ai | claude
+ * @return string[]
  */
-function ws_ai_start($row)
+function ws_ai_briefing_head($asker, $agent)
 {
-    $asker = ws_ai_viewer((int) $row['requested_by']);
+    $today = date('Y-m-d') . ' (' . date('l') . '), ' . date('H:i') . ' ' . date_default_timezone_get();
 
-    if (!$asker) {
-        return array('ok' => false, 'error' => lang('The person who asked is no longer a member of the workspace.'), 'state' => null);
-    }
+    return array(
+        ($agent === 'claude')
+            ? 'You are Claude, the assistant people call with @Claude in the Workspace of the Pinegrap site ' . HOSTNAME_SETTING . '.'
+            : 'You are Pinegrap AI, the assistant people call with @ai in the Workspace of the Pinegrap site ' . HOSTNAME_SETTING . '.',
+        'Now: ' . $today . '.',
+        'The request comes from ' . ws_person_name($asker['id']) . ' <@user:' . (int) $asker['id'] . '>.',
+    );
+}
 
-    // Asked from the Visual Page Editor: the page is the context.
-    if (((int) ($row['page_id'] ?? 0) > 0) && ws_design_ai() && pg_design_ai_is_design_request($row)) {
-        return pg_design_ai_start($row, $asker);
-    }
-
-    // Written to an MCP server's alias: the request and what it answers,
-    // with that server's tools (mcp_ask.php).
-    if ((int) ($row['mcp_server_id'] ?? 0) > 0) {
-        return function_exists('ws_mcp_ask_start')
-            ? ws_mcp_ask_start($row, $asker)
-            : array('ok' => false, 'error' => lang('That MCP server could not be found.'), 'state' => null);
-    }
-
-    $readable = ws_ai_readable_types($asker);
+/**
+ * What an assistant is told about a request before it starts: who it is,
+ * now, who asked, the place it was asked in (a note, a task, a channel or a
+ * discussion and the message a reply answers), the people, the request and
+ * the language of the answer, then the rules every prompt ends with. Text
+ * people wrote goes inside data blocks (pg_ai_data_block()).
+ *
+ * Pinegrap AI takes the place part (parts) as its first message
+ * (ws_ai_start()); Claude reads the whole (text) with
+ * GET /workspace/claude/requests/{id}/brief. The agent decides where it may
+ * be asked and how it reads more of a channel.
+ *
+ * @param array  $row   ws_ai_requests
+ * @param array  $asker ws_ai_viewer() of the person who asked
+ * @param string $agent ai | claude
+ * @return array ok, error, parts, request, message (the row that asked, or null), text
+ */
+function ws_ai_briefing($row, $asker, $agent = 'ai')
+{
+    $claude = ($agent === 'claude');
+    $allowed = $claude ? 'ws_claude_channel_allowed' : 'ws_ai_channel_allowed';
+    $more = $claude ? 'GET /workspace/channels/{id}/context reads them' : 'read_channel reads them';
+    $message = null;
     $parts = array();
 
-    if ((int) ($row['note_id'] ?? 0) > 0) {
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'parts' => array(), 'request' => '', 'message' => null, 'text' => '');
+    };
+
+    // Asked from the Visual Page Editor: the page is the context. Pinegrap
+    // AI starts these in pg_design_ai_start(); Claude reads the same brief.
+    if ($claude && ((int) ($row['page_id'] ?? 0) > 0) && ws_design_ai() && pg_design_ai_is_design_request($row)) {
+        $page = pg_design_ai_page($row['page_id']);
+        $tree = $page ? pg_design_ai_base_tree($row, $page) : null;
+
+        if ($page && !pg_design_ai_user_may($asker)) {
+            return $fail(lang('Only designers can ask an assistant to change a page.'));
+        }
+
+        if (!$tree) {
+            return $fail($page ? lang('The page could not be read.') : pg_design_ai_page_problem_text(pg_design_ai_page_problem($row['page_id'])));
+        }
+
+        $request_text = (string) $row['note_text'];
+        $view = pg_design_ai_view($tree, (string) $row['node_id'], array('max_html' => PG_DESIGN_AI_READ_MAX));
+        $brief = pg_design_ai_brief($view, (string) $row['node_id'], $request_text, ws_ai_request_language($request_text));
+        $parts = array_slice(explode("\n", $brief), 0, -2);
+    } elseif ((int) ($row['note_id'] ?? 0) > 0) {
         $note = function_exists('ws_note') ? ws_note($row['note_id']) : null;
 
         if (!$note) {
-            return array('ok' => false, 'error' => lang('The note could not be found.'), 'state' => null);
+            return $fail(lang('The note could not be found.'));
         }
 
         $parts[] = 'The note, as written (formulas shown with their values):';
@@ -3309,14 +3343,14 @@ function ws_ai_start($row)
         $context = function_exists('ws_task_delegation_context') ? ws_task_delegation_context($asker, $row) : null;
 
         if (!$context) {
-            return array('ok' => false, 'error' => lang('The task could not be found, or the person who asked may no longer see it.'), 'state' => null);
+            return $fail(lang('The task could not be found, or the person who asked may no longer see it.'));
         }
 
         $task = $context['task'];
         $channel = ((int) $task['channel_id'] > 0) ? ws_channel($task['channel_id']) : null;
 
-        if ($channel && !ws_ai_channel_allowed($channel)) {
-            return array('ok' => false, 'error' => lang('Pinegrap AI may not be asked in the channel of this task.'), 'state' => null);
+        if ($channel && !$allowed($channel)) {
+            return $fail($claude ? lang('Claude may not be asked in the channel of this task.') : lang('Pinegrap AI may not be asked in the channel of this task.'));
         }
 
         $tries = (int) ($row['ai_attempts'] ?? 0);
@@ -3331,7 +3365,7 @@ function ws_ai_start($row)
         // The channel's words go along only to somebody who reads the channel:
         // a person on a task of a private channel may not be in it.
         if ($channel && ws_can_read_channel($asker, $channel)) {
-            $parts[] = pg_ai_data_block('channel', ws_ai_channel_context($asker, $channel, ($tries > 0) ? 10 : 20, ($tries > 0) ? 200 : 300, ($tries > 0) ? 800 : 2000));
+            $parts[] = pg_ai_data_block('channel', ws_ai_channel_context($asker, $channel, ($tries > 0) ? 10 : 20, ($tries > 0) ? 200 : 300, ($tries > 0) ? 800 : 2000, $more));
             $parts[] = '';
         }
 
@@ -3365,24 +3399,24 @@ function ws_ai_start($row)
         $channel = ws_channel($row['channel_id']);
 
         if (!$channel) {
-            return array('ok' => false, 'error' => lang('The channel could not be found.'), 'state' => null);
+            return $fail(lang('The channel could not be found.'));
         }
 
-        if (!ws_ai_channel_allowed($channel)) {
-            return array('ok' => false, 'error' => lang('Pinegrap AI may not be asked in this channel.'), 'state' => null);
+        if (!$allowed($channel)) {
+            return $fail($claude ? lang('Claude may not be asked in this channel.') : lang('Pinegrap AI may not be asked in this channel.'));
         }
 
         $message = ws_message($row['message_id']);
 
         if (!$message || ((int) $message['deleted_at'] > 0)) {
-            return array('ok' => false, 'error' => lang('The message that asked was deleted.'), 'state' => null);
+            return $fail(lang('The message that asked was deleted.'));
         }
 
         // The first call carries a part of the channel: the model server
         // reads a long prompt slowly, and a call that ran out of time is
         // tried again with less.
         $tries = (int) ($row['ai_attempts'] ?? 0);
-        $parts[] = pg_ai_data_block('channel', ws_ai_channel_context($asker, $channel, ($tries > 0) ? 15 : 30, ($tries > 0) ? 250 : 400, ($tries > 1) ? 1000 : (($tries > 0) ? 2000 : 3500)));
+        $parts[] = pg_ai_data_block('channel', ws_ai_channel_context($asker, $channel, ($tries > 0) ? 15 : 30, ($tries > 0) ? 250 : 400, ($tries > 1) ? 1000 : (($tries > 0) ? 2000 : 3500), $more));
         $parts[] = '';
 
         // A discussion (threads.php) talks over one message of a channel:
@@ -3417,6 +3451,71 @@ function ws_ai_start($row)
         $parts[] = 'The request (message ' . (int) $message['id'] . '):';
         $parts[] = pg_ai_data_block('request', $request_text);
     }
+
+    $text = array_merge(ws_ai_briefing_head($asker, $agent), array(''), $parts);
+
+    return array('ok' => true, 'error' => '', 'parts' => $parts, 'request' => $request_text, 'message' => $message, 'text' => ws_ai_briefing_text($text, ws_ai_request_language($request_text)));
+}
+
+/**
+ * A briefing's lines put together: the lines, the language of the answer,
+ * then the assistant's rules, last.
+ *
+ * @param string[] $lines
+ * @param string   $language
+ * @return string
+ */
+function ws_ai_briefing_text($lines, $language)
+{
+    $lines[] = '';
+    $lines[] = 'Answer in ' . $language . '.';
+    $lines[] = '';
+    $lines[] = 'Rules:';
+
+    foreach (pg_ai_prompt_rules('assistant') as $line) {
+        $lines[] = $line;
+    }
+
+    return implode("\n", $lines);
+}
+
+/**
+ * The first two messages of a request's conversation.
+ *
+ * @param array $row
+ * @return array ok, error, state
+ */
+function ws_ai_start($row)
+{
+    $asker = ws_ai_viewer((int) $row['requested_by']);
+
+    if (!$asker) {
+        return array('ok' => false, 'error' => lang('The person who asked is no longer a member of the workspace.'), 'state' => null);
+    }
+
+    // Asked from the Visual Page Editor: the page is the context.
+    if (((int) ($row['page_id'] ?? 0) > 0) && ws_design_ai() && pg_design_ai_is_design_request($row)) {
+        return pg_design_ai_start($row, $asker);
+    }
+
+    // Written to an MCP server's alias: the request and what it answers,
+    // with that server's tools (mcp_ask.php).
+    if ((int) ($row['mcp_server_id'] ?? 0) > 0) {
+        return function_exists('ws_mcp_ask_start')
+            ? ws_mcp_ask_start($row, $asker)
+            : array('ok' => false, 'error' => lang('That MCP server could not be found.'), 'state' => null);
+    }
+
+    $readable = ws_ai_readable_types($asker);
+    $briefing = ws_ai_briefing($row, $asker, 'ai');
+
+    if (!$briefing['ok']) {
+        return array('ok' => false, 'error' => $briefing['error'], 'state' => null);
+    }
+
+    $parts = $briefing['parts'];
+    $request_text = $briefing['request'];
+    $message = $briefing['message'];
 
     $parts[] = '';
     $parts[] = 'Answer in ' . ws_ai_request_language($request_text) . '.';

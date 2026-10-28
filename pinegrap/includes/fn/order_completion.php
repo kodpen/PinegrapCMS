@@ -810,3 +810,282 @@ function pg_order_complete_line_folder_access(array $line, $user_id)
         db_q("UPDATE user SET user_home = ? WHERE user_id = ?", array((string) $line['send_to_page'], (string) $user_id)) or output_error('Query failed');
     }
 }
+
+/**
+ * How many gift cards an order line issues: one per unit, at most 100 (each
+ * unit has its own recipient form, and a larger quantity would mean as many
+ * forms). Pure.
+ *
+ * @param int $quantity the line's quantity
+ * @return int
+ */
+function pg_order_gift_card_count($quantity)
+{
+    return (int) min(100, max(0, (int) $quantity));
+}
+
+/**
+ * The day a gift card ends: the validity days counted from its delivery
+ * date, or from today when it is sent at once ('0000-00-00'); '' when the
+ * store sets no validity days. Pure.
+ *
+ * @param string $delivery_date Y-m-d or '0000-00-00'
+ * @param int    $validity_days ECOMMERCE_GIFT_CARD_VALIDITY_DAYS
+ * @param int    $now           the current Unix time
+ * @return string Y-m-d or ''
+ */
+function pg_order_gift_card_expiration($delivery_date, $validity_days, $now)
+{
+    if (!$validity_days) {
+        return '';
+    }
+
+    $start = ($delivery_date == '0000-00-00') ? $now : strtotime($delivery_date, $now);
+
+    return date('Y-m-d', strtotime('+' . (int) $validity_days . ' day', $start));
+}
+
+/**
+ * When a gift card's e-mail goes out: noon of the delivery date the buyer
+ * chose, or '' (at once) when none was chosen. Pure.
+ *
+ * @param string $delivery_date Y-m-d or '0000-00-00'
+ * @return string
+ */
+function pg_order_gift_card_send_time($delivery_date)
+{
+    return ($delivery_date != '0000-00-00') ? $delivery_date . ' 12:00:00' : '';
+}
+
+/**
+ * For a gift card line: issues one gift card per unit (pg_order_gift_card_count())
+ * worth the line's price, from the recipient details the buyer gave for that
+ * unit (order_item_gift_cards), and creates the transactional e-mail campaign
+ * that sends the card to its recipient, at once or at noon of the delivery
+ * date.
+ *
+ * @param array  $line            order_item_id, gift_card, price, quantity,
+ *                                gift_card_email_subject, _format, _body, _page_id
+ * @param int    $order_id
+ * @param string $created_user_id user id written as the cards' creator
+ * @param string $actor           user name on the activity log
+ * @return void
+ */
+function pg_order_complete_line_gift_cards(array $line, $order_id, $created_user_id, $actor)
+{
+    if (!$line['gift_card']) {
+        return;
+    }
+
+    $number_of_gift_cards = pg_order_gift_card_count($line['quantity']);
+
+    // One card and one e-mail per unit, each from the recipient form filled
+    // for that unit.
+    for ($quantity_number = 1; $quantity_number <= $number_of_gift_cards; $quantity_number++) {
+        // Get gift card data from database.
+        $order_item_gift_card = db_item(
+            "SELECT
+                id,
+                from_name,
+                recipient_email_address,
+                message,
+                delivery_date
+            FROM order_item_gift_cards
+            WHERE
+                (order_item_id = '" . $line['order_item_id'] . "')
+                AND (quantity_number = '" . $quantity_number . "')");
+
+        $code = generate_gift_card_code();
+
+        $expiration_date = pg_order_gift_card_expiration($order_item_gift_card['delivery_date'], ECOMMERCE_GIFT_CARD_VALIDITY_DAYS, time());
+
+        db(
+            "INSERT INTO gift_cards (
+                code,
+                amount,
+                balance,
+                expiration_date,
+                order_id,
+                order_item_id,
+                quantity_number,
+                from_name,
+                recipient_email_address,
+                message,
+                delivery_date,
+                created_user_id,
+                created_timestamp,
+                last_modified_user_id,
+                last_modified_timestamp)
+            VALUES (
+                '" . $code . "',
+                '" . $line['price'] . "',
+                '" . $line['price'] . "',
+                '" . $expiration_date . "',
+                '" . (int) $order_id . "',
+                '" . $line['order_item_id'] . "',
+                '" . $quantity_number . "',
+                '" . escape($order_item_gift_card['from_name']) . "',
+                '" . escape($order_item_gift_card['recipient_email_address']) . "',
+                '" . escape($order_item_gift_card['message']) . "',
+                '" . $order_item_gift_card['delivery_date'] . "',
+                '" . $created_user_id . "',
+                UNIX_TIMESTAMP(),
+                '" . $created_user_id . "',
+                UNIX_TIMESTAMP())");
+
+        log_activity('gift card (' . output_gift_card_code($code) . ') was created because gift card product was ordered', $actor);
+
+        // Create an array that will store the fields for variables that need to be replaced.
+        $fields = array();
+
+        $fields[] = array(
+            'name' => 'code',
+            'data' => output_gift_card_code($code),
+            'type' => '');
+
+        // We remove ".00" (",00") from the end of the value if it exists.
+        $gift_card_separators = pg_number_separators();
+
+        $fields[] = array(
+            'name' => 'amount',
+            'data' => preg_replace('~' . preg_quote($gift_card_separators['decimal'], '~') . '0+$~', '', pg_format_number($line['price'] / 100, 2)),
+            'type' => '');
+
+        $fields[] = array(
+            'name' => 'from_name',
+            'data' => $order_item_gift_card['from_name'],
+            'type' => '');
+
+        $fields[] = array(
+            'name' => 'recipient_email_address',
+            'data' => $order_item_gift_card['recipient_email_address'],
+            'type' => '');
+
+        $fields[] = array(
+            'name' => 'message',
+            'data' => $order_item_gift_card['message'],
+            'type' => '');
+
+        $delivery_date = $order_item_gift_card['delivery_date'];
+
+        // If there is no delivery date, then change it from 0000-00-00 to blank,
+        // so that the admin can use a conditional structure to output "Immediate".
+        // Example: [[^^delivery_date^^||Immediate]] 
+        if ($delivery_date == '0000-00-00') {
+            $delivery_date = '';
+        }
+
+        $fields[] = array(
+            'name' => 'delivery_date',
+            'data' => $delivery_date,
+            'type' => 'date');
+
+        // Replace variables in subject (e.g. ^^code^^).
+        $subject = replace_variables(array(
+            'content' => $line['gift_card_email_subject'],
+            'fields' => $fields,
+            'format' => 'plain_text'));
+
+        // If plain text was selected for the format, then store body in variable
+        // and clear page id so that we don't store it with the e-mail campaign.
+        if ($line['gift_card_email_format'] == 'plain_text') {
+            $body = $line['gift_card_email_body'];
+            $line['gift_card_email_page_id'] = '';
+
+        // Otherwise HTML was selected for the format, so prepare body for that format.
+        } else {
+            require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
+
+            // Get html for page.
+            $body = get_page_content($line['gift_card_email_page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true);
+            
+            // Find if there is a base tag in the HTML.
+            $base_in_html = preg_match('/<\s*base\s+[^>]*href\s*=\s*["\'](?:http:\/\/|https:\/\/|ftp:\/\/).*?["\']/is', $body);
+
+            // If there is not a base tag in the HTML, add base tag and convert relative links to absolute links.
+            if (!$base_in_html) {
+                $base = '<head>' . "\n" . '<base href="' . URL_SCHEME . HOSTNAME_SETTING . '/" />';
+                $body = preg_replace('/<head>/i', $base, $body);
+
+                // Change relative URLs to absolute URLs for links.
+                $body = preg_replace('/(<\s*a\s+[^>]*href\s*=\s*["\'])(?!ftp:\/\/|https:\/\/|mailto:|http:\/\/)(?:\/|\.\.\/|\.\/|)(.*?["\'].*?>)/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $body);
+
+                // Change relative URLs to absolute URLs for images.
+                $body = preg_replace('/(<\s*img\s+[^>]*src\s*=\s*["\'])(?!http:\/\/|https:\/\/)(?:\/|\.\.\/|\.\/|)(.*?["\'].*?>)/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $body);
+
+                // Change relative URLs to absolute URLs for CSS background images.
+                $body = preg_replace('/(background-image\s*:\s*url\s*\(\s*(?:"|\'|))(?!http:\/\/|https:\/\/)(?:\/|\.\.\/|\.\/|)(.*?(?:"|\'|).*?\))/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $body);
+
+                // Change relative URLs to absolute URLs for HTML background images.
+                $body = preg_replace('/(background\s*=\s*["\'])(?!http:\/\/|https:\/\/)(?:\/|\.\.\/|\.\/|)(.*?["\'])/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $body);
+            }
+            
+            // get URL for page
+            $page_url = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaign.php?r=<reference_code></reference_code>';
+            
+            $footer =
+                '<div class="software_email_footer" style="font-family: arial; font-size: 11px; color: #666666; text-align: center; background-color: #ffffff; padding: 5px; margin-top: 15px">
+                    <a href="' . $page_url . '" style="color: #666666">View this email at our site</a><br>
+                </div>
+                </body>';
+            $body = preg_replace('/<\/body>/i', $footer, $body);
+        }
+
+        // Wrap long lines (RFC 821).
+        $body = wordwrap($body, 900, "\n", 1);
+
+        // Replace variables in body (e.g. ^^code^^).
+        $body = replace_variables(array(
+            'content' => $body,
+            'fields' => $fields,
+            'format' => $line['gift_card_email_format']));
+
+        $start_date_and_time = pg_order_gift_card_send_time($order_item_gift_card['delivery_date']);
+        
+        // Create e-mail campaign.
+        db(
+            "INSERT INTO email_campaigns (
+                type,
+                action,
+                from_name,
+                from_email_address,
+                subject,
+                format,
+                body,
+                page_id,
+                start_time,
+                status,
+                purpose,
+                created_timestamp,
+                last_modified_timestamp)
+            VALUES (
+                'automatic',
+                'gift_card_ordered',
+                '" . escape(ORGANIZATION_NAME) . "',
+                '" . escape(EMAIL_ADDRESS) . "',
+                '" . escape($subject) . "',
+                '" . $line['gift_card_email_format'] . "',
+                '" . escape($body) . "',
+                '" . $line['gift_card_email_page_id'] . "',
+                '" . $start_date_and_time . "',
+                'ready',
+                'transactional',
+                UNIX_TIMESTAMP(),
+                UNIX_TIMESTAMP())");
+        
+        $email_campaign_id = mysqli_insert_id(db::$con);
+
+        // Create record for e-mail recipient.
+        db(
+            "INSERT INTO email_recipients (
+                email_campaign_id,
+                type,
+                email_address)
+            VALUES (
+                '$email_campaign_id',
+                'automatic',
+                '" . escape($order_item_gift_card['recipient_email_address']) . "')");
+        
+        log_activity('auto campaign was created because gift card was ordered (' . output_gift_card_code($code) . ')', $actor);
+    }
+}

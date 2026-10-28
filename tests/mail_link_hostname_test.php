@@ -49,6 +49,7 @@ function test_mail_link_hostname_mail_screens_use_hostname_setting()
 		'affiliate_sign_up_form.php',
 		'add_comment.php',
 		'email_a_friend.php',
+		'includes/erp/order_bridge.php',
 		'includes/fn/form_subscription.php',
 		'includes/fn/mail.php',
 		'includes/fn/widgets_account.php',

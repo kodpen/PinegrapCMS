@@ -92,12 +92,15 @@ function test_workspace_discussion_context_endpoint()
 	pg_assert_same(array_keys(ws_api_context_message_schema()), array_keys(ws_api_context_thread_present(array('id' => 1, 'name' => 'a', 'kind' => 'public'), array('id' => 2, 'kind' => 'message', 'sender_kind' => 'user', 'task_id' => 0, 'created_at' => 1), 'A', 'b')['message']), 'the declaration matches the presenter');
 }
 
-// The routine is told what thread is. Read from the source: the prompt puts
-// the site's address in, which the test runner does not have.
+// The routine is told what a discussion is about, through its brief. Read
+// from the source: the prompt puts the site's address in, which the test
+// runner does not have.
 function test_workspace_discussion_context_routine_prompt()
 {
 	$prompt = workspace_discussion_context_test_source('ws_claude_routine_prompt');
 
-	pg_assert_contains('channel.kind is thread', $prompt, 'how a request in a discussion is told apart');
-	pg_assert_contains("The context's thread holds that message", $prompt, 'where the subject is');
+	$briefing = workspace_discussion_context_test_source('ws_ai_briefing');
+
+	pg_assert_contains('a discussion with the message it talks over', $prompt, 'the brief says what a discussion is about');
+	pg_assert_contains('This is a discussion about message', $briefing, 'the brief carries the message the discussion talks over');
 }

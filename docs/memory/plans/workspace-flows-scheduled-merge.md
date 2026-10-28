@@ -17,16 +17,14 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 - Two anchors: hidden (a flow's trigger box; lists, `ws_scheduled_action()` and S1 skip it, `ws_scheduled_report()` silent) and converted (slice 5; still an action to all of them). The new filter is not `ws_scheduled_actions_only()`, which feeds event and join starts.
 
 ## Slices (one PR each)
-0. #1590: tests/workspace_flows_parity_test.php maps each parity key to its slice and box, or `form` and why.
-1. Done (#1707). A Scheduled actions section in Flows (list, cards, form); one Flows rail entry for staff; composer, note, @ai draft open the form.
-2. Done (#1810). "Show on canvas": `ws_scheduled_graph()`, `showAction()` draws it read-only.
-3. Done. Parity boxes (F4, F5): 3a #2205 trigger values; 3b #2235 start a flow box; 3c #2249 arrows on always; 3d #2275 self-retry (workspace/workspace-flows-*.md).
-4. New rules on the canvas; the form stays for keys still `form`; templates are starters (flow gallery, G1). Parts:
-   - 4a. Done (#2292). Scheduled actions section: New flow in the toolbar, the list's New hidden (`{ add: false }`); cards keep the form.
-   - 4b. Done (#2730). Add › Scheduled flow, Duplicate and the note toolbar (entry removed) open the canvas (workspace/workspace-flows-scheduled-ways-in.md); the mini window is C3's.
-   - 4c. Done: AI drafts on the canvas (F8): 4c1 #2306 `ws_flow_graph_from_scheduled()`; 4c2 #2323 a draft card opens as a new flow.
-5. Conversion (answer 2): in the 2026.11.0 upgrade every row becomes a converted anchor, its id and every parity row kept. Schema approved (#2396).
-   - 5a #2558, 5b #2606 done (workspace-flows-converted-anchor.md). Form retires after 4b.
+- Done: 0 #1590 parity test; 1 #1707 section in Flows; 2 #1810 Show on canvas; 3 boxes (#2205, #2235, #2249, #2275); 4 canvas ways in (4a #2292, 4b #2730, 4c #2306 #2323); 5 conversion (5a #2558, 5b #2606; schema #2396). workspace/workspace-flows-*.md.
+- Retire the form (map and sizes: workspace/workspace-flows-form-retirement.md), in order:
+  - R1. Welcome and the five event starters into the flow gallery (flow_templates.php, tests). Waits for nothing.
+  - R1b. forms, orders, chain as issue #2753 question 2 answers.
+  - R2. Doors closed: Edit of an unconverted row as #2753 question 1 answers; `scheduledGraph()` Edit, the list's New, `showAction()` edit (workspace.js, workspace_flow.js, scheduled_convert.php). Waits for #2753.
+  - R3a. `scheduledForm()`, `saSentenceBox()`, `saTemplates()`, `saFollowRow()`, workspace_events.js `whenBox()`/`templates()`; parity readers. After R1, R1b, R2.
+  - R3b. `saActionEditor()` and the helpers only it used, the two `scheduledEditor()`. After R3a.
+  - R4. Routes save/preview/targets/draft, `ws_scheduled_save()`, `ws_scheduled_draft_saved()`, form config keys, strings, styles; memory. After R3b.
 
 ## Which questions are answered? (owner: 1 no, 3 a on 2026-10-24; 2 b, 7 and 8 on 2026-10-27)
 1. Scheduled messages too? → no, staff's actions only; messages stay in the composer and their list.
@@ -39,4 +37,4 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 8. A scheduled action kept in a note → b (#2395): no new ones from a note; the toolbar entry goes, converted ones keep their card and post step.
 
 ## Where to start?
-- Slices 1-5 done. Next: retire the form; read workspace/README.md.
+- R1 first (no wait); R2 on #2753. Read workspace/README.md and workspace/workspace-flows-form-retirement.md.
