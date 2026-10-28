@@ -176,6 +176,15 @@ foreach (bs6_scope_files($product) as $path => $kind) {
 		}
 	}
 
+	// v6 floats a .form-floating label only when it comes before its field.
+	if ($ext !== 'css' && strpos($source, 'form-floating') !== false) {
+		foreach (bs6_floating_labels_after_control($source) as $offset) {
+			if (!($site_output && bs6_in_ranges($offset, $site_output))) {
+				$add('form-floating label after its field (v6 floats it only before)', $kind, $path, bs6_line_of($source, $offset), 'form-floating');
+			}
+		}
+	}
+
 	// On a switched tree a liveform select, checkbox or radio that names no
 	// Bootstrap class gets v5's default class (bs6_switch_fields.php).
 	if ($converted && $ext === 'php' && bs6_codemod_converts($path) && strpos($source, 'output_field') !== false) {
