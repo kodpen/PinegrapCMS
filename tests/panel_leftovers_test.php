@@ -5,7 +5,8 @@
  * Source pins for small panel fixes: the account menu offers Pair a device
  * under the same conditions as the pairing screen, close and back buttons
  * carry a translated name, and the Turkish starter site installs a Turkish
- * member ID label.
+ * member ID label; "From" / "To" name people only and the Work Calendar's
+ * today reads in the dark theme.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -59,4 +60,23 @@ function test_panel_leftovers_turkish_member_id_label()
 
 	pg_assert_true(strpos($line, "'Member ID'") === false, 'the Turkish starter site installs the English member ID label');
 	pg_assert_true(strpos($line, "'Üye Kimliği'") !== false, 'the Turkish starter site has no Turkish member ID label');
+}
+
+function test_panel_leftovers_from_to_name_people_only()
+{
+	// "From" / "To" read "Kimden" / "Kime": a person or an address. The
+	// transfer between two tills has its own keys.
+	$source = panel_leftovers_source('add_erp_transfer.php');
+
+	pg_assert_contains("lang('From till')", $source, 'the source till has its own label');
+	pg_assert_contains("lang('To till')", $source, 'the target till has its own label');
+	pg_assert_false(strpos($source, "lang('From')") !== false || strpos($source, "lang('To')") !== false, 'the tills are not labelled From / To');
+}
+
+function test_panel_leftovers_work_calendar_today_dark()
+{
+	// White on the dark theme's lilac accent read at 2.4:1.
+	$css = panel_leftovers_source('assets/css/backend.src.css');
+
+	pg_assert_true((bool) preg_match('/html\[data-bs-theme="dark"\] \.ws-cal-today \.ws-cal-num \{\s*color: var\(--pg-on-accent\);/', $css), 'the dark theme prints today in the accent ink');
 }

@@ -16025,6 +16025,11 @@ a.ws-chip:hover {
   background: var(--ws-accent);
   color: #fff;
 }
+/* The dark theme's accent is the light lilac (--workspace-color-highlight),
+   where white reads at 2.4:1; the near-black accent ink clears 8:1. */
+html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
+  color: var(--pg-on-accent);
+}
 .ws-cal-talk {
   font-size: .7rem;
   color: var(--pg-fg-2);
