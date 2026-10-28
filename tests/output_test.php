@@ -68,9 +68,12 @@ function output_test_range($start, $stop)
 function test_output_period_unit_reads_the_range()
 {
 	pg_assert_same('day', pg_period_unit(output_test_range('2026-10-10', '2026-10-10')), 'one day');
-	pg_assert_same('week', pg_period_unit(output_test_range('2026-10-04', '2026-10-10')), 'Sunday to Saturday');
-	pg_assert_same('month', pg_period_unit(output_test_range('2026-10-05', '2026-10-11')), 'seven days not from a Sunday');
-	pg_assert_same('week', pg_period_unit(output_test_range('2026-10-25', '2026-10-31')), 'a week across a daylight saving change');
+	pg_assert_same('week', pg_period_unit(output_test_range('2026-10-04', '2026-10-10'), 0), 'Sunday to Saturday');
+	pg_assert_same('month', pg_period_unit(output_test_range('2026-10-05', '2026-10-11'), 0), 'seven days not from a Sunday');
+	pg_assert_same('week', pg_period_unit(output_test_range('2026-10-25', '2026-10-31'), 0), 'a week across a daylight saving change');
+	pg_assert_same('week', pg_period_unit(output_test_range('2026-10-05', '2026-10-11'), 1), 'Monday to Sunday');
+	pg_assert_same('month', pg_period_unit(output_test_range('2026-10-04', '2026-10-10'), 1), 'seven days not from a Monday');
+	pg_assert_same('week', pg_period_unit(output_test_range('2026-10-19', '2026-10-25'), 1), 'a Monday week across a daylight saving change');
 	pg_assert_same('month', pg_period_unit(output_test_range('2026-10-01', '2026-10-31')), 'calendar month');
 	pg_assert_same('year', pg_period_unit(output_test_range('2026-01-01', '2026-12-31')), 'calendar year');
 	pg_assert_same('month', pg_period_unit(output_test_range('2025-01-01', '2026-12-31')), 'two years step by month');

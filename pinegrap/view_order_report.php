@@ -549,39 +549,11 @@ if (!$_POST) {
 
         $increase_month = $month_steps['next'];
 
-        $decrease_week['start_date_timestamp'] = mktime(0, 0, 0, $_SESSION['software']['ecommerce']['view_order_report'][$session_index]['start_month'], $_SESSION['software']['ecommerce']['view_order_report'][$session_index]['start_day'], $_SESSION['software']['ecommerce']['view_order_report'][$session_index]['start_year']);
-        $decrease_week['new_time_start'] = strtotime('last Sunday', $decrease_week['start_date_timestamp']);
-        $decrease_week['new_time_stop'] = strtotime('Saturday', $decrease_week['new_time_start']);
-        $decrease_week['start_month'] = date('m', $decrease_week['new_time_start']);
-        $decrease_week['start_day'] = date('d', $decrease_week['new_time_start']);
-        $decrease_week['start_year'] = date('Y', $decrease_week['new_time_start']);
-        $decrease_week['stop_month'] = date('m', $decrease_week['new_time_stop']);
-        $decrease_week['stop_day'] = date('d', $decrease_week['new_time_stop']);
-        $decrease_week['stop_year'] = date('Y', $decrease_week['new_time_stop']);
-
-        // if today is Sunday
-        if (date('l') == 'Sunday') {
-            $current_week['new_time_start'] = strtotime('Sunday');
-        } else {
-            $current_week['new_time_start'] = strtotime('last Sunday');
-        }
-        $current_week['new_time_stop'] = strtotime('Saturday', $current_week['new_time_start']);
-        $current_week['start_month'] = date('m', $current_week['new_time_start']);
-        $current_week['start_day'] = date('d', $current_week['new_time_start']);
-        $current_week['start_year'] = date('Y', $current_week['new_time_start']);
-        $current_week['stop_month'] = date('m', $current_week['new_time_stop']);
-        $current_week['stop_day'] = date('d', $current_week['new_time_stop']);
-        $current_week['stop_year'] = date('Y', $current_week['new_time_stop']);
-
-        $increase_week['start_date_timestamp'] = mktime(0, 0, 0, $_SESSION['software']['ecommerce']['view_order_report'][$session_index]['start_month'], $_SESSION['software']['ecommerce']['view_order_report'][$session_index]['start_day'], $_SESSION['software']['ecommerce']['view_order_report'][$session_index]['start_year']);
-        $increase_week['new_time_start'] = strtotime('next Sunday', $increase_week['start_date_timestamp']);
-        $increase_week['new_time_stop'] = strtotime('Saturday', $increase_week['new_time_start']);
-        $increase_week['start_month'] = date('m', $increase_week['new_time_start']);
-        $increase_week['start_day'] = date('d', $increase_week['new_time_start']);
-        $increase_week['start_year'] = date('Y', $increase_week['new_time_start']);
-        $increase_week['stop_month'] = date('m', $increase_week['new_time_stop']);
-        $increase_week['stop_day'] = date('d', $increase_week['new_time_stop']);
-        $increase_week['stop_year'] = date('Y', $increase_week['new_time_stop']);
+        // The week starts on the panel language's first day (Monday in Turkish).
+        $week_steps = pg_list_period_week_steps($_SESSION['software']['ecommerce']['view_order_report'][$session_index]);
+        $decrease_week = $week_steps['previous'];
+        $current_week = $week_steps['current'];
+        $increase_week = $week_steps['next'];
 
         $decrease_day['new_time'] = mktime(0, 0, 0, $_SESSION['software']['ecommerce']['view_order_report'][$session_index]['start_month'], $_SESSION['software']['ecommerce']['view_order_report'][$session_index]['start_day'] - 1, $_SESSION['software']['ecommerce']['view_order_report'][$session_index]['start_year']);
         $decrease_day['new_month'] = date('m', $decrease_day['new_time']);

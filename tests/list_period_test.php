@@ -3,8 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the list screens' period helpers in includes/fn/list_period.php
- * (the month the ‹ Month › arrows move to, the range heading in the site's
- * date order) and the clock format helpers in includes/fn/core.php
+ * (the month and the week the period navigator's arrows move to, the week's
+ * first day, the range heading in the site's date order) and the clock format helpers in includes/fn/core.php
  * (pg_time_format_code(), pg_picker_time_format() and the picker scripts
  * that carry them).
  *
@@ -78,6 +78,68 @@ function test_list_period_month_steps_without_a_range_step_around_this_month()
 	pg_assert_same(date('Y-m-t', $next), $steps['next']['stop_year'] . '-' . $steps['next']['stop_month'] . '-' . $steps['next']['stop_day'], 'next ends the month after this one');
 }
 
+function test_list_period_week_starts_on_monday()
+{
+	// Wednesday 28 October 2026.
+	$steps = pg_list_period_week_steps(list_period_test_range('2026-10-26', '2026-11-01'), 1, mktime(12, 0, 0, 10, 28, 2026));
+
+	pg_assert_same(list_period_test_range('2026-10-19', '2026-10-25'), $steps['previous'], 'the week before, Monday to Sunday');
+	pg_assert_same(list_period_test_range('2026-10-26', '2026-11-01'), $steps['current'], 'this week, Monday to Sunday');
+	pg_assert_same(list_period_test_range('2026-11-02', '2026-11-08'), $steps['next'], 'the week after, Monday to Sunday');
+}
+
+function test_list_period_week_starts_on_sunday()
+{
+	$steps = pg_list_period_week_steps(list_period_test_range('2026-10-25', '2026-10-31'), 0, mktime(12, 0, 0, 10, 28, 2026));
+
+	pg_assert_same(list_period_test_range('2026-10-18', '2026-10-24'), $steps['previous'], 'the week before, Sunday to Saturday');
+	pg_assert_same(list_period_test_range('2026-10-25', '2026-10-31'), $steps['current'], 'this week, Sunday to Saturday');
+	pg_assert_same(list_period_test_range('2026-11-01', '2026-11-07'), $steps['next'], 'the week after, Sunday to Saturday');
+}
+
+function test_list_period_week_steps_from_any_start_day()
+{
+	// A Sunday start on a Monday-first site belongs to the week that began
+	// the Monday before.
+	$steps = pg_list_period_week_steps(list_period_test_range('2026-11-01', '2026-11-30'), 1, mktime(12, 0, 0, 11, 1, 2026));
+
+	pg_assert_same(list_period_test_range('2026-10-19', '2026-10-25'), $steps['previous'], 'previous from a Sunday');
+	pg_assert_same(list_period_test_range('2026-10-26', '2026-11-01'), $steps['current'], 'this week on a Sunday');
+	pg_assert_same(list_period_test_range('2026-11-02', '2026-11-08'), $steps['next'], 'next from a Sunday');
+}
+
+function test_list_period_week_crosses_daylight_saving_and_the_year()
+{
+	$saved = date_default_timezone_get();
+	date_default_timezone_set('Europe/Berlin');
+
+	// Clocks go back on Sunday 25 October 2026.
+	$dst = pg_list_period_week_steps(list_period_test_range('2026-10-19', '2026-10-25'), 1, mktime(12, 0, 0, 10, 25, 2026));
+	$year = pg_list_period_week_steps(list_period_test_range('2026-12-28', '2027-01-03'), 1, mktime(12, 0, 0, 12, 31, 2026));
+
+	date_default_timezone_set($saved);
+
+	pg_assert_same(list_period_test_range('2026-10-26', '2026-11-01'), $dst['next'], 'next week after the clock change');
+	pg_assert_same(list_period_test_range('2026-10-19', '2026-10-25'), $dst['current'], 'the week of the clock change');
+	pg_assert_same(list_period_test_range('2027-01-04', '2027-01-10'), $year['next'], 'into the new year');
+	pg_assert_same(list_period_test_range('2026-12-21', '2026-12-27'), $year['previous'], 'back from a week across the year');
+}
+
+function test_list_period_navigator_recognises_its_own_weeks()
+{
+	foreach (array(0, 1) as $first_day) {
+		$steps = pg_list_period_week_steps(list_period_test_range('2026-10-26', '2026-11-01'), $first_day, mktime(12, 0, 0, 10, 28, 2026));
+
+		foreach ($steps as $key => $week) {
+			pg_assert_same('week', pg_period_unit($week, $first_day), $key . ' week, first day ' . $first_day);
+			pg_assert_same('month', pg_period_unit($week, 1 - $first_day), $key . ' week is no week from the other first day');
+		}
+	}
+
+	pg_assert_true(in_array(pg_list_period_week_first_day(), array(0, 1), true), 'first day is Sunday or Monday');
+	pg_assert_same((lang(array('info' => '')) === 'tr') ? 1 : 0, pg_list_period_week_first_day(), 'Monday in Turkish');
+}
+
 function test_list_period_heading_follows_the_date_order()
 {
 	$range = list_period_test_range('2026-09-26', '2026-10-27');
@@ -125,6 +187,8 @@ function test_list_period_every_list_screen_steps_from_the_last_shown_month()
 
 		pg_assert_contains('pg_list_period_month_steps(', $source, $screen . ' reads the month steps');
 		pg_assert_false(strpos($source, "\$decrease_month['new_time']") !== false, $screen . ' has no month arithmetic of its own');
+		pg_assert_contains('pg_list_period_week_steps(', $source, $screen . ' reads the week steps');
+		pg_assert_false(stripos($source, "'last sunday") !== false, $screen . ' has no Sunday week of its own');
 	}
 
 	foreach (array('view_orders.php', 'view_contacts.php', 'view_submitted_forms.php') as $screen) {
