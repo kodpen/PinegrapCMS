@@ -4,8 +4,8 @@ description: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loo
 ---
 
 ## What does ws_mail_ingest($raw, $box) do?
-- Parses with `pg_mail_parse(..., with_content)` (`mail-parse.md`), then answers `status`: `stored` (item, conversation, message ids), `duplicate`, `loop` (reason own | auto | bulk), `held`, `refused` (reason too_large | no_sender | no_channel | not_saved). Only `stored` keeps anything; a reader (G2) leaves held mail in the mailbox for a later run.
-- Callers: the `.eml` upload on the Mailboxes card (`mail-card.md`); the IMAP read (G2) next.
+- Parses with `pg_mail_parse(..., with_content)` (`mail-parse.md`), then answers `status`: `stored` (item, conversation, message ids), `duplicate`, `loop` (reason own | auto | bulk), `held`, `refused` (reason too_large | no_sender | no_channel | not_saved). Only `stored` keeps anything.
+- Callers: the `.eml` upload (`mail-card.md`) and `ws_mail_fetch()` (`mail-fetch.md`), which leaves held mail for a later run.
 
 ## How is a mail kept once?
 - `rfc_message_hash` = SHA-256 of `id:<Message-ID>`, else of `raw:<whole mail>` (`ws_mail_hash()`); `UNIQUE (box_id, rfc_message_hash)`. A failed item INSERT is read back as `duplicate` (two readers).

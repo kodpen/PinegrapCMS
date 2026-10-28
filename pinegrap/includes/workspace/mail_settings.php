@@ -332,6 +332,8 @@ function ws_mail_error_text($error, $detail, $host)
         'folder'        => lang('The folder to read was not found.'),
         'move_folder'   => lang('The folder to move mail to was not found.'),
         'too_large'     => lang('An e-mail is larger than 25 MB.'),
+        'no_channel'    => lang('The mailbox\'s channel is missing or in the archive.'),
+        'not_saved'     => lang('The e-mail could not be saved.'),
     );
     $text = $texts[(string) $error] ?? lang('The server ended the conversation unexpectedly.');
 
@@ -732,7 +734,7 @@ function ws_mail_settings_card($self_url, $viewer)
             <div class="card-body">
                 <div class="collapse" id="ws-mail-new">' . ws_mail_box_form($self_url, null, $channels) . '</div>
                 ' . $rows . '
-                <div class="form-text mt-5">' . h(lang('Reading a mailbox by itself comes later; until then an .eml file saved from a mail program can be brought in by hand.')) . '</div>
+                <div class="form-text mt-5">' . h(lang('A mailbox with a server is read every minute while the Incoming e-mail scheduled job is on; an .eml file saved from a mail program can also be brought in by hand.')) . '</div>
             </div>
         </div>';
 }
