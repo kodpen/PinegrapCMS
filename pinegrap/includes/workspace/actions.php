@@ -697,6 +697,17 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok(array('flow_id' => $result['flow_id'], 'left' => $result['left'])) : ws_action_error($result['error']);
 
+        // Edit on a scheduled action's card: its flow, the row converted
+        // first when it is not yet, or what keeps it from becoming one.
+        case 'ws_flow_scheduled_edit':
+            $scheduled = ws_can_schedule($viewer) ? ws_scheduled_action((int) ($request['id'] ?? 0)) : null;
+
+            if (!$scheduled || !in_array((string) $scheduled['status'], array('active', 'paused', 'failed'), true)) {
+                return ws_action_error(lang('That scheduled action could not be found.'));
+            }
+
+            return ws_action_ok(ws_scheduled_flow_edit($scheduled));
+
         case 'ws_flow_create':
         case 'ws_flow_save':
             $flow = null;

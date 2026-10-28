@@ -89,6 +89,25 @@ function ws_scheduled_convert_due($limit = WS_FLOW_CONVERT_BATCH)
 }
 
 /**
+ * The flow an action is converted into, drawn as its creator sees it, and
+ * what the flow refuses in it (ws_flow_problems()): nothing when it can be
+ * converted.
+ *
+ * @param array $row ws_scheduled()
+ * @return array graph, left (what the flow keeps otherwise, in sentences), problems
+ */
+function ws_scheduled_convert_drawing($row)
+{
+    $owner = (int) $row['created_by'];
+    $viewer = ws_change_viewer_for_id($owner);
+    $viewer = is_array($viewer) ? $viewer : array('id' => $owner, 'member' => false, 'role' => 3);
+    $made = ws_flow_graph_from_scheduled(ws_scheduled_form_data($viewer, $row), ws_scheduled_money_metrics(), (int) $row['id']);
+    $graph = ws_flow_graph_normalize($made['graph']);
+
+    return array('graph' => $graph, 'left' => $made['left'], 'problems' => is_array($graph) ? ws_flow_problems($graph) : array());
+}
+
+/**
  * Converts one scheduled action into a flow and makes the action its
  * converted anchor. Taken with the action's run lock, so a run and a
  * second request leave it alone meanwhile; the anchor is written last and
@@ -122,13 +141,11 @@ function ws_scheduled_convert($id)
     }
 
     $owner = (int) $row['created_by'];
-    $viewer = ws_change_viewer_for_id($owner);
-    $viewer = is_array($viewer) ? $viewer : array('id' => $owner, 'member' => false, 'role' => 3);
-    $made = ws_flow_graph_from_scheduled(ws_scheduled_form_data($viewer, $row), ws_scheduled_money_metrics(), (int) $row['id']);
-    $graph = ws_flow_graph_normalize($made['graph']);
+    $made = ws_scheduled_convert_drawing($row);
+    $graph = $made['graph'];
     $json = is_array($graph) ? json_encode($graph, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : false;
 
-    if (!is_string($json) || !empty(ws_flow_problems($graph))) {
+    if (!is_string($json) || !empty($made['problems'])) {
         return $release();
     }
 
@@ -264,4 +281,59 @@ function ws_scheduled_flow_copy($viewer, $row)
     ));
 
     return array('ok' => $saved['ok'], 'error' => $saved['error'], 'flow_id' => (int) $saved['flow_id'], 'left' => $saved['ok'] ? $made['left'] : array());
+}
+
+/**
+ * Edit on a scheduled action's card: the flow it is changed on. A row not
+ * converted yet is converted now, so a problem fixed since the upgrade (a
+ * channel restored, a template corrected) no longer keeps it off the
+ * canvas. A row the flow still refuses answers what is wrong in it, which a
+ * Duplicate can fix on its own canvas; the row runs on as it is
+ * (ws_scheduled_execute()) until it is cancelled.
+ *
+ * @param array $row ws_scheduled_action()
+ * @return array flow_id (0 when refused), problems (sentences), message
+ */
+function ws_scheduled_flow_edit($row)
+{
+    $id = (int) $row['id'];
+
+    if (((int) ($row['flow_id'] ?? 0) <= 0) && ((string) ($row['anchor'] ?? '') === '')) {
+        ws_scheduled_convert($id);
+        $row = ws_scheduled($id);
+    }
+
+    if ($row && ((int) $row['flow_id'] > 0)) {
+        return array('flow_id' => (int) $row['flow_id'], 'problems' => array(), 'message' => '');
+    }
+
+    $problems = $row ? ws_scheduled_flow_edit_problems(ws_scheduled_convert_drawing($row)['problems']) : array();
+
+    // Nothing refused: another request holds the row's run lock just now.
+    if (empty($problems)) {
+        return array('flow_id' => 0, 'problems' => array(), 'message' => lang('The action is running just now. Try again in a moment.'));
+    }
+
+    return array('flow_id' => 0, 'problems' => $problems, 'message' => lang('This action cannot become a flow yet, so it runs on as it is until it is cancelled. Duplicate makes a new flow from it, where these can be fixed:'));
+}
+
+/**
+ * The sentences of the problems a flow refuses, each once (pure).
+ *
+ * @param array[] $problems ws_flow_problems()
+ * @return string[]
+ */
+function ws_scheduled_flow_edit_problems($problems)
+{
+    $texts = array();
+
+    foreach ((array) $problems as $problem) {
+        $text = trim((string) ($problem['text'] ?? ''));
+
+        if (($text !== '') && !in_array($text, $texts, true)) {
+            $texts[] = $text;
+        }
+    }
+
+    return $texts;
 }
