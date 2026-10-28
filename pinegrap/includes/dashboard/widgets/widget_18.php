@@ -246,7 +246,7 @@ function pg_dashboard_widget_18($request, $user)
             && ($fm_item['optimization_percent'] !== '')
             && ((int) $fm_item['optimization_percent'] > 0)
         ) {
-            $fm_percent = '<span class="ps-1" style="font-size:10px">' . (int) $fm_item['optimization_percent'] . '%</span>';
+            $fm_percent = '<span class="ps-1" style="font-size:10px">' . h(lang(array('string' => '{var:1}%', 'vars' => (int) $fm_item['optimization_percent']))) . '</span>';
         }
 
         // Whether the row can be made narrower rather than only

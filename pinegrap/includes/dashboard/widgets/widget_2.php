@@ -1093,12 +1093,18 @@ function pg_dashboard_widget_2($request, $user)
                 . ' stroke-dashoffset="-' . $health_dash . '"></circle>'
             : '';
 
+        // The big score keeps its small % sign, on the side the
+        // language's '{var:1}%' wording puts it (Turkish: %87).
+        $health_score_html = (strpos(lang('{var:1}%'), '%') === 0)
+            ? '<span>%</span>' . (int) $health_score
+            : (int) $health_score . '<span>%</span>';
+
         $output_data = '
         <div class="card-body p-0 pg-split">
             <div class="pg-split-half pg-split-pinned">
                 <div class="pg-health" style="' . $health_vars . '">
                     <div class="pg-health-dial">
-                        <svg class="pg-health-gauge" viewBox="8 8 124 72" role="img" aria-label="' . h(lang('Overall System Health')) . ' ' . (int) $health_score . '%">
+                        <svg class="pg-health-gauge" viewBox="8 8 124 72" role="img" aria-label="' . h(lang('Overall System Health')) . ' ' . h(lang(array('string' => '{var:1}%', 'vars' => (int) $health_score))) . '">
                             <defs>
                                 <!--
                                     userSpaceOnUse so the axis can sit
@@ -1235,7 +1241,7 @@ function pg_dashboard_widget_2($request, $user)
                                     stroke-dasharray="' . round(131.95 * $health_score / 100, 2) . ' 263.89"></circle>
                         </svg>
                         <div class="pg-health-readout">
-                            <div class="pg-health-score">' . (int) $health_score . '<span>%</span></div>
+                            <div class="pg-health-score">' . $health_score_html . '</div>
                             <div class="pg-health-label">' . lang('Overall System Health') . '</div>
                         </div>
                     </div>

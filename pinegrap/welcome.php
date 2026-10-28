@@ -125,7 +125,7 @@ if (count($changelog_sections) > 0) {
         }
 
         $output_changelog_head .= '
-        <div class="d-flex flex-wrap gap-y-1 pb-5 mb-5 border-bottom">' . $output_changelog_legend . '</div>';
+        <div class="d-flex flex-wrap row-gap-1 pb-5 mb-5 border-bottom">' . $output_changelog_legend . '</div>';
     }
 
     $output_changelog_versions = '';
