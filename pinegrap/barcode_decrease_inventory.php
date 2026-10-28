@@ -291,6 +291,15 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                 break;
             }
             $id = $row['id'];
+
+            // A bundle's stock follows its components (includes/fn/bundles.php).
+            if (pg_bundle_ids_among(array($id))) {
+                echo encode_json(array(
+                    'status' => 'error',
+                    'message' => lang('This product is a bundle: its stock follows the products in it. Change their stock instead.')));
+                exit();
+            }
+
             $name = $row['name'];
             $short_description = $row['short_description'];
             $inventory = $row['inventory'];

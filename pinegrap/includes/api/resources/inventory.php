@@ -75,6 +75,12 @@ function api_inventory_write($params) {
 
 	}
 
+	if ($result['status'] === 'bundle') {
+
+		api_fail(409, 'bundle', lang('This product is a bundle: its stock follows the products in it. Change their stock instead.'));
+
+	}
+
 	if ($result['status'] !== 'ok') {
 
 		api_fail_not_found(lang('Product'));
@@ -208,7 +214,9 @@ function api_inventory_bulk($params) {
 				'status'  => $outcome['status'],
 				'message' => ($outcome['status'] === 'not_tracked')
 					? lang('This product does not track stock. Send op=set with a quantity to start tracking it.')
-					: lang('Product not found.')
+					: (($outcome['status'] === 'bundle')
+						? lang('This product is a bundle: its stock follows the products in it. Change their stock instead.')
+						: lang('Product not found.'))
 			);
 
 		}
@@ -239,8 +247,9 @@ function api_inventory_bulk($params) {
 
 }
 
-// One product, one change. Answers status 'ok' with the new stock, 'not_found',
-// or 'not_tracked' when an adjust was aimed at a product that does not track
+// One product, one change. Answers status 'ok' with the new stock,
+// 'not_found', 'bundle' for a bundle (its stock is its components'), or
+// 'not_tracked' when an adjust was aimed at a product that does not track
 // stock.
 function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry = false) {
 
@@ -262,6 +271,13 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 	if ($product === null) {
 
 		return array('status' => 'not_found');
+
+	}
+
+	// A bundle's stock is a cache of its components' (includes/fn/bundles.php).
+	if (pg_bundle_ids_among(array($id))) {
+
+		return array('status' => 'bundle');
 
 	}
 

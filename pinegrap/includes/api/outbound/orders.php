@@ -529,12 +529,20 @@ function mp_order_cancel($account, $package, $map) {
 // Put back what the cancelled order took.
 function mp_order_return_stock($order_id) {
 
-	$items = (array) db_items("SELECT order_items.product_id, order_items.quantity, products.inventory
+	$items = (array) db_items("SELECT order_items.id, order_items.product_id, order_items.quantity, products.inventory
 		FROM order_items
 		INNER JOIN products ON products.id = order_items.product_id
 		WHERE order_items.order_id = '" . e((int)$order_id) . "'");
 
 	foreach ($items as $item) {
+
+		// A bundle line puts back the components it took, as recorded when
+		// it was sold.
+		if (pg_bundle_return_stock($item['id'], max(1, (int)$item['quantity']), 'marketplace')) {
+
+			continue;
+
+		}
 
 		if (empty($item['inventory'])) {
 
@@ -687,7 +695,7 @@ function mp_order_write($account, $package, $map_id) {
 	// the order timeline reads.
 	$ship_to_id = mp_order_ship_to($order_id, $package);
 
-	foreach ($matched as $entry) {
+	foreach ($matched as $index => $entry) {
 
 		$line = $entry['line'];
 
@@ -702,6 +710,9 @@ function mp_order_write($account, $package, $map_id) {
 			price        = '" . e((int)$line['price']) . "',
 			tax          = '" . e((int)$line['tax']) . "',
 			shipping     = 0");
+
+		// A bundle line keeps the contents it was sold with against its row.
+		$matched[$index]['order_item_id'] = (int) mysqli_insert_id(db::$con);
 
 	}
 
@@ -1068,9 +1079,29 @@ function mp_order_number() {
 // out to every other marketplace as if it meant something.
 function mp_order_take_stock($matched) {
 
+	$product_ids = array();
+
+	foreach ($matched as $entry) {
+
+		$product_ids[] = (int) $entry['product']['id'];
+
+	}
+
+	$bundle_ids = pg_bundle_ids_among($product_ids);
+	$stock_left = array();
+
 	foreach ($matched as $entry) {
 
 		$product = $entry['product'];
+
+		// A bundle takes its components' stock (includes/fn/bundles.php).
+		if (isset($bundle_ids[(int) $product['id']]) && !empty($entry['order_item_id'])) {
+
+			pg_bundle_take_stock($entry['order_item_id'], $product['id'], max(1, (int)$entry['line']['quantity']), 'marketplace', $stock_left);
+
+			continue;
+
+		}
 
 		if (empty($product['inventory'])) {
 
