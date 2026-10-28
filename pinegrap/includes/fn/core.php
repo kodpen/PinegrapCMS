@@ -2908,7 +2908,9 @@ function get_time_picker_format()
 // assets/js/pg_datetime.js comes first: pg_fields.js draws dates and times
 // with it, and it loads the vendored vanilla-calendar-pro once, from its
 // data-pg-calendar-src (a settings card that prints these tags again does
-// not run the library a second time).
+// not run the library a second time). Its data-pg-calendar carries the
+// calendar's clock and words (pg_calendar_settings()), and the stylesheet of
+// its time row comes with it.
 function pg_fields_script()
 {
     static $printed = false;
@@ -2920,8 +2922,42 @@ function pg_fields_script()
     $printed = true;
     $path = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY;
 
-    return '<script src="' . $path . '/assets/js/pg_datetime.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_datetime.js') . '" data-pg-calendar-src="' . $path . '/assets/lib/vanilla-calendar-pro/index.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/lib/vanilla-calendar-pro/index.js') . '"></script>'
+    return '<link rel="stylesheet" href="' . $path . '/assets/css/pg_datetime.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/css/pg_datetime.css') . '">'
+        . '<script src="' . $path . '/assets/js/pg_datetime.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_datetime.js') . '" data-pg-calendar-src="' . $path . '/assets/lib/vanilla-calendar-pro/index.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/lib/vanilla-calendar-pro/index.js') . '" data-pg-calendar="' . h(json_encode(pg_calendar_settings())) . '"></script>'
         . '<script src="' . $path . '/assets/js/pg_fields.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_fields.js') . '" data-pg-remove-label="' . h(lang('Remove')) . '" data-pg-search-label="' . h(lang('Search')) . '" data-pg-no-results-label="' . h(lang('No results found')) . '" data-pg-searching-label="' . h(lang('Searching…')) . '" data-pg-type-label="' . h(lang('Type to search...')) . '" data-pg-locale-label="' . h(lang(array('info' => ''))) . '"></script>';
+}
+
+
+// What the date-and-time control (assets/js/pg_datetime.js) needs from the
+// site: the clock its time row shows (24 with the 24-hour setting, else 12,
+// as pg_time_format_code() reads it), the word on its Done button, and the
+// screen-reader names of the calendar's parts, which vanilla-calendar-pro
+// has in English only.
+function pg_calendar_settings($time_format = null)
+{
+    return array(
+        'timeMode' => (pg_time_format_code($time_format) === 'H:i') ? 24 : 12,
+        'done' => lang('Done'),
+        'labels' => array(
+            'application' => lang('Calendar'),
+            'navigation' => lang('Calendar navigation'),
+            'arrowNext' => array('month' => lang('Next month'), 'year' => lang('Next years')),
+            'arrowPrev' => array('month' => lang('Previous month'), 'year' => lang('Previous years')),
+            'month' => lang('Choose month'),
+            'months' => lang('Months'),
+            'year' => lang('Choose year'),
+            'years' => lang('Years'),
+            'week' => lang('Days of the week'),
+            'weekNumber' => lang('Week numbers'),
+            'dates' => lang('Dates in the month'),
+            'selectingTime' => lang('Time'),
+            'inputHour' => lang('Hour'),
+            'inputMinute' => lang('Minute'),
+            'rangeHour' => lang('Hour slider'),
+            'rangeMinute' => lang('Minute slider'),
+            'btnKeeping' => lang('Switch AM/PM'),
+        ),
+    );
 }
 
 
