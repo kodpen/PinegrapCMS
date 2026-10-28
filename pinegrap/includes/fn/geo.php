@@ -676,3 +676,70 @@ function pg_geo_country_name($code)
 
     return isset($countries[$code]) ? $countries[$code] : $code;
 }
+
+/**
+ * A stored country as the panel and the site name it: the stored (English)
+ * name through lang() when the shards know it ("Turkey" becomes "Türkiye"),
+ * else the name intl gives for its ISO code in the current language
+ * (pg_geo_country_name(): "Aland Islands" becomes "Åland Adaları"), else the
+ * stored name. The stored name and code stay what they are: zones, orders
+ * and the accounting accounts match on the stored name.
+ *
+ * @param string $name countries.name
+ * @param string $code countries.code
+ * @return string
+ */
+function pg_geo_country_label($name, $code = '')
+{
+    $name = trim((string) $name);
+    $code = strtoupper(trim((string) $code));
+
+    if ($name !== '') {
+        $translated = (string) lang($name);
+
+        if ($translated !== $name) {
+            return $translated;
+        }
+    }
+
+    if (preg_match('/^[A-Z]{2}$/', $code)) {
+        $from_code = (string) pg_geo_country_name($code);
+
+        if (($from_code !== '') && ($from_code !== $code)) {
+            return $from_code;
+        }
+    }
+
+    return $name;
+}
+
+/**
+ * The rows of a country list in the order of their labels in the current
+ * language: the intl Collator of the panel language when PHP has it ("Çin"
+ * after "Brezilya", not after "Zimbabve"), else a case-insensitive byte
+ * order. $rows is a list of arrays that carry $label_key.
+ *
+ * @param array  $rows
+ * @param string $label_key
+ * @return array
+ */
+function pg_geo_sort_by_label(array $rows, $label_key = 'label')
+{
+    $locale = function_exists('lang') ? (string) lang(array('info' => '')) : 'en';
+    $collator = (class_exists('Collator') && ($locale !== '')) ? new Collator($locale) : null;
+
+    usort($rows, function ($a, $b) use ($collator, $label_key) {
+        $x = isset($a[$label_key]) ? (string) $a[$label_key] : '';
+        $y = isset($b[$label_key]) ? (string) $b[$label_key] : '';
+
+        if ($collator !== null) {
+            $result = $collator->compare($x, $y);
+
+            return ($result === false) ? 0 : (int) $result;
+        }
+
+        return strcasecmp($x, $y);
+    });
+
+    return $rows;
+}
