@@ -15,4 +15,4 @@ description: The menu item create and edit screens share includes/forms/menu_ite
 - Edit: the not-found guard, the record load and position prefill, the Position options, delete (recursive), the UPDATE and the reorder of the level.
 
 ## Why this pair?
-- Measured among the remaining add/edit pairs: add 273 and edit 446 lines, about 198 shared, the largest one no open PR touched (product group, arrival date and zone were held). Tests: `tests/menu_item_form_test.php`.
+- PR #2539. Measured: add 273 and edit 446 lines, about 198 shared, the largest one no open PR touched (product group, arrival date and zone were held). Tests: `tests/menu_item_form_test.php`.
