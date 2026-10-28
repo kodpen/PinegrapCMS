@@ -127,10 +127,13 @@ function test_dark_theme_badges_keep_their_ink()
 		dark_theme_leftovers_source('view_orders.php'),
 		'tracking count badge');
 
-	$profiles = dark_theme_leftovers_source('view_recurring_commission_profiles.php');
+	// The profiles list's rows are built in includes/fn/commission_list.php.
+	$profiles = dark_theme_leftovers_source('includes/fn/commission_list.php');
+	$profiles = substr($profiles, strpos($profiles, 'function pg_commission_profile_list_row('));
+	$profiles = substr($profiles, 0, strpos($profiles, "\n}\n"));
 	pg_assert_false(strpos($profiles, 'fg-white') !== false, 'recurring commission badges');
 	pg_assert_contains(
-		'<span class="badge theme-primary fw-light">\' . pg_format_money($recurring_commission_profile[\'amount\'] / 100, BASE_CURRENCY_SYMBOL) . \'</span></td>',
+		'<span class="badge theme-primary fw-light">\' . pg_format_money($profile[\'amount\'] / 100, BASE_CURRENCY_SYMBOL) . \'</span>\'',
 		$profiles,
 		'the amount badge is closed');
 

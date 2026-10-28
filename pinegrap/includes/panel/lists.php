@@ -9,6 +9,11 @@
  *                              (view_submitted_forms.php)
  *   contact_list_rows          a page of the contacts list (view_contacts.php)
  *   product_list_rows          a page of the products list (view_products.php)
+ *   commission_list_rows       a page of the commissions list
+ *                              (view_commissions.php)
+ *   commission_profile_list_rows
+ *                              a page of the recurring commission profiles
+ *                              (view_recurring_commission_profiles.php)
  *
  * Each action answers DataTables' page request (includes/fn/list_paging.php)
  * behind the gate of the screen it pages.
@@ -166,6 +171,60 @@ function pg_panel_product_list_rows($request, $action)
     // The sort is the one the screen kept in the session.
     $page = pg_product_list_page(
         pg_product_list_site_view(pg_product_list_filter_name($request['filter'] ?? '')),
+        pg_list_search_terms($request['search'] ?? ''),
+        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100));
+
+    if ($page === false) {
+        http_response_code(500);
+        respond(array('status' => 'error', 'message' => lang('Query failed.')));
+    }
+
+    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
+}
+
+// Both commission screens' gate: validate_ecommerce_access(), answered in
+// JSON. Each action checks the form token itself.
+function pg_panel_commission_list_gate()
+{
+    // Kept global: helpers read the session user through `global $user`;
+    // see includes/panel/actions.php.
+    global $user;
+
+    $user = validate_user();
+
+    if (((int) $user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
+        http_response_code(403);
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/commission_list.php');
+}
+
+function pg_panel_commission_list_rows($request, $action)
+{
+    pg_panel_commission_list_gate();
+    validate_token();
+
+    // The date range is the one the screen kept in the session.
+    $page = pg_commission_list_page(
+        pg_commission_list_range(),
+        pg_list_search_terms($request['search'] ?? ''),
+        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100));
+
+    if ($page === false) {
+        http_response_code(500);
+        respond(array('status' => 'error', 'message' => lang('Query failed.')));
+    }
+
+    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
+}
+
+function pg_panel_commission_profile_list_rows($request, $action)
+{
+    pg_panel_commission_list_gate();
+    validate_token();
+
+    $page = pg_commission_profile_list_page(
         pg_list_search_terms($request['search'] ?? ''),
         pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100));
 
