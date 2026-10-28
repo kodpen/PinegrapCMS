@@ -67,11 +67,29 @@ $query = "SELECT
         ORDER BY $order_by";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+$country_rows = array();
+
 while ($row = mysqli_fetch_array($result)) {
+    // The name in the panel's language.
+    $row['label'] = pg_geo_country_label($row['name'], $row['code']);
+    $country_rows[] = $row;
+}
+
+// Sorted by name first: by the name on screen in the panel language's
+// order, not by the stored English name the query orders by ("Türkiye"
+// among the T's, not where "Turkey" was).
+if ((($sort_levels[0]['sort'] ?? '') === 'name') && $country_rows) {
+    $country_rows = pg_geo_sort_by_label($country_rows);
+
+    if (($sort_levels[0]['order'] ?? 'asc') === 'desc') {
+        $country_rows = array_reverse($country_rows);
+    }
+}
+
+foreach ($country_rows as $row) {
     $id = $row['id'];
-    // The name in the panel's language; the list is still sorted by the
-    // stored name when that column is chosen.
-    $name = h(pg_geo_country_label($row['name'], $row['code']));
+    $name = h($row['label']);
     $code = h($row['code']);
     $zip_code_required = $row['zip_code_required'];
     $transit_adjustment_days = $row['transit_adjustment_days'];
