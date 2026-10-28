@@ -15,7 +15,8 @@ description: CSRF helpers; secret config fields (one encrypted blob, never a con
 
 ## May a settings screen show a stored secret?
 - No. A new secret field is drawn empty; an empty box keeps the saved value (the Paraşüt card and the marketplace connectors do this).
-- Some older fields still print their stored value: the payment gateways' keys and passwords (`includes/settings/commerce.php`), the TSA password (`includes/settings/features.php`) and the e-document provider credentials (`includes/settings/prep.php`, where an emptied box clears the value through `erp_edoc_credentials_save()`). They are legacy behaviour pending `plans/security-findings-2026-10.md` item 6, never a pattern to copy. The Google Client Secret is the one recorded exception (operator preference, #62 item 13, `workflow/decisions-made-access.md`). Site Settings needs manager rights.
+- The legacy gateways' secrets are sealed and drawn as a mask: `commerce/payment-gateway-secrets.md`.
+- Still printed: the TSA password (`includes/settings/features.php`), the e-document provider credentials (`includes/settings/prep.php`, where an emptied box clears the value through `erp_edoc_credentials_save()`) and other gateways' keys (Stripe, Sage, ClearCommerce): legacy, never a pattern to copy. The Google Client Secret is the one recorded exception (operator preference, #62 item 13, `workflow/decisions-made-access.md`). Site Settings needs manager rights.
 - No fake password field in a dialog; `pg_settings_stamp_autocomplete()` prints the password managers' opt-outs (`ui/settings-modal-autofill-lock.md`).
 
 ## What does the session cookie carry, and what changes at sign-in?

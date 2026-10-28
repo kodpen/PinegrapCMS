@@ -593,7 +593,9 @@ define('ECOMMERCE_PAYMENT_GATEWAY', $row['ecommerce_payment_gateway']);
 define('ECOMMERCE_PAYMENT_GATEWAY_TRANSACTION_TYPE', $row['ecommerce_payment_gateway_transaction_type']);
 define('ECOMMERCE_PAYMENT_GATEWAY_MODE', $row['ecommerce_payment_gateway_mode']);
 define('ECOMMERCE_AUTHORIZENET_API_LOGIN_ID', $row['ecommerce_authorizenet_api_login_id']);
-define('ECOMMERCE_AUTHORIZENET_TRANSACTION_KEY', $row['ecommerce_authorizenet_transaction_key']);
+// The gateways' secrets are stored sealed (pg_gateway_secret_fields()); a
+// plain value from before still reads as it is.
+define('ECOMMERCE_AUTHORIZENET_TRANSACTION_KEY', pg_gateway_secret_value($row['ecommerce_authorizenet_transaction_key']));
 define('ECOMMERCE_CLEARCOMMERCE_CLIENT_ID', $row['ecommerce_clearcommerce_client_id']);
 define('ECOMMERCE_CLEARCOMMERCE_USER_ID', $row['ecommerce_clearcommerce_user_id']);
 define('ECOMMERCE_CLEARCOMMERCE_PASSWORD', $row['ecommerce_clearcommerce_password']);
@@ -602,9 +604,9 @@ define('ECOMMERCE_FIRST_DATA_GLOBAL_GATEWAY_PEM_FILE_NAME', $row['ecommerce_firs
 define('ECOMMERCE_PAYPAL_PAYFLOW_PRO_PARTNER', $row['ecommerce_paypal_payflow_pro_partner']);
 define('ECOMMERCE_PAYPAL_PAYFLOW_PRO_MERCHANT_LOGIN', $row['ecommerce_paypal_payflow_pro_merchant_login']);
 define('ECOMMERCE_PAYPAL_PAYFLOW_PRO_USER', $row['ecommerce_paypal_payflow_pro_user']);
-define('ECOMMERCE_PAYPAL_PAYFLOW_PRO_PASSWORD', $row['ecommerce_paypal_payflow_pro_password']);
+define('ECOMMERCE_PAYPAL_PAYFLOW_PRO_PASSWORD', pg_gateway_secret_value($row['ecommerce_paypal_payflow_pro_password']));
 define('ECOMMERCE_PAYPAL_PAYMENTS_PRO_API_USERNAME', $row['ecommerce_paypal_payments_pro_api_username']);
-define('ECOMMERCE_PAYPAL_PAYMENTS_PRO_API_PASSWORD', $row['ecommerce_paypal_payments_pro_api_password']);
+define('ECOMMERCE_PAYPAL_PAYMENTS_PRO_API_PASSWORD', pg_gateway_secret_value($row['ecommerce_paypal_payments_pro_api_password']));
 define('ECOMMERCE_PAYPAL_PAYMENTS_PRO_API_SIGNATURE', $row['ecommerce_paypal_payments_pro_api_signature']);
 define('ECOMMERCE_SAGE_MERCHANT_ID', $row['ecommerce_sage_merchant_id']);
 define('ECOMMERCE_SAGE_MERCHANT_KEY', $row['ecommerce_sage_merchant_key']);
@@ -614,7 +616,7 @@ define('ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT', $row['ecommerce_paypal_express_check
 define('ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT_TRANSACTION_TYPE', $row['ecommerce_paypal_express_checkout_transaction_type']);
 define('ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT_MODE', $row['ecommerce_paypal_express_checkout_mode']);
 define('ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT_API_USERNAME', $row['ecommerce_paypal_express_checkout_api_username']);
-define('ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT_API_PASSWORD', $row['ecommerce_paypal_express_checkout_api_password']);
+define('ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT_API_PASSWORD', pg_gateway_secret_value($row['ecommerce_paypal_express_checkout_api_password']));
 define('ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT_API_SIGNATURE', $row['ecommerce_paypal_express_checkout_api_signature']);
 define('ECOMMERCE_OFFLINE_PAYMENT', $row['ecommerce_offline_payment']);
 define('ECOMMERCE_OFFLINE_PAYMENT_ONLY_SPECIFIC_ORDERS', $row['ecommerce_offline_payment_only_specific_orders']);
@@ -635,7 +637,7 @@ define('ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL', $row['ecommerce_custom_product_
 define('ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL', $row['ecommerce_custom_product_field_3_label']);
 define('ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL', $row['ecommerce_custom_product_field_4_label']);
 define('ECOMMERCE_IYZIPAY_API_KEY', $row['ecommerce_iyzipay_api_key']);
-define('ECOMMERCE_IYZIPAY_SECRET_KEY', $row['ecommerce_iyzipay_secret_key']);
+define('ECOMMERCE_IYZIPAY_SECRET_KEY', pg_gateway_secret_value($row['ecommerce_iyzipay_secret_key']));
 define('ECOMMERCE_IYZIPAY_INSTALLMENT', $row['ecommerce_iyzipay_installment']);
 define('ECOMMERCE_IYZIPAY_THREEDS', $row['ecommerce_iyzipay_threeds']);
 define('ECOMMERCE_PAY_WITH_IYZICO', $row['ecommerce_pay_with_iyzico']);

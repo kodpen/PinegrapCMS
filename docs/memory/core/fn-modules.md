@@ -41,6 +41,7 @@ description: Generated from the module field of the memory files: each includes/
 - `order_list`: [[orders-list-amount-column]]
 - `order_view`: [[order-view-screen-rows]]
 - `page_facts`: [[page-conditions]]
+- `payments`: [[payment-gateway-secrets]]
 - `privacy`: [[consent-log-and-audit-trail]]
 - `privacy_export`: [[personal-data-export]]
 - `privacy_retention`: [[privacy-log-retention]]
