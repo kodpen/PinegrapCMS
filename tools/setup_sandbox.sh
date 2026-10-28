@@ -10,7 +10,13 @@
 # Do NOT run this on a development machine or a live site: it overwrites
 # pinegrap/data/config.php and drops the database it creates.
 #
+# The generated config.php is marked skip-worktree so that git never stages
+# it; tools/check_pr.php refuses any branch that changes it all the same.
+#
 # Usage:  bash tools/setup_sandbox.sh [port]        (default port: 8000)
+#         bash tools/setup_sandbox.sh --cleanup     restores the tracked
+#                                                   config.php and clears the
+#                                                   skip-worktree mark
 #
 # @author      Erdal Güral (Kodpen)
 # @link        https://kodpen.com
@@ -19,11 +25,18 @@
 
 set -euo pipefail
 
-PORT="${1:-8000}"
-
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB_ROOT="$ROOT/pinegrap"
 CONFIG_FILE="$WEB_ROOT/data/config.php"
+
+if [ "${1:-}" = "--cleanup" ]; then
+	git -C "$ROOT" update-index --no-skip-worktree pinegrap/data/config.php
+	git -C "$ROOT" checkout -- pinegrap/data/config.php
+	echo "pinegrap/data/config.php is the tracked <?php ?> again and git sees its changes."
+	exit 0
+fi
+
+PORT="${1:-8000}"
 
 DB_NAME="pinegrap_sandbox"
 DB_USER="pinegrap"
@@ -127,6 +140,10 @@ define('ENVIRONMENT', 'development');
 ?>
 PHP
 
+# The sandbox's credentials and key stay out of every commit: git no longer
+# sees changes to the file (undone by --cleanup).
+git -C "$ROOT" update-index --skip-worktree pinegrap/data/config.php
+
 say "Starting PHP's built-in server on $BASE_URL"
 
 # The document root is the repository root, which is also the site layout in
@@ -213,5 +230,6 @@ Panel       $BASE_URL/pinegrap/ (sign in as $ADMIN_USER / $ADMIN_PASSWORD)
 Database    $DB_NAME as $DB_USER / $DB_PASSWORD ($TABLE_COUNT tables)
 Server log  /tmp/pinegrap-server.log (PID $SERVER_PID)
 
-Everything here lives and dies with this sandbox.
+Everything here lives and dies with this sandbox. data/config.php is
+skip-worktree; bash tools/setup_sandbox.sh --cleanup restores it.
 INFO

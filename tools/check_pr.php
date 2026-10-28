@@ -14,13 +14,17 @@
  *   then that account's identity and is judged as any other;
  * - the branch does not change pinegrap/changelog.txt, which only the merging
  *   session writes;
+ * - the branch does not change pinegrap/data/config.php in any way: its
+ *   tracked content is <?php ?>, and a site's or sandbox's connection details
+ *   and encryption key must never reach the repository;
  * - more than PG_CHECK_PR_SIZE_LIMIT product lines (changed lines under
  *   pinegrap/, minified bundles and language files not counted) prints a
  *   warning, never a failure.
  * A merge train (merge-train/*), development and main skip the author,
  * changelog and size checks: they carry the commits of other branches,
  * Dependabot's among them; --identity-exempt does the same for a pull
- * request Dependabot opened. The trailer check applies to every branch.
+ * request Dependabot opened. The trailer and config.php checks apply to every
+ * branch.
  *
  * Usage:  php tools/check_pr.php <base> <head> [--branch=<name>]
  *             [--identity-exempt]
@@ -126,6 +130,26 @@ function check_pr_parse_numstat($output)
 	}
 
 	return $files;
+}
+
+// What is wrong with the files a change touches (path => changed lines, from
+// check_pr_parse_numstat()), as a list of messages. pinegrap/data/config.php
+// fails on every branch: the diff is taken with --no-renames, so a rename to
+// or from it, a deletion and a mode change all list its path.
+// pinegrap/changelog.txt fails only when $exempt is false.
+function check_pr_file_problems(array $files, $exempt)
+{
+	$problems = array();
+
+	if (!$exempt && isset($files['pinegrap/changelog.txt'])) {
+		$problems[] = 'the branch changes pinegrap/changelog.txt; name the [NEW] line or the [SCHEME] item in the PR body instead (CLAUDE.md, Working mode 7)';
+	}
+
+	if (isset($files['pinegrap/data/config.php'])) {
+		$problems[] = 'the branch changes pinegrap/data/config.php, whose tracked content stays <?php ?>; restore it with git checkout origin/development -- pinegrap/data/config.php';
+	}
+
+	return $problems;
 }
 
 // The product lines of a change: changed lines in files under pinegrap/,
@@ -261,12 +285,12 @@ if ($numstat === false) {
 
 $files = check_pr_parse_numstat($numstat);
 
-if (!$exempt && !$identity_exempt) {
-	if (isset($files['pinegrap/changelog.txt'])) {
-		$fail('the branch changes pinegrap/changelog.txt; name the [NEW] line or the [SCHEME] item in the PR body instead (CLAUDE.md, Working mode 7)');
-		$failed = true;
-	}
+foreach (check_pr_file_problems($files, $exempt || $identity_exempt) as $problem) {
+	$fail($problem);
+	$failed = true;
+}
 
+if (!$exempt && !$identity_exempt) {
 	$lines = check_pr_product_lines($files);
 
 	if ($lines > PG_CHECK_PR_SIZE_LIMIT) {
