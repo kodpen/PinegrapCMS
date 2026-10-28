@@ -2531,6 +2531,7 @@
     "The page stays a draft until this time; then the general job puts it on the site, in the folder above. Empty: it is published by hand.": "Sayfa bu zamana kadar taslak kalır; sonra genel iş onu yukarıdaki klasöre koyarak yayına alır. Boş: elle yayınlanır.",
     "The page style, {var:1}, was moved to the Recycle Bin.": "{var:1} sayfa stili Geri Dönüşüm Kutusuna taşındı.",
     "The page style, {var:1}, was restored.": "{var:1} sayfa stili geri yüklendi.",
+    "The page that took the style from its folder was converted.": "Stili klasöründen alan sayfa dönüştürüldü.",
     "The page that you requested is no longer available because it has been archived.": "İstediğiniz sayfa arşivlendiği için artık kullanılamıyor.",
     "The page the visitor came from on this site (the link drops when there is none)": "Ziyaretçinin bu sitede geldiği sayfa (yoksa bağlantı düşer)",
     "The page the visitor can go to after the confirmation screen; the result is shown there.": "Onay ekranından sonra ziyaretçinin gidebileceği sayfa; işlem sonucu bu sayfada gösterilir.",

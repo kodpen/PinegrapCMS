@@ -1007,6 +1007,7 @@
     "{var:1} page(s) {var:2}": "{var:1} sayfa {var:2}",
     "{var:1} page(s), {var:2} time(s)": "{var:1} sayfa, {var:2} kez",
     "{var:1} pages": "{var:1} sayfa",
+    "{var:1} pages that took the style from their folder were converted.": "Stili klasöründen alan {var:1} sayfa dönüştürüldü.",
     "{var:1} pages were checked. Click again to continue with the rest.": "{var:1} sayfa denetlendi. Kalanlarla devam etmek için yeniden tıklayın.",
     "{var:1} pages were updated": "{var:1} sayfa güncellendi",
     "{var:1} pages will be updated. Fields left on \"Do not change\" are not touched.": "{var:1} sayfa güncellenecek. \"Değiştirme\" bırakılan alanlara dokunulmaz.",

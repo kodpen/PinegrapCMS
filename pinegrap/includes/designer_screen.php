@@ -451,6 +451,7 @@ function pg_designer_screen_render($ctx)
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
             ' . $liveform->get_warnings() . '
+            ' . ((!empty($ctx['classic_folder_pages']) && function_exists('pg_classic_style_folder_pages_field')) ? pg_classic_style_folder_pages_field($ctx['classic_folder_pages']) : '') . '
             <!-- disable_shortcut: the editor answers Ctrl+S itself, with what its
                  main button says on the page on screen (style_designer.js). -->
             <form id="style_designer_form" name="style_designer_form" class="disable_shortcut" action="' . $form_action . '" method="post" style="height:100%;">
@@ -3134,6 +3135,21 @@ function pg_designer_screen_post($ctx)
                 'suffix' => array((int)$cf_res['deleted'] === 1 ? '' : 's',
                                   (int)$cf_res['lost_values'] === 1 ? '' : 's'),
             ));
+        }
+    }
+
+    // A converted classic style's folder pages, when the editor's "Also
+    // convert" box was left on: each gets the style and the frame's tree
+    // (pg_classic_style_convert_folder_pages()). Before the asset clean-up
+    // below, which clears their per-page copies too.
+    if ($converting && $can_write_design && !empty($_POST['classic_folder_pages'])) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/classic_style_design.php');
+        $folder_done = pg_classic_style_convert_folder_pages($style_id, $user, $legacy_body_classes);
+        foreach ($folder_done as $fid) $written[] = (int)$fid;
+        if ($folder_done) {
+            $notes[] = count($folder_done) === 1
+                ? lang('The page that took the style from its folder was converted.')
+                : lang(array('string' => '{var:1} pages that took the style from their folder were converted.', 'vars' => array(count($folder_done))));
         }
     }
 
