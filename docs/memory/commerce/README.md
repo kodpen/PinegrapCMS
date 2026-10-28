@@ -83,7 +83,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-cancellation-config.md: Order cancel config defines, cancel_order.php endpoint, order_view cancel tokens/visibility flags, new cancel and refund columns, email and driver auto-refund gates.
 - order-cancellation-flow.md: process_order_cancellation as the only cancel path, admin cancel UI rules (no form in table rows), enum spelling cancelled, the one restore path, what the API status moves call.
 - order-completion-stock-and-spots.md: What a completed order or local sale does to stock and event spots: fresh stock read before the decrement, the out_of_stock flag and bell, what is announced, event spots
-- order-completion.md: pg_order_complete() (#2638) and its stage functions (#2687): the session-free completion of an incomplete order, the once-only lock, what each writes, what submit_order() still does itself
+- order-completion.md: pg_order_complete() (#2638) and its stage functions (#2687, #2713): the session-free completion of an incomplete order, the once-only lock, what each writes, what submit_order() still does itself
 - order-delete.md: What deleting an order removes (delete_order.php, the only DELETE FROM orders), the kept legal document copies among them, and who calls it
 - order-discount-charged-today.md: Order discount vs recurring lines not charged today: the cap at today's subtotal (pg_order_charged_discount), which lines are charged, why the cap sits in apply_offers_to_cart()
 - order-legal-documents.md: Legal documents (pre-information form, distance sales contract): settings, templates, order_documents, kept copy for customer and staff, receipt attachments, panel card
