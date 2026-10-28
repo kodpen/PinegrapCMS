@@ -1349,6 +1349,10 @@ $(document).ready(function () {
         // list): open, close and the current entry again after the address
         // changed without a page load (history.replaceState()).
         window.pgMenu = {
+            // Asked from a click on the page (a button of the screen), it
+            // opens once that click is over: the click would otherwise reach
+            // the closers above (a click outside the widened rail, a tap on
+            // the page behind the drawer) and shut it again at once.
             openPanel: function (id, options) {
                 var panel = document.getElementById(id);
 
@@ -1358,11 +1362,13 @@ $(document).ready(function () {
 
                 options = options || {};
 
-                if (isMenuDrawerMode() && !isMenuDrawerOpen()) {
-                    openMenuDrawer();
-                }
+                window.setTimeout(function () {
+                    if (isMenuDrawerMode() && !isMenuDrawerOpen()) {
+                        openMenuDrawer();
+                    }
 
-                openMenuPanel(panel, { animate: !panel.classList.contains('is-open'), focus: !!options.focus });
+                    openMenuPanel(panel, { animate: !panel.classList.contains('is-open'), focus: !!options.focus });
+                }, 0);
             },
             // Done with the panel after an entry was answered on this page:
             // the widened rail and the phone's drawer step aside.

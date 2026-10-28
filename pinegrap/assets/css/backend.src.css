@@ -17100,17 +17100,24 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
    scrolling in a column of its own; both take the menu's own ground so the
    list does not show through them. The ws- id brings the --ws-* tokens to
    every panel page. */
+/* The menu body keeps room under the rows of the other panels; with the
+   list open the foot takes the bottom edge, so the room goes, and an entry
+   scrolled to stops clear of the head and the foot. */
+#menu .menu-body:has(.pg-menu-panel.is-open #ws-menu-side) {
+  padding-bottom: 0;
+  scroll-padding: 3rem 0;
+}
 #ws-menu-side .ws-side-head {
   position: sticky;
   top: 0;
   z-index: 2;
-  flex-wrap: wrap;
+  gap: .25rem;
   margin: 0 -2px;
   padding: .25rem 2px .5rem;
   background: var(--pg-navbar-bg);
 }
 #ws-menu-side .ws-side-head input[type="search"] {
-  flex: 1 1 7rem;
+  flex: 1 1 auto;
   min-width: 0;
 }
 #ws-menu-side .ws-side-scroll {

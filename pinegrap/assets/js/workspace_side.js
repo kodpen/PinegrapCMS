@@ -46,7 +46,9 @@
         data: null,
         hooks: null,
         loading: false,
-        threadsAll: false
+        threadsAll: false,
+        // Drawn once while on the screen (draw()).
+        shown: false
     };
 
     var S = {};
@@ -881,6 +883,18 @@
 
         if (scroller) {
             scroller.scrollTop = keep.top;
+        }
+
+        // The first time the list is drawn on the screen it is about, the
+        // entry that is open is brought into the menu's view.
+        if (!state.shown && root.offsetParent) {
+            var open = root.querySelector('.ws-channel-link.active');
+
+            state.shown = true;
+
+            if (open && (typeof open.scrollIntoView === 'function')) {
+                open.scrollIntoView({ block: 'nearest' });
+            }
         }
 
         if (focused) {
