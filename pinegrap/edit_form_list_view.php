@@ -747,14 +747,14 @@ if (!$_POST) {
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-7">
-                                <label for="name" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 ' . lang('Field Options') . '
-                                </label>
+                                </div>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">
                                             <div class="form-text text-start">' . lang(array('string'=>'Header (code that is outputted before the list of Submitted Forms){var:1}','vars'=>$collection_field_marker)) . '</div>
-                                            <textarea id="header_content" name="header_content">' . h($header) . '</textarea>
+                                            <textarea id="header_content" name="header_content" aria-label="' . h(lang('Header')) . '">' . h($header) . '</textarea>
                                             ' . pg_code_editor_attach(array('id' => 'header_content', 'code_type' => 'mixed')) . '
                                         </div>
                                         <div class="col-12 md:col-auto lg:col my-3 ">
@@ -774,12 +774,12 @@ if (!$_POST) {
                                         </div>
                                         <div class="col mt-5">
                                             <div class="form-text text-start">' . lang(array('string'=>'Display layout of submitted form data fields within View{var:1}','vars'=>$collection_field_marker)) . '</div>
-                                            <textarea id="layout" name="layout">' . h($layout) . '</textarea>
+                                            <textarea id="layout" name="layout" aria-label="' . h(lang('Layout')) . '">' . h($layout) . '</textarea>
                                             ' . pg_code_editor_attach(array('id' => 'layout', 'code_type' => 'mixed')) . '
                                         </div>
                                         <div class="col-12 my-3 mt-12">
                                             <div class="form-text text-start">' . lang(array('string'=>'Footer (code that is outputted after the list of Submitted Forms){var:1}','vars'=>$collection_field_marker)) . '</div>
-                                            <textarea id="footer_content" name="footer_content">' . h($footer) . '</textarea>
+                                            <textarea id="footer_content" name="footer_content" aria-label="' . h(lang('Footer')) . '">' . h($footer) . '</textarea>
                                             ' . pg_code_editor_attach(array('id' => 'footer_content', 'code_type' => 'mixed')) . '
                                         </div>
                                     </div>
@@ -788,9 +788,9 @@ if (!$_POST) {
                         </div>
                         <div class="col-12">
                             <div class="card my-7">
-                                <label for="name" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 ' . lang('Sort & Filter Options') . '
-                                </label>
+                                </div>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">
@@ -849,9 +849,9 @@ if (!$_POST) {
                         </div>
                         <div class="col-12">
                             <div class="card my-7">
-                                <label for="name" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 ' . lang('Search & Browser Options') . '
-                                </label>
+                                </div>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">

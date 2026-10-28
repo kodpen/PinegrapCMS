@@ -122,7 +122,7 @@ function pg_custom_style_form_cards($style, $social_networking)
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 my-3">
-                                            <label class="form-label">' . lang('HTML Page with embedded Tags') . '</label>
+                                            <label for="code" class="form-label">' . lang('HTML Page with embedded Tags') . '</label>
                                             <div id="edit_custom">
                                                 <textarea name="code" id="code" rows="25" cols="60" wrap="off">' . h($style['style_code']) . '</textarea>
                                                 ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'mixed')) . '

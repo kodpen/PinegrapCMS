@@ -1193,6 +1193,27 @@
         return load().then(function () { return pgCeCreate(host, opts); });
     }
 
+    // The textarea's accessible name: its aria-label, else the text of the
+    // elements its aria-labelledby names, else the text of its first label.
+    function pgCeTextareaName(textarea) {
+        var name = textarea.getAttribute('aria-label') || '';
+        var ids = textarea.getAttribute('aria-labelledby');
+        if (!name && ids) {
+            name = ids.split(/\s+/).map(function (id) {
+                var el = id ? document.getElementById(id) : null;
+                return el ? el.textContent : '';
+            }).join(' ');
+        }
+        if (!name.trim() && textarea.labels && textarea.labels.length) {
+            // Without the hidden parts, such as the required marker's "*".
+            var copy = textarea.labels[0].cloneNode(true);
+            var hidden = copy.querySelectorAll('[aria-hidden="true"]');
+            for (var i = 0; i < hidden.length; i++) hidden[i].parentNode.removeChild(hidden[i]);
+            name = copy.textContent;
+        }
+        return name.replace(/\s+/g, ' ').trim();
+    }
+
     // Like fromTextArea: the editor takes the textarea's place and keeps its
     // value current, so the form that submits the textarea sees every edit.
     // Each write raises an input event on the textarea, as typing into it
@@ -1234,6 +1255,13 @@
         // textarea while it was on its way is kept.
         return load().then(function () {
             merged.value = textarea.value;
+            // A screen reader lands on the editor's content element, not on the
+            // hidden textarea, so that element carries the textarea's name.
+            var name = pgCeTextareaName(textarea);
+            if (name) {
+                var named = window.PgCM.view.EditorView.contentAttributes.of({ 'aria-label': name });
+                merged.extensions = merged.extensions ? [merged.extensions, named] : named;
+            }
             return pgCeCreate(mount, merged);
         }).then(function (inst) {
             textarea.style.display = 'none';

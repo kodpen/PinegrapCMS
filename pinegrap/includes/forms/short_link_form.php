@@ -133,12 +133,13 @@ function pg_short_link_form_cards($liveform, $form)
                     <div class="row">
                         <div class="col-12 md:col-4 lg:col-3 xl:col-2">
                             <div class="card my-7 position-sticky" style="top:56px;">
-                                <label for="type" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Destination Type') . '
-                                </label>
+                                </div>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12">
+                                            <label for="destination_type" class="form-label visually-hidden">' . lang('Destination Type') . '</label>
                                             ' . $liveform->output_field(array('type'=>'select', 'id'=>'destination_type', 'class'=>'form-control collapse-if-selected', 'name'=>'destination_type', 'options'=>pg_short_link_form_destination_options(), 'onchange'=>'change_short_link_destination_type(this.options[this.selectedIndex].value)', 'data-bs-target'=>'#options_row', 'required'=>'required')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             <script>
@@ -155,15 +156,15 @@ function pg_short_link_form_cards($liveform, $form)
                             <div class="row">
                                 <div class="col-12">
                                     <div class="card my-7 position-sticky" style="top:56px;">
-                                        <label for="name" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Main Informations') . '
-                                        </label>
+                                        </div>
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-12 md:col-8 lg:col-6 my-3" id="name_row">
                                                     <label for="name" class="form-label">' . lang('Name') . '</label>
                                                     <div class="input-group ">
-                                                        <label for="name" class="input-group-text material-icons" title="' . lang('This option determines the url address of the short link.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Short Link Name') . '}">public</label>
+                                                        <span class="input-group-text material-icons" title="' . lang('This option determines the url address of the short link.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Short Link Name') . '}">public</span>
                                                         ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>pg_short_link_url_max(), 'placeholder'=>lang('Short Link Name'), 'required'=>'required')) . '
                                                     </div>
                                                     <div class="form-text">' . pg_short_link_name_rule_text() . '</div>
