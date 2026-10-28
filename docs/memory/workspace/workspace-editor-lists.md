@@ -26,7 +26,7 @@ description: Lists and quotes in the Workspace writing box (#1897): twins of the
 - Letters typed with a mark waiting right after a list that ends the box go into its last item, as letters without one do (`typeMarked()` retargets with `boundaryItem()`).
 
 ## What is not done?
-- Typed autoformat ("- " at a line's start making a list) waits for question 3 of plans/workspace-composer-tools.md.
+- Typed autoformat ("- " at a line's start making a list): workspace-editor-autoformat.md.
 
 ## How was it checked?
 - Node twins and wiring in the test; headless Chromium on the editor alone: round trips, Enter, Shift+Enter, Tab, Shift+Tab, Backspace, tools and pressed state, undo, select all and delete, chips in bold and code, a card and marked letters after a list. Not the whole screen, Safari, Firefox, a phone or a running site.

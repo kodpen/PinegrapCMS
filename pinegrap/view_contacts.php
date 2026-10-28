@@ -488,7 +488,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     }
 
     // merge the contacts, then refresh the screen with a notice
-    $number_of_merged_contacts = merge_contacts($contacts_to_merge);
+    $number_of_merged_contacts = merge_contacts($contacts_to_merge, $number_of_refused_groups);
     
     $notice = '';
     
@@ -504,6 +504,13 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     // else output a notice informing the user that no contacts where merged.
     } else {
         $notice = lang('No contacts were merged. Contacts tied to User accounts cannot be merged.');
+    }
+    
+    // a group where more than one contact has an ERP account was left as it is
+    if ($number_of_refused_groups > 0) {
+        $notice .= ' ' . lang(array(
+            'string'=>'{var:1} group(s) of duplicate contacts were not merged: more than one contact of the group has a current account.',
+            'vars'=>pg_format_number($number_of_refused_groups, 0) ));
     }
     
     $liveform->add_notice($notice);

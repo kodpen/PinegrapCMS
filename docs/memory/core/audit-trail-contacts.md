@@ -17,7 +17,7 @@ description: Contacts in audit_log (PR #2170, #2246): which panel, API, import, 
 - The e-mail address first, then last name, first name, company: erasure also finds the lines of a contact deleted before the erasure by the address.
 
 ## What is not hooked?
-- Storefront sign-up and profile, checkout, unsubscribe (they wait on an owner question), `merge_contacts()` (its plan step asks the owner first).
+- Storefront sign-up and profile, checkout, unsubscribe (they wait on an owner question), `merge_contacts()` (re-points by `core/contact-holders.md` since step 7; its lines are plan step 8).
 
 ## What does erasure do with them?
 - `pg_privacy_erase_scope()` takes contact lines by the person's contact ids and by label among their addresses. `pg_privacy_erase_audit_fields()['contact']`: names (first name → "Deleted customer"), company, job fields, both addresses, phones, faxes, address → person token, website, description, member id, affiliate name, tax number and office, image. Countries, opt-in and lead source stay. The label is cleared. Owner decision 2026-10-26 (#1706): actor, time and action stay.
