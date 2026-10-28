@@ -1711,6 +1711,7 @@ function ws_flow_run_refresh($run_id)
     if ((int) mysqli_affected_rows(db::$con) === 1) {
         ws_flow_run_tell_owner($run, $state);
         ws_flow_run_announce_end((int) $run['id'], $state);
+        ws_flow_anchor_run_ended($run, $state);
     }
 
     return $state;
@@ -1881,6 +1882,7 @@ function ws_flow_runs_heal($run_id = 0)
 
                 if ((int) mysqli_affected_rows(db::$con) === 1) {
                     ws_flow_run_announce_end((int) $run['id'], 'failed');
+                    ws_flow_anchor_run_ended($run, 'failed');
                 }
 
                 continue;
@@ -2875,6 +2877,8 @@ function ws_flow_run_cancel($viewer, $run)
         return ws_flow_refusal(lang('This run has ended already.'), 409);
     }
 
+    ws_flow_anchor_run_ended($run, 'cancelled');
+
     // A box waiting for its task says that the task stays.
     $name = ws_person_name($viewer['id']);
 
@@ -3048,8 +3052,16 @@ function ws_flow_runs_cancel_ids($ids, $text)
 
     $now = time();
 
-    db("UPDATE ws_flow_runs SET status = 'cancelled', finished_at = '" . $now . "', updated_at = '" . $now . "'
-        WHERE id IN (" . $list . ") AND status IN ('running', 'waiting')");
+    // One at a time: the request whose UPDATE ended a run tells the converted
+    // scheduled action that started it, if one did.
+    foreach ((array) db_items("SELECT * FROM ws_flow_runs WHERE id IN (" . $list . ") AND status IN ('running', 'waiting')") as $run) {
+        db("UPDATE ws_flow_runs SET status = 'cancelled', finished_at = '" . $now . "', updated_at = '" . $now . "'
+            WHERE id = '" . (int) $run['id'] . "' AND status IN ('running', 'waiting')");
+
+        if ((int) mysqli_affected_rows(db::$con) === 1) {
+            ws_flow_anchor_run_ended($run, 'cancelled');
+        }
+    }
 
     db("UPDATE ws_flow_run_steps SET status = 'skipped', finished_at = '" . $now . "', result = '" . e(ws_flow_result_pack($text)) . "'
         WHERE run_id IN (" . $list . ") AND status IN ('ready', 'running', 'waiting')");
@@ -3354,7 +3366,7 @@ function ws_flow_chain_start($run, $step, $node, $owner)
     }
 
     $source_context = ws_flow_run_context($run);
-    $values = ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
+    $values = ws_flow_pure_values($graph) + ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
         WHERE run_id = '" . (int) $run['id'] . "' AND status IN ('done', 'failed', 'skipped')"));
     $context = json_encode(ws_flow_chain_context($flow, $trigger, $source_context, (string) ($source_context['flow_name'] ?? ''),
         ws_flow_chain_source_result($graph, $node['id'], $values)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

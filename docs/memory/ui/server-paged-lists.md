@@ -1,12 +1,13 @@
 ---
 name: server-paged-lists
-description: Big DataTables lists paged on the server (users #2460, submitted forms #2509): data-pg-list-action, the JSON page action, search, counts, row cells, what select all and the bulk buttons still act on
-module: list_paging, user_list, submitted_form_list
+description: DataTables lists paged on the server (users, submitted forms, contacts): data-pg-list-action, the JSON page action, search, counts, row cells, what select all and bulk buttons act on
+module: list_paging, user_list, submitted_form_list, contact_list
 ---
 
 ## Which lists are paged on the server, and why?
 - The users list (`view_users.php`, PR #2460). It printed every account and ran several queries per row (folder rights, sign-in lock, calendars, groups), so a site with thousands of users waited for all of them before DataTables showed 100.
 - The submitted forms list (`view_submitted_forms.php`, PR #2509, issue #2038). It read every matching form, kept those in a folder the user may edit (`check_edit_access()` per row) and printed 100 of them with its own page links, so the search box searched those 100 only. The folder rule is now part of the query, the filters (date range, custom form, advanced filters, `query`) come from the session through `pg_submitted_form_list_filter()`, which Export and Delete All Forms use too. Turning the advanced filters on now checks the picked custom form at once (it used to end in a failed query until the next visit).
+- The contacts list (`view_contacts.php`, PR #2528). It printed every contact with a picture lookup and a group lookup per row. The filters come from the session and the view from the address through `pg_contact_list_filter()` (Export, Delete All and Merge too); the action checks a user's groups again. The duplicates view orders the copies of an address in PHP and stays printed whole (no `data-pg-list-action`). Rows carry `id` (`DT_RowId`); lazy pictures in paged rows are bound on each draw.
 - Steps for the other big lists: `plans/big-list-paging.md`.
 
 ## How does such a screen work?

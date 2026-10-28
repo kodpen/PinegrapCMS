@@ -75,11 +75,21 @@ function pg_sw_entity_fields($entity)
         );
     }
 
-    // A forms row with its form's custom_form_pages.quiz as 'quiz'. Only the
-    // record's own view offers these: a list would show other people's scores.
+    // A forms row with its form's custom_form_pages.quiz as 'quiz' and the
+    // public values of pg_sw_entity_post_values() and the author's name as
+    // 'post_author'. Only the record's own view offers these: a list would
+    // show other people's scores. The post values are what the record's page
+    // already shows anybody (its title, summary and share picture, when it
+    // was sent, who wrote it); the submitter's e-mail, IP and staff notes
+    // stay off.
     if ($entity === 'form_record') {
         return array(
-            '__quiz_score' => array('quiz_score', 'number', array('when' => array('quiz'))),
+            '__quiz_score'   => array('quiz_score', 'number', array('when' => array('quiz'))),
+            '__post_title'   => array('post_title', 'text'),
+            '__post_date'    => array('submitted_timestamp', 'stamp'),
+            '__post_summary' => array('post_summary', 'text'),
+            '__post_image'   => array('post_image', 'text'),
+            '__post_author'  => array('post_author', 'text'),
         );
     }
 
@@ -347,6 +357,57 @@ function pg_sw_entity_values($entity, $row, $ctx = array())
     }
 
     return $values;
+}
+
+// The public values of a form record from its fields' RSS roles
+// (form_fields.rss_field): 'post_title' and 'post_summary' as plain text,
+// 'post_image' the address of its picture ('' when the media field holds
+// none). $data_rows are the form item view's form_data rows (field_name,
+// field_rss, field_type, data, file_name); $custom the record's values by
+// field name, in the page's language when the widget translates them
+// (pg_sw_index_form_data()). Read the way the record's page title, meta
+// description and share picture read them.
+function pg_sw_entity_post_values($data_rows, $custom)
+{
+    $out = array('post_title' => '', 'post_summary' => '', 'post_image' => '');
+    $roles = array('title' => 'post_title', 'description' => 'post_summary');
+    foreach (is_array($data_rows) ? $data_rows : array() as $data_row) {
+        $role = isset($data_row['field_rss']) ? (string)$data_row['field_rss'] : '';
+        if (isset($roles[$role]) && $out[$roles[$role]] === '') {
+            $key = mb_strtolower((string)(isset($data_row['field_name']) ? $data_row['field_name'] : ''), 'UTF-8');
+            $text = (isset($custom[$key]['data']) && $key !== '') ? (string)$custom[$key]['data'] : (string)$data_row['data'];
+            // Rich text as its words: a block's end is a space, the tags go.
+            if (preg_match('/<[a-z\/!]/i', $text)) $text = strip_tags(preg_replace('#<(br|/p|/div|/li|/h[1-6])\b[^>]*>#i', ' ', $text));
+            $out[$roles[$role]] = trim(preg_replace('/\s+/u', ' ', html_entity_decode($text, ENT_QUOTES, 'UTF-8')));
+        } elseif ($role === 'media' && $out['post_image'] === '') {
+            $out['post_image'] = pg_sw_entity_post_image($data_row);
+        }
+    }
+
+    return $out;
+}
+
+// The picture address a media field's row holds: an uploaded image, an
+// http(s) address of an image, or the first picture of rich text; ''
+// for anything else (a video address, another file).
+function pg_sw_entity_post_image($data_row)
+{
+    $images = array('jpg', 'jpeg', 'png', 'gif', 'webp', 'avif');
+    $file = isset($data_row['file_name']) ? (string)$data_row['file_name'] : '';
+    if ($file !== '') {
+        if (!in_array(mb_strtolower(pathinfo($file, PATHINFO_EXTENSION), 'UTF-8'), $images, true)) return '';
+        return (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . encode_url_path($file);
+    }
+    $data = trim((string)(isset($data_row['data']) ? $data_row['data'] : ''));
+    if (preg_match('#^https?://\S+$#i', $data)) {
+        $ext = mb_strtolower(pathinfo((string)parse_url($data, PHP_URL_PATH), PATHINFO_EXTENSION), 'UTF-8');
+        return in_array($ext, $images, true) ? $data : '';
+    }
+    if (preg_match('/<img[^>]+src\s*=\s*["\']([^"\']+)/i', html_entity_decode($data, ENT_QUOTES, 'UTF-8'), $m)) {
+        return preg_match('#^(https?://|/)#i', $m[1]) ? $m[1] : '';
+    }
+
+    return '';
 }
 
 // The calendar event columns get_calendar_event() leaves out, for the

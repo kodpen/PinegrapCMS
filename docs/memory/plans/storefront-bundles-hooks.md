@@ -20,10 +20,5 @@ description: Bundles design note, part 2: hook points checked in the code, steps
 3. ERP: component snapshot on invoice lines, the `erp_stock_moves` key, component moves on post, return and cancel, profit report check.
 4. API fields, catalog tokens, list source, designer palette and flags.
 
-## Questions for the owner (Turkish)
-1. Paket stoku bileşenlerden hesaplanıp `products.inventory_quantity` alanına önbellek olarak yazılsın mı? Öneri: evet; vitrin, sepet, pazaryeri, feed ve API değişmeden çalışır.
-2. Paket içinde paket ve "paket içinde renk seçimi" olsun mu? Öneri: hayır; bileşen sabit bir ürün satırıdır, ilk sürüm basit kalır.
-3. Bileşen silinmek istenirse ne olsun? Öneri: paketten çıkarılana kadar silme reddedilsin.
-4. Faturada paket tek satır mı olsun? Öneri: evet, tek satır ve paketin KDV oranı; döküm yalnız stok hareketi ve maliyette.
-5. `erp_stock_moves` benzersiz anahtarının `(kind, line_id, product_id)` olarak değişmesine ve yeni tablolara onay var mı? Öneri: evet; mevcut satırlar zaten benzersiz kalır.
-6. Paket pazaryerine listelensin mi? Öneri: ilk sürümde hayır, sonra ayrı adım.
+## What did the owner answer? (2026-10-27, #2425)
+- All six as recommended: the stock cache in `products.inventory_quantity`, no nesting or choice inside a bundle, a component in a bundle cannot be deleted, one invoice line with the bundle's tax rate, the schema as designed (the `erp_stock_moves` key widened), no marketplace listing in the first version. Step 1 may be claimed.

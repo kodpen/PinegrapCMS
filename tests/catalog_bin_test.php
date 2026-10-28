@@ -276,7 +276,8 @@ function test_catalog_bin_group_screen_neither_lists_nor_drops_binned_rows()
 
 	// Their group links survive the save that cannot post them back.
 	pg_assert_contains("AND product NOT IN (SELECT id FROM products WHERE recycled = '1')", $source, 'the save keeps the links of binned products');
-	pg_assert_contains('in_array((int) $product_id, $kept_product_ids, true)', $source, 'and does not add them a second time');
+	pg_assert_contains('pg_product_group_form_link_products($_POST[\'id\'] ?? \'\', $_POST, $kept_product_ids);', $source, 'and does not add them a second time');
+	pg_assert_contains('in_array((int) $product_id, $kept_product_ids, true)', catalog_bin_test_source('includes/forms/product_group_form.php'), 'the shared form skips the kept links');
 }
 
 function test_catalog_bin_product_screen_does_not_write_a_binned_product()

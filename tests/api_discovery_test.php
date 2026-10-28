@@ -56,7 +56,7 @@ function test_api_discovery_document_fields_and_types()
 	), array_keys($document), 'field set');
 
 	pg_assert_same('pinegrap', $document['software'], 'software');
-	pg_assert_same('2026.11.0', $document['version'], 'version');
+	pg_assert_same('2026', $document['version'], 'version');
 	pg_assert_same(1, $document['api_version'], 'api_version');
 	pg_assert_same('https://shop.example/pinegrap/integration.php', $document['api_base'], 'api_base');
 	pg_assert_same('Example Shop', $document['title'], 'title');
@@ -69,12 +69,24 @@ function test_api_discovery_document_fields_and_types()
 	pg_assert_same(null, $document['min_app_version'], 'min_app_version');
 }
 
-// The version is the installed one, as VERSION holds it.
-function test_api_discovery_document_version_is_passed_through()
+// Only the major line of the installed version is given, never the exact
+// build; GET /meta answers the exact version after sign-in.
+function test_api_discovery_document_version_is_the_major_line()
 {
 	$document = api_discovery_document(api_discovery_test_facts(array('version' => '2026.12.3')));
 
-	pg_assert_same('2026.12.3', $document['version']);
+	pg_assert_same('2026', $document['version']);
+}
+
+// The major line of a version string, whatever shape it has.
+function test_api_discovery_version_line()
+{
+	pg_assert_same('2026', api_discovery_version_line('2026.11.0'), 'full version');
+	pg_assert_same('2027', api_discovery_version_line('2027.1.12'), 'another line');
+	pg_assert_same('2026', api_discovery_version_line('2026'), 'no dot');
+	pg_assert_same('2026', api_discovery_version_line(' 2026.4.10 '), 'spaces');
+	pg_assert_same('', api_discovery_version_line(''), 'empty');
+	pg_assert_same('', api_discovery_version_line(null), 'null');
 }
 
 // No logo set, or one that resolves to nothing, is null rather than ''.

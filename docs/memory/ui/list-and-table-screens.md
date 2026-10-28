@@ -11,6 +11,9 @@ description: Panel list and table rules: the DataTables list markup, which lists
 - Lists whose order is their meaning (account statement, cash ledger, invoice lines): a running balance is right only in date order, and a line number is the document itself. Draw them as a plain `table table-hover` (`erp/erp-list-edit-screen-pattern.md`).
 - Such a table can still sort by its headings: `table[data-pg-sort]` (`backend.src.js`; cell `data-sort`, fixed and paired rows, a heading opts out with `data-pg-sort="none"`): `erp/erp-list-edit-screen-pattern.md`.
 
+## Where do DataTables' own texts come from?
+- `backend.src.js` loads `assets/lib/DataTables/i18n/<panel language>.json` for the languages in `DATATABLES_LANGUAGES` (`tr`); English uses DataTables' defaults. The file is in DataTables 2 form (`lengthLabels` "-1" for "All", `aria.paginate` for the pagination buttons' names). It replaced the CDN's 1.13.6 `tr.json`, loaded for every panel language, without the 2.x keys, and holding each table back until a third party answered (#2043). A new panel language adds its file and its key there. The CSP still lists `cdn.datatables.net` (`waf.php`).
+
 ## May a table row hold a form?
 - Never. The table usually sits inside the page's `<form>`; nested forms are invalid and the parser drops the inner one, so its button submits the outer form. Row buttons are `type="button"` with `data-*`; they post one hidden form that is a SIBLING of the page form, through a listener delegated to `document` (`commerce/order-cancellation-flow.md`).
 

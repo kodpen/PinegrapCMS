@@ -24,14 +24,12 @@ description: Plan (2026-10-24): deterministic smart completion for designer CSS/
 - The facade resets the lezer cache (`resolveInner(0, 0)`) before every completion source (#1702).
 - The vocabulary is generated from the local Bootstrap 5.3.8 and kept by a regenerate-and-compare test.
 
-## What is open (owner)?
-- An optional User Styles CSS tab (a CM6 editor over the whole User Styles text) and the inline hint (off by default).
-- The `pg_design_ai_known_class()` switch to the predictor and vocabulary.
-- An AI suggest button: its own plan, not this one.
+## What was decided? (#2439)
+- The `pg_design_ai_known_class()` switch to the predictor and vocabulary is built (one step); the User Styles CSS tab and the inline hint are dropped until a site asks. An AI suggest button: its own plan, not this one.
 
 ## Which steps landed?
 - All: F1 #1721, F2 #1729, F3 #1739, F4 #1755, F5 #1765, F6 #1702; 1 #1704, 2 #1728, 3 #1722, 4 #1754, 5 #1778, 6 #1785, 7 #1793, 8 #1770, 9 #1779. Behaviour is in [[code-editor-completion]], [[designer-bootstrap-vocabulary]], [[designer-class-dedupe]], [[style-predictor]], [[style-suggest]], [[style-fields]], [[custom-style]].
 
 ## Where to start?
-- Nothing is claimable now: every step has landed. What is left (CSS tab, inline hint, `pg_design_ai_known_class()` switch) waits for the owner's go, and each needs wiring in `style_designer.js`, so it follows the region rule above.
-- When the owner decides, record the answer under "Which decisions are made?", cut the work into steps here, then start from docs/memory/core/code-editor-facade-and-bundle.md (CSS tab) or [[style-predictor]] (switch). If the owner drops them, move the decisions to the topic files and delete this plan.
+- Claimable: the `pg_design_ai_known_class()` switch, wired in `style_designer.js` under the region rule above; start from [[style-predictor]].
+- When the switch lands, move the decisions to the topic files and delete this plan.

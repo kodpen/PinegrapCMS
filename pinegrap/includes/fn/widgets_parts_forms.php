@@ -385,3 +385,175 @@ function pg_sw_order_return_form_wire(&$node, $ctx)
         pg_sw_form_label_for($node, array('return_reason', 'return_note', 'return_tracking'));
     }
 }
+
+// ── The cart's product form ────────────────────────────────────────────
+
+// The cart's product form controls: binding value => the tags it may sit
+// on. form_field is a field's text box, text area or pick list (the row's
+// __field_control picks which one shows), form_field_file an upload,
+// form_field_option one choice of a radio button or check box field.
+function pg_sw_cart_form_control_tags()
+{
+    return array(
+        'form_field'        => array('input', 'textarea', 'select'),
+        'form_field_file'   => array('input'),
+        'form_field_option' => array('input'),
+    );
+}
+
+// $value when it is a product form control's binding, else ''.
+function pg_sw_cart_form_control_kind($value)
+{
+    $tags = pg_sw_cart_form_control_tags();
+    return (is_string($value) && isset($tags[$value])) ? $value : '';
+}
+
+// Makes the control $node bound to a product form field send it, in the
+// cart form $form_id: its id and name the cart's
+// (order_item_<id>_quantity_number_<n>_form_field_<field>), its value the
+// stored answer, its type and limits the field's, all from the list row,
+// so one design serves every field. Whether it is required, several
+// choices or chosen is the row's too: an attribute whose value is an empty
+// {{token}} is left out (pg_sw_attr_dropped_when_empty()). Its other
+// attributes, classes and words stay the design's. A node of another tag
+// is left.
+function pg_sw_cart_form_control(&$node, $form_id)
+{
+    $value = isset($node['props']['_bindings']['value']) ? (string)$node['props']['_bindings']['value'] : '';
+    $kind  = pg_sw_cart_form_control_kind($value);
+    $tag   = isset($node['props']['tag']) ? strtolower((string)$node['props']['tag']) : '';
+    $tags  = pg_sw_cart_form_control_tags();
+    if ($kind === '' || !isset($node['type']) || $node['type'] !== 'semantic' || !in_array($tag, $tags[$kind], true)) return;
+    $managed = array_fill_keys(array('type', 'name', 'value', 'form', 'required', 'maxlength', 'id', 'multiple', 'checked',
+                                     'rows', 'cols'), 1);
+    $add = array();
+    if ($kind === 'form_field_option') {
+        $add = array('type' => '^^__option_type^^', 'name' => '^^__option_name^^', 'value' => '^^__option_value^^',
+                     'required' => '{{__option_required}}', 'checked' => '{{__option_checked}}');
+        $node['props']['id'] = '^^__option_id^^';
+    } else {
+        if ($kind === 'form_field_file') {
+            $add['type'] = 'file';
+        } elseif ($tag === 'input') {
+            $add = array('type' => '^^__field_type^^', 'value' => '^^__field_value^^', 'maxlength' => '{{__field_maxlength}}');
+        } elseif ($tag === 'textarea') {
+            $add = array('rows' => '^^__field_rows^^', 'cols' => '^^__field_cols^^', 'maxlength' => '{{__field_maxlength}}');
+            $node['props']['text'] = '^^__field_value^^';
+            $node['children'] = array();
+        } else {
+            $add = array('multiple' => '{{__field_multiple}}');
+            $node['props']['text'] = '^^__field_options_html^^';
+            $node['children'] = array();
+        }
+        $add['name']     = '^^__field_name^^';
+        $add['required'] = '{{__field_required}}';
+        $node['props']['id'] = '^^__field_id^^';
+    }
+    if ($form_id !== '') $add['form'] = $form_id;
+    pg_sw_form_set_attrs($node, $managed, $add);
+}
+
+// A field box of the product form ($loop, the cart.item_form_fields list)
+// without the control of a kind of field (a text box, a text area, a pick
+// list, choices, an upload) gets it back, as the part draws it, at the end
+// of its first element (the field's box), else of the list: any field may
+// be required, so no kind may lose its control.
+function pg_sw_cart_form_restore(&$loop)
+{
+    foreach (array('input', 'textarea', 'select', 'choice', 'file') as $kind) {
+        if (pg_sw_cart_form_has_control($loop, $kind)) continue;
+        if (!isset($loop['children']) || !is_array($loop['children'])) $loop['children'] = array();
+        if (isset($loop['children'][0]) && is_array($loop['children'][0]) && isset($loop['children'][0]['type'])
+            && $loop['children'][0]['type'] === 'semantic') {
+            if (!isset($loop['children'][0]['children']) || !is_array($loop['children'][0]['children'])) $loop['children'][0]['children'] = array();
+            $loop['children'][0]['children'][] = pg_sw_part_cart_form_control($kind);
+        } else {
+            $loop['children'][] = pg_sw_part_cart_form_control($kind);
+        }
+    }
+}
+
+// Whether a node under $node is the control of the field kind $kind: a
+// choice's or an upload's binding, or a form_field on the kind's tag.
+function pg_sw_cart_form_has_control($node, $kind)
+{
+    if (!is_array($node)) return false;
+    $value = isset($node['props']['_bindings']['value']) ? (string)$node['props']['_bindings']['value'] : '';
+    $tag   = isset($node['props']['tag']) ? strtolower((string)$node['props']['tag']) : '';
+    if ($kind === 'choice' ? $value === 'form_field_option'
+        : ($kind === 'file' ? $value === 'form_field_file' : ($value === 'form_field' && $tag === $kind))) return true;
+    foreach ((isset($node['children']) && is_array($node['children'])) ? $node['children'] : array() as $c) {
+        if (pg_sw_cart_form_has_control($c, $kind)) return true;
+    }
+    return false;
+}
+
+// The control the part draws for a field of kind $kind (input, textarea,
+// select, choice, file), shown only on a row of that kind. A choice is a
+// list of the field's options, each a check with its label.
+function pg_sw_part_cart_form_control($kind)
+{
+    $when = function ($props) use ($kind) {
+        $props['_bindings']['show_if'] = '__field_control';
+        $props['_bindParams'] = array('show_if' => array('op' => 'eq', 'value' => $kind));
+        return $props;
+    };
+    switch ($kind) {
+        case 'textarea':
+            return pg_sw_part_el('textarea', 'form-control', 'Text area', $when(array('_bindings' => array('value' => 'form_field'))));
+        case 'select':
+            return pg_sw_part_el('select', 'form-select', 'Pick list', $when(array('_bindings' => array('value' => 'form_field'))));
+        case 'choice':
+            return pg_sw_part_el('div', '', 'Choices', $when(array()), array(
+                array('type' => 'loop_area', 'props' => array('source' => 'cart.item_form_field_options'), 'children' => array(
+                    pg_sw_part_el('div', 'form-check', 'Choice', array(), array(
+                        pg_sw_part_el('input', 'form-check-input', 'Choice', array('_bindings' => array('value' => 'form_field_option'))),
+                        pg_sw_part_el('label', 'form-check-label', 'Label', pg_sw_part_value('__option_label', 'Choice')),
+                    )),
+                )),
+            ));
+        case 'file':
+            return pg_sw_part_el('input', 'form-control', 'File upload', $when(array('_bindings' => array('value' => 'form_field_file'))));
+    }
+    return pg_sw_part_el('input', 'form-control', 'Text box', $when(array('_bindings' => array('value' => 'form_field'))));
+}
+
+// A cart line's product form, its controls in place (the cart.item_forms
+// list): a box per block, its heading the form's name and its number when
+// the line holds more than one, then each field (cart.item_form_fields):
+// its label with a star when it is required, the control its kind shows,
+// the stored file of an upload; an information field shows its label and
+// text. The box around them carries the line's id and goes on a line
+// without a form (pg-hide-if-empty).
+function pg_sw_part_cart_item_form($cfg = array())
+{
+    $controls = array();
+    foreach (array('input', 'textarea', 'select', 'choice', 'file') as $kind) $controls[] = pg_sw_part_cart_form_control($kind);
+    $file = pg_sw_part_when('__field_file', 'not_empty');
+    $field = pg_sw_part_el('div', 'mb-3', 'Field', pg_sw_part_when('__field_is_info', 'empty'), array_merge(array(
+        pg_sw_part_el('label', 'form-label', 'Label', array(), array(
+            pg_sw_part_el('span', '', 'Text', pg_sw_part_value('__field_label', 'Label')),
+            pg_sw_part_el('span', 'text-danger', 'Required mark', array_merge(array('text' => '*'), pg_sw_part_when('__field_required', 'not_empty'))),
+        )),
+    ), $controls, array(
+        pg_sw_part_el('div', 'form-text small', 'Current file', $file, array(
+            pg_sw_part_el('span', '', 'Text', array('text' => lang('Current file:'))),
+            pg_sw_part_el('span', '', 'File name', pg_sw_part_value('__field_file', 'file.pdf')),
+        )),
+    )));
+    $info = pg_sw_part_el('div', 'mb-3 small', 'Information', pg_sw_part_when('__field_is_info', 'not_empty'), array(
+        pg_sw_part_el('div', 'fw-semibold', 'Label', pg_sw_part_value('__field_label', 'Label', 'not_empty')),
+        pg_sw_part_el('div', 'text-muted', 'Information', array_merge(array('text' => '', '_bindings' => array('text' => '__field_info_html', 'show_if' => '__field_has_info')),
+            array('_bindParams' => array('show_if' => array('op' => 'not_empty'))))),
+    ));
+    return array(pg_sw_part_el('div', 'pg-cart-item-form mt-3 pg-hide-if-empty', 'Product Form',
+        array('_attrs' => array(array('name' => 'data-pg-cart-item-form', 'value' => '{{__item_id}}'))), array(
+        array('type' => 'loop_area', 'props' => array('source' => 'cart.item_forms'), 'children' => array(
+            pg_sw_part_el('fieldset', 'pg-cart-item-form-block border rounded p-3 mt-2', 'Form', array(), array(
+                pg_sw_part_order_item_legend(pg_sw_part_when('__form_has_legend', 'not_empty'),
+                    pg_sw_part_value('__form_name', 'Order Form'), '__form_number', '__form_count'),
+                array('type' => 'loop_area', 'props' => array('source' => 'cart.item_form_fields'), 'children' => array($field, $info)),
+            )),
+        )),
+    )));
+}

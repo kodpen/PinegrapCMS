@@ -33,5 +33,5 @@ description: Plan (owner request 2026-10-27, draft): flows started from a channe
 ## What was decided about existing actions? (owner, 2026-10-27)
 - All of them are converted, none stays read-only or on the form: every part gets its box before 2026.11.0 ships (C6). Replaces answer 2 (c) of workspace-flows-scheduled-merge.md.
 
-## Open questions
-1. Who may start a flow from a channel: the home channel's readers (workspace-flows-shares.md) or every member of the channel where Add is used?
+## Which questions are answered?
+1. Answered (#2412): run access as today (home readers, run shares; workspace-flows-shares.md); Add lists only the flows the member may run; the card goes to the channel where Add was used.

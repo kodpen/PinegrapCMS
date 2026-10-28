@@ -1,0 +1,58 @@
+{
+  "id": "5O190127TN364715T",
+  "intent": "CAPTURE",
+  "status": "APPROVED",
+  "payment_source": {
+    "paypal": {
+      "email_address": "customer@example.com",
+      "account_id": "QYR5Z8XDVJNXQ",
+      "account_status": "VERIFIED",
+      "name": {
+        "given_name": "John",
+        "surname": "Doe"
+      },
+      "address": {
+        "country_code": "US"
+      }
+    }
+  },
+  "purchase_units": [
+    {
+      "reference_id": "default",
+      "amount": {
+        "currency_code": "EUR",
+        "value": "123.45"
+      },
+      "payee": {
+        "email_address": "merchant@example.com",
+        "merchant_id": "C7CYMKZDG8D6E"
+      },
+      "description": "Order AB12CD34EF",
+      "custom_id": "438"
+    }
+  ],
+  "payer": {
+    "name": {
+      "given_name": "John",
+      "surname": "Doe"
+    },
+    "email_address": "customer@example.com",
+    "payer_id": "QYR5Z8XDVJNXQ",
+    "address": {
+      "country_code": "US"
+    }
+  },
+  "create_time": "2026-10-26T10:20:01Z",
+  "links": [
+    {
+      "href": "https://api-m.paypal.com/v2/checkout/orders/5O190127TN364715T",
+      "rel": "self",
+      "method": "GET"
+    },
+    {
+      "href": "https://api-m.paypal.com/v2/checkout/orders/5O190127TN364715T/capture",
+      "rel": "capture",
+      "method": "POST"
+    }
+  ]
+}

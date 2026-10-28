@@ -124,8 +124,8 @@ if (!$_POST) {
         <div class="row">
             <div class="col-12 sm:col-6">
                 <div class="form-floating mt-1 mb-3">
-                    <select class="form-control" id="folder"><option value=""></option>' . select_folder() . '</select>
                     <label for="folder" class="form-label">' . lang('Folder') . '</label>
+                    <select class="form-control" id="folder"><option value=""></option>' . select_folder() . '</select>
                 </div>
             </div>
             
@@ -134,14 +134,14 @@ if (!$_POST) {
                     ' . $output_preview_style_warning_row . '
                     <div class="col-12 sm:col-6">
                         <div class="form-floating mt-1 mb-3">
-                            <select class="form-control" id="page_style"><option value=""></option>' . select_style('', $default_style_label) . '</select>
                             <label for="page_style" class="form-label">' . lang('Page Style') . '</label>
+                            <select class="form-control" id="page_style"><option value=""></option>' . select_style('', $default_style_label) . '</select>
                         </div>
                     </div>
                     <div class="col-12 sm:col-6">
                         <div class="form-floating mt-1 mb-3">
-                            <select class="form-control" id="mobile_style_id"><option value=""></option>' . get_mobile_style_options('', $default_style_label) . '</select></select>
                             <label for="mobile_style_id" class="form-label">' . lang('Mobile Page Style') . '</label>
+                            <select class="form-control" id="mobile_style_id"><option value=""></option>' . get_mobile_style_options('', $default_style_label) . '</select>
                         </div>
                     </div>
                 </div>
@@ -149,14 +149,14 @@ if (!$_POST) {
 
             <div class="col-12 sm:col-6">
                 <div class="form-floating mt-1 mb-3">
+                    <label for="site_search" class="form-label">' . lang('Site Search') . '</label>
                     ' . $liveform->output_field(array('type'=>'select', 'id'=>'site_search','class'=>'form-control', 'options'=>$site_search_options)) . '
-                    <label for="folder" class="form-label">' . lang('Site Search') . '</label>
                 </div>
             </div>
             <div class="col-12 sm:col-6">
                 <div class="form-floating mt-1 mb-3">
+                    <label for="sitemap" class="form-label">sitemap.xml</label>
                     ' . $liveform->output_field(array('type'=>'select', 'id'=>'sitemap','class'=>'form-control', 'options'=>$sitemap_options)) . '
-                    <label for="folder" class="form-label">sitemap.xml</label>
                 </div>
             </div>
             <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
