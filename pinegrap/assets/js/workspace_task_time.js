@@ -192,7 +192,7 @@
             cell('col-4', h.t('tt_time'), amount);
 
             var day = h.el('input', 'form-control form-control-sm');
-            day.type = 'date';
+            h.dateField(day, 'date');
             day.value = time.today;
             day.max = time.today;
             cell('col-4', h.t('tt_day'), day);
@@ -452,10 +452,15 @@
                 return node;
             }
 
+            function dayInput(value) {
+                var node = input('text', value);
+                return h.dateField(node, 'date');
+            }
+
             form.appendChild(h.el('div', 'col-12 small fg-secondary', h.t('tt_invoice_help')));
 
-            var from = cell(h.t('tt_from'), input('date', data.month_start));
-            var to = cell(h.t('tt_to'), input('date', data.today));
+            var from = cell(h.t('tt_from'), dayInput(data.month_start));
+            var to = cell(h.t('tt_to'), dayInput(data.today));
             var rate = cell(h.t('tt_rate'), input('text', ''));
             var tax = cell(h.t('tt_tax'), input('text', '20'));
 

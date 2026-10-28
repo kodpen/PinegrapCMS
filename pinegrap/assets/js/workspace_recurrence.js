@@ -445,14 +445,17 @@
             ends.appendChild(option);
         });
 
+        // The end date's box is drawn after it, so they hide together.
+        var untilBox = el('span', '');
         var until = el('input', 'form-control form-control-sm w-auto');
-        until.type = 'date';
+        helpers.dateField(until, 'date');
         until.setAttribute('aria-label', text('repeat_ends_on'));
         until.value = (active && current.end_date) ? current.end_date : '';
         ends.value = until.value ? 'on' : 'never';
 
         endGroup.appendChild(ends);
-        endGroup.appendChild(until);
+        untilBox.appendChild(until);
+        endGroup.appendChild(untilBox);
         endBox.appendChild(endGroup);
         wrap.appendChild(endBox);
 
@@ -727,7 +730,7 @@
             custom.classList.toggle('d-none', !on || (choice.value !== 'custom') || older);
             daysBox.classList.toggle('d-none', unit.value !== 'weekly');
             endBox.classList.toggle('d-none', !on || older);
-            until.classList.toggle('d-none', ends.value !== 'on');
+            untilBox.classList.toggle('d-none', ends.value !== 'on');
             summary.classList.toggle('d-none', !on);
             help.classList.toggle('d-none', !on);
 
@@ -854,7 +857,11 @@
 
         ends.addEventListener('change', function () {
             if (ends.value === 'on' && !until.value) {
-                until.focus();
+                if (window.pgFields) {
+                    window.pgFields.focus(until);
+                } else {
+                    until.focus();
+                }
             }
 
             refresh();

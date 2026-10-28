@@ -160,7 +160,7 @@
             var name = input('text', 60);
             var mail = input('email', 255);
             var text = el('textarea', 'form-control form-control-sm');
-            var date = input('date', 10);
+            var date = h.dateField(input('text', 10), 'date');
             var grid = el('div', 'row g-3');
             var nameCell = el('div', 'sm:col-5');
             var mailCell = el('div', 'sm:col-7');

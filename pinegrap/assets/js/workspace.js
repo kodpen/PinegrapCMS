@@ -3410,7 +3410,7 @@
         return {
             api: api, ask: ask, toast: toast, fail: fail, t: t, el: el, icon: icon, button: button,
             clear: clear, select: select, avatar: avatar, avatarStack: avatarStack, nextId: nextId, debounce: debounce,
-            mcpConnect: mcpConnect,
+            mcpConnect: mcpConnect, dateField: pgDateField,
             boot: function () { return BOOT; },
             openTask: function (taskId, onSaved) { taskDrawer.open(taskId, null, onSaved || taskDrawer.onSaved); }
         };
@@ -3592,6 +3592,7 @@
             if (window.PGWsRecurrence && CFG.recurrence && CFG.recurrence.ready) {
                 f.repeat = window.PGWsRecurrence.field(task, defaults, editable, {
                     api: api,
+                    dateField: pgDateField,
                     ask: ask,
                     toast: toast,
                     done: function () {
@@ -5365,7 +5366,7 @@
             offcanvas: offcanvas, showOffcanvas: showOffcanvas, hideOffcanvas: hideOffcanvas,
             formRow: formRow, select: select, nextId: nextId, ask: ask, fail: fail, toast: toast,
             richField: richField, peoplePicker: peoplePicker, homeCard: homeCard, touchScreen: touchScreen,
-            saLabelled: saLabelled, saText: saText, saChannelSelect: saChannelSelect, cfg: CFG,
+            saLabelled: saLabelled, saText: saText, saChannelSelect: saChannelSelect, cfg: CFG, dateField: pgDateField,
             openTask: function (taskId) { taskDrawer.open(taskId, null, taskDrawer.onSaved); }
         };
     }
