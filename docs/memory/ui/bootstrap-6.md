@@ -19,7 +19,7 @@ description: The panel on Bootstrap 6 (switch #1866, tag bs6-switch): docs and s
 ## What do panel rules rely on?
 - Layer order: colors, config, root, reboot, layout, content, forms, components, vendor, custom, helpers, utilities. Panel stylesheets and inline `<style>` blocks sit in `@layer custom`: they beat any Bootstrap component rule whatever its weight, utilities beat them. Utilities carry no `!important`; `[hidden]` does.
 - Dialogs and drawers are native `<dialog>` in the top layer: z-index does not lift body-level overlays over them (`pgUI.overlayHost()`).
-- Breakpoints: `sm` 576, `md` 768, `lg` 1024, `xl` 1280, `2xl` 1536, written as prefixes (`lg:col-6`). The panel's own media queries use the same widths (`workflow/decisions-made-panel.md`). `.fixed-top` z-index is 1020.
+- Breakpoints: `sm` 576, `md` 768, `lg` 1024, `xl` 1280, `2xl` 1536, written as prefixes (`lg:col-6`). The panel's own media queries use the same widths (`workflow/decisions-made-panel.md`). Their JavaScript copies too: `LIST_BREAKPOINTS` in `view_folders.php`, the tour's `narrow()`, `MENU_DRAWER_BREAKPOINT` (`tests/panel_js_breakpoints_test.php`, #2574); `style_designer.js` (~L5665, ~L6829) still uses 992. `.fixed-top` z-index is 1020.
 - `.hover-lift` (helpers layer) is tuned through `--pg-lift-y` (default -1px), `--pg-lift-shadow` (none), `--pg-lift-duration` and `--pg-lift-also` (the element's own fades) set in the element's rule; an unlayered bridge at the end of backend.src.css reads them (#2217).
 - v6 owns `.menu`, `.btn-text`, `.submenu`: label spans are `.pg-btn-label`, the file manager's flyout `.pg-submenu`.
 
