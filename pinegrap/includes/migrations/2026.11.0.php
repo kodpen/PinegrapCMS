@@ -85,6 +85,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_paypal_checkout();        // 11.0.50
 	upgrade_2026_11_0_max_image_preview();      // 11.0.51
 	upgrade_2026_11_0_main_host_redirect();     // 11.0.52
+	upgrade_2026_11_0_blogposting_author();     // 11.0.53
 	upgrade_2026_11_0_workspace_scheduled_anchor(); // 11.0.88
 	upgrade_2026_11_0_api_device_pairings();    // 11.0.70
 
@@ -2730,6 +2731,18 @@ function upgrade_2026_11_0_main_host_redirect() {
 	install_add_column('config', 'main_host_redirect', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('SEO: pages opened on another host name of this site (for example with or without www) can now be sent to the site address with a permanent redirect, under Site Settings, SEO, Site Map and Crawling. It stays off until switched on.');
+
+}
+// The author of a record page's BlogPosting (2026.11.0, 11.0.53;
+// includes/fn/seo.php, the custom form's settings). One word per form:
+// contact (the record's linked contact, as before), organization (the site
+// with its address) or field:<form_field_id> (a field of the form holds the
+// name). The default keeps every form's output as it was.
+function upgrade_2026_11_0_blogposting_author() {
+
+	install_add_column('custom_form_pages', 'schema_author', "VARCHAR(64) NOT NULL DEFAULT 'contact'");
+
+	install_note('Custom forms: the author named in the structured data of a record page is now chosen per form in the form settings, next to Enable Pretty URLs: the contact of the record as before, the site as an organization, or a field of the form. Nothing changes until a form picks one.');
 
 }
 

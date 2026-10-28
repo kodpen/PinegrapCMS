@@ -1307,7 +1307,9 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 						// If there is a media_file, then output it.
                         // it mean file is uploaded we check files
                         if(!empty($submitted_form['media_file'])){
-                           
+                          // Only an upload a visitor who is not signed in may open: the
+                          // enclosure's address must not answer with the sign-in screen.
+                          if (pg_file_open_to_everyone($submitted_form['media_file'])) {
                             $query = "SELECT 
                             id,
                             name,
@@ -1329,6 +1331,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
                                 $output_media_type = get_mime_type($media['type']);
                                 $output_rss_media = '<enclosure url="' . URL_SCHEME . HOSTNAME_SETTING . PATH  . h(urlencode($media['name'])) . '" length="' . $media['size'] . '" type="' . $output_media_type . '"/>';
                             }
+                          }
                             //else no media_file so we check media_text for data 
                         }else{
                             if(!empty($submitted_form['media_text'])){

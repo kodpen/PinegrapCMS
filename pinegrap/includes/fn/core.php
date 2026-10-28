@@ -1501,7 +1501,17 @@ function output_error($error_message, $response_code = 0)
         if (function_exists('pg_sw_error_context')) {
             pg_sw_error_context($error_message, $response_code);
         }
-        echo get_error_screen($content);
+        $screen = get_error_screen($content);
+        // The screen leaves the way a page does (get_page.php): the language
+        // of the site, or of the language the address was asked in with the
+        // prefix on its links, and the language switchers drawn. The design
+        // tree's output says lang="en" whatever the site's language, and the
+        // browser changes case by it: "MÜŞTERİ" in Turkish, "MÜŞTERI" in
+        // English.
+        if (function_exists('pg_tr_finalize')) {
+            $screen = pg_tr_finalize($screen);
+        }
+        echo $screen;
         exit();
     }
 }

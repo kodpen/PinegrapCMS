@@ -24,5 +24,17 @@ if (pg_session_signed_in() == false) {
     exit();
 }
 
+// The screen draws the order into the site's page of the "view order" type.
+// Without one, get_view_order_screen() falls back to a legacy screen that has
+// no page to read its properties from and ends in a missing template; the
+// account widget links here only while the page exists, but a link kept from
+// an old e-mail or a bookmark still arrives, and is told the page is missing.
+$query = "SELECT page_id FROM page WHERE page_type = 'view order' LIMIT 1";
+$result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+
+if (mysqli_num_rows($result) == 0) {
+    output_error('<a href="javascript:history.go(-1)">' . lang('Page cannot be found.') . '</a>', 404);
+}
+
 print get_view_order_screen();
 ?>
