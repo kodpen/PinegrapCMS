@@ -171,7 +171,7 @@ foreach ($comments as $comment) {
 
 
     // Set checkmark in variable
-    $output_checkmark = '<span class="material-icons">task_alt</span>';
+    $output_checkmark = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
 
     // if user can access folder of page that comment published.
     if (check_edit_access($folder_id) == true) {
@@ -236,7 +236,7 @@ foreach ($comments as $comment) {
                 $output_reference_button = '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " href="' . h(OUTPUT_PATH . get_page_name($comment['page_id']) . '/' . $product_address_name . pg_comment_view_query('', $comment['id']) . '#c-' . $comment['id']) . '" title="' . lang('Go To Comment') . '"><i class="bi bi-link"></i></a>';
             }
         }else if($comment['item_type'] === ''){
-            $output_reference_button = '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " href="' . h(OUTPUT_PATH . get_page_name($comment['page_id']) . pg_comment_view_query('', $comment['id']) . '#c-' . $comment['id']) . '"><i class="bi bi-link" title="' . lang('Go To Comment') . '"></i></a>';
+            $output_reference_button = '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " href="' . h(OUTPUT_PATH . get_page_name($comment['page_id']) . pg_comment_view_query('', $comment['id']) . '#c-' . $comment['id']) . '" title="' . lang('Go To Comment') . '"><i class="bi bi-link"></i></a>';
         }
 
 

@@ -96,11 +96,11 @@ if ($calendars) {
         $last_modified_username = '';
 
         if ($calendar['created_username']) {
-            $created_username = lang(array('string'=>'by {var:1}','vars'=>$calendar['created_username']));
+            $created_username = lang(array('string'=>'by {var:1}','vars'=>array(h($calendar['created_username']))));
         } 
 
         if ($calendar['last_modified_username']) {
-            $last_modified_username = lang(array('string'=>'by {var:1}','vars'=>$calendar['last_modified_username']));
+            $last_modified_username = lang(array('string'=>'by {var:1}','vars'=>array(h($calendar['last_modified_username']))));
         } 
 
         $output_link_url = 'calendars.php?calendar_id=' . $calendar['id'];

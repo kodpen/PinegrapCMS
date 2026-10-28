@@ -114,7 +114,7 @@ if ($files) {
         $optimized = '';
 
         if ($file['optimized']) {
-            $optimized = '<span class="material-icons">task_alt</span>';
+            $optimized = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
         }
         $file_type ='';
         $output_edit_image_button = '';
@@ -173,7 +173,7 @@ if ($files) {
             $thumbnail_dimensions = get_thumbnail_dimensions($image_width, $image_height, $max_dimension);
 
             // Output thumnail.
-            $output_thumbnail ='<img style="width: 50px;height:50px;" title="' . $output_image_dimensions . '" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(PATH . encode_url_path($file['name'])) . '" />';
+            $output_thumbnail ='<img style="width: 50px;height:50px;object-fit:cover;" title="' . $output_image_dimensions . '" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(PATH . encode_url_path($file['name'])) . '" />';
 
         } else {
 
@@ -191,17 +191,17 @@ if ($files) {
 
         $output_rows .=
             '<tr' . $archived_row_style . '>
-                <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="files[]" value="' . $file['id'] . '" class="checkbox" /></td>
+                <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="files[]" value="' . $file['id'] . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($file['name'])))) . '" /></td>
                 <td class="align-middle text-start action-buttons">
                     ' . $output_edit_buttons . '
-                    <a class="m-1 btn-data-control btn btn-outline theme-warning border-2 " title="' . lang('Download') . '" download="' . h($file['type']) . '" href="' . OUTPUT_PATH. h($file['name']) . '" ><i class="bi bi-file-earmark-arrow-down"></i></a>
+                    <a class="m-1 btn-data-control btn btn-outline theme-warning border-2 " title="' . lang('Download') . '" download="' . h($file['name']) . '" href="' . OUTPUT_PATH. h($file['name']) . '" ><i class="bi bi-file-earmark-arrow-down"></i></a>
                 </td>
                 <td class="align-middle text-center">' . $output_thumbnail . '</td>
                 <td class="align-middle chart_label" title="' . h($file['name']) . '">' . h($file['name']) . '</td>
                 <td class="align-middle">' . h($file['type']) . '</td>
                 <td class="align-middle">' . h($file['size']) . '</td>
                 <td class="align-middle text-center">' . $optimized . '</td>
-                <td class="align-middle text-start " title="' . h($file['folder_name']) . '"><span class="d-block overflow-hidden text-truncate" style="width: 100px;max-width:100%;"><span class="material-icons d-inline">folder</span><span class="badge fw-light fg-reset d-inline">' . h($file['folder_name']) . '</span></span></td>
+                <td class="align-middle text-start " title="' . h($file['folder_name']) . '"><span class="d-block overflow-hidden text-truncate" style="width: 100px;max-width:100%;"><span class="material-icons d-inline" aria-hidden="true">folder</span><span class="badge fw-light fg-reset d-inline">' . h($file['folder_name']) . '</span></span></td>
                 <td class="align-middle" title="' . nl2br(h($file['description'])) . '"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">' . nl2br(h($file['description'])) . '</span></td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $file['timestamp'])) . ' ' . $last_modified_username . '</td>
             </tr>';

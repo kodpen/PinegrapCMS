@@ -1212,7 +1212,7 @@ if ($pages) {
 
         // if page is searchable, then prepare to output check mark image
         if ($page['page_search'] == 1) {
-            $output_search_check_mark = '<span class="material-icons">task_alt</span>';
+            $output_search_check_mark = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
         }
 
         $output_home_icon = '';
@@ -1220,19 +1220,19 @@ if ($pages) {
 
         // if page is a home page, then prepare to output home icon
         if ($page['page_home'] == 'yes') {
-            $output_home_icon = '<span class="material-icons">home</span>';
+            $output_home_icon = '<span class="material-icons" role="img" aria-label="' . h(lang('Home Page')) . '">home</span>';
         }
         
         // if page has comments enabled, then prepare to output check mark image
         if ($page['comments'] == '1') {
-            $output_comments_check_mark = '<span class="material-icons">task_alt</span>';
+            $output_comments_check_mark = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
         }
         
         $output_sitemap_check_mark = '';
         
         // if page has sitemap enabled, then prepare to output check mark image
         if ($page['sitemap'] == '1') {
-            $output_sitemap_check_mark = '<span class="material-icons">task_alt</span>';
+            $output_sitemap_check_mark = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
         }
 
         // If custom form filter is on.
@@ -1242,7 +1242,7 @@ if ($pages) {
 
             // if the form is enabled, then prepare to output check mark image
             if ($page['enabled'] == 1) {
-                $output_form_enabled_mark = '<span class="material-icons">task_alt</span>';
+                $output_form_enabled_mark = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
             }
 
             // output form rows
@@ -1262,7 +1262,7 @@ if ($pages) {
         
         $output_rows .=
             '<tr>
-                <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="pages[]" value="' . $page['page_id'] . '" class="checkbox" /></td>
+                <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="pages[]" value="' . $page['page_id'] . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($page['page_name'])))) . '" /></td>
 			    <td class="align-middle text-start action-buttons">
                     <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_edit_url . '\'"><i class="bi bi-pencil"></i></button>
                     <button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " title="' . lang('Preview') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-link"></i></button>
@@ -1270,7 +1270,7 @@ if ($pages) {
                 <td class="align-middle chart_label position-relative">' . $output_home_icon . h($page['page_name']) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=page&amp;id=' . $page['page_id'] . get_token_query_string_field() . '">' . pg_seo_render_bar($page) . '</a></td>
                 ' . $output_form_name_row . '
                 ' . $output_form_enabled_row . '
-                <td class="align-middle text-start ' . $page['folder_access_control_type'] . '" title="' . h($page['folder_name']) . '"><span class="d-block overflow-hidden text-truncate" style="width: 100px;max-width:100%;"><span class="material-icons d-inline">folder</span><span class="badge fw-light fg-reset d-inline">' . h($page['folder_name']) . '</span></span></td>
+                <td class="align-middle text-start ' . $page['folder_access_control_type'] . '" title="' . h($page['folder_name']) . '"><span class="d-block overflow-hidden text-truncate" style="width: 100px;max-width:100%;"><span class="material-icons d-inline" aria-hidden="true">folder</span><span class="badge fw-light fg-reset d-inline">' . h($page['folder_name']) . '</span></span></td>
                 <td class="align-middle ' . $output_no_mobile_style_warning_class . '">' . $output_style_name . '</td>
                 <td class="align-middle">' . h(get_page_type_name($page['page_type'])) . '</td>
                 <td class="align-middle text-center">' . $output_search_check_mark . '</td>
