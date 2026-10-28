@@ -1,6 +1,6 @@
 ---
 name: payment-hosted-classic-pages
-description: The hosted card driver's box (Stripe Payment Element) on the classic order preview and express order pages, built-in and custom layouts; how payment_hosted.js finds a card section with no mark
+description: Hosted card box (Stripe Payment Element, PR #2556) on the classic order preview and express order pages; how payment_hosted.js finds an unmarked card section
 ---
 
 ## Where is the box printed?
@@ -15,7 +15,7 @@ description: The hosted card driver's box (Stripe Payment Element) on the classi
 - The card inputs stay in the DOM, disabled and not required: `frontend.src.js` `init_payment_method()` reads `card_number` and its siblings and would throw without them. Disabled inputs are not posted and skip form validation, so its `required` toggling does no harm.
 
 ## Why?
-- Decided in #2407 (option B): the active card driver's fields are drawn on the classic pages too, a step after the Stripe webhook. Before, a store on `Stripe PaymentIntents` with a classic page got raw card inputs that the driver refuses.
+- PR #2556, decided in #2407 (option B): the active card driver's fields are drawn on the classic pages too, a step after the Stripe webhook. Before, a store on `Stripe PaymentIntents` with a classic page got raw card inputs that the driver refuses.
 
 ## How is it tested?
 - `tests/payment_hosted_classic_test.php`: the four places read from the source; `payment_hosted.min.js` run under Node on a small DOM stand-in and a fake Stripe.js (built-in, template row, table, card inputs among billing fields).
