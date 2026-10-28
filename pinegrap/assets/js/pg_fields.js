@@ -1085,7 +1085,8 @@
     // The month, day and year selects inside a data-pg-date-selects wrapper,
     // found by their names as select_month(), select_day() and
     // select_year() are printed (start_month, stop_day...) or by
-    // data-pg-part="month|day|year"; also its first <label>.
+    // data-pg-part="month|day|year"; also its first <label>, or the
+    // <legend> of a fieldset wrapper (a list screen's range end).
     function triplet(el) {
         var found = { label: null };
         (function walk(n) {
@@ -1096,7 +1097,7 @@
                     if (part && !found[part]) {
                         found[part] = c;
                     }
-                } else if (c.tagName === 'LABEL' && !found.label) {
+                } else if ((c.tagName === 'LABEL' || c.tagName === 'LEGEND') && !found.label) {
                     found.label = c;
                 }
                 walk(c);

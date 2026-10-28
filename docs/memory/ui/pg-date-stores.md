@@ -8,7 +8,7 @@ description: What each hooked date/time field keeps (site text, ISO on native in
   - site text (a text input): `26/10/2026`, `26/10/2026 5:00 PM`, `5:00 PM`, whatever the clock; read by `validate_date_and_time()`, `validate_time()`, `prepare_form_data_for_input()`.
   - ISO, a native `<input type="date|datetime-local|time">` with `data-pg-date|datetime|time`: `2026-10-26`, `2026-10-26T17:05`, `17:05` (ERP filters, maintenance, page schedule, Workspace). Without JavaScript the native input is what shows.
   - `data-pg-time="hh:mm"`: a text time on the 24-hour clock, `17:05` (waybill `ship_time`).
-  - `data-pg-date-selects` on a wrapper: its month, day and year selects (`start_month`, `start_day`, `start_year` as `select_month()`, `select_day()`, `select_year()` print them, or `data-pg-part`) stay the posted fields.
+  - `data-pg-date-selects` on a wrapper: its month, day and year selects (`start_month`, `start_day`, `start_year` as `select_month()`, `select_day()`, `select_year()` print them, or `data-pg-part`) stay the posted fields. The box is named by the wrapper's first `<label>` or `<legend>`; list screens' ranges are `<fieldset data-pg-date-selects>` (P7 #2862).
 - ISO never goes into a site-text field: `2026-10-26 17:00` passes `validate_date_and_time()` and is stored as `0026-10-2026 17:00` (#2693). `pgDatePicker` and `pgDateTimeField` `get()`/`set()` exchange ISO and write each field in its own store.
 
 ## How does the box write it?
