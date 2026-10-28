@@ -595,11 +595,28 @@ $(document).ready(function () {
         });
     });
     //classic popover
+    // An empty data-bs-title or data-bs-content (a title a script fills in
+    // later) reads as null in Bootstrap, whose type check then throws; an
+    // empty string given here wins over the attribute. One element that still
+    // fails must not stop the rest of this ready block (the main menu below).
     $('[data-bs-toggle="popover"]:not([ data-bs-custom-class="contextmenu"])').each(function () {
-        pgUI.popover.get(this, {
+        var popoverOptions = {
             placement: 'auto',
             html: true
-        });
+        };
+        if (this.getAttribute('data-bs-title') === '') {
+            popoverOptions.title = '';
+        }
+        if (this.getAttribute('data-bs-content') === '') {
+            popoverOptions.content = '';
+        }
+        try {
+            pgUI.popover.get(this, popoverOptions);
+        } catch (error) {
+            if (window.console) {
+                console.error(error);
+            }
+        }
     });
 
 
@@ -1334,15 +1351,9 @@ $(document).ready(function () {
 
 
 
-    var output_system_language_name;
-    switch (software_system_language) {
-        case "tr":
-            output_system_language_name = "Turkish";
-            break;
-        default:
-            //default is english so we use default.
-            output_system_language_name = "English";
-    }
+    // Panel languages with a file in assets/lib/DataTables/i18n/.
+    var DATATABLES_LANGUAGES = { tr: true };
+
 
 
     /*
@@ -1398,9 +1409,15 @@ $(document).ready(function () {
     }
 
     var options = {};
-    options["language"] = {
-        url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/tr.json"
-    };
+    // The panel language's DataTables 2 texts from the local copy; English
+    // is DataTables' own. The CDN's 1.13.6 Turkish file was loaded for every
+    // language, lacked the 2.x keys ("All", pagination names) and held the
+    // table back until a third party answered.
+    if (DATATABLES_LANGUAGES[software_system_language]) {
+        options["language"] = {
+            url: path + software_directory + "/assets/lib/DataTables/i18n/" + software_system_language + ".json"
+        };
+    }
 
     options["stateSave"] = false;
     options["serverside"] = false;
