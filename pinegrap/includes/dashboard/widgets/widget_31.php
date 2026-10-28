@@ -69,8 +69,12 @@ function pg_dashboard_widget_31($request, $user)
 
         $class = (abs($moved) < 0.005) ? 'fg-secondary' : (($moved > 0) ? 'fg-success' : 'fg-danger');
 
+        // The sign stays outside the translated percentage, so Turkish
+        // reads +%12 rather than %+12.
+        $sign = (round(abs($moved) * 100) == 0) ? '' : (($moved > 0) ? '+' : '-');
+
         return '<span class="' . $class . '" style="font-size:11px" title="' . h(lang('Against the 28 days before')) . '">'
-            . (($moved > 0) ? '+' : '') . pg_format_number($moved * 100, 0) . '%</span>';
+            . $sign . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number(abs($moved) * 100, 0)))) . '</span>';
     };
 
     $figure = function ($label, $value, $moved) {

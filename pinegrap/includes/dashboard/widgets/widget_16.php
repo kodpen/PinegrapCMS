@@ -63,8 +63,12 @@ function pg_dashboard_widget_16($request, $user)
                     ));
                 }
             }
-        } else {
-            $output_rows = pg_widget_empty('bi-currency-exchange', lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Currency'))));
+        }
+
+        // The base currency is never listed, so a site with only its
+        // base currency printed no row at all.
+        if ($output_rows === '') {
+            $output_rows = pg_widget_empty('bi-currency-exchange', lang('No other currencies are set up.'));
         }
 
         $output_data = '

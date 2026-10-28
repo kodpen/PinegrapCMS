@@ -175,3 +175,28 @@ function test_panel_accessible_names_performance_log_filters()
 		pg_assert_contains('id="' . $id . '" ' . $field, $source, 'performance log field ' . $id . ' has its id');
 	}
 }
+
+// Dashboard cards: the Calendars card's stretched link has a name, review
+// stars are read as a number, the brief's progress bar repeats the printed
+// percentage so it stays out of the reading order, and the Online Engagement
+// chat control is a named button beside the row link, never inside it.
+function test_panel_accessible_names_dashboard_cards()
+{
+	$calendars = panel_accessible_names_source('includes/dashboard/widgets/widget_20.php');
+	pg_assert_true((bool) preg_match('/<a [^>]*class="[^"]*stretched-link[^"]*"[^>]*>/', $calendars, $match), 'calendar link');
+	pg_assert_contains('aria-label="\' . h(lang(\'Calendars\')) . \'"', $match[0]);
+
+	$comments = panel_accessible_names_source('includes/dashboard/widgets/widget_25.php');
+	pg_assert_contains('<span aria-hidden="true">\' . str_repeat(\'★\'', $comments);
+	pg_assert_contains("'string' => '{var:1} out of 5'", $comments);
+	pg_assert_contains('<span class="visually-hidden">', $comments);
+
+	$brief = panel_accessible_names_source('includes/dashboard/brief.php');
+	pg_assert_contains('<span class="pg-brief-ws-bar" aria-hidden="true">', $brief);
+	pg_assert_true(strpos($brief, 'role="progressbar"') === false, 'unnamed progressbar');
+
+	$engagement = panel_accessible_names_source('includes/dashboard/widgets/widget_4.php');
+	pg_assert_contains('aria-label="\' . h(lang(\'Start Chat\')) . \'"', $engagement);
+	pg_assert_contains('<a href="edit_user.php?id=\' . (int) $eg_person[\'id\'] . \'"', $engagement);
+	pg_assert_contains('<button type="button" class="btn btn-sm', $engagement);
+}

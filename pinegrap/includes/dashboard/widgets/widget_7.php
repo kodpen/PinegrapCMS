@@ -124,7 +124,7 @@ function pg_dashboard_widget_7($request, $user)
         <div class="pg-split-half pg-filter-scroll">
             <div class="pg-list">
                 ' . $output_rows . '
-                <div class="pg-filter-none d-none">' . pg_widget_empty('bi-clock-history', lang('Nothing of this kind lately.')) . '</div>
+                <div class="pg-filter-none d-none">' . pg_widget_empty('bi-clock-history', $all_rows ? lang('Nothing of this kind lately.') : lang('No activity recorded yet.')) . '</div>
                 ' . $output_more . '
             </div>
         </div>

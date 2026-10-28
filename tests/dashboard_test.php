@@ -18,6 +18,7 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets.php');
+require_once(__DIR__ . '/helpers/language_map.php');
 
 function pg_test_dashboard_widget_ids()
 {
@@ -286,4 +287,101 @@ function test_dashboard_offer_days_left()
 	pg_assert_same(3, _pg_offer_days_left('2026-10-30', '2026-10-27'));
 	pg_assert_same(0, _pg_offer_days_left('2026-10-27', '2026-10-27'));
 	pg_assert_same(0, _pg_offer_days_left('2026-10-20', '2026-10-27'));
+}
+
+function dashboard_test_source($path)
+{
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
+}
+
+// Bootstrap 6 has no .theme-dark, and the panel clears a plain badge's fill,
+// so a Banned event drew as bare text; .theme-inverse keeps the dark pill.
+function test_dashboard_firewall_banned_badge_is_inverse()
+{
+	$source = dashboard_test_source('includes/dashboard/widgets/widget_21.php');
+
+	pg_assert_contains("'ban'         => array('inverse',", $source);
+	pg_assert_true(strpos($source, "array('dark',") === false, 'theme-dark tone left');
+}
+
+// A percentage goes through the '{var:1}%' key, which Turkish words as
+// %12; a '%' glued to the number in code reads one way in every language.
+function test_dashboard_percent_figures_follow_the_language()
+{
+	$glued = array(
+		'includes/dashboard/widgets/widget_5.php'  => array("' %' . abs(", '" %" + Math.abs(', "\$vs5_pct . '%'"),
+		'includes/dashboard/widgets/widget_18.php' => array("optimization_percent'] . '%"),
+		'includes/dashboard/widgets/widget_31.php' => array("0) . '%</span>'"),
+		'includes/dashboard/widgets/widget_2.php'  => array("\$health_score . '%\"", "pg-health-score\">' . (int) \$health_score . '<span>%</span>'"),
+	);
+
+	foreach ($glued as $path => $needles) {
+		$source = dashboard_test_source($path);
+		pg_assert_contains("'{var:1}%'", $source, $path);
+
+		foreach ($needles as $needle) {
+			pg_assert_true(strpos($source, $needle) === false, $path . ': ' . $needle);
+		}
+	}
+
+	// The period switch builds its pill from a template PHP translated.
+	pg_assert_contains('percent:      ', dashboard_test_source('includes/dashboard/widgets/widget_5.php'));
+	$tr = pg_test_language_map('tr');
+	pg_assert_same('%{var:1}', $tr['{var:1}%']);
+}
+
+// gap-y-1 is no class in Bootstrap 6 or the panel CSS; row-gap-1 is.
+function test_dashboard_release_legend_row_gap()
+{
+	$source = dashboard_test_source('welcome.php');
+
+	pg_assert_true(strpos($source, 'gap-y-1') === false, 'gap-y-1 left');
+	pg_assert_contains('d-flex flex-wrap row-gap-1 ', $source);
+}
+
+// The Visitor Summaries period cells are toggle buttons: each says whether it
+// is pressed, and the switch updates that beside its look.
+function test_dashboard_visitor_period_cells_are_pressed_toggles()
+{
+	$source = dashboard_test_source('includes/dashboard/widgets/widget_5.php');
+
+	pg_assert_true((bool) preg_match_all('/<button type="button" class="pg-vs-cell[^>]*>/', $source, $matches), 'no period cell');
+	pg_assert_same(2, count($matches[0]));
+
+	foreach ($matches[0] as $tag) {
+		pg_assert_contains('aria-pressed="', $tag);
+	}
+
+	pg_assert_contains('b.setAttribute("aria-pressed", ', $source);
+}
+
+// Every empty state is a whole sentence: "There is no Order right now." put a
+// capitalised singular noun in the middle of one.
+function test_dashboard_empty_states_are_whole_sentences()
+{
+	foreach (glob(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets/widget_*.php') as $path) {
+		pg_assert_true(strpos((string) file_get_contents($path), "'There is no {var:1} right now.'") === false, basename($path));
+	}
+
+	$tr = pg_test_language_map('tr');
+
+	foreach (array('No sales yet.', 'Every product is in stock.', 'No offers right now.', 'No other currencies are set up.',
+		'No orders yet.', 'No open shopping carts.', 'Nobody is online right now.', 'Subscription details could not be loaded.') as $sentence) {
+		pg_assert_true(isset($tr[$sentence]), $sentence);
+	}
+}
+
+// A card whose rows are all skipped or blank still says why it is empty.
+function test_dashboard_cards_never_draw_blank()
+{
+	$rates = dashboard_test_source('includes/dashboard/widgets/widget_16.php');
+	pg_assert_contains("if (\$output_rows === '') {", $rates);
+	pg_assert_contains("lang('No other currencies are set up.')", $rates);
+
+	$subscriptions = dashboard_test_source('includes/dashboard/widgets/widget_14.php');
+	pg_assert_contains("lang('Subscription details could not be loaded.')", $subscriptions);
+
+	// With no activity at all the note is not about a filtered kind.
+	$activity = dashboard_test_source('includes/dashboard/widgets/widget_7.php');
+	pg_assert_contains("lang('No activity recorded yet.')", $activity);
 }

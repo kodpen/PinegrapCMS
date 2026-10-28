@@ -127,9 +127,7 @@ function pg_dashboard_widget_15($request, $user)
 
         // ── Global empty state ────────────────────────────────────
         if ($output_rows === '') {
-            $output_rows = pg_widget_empty(
-                'bi-tag',
-                lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Offer'))));
+            $output_rows = pg_widget_empty('bi-tag', lang('No offers right now.'));
         }
 
         $output_data = '

@@ -129,21 +129,25 @@ function pg_dashboard_widget_4($request, $user)
             // longer a notification, it is a lost conversation.
             $eg_wait_class = ($eg_waited >= 900) ? 'fg-danger' : 'fg-warning';
 
+            // A button, so the keyboard reaches it; a button holds
+            // only phrasing content, so the boxes are spans. The
+            // focus key lets the refresh put focus back on it.
             $eg_waiting_html .= '
-            <div class="d-flex align-items-center px-3 py-1 pointer"
+            <button type="button" class="d-flex align-items-center w-100 px-3 py-1 border-0 bg-transparent fg-body text-start"
+                 data-pg-focus-key="chat-' . (int) $eg_chat['id'] . '"
                  onclick="if (window.pgChatOpenConversation) { window.pgChatOpenConversation(' . (int) $eg_chat['id'] . '); }">
-                <div class="me-3 flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle"
+                <span class="me-3 flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle"
                      style="width:34px;height:34px;background:rgba(245,158,11,.12)">
-                    <i class="bi bi-chat-dots" style="color:#f59e0b"></i>
-                </div>
-                <div class="flex-grow-1 overflow-hidden">
-                    <div class="d-flex justify-content-between align-items-center" style="gap:6px">
+                    <i class="bi bi-chat-dots" style="color:#f59e0b" aria-hidden="true"></i>
+                </span>
+                <span class="d-block flex-grow-1 overflow-hidden">
+                    <span class="d-flex justify-content-between align-items-center" style="gap:6px">
                         <span class="text-truncate fw-semibold" style="font-size:13px">' . h($eg_title) . '</span>
                         <span class="' . $eg_wait_class . ' flex-shrink-0" style="font-size:11px">' . get_relative_time(array('timestamp' => (int) $eg_chat['last_message_at'])) . '</span>
-                    </div>
+                    </span>
                     <small class="fg-secondary text-truncate d-block">' . h($eg_chat['last_message_preview']) . '</small>
-                </div>
-            </div>';
+                </span>
+            </button>';
         }
 
         // ── Roster ──────────────────────────────────────────
@@ -254,12 +258,15 @@ function pg_dashboard_widget_4($request, $user)
             // offered to administrators, and otherwise only
             // downward through the hierarchy. Unchanged from the
             // widget this replaces.
-            $eg_click = '';
-            $eg_pointer = '';
+            // The name is then a real link stretched over the row;
+            // the chat button sits above that link as its sibling,
+            // never inside it.
+            $eg_name_html = '<span class="text-truncate me-1 fw-semibold" style="font-size:13px">' . h($eg_name) . '</span>';
 
             if (((int) $user['role'] === 0) || ((int) $user['role'] < (int) $eg_person['user_role'])) {
-                $eg_click = 'onclick="window.location.href=\'edit_user.php?id=' . (int) $eg_person['id'] . '\'"';
-                $eg_pointer = ' pointer';
+                $eg_name_html = '<a href="edit_user.php?id=' . (int) $eg_person['id'] . '"'
+                    . ' class="stretched-link text-truncate me-1 fw-semibold fg-body text-decoration-none" style="font-size:13px"'
+                    . ' data-pg-focus-key="user-' . (int) $eg_person['id'] . '">' . h($eg_name) . '</a>';
             }
 
             // No chat handle against yourself, and none when the
@@ -272,19 +279,20 @@ function pg_dashboard_widget_4($request, $user)
                 && pg_chat_can_pair($user['role'], $eg_person['user_role'])
             ) {
                 $eg_chat_icon = '
-                    <i class="bi bi-chat-text ms-1 flex-shrink-0" style="cursor:pointer"
-                       title="' . lang('Start Chat') . '"
-                       onclick="event.stopPropagation(); if (window.pgChatOpenWith) { window.pgChatOpenWith(' . (int) $eg_person['id'] . '); }"></i>';
+                    <button type="button" class="btn btn-sm p-0 border-0 ms-1 flex-shrink-0 position-relative z-2 fg-body"
+                       aria-label="' . h(lang('Start Chat')) . '" title="' . h(lang('Start Chat')) . '"
+                       data-pg-focus-key="chat-with-' . (int) $eg_person['id'] . '"
+                       onclick="if (window.pgChatOpenWith) { window.pgChatOpenWith(' . (int) $eg_person['id'] . '); }"><i class="bi bi-chat-text" aria-hidden="true"></i></button>';
             }
 
             $eg_row = '
-            <div class="d-flex align-items-center px-3 py-1' . $eg_pointer . '" ' . $eg_click . '>
-                <div class="me-3 flex-shrink-0" title="' . h($eg_status_label) . '">
+            <div class="d-flex align-items-center px-3 py-1 position-relative">
+                <div class="me-3 flex-shrink-0 position-relative z-2" title="' . h($eg_status_label) . '">
                     ' . $eg_face . '
                 </div>
                 <div class="flex-grow-1 overflow-hidden">
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-truncate me-1 fw-semibold" style="font-size:13px">' . h($eg_name) . '</span>
+                        ' . $eg_name_html . '
                         <span class="badge rounded-pill flex-shrink-0" style="background:' . $eg_role_color . '22;color:' . $eg_role_color . ';font-size:10px">' . h(pg_chat_role_label($eg_person['user_role'])) . '</span>
                         ' . $eg_chat_icon . '
                     </div>
@@ -346,7 +354,7 @@ function pg_dashboard_widget_4($request, $user)
             $eg_people_panel = '
             <div class="text-center py-7">
                 <i class="bi bi-person-dash d-block mb-3" style="font-size:22px;opacity:.35"></i>
-                <p class="fg-secondary mb-0" style="font-size:12px">' . lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Online User'))) . '</p>
+                <p class="fg-secondary mb-0" style="font-size:12px">' . lang('Nobody is online right now.') . '</p>
             </div>';
         }
 
