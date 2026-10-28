@@ -1,6 +1,6 @@
 ---
 name: designable-comments
-description: Plan (1-19 and 3b done; 20 cut into 20a-20c): comments as a designable system widget kind; the steps of slice 20 (product and event threads) and where to start
+description: Plan (1-19, 3b and 20a done; 20b-20c open): comments as a designable system widget kind; the steps of slice 20 (product and event threads) and where to start
 ---
 
 ## What did the owner decide (2026-10-23)?
@@ -18,7 +18,7 @@ description: Plan (1-19 and 3b done; 20 cut into 20a-20c): comments as a designa
 
 ## What is left?
 - 20. Product and event threads in the widget, in steps of about 1,000 product lines:
-  - 20a (server side): `pg_comments_widget_classic_thread()` keeps only `form item view`; the widget reads the item in the address (`pg_comment_address_item()`), checks it with `pg_comment_thread_verify()`, keeps the review rules (verified only, newest first, the buyer gate), the search index's per-event comments. [[comments-widget-item-threads]]. PR: see the draft titled `[plan:designable-comments] 20a`.
+  - 20a (server side, done #2678): `pg_comments_widget_classic_thread()` keeps only `form item view`; the widget reads the item in the address (`pg_comment_address_item()`), checks it with `pg_comment_thread_verify()`, keeps the review rules (verified only, newest first, the buyer gate), the search index's per-event comments. [[comments-widget-item-threads]].
   - 20b (`style_designer.js`, after #2600): canvas states and samples for a product, a group and an event thread; dedicated tokens and flags (review thread, item name) in the PHP and JS lists together; the panel and Make designable offering catalog, catalog detail and calendar event view pages.
   - 20c (if needed): comment e-mails for item threads (links to the item's address); `aggregateRating` on designer product pages (`commerce/product-reviews-verified.md`).
 
