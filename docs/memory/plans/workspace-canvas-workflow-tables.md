@@ -1,6 +1,6 @@
 ---
 name: workspace-canvas-workflow-tables
-description: Plan (2026-10-23, S1 #1708, S2 #1858, S2b #1987, question 2 open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
+description: Plan (2026-10-23, S1 #1708, S2 #1858, S2b #1987, T1a #2745): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 ---
 
 ## What is asked?
@@ -17,7 +17,12 @@ description: Plan (2026-10-23, S1 #1708, S2 #1858, S2b #1987, question 2 open): 
 ## Slices
 1. S1 Scheduled actions API: list, get, pause, cancel — done, #1708; removed before release with S2 in #2107 (workspace/workspace-scheduled-actions-api.md).
 2. S2 Create, edit, resume — done, #1858 (workspace/workspace-scheduled-actions-api.md). S2b change card for connected apps — done, #1987 (workspace/workspace-scheduled-draft-proposals.md).
-3. T1 Tables: new `ws_wtables`, `ws_wtable_columns`, `ws_wtable_rows`, `ws_wtable_shares`, includes/workspace/wtables.php (`ws_wtable_*`, not `ws_table_*`), workspace_wtables.php, API.
+3. T1 Tables: new `ws_wtables`, `ws_wtable_columns`, `ws_wtable_rows`, `ws_wtable_shares`, includes/workspace/wtables.php (`ws_wtable_*`, not `ws_table_*`), workspace_wtables.php, API. Cut:
+   - T1a types and store core — done, #2745 (decided in #2746; workspace/workflow-tables.md): types, cell checks, limits, step 11.0.110, `ws_wtable_access()`, create/rename/delete of tables and columns.
+   - T1b rows: add, change, delete, reorder (`row_count` kept in step); 409 `changed_meanwhile` on the row's revision; formula values on read (`ws_calc_evaluate()`). Person and record-link cells may be written only once the privacy export and erasure read `ws_wtable_rows.cells` (workspace/workflow-tables.md): in T1b or a slice before them.
+   - T1c shares (person view/edit, channel view; access already reads them), `ws_notify()`, `ws_inbox_reach_lost()`/`_regained()`, flows of a table whose owner is gone pause.
+   - T1d API and MCP (`ws_openapi_objects()`, dry_run through `*_check()`), `workspace.wtable.*` webhooks on a public channel card.
+   - T1e screen workspace_wtables.php and its place in `ws_nav_groups()`.
 4. T2 Board view (the channel Board tab component) by a status column.
 5. T6 CSV, note-table import; JSON starters: contact pipeline, checklist.
 - Schema (ask first): T1; `upgrade_2026_11_0_<topic>()`, next free Workspace label, `get_tables()`.
@@ -27,4 +32,4 @@ description: Plan (2026-10-23, S1 #1708, S2 #1858, S2b #1987, question 2 open): 
 2. Answered (#2424): administrators see a personal table only through a share, like notes (a). Owner deleted or `ws_profiles.excluded`: tables stay invisible, their flows pause.
 
 ## Where to start?
-- T1 needs the owner's schema approval first.
+- T1b: rows on top of `ws_wtable_for()` / `ws_wtable_columns()` (includes/workspace/wtables.php).
