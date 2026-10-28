@@ -1,6 +1,6 @@
 ---
 name: classic-style-design-files
-description: A classic style converted to a visual design: its own linked CSS/JS files become managed file entries, editable in the designer (P7, #2484)
+description: A classic style converted to a visual design: its own linked CSS/JS files become managed file entries, editable in the designer (P7, #2484, #2532)
 module: classic_style_design
 ---
 
