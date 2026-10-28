@@ -23,7 +23,7 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
   - R1b. Done (#2787). forms, orders, chain with flow semantics (#2753 answer 2a): counts of the last day, chain a manual start.
   - R2. Done (#2803). Doors closed: Edit of an unconverted row retries `ws_scheduled_convert()`: canvas, or its problems and Duplicate (#2753 answer 1a); `scheduledGraph()` Edit, the list's New, `showAction()` edit (workspace.js, workspace_flow.js, scheduled_convert.php).
   - R3a. Done (#2823). `scheduledForm()`, `saSentenceBox()`, `saTemplates()`, `saFollowRow()`, workspace_events.js `whenBox()`/`templates()`; parity readers `templates`, `entry_points`, the form's `request` keys.
-  - R3b. Done (#PRNUM). `saActionEditor()` and the helpers only it used, the two `scheduledEditor()`.
+  - R3b. Done (#PRNUM). `saActionEditor()`, its helpers, the two `scheduledEditor()`.
   - R4. Routes save/preview/targets/draft, `ws_scheduled_save()`, `ws_scheduled_draft_saved()`, form config keys, strings, styles; memory. After R3b.
 
 ## Which questions are answered? (owner: 1 no, 3 a on 2026-10-24; 2 b, 7 and 8 on 2026-10-27)
@@ -37,4 +37,4 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 8. A scheduled action kept in a note → b (#2395): no new ones from a note; the toolbar entry goes, converted ones keep their card and post step.
 
 ## Where to start?
-- Next: R4 (after R3b). Routes save/preview/targets/draft, `ws_scheduled_save()`, `ws_scheduled_draft_saved()`, form config keys, strings, styles; read workspace/README.md and workspace/workspace-flows-form-retirement.md (its R4 list).
+- Next: R4; read workspace/README.md and the R4 list of workspace/workspace-flows-form-retirement.md.
