@@ -96,18 +96,17 @@ function test_comments_widget_page_hand_off_wiring()
 	pg_assert_contains("str_replace('<!--pg-comments-block-->', \$comments_block_html", $page, 'a leftover marker is still emptied');
 }
 
-// A classic page that shows one item at a time keeps its classic block: a
-// legacy form item view page always, a catalog, catalog detail or calendar
-// event view page unless a record widget on it decides the thread (the
-// classic block then reads that record's thread too).
+// Only a legacy form item view page keeps its classic block; a catalog,
+// catalog detail or calendar event view page is the widget's, which reads
+// the item in the address (comments_widget_threads_test.php).
 function test_comments_widget_classic_thread_table()
 {
 	$rows = array(
 		array('form item view', false, true),
 		array('form item view', true, true),
-		array('catalog', false, true),
-		array('catalog detail', false, true),
-		array('calendar event view', false, true),
+		array('catalog', false, false),
+		array('catalog detail', false, false),
+		array('calendar event view', false, false),
 		array('catalog', true, false),
 		array('catalog detail', true, false),
 		array('calendar event view', true, false),

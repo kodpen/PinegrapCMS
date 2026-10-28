@@ -180,3 +180,67 @@ function test_workspace_render_guest_page_draws_a_highlight()
 	pg_assert_same('a == b', ws_guest_render('a == b'), 'a comparison stays text');
 	pg_assert_same('<a href="https://a.test/?q==x==" target="_blank" rel="nofollow noopener noreferrer">https://a.test/?q==x==</a>', ws_guest_render('https://a.test/?q==x=='), 'an address is set aside');
 }
+
+// Headings and rules are drawn in notes only (ws_render_body()'s $note).
+function workspace_render_test_note($body)
+{
+	return ws_render_body($body, array(), null, false, null, null, true);
+}
+
+function test_workspace_render_heading_and_rule_lines()
+{
+	pg_assert_same(array('level' => 1, 'text' => 'Plan'), ws_heading_line('# Plan'));
+	pg_assert_same(array('level' => 2, 'text' => 'Plan **A**'), ws_heading_line('## Plan **A**  '));
+	pg_assert_same(array('level' => 3, 'text' => 'Three'), ws_heading_line("###\tThree"));
+
+	foreach (array('#tag', '#', '# ', '#### Four', ' # indented', '\\# escaped', '#order:5', '<#order:5>', '') as $line) {
+		pg_assert_same(null, ws_heading_line($line), 'no heading: "' . $line . '"');
+	}
+
+	foreach (array('---', '-----', '  ---  ') as $line) {
+		pg_assert_same(true, ws_rule_line($line), 'a rule: "' . $line . '"');
+	}
+
+	foreach (array('--', '- - -', '***', '___', '--- x', '|---|---|', '') as $line) {
+		pg_assert_same(false, ws_rule_line($line), 'no rule: "' . $line . '"');
+	}
+}
+
+function test_workspace_render_note_draws_headings_and_rules()
+{
+	pg_assert_same('<h2 class="ws-heading h4">Plan</h2>', workspace_render_test_note('# Plan'));
+	pg_assert_same(
+		'<h2 class="ws-heading h4">One</h2><h3 class="ws-heading h5">Two <strong>b</strong></h3><h4 class="ws-heading h6">Three &lt;i&gt;</h4>'
+			. '<div class="ws-text">#### Four<br>' . "\n" . '#tag</div><hr class="ws-rule"><div class="ws-text">after</div>',
+		workspace_render_test_note("# One\n## Two **b**\n### Three <i>\n#### Four\n#tag\n---\nafter")
+	);
+	pg_assert_same(
+		'<div class="ws-text">Shopping:</div><h3 class="ws-heading h5">List</h3><ul class="ws-list"><li>milk</li>' . "\n" . '<li>bread</li></ul>',
+		workspace_render_test_note("Shopping:\n## List\n- milk\n- bread"),
+		'a heading ends the paragraph before a list'
+	);
+	$code = workspace_render_test_note("```\n# comment\n---\n```");
+	pg_assert_same(true, strpos($code, "<code># comment\n---</code>") !== false, 'lines of code are no headings');
+	pg_assert_same(false, strpos($code, '<h2') || strpos($code, '<hr'), 'nothing drawn of them');
+}
+
+function test_workspace_render_message_keeps_headings_raw()
+{
+	foreach (array('# Plan', "## Two\n---\nx", '### x **b**') as $body) {
+		pg_assert_same(ws_render_text($body, array()), workspace_render_test_html($body), 'stays text in a message: "' . $body . '"');
+	}
+}
+
+function test_workspace_render_plain_text_of_headings()
+{
+	$viewer = array('id' => 1, 'role' => 0);
+
+	pg_assert_same("Plan\nfirst line second line\nTwo\n- milk", ws_plain_text($viewer, "# Plan\nfirst line\nsecond line\n---\n## Two\n- milk", array(), true), 'a note: a heading its own line, a rule none');
+	pg_assert_same('# Plan x', ws_plain_text($viewer, "# Plan\n---\nx", array()), 'a message as before: # kept, a line of dashes dropped');
+	pg_assert_same('Plan', ws_plain_line($viewer, '# Plan', array(), true), 'one line too');
+}
+
+function test_workspace_render_guest_page_keeps_heading_signs()
+{
+	pg_assert_same('# Plan<br>' . "\n" . '---', ws_guest_render("# Plan\n---"), 'a guest reads messages, where # is text');
+}

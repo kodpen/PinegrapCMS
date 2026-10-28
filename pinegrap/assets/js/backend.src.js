@@ -2459,12 +2459,20 @@ function pgListServerOptions(options, $table) {
         });
     };
 
-    // The cells' classes; cells holds hidden columns' cells too.
+    // The cells' classes and other attributes (a quick edit's data-pg-edit);
+    // cells holds hidden columns' cells too.
     options.createdRow = function (row, data, index, cells) {
         var classes = (data && data.DT_RowData && data.DT_RowData.pgCells) || [];
+        var attributes = (data && data.DT_RowData && data.DT_RowData.pgAttrs) || {};
 
         for (var i = 0; (i < classes.length) && cells && (i < cells.length); i++) {
             cells[i].className = classes[i];
+
+            for (var name in (attributes[i] || {})) {
+                if (Object.prototype.hasOwnProperty.call(attributes[i], name)) {
+                    cells[i].setAttribute(name, attributes[i][name]);
+                }
+            }
         }
     };
 
@@ -6411,11 +6419,19 @@ function editBarcodeTemplate(opts) {
 /* ════════════════════════════════════════════════════════════════════════
    PRODUCT BARCODE PRINT  (view_products.php)
    Fetches the first barcode for a product and opens a print window.
-   Page must set window._pgViewBarcodeOpts = { apiUrl, token, labelTemplate, productMap }.
+   Page must set window._pgViewBarcodeOpts = { apiUrl, token, labelTemplate };
+   the button carries what the label prints in data-pg-barcode-product (JSON:
+   sku, short_description, price, productImageSrc).
 ════════════════════════════════════════════════════════════════════════ */
-function pgPrintProductBarcode(productId) {
+function pgPrintProductBarcode(productId, button) {
     var opts = window._pgViewBarcodeOpts || {};
-    var p = (opts.productMap || {})[productId] || {};
+    var p = {};
+
+    try {
+        p = JSON.parse((button && button.getAttribute('data-pg-barcode-product')) || '{}') || {};
+    } catch (e) {
+        p = {};
+    }
 
     /*
      * The print window has to be opened synchronously, while the click that started

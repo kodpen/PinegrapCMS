@@ -103,3 +103,16 @@ function test_error_page_requested_url()
 	pg_assert_same('/site/hata%20sayfas%C4%B1', pg_sw_error_requested_url(true, 'hata sayfası', '/pinegrap/api.php', '/site/'), 'encoded under a sub-folder');
 	pg_assert_same('/', pg_sw_error_requested_url(true, '', '/pinegrap/api.php', '/'), 'a page not saved yet');
 }
+
+function test_error_panel_link_only_for_panel_users_on_panel_scripts()
+{
+	$link = pg_error_panel_link('/pinegrap/erp_reconciliation.php', 'pinegrap', 2);
+
+	pg_assert_true(substr($link, -strlen('pinegrap/welcome.php')) === 'pinegrap/welcome.php', 'a manager on a panel screen gets the dashboard');
+	pg_assert_same($link, pg_error_panel_link('/shop/pinegrap/edit_page.php', 'pinegrap', '0'), 'an administrator, role as stored text');
+	pg_assert_same('', pg_error_panel_link('/pinegrap/edit_page.php', 'pinegrap', 3), 'role 3 includes site members');
+	pg_assert_same('', pg_error_panel_link('/pinegrap/edit_page.php', 'pinegrap', null), 'nobody signed in');
+	pg_assert_same('', pg_error_panel_link('/pinegrap/get_page.php', 'pinegrap', 0), 'the page renderer: a site page error');
+	pg_assert_same('', pg_error_panel_link('/index.php', 'pinegrap', 0), 'outside the software directory');
+	pg_assert_same('', pg_error_panel_link('/pinegrap/edit_page.php', '', 0), 'no software directory known');
+}

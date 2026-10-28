@@ -1528,8 +1528,15 @@ function get_logout_screen()
         $output = get_page_content($row['page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = false, $dynamic_properties = array(), $toolbar = false, ($_SESSION['software']['device_type'] ?? ''));
         // else there is not a login page, so use default screen
     } else {
+        // The default screen, on the sign-in card inside
+        // output_header_secure()'s Bootstrap 6. The sentence also fills a
+        // logout page's system layout, so its trailing line break is
+        // dropped here rather than in get_logout_screen_content().
         require_once(PG_FUNCTIONS_DIR . '/get_logout_screen_content.php');
-        $output = output_header_secure() . get_logout_screen_content() . output_footer_secure();
+        $content = preg_replace('#(\s*<br\s*/?>)+\s*$#i', '', get_logout_screen_content());
+        $output = output_header_secure(array('title' => lang('Logout')))
+            . pg_secure_card('bi-box-arrow-right', lang('Logout'), '<p class="mb-0">' . $content . '</p>')
+            . output_footer_secure();
     }
     return $output;
 }

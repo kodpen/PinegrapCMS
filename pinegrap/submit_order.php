@@ -3977,7 +3977,7 @@ function submit_order($type) {
         }
     }
 
-    $sql_special_offer_code = '';
+    $special_offer_values = array();
 
     // If a special offer code was added to this order, then check if code is a key code that might
     // require various updates.
@@ -4009,7 +4009,7 @@ function submit_order($type) {
 
             // If key code report is set to offer code, then store offer code in order.
             if ($key_code['report'] == 'offer_code') {
-                $sql_special_offer_code = "special_offer_code = '" . e($key_code['offer_code']) . "',";
+                $special_offer_values = array('special_offer_code' => $key_code['offer_code']);
             }
         }
     }
@@ -4471,15 +4471,16 @@ function submit_order($type) {
             $card_verification_number = $liveform->get_field_value('card_verification_number');
         }
         
-        $sql_credit_debit_card_values =
-            "card_type = '" . e($card_type) . "',
-            card_number = '" . e($processed_card_number) . "',
-            expiration_month = '" . e($expiration_month) . "',
-            expiration_year = '" . e($expiration_year) . "',
-            cardholder = '" . e($liveform->get('cardholder') ?? '') . "',
-            card_verification_number = '" . e($card_verification_number) . "',";
+        $card_values = array(
+            'card_type' => $card_type,
+            'card_number' => $processed_card_number,
+            'expiration_month' => $expiration_month,
+            'expiration_year' => $expiration_year,
+            'cardholder' => $liveform->get('cardholder') ?? '',
+            'card_verification_number' => $card_verification_number,
+        );
     } else {
-        $sql_credit_debit_card_values = "";
+        $card_values = array();
     }
 
     // If this visitor has a tracking code, then update tracking
@@ -4489,21 +4490,20 @@ function submit_order($type) {
 
     $tracking_code = get_tracking_code();
 
-    $sql_tracking_code = "";
+    $tracking_values = array();
 
     if ($tracking_code != '') {
-        $sql_tracking_code = "tracking_code = '" . e($tracking_code) . "',";
+        $tracking_values['tracking_code'] = $tracking_code;
     }
 
-    $sql_utm = "";
-
     if (!empty($_SESSION['software']['utm_source'])) {
-        $sql_utm =
-            "utm_source = '" . e($_SESSION['software']['utm_source'] ?? '') . "',
-            utm_medium = '" . e($_SESSION['software']['utm_medium'] ?? '') . "',
-            utm_campaign = '" . e($_SESSION['software']['utm_campaign'] ?? '') . "',
-            utm_term = '" . e($_SESSION['software']['utm_term'] ?? '') . "',
-            utm_content = '" . e($_SESSION['software']['utm_content']) . "',";
+        $tracking_values += array(
+            'utm_source' => $_SESSION['software']['utm_source'] ?? '',
+            'utm_medium' => $_SESSION['software']['utm_medium'] ?? '',
+            'utm_campaign' => $_SESSION['software']['utm_campaign'] ?? '',
+            'utm_term' => $_SESSION['software']['utm_term'] ?? '',
+            'utm_content' => $_SESSION['software']['utm_content'] ?? '',
+        );
     }
 
 
@@ -4512,10 +4512,10 @@ function submit_order($type) {
     // comes from the account) and marked, so the job that cancels bank
     // transfers that never arrived leaves it alone. The receipt names the
     // choice the way checkout offered it.
-    $sql_erp_on_account = '';
+    $erp_values = array();
 
     if ($erp_on_account && (($erp_open_account = pg_erp_open_account()) !== null)) {
-        $sql_erp_on_account = "erp_on_account = '1', erp_account_id = '" . (int) $erp_open_account['id'] . "',";
+        $erp_values = array('erp_on_account' => '1', 'erp_account_id' => (int) $erp_open_account['id']);
         $_SESSION['ecommerce']['offline_payment_label'] = lang('Put it on my account');
 
     // A later bank transfer in the same visit is not called that.
@@ -4530,106 +4530,68 @@ function submit_order($type) {
             WHERE id = '" . (int) $shipping_less_ship_to_id . "'");
     }
 
-    // add data to orders table
-    // We update the user id again below, in case we now have new user info
-    // from the auto-registration feature that ran above.
+    // Complete the order (includes/fn/order_completion.php): its values, the
+    // status, the order number, the legal documents, order.created and the
+    // order SMS. The user id is written again, in case we now have new user
+    // info from the auto-registration feature that ran above.
     // paid_at: a gateway-confirmed payment lands when the order is placed; an
     // offline payment has no confirmed moment here, so it stays 0, and so does
     // a payment its service left pending (pg_order_checkout_paid_at()).
-    $query = "UPDATE orders
-             SET
-                payment_method = '" . escape($liveform->get_field_value('payment_method')) . "',
-                $sql_erp_on_account
-                $sql_credit_debit_card_values
-                subtotal = '$subtotal',
-                discount = '$discount',
-                tax = '$tax',
-                shipping = '$shipping',
-                gift_card_discount = '$gift_card_discount',
-                surcharge = '$surcharge',
-                total = '$total',
-                payment_installment = '$payment_installment',
-                installment_charges = '$installment_charge',
-                commission = '$commission',
-                order_date = '$order_date',
-                user_id = '$user_id',
-                $sql_special_offer_code
-                last_modified_timestamp = '$order_date',
-                transaction_id = '" . escape($transaction_id) . "',
-                paid_at = '" . pg_order_checkout_paid_at((string) $liveform->get_field_value('payment_method'), (string) $transaction_id, (string) $payment_status, (int) $order_date) . "',
-                authorization_code = '" . escape($authorization_code) . "',
-                status = 'complete',
-                $sql_tracking_code
-                $sql_utm
-                affiliate_code = '" . escape($affiliate_code) . "',
-                ip_address = IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0)
-            WHERE id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $order_number = pg_order_complete(
+        (int) ($_SESSION['ecommerce']['order_id'] ?? 0),
+        array('payment_method' => $liveform->get_field_value('payment_method'))
+        + $erp_values
+        + $card_values
+        + array(
+            'subtotal' => $subtotal,
+            'discount' => $discount,
+            'tax' => $tax,
+            'shipping' => $shipping,
+            'gift_card_discount' => $gift_card_discount,
+            'surcharge' => $surcharge,
+            'total' => $total,
+            'payment_installment' => $payment_installment,
+            'installment_charges' => $installment_charge,
+            'commission' => $commission,
+            'order_date' => $order_date,
+            'user_id' => $user_id,
+        )
+        + $special_offer_values
+        + array(
+            'last_modified_timestamp' => $order_date,
+            'transaction_id' => $transaction_id,
+            'paid_at' => pg_order_checkout_paid_at((string) $liveform->get_field_value('payment_method'), (string) $transaction_id, (string) $payment_status, (int) $order_date),
+            'authorization_code' => $authorization_code,
+        )
+        + $tracking_values
+        + array(
+            'affiliate_code' => $affiliate_code,
+            'ip_address' => $_SERVER['REMOTE_ADDR'],
+        ),
+        array_keys(array_filter(array(
+            'preinfo'  => ($liveform->get_field_value('legal_preinfo') == 1),
+            'contract' => ($liveform->get_field_value('legal_contract') == 1),
+            'kvkk'     => ($liveform->get_field_value('legal_kvkk') == 1),
+        )))
+    );
 
-    // The placed order holds what was charged: lines saved for later come off
-    // it before the receipt and the e-mails below read it.
-    pg_order_drop_saved_lines((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+    // Another request completed this order first (a second submit of the
+    // same checkout): that one does the rest, so this one writes nothing more
+    // and shows the receipt.
+    if ($order_number === null) {
+        $completed_order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
 
-    // lock table, so no one can read table, so we can get the order number
-    $query = "LOCK TABLES next_order_number WRITE";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    
-    // get order number
-    $query = "SELECT next_order_number FROM next_order_number";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        log_activity(lang('A second checkout of an order that was already completed changed nothing.') . ' (' . $completed_order_id . ')');
 
-    // if a next order number was found, then use it
-    if (mysqli_num_rows($result) > 0) {
-        $row = mysqli_fetch_assoc($result);
-        $order_number = $row['next_order_number'];
-        
-    // else a next order number was not found, so use 1 and create next order number record
-    } else {
-        $query = "INSERT INTO next_order_number VALUES (1)";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
-        $order_number = 1;
+        $_SESSION['ecommerce']['completed_order_id'] = $completed_order_id;
+        unset($_SESSION['ecommerce']['order_id']);
+        $liveform->remove_form($type_value);
+
+        $next_page_url = URL_SCHEME . HOSTNAME . PATH . get_page_name($next_page_id);
+        $next_page_url .= (strpos($next_page_url, '?') === false ? '?' : '&') . 'order_id=' . $completed_order_id;
+        header('Location: ' . $next_page_url);
+        exit();
     }
-    
-    // increment next order number
-    $query = "UPDATE next_order_number SET next_order_number = next_order_number + 1";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    
-    // release lock on table
-    $query = "UNLOCK TABLES";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-    // update order number for order
-    $query = "UPDATE orders
-             SET order_number = ?
-             WHERE id = ?";
-    $result = db_q($query, array((string) $order_number, (string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
-
-    // Keep the checkout documents with the order as the customer saw them,
-    // now that the order has its number. Only reads the order; the totals
-    // above are final by this point.
-    pg_legal_documents_store($_SESSION['ecommerce']['order_id'] ?? 0, array_keys(array_filter(array(
-        'preinfo'  => ($liveform->get_field_value('legal_preinfo') == 1),
-        'contract' => ($liveform->get_field_value('legal_contract') == 1),
-        'kvkk'     => ($liveform->get_field_value('legal_kvkk') == 1),
-    ))));
-
-    // Tell whoever is subscribed that an order was placed.
-    //
-    // Here, once the order number exists, because that is the number every
-    // other system knows the order by. Nothing is sent from this request: the
-    // event is queued and the cron delivers it, so a slow receiver cannot hold
-    // up the customer's confirmation page.
-    require_once(dirname(__FILE__) . '/includes/api/outbound/webhooks.php');
-
-    api_webhook_enqueue('order.created', array(
-        'id'           => (int) ($_SESSION['ecommerce']['order_id'] ?? 0),
-        'order_number' => $order_number
-    ));
-
-    // The customer's text message, when the store sends one: only queued, so
-    // the provider is never waited on here.
-    pg_sms_order_received((int) ($_SESSION['ecommerce']['order_id'] ?? 0));
     
     // we know the order number now, so if gift cards are enabled and there was a gift card error, then e-mail administrator and log activity
     if ((ECOMMERCE_GIFT_CARD == TRUE) && ($gift_card_error == TRUE)) {

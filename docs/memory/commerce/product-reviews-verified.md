@@ -16,9 +16,9 @@ module: reviews
 - Staff with edit access to the page are not asked; their comment keeps `verified_order_id = 0` and counts in no rating.
 
 ## Where is it checked?
-- `get_page_content.php`: the comment form is not drawn for a refused reader; a visitor gets a sign-in link, a customer the reason. A verified review shows a "Verified purchase" badge.
+- The classic block and the comments widget (slice 20a): no comment form for a refused reader; a visitor gets a sign-in link, a customer the reason. A verified review shows a badge.
 - `add_comment.php`: the same check before the INSERT (the form is only a courtesy), with a log line; it writes `verified_order_id` and clamps the stars to 0-5.
-- `tests/reviews_test.php` pins the rules and that each write path asks or refreshes.
+- `tests/reviews_test.php`: the rules, and that each write path asks or refreshes.
 
 ## How is a product's rating kept?
 - `products.rating_avg` (DECIMAL 3,2) and `rating_count`: published, verified, starred (1-5) reviews of the product only (`pg_review_rating_sql()`). Comments from before 11.0.14 are unverified and never count. Group reviews have no rating yet.

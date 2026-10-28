@@ -86,8 +86,11 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_max_image_preview();      // 11.0.51
 	upgrade_2026_11_0_main_host_redirect();     // 11.0.52
 	upgrade_2026_11_0_blogposting_author();     // 11.0.53
+	upgrade_2026_11_0_record_schema_type();     // 11.0.55
 	upgrade_2026_11_0_workspace_scheduled_anchor(); // 11.0.88
 	upgrade_2026_11_0_api_device_pairings();    // 11.0.70
+	upgrade_2026_11_0_product_bundles();        // 11.0.54
+	upgrade_2026_11_0_workspace_voice();        // 11.0.89
 
 }
 
@@ -2745,7 +2748,17 @@ function upgrade_2026_11_0_blogposting_author() {
 	install_note('Custom forms: the author named in the structured data of a record page is now chosen per form in the form settings, next to Enable Pretty URLs: the contact of the record as before, the site as an organization, or a field of the form. Nothing changes until a form picks one.');
 
 }
+// The schema type of a custom form's record pages (2026.11.0, 11.0.55;
+// includes/fn/seo.php, the custom form's settings): BlogPosting, Article,
+// NewsArticle, or none for no record block. The default keeps every form's
+// output as it was.
+function upgrade_2026_11_0_record_schema_type() {
 
+	install_add_column('custom_form_pages', 'schema_type', "VARCHAR(32) NOT NULL DEFAULT 'BlogPosting'");
+
+	install_note('Custom forms: the structured data type of a record page is now chosen per form in the form settings: BlogPosting as before, Article, NewsArticle, or None to leave the page\'s own structured data as its only description. Nothing changes until a form picks one.');
+
+}
 // Pairing codes for team devices (2026.11.0, 11.0.70; includes/api/pairing.php).
 //
 // A person signed in to the panel shows a one-time code as a QR; the team app
@@ -2771,5 +2784,137 @@ function upgrade_2026_11_0_api_device_pairings() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Team devices can now be paired by scanning a code the person shows in the panel, without typing a password on the phone.');
+
+}
+
+
+// Product bundles (2026.11.0, 11.0.54; includes/fn/bundles.php, the product
+// screen's contents card).
+//
+// A bundle is a products row with bundle = 1 whose contents are other
+// products in fixed whole quantities (product_bundle_items). Its
+// inventory_quantity is a cache of what its components allow, and with
+// bundle_pricing = 'sum' its price is the components' sum less
+// bundle_discount_bp basis points. order_item_components and
+// erp_invoice_item_components keep the contents a sold line had, so a later
+// edit of the bundle never changes an old order or invoice. One bundle line
+// writes one stock move per component, so the ledger's unique key widens to
+// (kind, line_id, product_id): the new key goes in before the old one goes,
+// and every existing row stays unique because a line has one product.
+function upgrade_2026_11_0_product_bundles() {
+
+	$columns = array(
+		'bundle'             => "TINYINT(1) NOT NULL DEFAULT 0",
+		'bundle_pricing'     => "ENUM('fixed','sum') NOT NULL DEFAULT 'fixed'",
+		'bundle_discount_bp' => "SMALLINT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('products', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('products', $column, $definition);
+
+		}
+
+	}
+
+	install_create_table('product_bundle_items', "CREATE TABLE product_bundle_items (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		bundle_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		product_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		quantity    INT UNSIGNED NOT NULL DEFAULT 1,
+		sort_order  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_bundle_product (bundle_id, product_id),
+		KEY idx_product (product_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('order_item_components', "CREATE TABLE order_item_components (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		order_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		order_item_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		product_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		quantity       INT UNSIGNED NOT NULL DEFAULT 1,
+		unit_cost      BIGINT NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_order_item (order_item_id),
+		KEY idx_order (order_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('erp_invoice_item_components', "CREATE TABLE erp_invoice_item_components (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		invoice_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		line_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		product_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		quantity    INT UNSIGNED NOT NULL DEFAULT 1,
+		PRIMARY KEY (id),
+		KEY idx_line (line_id),
+		KEY idx_invoice (invoice_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	if (install_table_exists('erp_stock_moves')) {
+
+		install_add_index('erp_stock_moves', 'uniq_line_product', "UNIQUE KEY uniq_line_product (kind, line_id, product_id)");
+
+		if (install_index_exists('erp_stock_moves', 'uniq_line_product')) {
+
+			install_drop_index('erp_stock_moves', 'uniq_line');
+
+		}
+
+	}
+
+	install_note('Products: a product can now be a bundle of other products, sold as one item. Its stock follows its contents and its price can be the sum of their prices less a discount.');
+
+}
+
+// Transcripts of Workspace voice messages (2026.11.0, 11.0.89;
+// includes/workspace/voice.php).
+//
+// ws_voice holds one row per recording, by the file it travels in (a copy of
+// the message in a discussion shares the file and reads the same row):
+// message_id is the message it was posted with, duration_ms and peaks (the
+// waveform levels, one character each) are what the player draws, status is
+// '' (never asked), queued, running, done, failed or skipped, transcript the
+// machine text kept apart from the person's own words, with the language,
+// provider and model that wrote it. ws_channels.voice_access follows
+// ai_access: 0 goes with the kind of channel (public yes, private no), 1 a
+// manager allowed it, 2 not allowed. config holds whether the site's own
+// connection to an OpenAI-compatible /audio/transcriptions endpoint is on and
+// the time a failed call holds the queue back to; its texts (base address,
+// model, the encrypted key, the last error) are config_text rows, as the
+// config row has no room for more long columns.
+function upgrade_2026_11_0_workspace_voice() {
+
+	install_create_table('ws_voice', "CREATE TABLE ws_voice (
+		id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		file_id INT UNSIGNED NOT NULL DEFAULT 0,
+		message_id INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id INT UNSIGNED NOT NULL DEFAULT 0,
+		duration_ms INT UNSIGNED NOT NULL DEFAULT 0,
+		peaks VARCHAR(255) NOT NULL DEFAULT '',
+		status VARCHAR(16) NOT NULL DEFAULT '',
+		transcript MEDIUMTEXT NULL,
+		language VARCHAR(16) NOT NULL DEFAULT '',
+		provider VARCHAR(100) NOT NULL DEFAULT '',
+		model VARCHAR(100) NOT NULL DEFAULT '',
+		attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		error VARCHAR(255) NOT NULL DEFAULT '',
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at INT UNSIGNED NOT NULL DEFAULT 0,
+		transcribed_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_file (file_id),
+		KEY idx_message (message_id),
+		KEY idx_status (status, id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('ws_channels', 'voice_access', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('config', 'ws_voice_enabled', "TINYINT(1) NOT NULL DEFAULT 0");
+	install_add_column('config', 'ws_voice_hold_until', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: voice messages can be written out as text by a transcription service with the site\'s own key, once an administrator switches it on in the Workspace settings; private channels only where their manager allows it.');
 
 }

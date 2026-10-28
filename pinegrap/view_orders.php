@@ -2926,7 +2926,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                         <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Date Range') . '</h5></div>
                         <div class="col-12">' . $output_date_type_field . '</div>
                         <div class="col-12">
-                            <label class="form-label">' . lang('From') . '</label>
+                            <label class="form-label">' . lang('Start') . '</label>
                             <select class="form-control my-1" name="start_month">' . select_month(($_SESSION['software']['ecommerce']['view_orders']['start_month'] ?? '')) . '</select>
                             <div class="input-group input-group-sm">
                                 <select class="form-control my-1" name="start_day">' . select_day(($_SESSION['software']['ecommerce']['view_orders']['start_day'] ?? '')) . '</select>
@@ -2934,7 +2934,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                             </div>
                         </div>
                         <div class="col-12">
-                            <label class="form-label">' . lang('To') . '</label>
+                            <label class="form-label">' . lang('End') . '</label>
                             <select class="form-control my-1" name="stop_month">' . select_month(($_SESSION['software']['ecommerce']['view_orders']['stop_month'] ?? '')) . '</select>
                             <div class="input-group input-group-sm">
                                 <select class="form-control my-1" name="stop_day">' . select_day(($_SESSION['software']['ecommerce']['view_orders']['stop_day'] ?? '')) . '</select>

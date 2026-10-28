@@ -304,11 +304,11 @@ pg_page_shell([
                         <select class="form-control form-control-sm" id="period" name="period">' . $output_periods . '</select>
                     </div>
                     <div class="col-6 md:col-2 erp-expense-dates"' . (($period_choice === 'dates') ? '' : ' hidden') . '>
-                        <label class="form-label small fg-secondary mb-1" for="from">' . lang('From') . '</label>
+                        <label class="form-label small fg-secondary mb-1" for="from">' . lang('Start') . '</label>
                         <input type="date" class="form-control form-control-sm" id="from" name="from" value="' . h($period['from']) . '" />
                     </div>
                     <div class="col-6 md:col-2 erp-expense-dates"' . (($period_choice === 'dates') ? '' : ' hidden') . '>
-                        <label class="form-label small fg-secondary mb-1" for="to">' . lang('To') . '</label>
+                        <label class="form-label small fg-secondary mb-1" for="to">' . lang('End') . '</label>
                         <input type="date" class="form-control form-control-sm" id="to" name="to" value="' . h($period['to']) . '" />
                     </div>
                     <div class="col-6 md:col-2">

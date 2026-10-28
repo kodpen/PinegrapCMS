@@ -283,6 +283,7 @@
     "Your PHP version is supported but may lack full compatibility. Consider upgrading to PHP 8.3 or higher.": "PHP sürümünüz destekleniyor ancak tam uyumluluk eksik olabilir. PHP 8.3 veya daha yüksek bir sürüme yükseltmeyi düşünün.",
     "Your PHP version is supported but may lack full compatibility. Please upgrade to PHP 8.3 or higher.": "PHP sürümünüz destekleniyor ancak tam uyumluluğu olmayabilir. Lütfen PHP 8.3 veya üstüne yükseltin.",
     "Your Password Hint is": "Parola İpucunuz",
+    "Your Password Hint is:": "Şifre ipucunuz:",
     "Your Report": "Şikâyetiniz",
     "Your System smtp settings work correctly.": "Sistem smtp ayarlarınız düzgün çalışıyor.",
     "Your account": "Hesabınız",

@@ -1889,15 +1889,18 @@ function pg_pb_google_taxonomy_status()
  * Order history is unaffected: order_items keeps its own product_name and price
  * snapshot, so a deleted product does not blank out past orders.
  *
+ * A product in a bundle is refused: the bundle would be left selling
+ * something that is gone. Take it out of the bundle first.
+ *
  * @param int $product_id
- * @return void
+ * @return bool false when nothing was deleted
  */
 function pg_pb_delete_product($product_id)
 {
     $product_id = (int) $product_id;
 
-    if (!$product_id) {
-        return;
+    if (!$product_id || pg_bundle_is_component($product_id)) {
+        return false;
     }
 
     // The name, before the row that carries it is gone: an integration that
@@ -1961,6 +1964,12 @@ function pg_pb_delete_product($product_id)
     db("DELETE FROM tag_cloud_keywords_xref WHERE (item_id = '$product_id') AND (item_type = 'product')");
 
     db("DELETE FROM short_links WHERE (destination_type = 'product') AND (product_id = '$product_id')");
+
+    if (pg_bundles_ready()) {
+        db("DELETE FROM product_bundle_items WHERE bundle_id = '$product_id'");
+    }
+
+    return true;
 }
 
 
@@ -2006,8 +2015,9 @@ function pg_pb_delete_variant_set($group_id, $delete_products = TRUE)
 
     if ($delete_products) {
         foreach (pg_pb_group_products($group_id) as $product) {
-            pg_pb_delete_product($product['id']);
-            $result['products']++;
+            if (pg_pb_delete_product($product['id'])) {
+                $result['products']++;
+            }
         }
     }
 
@@ -3661,6 +3671,142 @@ function pg_pb_variant_sets_screen()
  * ------------------------------------------------------------------ */
 
 /**
+ * Whether this save carries the bundle card: only the edit screen draws it,
+ * and only once the bundle schema is in place.
+ *
+ * @param int $product_id
+ * @return bool
+ */
+function pg_pb_bundle_posted($product_id)
+{
+    return ((int) $product_id > 0) && isset($_POST['bundle_card']) && pg_bundles_ready();
+}
+
+
+/**
+ * The bundle contents posted by the card, as rows for
+ * pg_bundle_items_normalize().
+ *
+ * @return array
+ */
+function pg_pb_bundle_items_posted()
+{
+    $ids        = (isset($_POST['bundle_item_product_id']) && is_array($_POST['bundle_item_product_id'])) ? $_POST['bundle_item_product_id'] : array();
+    $quantities = (isset($_POST['bundle_item_quantity']) && is_array($_POST['bundle_item_quantity'])) ? $_POST['bundle_item_quantity'] : array();
+    $items      = array();
+
+    foreach (array_values($ids) as $index => $product_id) {
+        $quantities_list = array_values($quantities);
+
+        $items[] = array(
+            'product_id' => is_scalar($product_id) ? (int) $product_id : 0,
+            'quantity'   => (isset($quantities_list[$index]) && is_scalar($quantities_list[$index])) ? (int) $quantities_list[$index] : 1,
+        );
+    }
+
+    return $items;
+}
+
+
+/**
+ * One row of the bundle contents table.
+ *
+ * @param int    $product_id
+ * @param string $label    the product's name and code
+ * @param int    $quantity
+ * @return string
+ */
+function pg_pb_render_bundle_row($product_id, $label, $quantity)
+{
+    return
+        '<tr>
+            <td>' . h($label) . '<input type="hidden" name="bundle_item_product_id[]" value="' . (int) $product_id . '" /></td>
+            <td style="width:8rem"><input type="number" min="1" max="' . PG_BUNDLE_MAX_QUANTITY . '" name="bundle_item_quantity[]" class="form-control form-control-sm" value="' . (int) $quantity . '" aria-label="' . h(lang('Quantity')) . '" /></td>
+            <td class="text-end" style="width:3rem"><button type="button" class="btn btn-sm btn-outline theme-danger pg-pb-bundle-remove" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-x-lg"></i></button></td>
+        </tr>';
+}
+
+
+/**
+ * The bundle card of the edit screen: the switch, the pricing and the
+ * contents. Empty on the create screen and before the bundle schema exists.
+ *
+ * @param string $mode       'create' or 'edit'
+ * @param int    $product_id
+ * @param array  $values     the stored product row
+ * @return string
+ */
+function pg_pb_render_bundle_card($mode, $product_id, $values)
+{
+    if (($mode !== 'edit') || ((int) $product_id <= 0) || !pg_bundles_ready()) {
+        return '';
+    }
+
+    $rows = '';
+
+    foreach (pg_bundle_items($product_id) as $item) {
+        $label = trim((string) $item['short_description']);
+        $label = ($label !== '') ? $label . ' (' . $item['name'] . ')' : (string) $item['name'];
+        $rows .= pg_pb_render_bundle_row($item['product_id'], $label, $item['quantity']);
+    }
+
+    $pricing     = (isset($values['bundle_pricing']) && ($values['bundle_pricing'] === 'sum')) ? 'sum' : 'fixed';
+    $discount_bp = isset($values['bundle_discount_bp']) ? (int) $values['bundle_discount_bp'] : 0;
+    $discount    = ($discount_bp > 0) ? rtrim(rtrim(number_format($discount_bp / 100, 2, '.', ''), '0'), '.') : '';
+
+    // The empty row the script copies for each product picked.
+    $template = pg_pb_render_bundle_row(0, '', 1);
+
+    return '
+                    <div class="col-12" id="pg_pb_sec_bundle">
+                        <div class="card mb-7">
+                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
+                                <i class="bi bi-boxes fg-primary"></i>
+                                <span class="h5 mb-0 fg-primary fw-bold">' . lang('Bundle') . '</span>
+                            </div>
+                            <div class="card-body">
+                                <input type="hidden" name="bundle_card" value="1" />
+                                <div class="row">
+                                    ' . pg_pb_render_switch_row(
+                                            pg_pb_render_switch(array(
+                                                'id'    => 'bundle',
+                                                'name'  => 'bundle',
+                                                'label' => lang('This product is a bundle'),
+                                                'help'  => lang('Sold as one item made of other products. Its stock follows the products in it.'),
+                                                'panel' =>
+                                                    '<div class="col-12 sm:col-6 lg:col-4 my-1">
+                                                        <label for="bundle_pricing" class="form-label">' . lang('Bundle Price') . '</label>
+                                                        <select name="bundle_pricing" id="bundle_pricing" class="form-control">
+                                                            <option value="fixed"' . (($pricing === 'fixed') ? ' selected="selected"' : '') . '>' . lang('The price of this product') . '</option>
+                                                            <option value="sum"' . (($pricing === 'sum') ? ' selected="selected"' : '') . '>' . lang('The sum of the products in it') . '</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-12 sm:col-6 lg:col-4 my-1">
+                                                        <label for="bundle_discount" class="form-label">' . lang('Discount on the Sum (%)') . '</label>
+                                                        <input type="text" inputmode="decimal" name="bundle_discount" id="bundle_discount" class="form-control" value="' . h($discount) . '" />
+                                                    </div>
+                                                    <div class="col-12 my-3">
+                                                        <table class="table table-sm align-middle mb-3">
+                                                            <thead><tr><th>' . lang('Product') . '</th><th>' . lang('Quantity') . '</th><th></th></tr></thead>
+                                                            <tbody id="pg_pb_bundle_rows">' . $rows . '</tbody>
+                                                        </table>
+                                                        <template id="pg_pb_bundle_row_template">' . $template . '</template>
+                                                        <label for="pg_pb_bundle_search" class="form-label">' . lang('Add a product') . '</label>
+                                                        <input type="search" id="pg_pb_bundle_search" class="form-control" autocomplete="off" placeholder="' . h(lang('Search by name or code')) . '" data-url="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_order.php?request=search_products&q=') . '" data-self="' . (int) $product_id . '" />
+                                                        <div id="pg_pb_bundle_results" class="list-group mt-1"></div>
+                                                        <div class="form-text">' . lang('The stock and inventory settings above are worked out from these products when you save.') . '</div>
+                                                    </div>',
+                                            ))) . '
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_bundle.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_bundle.js') . '"></script>
+';
+}
+
+
+/**
  * Every field of a product, drawn once.
  *
  * Creating a product and editing one are the same screen with different values
@@ -4848,6 +4994,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                         </div>
                     </div>
 
+                    ' . pg_pb_render_bundle_card($pg_mode, $pg_product_id, $values) . '
                     <!-- --------------------------------------------- variants -->
                     <div class="col-12" id="pg_pb_sec_variants">
                         <div class="card mb-7">
@@ -5757,6 +5904,25 @@ function pg_pb_update_product($product_id)
     // save that leaves it alone makes the product look untouched.
     $product['timestamp'] = time();
 
+    // A bundle's stock is what its contents allow, never typed: the stored
+    // cache is kept and pg_bundle_refresh() below brings it up to date.
+    $bundle_posted = pg_pb_bundle_posted($product_id);
+
+    if ($bundle_posted) {
+        $product['bundle']             = empty($_POST['bundle']) ? 0 : 1;
+        $product['bundle_pricing']     = (isset($_POST['bundle_pricing']) && ($_POST['bundle_pricing'] === 'sum')) ? 'sum' : 'fixed';
+        $product['bundle_discount_bp'] = pg_bundle_discount_bp_from_input(isset($_POST['bundle_discount']) ? $_POST['bundle_discount'] : '');
+
+        if ($product['bundle']) {
+            $stored_stock = db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . e($product_id) . "'");
+
+            if ($stored_stock) {
+                $product['inventory']          = ((string) $stored_stock['inventory'] === '1') ? '1' : '';
+                $product['inventory_quantity'] = (string) $stored_stock['inventory_quantity'];
+            }
+        }
+    }
+
     pg_pb_apply_stock_flag($product, $product_id);
 
     // Everything this screen manages feeds the SEO score, so the stored
@@ -5784,6 +5950,13 @@ function pg_pb_update_product($product_id)
     // The price history writes a row only when the stored price differs from
     // its newest one, so a save that left the price alone adds nothing.
     pg_price_history_record($product_id, 'panel');
+
+    // The contents were checked by pg_pb_validate_product_post(). Switching
+    // the bundle off empties them, so nothing refreshes the row any more.
+    if ($bundle_posted) {
+        pg_bundle_items_save($product_id, $product['bundle'] ? pg_pb_bundle_items_posted() : array());
+        pg_bundle_refresh($product_id);
+    }
 
     // The stock: inventory.changed, stock.low on the crossing, and the
     // stamp, which this save moved already. Only when the count moved or
@@ -6045,6 +6218,17 @@ function pg_pb_validate_product_post($user, $product_id = 0)
     // operator would only notice later. On edit only a changed code is
     // looked up, so a catalogue that already holds a duplicate still saves.
     $names = pg_pb_posted_product_names($_POST, $product_id);
+
+    // A bundle's contents are checked before anything is written: a refused
+    // component would otherwise leave the bundle switched on and empty.
+    if (pg_pb_bundle_posted($product_id) && !empty($_POST['bundle'])) {
+
+        $problem = pg_bundle_items_problem($product_id, pg_bundle_items_normalize(pg_pb_bundle_items_posted(), $product_id));
+
+        if ($problem !== '') {
+            output_error(lang($problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
+    }
 
     $repeated = pg_product_names_repeated($names);
 
