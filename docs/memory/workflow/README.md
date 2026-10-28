@@ -34,6 +34,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS, the cash-on-delivery code's orders, the member's SMS sign-in code.
 - decisions-made-panel.md: Decisions list, panel part: Bootstrap 6 breakpoints (1024/1280, xxl to 2xl) kept on purpose; the one date-and-time picker (vanilla-calendar-pro); the main menu in category headings
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
+- decisions-made-schema-2.md: Decisions list, schema part 2: tables and columns approved from 2026-10-28 on (incoming e-mail, workflow tables, MCP preamble, gateway secret widths, AI prompt version); part 1 has the rules
 - decisions-made-schema.md: Decisions list, schema part: steps approved in advance (ENUM appends in the 4.48 shape), the tables and columns approved on 2026-10-27 and 2026-10-28, who decides schema
 - decisions-made-seo.md: Decisions list, SEO part (2026-10-27/28): large image preview, site icon, main-host redirect, per-form structured-data type and author source; settings whose defaults keep running sites
 - decisions-made-waf.md: Decisions list, firewall part: thresholds stay, a concurrent refusal is no offence, a rate ban stays off the ladder, the global limit counts before the session, no address-lock release action.
