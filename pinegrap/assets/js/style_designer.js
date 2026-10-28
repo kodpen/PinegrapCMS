@@ -66409,9 +66409,14 @@ const StyleDesigner = (function () {
         if (count) count.textContent = _pages.length > 1 ? String(_pages.length) : '';
         var hidden = list.scrollWidth <= list.clientWidth + 1 && !list.querySelector('.sd-tab-folded');
         if (wrap.hidden !== hidden) {
-            if (hidden && pgUI.menu.isOpen(wrap.querySelector('[data-bs-toggle="dropdown"]'))) return;
+            if (hidden && pgUI.menu.isOpen(_pgTabsAllToggle())) return;
             wrap.hidden = hidden;
         }
+    }
+    // The button that opens the list: a Bootstrap 6 menu toggle.
+    function _pgTabsAllToggle() {
+        var wrap = document.getElementById('sd-tabs-all');
+        return wrap ? wrap.querySelector('[data-bs-toggle="menu"]') : null;
     }
     function _pgTabsAllFill() {
         var box = document.getElementById('sd-tabs-all-list');
@@ -66423,17 +66428,38 @@ const StyleDesigner = (function () {
             if (q && name.toLocaleLowerCase().indexOf(q) === -1) return;
             var locked = (p.access === 'locked');
             var gid = (p.tabGroup && _pgTabGroups[p.tabGroup]) ? p.tabGroup : '';
-            html += '<button type="button" class="dropdown-item sd-tabs-all-item' + (p.key === _activeKey ? ' active' : '') + '"' +
-                    ' data-key="' + esc(p.key) + '"' + (locked ? ' disabled' : '') + '>' +
+            html += '<button type="button" class="menu-item sd-tabs-all-item' + (p.key === _activeKey ? ' active' : '') + '"' +
+                    ' data-key="' + esc(p.key) + '"' + (p.key === _activeKey ? ' aria-current="page"' : '') + (locked ? ' disabled' : '') + '>' +
                     // A page in a group carries the group's colour.
                     '<span class="sd-tabs-all-dot' + (gid ? ' sd-tab-color-dot' : '') + '"' + (gid ? ' data-color="' + esc(_pgTabGroups[gid].color) + '"' : '') + ' aria-hidden="true"></span>' +
                     '<span class="sd-tabs-all-name">' + esc(name) + '</span>' +
                     (_pgPageDirty(p) ? '<span class="sd-tabs-all-dirty" title="' + esc(_sdT('Unsaved Changes')) + '">●</span>' : '') +
-                    ((_pgDraftsReady() && p.page_draft) ? '<span class="sd-tab-draft-badge">' + esc(_sdT('Draft')) + '</span>' : '') +
-                    (locked ? '<span class="bi bi-lock-fill"></span>' : '') +
+                    ((_pgDraftsReady() && p.page_draft) ? '<span class="sd-tab-draft-badge sd-tabs-all-badge">' + esc(_sdT('Draft')) + '</span>' : '') +
+                    (locked ? '<span class="bi bi-lock-fill" aria-hidden="true"></span>' : '') +
                     '</button>';
         });
-        box.innerHTML = html || '<div class="sd-tabs-all-empty">' + esc(_sdT('No page matches.')) + '</div>';
+        box.innerHTML = html || '<div class="menu-text sd-tabs-all-empty">' + esc(_sdT('No page matches.')) + '</div>';
+    }
+    // The page menu of a row, the one a tab of the strip opens: the list
+    // closes first (it is a v6 menu, below the page menu's layer, and
+    // would stay open under it), the row's page becomes the active one,
+    // and the menu opens at the cursor or under the row. A locked row
+    // opens nothing, as its click does.
+    function _pgTabsAllPageMenu(it, at) {
+        it = it && it.closest ? it.closest('.sd-tabs-all-item') : null;
+        if (!it || it.disabled || !it.dataset.key) return false;
+        var key = it.dataset.key;
+        var r = it.getBoundingClientRect();
+        var btn = _pgTabsAllToggle();
+        if (btn) pgUI.menu.hide(btn);
+        if (key !== _activeKey) _pgTabsSwitch(key);
+        _pgTabsOpenMenu(null, key, at || { x: r.left + 12, y: r.bottom });
+        // Opened from the keyboard: the focus goes into the page menu.
+        if (!at && window._pgTabMenuEl) {
+            var first = window._pgTabMenuEl.querySelector('[data-act]:not([disabled])');
+            if (first) first.focus();
+        }
+        return true;
     }
 
     function _pgTabsBind() {
@@ -66464,9 +66490,48 @@ const StyleDesigner = (function () {
             all.addEventListener('click', function (e) {
                 var it = e.target.closest('.sd-tabs-all-item');
                 if (!it || it.disabled) return;
-                var btn = all.querySelector('[data-bs-toggle="dropdown"]');
+                var btn = _pgTabsAllToggle();
                 if (btn) pgUI.menu.hide(btn);
                 if (it.dataset.key !== _activeKey) _pgTabsSwitch(it.dataset.key);
+            });
+            // Right-click on a row: the page menu, as on a tab of the strip.
+            // The keys below also make some browsers send a contextmenu
+            // event of their own; the menu they opened stays where it is.
+            var keyMenuAt = 0;
+            all.addEventListener('contextmenu', function (e) {
+                if (!e.target.closest('.sd-tabs-all-item')) return;
+                e.preventDefault();
+                if (Date.now() - keyMenuAt < 800) return;
+                // A contextmenu event from the keyboard has no cursor.
+                _pgTabsAllPageMenu(e.target, (e.clientX || e.clientY) ? { x: e.clientX, y: e.clientY } : null);
+            });
+            // Keyboard: the arrows walk the rows (Bootstrap's menu walks only
+            // items that are direct children of .menu; these sit in the
+            // scrolling list), ArrowDown leaves the search box for the first
+            // row, and the context-menu key or Shift+F10 opens the page menu.
+            all.addEventListener('keydown', function (e) {
+                var it = e.target.closest('.sd-tabs-all-item');
+                var fromFilter = (filter && e.target === filter);
+                if (it && (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey))) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (_pgTabsAllPageMenu(it)) keyMenuAt = Date.now();
+                    return;
+                }
+                if (!it && !fromFilter) return;
+                if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End') return;
+                if (fromFilter && e.key !== 'ArrowDown') return;
+                var rows = Array.prototype.slice.call(all.querySelectorAll('.sd-tabs-all-item:not([disabled])'));
+                if (!rows.length) return;
+                var i = rows.indexOf(it);
+                var next = e.key === 'Home' ? rows[0]
+                         : e.key === 'End' ? rows[rows.length - 1]
+                         : e.key === 'ArrowDown' ? rows[Math.min(rows.length - 1, i + 1)]
+                         : (i <= 0 ? null : rows[i - 1]);
+                e.preventDefault();
+                e.stopPropagation();
+                if (next) next.focus();
+                else if (filter) filter.focus();
             });
             window.addEventListener('resize', function () { _pgTabsAllSync(); });
         }
