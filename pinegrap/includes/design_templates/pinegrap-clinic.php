@@ -1765,6 +1765,8 @@ $pages[] = $staff_form_page('blog_new', lang('new-blog-post'), lang('New Blog Po
         // so the blog and the home page do not open empty
         // (pg_cf_seed_sample_records()).
         'sample_records'       => $sample_posts,
+        // The cover is the posts' share image (pg_cf_share_image_field_id()).
+        'share_image_field'    => 'cover_image',
     ));
 $pages[] = $staff_form_page('staff_entry', lang('add-to-staff-directory'), lang('Add to the Staff Directory'),
     lang('Signed-in patients see the directory from their account.'), 'staff_form',

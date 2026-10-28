@@ -1209,11 +1209,85 @@ function pg_file_open_to_everyone($file_id)
 }
 
 /**
- * Resolve the RSS media field of a submitted form into a share image.
+ * Whether custom_form_pages carries the share image field of a form's record
+ * pages (2026.11.0, 11.0.18). Files land before the upgrade runs, so the
+ * column is probed before it is read or written.
+ */
+function pg_record_share_image_setting_ready()
+{
+    return pg_schema_has('custom_form_pages', 'share_image_field_id');
+}
+
+/**
+ * The fields of a form a record page's share image is read from, in order:
+ * the chosen share image field (custom_form_pages.share_image_field_id) when
+ * it is a file field of the form, read as an upload only; then the field with
+ * the RSS media role, whose value decides (pg_resolve_submitted_form_og_image()).
+ * Nothing else is guessed: without either the default share image applies.
  *
- * The media field is a loose binding: operators point it at a file upload, a
- * plain URL, a rich-text editor or a video field, and only the operator knows
- * which. So the VALUE decides, not the field type:
+ * @param mixed $configured_field_id custom_form_pages.share_image_field_id
+ * @param array $fields              The form's fields: id, type, rss_field
+ * @return array List of array('id' => int, 'file_only' => bool)
+ */
+function pg_record_share_image_sources($configured_field_id, $fields)
+{
+    $configured_field_id = (int) $configured_field_id;
+    $configured = 0;
+    $media = 0;
+
+    foreach ((is_array($fields) ? $fields : array()) as $field) {
+        $id = (int) ($field['id'] ?? 0);
+
+        if ($id <= 0) {
+            continue;
+        }
+
+        if (($id === $configured_field_id) && (($field['type'] ?? '') === 'file upload')) {
+            $configured = $id;
+        }
+
+        if (($media === 0) && (($field['rss_field'] ?? '') === 'media')) {
+            $media = $id;
+        }
+    }
+
+    $sources = array();
+
+    // The media field chosen as the share image field is read once, by the
+    // media rule.
+    if (($configured > 0) && ($configured !== $media)) {
+        $sources[] = array('id' => $configured, 'file_only' => true);
+    }
+
+    if ($media > 0) {
+        $sources[] = array('id' => $media, 'file_only' => false);
+    }
+
+    return $sources;
+}
+
+/**
+ * Whether a form's record pages always share the default share image: the
+ * form has no RSS media field and no share image field (pg_record_share_image_sources()).
+ * The record page settings say so.
+ *
+ * @param mixed $configured_field_id custom_form_pages.share_image_field_id
+ * @param array $fields              The form's fields: id, type, rss_field
+ * @return bool
+ */
+function pg_record_share_image_uses_default($configured_field_id, $fields)
+{
+    return pg_record_share_image_sources($configured_field_id, $fields) === array();
+}
+
+/**
+ * Resolve the share image of a submitted form.
+ *
+ * The form's share image field comes first: an upload that is an image and
+ * open to everyone. Then the RSS media field. The media field is a loose
+ * binding: operators point it at a file upload, a plain URL, a rich-text
+ * editor or a video field, and only the operator knows which. So the VALUE
+ * decides, not the field type:
  *
  *   file upload            -> the file, if its type is an image
  *   http(s) image address  -> used as is
@@ -1231,52 +1305,70 @@ function pg_resolve_submitted_form_og_image($custom_form_page_id, $submitted_for
         return null;
     }
 
-    $media_field_id = db_value(
-        "SELECT id FROM form_fields
-        WHERE (page_id = '" . $custom_form_page_id . "') AND (rss_field = 'media')
-        LIMIT 1");
+    $fields = db_items(
+        "SELECT id, type, rss_field FROM form_fields
+        WHERE page_id = '" . $custom_form_page_id . "'
+        ORDER BY sort_order ASC, id ASC");
 
-    if (!$media_field_id) {
-        return null;
+    $configured_field_id = 0;
+
+    if (pg_record_share_image_setting_ready()) {
+        $configured_field_id = (int) db_value(
+            "SELECT share_image_field_id FROM custom_form_pages
+            WHERE page_id = '" . $custom_form_page_id . "'
+            LIMIT 1");
     }
 
-    $media = db_item(
-        "SELECT data, file_id FROM form_data
-        WHERE (form_id = '" . $submitted_form_id . "') AND (form_field_id = '" . (int) $media_field_id . "')
-        LIMIT 1");
+    foreach (pg_record_share_image_sources($configured_field_id, $fields) as $source) {
+        $media = db_item(
+            "SELECT data, file_id FROM form_data
+            WHERE (form_id = '" . $submitted_form_id . "') AND (form_field_id = '" . (int) $source['id'] . "')
+            LIMIT 1");
 
-    if (!is_array($media)) {
-        return null;
-    }
-
-    if ((int) ($media['file_id'] ?? 0) > 0) {
-        return pg_og_image_from_open_file($media['file_id']);
-    }
-
-    $data = trim((string) ($media['data'] ?? ''));
-
-    if ($data === '') {
-        return null;
-    }
-
-    // A bare address: image extension is a picture; a video address is not
-    // ours to use, og:image must carry a picture.
-    if (preg_match('#^https?://\S+$#i', $data)) {
-        $clean_path = (string) parse_url($data, PHP_URL_PATH);
-        $extension = mb_strtolower(pathinfo($clean_path, PATHINFO_EXTENSION));
-
-        if (in_array($extension, pg_og_image_extensions())) {
-            return array('url' => pg_normalize_url_slashes($data), 'width' => 0, 'height' => 0, 'alt' => '');
+        if (!is_array($media)) {
+            continue;
         }
 
-        return null;
-    }
+        if ((int) ($media['file_id'] ?? 0) > 0) {
+            $image = pg_og_image_from_open_file($media['file_id']);
 
-    // Rich text: the first embedded picture represents the post.
-    $first_image = pg_first_image_url_from_html($data);
+            if ($image !== null) {
+                return $image;
+            }
 
-    if ($first_image !== '') {
-        return array('url' => $first_image, 'width' => 0, 'height' => 0, 'alt' => '');
+            continue;
+        }
+
+        // The share image field gives an upload or nothing.
+        if ($source['file_only']) {
+            continue;
+        }
+
+        $data = trim((string) ($media['data'] ?? ''));
+
+        if ($data === '') {
+            continue;
+        }
+
+        // A bare address: image extension is a picture; a video address is not
+        // ours to use, og:image must carry a picture.
+        if (preg_match('#^https?://\S+$#i', $data)) {
+            $clean_path = (string) parse_url($data, PHP_URL_PATH);
+            $extension = mb_strtolower(pathinfo($clean_path, PATHINFO_EXTENSION));
+
+            if (in_array($extension, pg_og_image_extensions())) {
+                return array('url' => pg_normalize_url_slashes($data), 'width' => 0, 'height' => 0, 'alt' => '');
+            }
+
+            continue;
+        }
+
+        // Rich text: the first embedded picture represents the post.
+        $first_image = pg_first_image_url_from_html($data);
+
+        if ($first_image !== '') {
+            return array('url' => $first_image, 'width' => 0, 'height' => 0, 'alt' => '');
+        }
     }
 
     return null;

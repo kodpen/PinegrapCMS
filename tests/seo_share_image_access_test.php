@@ -38,7 +38,7 @@ function test_seo_share_image_resolver_asks_first()
 
 	$start = strpos($seo, 'function pg_resolve_submitted_form_og_image(');
 	$body  = substr($seo, $start, strpos($seo, "\nfunction ", $start + 10) - $start);
-	pg_assert_contains("return pg_og_image_from_open_file(\$media['file_id']);", $body);
+	pg_assert_contains("\$image = pg_og_image_from_open_file(\$media['file_id']);", $body);
 	pg_assert_same(false, strpos($body, 'pg_og_image_from_file_id('), 'never the file alone');
 
 	$start = strpos($seo, 'function pg_og_image_from_open_file(');

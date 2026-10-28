@@ -1,6 +1,6 @@
 ---
 name: record-media-field-share-image
-description: A form's RSS media upload opens with the record (every public view counts as printing it); og:image and the feed enclosure skip an upload an anonymous visitor cannot open (#2191, #2174)
+description: A form's RSS media upload opens with the record; og:image comes from the form's share image field, then the media field, and skips an upload an anonymous visitor cannot open (#2191, #2174, #2891)
 ---
 
 ## When does a record's RSS media upload open to a visitor?
@@ -9,6 +9,11 @@ description: A form's RSS media upload opens with the record (every public view 
 ## How do og:image and the feeds avoid the sign-in screen?
 - `pg_file_open_to_everyone($file_id)` (`includes/fn/seo.php`) gives the answer `get_file.php` gives a visitor who is not signed in: `pg_record_file_anonymous_access()` (`includes/record_files.php`): a public folder, the attachment flag, no comment attachment, then the record's classic views judged for such a visitor (`pg_record_file_classic_anonymous_access()`, the rule of `get_file.php` over the rows it reads) or the designed widgets (`pg_record_file_designed_access(…, true)`, pages judged by their folder's own setting). A file that cannot be read stays closed.
 - `pg_resolve_submitted_form_og_image()` hands an upload to `pg_og_image_from_open_file()`, which returns nothing for a closed one, so `get_page_content.php` falls back to the default share image; the classic feed (`get_page.php`) and the RSS widget (`widgets.php`) write no enclosure for a closed upload. Before (#2174), kodpen.com's share card pointed at `registration_entrance.php`.
-- Not decided, left out: an automatic fallback to another image field or the content's first picture when no media field is set.
 
-Tests: `tests/record_files_test.php` (the media fact, the classic rule against `get_file.php`, the anonymous answer fails closed), `tests/seo_share_image_access_test.php` (the resolver asks first, the feeds ask first).
+## Where does a record page's share image come from (#2891)?
+- `custom_form_pages.share_image_field_id` (2026.11.0, 11.0.18, default 0) names a file field of the form. `pg_record_share_image_sources()` (pure) gives the order: that field when it is a `file upload` field of the form, read as an upload only (image by `pg_og_image_extensions()`, open by `pg_og_image_from_open_file()`); then the RSS media field, whose value decides as above; nothing else. Without either `pg_og_default_image()` applies. 0 keeps the rule from before, so running sites do not change.
+- No guessing from another image field or the content's first picture: rejected in #2891, it would change running sites' og:image on upgrade and could pick a picture never meant as a share card.
+- The designer's custom form settings hold the field by name (`share_image_field`, '' = media field); the save turns it into the id after the fields are written (`pg_cf_share_image_field_id()`). The built-in templates' post forms set `'share_image_field' => 'cover_image'` (new sites only); a custom template exported from a site carries the name.
+- With no media field and no share image field (`pg_record_share_image_uses_default()`), the settings show "its records share the site's default share image".
+
+Tests: `tests/record_share_image_field_test.php` (source order, notice, name to id), `tests/record_files_test.php` (the media fact, the classic rule against `get_file.php`, the anonymous answer fails closed), `tests/seo_share_image_access_test.php` (the resolver asks first, the feeds ask first).

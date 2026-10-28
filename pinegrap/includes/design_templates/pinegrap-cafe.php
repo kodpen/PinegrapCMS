@@ -2542,6 +2542,8 @@ $pages[] = $staff_form_page('blog_new', lang('new-blog-post'), lang('New Blog Po
         'confirmation_message' => lang('The post is published.'),
         'confirmation_page_id' => '{{tab:blog}}',
         'sample_records'       => $sample_posts,
+        // The cover is the posts' share image (pg_cf_share_image_field_id()).
+        'share_image_field'    => 'cover_image',
     ));
 $pages[] = $staff_form_page('staff_entry', lang('add-to-staff-directory'), lang('Add to the Staff Directory'),
     lang('Signed-in guests see the directory from their account.'), 'staff_form',
