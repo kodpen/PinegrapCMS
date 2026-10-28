@@ -20,7 +20,7 @@ description: Plan (2026-10-23, S1 #1708, S2 #1858, S2b #1987, T1a #2745, T1b #27
 3. T1 Tables: new `ws_wtables`, `ws_wtable_columns`, `ws_wtable_rows`, `ws_wtable_shares`, includes/workspace/wtables.php (`ws_wtable_*`, not `ws_table_*`), workspace_wtables.php, API. Cut:
    - T1a types and store core — done, #2745 (decided in #2746; workspace/workflow-tables.md): types, cell checks, limits, step 11.0.110, `ws_wtable_access()`, create/rename/delete of tables and columns.
    - T1b rows — done, #2794 (workspace/workflow-table-rows.md): person and record-link cells refused (`not_writable_yet`).
-   - T1b2 privacy reader — done, #PRNUM (workspace/workflow-tables.md): the export and erasure read person and link cells (`pg_privacy_wtable_rows()`); `ws_wtable_row_closed_types()` empty.
+   - T1b2 privacy reader — done, #2808 (workspace/workflow-tables.md): the export and erasure read person and link cells (`pg_privacy_wtable_rows()`); `ws_wtable_row_closed_types()` empty.
    - T1c shares (person view/edit, channel view; access already reads them), `ws_notify()`, `ws_inbox_reach_lost()`/`_regained()`, flows of a table whose owner is gone pause.
    - T1d API and MCP (`ws_openapi_objects()`, dry_run through `*_check()`), `workspace.wtable.*` webhooks on a public channel card.
    - T1e screen workspace_wtables.php and its place in `ws_nav_groups()`.
