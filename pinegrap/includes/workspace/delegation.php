@@ -618,9 +618,11 @@ function ws_task_delegation_run($viewer, $task, $key, $instruction)
     // never sit in the table as Claude's, where Claude's run would take it,
     // nor a request to an alias as Pinegrap AI's own, nor one to a server's
     // own agent as Pinegrap AI's (mcp_agent.php takes agent mcp).
-    db("INSERT INTO ws_ai_requests (channel_id, message_id, task_id, note_text, requested_by, status, agent, created_at" . (($server_id > 0) ? ', mcp_server_id' : '') . ")
+    list($pv_column, $pv_value) = pg_ai_prompt_version_insert();
+
+    db("INSERT INTO ws_ai_requests (channel_id, message_id, task_id, note_text, requested_by, status, agent, created_at" . (($server_id > 0) ? ', mcp_server_id' : '') . $pv_column . ")
         VALUES ('0', '0', '" . (int) $task['id'] . "', '" . e(ws_delegation_instruction_clean($instruction)) . "',
-            '" . (int) $viewer['id'] . "', 'queued', '" . e($agent) . "', '" . time() . "'" . (($server_id > 0) ? ", '" . $server_id . "'" : '') . ")");
+            '" . (int) $viewer['id'] . "', 'queued', '" . e($agent) . "', '" . time() . "'" . (($server_id > 0) ? ", '" . $server_id . "'" : '') . $pv_value . ")");
 
     $request_id = (int) mysqli_insert_id(db::$con);
 

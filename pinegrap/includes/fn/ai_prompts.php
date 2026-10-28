@@ -84,6 +84,48 @@ function pg_ai_prompt_version()
 }
 
 /**
+ * The column and the value an insert into ws_ai_requests adds so the request
+ * keeps the version of the rules it ran with: ", prompt_version" after the
+ * column list and ", 'r…'" after the values, or two empty strings while the
+ * upgrade that adds the column (2026.11.0) has not run.
+ *
+ * @param bool|null $has_column null probes the table once
+ * @return string[] column fragment, value fragment
+ */
+function pg_ai_prompt_version_insert($has_column = null)
+{
+    static $probed = null;
+
+    if ($has_column === null) {
+        if ($probed === null) {
+            $probed = function_exists('waf_table_has_column') && waf_table_has_column('ws_ai_requests', 'prompt_version');
+        }
+
+        $has_column = $probed;
+    }
+
+    if (!$has_column) {
+        return array('', '');
+    }
+
+    return array(', prompt_version', ", '" . pg_ai_prompt_version() . "'");
+}
+
+/**
+ * A stored rules version as a person reads it: a request written before the
+ * column was added, or read without it, is unknown.
+ *
+ * @param string|null $value
+ * @return string
+ */
+function pg_ai_prompt_version_label($value)
+{
+    $value = (string) $value;
+
+    return ($value === '') ? lang('Unknown') : $value;
+}
+
+/**
  * Untrusted text set apart for a prompt: a line <<<name>>>, the text, a line
  * <<<end name>>>. Every "<<<" in the text is written with other brackets, so
  * a message, record or tool answer can neither close its block early nor

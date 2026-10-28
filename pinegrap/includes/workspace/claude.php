@@ -614,8 +614,10 @@ function ws_claude_after_send($viewer, $channel, $message_id, $body)
         return false;
     }
 
-    db("INSERT INTO ws_ai_requests (channel_id, message_id, requested_by, status, created_at)
-        VALUES ('" . (int) $channel['id'] . "', '" . (int) $message_id . "', '" . (int) $viewer['id'] . "', 'queued', '" . time() . "')");
+    list($pv_column, $pv_value) = pg_ai_prompt_version_insert();
+
+    db("INSERT INTO ws_ai_requests (channel_id, message_id, requested_by, status, created_at" . $pv_column . ")
+        VALUES ('" . (int) $channel['id'] . "', '" . (int) $message_id . "', '" . (int) $viewer['id'] . "', 'queued', '" . time() . "'" . $pv_value . ")");
 
     ws_message_touch($message_id);
 
@@ -1896,6 +1898,10 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null)
 
     $recent = '';
 
+    // The rules each request ran with, shown once the upgrade keeps them; a
+    // row written before it reads as unknown.
+    $versions = function_exists('waf_table_has_column') && waf_table_has_column('ws_ai_requests', 'prompt_version');
+
     foreach ((array) db_items("SELECT r.*, c.name AS channel_name FROM ws_ai_requests r
         LEFT JOIN ws_channels c ON c.id = r.channel_id
         WHERE 1 = 1" . ws_claude_only('r') . "
@@ -1915,7 +1921,8 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null)
                 <i class="bi ' . h($line['icon']) . '" aria-hidden="true"></i>
                 <div class="ws-grow">
                     ' . $where . '
-                    <span class="fg-secondary">· ' . h(ws_time_label($row['created_at'])) . '</span>
+                    <span class="fg-secondary">· ' . h(ws_time_label($row['created_at'])) . '</span>'
+                    . ($versions ? ' <span class="fg-secondary small" title="' . h(lang('The version of the rules its prompt ran with')) . '">· ' . h(lang('Rules')) . ' ' . h(pg_ai_prompt_version_label($row['prompt_version'] ?? '')) . '</span>' : '') . '
                     <div class="small">' . h($line['label']) . '</div>
                 </div>'
                 . (($line['session_url'] !== '') ? '<a class="btn btn-sm btn-text theme-secondary" href="' . h($line['session_url']) . '" target="_blank" rel="noopener" title="' . h(lang('Open the session')) . '"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>' : '') . '

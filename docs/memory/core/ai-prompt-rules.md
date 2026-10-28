@@ -17,7 +17,7 @@ description: The rules block every language-model prompt ends with (pg_ai_prompt
 - Where a prompt ends with the shape of the answer (JSON), the rules go before it and that line stays last. The translation prompt puts the owner's style note before its data line and the rules, so the shape is last on a site with a note too.
 
 ## What is the rules' version?
-- `pg_ai_prompt_version()`: `r` and the first eight hex digits of the SHA-1 of both profiles' lines; it changes by itself when a rule's text changes, and the text of a version is read from git history. Where a request stores it waits on decision #2829 (no column of `ws_ai_requests` can hold it).
+- `pg_ai_prompt_version()`, kept with every AI request: core/ai-prompt-version.md.
 
 ## How is it kept?
 - tests/ai_prompt_rules_test.php scans the product for `'role' => 'system'` and fails for a file not listed with its builder, or a builder that does not call `pg_ai_prompt_rules()` with its profile. A new prompt is built with the rules and added to that list.

@@ -197,3 +197,51 @@ function test_ai_prompt_version()
 	pg_assert_same('r' . substr(sha1(implode("\n", array_merge(pg_ai_prompt_rules('writer', ''), pg_ai_prompt_rules('assistant', '')))), 0, 8), $version, 'taken from both profiles\' lines, so a changed rule changes it');
 	pg_assert_true(strlen($version) <= 16, 'fits a short column');
 }
+
+function test_ai_prompt_version_insert()
+{
+	$version = pg_ai_prompt_version();
+
+	pg_assert_same(array(', prompt_version', ", '" . $version . "'"), pg_ai_prompt_version_insert(true), 'the column and the version when the column is there');
+	pg_assert_same(array('', ''), pg_ai_prompt_version_insert(false), 'nothing before the upgrade adds the column');
+}
+
+function test_ai_prompt_version_label()
+{
+	pg_assert_same('r0123abcd', pg_ai_prompt_version_label('r0123abcd'), 'a stored version is shown as it is');
+	pg_assert_same(lang('Unknown'), pg_ai_prompt_version_label(''), 'a row written before the column is unknown');
+	pg_assert_same(lang('Unknown'), pg_ai_prompt_version_label(null), 'a row read without the column is unknown');
+}
+
+// Every request written into ws_ai_requests keeps the version of the rules it
+// ran with: an insert without pg_ai_prompt_version_insert() right before it,
+// or one that leaves out its column or value, fails here.
+function test_ai_requests_inserts_keep_the_prompt_version()
+{
+	$found = 0;
+	$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(PG_FUNCTIONS_DIR, FilesystemIterator::SKIP_DOTS));
+
+	foreach ($iterator as $file) {
+		$path = (string) $file;
+
+		if ((substr($path, -4) !== '.php') || (strpos($path, DIRECTORY_SEPARATOR . 'migrations' . DIRECTORY_SEPARATOR) !== false)) {
+			continue;
+		}
+
+		$code = (string) file_get_contents($path);
+		$offset = 0;
+
+		while (($at = strpos($code, 'INSERT INTO ws_ai_requests', $offset)) !== false) {
+			$found++;
+			$offset = $at + 1;
+			$statement = substr($code, $at, (int) strpos($code, ');', $at) - $at);
+			$before = substr($code, max(0, $at - 200), min($at, 200));
+			$where = substr($path, strlen(PG_FUNCTIONS_DIR) + 1);
+
+			pg_assert_true(strpos($before, 'list($pv_column, $pv_value) = pg_ai_prompt_version_insert();') !== false, 'the version is taken right before the insert: ' . $where);
+			pg_assert_true((strpos($statement, '$pv_column') !== false) && (strpos($statement, '$pv_value') !== false), 'the insert writes the version: ' . $where);
+		}
+	}
+
+	pg_assert_true($found >= 7, 'the inserts were found: ' . $found);
+}

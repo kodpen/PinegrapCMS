@@ -617,7 +617,9 @@ function ws_proposal_store($viewer, $agent, $place, $text, $rows, $app_id)
 
     // Written answered: no queue takes it, and its cards need it from the
     // start.
-    db("INSERT INTO ws_ai_requests (channel_id, message_id, " . ($task ? 'task_id, note_text, note_reply, ' : '') . "requested_by, status, agent, created_at, answered_at)
+    list($pv_column, $pv_value) = pg_ai_prompt_version_insert();
+
+    db("INSERT INTO ws_ai_requests (channel_id, message_id, " . ($task ? 'task_id, note_text, note_reply, ' : '') . "requested_by, status, agent, created_at, answered_at" . $pv_column . ")
         VALUES (
             '" . ($channel ? (int) $channel['id'] : 0) . "',
             '0',
@@ -626,7 +628,7 @@ function ws_proposal_store($viewer, $agent, $place, $text, $rows, $app_id)
             'answered',
             '" . e($agent) . "',
             '" . $now . "',
-            '" . $now . "')");
+            '" . $now . "'" . $pv_value . ")");
 
     $request_id = (int) mysqli_insert_id(db::$con);
 
