@@ -402,6 +402,7 @@
     "user ({var:1}) was deleted": "kullanıcı ({var:1}) silindi",
     "user ({var:1}) was modified": "kullanıcı ({var:1}) düzenlendi",
     "user added a passkey ({var:1})": "kullanıcı bir geçiş anahtarı ekledi ({var:1})",
+    "user asked for an e-mailed code for new recovery codes": "kullanıcı yeni kurtarma kodları için e-postayla kod istedi",
     "user asked for an e-mailed code to add a passkey": "kullanıcı geçiş anahtarı eklemek için e-postayla kod istedi",
     "user connected {var:1} ({var:2})": "kullanıcı {var:1} hesabını bağladı ({var:2})",
     "user created new two-step recovery codes": "kullanıcı yeni iki adımlı doğrulama kurtarma kodları oluşturdu",
