@@ -660,9 +660,9 @@ $pg_settings_cards[] = '
 // The modal explains every job the card can switch on. It is printed outside
 // the form, so it travels in its own variable.
 $pg_settings_modals[] = '
-                <dialog class="dialog dialog-xl" id="cron_jobs" aria-labelledby="cron_jobs">
+                <dialog class="dialog dialog-xl" id="cron_jobs" aria-labelledby="cron_jobs_title">
                             <div class="dialog-header">
-                                <h5 class="dialog-title">' . lang('Cron Jobs') . ' (' . $output_os_family . ')</h5>
+                                <h5 class="dialog-title" id="cron_jobs_title">' . lang('Cron Jobs') . ' (' . $output_os_family . ')</h5>
                                 <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                             </div>
                             <div class="dialog-body ">

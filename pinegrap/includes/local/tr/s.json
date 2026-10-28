@@ -291,6 +291,7 @@
     "Scheduled once {var:1}, who asked for it, opens it in the form and saves it": "İsteyen {var:1} formda açıp kaydedince programlanır",
     "Scheduled task(s) that have stopped running:": "Çalışması durmuş zamanlanmış görev(ler):",
     "Scheduled tasks": "Zamanlanmış görevler",
+    "Scheduled tasks are running on time.": "Zamanlanmış görevler zamanında çalışıyor.",
     "Scheduled to go live": "Yayına alınacak",
     "Schema Author": "Şema Yazarı",
     "Schema cache ({var:1})": "Şema önbelleği ({var:1})",

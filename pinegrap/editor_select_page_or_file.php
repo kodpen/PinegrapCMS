@@ -679,11 +679,11 @@ output_header_secure(array('title'=>lang('Browse Items'),'icon'=>'folder')) . '
                     <input type="hidden" name="CKEditorFuncNum" value="' . h(($_GET['CKEditorFuncNum'] ?? '')) . '" />
                     <div class="input-group input-group-sm">
                         <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Folder') . '" for="folder_id">folder</label>
-                        <select id="folder_id" name="folder_id" class="form-control mt-1 mb-1" title="' . lang('Folder') . '" onchange="submit_form(\'search\')"><option value="all">[' . lang('All') . ']</option>' . select_folder(($_SESSION['software']['editor_select_page_or_file']['folder_id'] ?? '')) . '</select>
+                        <select id="folder_id" aria-label="' . h(lang('Folder')) . '" name="folder_id" class="form-control mt-1 mb-1" title="' . lang('Folder') . '" onchange="submit_form(\'search\')"><option value="all">[' . lang('All') . ']</option>' . select_folder(($_SESSION['software']['editor_select_page_or_file']['folder_id'] ?? '')) . '</select>
                     </div>
                     <div class="input-group input-group-sm">
                         <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Access') . '" for="access_control_type">verified_user</label>
-                        <select id="access_control_type" name="access_control_type" class="form-control mt-1 mb-1 ' . h(($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? '')) . '" title="' . lang('Access') . '" onchange="submit_form(\'search\')"><option value="all" class="all">[' . lang('All') . ']</option>' . select_access_control_type(($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? ''), false) . '</select>
+                        <select id="access_control_type" aria-label="' . h(lang('Access')) . '" name="access_control_type" class="form-control mt-1 mb-1 ' . h(($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? '')) . '" title="' . lang('Access') . '" onchange="submit_form(\'search\')"><option value="all" class="all">[' . lang('All') . ']</option>' . select_access_control_type(($_SESSION['software']['editor_select_page_or_file']['access_control_type'] ?? ''), false) . '</select>
                     </div>
                 </form>
             </div>

@@ -614,7 +614,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $output_contact_group_selection = '
         <div class="input-group input-group-sm w-auto'. $show_hide_contact_group_select .'">
             <label class="input-group-text material-icons" title="' . lang('Group') . '" for="contact_group">groups</label>
-            <select id="contact_group" name="contact_group" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . $output_contact_group_options . '</select>
+            <select id="contact_group" aria-label="' . h(lang('Group')) . '" name="contact_group" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . $output_contact_group_options . '</select>
         </div>';
         $output_advanced_filters_value = 'true';
         $output_advanced_filters_label = lang('Add Advanced Filters');
@@ -1112,7 +1112,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                                 <input type="hidden" name="filter" value="' . h($filter) . '">
                                 <div class="input-group input-group-sm w-auto">
                                     <label class="input-group-text material-icons" title="' . lang('Content that viewed') . '" for="filter">visibility</label>
-                                    <select id="filter" name="filter" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
+                                    <select id="filter" name="filter" aria-label="' . h(lang('Content that viewed')) . '" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
                                 </div>
                                 ' . $output_contact_group_selection . '
                             </form>

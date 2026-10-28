@@ -180,9 +180,9 @@ function pg_product_group_form_cards($liveform, $values, $form)
                                                     $v['images'],
                                                     '<button type="button" class="btn btn-sm btn-outline theme-secondary ms-auto" data-bs-toggle="dialog" data-bs-target="#image_code" title="' . lang('Code') . '"><i class="bi bi-code-slash"></i></button>') . '
 
-                                            <dialog class="dialog dialog-lg" id="image_code" aria-labelledby="image_code">
+                                            <dialog class="dialog dialog-lg" id="image_code" aria-labelledby="image_code_title">
                                                         <div class="dialog-header">
-                                                            <h5 class="dialog-title">' . lang('Code') . '</h5>
+                                                            <h5 class="dialog-title" id="image_code_title">' . lang('Code') . '</h5>
                                                             <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                                                         </div>
                                                         <div class="dialog-body ">

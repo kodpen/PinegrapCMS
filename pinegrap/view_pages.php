@@ -1439,7 +1439,7 @@ pg_page_shell(
                             <input type="hidden" name="filter" value="' . h($filter) . '" />
                             <div class="input-group input-group-sm">
                                 <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
-                                <select id="filter_select" name="filter" class="form-control mt-1 mb-1" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
+                                <select id="filter_select" aria-label="' . h(lang('Content that viewed')) . '" name="filter" class="form-control mt-1 mb-1" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
                             </div>
                         </form>
                     </div>

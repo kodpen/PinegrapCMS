@@ -155,7 +155,7 @@ if (!$_POST) {
             $image = '
             <div class="item col">
                 <div class="card bg-transparent border-0 shadow-none cursor-pointer image">
-                    <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="remove" onclick=" $(this).closest(\'.item\').remove();"></button></div>
+                    <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '" onclick=" $(this).closest(\'.item\').remove();"></button></div>
                     <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' . h($row['image']) . '">
                         <input type="hidden" name="image_url" id="image_url" value="' . e($row['image']) . '">
                         <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($row['image']) . '" />
@@ -187,7 +187,7 @@ if (!$_POST) {
         $image = '
         <div class="item col">
             <div class="card bg-transparent border-0 shadow-none cursor-pointer image">
-                <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="remove" onclick=" $(this).closest(\'.item\').remove();"></button></div>
+                <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '" onclick=" $(this).closest(\'.item\').remove();"></button></div>
                 <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' . h($file_name) . '">
                     <input type="hidden" name="file_id" id="file_id" value="' . $row['file_id'] . '"/>
                     <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($file_name) . '" />
