@@ -80,6 +80,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_audit_retention();        // 11.0.47
 	upgrade_2026_11_0_kvkk_notice();            // 11.0.48
 	upgrade_2026_11_0_reference_price_rule();   // 11.0.49
+	upgrade_2026_11_0_blogposting_author();     // 11.0.51
 
 }
 
@@ -2578,5 +2579,18 @@ function upgrade_2026_11_0_reference_price_rule() {
 	install_add_column('config', 'ecommerce_reference_price_rule', "TEXT DEFAULT NULL");
 
 	install_note('Ecommerce: Settings › Ecommerce › Reference Price now picks which price counts as the price before a discount: the lowest price of the last 30 days (the default), of the last 10 days, or the compare-at price entered on each product.');
+
+}
+
+// The author of a record page's BlogPosting (2026.11.0, 11.0.51;
+// includes/fn/seo.php, the custom form's settings). One word per form:
+// contact (the record's linked contact, as before), organization (the site
+// with its address) or field:<form_field_id> (a field of the form holds the
+// name). The default keeps every form's output as it was.
+function upgrade_2026_11_0_blogposting_author() {
+
+	install_add_column('custom_form_pages', 'schema_author', "VARCHAR(64) NOT NULL DEFAULT 'contact'");
+
+	install_note('Custom forms: the author named in the structured data of a record page is now chosen per form in the form settings, next to Enable Pretty URLs: the contact of the record as before, the site as an organization, or a field of the form. Nothing changes until a form picks one.');
 
 }

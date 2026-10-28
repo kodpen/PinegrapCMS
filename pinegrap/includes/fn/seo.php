@@ -1267,42 +1267,191 @@ function pg_og_default_image()
 }
 
 /**
- * Who wrote a submitted form, for the BlogPosting author.
+ * Whether custom_form_pages carries the Schema author choice (2026.11.0,
+ * 11.0.51). Files land before the upgrade runs, so the column is probed
+ * before it is read or written.
+ */
+function pg_blogposting_author_setting_ready()
+{
+    return pg_schema_has('custom_form_pages', 'schema_author');
+}
+
+/**
+ * A form's stored Schema author choice, read: 'contact' (the record's linked
+ * contact), 'organization' (the site) or 'field' with the form field whose
+ * value names the author.
  *
- * Only the linked contact's name is used (pg_contact_display_name(),
- * includes/fn/contacts.php). The account's login username is never printed:
- * it is half of a credential, and the account that signs a template's sample
- * records (the setup administrator) has no contact. An anonymous submission,
- * or one whose contact has no name, returns nothing, and the caller falls
- * back to naming the site.
+ * custom_form_pages.schema_author holds one word: contact, organization or
+ * field:<form_field_id>. Anything else, '' included, reads as contact, so a
+ * row older than the column and a choice whose field was deleted keep the
+ * output a form had before.
+ *
+ * @param string|null $stored
+ * @return array  'source' => contact|organization|field, 'field_id' => int
+ */
+function pg_blogposting_author_choice($stored)
+{
+    $stored = trim((string) $stored);
+
+    if ($stored === 'organization') {
+        return array('source' => 'organization', 'field_id' => 0);
+    }
+
+    if (preg_match('/^field:([1-9][0-9]*)$/', $stored, $match)) {
+        return array('source' => 'field', 'field_id' => (int) $match[1]);
+    }
+
+    return array('source' => 'contact', 'field_id' => 0);
+}
+
+/**
+ * The word custom_form_pages.schema_author stores for a posted choice: the
+ * source, with the field id when a field is the source. A field choice
+ * without a field, or an unknown source, is stored as contact.
+ *
+ * @param string     $source   contact | organization | field
+ * @param int|string $field_id
+ * @return string
+ */
+function pg_blogposting_author_setting_value($source, $field_id)
+{
+    $source = (string) $source;
+    $field_id = (int) $field_id;
+
+    if ($source === 'organization') {
+        return 'organization';
+    }
+
+    if (($source === 'field') && ($field_id > 0)) {
+        return 'field:' . $field_id;
+    }
+
+    return 'contact';
+}
+
+/**
+ * The author name a record's BlogPosting prints under its form's choice:
+ * the chosen field's value when the record filled it (its text, on one
+ * line, when the field is rich text), else the contact's name; '' when
+ * neither gives one, or when the form names the site, and the caller then
+ * writes the site's Organization (pg_blogposting_author_node()).
+ *
+ * @param string|null $stored        custom_form_pages.schema_author
+ * @param string      $contact_name  pg_contact_display_name() of the record's contact
+ * @param string      $field_value   form_data.data of the chosen field
+ * @return string
+ */
+function pg_blogposting_author_name_for($stored, $contact_name, $field_value)
+{
+    $choice = pg_blogposting_author_choice($stored);
+
+    if ($choice['source'] === 'organization') {
+        return '';
+    }
+
+    if ($choice['source'] === 'field') {
+        $value = html_entity_decode(strip_tags((string) $field_value), ENT_QUOTES, 'UTF-8');
+        $value = trim((string) preg_replace('/\s+/u', ' ', $value));
+
+        if ($value !== '') {
+            return $value;
+        }
+    }
+
+    return trim((string) $contact_name);
+}
+
+/**
+ * The author node of a BlogPosting: a Person for a name; the site as an
+ * Organization, with its address when known, for none (an anonymous
+ * submission still has a responsible publisher, and Google recommends the
+ * property); null when the site has no title either.
+ *
+ * @param string $name       The author's name, may be blank
+ * @param string $site_name  The site's title (TITLE)
+ * @param string $site_url   The site's root address, may be blank
+ * @return array|null
+ */
+function pg_blogposting_author_node($name, $site_name, $site_url)
+{
+    $name = trim((string) $name);
+
+    if ($name !== '') {
+        return array('@type' => 'Person', 'name' => $name);
+    }
+
+    $site_name = trim((string) $site_name);
+
+    if ($site_name === '') {
+        return null;
+    }
+
+    $node = array('@type' => 'Organization', 'name' => $site_name);
+    $site_url = trim((string) $site_url);
+
+    if ($site_url !== '') {
+        $node['url'] = $site_url;
+    }
+
+    return $node;
+}
+
+/**
+ * Who wrote a submitted form, for the BlogPosting author, under its form's
+ * Schema author choice (pg_blogposting_author_choice()): a field of the
+ * form, the linked contact's name (pg_contact_display_name(),
+ * includes/fn/contacts.php), or nothing when the form names the site.
+ *
+ * The account's login username is never printed: it is half of a
+ * credential, and the account that signs a template's sample records (the
+ * setup administrator) has no contact. An anonymous submission, or one
+ * whose contact has no name, returns nothing, and the caller falls back to
+ * naming the site.
  */
 function pg_submitted_form_author_name($submitted_form_id)
 {
+    $submitted_form_id = (int) $submitted_form_id;
     $form = db_item(
-        "SELECT contact_id FROM forms
-        WHERE id = '" . (int) $submitted_form_id . "'
+        "SELECT page_id, contact_id FROM forms
+        WHERE id = '" . $submitted_form_id . "'
         LIMIT 1");
 
     if (!is_array($form)) {
         return '';
     }
 
-    if ((int) ($form['contact_id'] ?? 0) > 0) {
+    $stored = '';
+
+    if (pg_blogposting_author_setting_ready()) {
+        $stored = (string) db_value(
+            "SELECT schema_author FROM custom_form_pages
+            WHERE page_id = '" . (int) ($form['page_id'] ?? 0) . "'
+            LIMIT 1");
+    }
+
+    $choice = pg_blogposting_author_choice($stored);
+    $field_value = '';
+    $contact_name = '';
+
+    if ($choice['source'] === 'field') {
+        $field_value = (string) db_value(
+            "SELECT data FROM form_data
+            WHERE (form_id = '" . $submitted_form_id . "') AND (form_field_id = '" . $choice['field_id'] . "')
+            LIMIT 1");
+    }
+
+    if (($choice['source'] !== 'organization') && ((int) ($form['contact_id'] ?? 0) > 0)) {
         $contact = db_item(
             "SELECT first_name, last_name, nickname FROM contacts
             WHERE id = '" . (int) $form['contact_id'] . "'
             LIMIT 1");
 
         if (is_array($contact)) {
-            $name = pg_contact_display_name($contact['first_name'] ?? '', $contact['last_name'] ?? '', $contact['nickname'] ?? '');
-
-            if ($name !== '') {
-                return $name;
-            }
+            $contact_name = pg_contact_display_name($contact['first_name'] ?? '', $contact['last_name'] ?? '', $contact['nickname'] ?? '');
         }
     }
 
-    return '';
+    return pg_blogposting_author_name_for($stored, $contact_name, $field_value);
 }
 
 /**
@@ -1422,12 +1571,15 @@ function pg_build_blogposting_jsonld($properties)
         $data['dateModified'] = date('c', (int) $properties['modified']);
     }
 
-    // A person when we know one; the site otherwise. Google recommends the
-    // property, and an anonymous submission still has a responsible publisher.
-    if (trim((string) ($properties['author'] ?? '')) !== '') {
-        $data['author'] = array('@type' => 'Person', 'name' => trim((string) $properties['author']));
-    } elseif (defined('TITLE')) {
-        $data['author'] = array('@type' => 'Organization', 'name' => TITLE);
+    // A person when we know one; the site otherwise, at the address the home
+    // page's Organization gives (pg_build_organization_jsonld()).
+    $author = pg_blogposting_author_node(
+        $properties['author'] ?? '',
+        defined('TITLE') ? TITLE : '',
+        (defined('URL_SCHEME') && defined('HOSTNAME_SETTING')) ? URL_SCHEME . HOSTNAME_SETTING . (defined('PATH') ? PATH : '/') : '');
+
+    if ($author !== null) {
+        $data['author'] = $author;
     }
 
     if (defined('TITLE')) {
