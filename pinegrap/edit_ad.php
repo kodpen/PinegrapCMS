@@ -50,6 +50,7 @@ if ($user['role'] == 3) {
 }
 
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/ad_form.php');
 $liveform = new liveform('edit_ad');
 
 // if the form has not just been submitted
@@ -117,58 +118,7 @@ if (!$_POST) {
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                         <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="card my-7">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                        ' . lang('Options') . '
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Ad'))) . '</label>
-                                                ' . $liveform->output_field(array('type'=>'text', 'id'=>'name', 'name'=>'name', 'size'=>'60', 'class'=>'form-control', 'maxlength'=>'100')) . '
-                                                <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                            </div>
-                                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                <label for="ad_region_id" class="form-label">' . lang('Ad Region') . '</label>
-                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'ad_region_id', 'id'=>'ad_region_id', 'class'=>'form-control', 'options'=>get_ad_region_options())) . '
-                                                <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                                <div class="form-text">' . lang('Assign to Ad Region') . '</div>
-                                            </div>
-                                            <div class="col-12 mt-1 mb-3">
-                                                <label for="content_textarea" class="form-label">' . lang('Ad Content') . '</label>
-                                                ' . $liveform->output_field(array('type'=>'textarea', 'id'=>'content_textarea', 'name'=>'content')) . '
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <div class="card my-7">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                        ' . lang('Dynamic Ad Region Display Options') . '
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-12 md:col-4 my-3">
-                                                <label for="label" class="form-label">' . lang('Label') . '</label>
-                                                ' . $liveform->output_field(array('type'=>'text', 'id'=>'label', 'name'=>'label', 'size'=>'60', 'class'=>'form-control', 'maxlength'=>'255')) . '
-                                            </div>
-                                            <div class="col-12 md:col-4 my-3">
-                                                <label for="sort_order" class="form-label">' . lang('Sort Order') . '</label>
-                                                ' . $liveform->output_field(array('type'=>'text', 'id'=>'sort_order', 'name'=>'sort_order', 'size'=>'5', 'class'=>'form-control', 'maxlength'=>'4')) . '
-                                                <div class="form-text">' . lang('leave blank for random order') . '</div>
-                                            </div>
-                                            <div class="col-12 mt-1 mb-3">
-                                                <label for="caption" class="form-label">' . lang('Caption') . ' ( ' . lang('Add Caption on Top of Content') . ' )</label>
-                                                ' . $liveform->output_field(array('type'=>'textarea', 'id'=>'caption', 'name'=>'caption')) . '
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        ' . pg_ad_form_cards($liveform) . '
                         <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                             <div class="container">
                                 <div class=" btn-group flex-wrap justify-content-center">
@@ -220,29 +170,7 @@ if (!$_POST) {
     // else the user selected to save the ad region
     } else {
     
-        $liveform->validate_required_field('name', lang('Name is required.'));
-        $liveform->validate_required_field('ad_region_id', lang('Ad Region is required.'));
-        
-        // if there is not already an error for the name field, check to see if name is already in use by a different ad
-        if ($liveform->check_field_error('name') == false) {
-            $query =
-                "SELECT id
-                FROM ads
-                WHERE
-                    (name = ?)
-                    AND (id != ?)";
-            $result = db_q($query, array((string) ($liveform->get_field_value('name')), (string) ($liveform->get_field_value('id')))) or output_error('Query failed.');
-            
-            // if the name is already in use by a different ad, then mark error
-            if (mysqli_num_rows($result) > 0) {
-                $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
-            }
-        }
-        
-        // if there is not already an error for the ad region field and the user has a user role and if they do not have access to the selected ad region, then do not allow the user to create the ad
-        if (($liveform->check_field_error('ad_region_id') == false) && ($user['role'] == 3) && (in_array($liveform->get_field_value('ad_region_id'), get_items_user_can_edit('ad_regions', $user['id'])) == FALSE)) {
-            $liveform->mark_error('ad_region_id', lang('You do not have access to the selected Ad Region, so please select a different Ad Region.'));
-        }
+        pg_ad_form_validate($liveform, $user, (string) $liveform->get_field_value('id'));
         
         // if there is an error, forward user back to edit ad screen
         if ($liveform->check_form_errors() == true) {
@@ -263,7 +191,7 @@ if (!$_POST) {
                 last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
             WHERE id = ?";
-        $result = db_q($query, array((string) ($liveform->get_field_value('name')), (string) (prepare_rich_text_editor_content_for_input($liveform->get_field_value('content'))), (string) (prepare_rich_text_editor_content_for_input($liveform->get_field_value('caption'))), (string) ($liveform->get_field_value('ad_region_id')), (string) ($liveform->get_field_value('label')), (string) ($liveform->get_field_value('sort_order')), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        $result = db_q($query, array_merge(pg_ad_form_values($liveform), array((string) $user['id'], (string) ($_POST['id'] ?? '')))) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('ad'), $liveform->get_field_value('name') ) )), $_SESSION['sessionusername']);
         // if there is a send to, then forward user to send to

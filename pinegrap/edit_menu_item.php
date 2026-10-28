@@ -168,7 +168,7 @@ if (!$_POST) {
                     ' . pg_menu_item_form_card($liveform, $parent_id_options, '
                                         <div class="col-12"></div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
-                                            <label for="parent_id" class="form-label">' . lang('Position') . '</label>
+                                            <label for="sort_order" class="form-label">' . lang('Position') . '</label>
                                             ' . $liveform->output_field(array('type'=>'select', 'id'=>'sort_order', 'name'=>'sort_order', 'class'=>'form-control', 'options'=>$sort_order_options)) . '
                                         </div>') . '
                     
