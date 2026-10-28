@@ -23,8 +23,8 @@ module: reviews
 - Comment Moderation: a 50 px thumbnail beside the message in the list (`view_comments.php`), a larger one above the link on the edit screen (`edit_comment.php`), for any image attachment.
 - Comments widget: still the file link only. Plan step 2c3b: a row flag (an image file) and an image in the default layout (PHP tree, JS starter, server fallback), canvas sample.
 
-## What could not be checked?
-- The step was not run on a database in the session that wrote it (no server there); the merge train or a later session runs it twice (`release/rerun-upgrade-steps.md`).
+## How was the step checked?
+- Sandbox MariaDB (`tools/setup_sandbox.sh`), CLI upgrade `php install/index.php automated_upgrade` from `2026.4.10` twice (column dropped first, then kept with value 1): added, then left as it was.
 
 ## Where is it tested?
 - `tests/review_photos_test.php`: file names, the switch table, the content check on a real PNG and a renamed text file, the wiring.
