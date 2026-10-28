@@ -170,3 +170,4 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/form_subscription.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/passkeys.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/order_status.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/order_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/order_view.php');
