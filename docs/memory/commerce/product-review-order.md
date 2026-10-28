@@ -12,7 +12,7 @@ module: comments
 ## In which order?
 - Newest first (`ORDER BY comments.created_timestamp DESC`), 28/B(4): an objective order, the store may not put the reviews it likes first. Other threads stay oldest first.
 - No featured count statement is sent (two statements, not three); `has_featured` and `featured_view` are false, so the classic block draws no Show All / Featured switch. The result carries `'review' => true`.
-- The comments widget keeps the order read for such a thread: it sets its `order` to `oldest` (no reversal) and `featured` to `none` (no pinning, badge or featured link) whatever its settings say.
+- The comments widget keeps the order read for such a thread: it sets its `order` to `oldest` (no reversal) and `featured` to `none` (no pinning, badge or featured link) whatever its settings say. It draws a product's thread on a classic catalog detail page since slice 20a, with the review form's gate ([[comments-widget-item-threads]]).
 
 ## What agrees with it?
 - `products.rating_avg` / `rating_count` already count only published, starred, verified reviews (`pg_review_rating_sql()`), so the stars never count a comment the list hides. The list may hold more rows than `rating_count`: a verified review without stars.
