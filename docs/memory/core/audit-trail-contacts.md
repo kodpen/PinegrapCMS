@@ -1,6 +1,6 @@
 ---
 name: audit-trail-contacts
-description: Contacts in audit_log (PR #2170, #2246): which panel, API, import, İYS and Workspace paths write a contact line, the label, the writers not hooked, how erasure clears the lines
+description: Contacts in audit_log (PR #2170, #2246, #2620): which panel, API, import, İYS, Workspace, storefront and merge paths write a contact line, the label, how erasure clears the lines
 ---
 
 ## Which paths write a contact line?
@@ -16,8 +16,11 @@ description: Contacts in audit_log (PR #2170, #2246): which panel, API, import, 
 ## What is the label?
 - The e-mail address first, then last name, first name, company: erasure also finds the lines of a contact deleted before the erasure by the address.
 
+- Storefront (PR #2620), source `site` (`pg_audit_as_site()`; the member, user 0 for a guest): sign-up (`auth.php` both paths, `signin.php`), profile (`my_account_profile.php`, `affiliate_sign_up_form.php`), checkout (`billing_information.php`, `express_order.php`, `submit_order.php` with membership ids and expiry), unsubscribe (`email_preferences.php`, one-click and form), through `pg_audit_site_record*()`. A contact the checkout makes empty and fills is one `create` line. Pinned by `tests/contact_audit_site_test.php`.
+- Merge (#2620): a `delete` line per contact merged away and one `merge` line for the one that stays, `merged_ids` in its after side (`pg_contact_merge_audit()`).
+
 ## What is not hooked?
-- Storefront sign-up and profile, checkout, unsubscribe (they wait on an owner question), `merge_contacts()` (re-points by `core/contact-holders.md` since step 7; its lines are plan step 8).
+- `custom_form.php`, `form_subscription.php`, `contact_form.php`, membership and recurring jobs, `pg_checkout_fill_contact_tax()`.
 
 ## What does erasure do with them?
 - `pg_privacy_erase_scope()` takes contact lines by the person's contact ids and by label among their addresses. `pg_privacy_erase_audit_fields()['contact']`: names (first name → "Deleted customer"), company, job fields, both addresses, phones, faxes, address → person token, website, description, member id, affiliate name, tax number and office, image. Countries, opt-in and lead source stay. The label is cleared. Owner decision 2026-10-26 (#1706): actor, time and action stay.

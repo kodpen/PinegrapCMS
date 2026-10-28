@@ -224,6 +224,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - multi-page-designer-editor.md: Editor screen code, save flow, JSON api.php body, the dirty check and unchanged pages, tab switching/menu/rename DOM rules, toolbar overflow, palette order and designer texts.
 - no-form-in-form.md: No form inside a form in the designer: semantic forms at any depth, widgets the server wraps in a form (_SD_FORM_WIDGET_TYPES), blocks, widgets and components that bring one.
 - node-text-and-whitespace.md: Designer node props.text: innerHTML (content nodes) vs plain text (semantic nodes), and whitespace-sensitive tags pre/textarea/code in generateHTML().
+- options-panel-style-labels.md: Labels of the options panel selects built from utility classes (selStyleGroup) and of the colour pickers: how options and placeholders are translated, the Text/Background Color row keys (#2046)
 - order-form-widget.md: The Order Form widget (classic "order form" page type): handler and page row, list and drop-down layouts, row controls by name, flags, schedule section, what is left out.
 - order-preview-widget.md: The Order Preview widget (last classic checkout step): values from get_order_preview()'s custom-layout branch, page row, controls by name, sections, what is left out.
 - page-conditions.md: W18: an element outside a widget shown by visit facts (signed in, cart) or the page's record (found, allow-listed values); stored-body markers decided per request, cache, editor
@@ -249,6 +250,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - record-view-filters.md: form_item_view filters (opt-in record visibility, e.g. Status = Published): where they apply, fail-closed cases, the e-mail bypass, viewer_filter lists without feed or sitemap (#1194)
 - region-node-to-widget.md: "Make designable" on a classic menu, menu sequence, ad or tag cloud region node: the widget kind and setting per type, where the widget goes, what stays the same.
 - responsive-images.md: Designer and widget images with srcset/sizes, AVIF/WebP <picture> on the Image element: which images, sizes rule, widget pass, variant swap, version stamp, e-mail strip (loading order: image-loading)
+- search-results-catalog-detail-page.md: Search Results widget: a catalog item is a result only when a page opens it (chosen, Catalog Detail widget page, legacy catalog detail page); the editor names a site without one (#2062)
 - sentence-with-values.md: Words beside a value (W26): props._sentence draws one translatable sentence, its N-th child at {var:N}; twins, panel row, code view lock, comment stars' label, order view's withdrawal line
 - seo-score-live-check-parity.md: pg_seo_compose() must get all four groups wherever the same SEO score is computed (designer seo_check vs pg_seo_recalculate); which inputs come from where.
 - shared-component-content-editing.md: Shared components opened to content editors (the designer's common region): content_editable flag, users_shared_components_xref grants, the rule, content_update under the page merge, schema 11.0.8

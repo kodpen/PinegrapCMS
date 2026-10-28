@@ -80,6 +80,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - form-time-24-hour.md: Time and date-and-time form values: validate_time() and prepare_form_data_for_input() read 12-hour and 24-hour time (PR #1698), why, what stays as before
 - inline-feedback-placement.md: Where a panel field's error message goes on Bootstrap 6: pgPlaceInlineFeedback() moves or makes it after an input-group, form-adorn, chip-input or switch; forms that print their own message (#2578)
 - list-and-table-screens.md: Panel list and table rules: the DataTables list markup, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
+- list-period-navigator-and-clock.md: List screens: the month arrows step from the last shown month, the range heading follows the date order (list_period.php), pickers and times follow the 24-hour setting (#2039, #2040, #2058)
 - liveform-notices-trap.md: Pitfalls: notices and warnings stay in the session until remove_form(), screens must print them, and a request run twice stacks the same notice.
 - loading-curtain.md: Loading curtain printed by pg_preloader_markup() on every panel screen: structure, PRIVATE_LABEL, logo ids, Visual Editor hold, exit curtain, four ways out, exclusions.
 - main-menu-entry-gates.md: Main menu entries follow the gate of the screen they open: the screens that had no menu path for some of the people they admit, the entries that led to a refusal, and how both were checked
@@ -95,7 +96,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - otp-fields.md: Code and PIN fields on the Bootstrap 6 OTP component (B9d, #2210): MFA app and recovery code modes, no auto-submit, developer lock masked slots and submit on complete
 - own-menu-dropdown-keydown.md: A right-click menu of a screen's own built on .menu: Bootstrap's capture-phase keydown handler acts on it, so its keys are taken on the window; closing on scroll and a long press
 - page-button-bar.md: The #button_bar strip under a screen's heading is the .pg-toolbar component: full-width nav, buttons as direct children, which wrappers are allowed, fields in it, the list filter select.
-- panel-accessible-names.md: Names screen readers get in the panel: translated aria-labels, labels that point at a field, chip and select2 inputs, the settings autofill decoy, user-coloured badges (#2063)
+- panel-accessible-names.md: Names screen readers get in the panel: translated aria-labels, labels that point at a field, the one required marker, chip and select2 inputs, the settings autofill decoy, user-coloured badges (#2063)
 - panel-avatar-sites.md: Where the panel draws people as the Bootstrap 6 Avatar (step B9j slices) and where the picture of letters (pg_initials_avatar_url()) stays
 - panel-avatar.md: The panel Avatar (pg_avatar_markup()): letters on eight theme tones, grey square for a nameless login, presence dot, no empty src; initials and tone on person briefs
 - panel-cloudflare-email-obfuscation.md: Panel body wrapped in <!--email_off--> so Cloudflare Email Obfuscation does not show staff "[email protected]"; which functions, what stays protected, the Cloudflare-side rule
@@ -147,6 +148,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - short-link-shared-form.md: The short link create and edit screens share includes/forms/short_link_form.php: what it holds, what stays in the screens
 - site-page-toolbar-theme.md: The editor toolbar over a site page (toolbar.php in #software_toolbar): why its root stays light and its body takes the theme under Bootstrap 6, the unreadable dark toolbar it fixed (PR #2448)
 - sortable-init-pitfall.md: Drag-to-reorder in the panel: SortableJS set up per screen (welcome, product builder, menu tree), the jQuery UI .pg-sortable leftover, the global-sortable trap
+- state-shared-form.md: add_state.php and edit_state.php draw the state/province options card and read its posted values through includes/forms/state_form.php; what each screen keeps
 - step-rail.md: Numbered steps on panel screens: Bootstrap 6 .stepper (edit_offer cards, installer, ERP import), why every edit_offer item is .active, theme-reset on the cards, the workspace flow's own .pg-step rail
 - submitted-form-shared-form.md: The submitted form create and edit screens share includes/forms/submitted_form_form.php
 - tax-zone-shared-form.md: add_tax_zone.php and edit_tax_zone.php draw the tax zone form and write its country and state links through includes/forms/tax_zone_form.php; what each screen keeps

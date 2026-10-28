@@ -1581,6 +1581,7 @@ function pg_signin_create_member($identity)
 
     $contact_id = (int) mysqli_insert_id(db::$con);
 
+    pg_audit_site_record('create', 'contacts', $contact_id);
     pg_announce_contact_created($contact_id);
 
     if (defined('REGISTRATION_CONTACT_GROUP_ID')

@@ -34849,6 +34849,10 @@ const StyleDesigner = (function () {
                 if (!(_srPerPage > 0)) _srPerPage = 20;
                 var _srNoResults = (typeof _cfg.empty_message === 'string') ? _cfg.empty_message : _sdT('No results found.');
                 if (!_catalogDetailPagesCache) _fetchCatalogDetailPages(function () { renderProperties(); });
+                // No page opens a product (none chosen, none on the site, none
+                // in this design): the search leaves products out.
+                var _srNoDetail = !(parseInt(_cfg.catalog_detail_page_id, 10) > 0) && Array.isArray(_catalogDetailPagesCache) && !_catalogDetailPagesCache.length
+                    && !((typeof _pages !== 'undefined' && _pages) ? _pages : []).some(function (p) { return _swTabHasWidget(p, ['catalog_item_view']); });
 
                 systemSection += sect('bi-search', _sdT('Search Results Settings'),
                     row(_sdT('Search scope'),
@@ -34882,7 +34886,8 @@ const StyleDesigner = (function () {
                                 _swPageOptions(_cfg.catalog_detail_page_id, _catalogDetailPagesCache,
                                     { none: _sdT('— Automatic —'), types: ['catalog_item_view'] }) +
                             '</select>' +
-                            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Automatic: the first page with a product detail widget, else the classic catalog detail page.')) + '</div>')
+                            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Automatic: the first page with a product detail widget, else the classic catalog detail page.')) + '</div>' +
+                            (_srNoDetail ? '<div style="font-size:.66rem;color:#b45309;margin-top:3px"><span class="bi bi-exclamation-triangle me-1"></span>' + esc(_sdT('No product detail page exists yet: products stay out of the search results until the site has one.')) + '</div>' : ''))
                         : '')
                 );
             }
@@ -46081,8 +46086,8 @@ const StyleDesigner = (function () {
             row(_sdT('Content'),  '<textarea class="form-control form-control-sm" data-popover-prop="content" rows="2" placeholder="' + esc(_sdT('Popover content...')) + '">' + esc(contentVal) + '</textarea>') +
             row(_sdT('Placement'),
                 '<select class="form-control form-control-sm" data-popover-prop="placement">' +
-                ['top','bottom','start','end'].map(function (pl) {
-                    return '<option value="' + pl + '"' + (pl === placement ? ' selected' : '') + '>' + capFirst(pl) + '</option>';
+                [['top',_sdT('Top')],['bottom',_sdT('Bottom')],['start',_sdT('Start')],['end',_sdT('End')]].map(function (pl) {
+                    return '<option value="' + pl[0] + '"' + (pl[0] === placement ? ' selected' : '') + '>' + pl[1] + '</option>';
                 }).join('') +
                 '</select>'
             ) +
@@ -46587,7 +46592,7 @@ const StyleDesigner = (function () {
         // Image: Object Fit (class) + Object Position (inline style) shown manually at top
         if (ct === 'image') {
             var objPosOpts = [
-                ['',_sdT('Default')],['center',_sdT('Center')],['top','Top'],['bottom',_sdT('Bottom')],
+                ['',_sdT('Default')],['center',_sdT('Center')],['top',_sdT('Top')],['bottom',_sdT('Bottom')],
                 ['left',_sdT('Left')],['right',_sdT('Right')],['top left',_sdT('Top Left')],['top right',_sdT('Top Right')],
                 ['bottom left',_sdT('Bottom Left')],['bottom right',_sdT('Bottom Right')]
             ];
@@ -47135,17 +47140,43 @@ const StyleDesigner = (function () {
             (lbl ? '<span class="sd-sw-lbl">' + lbl + '</span>' : '') +
         '</label>';
     }
+    // The label of a selStyleGroup() option: the class without its family
+    // prefix ('text-opacity-25' → "25"), translated when every word of it
+    // is a size, a shape, a side or a number ('shadow-sm' → "Small",
+    // 'rounded-top-3' → "Top 3"); the bare `shadow` reads "Regular". A
+    // label with a word that has no translation keeps its class-derived
+    // form in full ('Decoration none'), never half of it.
+    function _sdStyleOptionLabel(cls) {
+        var words = {
+            'none': _sdT('None'), 'sm': _sdT('Small'), 'lg': _sdT('Large'),
+            'circle': _sdT('Circle'), 'pill': _sdT('Pill'),
+            'top': _sdT('Top'), 'end': _sdT('End'), 'bottom': _sdT('Bottom'), 'start': _sdT('Start')
+        };
+        var lbl = cls.replace(/^(text-opacity|bg-opacity|fst|fs|fw|lh|ff|border|text|object|ratio|overflow|position|w-|h-|shadow|rounded|opacity)-?/, '');
+        if (lbl === '') return _sdT('Regular');
+        var known = true;
+        var parts = lbl.split('-').map(function (w) {
+            if (Object.prototype.hasOwnProperty.call(words, w)) return words[w];
+            if (!/^\d+$/.test(w)) known = false;
+            return w;
+        });
+        return known ? parts.join(' ') : capFirst(lbl.replace(/-/g, ' '));
+    }
     function selStyleGroup(nodeProps, classes, placeholder) {
         var cls = nodeProps.cssClass || '';
         var found = '';
         var clsArr = cls.split(' ');
         classes.forEach(function(c) { if (c !== '' && clsArr.indexOf(c) !== -1) found = c; });
         var h = '<select class="form-control form-control-sm" data-stylegroup="' + classes.join(',') + '">';
-        h += '<option value="">' + (placeholder || 'Default') + '</option>';
+        // The callers name the placeholder as the bare 'Default' or 'None';
+        // one already passed through _sdT() is printed as given.
+        var ph = placeholder || 'Default';
+        if (ph === 'Default') ph = _sdT('Default');
+        else if (ph === 'None') ph = _sdT('None');
+        h += '<option value="">' + ph + '</option>';
         classes.forEach(function(c) {
             if (!c) return;
-            var lbl = c.replace(/^(fs|fw|lh|ff|border|text|object|ratio|overflow|position|w-|h-|shadow|rounded|opacity|bg-opacity|text-opacity)-?/, '').replace(/-/g, ' ');
-            h += '<option value="' + c + '"' + (c === found ? ' selected' : '') + '>' + capFirst(lbl) + '</option>';
+            h += '<option value="' + c + '"' + (c === found ? ' selected' : '') + '>' + _sdStyleOptionLabel(c) + '</option>';
         });
         return h + '</select>';
     }
@@ -47515,7 +47546,7 @@ const StyleDesigner = (function () {
             return 'bg-' + (bgVisualMap[color] || color);
         }
 
-        var currentLabel = currentColor ? titleCase(currentColor) : 'None';
+        var currentLabel = currentColor ? titleCase(currentColor) : esc(_sdT('None'));
 
         var h = '<div class="sd-cp">';
         // Hidden <select> — plumbs into all existing data-stylegroup handlers (change, mark, reset).
@@ -47542,7 +47573,7 @@ const StyleDesigner = (function () {
         groups.forEach(function(g, i) {
             var items = g.filter(function(c) { return c; });
             if (!items.length) return;
-            h += '<div class="sd-cp-grp-lbl">' + (labels[i] || 'Other') + '</div>';
+            h += '<div class="sd-cp-grp-lbl">' + (labels[i] || esc(_sdT('Other'))) + '</div>';
             items.forEach(function(c) {
                 var val = prefix + c;
                 h += '<button type="button" class="sd-cp-option' + (val === current ? ' sd-cp-opt-active' : '') + '" data-val="' + val + '" role="option">';
@@ -48063,7 +48094,7 @@ const StyleDesigner = (function () {
             return '<button type="button" class="sd-bcp-angle-btn' + (Number(_grad.angle) === ap[0] ? ' active' : '') + '" data-bcp-angle="' + ap[0] + '" title="' + ap[0] + 'deg">' + ap[1] + '</button>';
         }).join('');
 
-        var _posOpts = [['center',_sdT('Center')],['top','Top'],['bottom',_sdT('Bottom')],['left',_sdT('Left')],['right',_sdT('Right')],['top left',_sdT('Top Left')],['top right',_sdT('Top Right')],['bottom left',_sdT('Btm Left')],['bottom right',_sdT('Btm Right')]];
+        var _posOpts = [['center',_sdT('Center')],['top',_sdT('Top')],['bottom',_sdT('Bottom')],['left',_sdT('Left')],['right',_sdT('Right')],['top left',_sdT('Top Left')],['top right',_sdT('Top Right')],['bottom left',_sdT('Btm Left')],['bottom right',_sdT('Btm Right')]];
 
         var _popupHtml =
             '<div class="sd-bcp-popup" id="sd-bcp-popup">' +
@@ -48137,7 +48168,7 @@ const StyleDesigner = (function () {
 
         var _bgColorRow =
             '<div class="sd-prop-row" id="sd-bcp-row">' +
-                '<label class="sd-prop-label">' + esc(_sdT('Bg Color')) + '</label>' +
+                '<label class="sd-prop-label">' + esc(_sdT('Custom Background Color')) + '</label>' +
                 '<div class="sd-prop-control">' +
                     '<div class="sd-bcp-wrap">' +
                         '<div class="sd-bcp-trigger-wrap">' +
@@ -48168,7 +48199,7 @@ const StyleDesigner = (function () {
             row(_sdT('Bg Size'),   '<select class="form-control form-control-sm" data-bg-prop="background-size">' +
                 [['',_sdT('Default')],['cover', _sdT('Cover (background)')],['contain',_sdT('Contain')],['auto',_sdT('Auto')],['100% 100%',_sdT('Stretch')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgSize===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>') +
             row(_sdT('Bg Pos'),    '<select class="form-control form-control-sm" data-bg-prop="background-position">' +
-                [['',_sdT('Default')],['center',_sdT('Center')],['top','Top'],['bottom',_sdT('Bottom')],['left',_sdT('Left')],['right',_sdT('Right')],['top left',_sdT('Top Left')],['top right',_sdT('Top Right')],['bottom left',_sdT('Btm Left')],['bottom right',_sdT('Btm Right')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgPos===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>') +
+                [['',_sdT('Default')],['center',_sdT('Center')],['top',_sdT('Top')],['bottom',_sdT('Bottom')],['left',_sdT('Left')],['right',_sdT('Right')],['top left',_sdT('Top Left')],['top right',_sdT('Top Right')],['bottom left',_sdT('Btm Left')],['bottom right',_sdT('Btm Right')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgPos===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>') +
             row(_sdT('Bg Repeat'), '<select class="form-control form-control-sm" data-bg-prop="background-repeat">' +
                 [['',_sdT('Default')],['no-repeat',_sdT('No Repeat')],['repeat',_sdT('Repeat')],['repeat-x',_sdT('Repeat X')],['repeat-y',_sdT('Repeat Y')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgRep===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>') +
             row(_sdT('Bg Attach'), '<select class="form-control form-control-sm" data-bg-prop="background-attachment">' +
@@ -48189,10 +48220,10 @@ const StyleDesigner = (function () {
             '</div>';
 
         var colorsHtml = as(_sdT('Colors'),
-            row(_sdT('Text Col'),     colorSelectGroup('text-', tColors)) +
+            row(_sdT('Text Color'),   colorSelectGroup('text-', tColors)) +
             row(_sdT('Text Opacity'), selStyleGroup(n.props, ['text-opacity-25','text-opacity-50','text-opacity-75','text-opacity-100'], 'Default')) +
             '<div class="sd-sp-divider"></div>' +
-            row(_sdT('Bg Col'),       colorSelectGroup('bg-', bColors)) +
+            row(_sdT('Background Color'), colorSelectGroup('bg-', bColors)) +
             row(_sdT('Bg Opacity'),   selStyleGroup(n.props, ['bg-opacity-10','bg-opacity-25','bg-opacity-50','bg-opacity-75','bg-opacity-100'], 'Default')) +
             row(_sdT('Gradient'),     swAttr('data-util-toggle="bg-gradient"', (' ' + cls + ' ').indexOf(' bg-gradient ') !== -1)) +
             '<div class="sd-sp-divider"></div>' +
@@ -48208,7 +48239,7 @@ const StyleDesigner = (function () {
         var _ttTitle     = p.tooltipTitle || '';
         var tooltipHtml = as(_sdT('Tooltip'),
             row(_sdT('Tooltip'),   sw('tooltipEnabled', _ttEnabled)) +
-            row(_sdT('Placement'), sel('tooltipPlacement', [['top','Top'],['bottom',_sdT('Bottom')],['start',_sdT('Start')],['end',_sdT('End')]], _ttPlacement)) +
+            row(_sdT('Placement'), sel('tooltipPlacement', [['top',_sdT('Top')],['bottom',_sdT('Bottom')],['start',_sdT('Start')],['end',_sdT('End')]], _ttPlacement)) +
             row(_sdT('Text'),      '<input type="text" class="form-control form-control-sm" data-prop="tooltipTitle" value="' + esc(_ttTitle) + '" placeholder="' + esc(_sdT('Tooltip text...')) + '">')
         );
 

@@ -165,6 +165,7 @@ if (!isset($_POST['submit'])) {
                 $affiliate_approved = 0;
             }
             
+            $audit_before = pg_audit_fetch('contacts', (int) $contact_id);
             $query = "UPDATE contacts
                      SET
                         first_name = ?,
@@ -205,6 +206,7 @@ if (!isset($_POST['submit'])) {
                 (string) $liveform->get_field_value('affiliate_code'),
                 (int) $user_id,
                 (int) $contact_id)) or output_error('Query failed.');
+            pg_audit_site_record('update', 'contacts', (int) $contact_id, $audit_before);
 
         // else a contact was not found, so create contact
         } else {
@@ -277,6 +279,7 @@ if (!isset($_POST['submit'])) {
             $contact_id = mysqli_insert_id(db::$con);
 
             // The affiliate sign-up form just created this contact.
+            pg_audit_site_record('create', 'contacts', (int) $contact_id);
             pg_announce_contact_created($contact_id);
         }
         

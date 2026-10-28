@@ -2754,6 +2754,25 @@ function get_date_format_code()
         return 'j/n';
     }
 }
+// The date() code of a time of day on the site's clock (Site Settings >
+// General > Date and Time): 'H:i' (23:30) with the 24-hour clock, 'g:i A'
+// (11:30 PM) otherwise. The setting is read from TIME_FORMAT unless a value
+// is passed.
+function pg_time_format_code($time_format = null)
+{
+    if ($time_format === null) {
+        $time_format = defined('TIME_FORMAT') ? TIME_FORMAT : 'twelve_hours';
+    }
+
+    return ($time_format === 'twenty_four_hours') ? 'H:i' : 'g:i A';
+}
+// The jQuery UI timepicker's timeFormat for the same clock: 'HH:mm' or
+// 'h:mm TT'. The picker scripts below and the site's checkout pages print
+// it, so every picker shows the hours the way the site's settings say.
+function pg_picker_time_format($time_format = null)
+{
+    return (pg_time_format_code($time_format) === 'H:i') ? 'HH:mm' : 'h:mm TT';
+}
 // Create a function that is used to return JavaScript
 // that sets the date picker format variable.
 function get_date_picker_format()
@@ -2772,7 +2791,7 @@ function get_date_picker_format()
         dateFormat: "' . $output_date_picker_format . '",
         prevText: "' . lang('previous') . '",
         nextText: "' . lang('next') . '",
-        timeFormat:  "h:mm TT",
+        timeFormat: "' . pg_picker_time_format() . '",
         monthNames: [ "' . lang('January') . '","' . lang('February') . '","' . lang('March') . '","' . lang('April') . '","' . lang('May') . '","' . lang('June') . '","' . lang('July') . '","' . lang('August') . '","' . lang('September') . '","' . lang('October') . '","' . lang('November') . '","' . lang('December') . '"],
         monthNamesShort: [ "' . lang('Jan') . '","' . lang('Feb') . '","' . lang('Mar') . '","' . lang('Apr') . '","' . lang('May') . '","' . lang('Jun') . '","' . lang('Jul') . '","' . lang('Aug') . '","' . lang('Sep') . '","' . lang('Oct') . '","' . lang('Nov') . '","' . lang('Dec') . '"],
         dayNames: [ "' . lang('Sunday') . '","' . lang('Monday') . '","' . lang('Tuesday') . '","' . lang('Wednesday') . '","' . lang('Thursday') . '","' . lang('Friday') . '","' . lang('Saturday') . '"],
@@ -2801,7 +2820,7 @@ function get_date_time_picker_format()
 
     return '<script>var datetimepicker_options = {
         dateFormat: "' . $output_date_picker_format . '",
-        timeFormat:  "h:mm TT",
+        timeFormat: "' . pg_picker_time_format() . '",
         prevText: "' . lang('previous') . '",
         nextText: "' . lang('next') . '",
         monthNames: [ "' . lang('January') . '","' . lang('February') . '","' . lang('March') . '","' . lang('April') . '","' . lang('May') . '","' . lang('June') . '","' . lang('July') . '","' . lang('August') . '","' . lang('September') . '","' . lang('October') . '","' . lang('November') . '","' . lang('December') . '"],
@@ -2832,7 +2851,7 @@ function get_time_picker_format()
     currentText: "' . lang('Now') . '",
     closeText: "' . lang('Ok') . '",
     isRTL: false,
-    timeFormat:  "h:mm TT"};</script>';
+    timeFormat: "' . pg_picker_time_format() . '"};</script>';
 }
 
 // The <script> tag of assets/js/pg_fields.js, which draws the panel's

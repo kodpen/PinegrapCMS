@@ -549,8 +549,8 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
             $month_and_day_format = 'j/n';
         }
 
-        $start_time_attributes['value'] = date($month_and_day_format . '/Y g:i A', $default_start_time);
-        $end_time_attributes['value'] = date($month_and_day_format . '/Y g:i A', $default_end_time);
+        $start_time_attributes['value'] = date($month_and_day_format . '/Y ' . pg_time_format_code(), $default_start_time);
+        $end_time_attributes['value'] = date($month_and_day_format . '/Y ' . pg_time_format_code(), $default_end_time);
     }
 
     $recurrence_type_options =

@@ -25,7 +25,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - ai-prompt-rules.md: The rules block every language-model prompt ends with (pg_ai_prompt_rules(), PR #1124) writer and assistant profiles, the builders, the test that fails for a prompt without it
 - api-php-credentials-in-body.md: api.php accepting username/password in the request body: API_USERNAME vs API_AUTHENTICATED, CSRF skip, remember-me, login throttle, WAF rate buckets.
 - api-php-role-gate-and-actions.md: api.php general role gate before handlers, the exempt column, the designer endpoint's content-role allowlist, read vs write gates on shared_component, and the role numbers to compare against.
-- audit-trail-contacts.md: Contacts in audit_log (PR #2170, #2246): which panel, API, import, İYS and Workspace paths write a contact line, the label, the writers not hooked, how erasure clears the lines
+- audit-trail-contacts.md: Contacts in audit_log (PR #2170, #2246, #2620): which panel, API, import, İYS, Workspace, storefront and merge paths write a contact line, the label, how erasure clears the lines
 - audit-trail-recycle-bin.md: How Recycle Bin work appears in audit_log: the daily purge recorded as a job (pg_audit_as_job), not as the operator whose visit ran it
 - audit-trail-screen.md: The audit trail screen view_audit_log.php, its CSV export and GET /audit-log (includes/fn/audit_view.php): who may open it, filters, how each stored value form is shown, export limits
 - audit-trail-stored-values.md: What audit_log leaves out of before/after, how secrets are masked (by name, inside JSON text), how JSON text and long values are stored, what the audit screen must expect
@@ -99,6 +99,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - sdt-designer-js-text-rules.md: How visible text in assets/js/style_designer.js must use _sdT('English') keys: literal-key rule, server key scan and cache, variables instead of built keys, escaping, PHP/JS default twins, the checks.
 - security-helpers-and-secret-storage.md: CSRF helpers; secret config fields (one encrypted blob, never a constant, never shown back, the written exception); session cookie flags and sign-in renewal; the install unlock throttle.
 - session-token-binding.md: How a signed-in session is bound to its auth_tokens row (selector kept in the session), what ends a session server-side, and the rules every sign-in and minting path must follow.
+- site-log-client-address.md: Which address a site log row records: pg_auth_request_address(), the visitor behind a trusted proxy, in both log_activity() copies and the e-mail-a-friend limit (#2044)
 - site-path-detection.md: How a request finds the site path (PATH) from SCRIPT_NAME and the software folder, in any case; when config.path is written and when it is not (cron reads it)
 - social-sign-in-address-match.md: Social sign-in ties a verified provider address only to an account whose stored address is the same apart from letter case; accent-folded look-alikes are refused, not tied and not opened (#1196)
 - social-sign-in-buttons.md: Where the social sign-in buttons come from (pg_signin_buttons()), when a provider shows, the Settings and designer hints, starter layouts, and what an old browser does.

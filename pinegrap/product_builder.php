@@ -351,6 +351,28 @@ function pg_pb_decimal_from_input($value)
 }
 
 /**
+ * A commission rate limit typed on the product screen, as
+ * products.commission_rate_limit (decimal(5,2) unsigned) stores it: read
+ * through pg_pb_decimal_from_input(), so "7,5" and "7.5" are both 7.50,
+ * rounded to two places and held to the column's top. Blank is 0.00, which
+ * the checkout reads as no limit. Written raw, "7,5" reached the non-strict
+ * session as 7.00.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function pg_pb_commission_rate_from_input($value)
+{
+    $rate = round(pg_pb_decimal_from_input($value), 2);
+
+    if ($rate > 999.99) {
+        $rate = 999.99;
+    }
+
+    return number_format($rate, 2, '.', '');
+}
+
+/**
  * A compare-at price an operator typed (the product screen, the product
  * list's cell, a product import file), as products.compare_at_price stores
  * it: read by pg_pb_price_to_cents(), the price box's own reader, so the two
@@ -539,7 +561,9 @@ function pg_pb_common_from_post()
 {
     // Weight and dimensions are stored in pounds and inches. The operator may
     // have typed metric, in which case convert on the way in — same factors the
-    // legacy screen uses.
+    // legacy screen uses. The columns are decimal(12,4), so the converted figure
+    // keeps four places: rounded to two, 0.11 kg was stored as 0.24 lb and read
+    // back as 0.1089 kg.
     $metric = !empty($_POST['convert_to_metric_system']);
 
     $weight = pg_pb_decimal_from_input(isset($_POST['weight']) ? $_POST['weight'] : 0);
@@ -548,10 +572,10 @@ function pg_pb_common_from_post()
     $height = pg_pb_decimal_from_input(isset($_POST['height']) ? $_POST['height'] : 0);
 
     if ($metric) {
-        $weight = round($weight * 2.20462262185, 2);
-        $length = round($length * 0.39370078740158, 2);
-        $width  = round($width  * 0.39370078740158, 2);
-        $height = round($height * 0.39370078740158, 2);
+        $weight = round($weight * 2.20462262185, 4);
+        $length = round($length * 0.39370078740158, 4);
+        $width  = round($width  * 0.39370078740158, 4);
+        $height = round($height * 0.39370078740158, 4);
     }
 
     $post = function ($key, $default = '') {
@@ -703,7 +727,7 @@ function pg_pb_common_from_post()
 
     if (defined('AFFILIATE_PROGRAM') && AFFILIATE_PROGRAM == TRUE) {
         $common['commissionable']        = $switch('commissionable');
-        $common['commission_rate_limit'] = $post('commission_rate_limit');
+        $common['commission_rate_limit'] = pg_pb_commission_rate_from_input($post('commission_rate_limit'));
     }
 
     if (defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD == TRUE
@@ -2401,6 +2425,10 @@ function pg_pb_render_attribute_card($attribute, $selected_option_ids = array(),
  *
  * Every button here is type="button"; the save goes through fetch().
  *
+ * The name box is required: the save refuses a blank. Out here, outside the
+ * form, the attribute runs no browser validation; it only gives the label
+ * the panel script's required marker.
+ *
  * @return string
  */
 function pg_pb_render_attribute_modal()
@@ -2419,8 +2447,8 @@ function pg_pb_render_attribute_modal()
 
                         <div class="row">
                             <div class="col-12 sm:col-5 mb-5">
-                                <label class="form-label" for="pg_pb_attr_name">*' . lang('Name') . '</label>
-                                <input type="text" id="pg_pb_attr_name" class="form-control" maxlength="100" placeholder="' . lang('Attribute Name') . '" />
+                                <label class="form-label" for="pg_pb_attr_name">' . lang('Name') . '</label>
+                                <input type="text" id="pg_pb_attr_name" class="form-control" maxlength="100" required placeholder="' . lang('Attribute Name') . '" />
                             </div>
                             <div class="col-12 sm:col-7 mb-5">
                                 <label class="form-label" for="pg_pb_attr_label">' . lang('Label') . '</label>
@@ -4113,7 +4141,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                         <label for="commission_rate_limit" class="form-label">' . lang('Commission Rate Limit') . '</label>
                         <label class="form-control form-adorn form-adorn-end">
                             <span class="form-adorn-text" aria-hidden="true">%</span>
-                            <input type="text" name="commission_rate_limit" id="commission_rate_limit" class="form-ghost" size="3" maxlength="3" inputmode="numeric" style="text-align:right;" value="' . h($v('commission_rate_limit')) . '" />
+                            <input type="text" name="commission_rate_limit" id="commission_rate_limit" class="form-ghost" size="6" maxlength="6" inputmode="decimal" style="text-align:right;" value="' . h($v('commission_rate_limit')) . '" />
                         </label>
                         <div class="form-text">(' . lang('leave blank for no limit') . ')</div>
                     </div>',
@@ -4199,28 +4227,28 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                         <label for="weight" class="form-label">' . lang('Weight') . '</label>
                                                         <div class="input-group">
                                                             <input value="' . h($v('weight', '0')) . '" type="text" name="weight" id="weight" class="form-control" inputmode="decimal" style="text-align:right;" />
-                                                            <label class="input-group-text unit" for="weight">lbs</label>
+                                                            <label class="input-group-text unit" for="weight">' . lang('lbs') . '</label>
                                                         </div>
                                                     </div>
                                                     <div class="col-6 lg:col-3 my-1">
                                                         <label for="length" class="form-label">' . lang('Length') . '</label>
                                                         <div class="input-group">
                                                             <input value="' . h($v('length', '0')) . '" type="text" name="length" id="length" class="form-control" inputmode="decimal" style="text-align:right;" />
-                                                            <label class="input-group-text unit" for="length">inc</label>
+                                                            <label class="input-group-text unit" for="length">' . lang('in') . '</label>
                                                         </div>
                                                     </div>
                                                     <div class="col-6 lg:col-3 my-1">
                                                         <label for="width" class="form-label">' . lang('Width') . '</label>
                                                         <div class="input-group">
                                                             <input value="' . h($v('width', '0')) . '" type="text" name="width" id="width" class="form-control" inputmode="decimal" style="text-align:right;" />
-                                                            <label class="input-group-text unit" for="width">inc</label>
+                                                            <label class="input-group-text unit" for="width">' . lang('in') . '</label>
                                                         </div>
                                                     </div>
                                                     <div class="col-6 lg:col-3 my-1">
                                                         <label for="height" class="form-label">' . lang('Height') . '</label>
                                                         <div class="input-group">
                                                             <input value="' . h($v('height', '0')) . '" type="text" name="height" id="height" class="form-control" inputmode="decimal" style="text-align:right;" />
-                                                            <label class="input-group-text unit" for="height">inc</label>
+                                                            <label class="input-group-text unit" for="height">' . lang('in') . '</label>
                                                         </div>
                                                     </div>
 
@@ -4683,7 +4711,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                 <div class="row">
 
                                     <div class="col-12 lg:col-4 my-3">
-                                        <label for="name" class="form-label">*' . lang('Product ID / SKU') . '</label>
+                                        <label for="name" class="form-label">' . lang('Product ID / SKU') . '</label>
                                         <input type="text" name="name" id="name" class="form-control" required value="' . h($v('name')) . '" data-pg-name-except="' . (($pg_mode === 'edit') ? $pg_product_id : 0) . '" />
                                         <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Used as the prefix of every variant SKU.') . '</div>

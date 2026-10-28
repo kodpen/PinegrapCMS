@@ -229,7 +229,7 @@ $audit_view_select = function ($name, $kind, $column) use ($audit_view_filters) 
 
 $audit_view_sources = '<option value="">' . h(lang('All')) . '</option>';
 
-foreach (array('panel', 'api', 'job') as $audit_view_source) {
+foreach (pg_audit_sources() as $audit_view_source) {
     $audit_view_sources .= '<option value="' . $audit_view_source . '"' . (($audit_view_filters['source'] === $audit_view_source) ? ' selected' : '') . '>' . h(pg_audit_view_label('source', $audit_view_source)) . '</option>';
 }
 

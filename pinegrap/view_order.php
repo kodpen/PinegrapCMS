@@ -139,6 +139,7 @@ if (!$_POST) {
                 contacts.first_name AS contact_first_name,
                 contacts.last_name AS contact_last_name,
                 contacts.email_address AS contact_email_address,
+                contacts.company AS contact_company,
                 contacts.member_id,
                 contacts.file_id as contact_file_id,
                 contacts.image AS contact_image,
@@ -259,6 +260,7 @@ if (!$_POST) {
     $contact_first_name = $row['contact_first_name'];
     $contact_last_name = $row['contact_last_name'];
     $contact_email_address = $row['contact_email_address'];
+    $contact_company = $row['contact_company'];
     $member_id = $row['member_id'];
     $contact_tax_number = $row['contact_tax_number'] ?? '';
     $contact_tax_office  = $row['contact_tax_office']  ?? '';
@@ -663,41 +665,14 @@ if (!$_POST) {
 
     // If this order has a contact, then show contact info.
     if ($contact_id != '') {
-
-        $output_contact = '';
-        
-        // If there is a first name or last name, then output name.
-        if (($contact_first_name != '') or ($contact_last_name != '')) {
-            
-            // If there is a first name, then start name with that.
-            if ($contact_first_name != '') {
-                $output_contact .= h($contact_first_name);
-            }
-            
-            // If there is a last name, then add it to the name.
-            if ($contact_last_name != '') {
-                
-                if ($output_contact != '') {
-                    $output_contact .= ' ';
-                }
-                
-                $output_contact .= h($contact_last_name);
-
-            }
-         
-        // Otherwise, if there is an email address then use that.
-        } else if ($contact_email_address != '') {
-            $output_contact = h($contact_email_address);
-
-        // Otherwise show ID.
-        } else {
-            $output_contact = $contact_id;
-        }
+        // The contact's name, else the company, the e-mail address or the
+        // id marked as one (a card with none of them read as a bare number).
+        $output_contact = pg_order_view_contact_text($contact_id, $contact_first_name, $contact_last_name, $contact_company, $contact_email_address);
 
         $output_contact_row =
             '<div class="row" >
                 <span class="translateable col fg-secondary">' . lang('Contact') . ':</span>
-                <span class="col text-end"><a class="pg-link-secondary" href="edit_contact.php?id=' . $contact_id . '">' . $output_contact . '</a></span>
+                <span class="col text-end"><a class="pg-link-secondary" href="edit_contact.php?id=' . (int) $contact_id . '">' . $output_contact . '</a></span>
             </div>';
 
     }
@@ -893,7 +868,12 @@ if (!$_POST) {
         }
         
         $output_colspan = 13 + count($custom_field_names);
-        
+
+        // The names of the arrival dates the recipients chose (what the
+        // checkout showed), one query for the whole order; a code whose row
+        // is gone falls back to the code itself.
+        $arrival_date_names = pg_order_view_arrival_names(pg_order_view_arrival_codes($ship_tos));
+
         // loop through all ship tos
         foreach ($ship_tos as $key => $recipient) {
             // if ship to is a real ship to, prepare header with ship to information
@@ -932,10 +912,11 @@ if (!$_POST) {
                     $address .= $ship_tos[$key]['zip_code'] . ', ';
                 }
                 
+                // The country's name, not its code, ends the address line.
                 if ($ship_tos[$key]['country']) {
-                    $address .= $ship_tos[$key]['country'];
+                    $address .= pg_order_view_country($ship_tos[$key]['country']);
                 }
-                
+
                 $output_address_verified_check_mark = '';
                 
                 // if the address has been verified, then prepare to output check mark
@@ -949,11 +930,9 @@ if (!$_POST) {
                     $output_arrival_date = get_absolute_time(array('timestamp' => strtotime($ship_tos[$key]['arrival_date']), 'type' => 'date'));
                 }
 
-                $arrival_date_code = '';
-                
-                if ($ship_tos[$key]['arrival_date_code']) {
-                    $arrival_date_code = ' (' . $ship_tos[$key]['arrival_date_code'] . ')';
-                }
+                // The date, then the arrival date's name as the customer saw
+                // it at the checkout; the name alone for a dateless choice.
+                $output_arrival_date = pg_order_view_arrival_text($output_arrival_date, $ship_tos[$key]['arrival_date_code'], $arrival_date_names);
 
                 $output_ship_date_field = '';
                 $output_delivery_date_field = '';
@@ -1144,22 +1123,13 @@ if (!$_POST) {
                                             <span class="translateable col fg-secondary">' . lang('Full Name') . ':</span>
                                             <span class="col text-end">' . h($name) . '</span>
                                         </div>
-                                        <div class="row">
-                                            <span class="translateable col fg-secondary">' . lang('Company') . ':</span>
-                                            <span class="col text-end">' . h($ship_tos[$key]['company']) . '</span>
-                                        </div>
+                                        ' . pg_order_view_row(lang('Company'), h($ship_tos[$key]['company'])) . '
                                         <div class="row">
                                             <span class="translateable col-auto fg-secondary">' . lang('Address') . ':</span>
                                             <span class="col offset-1 " style="font-size:110%;font-weight:500">' . h($address) . '</span>
                                         </div>
-                                        <div class="row">
-                                            <span class="translateable col fg-secondary">' . lang('Address Type') . ':</span>
-                                            <span class="col text-end translateable">' . ucwords($ship_tos[$key]['address_type']) . '</span>
-                                        </div>
-                                        <div class="row">
-                                            <span class="translateable col fg-secondary">' . lang('Address Verified') . ':</span>
-                                            <span class="col text-end ">' . $output_address_verified_check_mark . '</span>
-                                        </div>
+                                        ' . pg_order_view_row(lang('Address Type'), pg_order_view_address_type($ship_tos[$key]['address_type'])) . '
+                                        ' . pg_order_view_row(lang('Address Verified'), $output_address_verified_check_mark) . '
                                         <div class="row">
                                             <span class="translateable col fg-secondary">' . lang('Phone') . ':</span>
                                             <span class="col text-end ">' . h($ship_tos[$key]['phone_number']) . '</span>
@@ -1169,7 +1139,7 @@ if (!$_POST) {
                                     <div class="col-12">
                                         <div class="row mb-3">
                                             <span class="translateable col fg-secondary">' . lang('Req. Arrival Date') . ':</span>
-                                            <span class="col text-end ">' . $output_arrival_date . $arrival_date_code . '</span>
+                                            <span class="col text-end ">' . $output_arrival_date . '</span>
                                         </div>
                                         <div class="row pt-1 mb-5 justify-content-center">
                                             <div class="col-auto">
@@ -2188,11 +2158,10 @@ if (!$_POST) {
 		}else {
             $output_payment_mode = 'merchant';
 		}
-		if($transaction_id){
-            $output_gateway_buttons = '<button type="button" class="btn btn-link pg-link-secondary py-0 mb-3" title="' . ECOMMERCE_PAYMENT_GATEWAY . '" onclick="window.open(\'https://' . $output_payment_mode . '.iyzipay.com/transactions/' . $transaction_id . '\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\');"><span class="material-icons me-1">account_balance</span>' . lang('View Order') . '</button>';
-		}else{
-		    $output_gateway_buttons = '<button type="button" class="btn btn-link pg-link-secondary py-0 mb-3" title="' . ECOMMERCE_PAYMENT_GATEWAY . '" onclick="window.open(\'https://' . $output_payment_mode . '.iyzipay.com/dashboard\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\');"><span class="material-icons me-3">account_balance</span>' . lang(array('string'=>'View Orders') ) . '</button>';
-		}
+        // The payment provider's own merchant panel, at this order's
+        // transaction when one is known, in a tab of its own.
+        $gateway_url = 'https://' . $output_payment_mode . '.iyzipay.com/' . ($transaction_id ? 'transactions/' . rawurlencode($transaction_id) : 'dashboard');
+        $output_gateway_buttons = '<a class="btn btn-link pg-link-secondary py-0 mb-3" href="' . h($gateway_url) . '" target="_blank" rel="noopener noreferrer" title="' . h(ECOMMERCE_PAYMENT_GATEWAY) . '"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => '{var:1} panel', 'vars' => ECOMMERCE_PAYMENT_GATEWAY))) . '</a>';
 
 	}
 
@@ -2821,18 +2790,9 @@ if (!$_POST) {
                                     ' . lang('Billing Information') . '
                                 </div>
                                 <div class="card-body">
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Custom Field') . ' #1:</span>
-                                        <span class="col text-end">' . h($custom_field_1) . '</span>
-                                    </div>
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Custom Field') . ' #2:</span>
-                                        <span class="col text-end">' . h($custom_field_2) . '</span>
-                                    </div>
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Salutation') . ':</span>
-                                        <span class="col text-end">' . h($billing_salutation) . '</span>
-                                    </div>
+                                    ' . pg_order_view_row(lang('Custom Field') . ' #1', h($custom_field_1)) . '
+                                    ' . pg_order_view_row(lang('Custom Field') . ' #2', h($custom_field_2)) . '
+                                    ' . pg_order_view_row(lang('Salutation'), h($billing_salutation)) . '
                                     <div class="row" >
                                         <span class="translateable col fg-secondary">' . lang('First Name') . ':</span>
                                         <span class="col text-end">' . h($billing_first_name) . '</span>
@@ -2841,18 +2801,12 @@ if (!$_POST) {
                                         <span class="translateable col fg-secondary">' . lang('Last Name') . ':</span>
                                         <span class="col text-end">' . h($billing_last_name) . '</span>
                                     </div>
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Company') . ':</span>
-                                        <span class="col text-end">' . h($billing_company) . '</span>
-                                    </div>
+                                    ' . pg_order_view_row(lang('Company'), h($billing_company)) . '
                                     <div class="row" >
                                         <span class="translateable col-auto fg-secondary">' . lang('Address') . ' 1:</span>
                                         <span class="col offset-1" style="font-size:110%;font-weight:500">' . h($billing_address_1) . '</span>
                                     </div>
-                                    <div class="row" >
-                                        <span class="translateable col-auto fg-secondary">' . lang('Address') . ' 2:</span>
-                                        <span class="col offset-1" style="font-size:110%;font-weight:500">' . h($billing_address_2) . '</span>
-                                    </div>
+                                    ' . pg_order_view_row(lang('Address') . ' 2', h($billing_address_2), true) . '
                                     <div class="row" >
                                         <span class="translateable col fg-secondary">' . lang('City') . ':</span>
                                         <span class="col text-end">' . h($billing_city) . '</span>
@@ -2863,7 +2817,7 @@ if (!$_POST) {
                                     </div>
                                     <div class="row" >
                                         <span class="translateable col fg-secondary">' . lang('Country') . ':</span>
-                                        <span class="col text-end">' . h($billing_country) . '</span>
+                                        <span class="col text-end">' . h(pg_order_view_country($billing_country)) . '</span>
                                     </div>
                                     <div class="row" >
                                         <span class="translateable col fg-secondary">' . lang('Zip Code') . ':</span>
@@ -2886,10 +2840,7 @@ if (!$_POST) {
                                         <span class="translateable col fg-secondary">' . lang('Opt-In') . ':</span>
                                         <span class="col text-end">' . $opt_in . '</span>
                                     </div>
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('PO Number') . ':</span>
-                                        <span class="col text-end">' . h($po_number) . '</span>
-                                    </div>
+                                    ' . pg_order_view_row(lang('PO Number'), h($po_number)) . '
                                     <div class="row" >
                                         <span class="translateable col fg-secondary">' . lang('Tax-Exempt') . ':</span>
                                         <span class="col text-end">' . $tax_exempt . '</span>

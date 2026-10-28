@@ -104,6 +104,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-screen-shipments.md: The panel order screen's shipping cards (view_order.php): one card per address, the parcel list with per-number carrier select, status badge and format warning, and how Save writes them
 - order-status-moves.md: pg_order_status_move(), the one order status rule the API and the Workspace follow; cancel only through process_order_cancellation(), restore only through its helper; full refund cancels (PR #1500)
 - order-view-legal-documents.md: Order view widget links to the legal documents kept with the order: __legal_*_url tokens, has_legal_* flags, starter tree card, the card added after older layouts, none in the receipt e-mail
+- order-view-screen-rows.md: The panel order screen's card rows (includes/fn/order_view.php): empty rows hidden, address type, country, arrival date and contact named, the provider panel link (#2051, #2050)
 - order-view-timeline-invoice-card.md: Order view timeline events/sources, printable invoice endpoint and its dompdf exception, readonly form/gift-card blocks, masked card number, status badge stages.
 - order-view-tracking-link.md: How a parcel's carrier, name and tracking link are found (pg_shipping_carrier: method code, site default, number shape; Turkish capitals), the order view tokens, and how to add a carrier
 - order-withdrawal-deadline.md: Last day of an order's right of withdrawal: latest delivery's window with parcel arrivals, estimate rules, none for a dateless delivery, order view token, fallback card, panel row
@@ -139,6 +140,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - product-review-request-email.md: The e-mail asking a buyer for a review (order_review_request; 2026.11.0, PR #1316): what starts it, once per order, items, mail-merge fields, delete; the verified filter in moderation
 - product-review-store-reply.md: The store's reply under a product review (comments.seller_reply, seller_reply_at; 2026.11.0, PR #698): where it is written and shown, when its date is set, the verified marker in moderation
 - product-reviews-verified.md: Product reviews only from buyers (2026.11.0, 11.0.14, PR #698): which comments are reviews, the purchase check, the product rating and its refresh, aggregateRating
+- product-screen-units-and-commission.md: Product screen weight and dimensions (lb/in stored, metric typed keeps four places, unit labels through lang()) and the commission rate limit read like a dimension and held to decimal(5,2) (#2056)
 - product-tax-rate.md: How product tax_rate and tax_zones combine, NULL vs 0.000 semantics, line-total tax in order_items.tax_total, deprecated order_items.tax, PayPal Express tax field.
 - products-variant-model.md: products/product_groups access and price units, the no-separate-variant-table model and its xref tables, external API field source, and the no per-row queries list rule.
 - shipment-api-fields.md: The parcels block of GET /orders/{id} shipments and of the order.shipped / order.delivered payloads (pg_shipment_api_parcel), and the carrier POST /orders/{id}/shipment keeps on the parcel
