@@ -42,6 +42,7 @@ function test_bs6_timepicker_addon_left_the_panel_screens()
 		'edit_calendar_event.php',
 		'add_submitted_form.php',
 		'edit_submitted_form.php',
+		'includes/settings/commerce.php',
 	);
 
 	foreach ($files as $path) {
@@ -53,6 +54,48 @@ function test_bs6_timepicker_addon_left_the_panel_screens()
 	// The picker options stay: pg_fields.js reads window.datetimepicker_options.
 	pg_assert_contains('get_date_time_picker_format()', bs6_timepicker_addon_test_source('edit_comment.php'), 'edit_comment.php keeps the date and time options');
 	pg_assert_contains('get_time_picker_format()', bs6_timepicker_addon_test_source('add_shipping_method.php'), 'add_shipping_method.php keeps the time options');
+	pg_assert_contains('get_time_picker_format()', bs6_timepicker_addon_test_source('includes/settings/commerce.php'), 'the commerce settings keep the time options');
+}
+
+function test_bs6_timepicker_addon_only_site_files_load_it()
+{
+	// Site renderers and the site branch of get_form_content() keep jQuery UI
+	// and the add-on; every other PHP file is panel code and must not load it.
+	$site = array(
+		'get_billing_information.php',
+		'get_custom_form_screen_content.php',
+		'get_express_order.php',
+		'get_form_item_view.php',
+		'get_form_list_view.php',
+		'get_page_content.php',
+		'get_shipping_address_and_arrival.php',
+		'get_shopping_cart.php',
+		'includes/fn/content.php',
+		'includes/fn/widgets_comments.php',
+	);
+	// The order view still loads it; it leaves in its own change.
+	$pending = array('view_order.php');
+
+	$root = dirname(__DIR__) . '/pinegrap/';
+	$found = array();
+	$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
+	foreach ($iterator as $file) {
+		if ($file->getExtension() !== 'php') {
+			continue;
+		}
+		$path = str_replace('\\', '/', substr($file->getPathname(), strlen($root)));
+		if (strpos($path, 'assets/lib/') === 0) {
+			continue;
+		}
+		if (strpos((string) file_get_contents($file->getPathname()), 'jquery-ui-timepicker-addon') !== false) {
+			$found[] = $path;
+		}
+	}
+	sort($found);
+
+	$expected = array_merge($site, $pending);
+	sort($expected);
+	pg_assert_same($expected, $found, 'only the site files load the timepicker add-on');
 }
 
 function test_bs6_timepicker_addon_form_content_branches()
