@@ -24,10 +24,9 @@ description: Plan (approved 2026-10-19): SMS layer, order messages, consent writ
 ## Open questions?
 - Member OTP by SMS replaces nothing: TOTP stays; SMS OTP is an extra sign-in option only when a provider is configured.
 - İYS test credentials: owner provides; until then the client runs dry (logs only). Answered 2026-10-26: the contact status column is approved (`contacts.iys_email_status`, 11.0.39).
-- Answered (#2430): with İYS on, only addresses İYS shows as approved, once the site's first push and pull have completed; the campaign screen counts those left out.
+- Answered (#2430, owner 2026-10-28): sending stays as today (every opted-in address İYS has not refused); İYS never narrows it further, since a non-company site owner cannot register with İYS at all.
 - Netgsm to numbers abroad: the format was not verified, so the driver takes Turkish mobiles only.
-- Answered (#2431): the marketing boxes start unticked everywhere; `opt_in` is written from the box only; existing contacts keep what they have.
-- Answered (#2431): a designed express order without the box and a social sign-up keep storing `opt_in = 0`.
+- Answered (#2431, owner 2026-10-28): the marketing boxes stay ticked as today, and the box-less paths keep writing `opt_in` as today: marketing is a feature of the software.
 - Contacts opted in by DEFAULT 1 (forms, imports, API, profile) have no consent row and are never pushed (step 5 pushes consent_log rows only).
 
 ## Where to start?
