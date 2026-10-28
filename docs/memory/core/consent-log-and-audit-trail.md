@@ -32,4 +32,4 @@ module: privacy, audit
 ## Tests?
 - `tests/privacy_test.php`, `tests/audit_log_test.php`; the writers were run on MariaDB 10.11 (quotes, Unicode, an unchanged update, a long text).
 
-Related: docs/memory/core/audit-trail-writers.md, docs/memory/plans/privacy-data-pack-audit-log.md, docs/memory/platform/cookie-consent-notice.md
+Related: docs/memory/core/audit-trail-writers.md, docs/memory/platform/cookie-consent-notice.md
