@@ -1616,18 +1616,19 @@ function pg_legal_document_copy_url($order_id, $type, $page_url = null)
 
 /**
  * The links a customer's order view gives to the copies kept with the
- * order: one per document type, '' for a type the order has no copy of.
+ * order: one per kept type (the two documents and the KVKK copy), '' for a
+ * type the order has no copy of.
  *
  * @param array       $kept      type => order_documents row (pg_legal_documents_of_order())
  * @param int         $order_id
  * @param string|null $page_url  the document page's address; null for the site's
- * @return array  type => address (unescaped), every type of pg_legal_document_types() in its order
+ * @return array  type => address (unescaped), every type of pg_legal_document_labels() in its order
  */
 function pg_legal_document_copy_urls(array $kept, $order_id, $page_url = null)
 {
     $urls = array();
 
-    foreach (array_keys(pg_legal_document_types()) as $type) {
+    foreach (array_keys(pg_legal_document_labels()) as $type) {
         $urls[$type] = isset($kept[$type]) ? pg_legal_document_copy_url($order_id, $type, $page_url) : '';
     }
 

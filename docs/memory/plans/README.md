@@ -25,7 +25,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bootstrap-6-panel-steps.md: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status (each done step names its PR); claim as [plan:bootstrap-6-panel] B<n>
 - bootstrap-6-panel.md: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps.md): panel UI from Bootstrap 5.3.8 to 6.0.0-alpha.1 by pre-landing adapters on development, then one generated switch
 - bootstrap-6-redesign.md: Steps B10-B12 of plans/bootstrap-6-panel.md: token tuning, the redesign of legacy form screens and tables, jQuery UI out of the panel; decisions and open points
-- checkout-legal-documents.md: Plan (approved 2026-10-19): pre-information form, distance sales contract, checkout KVKK built; left: designer KVKK node, order view link to the kvkk copy
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, an explicit "who may write PHP" rule; CI checks (PR #673) and nested named functions (PR #972) done
 - designable-comments-contract.md: Contract of the planned comments widget (2026-10-23): what is stored where, token, flag and control names, thread order, the security rules every slice of designable-comments keeps

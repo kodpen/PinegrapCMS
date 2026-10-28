@@ -41,7 +41,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - catalog-search-term.md: Which search term a legacy catalog page uses (Clear button, page query, general ?query=, custom layouts) and why its RSS link asks the same helper
 - catalog-variant-set-writer.md: pg_catalog_variant_set_create(): input array, shared check, prices in minor units, callers (product screen, POST /product-groups/variant-sets), what it skips
 - checkout-contact-card-update.md: What a checkout writes on the contact card: the "Update my contact info" box, tax fields only when on the form, a typed tax number filling an empty card
-- checkout-kvkk-notice.md: KVKK notice link and optional explicit consent box at checkout and sign-up (11.0.48): settings, why a page and a config_text row, injection, the kvkk copy in order_documents, consent log row
+- checkout-kvkk-notice.md: KVKK notice link and optional consent box at checkout and sign-up (11.0.48): settings, why a page and a config_text row, injection and designer node, the kvkk copy, consent log row
 - checkout-legal-checkboxes.md: How the legal documents' checkboxes reach every checkout, what the cart document page shows (drawn snapshot or the values its link posts), its amounts, the server check in submit_order.php
 - express-order-notes-address-book.md: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the narrow-screen table classes and the three places to update.
 - express-order-recipient-loop-area.md: Express Order recipient_loop_area node for multi-recipient carts: designer usage, render pipeline, visibility flags, compatibility, structural rules.
@@ -103,7 +103,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-returns.md: Customer return model (includes/fn/returns.php; order_returns, order_return_items, step 11.0.11): statuses and moves, held quantities, withdrawal window, refund deadline, what callers check
 - order-screen-shipments.md: The panel order screen's shipping cards (view_order.php): one card per address, the parcel list with per-number carrier select, status badge and format warning, and how Save writes them
 - order-status-moves.md: pg_order_status_move(), the one order status rule the API and the Workspace follow; cancel only through process_order_cancellation(), restore only through its helper; full refund cancels (PR #1500)
-- order-view-legal-documents.md: Order view widget links to the legal documents kept with the order: __legal_*_url tokens, has_legal_* flags, starter tree card, the card added after older layouts, none in the receipt e-mail
+- order-view-legal-documents.md: Order view links to the legal documents and KVKK copy kept with the order: __legal_*_url tokens, has_legal_* flags, starter card, cards added after older layouts, none in the e-mail
 - order-view-screen-rows.md: The panel order screen's card rows (includes/fn/order_view.php): empty rows hidden, address type, country, arrival date and contact named, the provider panel link (#2051, #2050)
 - order-view-timeline-invoice-card.md: Order view timeline events/sources, printable invoice endpoint and its dompdf exception, readonly form/gift-card blocks, masked card number, status badge stages.
 - order-view-tracking-link.md: How a parcel's carrier, name and tracking link are found (pg_shipping_carrier: method code, site default, number shape; Turkish capitals), the order view tokens, and how to add a carrier
