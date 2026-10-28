@@ -230,10 +230,10 @@ if (!$_POST) {
                     <div class="card-body">
                         <div class="row">
                             <div class="col-12 lg:col-5 my-3">
-                                <label for="account_id" class="form-label">' . lang('Account') . '</label>
+                                <label for="' . (($preset_invoice !== null) ? 'account_id_locked' : 'account_id') . '" class="form-label">' . lang('Account') . '</label>
                                 ' . (($preset_invoice !== null)
                                     ? '<input type="hidden" name="account_id" value="' . (int) $preset_invoice['account_id'] . '" />
-                                <input class="form-control" type="text" value="' . h($preset_invoice['account_title']) . '" readonly="readonly" />
+                                <input class="form-control" type="text" id="account_id_locked" value="' . h($preset_invoice['account_title']) . '" readonly="readonly" />
                                 <div class="form-text">' . lang(array(
                                         'string' => 'Closing invoice {var:1}, {var:2} still outstanding.',
                                         'vars' => array($preset_invoice['full_number'], erp_money_out_currency(erp_invoice_open_amount($preset_invoice), $preset_currency)),
@@ -263,10 +263,10 @@ if (!$_POST) {
                         ' . ($fx_on
                             ? '<div class="row">
                             <div class="col-12 sm:col-4 lg:col-3 my-3">
-                                <label for="currency" class="form-label">' . lang('Currency') . '</label>
+                                <label for="' . (($preset_invoice !== null) ? 'currency_locked' : 'currency') . '" class="form-label">' . lang('Currency') . '</label>
                                 ' . (($preset_invoice !== null)
                                     ? '<input type="hidden" name="currency" value="' . h($preset_currency) . '" />
-                                <input class="form-control" type="text" value="' . h($preset_currency) . '" readonly="readonly" />
+                                <input class="form-control" type="text" id="currency_locked" value="' . h($preset_currency) . '" readonly="readonly" />
                                 <div class="form-text">' . lang('The invoice\'s currency; the receipt is entered in it.') . '</div>'
                                     : $liveform->output_field(array(
                                         'type' => 'select', 'id' => 'currency', 'name' => 'currency',
@@ -307,7 +307,7 @@ if (!$_POST) {
                         </div>
                     </div>
                 </div>
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>

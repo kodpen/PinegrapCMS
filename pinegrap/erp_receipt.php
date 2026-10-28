@@ -280,7 +280,7 @@ if (!$is_cancelled && ($unallocated > 0)) {
                                     <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $invoice['issue_date'])) . '">' . h(prepare_form_data_for_output($invoice['issue_date'], 'date')) . '</td>
                                     <td class="text-end" data-sort="' . (int) $invoice['open_amount'] . '">' . $money((int) $invoice['open_amount']) . '</td>
                                     <td class="text-end" style="width:12rem">
-                                        <input type="text" name="allocate[' . $invoice_id . ']" id="allocate_' . $invoice_id . '" class="form-control form-control-sm text-end" inputmode="decimal" autocomplete="off" value="' . (($proposed > 0) ? h(number_format($proposed / 100, 2, '.', '')) : '') . '" />
+                                        <input type="text" name="allocate[' . $invoice_id . ']" id="allocate_' . $invoice_id . '" aria-label="' . h(lang(array('string' => 'Allocate to {var:1}', 'vars' => $invoice['full_number']))) . '" class="form-control form-control-sm text-end" inputmode="decimal" autocomplete="off" value="' . (($proposed > 0) ? h(number_format($proposed / 100, 2, '.', '')) : '') . '" />
                                     </td>
                                 </tr>';
     }
@@ -340,7 +340,7 @@ if ($receipt_cheque !== null) {
             </div>';
 } elseif (!$is_cancelled) {
     $output_cancel = '
-            <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
+            <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                 <div class="container">
                     <div class="btn-group flex-wrap justify-content-center">
                         <button type="button" class="btn my-1 btn-outline theme-warning" data-bs-toggle="dialog" data-bs-target="#cancel_receipt_modal"><i class="bi bi-arrow-counterclockwise me-3" aria-hidden="true"></i>' . ($is_collection ? lang('Cancel the Receipt') : lang('Cancel the Payment')) . '</button>

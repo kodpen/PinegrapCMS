@@ -210,11 +210,14 @@ function test_panel_accessible_names_parasut_inbox()
 
 	pg_assert_same(2, substr_count($source, '<div class="card-body p-0 table-responsive">'), 'both lists scroll in their card');
 	pg_assert_contains("<nav aria-label=\"' . h(lang('Pagination')) . '\">", $source);
-	pg_assert_contains("aria-label=\"' . h(lang('Previous page')) . '\"", $source);
-	pg_assert_contains("aria-label=\"' . h(lang('Next page')) . '\"", $source);
-	pg_assert_same(2, substr_count($source, '<span aria-hidden="true">&'), 'arrow glyphs hidden');
+	pg_assert_contains("\$arrow(\$current - 1, \$current > 1, lang('Previous page'), '&laquo;')", $source);
+	pg_assert_contains("\$arrow(\$current + 1, \$current < \$total, lang('Next page'), '&raquo;')", $source);
+	pg_assert_contains("aria-label=\"' . h(\$label) . '\">' . \$inner . '</a>", $source, 'a live arrow is named');
+	pg_assert_contains('<span aria-hidden="true">\' . $glyph . \'</span>', $source, 'arrow glyph hidden');
+	// A disabled arrow is a span, so Tab does not reach it.
+	pg_assert_contains("<li class=\"page-item disabled\"><span class=\"page-link\" aria-label=\"' . h(\$label) . '\">", $source);
 	pg_assert_contains('<li class="page-item active" aria-current="page"><span class="page-link">', $source);
-	pg_assert_true(strpos($source, "disabled' : '') . '\">\n        <a") === false, 'a disabled arrow is no link');
+	pg_assert_true(strpos($source, '&laquo;</a>') === false && strpos($source, '&raquo;</a>') === false, 'no bare glyph links');
 
 	pg_assert_same(2, substr_count($source, 'data-type-label="'), 'both detail buttons carry the type label');
 	pg_assert_same(2, substr_count($source, 'data-status-label="'), 'both detail buttons carry the status label');
