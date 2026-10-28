@@ -2118,9 +2118,10 @@ function workspace_flows_parity_read_ai_drafts()
 	return $out;
 }
 
-// The entries of ws_nav_groups() with a key (the rail of the other Workspace
-// screens, which ws_screen_rail() draws with data-ws-nav from the key), by
-// their label: each array literal of its source, wherever it is written.
+// The entries of ws_nav_groups() with a key (the Workspace list of the main
+// menu, which assets/js/workspace_side.js draws with data-ws-nav from the
+// key), by their label: each array literal of its source, wherever it is
+// written.
 function workspace_flows_parity_nav_entries($key)
 {
 	$tokens = pg_test_source_tokens(workspace_flows_parity_source('ws_nav_groups'));
@@ -2144,8 +2145,9 @@ function workspace_flows_parity_nav_entries($key)
 }
 
 // The ways a person is brought to scheduled actions: inbox lines
-// (ws_inbox_describe()), the ?view=scheduled address, the rail's entries,
-// the sidebar's link, the tour's step.
+// (ws_inbox_describe()), the ?view=scheduled address, the entries of the
+// main menu's Workspace list, the channel screen's in-place answer to them,
+// the tour's step.
 function workspace_flows_parity_read_links_in()
 {
 	$out = array();
@@ -2163,27 +2165,21 @@ function workspace_flows_parity_read_links_in()
 	}
 
 	foreach (workspace_flows_parity_nav_entries('scheduled') as $label) {
-		$out[] = 'rail data-ws-nav="scheduled" ' . $label;
+		$out[] = 'menu data-ws-nav="scheduled" ' . $label;
 	}
 
-	// The workspace.php sidebar: the link() calls that open the scheduled
-	// screen, with the data-ws-nav their icon gives them (navKeys), by the
-	// keys of their label.
-	if (!preg_match('/var navKeys = \{([^}]*)\}/', $js, $map)) {
-		throw new RuntimeException('workspace.js no longer has var navKeys = {...}: teach workspace_flows_parity_read_links_in() where data-ws-nav comes from.');
+	// The list draws every place with data-ws-nav from its key; the channel
+	// screen answers the scheduled one in place (app.sideHooks()).
+	$side = workspace_flows_parity_file('assets/js/workspace_side.js');
+
+	if (!preg_match("/setAttribute\('data-ws-nav', item\.key\)/", $side)) {
+		throw new RuntimeException('workspace_side.js no longer draws data-ws-nav from the ws_nav_groups() key: teach workspace_flows_parity_read_links_in() where it comes from.');
 	}
 
-	preg_match_all("/'([^']+)'\s*:\s*'([^']+)'/", $map[1], $pairs);
-	$nav = array_combine($pairs[1], $pairs[2]);
+	$out[] = 'menu data-ws-nav from the ws_nav_groups() key';
 
-	foreach (workspace_flows_parity_js_calls($js, 'link') as $args) {
-		if (strpos($args[3] ?? '', 'showScheduled(') === false) {
-			continue;
-		}
-
-		foreach (workspace_flows_parity_t_keys($args[1]) as $label) {
-			$out[] = 'sidebar data-ws-nav="' . ($nav[trim($args[2], "'")] ?? '') . '" ' . $label;
-		}
+	if (preg_match('/\bscheduled\s*:\s*function\s*\(\)\s*\{\s*self\.showScheduled\(/', $js)) {
+		$out[] = 'menu in place showScheduled';
 	}
 
 	preg_match_all("/'art'\s*=>\s*'([a-z_]*scheduled[a-z_]*)',\s*'target'\s*=>\s*array\('([^']+)'/", workspace_flows_parity_source('ws_tour_steps'), $steps, PREG_SET_ORDER);
@@ -2633,12 +2629,12 @@ function workspace_flows_parity_table()
 		),
 		'links_in' => array(
 			array(array('?view=scheduled'), 1, 'staff land on the Scheduled actions section of Flows, their Messages tab kept; others on Scheduled messages'),
-			array(array('rail data-ws-nav="scheduled" Scheduled actions'), 1, 'rail of the other Workspace screens (ws_nav_groups()): staff get one Flows entry in its place'),
-			array(array('rail data-ws-nav="scheduled" Scheduled messages'), 1, 'rail of the other Workspace screens: others keep Scheduled messages'),
-			array(array('sidebar data-ws-nav="scheduled" sa_title'), 1, 'workspace.php sidebar: staff\'s entry gives way to the Flows one'),
-			array(array('sidebar data-ws-nav="scheduled" sm_title'), 1, 'workspace.php sidebar: others keep Scheduled messages'),
-			array(array('tour scheduled #ws-root [data-ws-nav="scheduled"]'), 1, 'tour step on the workspace.php sidebar entry (optional: it drops silently), moved with it'),
-			array(array('tour scheduled #ws-root [data-ws-nav="flows"]'), 1, 'tour step on the Flows sidebar entry once Flows lists staff\'s scheduled actions'),
+			array(array('menu data-ws-nav="scheduled" Scheduled actions'), 1, 'the Workspace list of the main menu (ws_nav_groups()): staff get one Flows entry in its place'),
+			array(array('menu data-ws-nav="scheduled" Scheduled messages'), 1, 'the Workspace list of the main menu: others keep Scheduled messages, and so do staff once Flows lists their actions'),
+			array(array('menu data-ws-nav from the ws_nav_groups() key'), 1, 'workspace_side.js draws each place with data-ws-nav from its key, so the list has one source'),
+			array(array('menu in place showScheduled'), 1, 'the channel screen opens the scheduled entry in place (app.sideHooks())'),
+			array(array('tour scheduled #ws-menu-side [data-ws-nav="scheduled"]'), 1, 'tour step on the menu list\'s entry (optional: it drops silently), moved with it'),
+			array(array('tour scheduled #ws-menu-side [data-ws-nav="flows"]'), 1, 'tour step on the Flows entry of the menu list once Flows lists staff\'s scheduled actions'),
 			array(array('inbox scheduled_notice'), 1, 'lands on the card in its channel'),
 			array(array('inbox scheduled_failed'), 1, 'lands on the card, or on ?view=scheduled without one'),
 			array(array('inbox scheduled_message'), 1, 'a scheduled message that failed lands where scheduled messages are: others on ?view=scheduled; for staff the link has to name the Messages tab, since today ?view=scheduled opens their actions part on a fresh load and from slice 1 it opens Flows'),

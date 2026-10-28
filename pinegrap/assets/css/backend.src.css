@@ -2330,7 +2330,10 @@ body:not(.toolbar) .software-content {
   padding-top: 0.5rem;
   padding-bottom: 100px;
 }
-#menu .menu-body .bi{
+/* The Workspace list (#ws-menu-side) sizes its own icons, as on the channel
+   screen; :where() keeps this rule at the weight the panel rules below are
+   written against. */
+#menu .menu-body .bi:not(:where(#ws-menu-side *)) {
   font-size: 1.3rem;
 }
 /* The rail is 50px wide and the sidebar carries a hairline on its right, so an
@@ -2853,6 +2856,14 @@ body:not(.toolbar) .software-content {
   }
   .software-container.pg-menu-peek:not(.expanded) .software-sidebar::after {
     display: none;
+  }
+  /* The hidden menu has no rail to widen: a panel asked for there (the
+     Workspace list from the channel screen) slides the menu in over the
+     content the same way, for as long as it is open. */
+  .software-container.menu-hidden.pg-menu-peek .software-sidebar {
+    transform: none;
+    visibility: visible;
+    transition: width 0.3s ease, transform 0.3s ease;
   }
 
   /* The button in the bar sits over the rail, centred on it, so its picture
@@ -10997,7 +11008,7 @@ body.workspace_settings .ws-shell-main > #button_bar {
 }
 .ws-app {
   display: grid;
-  grid-template-columns: 17rem minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 0;
   height: calc(100vh - 8.5rem);
   min-height: 28rem;
@@ -11016,7 +11027,7 @@ body.workspace_settings .ws-shell-main > #button_bar {
   display: none;
 }
 .ws-app.ws-thread-open {
-  grid-template-columns: 17rem minmax(0, 1fr) var(--ws-thread-w, minmax(20rem, 26rem));
+  grid-template-columns: minmax(0, 1fr) var(--ws-thread-w, minmax(20rem, 26rem));
 }
 .ws-app.ws-thread-open .ws-thread-panel {
   position: relative;
@@ -11190,15 +11201,8 @@ button.ws-thread-bar:hover {
 }
 @media (max-width: 1279.98px) {
   .ws-app.ws-thread-open {
-    grid-template-columns: 14rem minmax(0, 1fr) var(--ws-thread-w, minmax(18rem, 22rem));
+    grid-template-columns: minmax(0, 1fr) var(--ws-thread-w, minmax(18rem, 22rem));
   }
-}
-.ws-side {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  border-right: 1px solid var(--pg-border-color);
-  background: rgba(var(--ws-accent-rgb), .05);
 }
 .ws-side-head {
   padding: .75rem .75rem .5rem;
@@ -11331,55 +11335,35 @@ button.ws-thread-bar:hover {
 .ws-channel-link[data-ws-colored] .ws-ch-icon {
   color: var(--ws-ch);
 }
-.ws-channel-link[data-ws-nav="home"] > .bi,
-.ws-rail-item[data-ws-nav="home"] > .bi { color: #4a7fa8; }
-.ws-channel-link[data-ws-nav="inbox"] > .bi,
-.ws-rail-item[data-ws-nav="inbox"] > .bi { color: #3e8a7a; }
-.ws-channel-link[data-ws-nav="tasks"] > .bi,
-.ws-rail-item[data-ws-nav="tasks"] > .bi { color: #4f8a5b; }
-.ws-channel-link[data-ws-nav="notes"] > .bi,
-.ws-rail-item[data-ws-nav="notes"] > .bi { color: #c2913a; }
-.ws-channel-link[data-ws-nav="board"] > .bi,
-.ws-rail-item[data-ws-nav="board"] > .bi { color: #6b5ca5; }
+.ws-channel-link[data-ws-nav="home"] > .bi { color: #4a7fa8; }
+.ws-channel-link[data-ws-nav="inbox"] > .bi { color: #3e8a7a; }
+.ws-channel-link[data-ws-nav="tasks"] > .bi { color: #4f8a5b; }
+.ws-channel-link[data-ws-nav="notes"] > .bi { color: #c2913a; }
+.ws-channel-link[data-ws-nav="board"] > .bi { color: #6b5ca5; }
 .ws-channel-link[data-ws-nav="calendar"] > .bi,
-.ws-rail-item[data-ws-nav="calendar"] > .bi { color: #a5578e; }
-.ws-channel-link[data-ws-nav="scheduled"] > .bi,
-.ws-rail-item[data-ws-nav="scheduled"] > .bi { color: #c9774a; }
-.ws-channel-link[data-ws-nav="timeline"] > .bi,
-.ws-rail-item[data-ws-nav="timeline"] > .bi { color: #5468a8; }
-.ws-channel-link[data-ws-nav="archived"] > .bi,
-.ws-rail-item[data-ws-nav="archived"] > .bi { color: #7a7f87; }
-.ws-channel-link[data-ws-nav="audit"] > .bi,
-.ws-rail-item[data-ws-nav="audit"] > .bi { color: #b5534b; }
-.ws-channel-link[data-ws-nav="settings"] > .bi,
-.ws-rail-item[data-ws-nav="settings"] > .bi { color: #6f6a5e; }
+.ws-channel-link[data-ws-nav="calendar_feed"] > .bi { color: #a5578e; }
+.ws-channel-link[data-ws-nav="scheduled"] > .bi { color: #c9774a; }
+.ws-channel-link[data-ws-nav="timeline"] > .bi { color: #5468a8; }
+.ws-channel-link[data-ws-nav="archived"] > .bi { color: #7a7f87; }
+.ws-channel-link[data-ws-nav="audit"] > .bi { color: #b5534b; }
+.ws-channel-link[data-ws-nav="settings"] > .bi { color: #6f6a5e; }
 .ws-channel-link[data-ws-nav="flows"] > .bi,
-.ws-rail-item[data-ws-nav="flows"] > .bi { color: #3f8599; }
+.ws-channel-link[data-ws-nav="mcp"] > .bi { color: #3f8599; }
 /* The same tones lifted for the dark theme, where the ones above sink. */
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="home"] > .bi,
-html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="home"] > .bi { color: #8fbde3; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="inbox"] > .bi,
-html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="inbox"] > .bi { color: #7fc9b8; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="tasks"] > .bi,
-html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="tasks"] > .bi { color: #8fcf9b; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="notes"] > .bi,
-html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="notes"] > .bi { color: #e6bb6c; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="board"] > .bi,
-html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="board"] > .bi { color: #b1a4e0; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="home"] > .bi { color: #8fbde3; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="inbox"] > .bi { color: #7fc9b8; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="tasks"] > .bi { color: #8fcf9b; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="notes"] > .bi { color: #e6bb6c; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="board"] > .bi { color: #b1a4e0; }
 html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="calendar"] > .bi,
-html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="calendar"] > .bi { color: #dc95c7; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="scheduled"] > .bi,
-html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="scheduled"] > .bi { color: #e9a67f; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="timeline"] > .bi,
-html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="timeline"] > .bi { color: #99a8e0; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="archived"] > .bi,
-html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="archived"] > .bi { color: #a9aeb5; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="audit"] > .bi,
-html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="audit"] > .bi { color: #e08a82; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="settings"] > .bi,
-html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="settings"] > .bi { color: #b3ab9b; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="calendar_feed"] > .bi { color: #dc95c7; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="scheduled"] > .bi { color: #e9a67f; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="timeline"] > .bi { color: #99a8e0; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="archived"] > .bi { color: #a9aeb5; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="audit"] > .bi { color: #e08a82; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="settings"] > .bi { color: #b3ab9b; }
 html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="flows"] > .bi,
-html[data-bs-theme="dark"] .ws-rail-item[data-ws-nav="flows"] > .bi { color: #86c4d4; }
+html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="mcp"] > .bi { color: #86c4d4; }
 /* Groups of channels: a heading with its colour, one inside another. */
 .ws-side-group {
   margin-bottom: .2rem;
@@ -11570,13 +11554,6 @@ html[data-bs-theme="dark"] .ws-group-icon {
   color: var(--pg-fg-2);
   font-size: .6em;
   line-height: 1;
-}
-.ws-rail-initial > .bi,
-.ws-rail-initial > .ws-icon-badged {
-  font-size: .9rem;
-}
-.ws-rail-channel[data-ws-colored] .ws-rail-initial .ws-icon-badge {
-  color: var(--ws-ch);
 }
 /* Scheduled actions: days, follow-ups, counts, the words filled in. */
 .ws-sa-days {
@@ -11964,8 +11941,9 @@ html[data-bs-theme="dark"] .ws-group-icon {
   flex: 1 1 auto;
   min-width: 0;
 }
-/* The way back to the channel list on a phone: a labelled back arrow, so it
-   is not taken for a second main menu button under the panel's own. */
+/* The way to the channel list where the menu's Workspace list is out of
+   sight: below lg, where the menu is a drawer, and while the menu is hidden.
+   A labelled back arrow, so it is not taken for a second main menu button. */
 .ws-channels-toggle {
   display: inline-flex;
   align-items: center;
@@ -11983,6 +11961,11 @@ html[data-bs-theme="dark"] .ws-group-icon {
 .ws-channels-toggle:hover,
 .ws-channels-toggle:focus-visible {
   background: rgba(var(--ws-accent-rgb), .2);
+}
+@media (min-width: 1024px) {
+  .software-container:not(.menu-hidden) .ws-channels-toggle {
+    display: none;
+  }
 }
 @media (max-width: 359.98px) {
   .ws-channels-toggle-label {
@@ -16553,13 +16536,6 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   .ws-board-person small {
     display: none;
   }
-  .ws-app .ws-side {
-    display: none;
-  }
-  .ws-app.ws-show-side .ws-side {
-    display: flex;
-    border-right: 0;
-  }
   /* A discussion covers the channel until it is closed. */
   .ws-app.ws-thread-open {
     grid-template-columns: minmax(0, 1fr);
@@ -16571,9 +16547,6 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
     border-left: 0;
   }
   .ws-thread-resizer {
-    display: none;
-  }
-  .ws-app.ws-show-side .ws-center {
     display: none;
   }
   .ws-msg-tools,
@@ -17121,8 +17094,60 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   padding: .4rem .5rem;
   border-top: 1px solid var(--pg-border-color);
 }
-/* The rail at the left edge of the workspace screens other than the channels,
-   and the drawer it opens with the whole list. */
+/* The Workspace list in the main menu's Workspace panel (workspace_side.js,
+   includes/workspace/nav.php). The menu body is the one scroller, so the
+   search head and the settings foot stick to its edges instead of the list
+   scrolling in a column of its own; both take the menu's own ground so the
+   list does not show through them. The ws- id brings the --ws-* tokens to
+   every panel page. */
+#ws-menu-side .ws-side-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex-wrap: wrap;
+  margin: 0 -2px;
+  padding: .25rem 2px .5rem;
+  background: var(--pg-navbar-bg);
+}
+#ws-menu-side .ws-side-head input[type="search"] {
+  flex: 1 1 7rem;
+  min-width: 0;
+}
+#ws-menu-side .ws-side-scroll {
+  overflow: visible;
+  padding: 0 0 .75rem;
+}
+#ws-menu-side .ws-side-section:first-child {
+  margin-top: .25rem;
+}
+#ws-menu-side .ws-side-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin: 0 -2px;
+  padding: .4rem 2px;
+  background: var(--pg-navbar-bg);
+}
+/* A long press on a phone is the item's own menu on the channel screen,
+   not the browser's link card. */
+#ws-menu-side a.ws-channel-link {
+  -webkit-touch-callout: none;
+}
+#ws-menu-side .ws-skeleton {
+  padding: var(--ws-space-2) 0;
+}
+/* The list could not be read: what happened, and the way to ask again. */
+#ws-menu-side .ws-side-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .5rem;
+  padding: .5rem .25rem;
+  color: var(--pg-fg-2);
+  font-size: .85rem;
+}
+/* The workspace screens other than the channels: the screen beside the
+   main menu, whose Workspace panel is the way around them. */
 .ws-shell {
   display: flex;
   align-items: flex-start;
@@ -17130,118 +17155,6 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-shell-main {
   flex: 1 1 auto;
   min-width: 0;
-}
-.ws-rail {
-  position: sticky;
-  top: 3.125rem;
-  flex: 0 0 3.25rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: .2rem;
-  height: calc(100vh - 3.125rem);
-  padding: .5rem 0;
-  overflow-y: auto;
-  scrollbar-width: none;
-  border-right: 1px solid var(--pg-border-color);
-  background: rgba(var(--ws-accent-rgb), .05);
-}
-@supports (height: 100dvh) {
-  .ws-rail { height: calc(100dvh - 3.125rem); }
-}
-.ws-rail-item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 2.25rem;
-  height: 2.25rem;
-  border: 0;
-  border-radius: var(--ws-radius-sm);
-  background: transparent;
-  color: var(--pg-fg-2);
-  font-size: 1.05rem;
-  text-decoration: none;
-}
-.ws-rail-item:hover {
-  background: var(--pg-bg-2);
-  color: var(--pg-fg-body);
-}
-.ws-rail-item.active {
-  background: rgba(var(--ws-accent-rgb), .16);
-  color: var(--ws-accent);
-}
-.ws-rail-open {
-  color: var(--pg-fg-body);
-}
-.ws-rail-sep {
-  flex: 0 0 auto;
-  width: 1.5rem;
-  height: 1px;
-  margin: .25rem 0;
-  background: var(--pg-border-color);
-}
-.ws-rail-grow {
-  flex: 1 1 auto;
-}
-.ws-rail-initial {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.6rem;
-  height: 1.6rem;
-  border-radius: var(--ws-radius-xs);
-  background: rgba(var(--ws-accent-rgb), .14);
-  color: var(--ws-accent);
-  font-size: .8rem;
-  font-weight: 700;
-}
-.ws-rail-channel[data-ws-colored] .ws-rail-initial {
-  background: var(--ws-ch);
-  color: #fff;
-}
-.ws-rail-badge {
-  position: absolute;
-  top: .05rem;
-  right: .05rem;
-  min-width: 1rem;
-  padding: 0 .25rem;
-  border-radius: 999px;
-  background: var(--pg-danger);
-  color: #fff;
-  font-size: .6rem;
-  line-height: 1rem;
-  text-align: center;
-}
-.ws-rail-dot {
-  position: absolute;
-  top: .2rem;
-  right: .2rem;
-  width: .55rem;
-  height: .55rem;
-  border-radius: 50%;
-  border: 2px solid var(--pg-bg-body);
-  background: var(--pg-fg-2);
-}
-.ws-rail-dot.ws-rail-dot-mention {
-  background: var(--pg-danger);
-}
-.ws-nav-drawer {
-  --pg-drawer-width: min(19rem, 88vw);
-}
-.ws-nav-drawer .ws-side-scroll {
-  padding-top: .25rem;
-}
-@media (max-width: 575.98px) {
-  .ws-rail {
-    flex-basis: 2.75rem;
-  }
-  .ws-rail-item {
-    width: 2rem;
-    height: 2rem;
-    font-size: .95rem;
-  }
 }
 /* The overview: what is coming, what was written to the person, what this
    place is, and beside it the latest decisions. */

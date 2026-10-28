@@ -202,6 +202,9 @@ window.PgTour = (function () {
         veil = document.createElement('div');
         veil.className = 'pg-tour-veil';
         veil.setAttribute('role', 'presentation');
+        // A menu panel the tour points at stays open while its steps are
+        // clicked through (backend.src.js, the widened rail).
+        veil.setAttribute('data-pg-menu-hold', '');
 
         hole = document.createElement('div');
         hole.className = 'pg-tour-hole';
@@ -209,6 +212,7 @@ window.PgTour = (function () {
 
         bubble = document.createElement('div');
         bubble.className = 'pg-tour-bubble';
+        bubble.setAttribute('data-pg-menu-hold', '');
         bubble.setAttribute('role', 'dialog');
         bubble.setAttribute('aria-modal', 'true');
         bubble.setAttribute('aria-labelledby', 'pg_tour_title');

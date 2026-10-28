@@ -406,6 +406,47 @@
         return null;
     }
 
+    // Whether a step is about the list of channels, which is the main
+    // menu's Workspace panel (assets/js/workspace_side.js).
+    function inMenuList(selectors) {
+        return [].concat(selectors || []).some(function (selector) {
+            return String(selector).indexOf('#ws-menu-side') !== -1;
+        });
+    }
+
+    function present(selectors) {
+        return [].concat(selectors || []).some(function (selector) {
+            selector = String(selector);
+            return !!document.querySelector((selector.indexOf('last:') === 0) ? selector.slice(5) : selector);
+        });
+    }
+
+    // Brings the list on the screen for a step about it: on the mini rail
+    // the rail widens over the screen while the tour is on it, and the entry
+    // is scrolled into the menu's view. Answers how long the menu takes to
+    // slide open, for the ring to wait.
+    function showInList(selectors) {
+        var waited = 0;
+
+        if (window.PGWsSide && !onScreen(window.PGWsSide.root())) {
+            window.PGWsSide.reveal({});
+            waited = 350;
+        }
+
+        [].concat(selectors || []).some(function (selector) {
+            var node = document.querySelector(String(selector).replace(/^last:/, ''));
+
+            if (node && (typeof node.scrollIntoView === 'function')) {
+                node.scrollIntoView({ block: 'nearest' });
+                return true;
+            }
+
+            return false;
+        });
+
+        return waited;
+    }
+
     // A phone draws the screen differently enough that ringing parts of it
     // explains little: there every step is shown in the middle with its
     // drawing.
@@ -427,16 +468,33 @@
             // the window. Nothing to point at shows the step in the middle,
             // unless it is only worth showing where its control is.
             step.before = function (done) {
-                step.target = narrow() ? null : locate(item.target);
-                done();
+                var waited = 0;
+
+                if (narrow()) {
+                    waited = 0;
+                } else if (inMenuList(item.target)) {
+                    waited = showInList(item.target);
+                } else if (window.pgMenu) {
+                    // A step about the screen: a rail widened for the list,
+                    // or the menu's drawer, would cover part of it.
+                    window.pgMenu.dismiss();
+                }
+
+                window.setTimeout(function () {
+                    step.target = narrow() ? null : locate(item.target);
+                    done();
+                }, waited);
             };
 
             step.target = null;
         }
 
+        // An optional step is about an entry the person may not have: it is
+        // passed over when the list has no such entry at all (one below the
+        // fold of the menu is brought up by before()).
         if (item.optional) {
             step.skipIf = function () {
-                return narrow() || !locate(item.target);
+                return narrow() || !present(item.target);
             };
         }
 
@@ -451,9 +509,22 @@
         steps: steps,
 
         // The screen draws itself over the network: the tour waits for the
-        // list of channels to be there.
+        // list of channels in the menu to answer on this screen (its tour
+        // button is drawn then), or for the screen itself where there is no
+        // menu.
         ready: function () {
-            return !!document.querySelector('#ws-root .ws-side-head');
+            if (!document.getElementById('ws-menu-side')) {
+                return !!document.querySelector('#ws-root .ws-center');
+            }
+
+            return !!document.querySelector('#ws-menu-side [data-ws-tour]');
+        },
+
+        // A rail widened for the tour goes back once it is over.
+        onEnd: function () {
+            if (window.pgMenu && window.pgMenu.isRail()) {
+                window.pgMenu.dismiss();
+            }
         }
     });
 
