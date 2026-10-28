@@ -281,3 +281,64 @@ function test_imap_client_logout_closes()
 	pg_assert_false(is_resource($session['in']), 'input closed');
 	pg_assert_false(is_resource($out), 'output closed');
 }
+
+function test_imap_client_sent_folder_by_its_mark()
+{
+	list($session, $out) = imap_client_test_session(array(
+		'* OK [CAPABILITY IMAP4rev1 SPECIAL-USE] ready',
+		'* LIST (\\HasNoChildren \\Drafts) "/" "Drafts"',
+		'* LIST (\\HasNoChildren \\Sent) "/" "Gesendete Objekte"',
+		'A0001 OK listed',
+	));
+	pg_imap_greeting($session);
+	pg_assert_same('Gesendete Objekte', pg_imap_sent_folder($session), 'the folder marked \\Sent');
+	pg_assert_same("A0001 LIST (SPECIAL-USE) \"\" \"*\"\r\n", imap_client_test_sent($out), 'only the marked folders asked for');
+
+	list($session, $out) = imap_client_test_session(array(
+		'* OK [CAPABILITY IMAP4rev1 SPECIAL-USE] ready',
+		'A0001 OK nothing marked',
+		'* LIST (\\HasNoChildren) "." "INBOX"',
+		'* LIST (\\Noselect) "." "Sent"',
+		'* LIST (\\HasNoChildren) "." "INBOX.Sent"',
+		'A0002 OK listed',
+	));
+	pg_imap_greeting($session);
+	pg_assert_same('INBOX.Sent', pg_imap_sent_folder($session), 'a usual name when nothing is marked; a \\Noselect folder is skipped');
+
+	list($session) = imap_client_test_session(array('* OK ready', 'A0001 NO not allowed'));
+	pg_imap_greeting($session);
+	pg_assert_same('', pg_imap_sent_folder($session), 'a refused LIST finds none');
+
+	pg_assert_same('Sent Items', pg_imap_pick_sent_folder(array(
+		array('name' => 'Archive', 'attributes' => array()),
+		array('name' => 'Sent Items', 'attributes' => array()),
+	)), 'a usual name, case ignored');
+	pg_assert_same('', pg_imap_pick_sent_folder(array(array('name' => 'Outbox', 'attributes' => array()))), 'no sent folder');
+}
+
+function test_imap_client_append()
+{
+	list($session, $out) = imap_client_test_session(array(
+		'* OK ready',
+		'+ go ahead',
+		'A0001 OK [APPENDUID 1 9] appended',
+	));
+	pg_imap_greeting($session);
+	pg_assert_true(pg_imap_append($session, 'Gönderilmiş', "Subject: Hi\nMessage-ID: <a@b>\n\nHello\n"));
+	$mime = "Subject: Hi\r\nMessage-ID: <a@b>\r\n\r\nHello\r\n";
+	pg_assert_same("A0001 APPEND \"G&APY-nderilmi&AV8-\" (\\Seen) {" . strlen($mime) . "}\r\n" . $mime . "\r\n", imap_client_test_sent($out), 'CRLF line ends, the folder in modified UTF-7');
+
+	list($session, $out) = imap_client_test_session(array('* OK [CAPABILITY IMAP4rev1 LITERAL+] ready', 'A0001 OK appended'));
+	pg_imap_greeting($session);
+	pg_assert_true(pg_imap_append($session, '&AV8-Sent', "A: b\r\n\r\nx", '(\\Seen)', true), 'a name from LIST goes as it is');
+	pg_assert_same("A0001 APPEND \"&AV8-Sent\" (\\Seen) {9+}\r\nA: b\r\n\r\nx\r\n", imap_client_test_sent($out));
+
+	list($session) = imap_client_test_session(array('* OK ready', '+ go ahead', 'A0001 NO [TRYCREATE] no such folder'));
+	pg_imap_greeting($session);
+	pg_assert_false(pg_imap_append($session, 'Missing', "A: b\r\n\r\nx"));
+	pg_assert_same('folder', $session['error'], 'a refused APPEND is a folder error');
+
+	list($session) = imap_client_test_session(array('* OK ready'));
+	pg_imap_greeting($session);
+	pg_assert_false(pg_imap_append($session, 'Sent', ''), 'nothing to append');
+}

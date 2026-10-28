@@ -1768,6 +1768,25 @@ function pg_mail_thread_headers($headers)
     return $out;
 }
 
+/**
+ * The whole mail the last email() call sent, when it was asked for with
+ * 'keep_mime' => true ('' otherwise): a Workspace answer puts it into the
+ * mailbox's sent folder.
+ *
+ * @param string|null $set
+ * @return string
+ */
+function pg_mail_last_sent_mime($set = null)
+{
+    static $mime = '';
+
+    if ($set !== null) {
+        $mime = (string) $set;
+    }
+
+    return $mime;
+}
+
 function email($properties)
 {
     $to = isset($properties['to']) ? $properties['to'] : '';
@@ -1781,6 +1800,7 @@ function email($properties)
     $body = isset($properties['body']) ? $properties['body'] : '';
     $type = isset($properties['type']) ? $properties['type'] : 'system';
     $notify_sender = isset($properties['notify_sender']) ? $properties['notify_sender'] : true;
+    pg_mail_last_sent_mime('');
 
     // Anyone can sign in to a demonstration site, so it sends nothing: the
     // server it shares with other sites is not turned into a mail relay.
@@ -2047,7 +2067,13 @@ function email($properties)
             return true;
         }
 
-        return $mail->send();
+        $sent = $mail->send();
+
+        if ($sent && !empty($properties['keep_mime'])) {
+            pg_mail_last_sent_mime($mail->getSentMIMEMessage());
+        }
+
+        return $sent;
 
     } catch (Exception $e) {
         $error = ($mail->ErrorInfo !== '') ? $mail->ErrorInfo : $e->getMessage();

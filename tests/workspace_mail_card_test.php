@@ -97,7 +97,7 @@ function test_workspace_mail_box_input()
 	pg_assert_same(array(
 		'name' => 'Support', 'address' => 'support@example.com', 'channel_id' => 4, 'auth_server' => 'mx.google.com', 'enabled' => 1,
 		'provider' => '', 'host' => '', 'port' => 993, 'user' => '', 'password' => '', 'folder' => 'INBOX', 'after_fetch' => 'seen', 'move_folder' => '',
-		'reply_via' => 'box', 'smtp_host' => '', 'smtp_port' => 0,
+		'reply_via' => 'box', 'smtp_host' => '', 'smtp_port' => 0, 'sent_copy' => 0, 'sent_folder' => '',
 	), $ok['values'], 'cleaned; no server is an .eml-only box');
 
 	$base = array('name' => 'Support', 'address' => 'support@example.com', 'channel_id' => 4, 'auth_server' => '');

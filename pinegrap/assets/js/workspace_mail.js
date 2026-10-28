@@ -54,9 +54,10 @@
 
             send.disabled = true;
 
-            h.api('ws_mail_reply', { conversation_id: message.mail_reply, text: text.value }).then(function () {
+            h.api('ws_mail_reply', { conversation_id: message.mail_reply, text: text.value }).then(function (data) {
                 h.hideOffcanvas(node);
-                h.toast(t('mail_reply_sent'), 'success');
+                // Sent, but the mailbox's sent folder kept no copy.
+                h.toast(data.copy_note || t('mail_reply_sent'), data.copy_note ? 'warning' : 'success');
                 view.sync();
             }).catch(function (error) {
                 send.disabled = false;

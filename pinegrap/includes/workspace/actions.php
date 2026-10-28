@@ -1991,7 +1991,10 @@ function ws_handle_action($action, $request)
                 return ws_action_error(ws_mail_reply_error_text($result['error']) . (($result['detail'] !== '') ? ' ' . $result['detail'] : ''), 'text');
             }
 
-            return ws_action_ok(array('message_id' => $result['message_id']));
+            return ws_action_ok(array(
+                'message_id' => $result['message_id'],
+                'copy_note'  => ($result['copy'] === 'failed') ? lang('The e-mail was sent, but no copy could be put into the mailbox\'s sent folder.') : '',
+            ));
 
         case 'ws_attach':
             $channel = ws_action_channel($viewer, $request, 'post');

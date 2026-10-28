@@ -618,6 +618,7 @@
     "Forwarded header reporting HTTPS": "HTTPS bildiren yönlendirme başlığı",
     "Found": "Bulunanlar",
     "Found 12 result(s) for: design": "tasarım için 12 sonuç bulundu",
+    "Found by itself": "Kendiliğinden bulunur",
     "Found by search engines": "Arama motorlarında bulunur",
     "Found me through": "Beni nereden buldu",
     "Found {var:1} item for: {var:2}": "{var:2} için {var:1} ürün bulundu",
