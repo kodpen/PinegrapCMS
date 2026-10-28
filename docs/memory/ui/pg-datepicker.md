@@ -22,5 +22,5 @@ description: data-pg-date, data-pg-datetime and data-pg-time on Bootstrap 6 Date
 
 ## What else changed?
 - No engine is left for a page with Bootstrap 5: the fields stay plain there, like chips. The jQuery UI date paths of `pg_fields.js` and their `inOverlayHost()` are gone (and their entries in `tools/bs6_switch_texts.txt`). Site renderers keep jQuery UI; its panel CSS (`.ui-datepicker`, `#ui-datepicker-div`) goes with B12.
-- The jQuery UI timepicker add-on is no longer loaded by the panel screens or the backend `picker_scripts` of `get_form_content()` (B12, #2510); the `get_*_picker_format()` calls stay, `pg_fields.js` reads `window.datetimepicker_options`. Calendar event and submitted form screens followed. Still loading it: view_order.php, includes/settings/commerce.php. The site renderers keep it.
+- The jQuery UI timepicker add-on is no longer loaded by the panel screens or the backend `picker_scripts` of `get_form_content()` (B12, #2510); the `get_*_picker_format()` calls stay, `pg_fields.js` reads `window.datetimepicker_options`. Calendar event and submitted form screens followed (#2543). Still loading it: view_order.php, includes/settings/commerce.php. The site renderers keep it.
 - Tests: `tests/pg_fields_test.php` (`test_pg_fields_dates_on_bootstrap_6`), `tests/bs6_timepicker_addon_test.php`.
