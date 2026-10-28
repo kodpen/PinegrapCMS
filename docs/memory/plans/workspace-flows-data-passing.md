@@ -12,21 +12,12 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 - A filled value is never read again as a placeholder (D2) and is escaped for where it lands (D3), workspace/workspace-flows-outputs.md.
 
 ## Which steps? (one PR each, in this order)
-- D1 outputs: done (#2111), see workspace/workspace-flows-outputs.md.
+- Done: D1 outputs (#2111), D2 one-pass fill (#2121), D3 escaping (#2293): workspace/workspace-flows-outputs.md; D4 reference check (#2305): workspace-flows-references.md; D5 trigger values (#2341): workspace-flows-trigger-values.md; D6 value picker (#2461): workspace-flows-value-picker.md (threads, fork, value boxes: plans/workspace-flows-data-threads.md); D7 conditions on values (#2496): workspace-flows-condition-values.md.
 
-- D2 one-pass fill: done (#2121), see workspace/workspace-flows-outputs.md.
-
-- D3 escaping: done (#2293), see workspace/workspace-flows-outputs.md.
-
-- D4 reference check: done (#2305), see workspace/workspace-flows-references.md.
-
-- D5 trigger values: done (#2341), see workspace/workspace-flows-trigger-values.md.
-
-- D6 value picker: done (#2461), see workspace/workspace-flows-value-picker.md. Threads, fork, value boxes: workspace-flows-data-threads.md.
-
-- D7 conditions on values: done (#2496), see workspace/workspace-flows-condition-values.md.
-
-- D8 AI drafts: F8 of workspace-flows.md, after D1 and D4 (rules below).
+- D8 AI drafts: F8 of workspace-flows.md, after D1 and D4 (rules below), in three slices:
+  - D8a server: Pinegrap AI's `propose_flow` tool (schema from `ws_flow_kind_catalogue()`), a full graph for a new flow or a patch (add, connect, remove, set) to a flow the person edits, `read_flow` to read one first, automatic layout, `ws_flow_graph_check()` problems handed back to the model, the A8 draft card (flow_draft.php); a patch card opens onto that flow's draft. Files: includes/workspace/flow_draft.php, ai.php, tests/workspace_flow_draft_test.php.
+  - D8b card: the draft card as a mini flow window (boxes and threads drawn small, outbound boxes marked, F4e try per box); a panel action giving the card's graph. Files: assets/js/workspace.js (+ bundle), a panel action.
+  - D8c canvas: a patch opened on the canvas highlights the boxes it added or changed; edits from the card open the box on the canvas. Files: assets/js/workspace_flow.js.
 
 - D9 later: lists and a "For each" box (`pass` > 0).
 
