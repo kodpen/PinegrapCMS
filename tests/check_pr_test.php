@@ -4,7 +4,7 @@
  *
  * Tests for the branch guards of tools/check_pr.php: reading git's log and
  * numstat output, the trailer and author checks, the branches that skip
- * them and the product-line count.
+ * them, the files no branch may change and the product-line count.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -118,6 +118,27 @@ function test_check_pr_parse_numstat()
 	), check_pr_parse_numstat($output));
 
 	pg_assert_same(array(), check_pr_parse_numstat(''));
+}
+
+// pinegrap/data/config.php fails on every branch, a merge train included;
+// --no-renames makes a rename list both paths, so a rename to or from it
+// counts. pinegrap/changelog.txt fails only on a branch that is not exempt.
+function test_check_pr_file_problems()
+{
+	$config = 'the branch changes pinegrap/data/config.php, whose tracked content stays <?php ?>; restore it with git checkout origin/development -- pinegrap/data/config.php';
+	$changelog = 'the branch changes pinegrap/changelog.txt; name the [NEW] line or the [SCHEME] item in the PR body instead (CLAUDE.md, Working mode 7)';
+
+	pg_assert_same(array($config), check_pr_file_problems(array('pinegrap/data/config.php' => 12), false));
+	pg_assert_same(array($config), check_pr_file_problems(array('pinegrap/data/config.php' => 0), false));
+	pg_assert_same(array(), check_pr_file_problems(array('pinegrap/data/index.php' => 3, 'tools/check_pr.php' => 9), false));
+	pg_assert_same(array(), check_pr_file_problems(array(), true));
+
+	// A rename to config.php (git diff --no-renames: one path deleted, one added).
+	pg_assert_same(array($config), check_pr_file_problems(check_pr_parse_numstat("0\t1\tpinegrap/data/config.sample.php\0" . "1\t0\tpinegrap/data/config.php\0"), false));
+
+	pg_assert_same(array($config), check_pr_file_problems(array('pinegrap/data/config.php' => 1), true));
+	pg_assert_same(array($changelog, $config), check_pr_file_problems(array('pinegrap/changelog.txt' => 2, 'pinegrap/data/config.php' => 1), false));
+	pg_assert_same(array(), check_pr_file_problems(array('pinegrap/changelog.txt' => 2), true));
 }
 
 function test_check_pr_product_lines()
