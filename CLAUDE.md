@@ -125,7 +125,7 @@ decision questions.
    claim); finished work is still marked ready. A PR waiting on a decision
    (Working mode 10) goes back to draft until it comes, so only work the
    merging session can take holds a place; each coordinator's workers hold
-   at most 4 of the 15.
+   at most 6 of the 15.
    `gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '[.[]|select(.draft|not)|select(.head.ref|startswith("merge-train")|not)]|length'`
 9. **Coordinators.** One coordinator per account starts its cloud workers within
    the account's quota and worker cap (`coordinator-limits.md`); it writes
