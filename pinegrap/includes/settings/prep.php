@@ -1153,7 +1153,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
         }
 
-        $output_iyzipay_protected_currency_select = '<select class="form-control" name="iyzipay_protected_currency_code">' . $output_iyzipay_protected_currency_select_options . '</select>';
+        $output_iyzipay_protected_currency_select = '<select class="form-control" name="iyzipay_protected_currency_code" id="iyzipay_protected_currency_code">' . $output_iyzipay_protected_currency_select_options . '</select>';
 
     }
   
