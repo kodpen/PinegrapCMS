@@ -180,6 +180,7 @@ function pg_panel_actions()
         'site_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_site_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'audit_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_audit_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'audit_log_changes' => array('file' => 'lists.php', 'handler' => 'pg_panel_audit_log_changes', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
+        'waf_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_waf_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'get_page' => array('file' => 'content.php', 'handler' => 'pg_panel_get_page', 'exempt' => false, 'token' => false, 'write' => false),
         'get_pages' => array('file' => 'content.php', 'handler' => 'pg_panel_get_pages', 'exempt' => false, 'token' => false, 'write' => false),
         'test' => array('file' => 'content.php', 'handler' => 'pg_panel_test', 'exempt' => false, 'token' => false, 'write' => false),

@@ -58,6 +58,7 @@ description: Generated from the module field of the memory files: each includes/
 - `submitted_form_list`: [[server-paged-lists]]
 - `translate`: [[error-screen-language-and-status]]
 - `user_list`: [[server-paged-lists]]
+- `waf_log_list`: [[waf-log-paging]]
 - `waf_notice`: [[waf-ban-notice]]
 - `waf_rescue`: [[waf-self-rescue]]
 - `widgets`: [[search-results-catalog-detail-page]]

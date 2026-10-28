@@ -145,7 +145,7 @@ function test_dark_theme_badges_keep_their_ink()
 	pg_assert_contains('<a href="#" class="fg-reset text-decoration-none" data-on="', $offer, 'offer tag remove link');
 
 	// A black fill needs white ink; the badge's default text is dark in the light theme.
-	pg_assert_contains("'ban'         => array('bg-black fg-white', lang('Banned')),", dark_theme_leftovers_source('view_waf_log.php'));
+	pg_assert_contains("'ban'         => array('bg-black fg-white', lang('Banned')),", dark_theme_leftovers_source('includes/fn/waf_log_list.php'));
 	pg_assert_contains("'deleted'      => ['bg-black fg-white',", dark_theme_leftovers_source('view_parasut_inbox.php'));
 }
 

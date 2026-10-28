@@ -17,6 +17,8 @@
  *   site_log_list_rows         a page of the Site Log (view_log.php)
  *   audit_log_list_rows        a page of the audit trail (view_audit_log.php)
  *   audit_log_changes          the changed fields of one audit trail line
+ *   waf_log_list_rows          a page of the firewall log's events
+ *                              (view_waf_log.php)
  *
  * Each action answers DataTables' page request (includes/fn/list_paging.php)
  * behind the gate of the screen it pages.
@@ -343,4 +345,41 @@ function pg_panel_audit_log_changes($request, $action)
     }
 
     return array('status' => 'success', 'html' => $html);
+}
+
+function pg_panel_waf_log_list_rows($request, $action)
+{
+    // Kept global: helpers read the session user through `global $user`;
+    // see includes/panel/actions.php.
+    global $user;
+
+    // The general gate has checked the session (any_role). The screen's own
+    // gate is validate_area_access($user, 'manager'), answered here in JSON.
+    $user = validate_user();
+
+    if ((int) $user['role'] > 2) {
+        http_response_code(403);
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    validate_token();
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/waf_log_list.php');
+
+    // The filters the screen shows (its address), checked again; the sort
+    // is the one it kept in the session.
+    $filters = (isset($request['filters']) && is_array($request['filters'])) ? $request['filters'] : array();
+
+    $page = pg_schema_has('waf_log') ? pg_waf_log_list_page(
+        pg_waf_log_list_filters($filters),
+        pg_list_search_terms($request['search'] ?? ''),
+        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100),
+        time()) : false;
+
+    if ($page === false) {
+        http_response_code(500);
+        respond(array('status' => 'error', 'message' => lang('Query failed.')));
+    }
+
+    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
 }

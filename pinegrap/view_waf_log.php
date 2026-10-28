@@ -4,7 +4,11 @@
  *
  * Firewall event log
  *
- * Backend view of the waf_log table written by waf.php.
+ * Backend view of the waf_log table written by waf.php. The summary, the
+ * possible false positives and the bans are drawn here; the events come one
+ * page at a time from the waf_log_list_rows action
+ * (includes/fn/waf_log_list.php), sorted by the headings and searched on the
+ * server.
  *
  * This screen is what makes Monitor mode useful: it shows exactly which
  * requests blocking would have rejected, so an operator can confirm on their
@@ -33,6 +37,8 @@ $user = validate_user();
 // open Settings and already sees this same data summarised in the dashboard
 // widgets, but was refused the screen that explains it.
 validate_area_access($user, 'manager');
+
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/waf_log_list.php');
 
 include_once('liveform.class.php');
 $liveform = new liveform('view_waf_log');
@@ -192,61 +198,21 @@ if (!$table_exists) {
 
 // ---- Filters ---------------------------------------------------------------
 
-$range_options = array(
-    '1'  => lang('Last 24 hours'),
-    '7'  => lang('Last 7 days'),
-    '30' => lang('Last 30 days'),
-);
-
 // Each filter is one value; one sent as an array (?range[]=x) counts as not
-// given: it ended in an error page. PHP turns the numeric keys above into
-// integers, so the period select compares (string) $value with $range.
-$range = (isset($_GET['range']) && is_string($_GET['range']) && isset($range_options[$_GET['range']])) ? $_GET['range'] : '7';
-$start_timestamp = time() - ((int) $range * 86400);
-
-$category_options = array(
-    ''         => lang('All'),
-    'sqli'     => lang('SQL Injection'),
-    'xss'      => lang('Cross-site Scripting'),
-    'lfi'      => lang('Path Traversal'),
-    'rce'      => lang('Command Injection'),
-    'protocol' => lang('Protocol Abuse'),
-    'bot'      => lang('Bots'),
-    'tool'     => lang('Scanners'),
-    'rate'     => lang('Rate Limit'),
-    'login'    => lang('Sign-in Lockouts'),
-    'iplist'   => lang('IP List'),
-    'country'  => lang('Country Restriction'),
-    'ban'      => lang('Bans'),
-);
-
-$category = (isset($_GET['category']) && is_string($_GET['category']) && isset($category_options[$_GET['category']])) ? $_GET['category'] : '';
-
-$search = (isset($_GET['search']) && is_string($_GET['search'])) ? trim($_GET['search']) : '';
-
-if (strlen($search) > 200) {
-    $search = substr($search, 0, 200);
-}
-
-$where = "WHERE log_timestamp >= " . (int) $start_timestamp;
-
-if ($category !== '') {
-    $where .= " AND category = '" . escape($category) . "'";
-}
-
-if ($search !== '') {
-    $like = '%' . escape_like($search) . '%';
-    $where .= " AND (ip_address LIKE '" . escape($like) . "'
-                  OR request_url LIKE '" . escape($like) . "'
-                  OR rule_id LIKE '" . escape($like) . "'
-                  OR reference LIKE '" . escape($like) . "'
-                  OR user_agent LIKE '" . escape($like) . "')";
-}
+// given: it ended in an error page (pg_waf_log_list_filters()).
+$filters = pg_waf_log_list_filters($_GET);
+$range_options = pg_waf_log_list_ranges();
+$category_options = pg_waf_log_list_categories();
+$range = $filters['range'];
+$category = $filters['category'];
+$search = $filters['search'];
+$now = time();
+$start_timestamp = $now - ((int) $range * 86400);
+$condition = pg_waf_log_list_condition($filters, $now);
 
 // ---- Summary ---------------------------------------------------------------
 
-$summary = mysqli_fetch_assoc(mysqli_query(
-    db::$con,
+$summary_result = db_q(
     // SUM(hit_count), not COUNT(*): one row can stand for thousands of
     // requests now that identical events are folded into a five-minute
     // bucket. Counting rows would report an attack as a handful of events.
@@ -256,8 +222,10 @@ $summary = mysqli_fetch_assoc(mysqli_query(
         COALESCE(SUM(CASE WHEN action IN ('would-block','would-rate','would-ban') THEN hit_count ELSE 0 END), 0) AS would_block,
         COUNT(DISTINCT ip_address) AS addresses,
         COUNT(*) AS rows_stored
-     FROM waf_log $where"
-));
+     FROM waf_log WHERE " . $condition['sql'],
+    $condition['params']
+);
+$summary = ($summary_result ? mysqli_fetch_assoc($summary_result) : null) ?: array('total' => 0, 'blocked' => 0, 'would_block' => 0, 'addresses' => 0, 'rows_stored' => 0);
 
 $mode = function_exists('waf_mode') ? waf_mode() : 'off';
 
@@ -469,23 +437,19 @@ $csp_entries = function_exists('waf_csp_report_read') ? waf_csp_report_read() : 
 $csp_mode    = function_exists('waf_setting') ? (string) waf_setting('security_csp_mode', 'report') : 'off';
 
 // ---- Events ----------------------------------------------------------------
+//
+// The events come from the waf_log_list_rows action one page at a time
+// (includes/fn/waf_log_list.php), sorted by the headings' kept sort.
 
-$events = mysqli_fetch_items(mysqli_query(
-    db::$con,
-    "SELECT * FROM waf_log $where ORDER BY last_seen DESC, id DESC LIMIT 500"
-));
+$list_sort = pg_waf_log_list_sort();
+$list_query = array_filter(array('range' => $range, 'category' => $category, 'search' => $search), 'strlen');
+$list_heading_query = h('&' . http_build_query($list_query));
+
+$list_heading = function ($code) use ($list_sort, $list_heading_query) {
+    return get_column_heading($list_sort['sort_columns'][$code], $list_sort['sort_levels'], '', $list_heading_query, $code);
+};
 
 // ---- Output ----------------------------------------------------------------
-
-$action_badges = array(
-    'block'       => array('bg-danger', lang('Blocked')),
-    'rate'        => array('bg-danger', lang('Rate limited')),
-    'ban'         => array('bg-black fg-white', lang('Banned')),
-    'would-block' => array('bg-warning fg-black', lang('Would block')),
-    'would-rate'  => array('bg-warning fg-black', lang('Would rate limit')),
-    'would-ban'   => array('bg-warning fg-black', lang('Would ban')),
-    'log'         => array('bg-secondary', lang('Recorded')),
-);
 
 echo pg_page_shell(array(
     'title'         => lang('Firewall Log'),
@@ -723,63 +687,25 @@ echo '<div class="card mb-7">
     </div>
     <div class="card-body">';
 
-if (!$events) {
+if ((int) $summary['rows_stored'] === 0) {
     echo '<p class="fg-secondary mb-0">' . lang('No firewall events were recorded in this period.') . '</p>';
 } else {
-    echo '<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
+    echo '<div class="pg-toolbar mb-3">
+            <div class="pg-toolbar-grow"></div>
+            ' . pg_list_sort_menu('view_waf_log.php', $list_sort['sort_columns'], $list_sort['sort_levels'], $list_sort['sort_default'], $list_query) . '
+        </div>
+        <div class="position-relative">
+        <table class="chart table table-sm table-hover align-middle mb-0" style="width:100%;display:none" data-pg-list-action="waf_log_list_rows" data-pg-list-params="' . h(encode_json(array('filters' => array('range' => $range, 'category' => $category, 'search' => $search)))) . '">
         <thead><tr>
-            <th>' . lang('Time') . '</th>
-            <th>' . lang('Hits') . '</th>
-            <th>' . lang('Action') . '</th>
-            <th>' . lang('IP Address') . '</th>
-            <th>' . lang('Rule') . '</th>
-            <th>' . lang('Score') . '</th>
+            <th>' . $list_heading('time') . '</th>
+            <th>' . $list_heading('hits') . '</th>
+            <th>' . $list_heading('action') . '</th>
+            <th>' . $list_heading('ip') . '</th>
+            <th>' . $list_heading('rule') . '</th>
+            <th>' . $list_heading('score') . '</th>
             <th>' . lang('Request') . '</th>
             <th>' . lang('Match') . '</th>
-        </tr></thead><tbody>';
-
-    foreach ($events as $event) {
-        $badge = isset($action_badges[$event['action']])
-            ? $action_badges[$event['action']]
-            : array('bg-secondary', $event['action']);
-
-        echo '<tr>
-            <td class="small text-nowrap">' . h(date('Y-m-d H:i', (int) $event['log_timestamp']))
-                . ($event['last_seen'] > $event['log_timestamp']
-                    ? '<div class="fg-secondary" style="font-size:.75rem;">&rarr; ' . h(date('H:i', (int) $event['last_seen'])) . '</div>'
-                    : '')
-                // Relative age of the LAST hit. Without it a row that stopped
-                // firing an hour ago is indistinguishable from one still
-                // firing right now — both just show a clock time — and an
-                // operator who has just fixed the cause cannot tell whether
-                // the entry is live or a historical record of the problem
-                // they already solved.
-                . '<div class="' . ($event['last_seen'] > (time() - 300) ? 'fg-danger fw-semibold' : 'fg-secondary')
-                . '" style="font-size:.75rem;">'
-                . get_relative_time(array('timestamp' => (int) $event['last_seen']))
-                . '</div></td>
-            <td class="small">' . ((int) $event['hit_count'] > 1
-                ? '<span class="badge bg-subtle-secondary fg-emphasis-secondary border">&times;' . pg_format_number((int) $event['hit_count'], 0) . '</span>'
-                : '1') . '</td>
-            <td><span class="badge ' . h($badge[0]) . '">' . h($badge[1]) . '</span></td>
-            <td class="font-monospace small text-nowrap">' . h($event['ip_address']) . '</td>
-            <td class="small"><code>' . h($event['rule_id']) . '</code>'
-                . (isset($event['reference']) && $event['reference'] !== ''
-                    ? '<div class="fg-secondary" style="font-size:.7rem;" title="' . lang('Reference') . '">' . h($event['reference']) . '</div>'
-                    : '') . '</td>
-            <td class="small">' . (int) $event['score'] . '</td>
-            <td class="small text-break" style="max-width:22rem;">
-                <span class="fg-secondary">' . h($event['method']) . '</span> ' . h($event['request_url']) . '
-                <div class="fg-secondary" style="font-size:.75rem;">' . h(mb_substr($event['user_agent'], 0, 90)) . '</div>
-            </td>
-            <td class="small text-break" style="max-width:16rem;">
-                <span class="fg-secondary">' . h($event['target']) . '</span>
-                <div><code>' . h($event['matched']) . '</code></div>
-            </td>
-        </tr>';
-    }
-
-    echo '</tbody></table></div>';
+        </tr></thead><tbody></tbody></table></div>';
 }
 
 echo '</div></div></main>';
