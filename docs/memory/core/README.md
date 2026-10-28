@@ -98,6 +98,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - sdt-designer-js-text-rules.md: How visible text in assets/js/style_designer.js must use _sdT('English') keys: literal-key rule, server key scan and cache, variables instead of built keys, escaping, PHP/JS default twins, the checks.
 - security-helpers-and-secret-storage.md: CSRF helpers; secret config fields (one encrypted blob, never a constant, never shown back, the written exception); session cookie flags and sign-in renewal; the install unlock throttle.
 - session-token-binding.md: How a signed-in session is bound to its auth_tokens row (selector kept in the session), what ends a session server-side, and the rules every sign-in and minting path must follow.
+- site-log-client-address.md: Which address a site log row records: pg_auth_request_address(), the visitor behind a trusted proxy, in both log_activity() copies and the e-mail-a-friend limit (#2044)
 - site-path-detection.md: How a request finds the site path (PATH) from SCRIPT_NAME and the software folder, in any case; when config.path is written and when it is not (cron reads it)
 - social-sign-in-address-match.md: Social sign-in ties a verified provider address only to an account whose stored address is the same apart from letter case; accent-folded look-alikes are refused, not tied and not opened (#1196)
 - social-sign-in-buttons.md: Where the social sign-in buttons come from (pg_signin_buttons()), when a provider shows, the Settings and designer hints, starter layouts, and what an old browser does.

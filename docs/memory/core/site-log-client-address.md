@@ -1,6 +1,6 @@
 ---
 name: site-log-client-address
-description: Which address a site log row (log.log_ip) records: pg_auth_request_address(), the visitor behind a trusted proxy as the firewall resolves it, in both log_activity() copies and the e-mail-a-friend limit (#2044)
+description: Which address a site log row records: pg_auth_request_address(), the visitor behind a trusted proxy, in both log_activity() copies and the e-mail-a-friend limit (#2044)
 ---
 
 ## Which address does the site log record?
