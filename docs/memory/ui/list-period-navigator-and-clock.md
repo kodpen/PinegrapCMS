@@ -21,4 +21,4 @@ module: list_period
 Test: `tests/list_period_test.php` (month steps around a month, from the last shown month, across the year, without a range; the heading in both orders; the clock codes; the picker scripts carry the format).
 
 ## Which words label a date range filter?
-- "Start" / "End" ("Başlangıç" / "Bitiş"), not "From" / "To": those keys also name e-mail senders and recipients, so one Turkish value could not fit both (#2052). Orders, site log, audit trail, profit, expenses, accountant package, ERP export and the Workspace rule hours use them; the submitted forms, contacts and commissions filters still say "From" / "To" (their files were held by open PRs).
+- "Start" / "End" ("Başlangıç" / "Bitiş"), not "From" / "To": those keys also name e-mail senders and recipients, so one Turkish value could not fit both (#2052). Orders, submitted forms, contacts, commissions, site log, audit trail, profit, expenses, accountant package, ERP export and the Workspace rule hours use them; the list filters' month/day/year selects are named (`report-screen-controls.md`, #2716).

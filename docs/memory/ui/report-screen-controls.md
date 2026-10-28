@@ -1,0 +1,25 @@
+---
+name: report-screen-controls
+description: Order, visitor and shipping report controls on Bootstrap 6: period changer groups, named arrows, labelled layout selects, the 100 % cell, named date filter selects (#2716)
+---
+
+## How is a report's period changer built?
+- The order and visitor reports print one `.btn-group.btn-group-sm` per unit (Year, Month, Week, Day), `role="group"` named by the unit, of `btn btn-outline theme-secondary` links: previous (`bi-chevron-left`, `aria-label` Previous), the current period, next (`bi-chevron-right`, Next). Bootstrap 6's group, join and size rules only select `[class*=btn-]` children, so bare `.btn` links (the v5 markup with `border-*` utilities) kept their full corners and never joined.
+- They cannot call `pg_period_nav()`: their links carry the report's `&id=`. The visitor report's next-month link dropped the id before (#2716). The shipping report's pair uses `start_date` / `end_date` and is a `role="group"` named Period with `btn-text` chevrons around the range.
+
+## How are the layout selects named?
+- The Summarize by / order by rows (order and visitor reports, `edit_form_list_view.php`) are plain `.row`s of `<label for>` + select; liveform prints a select's id only when `output_field()` gets `'id'`. They sat in an `.input-group-text row` with the texts in divs: six unnamed comboboxes per screen.
+
+## How is the Grand Total percentage printed?
+- `pg_format_number(100, 2) . '%'` like the other cells, never a literal `100.00%` (a comma-decimal site showed it beside `45,23%`).
+
+## How are the date range filters of list screens named?
+- Each date (orders, submitted forms, contacts, commissions) is a `<fieldset>` whose `<legend class="form-label">` is Start / End, and its month, day and year selects carry `aria-label` Month / Day / Year. A `<label>` without `for` named nothing: the runtime binder in `backend.src.js` only binds a label to a next field that has an id.
+- The performance log's Search, Time Range and Area labels point at `perf_log_search`, `perf_log_range`, `perf_log_area`.
+
+## Other report formats?
+- The visitor detail pager links are First page / Previous page / Next page / Last page in a `<nav>` named Pagination.
+- The SEO drawer's group weight prints `lang('{var:1}%')` (TR `%40`, EN `40%`); the Search Console chart days are `m/d` on a `month_day` site, else `d.m`.
+- The cash flow toolbar form wraps (`flex-wrap row-gap-2`), each date label in one `d-inline-flex` span with its field: panel CSS keeps a toolbar form on one line, so at 390 px Apply sat off-screen.
+
+Tests: `tests/report_screens_bs6_test.php`, `tests/report_formats_test.php`, `tests/list_period_test.php`, `tests/panel_accessible_names_test.php`.
