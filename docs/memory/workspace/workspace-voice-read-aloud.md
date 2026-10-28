@@ -3,7 +3,7 @@ name: workspace-voice-read-aloud
 description: Assistants' answers read aloud (V5): the per-person browser switch in the channel menu, off by default, no schema; which answers are read, what is left out, when it stops
 ---
 
-## What is read aloud? (V5)
+## What is read aloud? (V5, #2861)
 - An answer of Claude, Pinegrap AI or an MCP agent (`sender_kind` `app` with `sender.claude`, `.ai` or `.mcp`) that answers one of the viewer's own messages (`parent_id` to a message with `mine`), arrived by `sync()` while the conversation is open and the tab is in sight (`speakAnswer()` in workspace.js). Never on the first load or a scroll back, never someone else's answer.
 - The words are the drawn `.ws-msg-body` without code blocks, buttons, audio, change cards (`.ws-drafts`) and hidden text; white space folded, cut at a sentence end before 1500 characters (`speakText()`), read in `CFG.locale` by the browser's `speechSynthesis` (`PGWsVoice.speak()`). Several answers queue.
 
