@@ -20,5 +20,5 @@ description: The condition box of a flow (F4c, PR #1980, flow_conditions.php): o
 ## Canvas?
 - `conditionFields()`, `conditionMetric()`, `conditionRecord()`, `conditionCompare()`, `conditionValue()` in `workspace_flow.js`; lists `steps.records`, `steps.operators`, `steps.counts` of `ws_flow_js_config()` from `ws_scheduled_js_config()`. Day names `fl_day_mon`…: the canvas tests read only literal `fl_[a-z_]+` keys.
 - `conditionValue()` builds the value by the field's kind as `saValueInput()` (workspace.js, not lent to the canvas) does: an amount shown as a decimal and kept in minor units (`changeInput()`), yes/no a '1'/'0' select, a date or a moment picker, a decimal comma made a dot; always text, since `ws_flow_text()` keeps a true or false as ''. Why: a typed 100 kept as it was held for any price over 1.00. No value for empty, not empty, has gone by.
-- A count measured against a number (products low in stock) asks "At most", 5 when the count is picked, as `saMetricPicker()`; left at 0 it counted only products out of stock.
+- A count measured against a number (products low in stock) asks "At most", 5 when the count is picked, as the retired form did; left at 0 it counted only products out of stock.
 - Tests: `tests/workspace_flows_canvas_test.php` (`…_condition_values_are_kept_as_the_field_holds_them`, under Node).
