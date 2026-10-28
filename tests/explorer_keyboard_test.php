@@ -68,7 +68,8 @@ function test_explorer_breadcrumb_takes_focus()
 	pg_assert_true($crumbs !== '', 'renderBreadcrumb() is found');
 	pg_assert_true(strpos($crumbs, '<a data-folder-id="0" class="pg-link-secondary">') === false, 'no root crumb without href');
 	pg_assert_true(strpos($crumbs, '<a data-catalog-id="0" class="pg-link-secondary">') === false, 'no catalog root crumb without href');
-	pg_assert_true(substr_count($crumbs, '<a href="#" draggable="false" data-folder-id="') >= 7, 'every folder crumb and overflow entry has an href');
+	pg_assert_true(substr_count($crumbs, '<a href="#" draggable="false" data-folder-id="') >= 6, 'every folder crumb has an href');
+	pg_assert_contains('<a href="#" draggable="false" class="menu-item" data-folder-id="', $crumbs, 'every overflow entry has an href');
 	pg_assert_true(substr_count($crumbs, '<a href="#" draggable="false" data-catalog-id="') >= 2, 'every catalog crumb has an href');
 	pg_assert_contains('<a href="#" draggable="false" class="pg-link-secondary" data-bs-toggle="menu"', $crumbs, 'the overflow toggle has an href');
 
