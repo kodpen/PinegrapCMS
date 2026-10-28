@@ -574,7 +574,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                 <div class="card multiselect-checkbox-container rounded-0 mb-1">
                     <div class="card-header border-0 bg-reset">
                         <div class="form-field">
-                            <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox"></div>
+                            <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" type="checkbox"></div>
                             <label for="multiselect-checkbox-checker-0" class="">' . lang('Select All') . '</label>
                         </div>
                     </div>
@@ -825,7 +825,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                             <div class="card multiselect-checkbox-container rounded-0 mb-1">
                                                 <div class="card-header border-0 bg-reset">
                                                     <div class="form-field">
-                                                        <div class="switch"><input id="multiselect-checkbox-checker-1" class="multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox"></div>
+                                                        <div class="switch"><input id="multiselect-checkbox-checker-1" class="multiselect-checkbox-checker" type="checkbox"></div>
                                                         <label for="multiselect-checkbox-checker-1" class="">' . lang('Select All') . '</label>
                                                     </div>
                                                 </div>

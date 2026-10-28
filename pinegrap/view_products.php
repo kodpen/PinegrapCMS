@@ -167,7 +167,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                             <form id="search_form" action="view_products.php" method="get" class="search_form">
                                 <div class="input-group input-group-sm">
                                     <label class="input-group-text material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
-                                    <select id="filter_select" name="filter" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . $output_filter_options . '</select>
+                                    <select id="filter_select" aria-label="' . h(lang('Content that viewed')) . '" name="filter" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . $output_filter_options . '</select>
                                 </div>
                             </form>
                 </nav>

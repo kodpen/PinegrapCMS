@@ -733,7 +733,7 @@ echo pg_page_shell(array(
                 <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . (($page_id > 0) ? lang('Update this page') : (($group !== '') ? lang('Update these texts') : lang('Update translations'))) . '
             </button>
             <label class="visually-hidden" for="pg_tr_engine">' . lang('Translation engine') . '</label>
-            <select class="form-control form-control-sm w-auto rounded-pill" id="pg_tr_engine" title="' . h(lang(array('string' => '{var:1} → {var:2} · engine', 'vars' => array($source, $language)))) . '">' . $output_engine_options . '</select>
+            <select class="form-control form-control-sm w-auto rounded-pill no-popover" id="pg_tr_engine" data-bs-toggle="tooltip" title="' . h(lang(array('string' => '{var:1} → {var:2} · engine', 'vars' => array($source, $language)))) . '">' . $output_engine_options . '</select>
             ' . (($review_all_shown > 0) ? '<button type="button" class="btn btn-sm btn-text theme-secondary no-popover" id="pg_tr_review_all" data-bs-toggle="tooltip" title="' . h(lang('Mark every machine translation here as reviewed in one go')) . '">
                 <i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . lang('Approve all') . ' <span class="opacity-75">' . (int) $review_all_shown . '</span>
             </button>' : '') . '
