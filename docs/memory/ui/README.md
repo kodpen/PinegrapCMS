@@ -105,6 +105,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - pg-datepicker.md: data-pg-date, data-pg-datetime and data-pg-time on Bootstrap 6 Datepicker and <input type="time"> (B9c, #2262): own parse, the hidden store, the clone dispose leaves, dialogs and drawers
 - pg-field-wrappers.md: pgChips, pgCombobox, pgDatePicker, pgDateTimeField (pg_fields.js): data-pg-* hooks, the posted field as store, own date parse, change event, engines, screens
 - pg-ui-adapter.md: pgUI (assets/js/pg_ui.js), the panel's one door to Bootstrap's JavaScript on 5.3 and 6: kinds, promises, both event names, dialog markup, overlay host, readiness, the Bootstrap 6 bridge
+- product-attribute-shared-form.md: The product attribute create and edit screens share includes/forms/product_attribute_form.php: what it holds, what stays in the screens
 - product-edit-vs-set-edit.md: Why product editing (edit_product.php) and variant set editing (edit_product_group.php) are separate screens, and why the product screen has no variant matrix.
 - product-group-shared-form.md: The product group create and edit screens share includes/forms/product_group_form.php: what it holds, what stays in the screens
 - range-value-bubble.md: Panel sliders as the Bootstrap 6 Range with a value bubble (step B9e, #2207): markup, pgUI.range.bubble(), data-pg-range, where it is used, the site Range that stays v5
