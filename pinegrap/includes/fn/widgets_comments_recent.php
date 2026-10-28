@@ -867,7 +867,7 @@ function pg_comments_mode_off_bindings($mode)
             'flags' => array('comments_open', 'comments_closed', 'can_comment', 'must_sign_in', 'featured_view', 'has_featured', 'name_is_typed',
                 'name_is_chosen', 'name_is_fixed', 'rating_on', 'files_on', 'watching_on', 'is_replying', 'is_watching', 'not_watching',
                 'can_manage_watchers', 'is_email', 'comment_is_reply', 'comment_has_quote', 'comment_has_replies', 'comment_has_file',
-                'comment_is_verified', 'comment_has_seller_reply', 'is_item_thread', 'is_review_thread'),
+                'comment_has_image', 'comment_is_verified', 'comment_has_seller_reply', 'is_item_thread', 'is_review_thread'),
         );
     }
 

@@ -523,7 +523,7 @@ pg_page_shell([
             ' . $output_main . '
 
             ' . (($output_actions !== '')
-                ? '<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
+                ? '<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                 <div class="container">
                     <div class="d-flex flex-wrap justify-content-center gap-3">' . $output_actions . '</div>
                 </div>

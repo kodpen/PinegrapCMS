@@ -489,12 +489,12 @@ function test_comments_widget_row_flags_table()
 {
 	$zero = '0000-00-00 00:00:00';
 	$keys = array('comment_is_featured', 'comment_is_pending', 'comment_is_own_pending', 'comment_is_scheduled', 'comment_has_rating',
-		'comment_has_file', 'comment_has_badge', 'comment_is_verified', 'comment_has_seller_reply', 'comment_can_edit',
+		'comment_has_file', 'comment_has_image', 'comment_has_badge', 'comment_is_verified', 'comment_has_seller_reply', 'comment_can_edit',
 		'comment_is_root', 'comment_is_reply', 'comment_has_quote', 'comment_has_replies');
 	$root_only = array('comment_is_root' => true) + array_fill_keys($keys, false);
 
 	$plain = pg_comments_widget_row_flags(array('id' => '5', 'published' => '1', 'publish_date_and_time' => $zero), false, comments_widget_test_state());
-	pg_assert_same($keys, array_keys($plain), 'exactly the 14 row flags');
+	pg_assert_same($keys, array_keys($plain), 'exactly the 15 row flags');
 	pg_assert_same(array_merge(array_fill_keys($keys, false), array('comment_is_root' => true)), $plain, 'a plain published comment, top-level');
 
 	// Its place in the thread.
@@ -537,6 +537,11 @@ function test_comments_widget_row_flags_table()
 	pg_assert_false(pg_comments_widget_row_flags(array('seller_reply' => "  \n "), false, comments_widget_test_state())['comment_has_seller_reply'], 'a blank reply');
 	pg_assert_true(pg_comments_widget_row_flags(array('seller_reply' => 'Thanks'), false, comments_widget_test_state())['comment_has_seller_reply'], 'a reply');
 	pg_assert_true(pg_comments_widget_row_flags(array('file_name' => 'a.pdf'), false, comments_widget_test_state())['comment_has_file'], 'a file');
+	pg_assert_false(pg_comments_widget_row_flags(array('file_name' => 'a.pdf'), false, comments_widget_test_state())['comment_has_image'], 'a file that is no photo');
+	foreach (array('a.jpg', 'b.JPEG', 'c.png', 'd.gif', 'e.webp') as $photo) {
+		pg_assert_true(pg_comments_widget_row_flags(array('file_name' => $photo), false, comments_widget_test_state())['comment_has_image'], 'a photo: ' . $photo);
+	}
+	pg_assert_false(pg_comments_widget_row_flags(array('file_name' => 'jpg'), false, comments_widget_test_state())['comment_has_image'], 'a name without an ending');
 	pg_assert_false(pg_comments_widget_row_flags(array('published' => array('0'), 'file_name' => array('x')), false, comments_widget_test_state())['comment_is_pending'], 'columns that are not values read off');
 	pg_assert_same(array_merge(array_fill_keys($keys, false), $root_only), pg_comments_widget_row_flags('x', false, 'y'), 'a row that is not an array');
 }
@@ -1516,7 +1521,7 @@ function test_comments_widget_default_tree_matches_starter()
 	foreach (array('action:comment_reply', 'action:comment_share', 'action:comment_reply_cancel', 'section:comment_pagination', 'eo_visible_if:is_replying',
 		'action:comment_watch_form', 'action:comment_watch', 'action:comment_unwatch', 'section:comment_watchers', 'action:comment_allow_new_form',
 		'action:comment_close', 'action:comment_reopen', 'eo_visible_if:comment_is_reply', 'eo_visible_if:comment_has_quote', 'eo_visible_if:is_staff',
-		'href:__comment_parent_url,text:__comment_parent_name', 'text:__comment_quote', 'text:__reply_to_name', 'text:__watcher_count_text') as $binding) {
+		'href:__comment_parent_url,text:__comment_parent_name', 'eo_visible_if:comment_has_image', 'src:__comment_file_url', 'text:__comment_quote', 'text:__reply_to_name', 'text:__watcher_count_text') as $binding) {
 		pg_assert_true(in_array($binding, $php, true), 'the default layout binds ' . $binding);
 	}
 

@@ -197,7 +197,7 @@ function erp_import_step_upload($liveform, $kind_options)
                         </div>
                     </div>
                 </div>
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             <button type="submit" name="submit_upload" value="Continue" class="btn my-1 btn-solid theme-success"><i class="bi bi-upload me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Continue')) . '</span></button>
@@ -391,7 +391,7 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                     </div>
                 </div>
 
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             <button type="submit" name="submit_recheck" value="Re-check" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-arrow-repeat me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Re-check')) . '</span></button>
@@ -469,7 +469,7 @@ function erp_import_step_result($outcome, $list_url)
                     </div>
                 </div>
                 ' . $output_table . '
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             <a href="' . h($list_url) . '" class="btn my-1 btn-solid theme-primary"><i class="bi bi-people me-3" aria-hidden="true"></i>' . lang('Accounts') . '</a>
