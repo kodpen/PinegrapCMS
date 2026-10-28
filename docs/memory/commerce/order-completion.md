@@ -24,7 +24,7 @@ module: order_completion
 - Per order line, in `submit_order()`'s product loop: `commerce/order-completion-lines.md`.
 
 ## What stays in submit_order()?
-- Everything not moved yet (gift card error mail, auto e-mail campaigns, the rest of the per-product loop (variable fields, product forms, comments, e-mailed page, line campaigns), rewards, contact groups, ERP invoice), the frozen legacy gateways and their recurring profiles, and the session values the receipt page reads.
+- Everything not moved yet (gift card error mail, auto e-mail campaigns, the rest of the per-product loop (comments, e-mailed page, line campaigns), rewards, contact groups, ERP invoice), the frozen legacy gateways and their recurring profiles, and the session values the receipt page reads.
 
 ## How is it tested?
 - `tests/order_completion_test.php`: the tail of `submit_order()` with each function's body spliced in at its call, as one ordered list of writes; one number, `order.created`, SMS; the query; the pure helpers.

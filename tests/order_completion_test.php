@@ -47,7 +47,7 @@ function order_completion_test_tail()
 	$tail = substr($source, (int) strpos($source, 'pg_payment_checkout_driver('));
 	$module = PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php';
 
-	foreach (array('pg_order_complete', 'pg_order_complete_receipt', 'pg_order_complete_ship_dates', 'pg_order_complete_line_stock', 'pg_order_complete_line_reservation', 'pg_order_complete_line_membership', 'pg_order_complete_line_folder_access', 'pg_order_complete_line_gift_cards', 'pg_order_line_product_form_fields', 'pg_order_complete_line_form_update') as $name) {
+	foreach (array('pg_order_complete', 'pg_order_complete_receipt', 'pg_order_complete_ship_dates', 'pg_order_complete_line_stock', 'pg_order_complete_line_reservation', 'pg_order_complete_line_membership', 'pg_order_complete_line_folder_access', 'pg_order_complete_line_gift_cards', 'pg_order_line_product_form_fields', 'pg_order_complete_line_form_update', 'pg_order_line_watcher', 'pg_order_complete_line_form_create', 'pg_order_form_insert_query', 'pg_order_complete_line_watcher') as $name) {
 		$call = strpos($tail, $name . '(');
 
 		if ($call !== false) {
@@ -97,6 +97,8 @@ function test_order_completion_tail_writes_in_order()
 		'product form read' => array('FROM form_data'),
 		'submitted form updated' => array('"UPDATE forms'),
 		'submitted form created' => array('"INSERT INTO forms ('),
+		'submitted form e-mails' => array("'action' => 'custom_form_submitted'"),
+		'watcher added' => array('"INSERT INTO watchers ('),
 		'reward points' => array('UPDATE user SET user_reward_points = ?'),
 		'contact groups' => array('"INSERT INTO contacts_contact_groups_xref ('),
 		'abandoned campaigns cancelled' => array('"UPDATE email_campaigns'),
@@ -410,4 +412,51 @@ function test_order_completion_product_form_number()
 	pg_assert_same(0, pg_order_product_form_number(1, array()), 'no product form');
 	pg_assert_same(2, pg_order_product_form_number(2, array(2 => array())), 'a later unit with its own form, the first without');
 	pg_assert_same(0, pg_order_product_form_number(1, array(2 => array())), 'the first unit without a form');
+}
+
+function test_order_completion_submit_order_creates_forms_through_the_function()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+
+	foreach (array('pg_order_line_watcher', 'pg_order_complete_line_form_create', 'pg_order_complete_line_watcher') as $name) {
+		pg_assert_same(1, substr_count($source, $name . '('), $name);
+	}
+
+	pg_assert_same(0, substr_count($source, 'INSERT INTO forms'), 'no form creation of its own');
+	pg_assert_same(0, substr_count($source, 'INSERT INTO watchers'), 'no watcher write of its own');
+	pg_assert_same(0, substr_count($source, "'custom_form_submitted'"), 'no form campaigns of its own');
+}
+
+function test_order_completion_form_insert_query_reads_the_order_row()
+{
+	$query = pg_order_form_insert_query(12, '7', '31', 'ABC123', array(
+		'tracking_code' => 'spring',
+		'affiliate_code' => "aff'1",
+		'http_referer' => 'https://example.com/a?b=1',
+		'ip_address' => '3405803785',
+	));
+
+	pg_assert_same(
+		"INSERT INTO forms (page_id, complete, user_id, contact_id, reference_code, tracking_code, affiliate_code, http_referer, ip_address, submitted_timestamp, last_modified_user_id, last_modified_timestamp) VALUES ('12', '1', '7', '31', 'ABC123', 'spring', 'aff\\'1', 'https://example.com/a?b=1', '3405803785', UNIX_TIMESTAMP(), '7', UNIX_TIMESTAMP())",
+		str_replace('( ', '(', preg_replace('/\s+/', ' ', pg_db_bind($query['sql'], $query['params'], 'addslashes'))),
+		'the origin from the order row, the IP as the number the order keeps'
+	);
+
+	$query = pg_order_form_insert_query(12, '', '31', 'ABC123', array());
+
+	pg_assert_same(array('12', '', '31', 'ABC123', '', '', '', '0', ''), $query['params'], 'no order row: empty origin, IP 0');
+}
+
+function test_order_completion_form_submitter_addresses()
+{
+	pg_assert_same(array('buyer@example.com', 'watch@example.com'), pg_order_form_submitter_addresses('buyer@example.com', array('id' => '5', 'email_address' => 'watch@example.com')), 'the buyer, then the watcher');
+	pg_assert_same(array('buyer@example.com'), pg_order_form_submitter_addresses('buyer@example.com', array()), 'no watcher');
+	pg_assert_same(array('buyer@example.com'), pg_order_form_submitter_addresses('buyer@example.com', array('id' => '', 'email_address' => 'x@example.com')), 'a watcher not found');
+}
+
+function test_order_completion_form_admin_addresses()
+{
+	pg_assert_same(array('a@example.com', 'b@example.com', 'to@example.com'), pg_order_form_admin_addresses(array('a@example.com', 'b@example.com', 'a@example.com'), 'to@example.com'), 'each option address once, then the to address');
+	pg_assert_same(array('to@example.com'), pg_order_form_admin_addresses(array('to@example.com'), 'to@example.com'), 'the to address once');
+	pg_assert_same(array(), pg_order_form_admin_addresses(array(), ''), 'nobody');
 }

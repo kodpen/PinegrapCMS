@@ -5326,22 +5326,9 @@ function submit_order($type) {
                 || ($product['submit_form_update'])
             )
         ) {
-            $add_watcher_user = array();
-
-            // If the add watcher feature was used where a watcher is stored in the session
-            // and then in the order item once the order item is added to the cart,
-            // then get watcher info so watcher can be added to form and page,
-            // and so it can be emailed.
-            if ($product['add_watcher'] != '') {
-                $add_watcher_user = db_item(
-                    "SELECT
-                        user_id AS id,
-                        user_email AS email_address
-                    FROM user
-                    WHERE
-                        (user_username = '" . escape($product['add_watcher']) . "')
-                        OR (user_email = '" . escape($product['add_watcher']) . "')");
-            }
+            // The user the line names as a watcher, so they are added to the form
+            // and the page and get the submitter e-mail (includes/fn/order_completion.php).
+            $add_watcher_user = pg_order_line_watcher($product);
 
             $pretty_urls = check_if_pretty_urls_are_enabled($product['submit_form_custom_form_page_id']);
 
@@ -5386,372 +5373,37 @@ function submit_order($type) {
                 }
 
                 // If submit form create is enabled, and a submitted form was not updated up above,
-                // then create a submitted form.
+                // then create a submitted form, its e-mails and campaigns; its origin
+                // comes from the order row (includes/fn/order_completion.php).
                 if (
                     ($product['submit_form_create'])
                     && ($submitted_form_updated == false)
                 ) {
-                    // Get custom form info.
-                    $custom_form_page = db_item(
-                        "SELECT
-                            page.page_id AS id,
-                            custom_form_pages.submitter_email,
-                            custom_form_pages.submitter_email_from_email_address,
-                            custom_form_pages.submitter_email_subject,
-                            custom_form_pages.submitter_email_format,
-                            custom_form_pages.submitter_email_body,
-                            custom_form_pages.submitter_email_page_id,
-                            custom_form_pages.administrator_email,
-                            custom_form_pages.administrator_email_to_email_address,
-                            custom_form_pages.administrator_email_bcc_email_address,
-                            custom_form_pages.administrator_email_subject,
-                            custom_form_pages.administrator_email_format,
-                            custom_form_pages.administrator_email_body,
-                            custom_form_pages.administrator_email_page_id
-                        FROM page
-                        LEFT JOIN custom_form_pages ON page.page_id = custom_form_pages.page_id
-                        WHERE
-                            (page.page_id = '" . $product['submit_form_custom_form_page_id'] . "')
-                            AND " . pg_form_page_sql('page'));
+                    $created_form_id = pg_order_complete_line_form_create(
+                        $product,
+                        array(
+                            'id' => (int) ($_SESSION['ecommerce']['order_id'] ?? 0),
+                            'user_id' => $user_id,
+                            'contact_id' => $contact_id,
+                            'billing_email_address' => $billing_email_address),
+                        $variable_fields,
+                        $product_form_quantity_number ? $product_form_variable_fields[$product_form_quantity_number] : null,
+                        $add_watcher_user,
+                        $pretty_urls);
 
-                    // If the custom form page was found, then continue to create submitted form.
-                    if ($custom_form_page['id']) {
-                        $submitter_email = $custom_form_page['submitter_email'];
-                        $submitter_email_from_email_address = $custom_form_page['submitter_email_from_email_address'];
-                        $submitter_email_subject = $custom_form_page['submitter_email_subject'];
-                        $submitter_email_format = $custom_form_page['submitter_email_format'];
-                        $submitter_email_body = $custom_form_page['submitter_email_body'];
-                        $submitter_email_page_id = $custom_form_page['submitter_email_page_id'];
-                        $administrator_email = $custom_form_page['administrator_email'];
-                        $administrator_email_to_email_address = $custom_form_page['administrator_email_to_email_address'];
-                        $administrator_email_bcc_email_address = $custom_form_page['administrator_email_bcc_email_address'];
-                        $administrator_email_subject = $custom_form_page['administrator_email_subject'];
-                        $administrator_email_format = $custom_form_page['administrator_email_format'];
-                        $administrator_email_body = $custom_form_page['administrator_email_body'];
-                        $administrator_email_page_id = $custom_form_page['administrator_email_page_id'];
-
-                        // Create record in database for submitted form.
-                        db(
-                            "INSERT INTO forms (
-                                page_id,
-                                complete,
-                                user_id,
-                                contact_id,
-                                reference_code,
-                                tracking_code,
-                                affiliate_code,
-                                http_referer,
-                                ip_address,
-                                submitted_timestamp,
-                                last_modified_user_id,
-                                last_modified_timestamp)
-                            VALUES (
-                                '" . $product['submit_form_custom_form_page_id'] . "',
-                                '1',
-                                '" . $user_id . "',
-                                '" . $contact_id . "',
-                                '" . generate_form_reference_code() . "',
-                                '" . escape(get_tracking_code()) . "',
-                                '" . escape(get_affiliate_code()) . "',
-                                '" . escape($_SESSION['software']['http_referer'] ?? '') . "',
-                                IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR']) . "'), 0),
-                                UNIX_TIMESTAMP(),
-                                '" . $user_id . "',
-                                UNIX_TIMESTAMP())");
-
-                        $submitted_form_id = mysqli_insert_id(db::$con);
-                        
-                        // Get valid submit form fields for this product so we can determine
-                        // which fields need to be set for submitted form.
-                        $submit_form_fields = db_items(
-                            "SELECT
-                                product_submit_form_fields.form_field_id,
-                                product_submit_form_fields.value,
-                                form_fields.name,
-                                form_fields.type,
-                                form_fields.wysiwyg
-                            FROM product_submit_form_fields
-                            LEFT JOIN form_fields ON product_submit_form_fields.form_field_id = form_fields.id
-                            WHERE
-                                (form_fields.id IS NOT NULL)
-                                AND (product_submit_form_fields.product_id = '$product_id')
-                                AND (product_submit_form_fields.action = 'create')
-                                AND (form_fields.type != 'information')
-                                AND (form_fields.type != 'file upload')");
-
-                        $administrator_email_addresses = array();
-
-                        // Loop through the submit form fields, in order to set them.
-                        foreach ($submit_form_fields as $submit_form_field) {
-
-                            // Replace variables (e.g. ^^order_number^^) in the value.
-                            $value = replace_variables(array(
-                                'content' => $submit_form_field['value'],
-                                'fields' => $variable_fields,
-                                'format' => 'plain_text'));
-
-                            // If a product form was found, then replace variables for it.
-                            if ($product_form_quantity_number) {
-                                $value = replace_variables(array(
-                                    'content' => $value,
-                                    'fields' => $product_form_variable_fields[$product_form_quantity_number],
-                                    'format' => 'plain_text'));
-                            }
-
-                            // assume that the form data type is standard until we find out otherwise
-                            $form_data_type = 'standard';
-                            
-                            // if the form field's type is date, date and time, or time, then set form data type to the form field type
-                            if (
-                                ($submit_form_field['type'] == 'date')
-                                || ($submit_form_field['type'] == 'date and time')
-                                || ($submit_form_field['type'] == 'time')
-                            ) {
-                                $form_data_type = $submit_form_field['type'];
-                                
-                            // else if the form field is a wysiwyg text area, then set type to html.
-                            } elseif (($submit_form_field['type'] == 'text area') && ($submit_form_field['wysiwyg'] == 1)) {
-                                $form_data_type = 'html';
-                            }
-
-                            // Insert form_data record for this field.
-                            db(
-                                "INSERT INTO form_data (
-                                    form_id,
-                                    form_field_id,
-                                    data,
-                                    name,
-                                    type)
-                                VALUES (
-                                    '$submitted_form_id',
-                                    '" . $submit_form_field['form_field_id'] . "',
-                                    '" . escape($value) . "',
-                                    '" . escape($submit_form_field['name']) . "',
-                                    '$form_data_type')");
-
-                            // if field is a pick list, checkbox or radio button, then add e-mail addressess
-                            // for form field options to array if there are any,
-                            // so that we can later send e-mails to those administrators
-                            if (($submit_form_field['type'] == 'pick list') || ($submit_form_field['type'] == 'radio button') || ($submit_form_field['type'] == 'check box')) {
-                                $email_addresses = db_values(
-                                    "SELECT email_address
-                                    FROM form_field_options
-                                    WHERE
-                                        (form_field_id = '" . $submit_form_field['form_field_id'] . "')
-                                        AND (email_address != '')
-                                        AND (value = '" . escape($value) . "')");
-                                
-                                foreach ($email_addresses as $email_address) {
-                                    if (in_array($email_address, $administrator_email_addresses) == false) {
-                                        $administrator_email_addresses[] = $email_address;
-                                    }
-                                }
-                            }
-                        }
-
-                        // If pretty URLs are enabled, then update the address name.
-                        if ($pretty_urls == true) {
-                            update_submitted_form_address_name($submitted_form_id);
-                        }
-
-                        // If the submitter email is enabled, then send it to the submitter.
-                        if ($submitter_email == 1) {
-                            // Prepare array to store email address for submitter and
-                            // any watcher that was added through the hidden add watcher feature.
-                            $submitter_and_watcher_email_addresses = array();
-
-                            $submitter_and_watcher_email_addresses[] = $billing_email_address;
-
-                            // If the add watcher feature was used and a user was found for the watcher,
-                            // then add watcher's email address to array.
-                            if (!empty($add_watcher_user['id'])) {
-                                $submitter_and_watcher_email_addresses[] = $add_watcher_user['email_address'];
-                            }
-
-                            // Loop through the submitter and watcher email addresses,
-                            // in order to send a separate email to each one.  We don't just
-                            // want to send one email with multiple tos because they can see eachother's
-                            // email address that way.  We don't need to re-prepare the subject
-                            // and body for every round of this loop, because they will be the same each time,
-                            // however we are just doing it like that for now to save development time.
-                            foreach ($submitter_and_watcher_email_addresses as $to_email_address) {
-                                
-                                if ($submitter_email_from_email_address != '') {
-                                    $from_email_address = $submitter_email_from_email_address;
-                                } else {
-                                    $from_email_address = EMAIL_ADDRESS;
-                                }
-                                
-                                // The signed links (^^email_preferences_url^^, ^^confirm_subscription_url^^)
-                                // go into the billing address's own copy only; a watcher's copy gets them empty.
-                                // The order's form has no contact of its own, so there is no confirmation link.
-                                if ($to_email_address == $billing_email_address) {
-                                    pg_cf_mail_links_context(array(
-                                        'email_address' => $billing_email_address,
-                                        'contact_id' => 0,
-                                        'custom_form_page_id' => (int) $product['submit_form_custom_form_page_id'],
-                                        'form_id' => (int) $submitted_form_id));
-                                } else {
-                                    pg_cf_mail_links_context(false);
-                                }
-
-                                $mail_link_values = pg_cf_mail_link_values();
-
-                                // The link fields go into the template before the submitted values, so a
-                                // value holding "[[" or "]]" cannot open or close a block around other text.
-                                // $submitter_email_subject stays the template for the next recipient.
-                                $subject = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, pg_cf_fill_mail_links($submitter_email_subject, $mail_link_values, 'plain_text'), $prepare_for_html = FALSE);
-
-                                // if the format of the e-mail should be plain text, then prepare that
-                                if ($submitter_email_format == 'plain_text') {
-
-                                    // Check the body for variable data and replace any variables with content from the submitted form.
-                                    // An empty body becomes the list of the form's fields (pg_cf_email_body_or_default()).
-                                    $body = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, pg_cf_fill_mail_links(pg_cf_email_body_or_default($product['submit_form_custom_form_page_id'], $submitter_email_body, true), $mail_link_values, 'plain_text'), $prepare_for_html = FALSE);
-
-                                // else the format of the e-mail should be HTML, so prepare that
-                                } else {
-
-                                    require_once(dirname(__FILE__) . '/get_page_content.php');
-
-                                    $body = get_page_content($submitter_email_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, array('form_id' => $submitted_form_id));
-
-                                    // Bare link fields only: the body already holds the submitted values.
-                                    $body = pg_cf_fill_mail_link_tokens($body, $mail_link_values, 'html');
-                                }
-                                
-                                email(array(
-                                    'to' => $to_email_address,
-                                    'from_name' => ORGANIZATION_NAME,
-                                    'from_email_address' => $from_email_address,
-                                    'subject' => $subject,
-                                    'format' => $submitter_email_format,
-                                    'body' => $body,
-                                    // A signed link stays out of the failure log and the delivery-failed notice.
-                                    'secret' => pg_cf_mail_links_in($subject . $body, $mail_link_values),
-                                    'queue' => true));
-
-                                pg_cf_mail_links_context(false);
-
-                            }
-                        }
-                        
-                        // if an administrator e-mail is enabled and there is an e-mail address to e-mail, then send e-mail
-                        if (($administrator_email == 1) && (($administrator_email_to_email_address != '') || ($administrator_email_bcc_email_address != '') || (count($administrator_email_addresses) > 0))) {
-                            
-                            // if there is a to e-mail address and it has not already been added to the array, then add it
-                            if (($administrator_email_to_email_address != '') && (in_array($administrator_email_to_email_address, $administrator_email_addresses) == false)) {
-                                $administrator_email_addresses[] = $administrator_email_to_email_address;
-                            }
-                            
-                            // The signed links belong to the buyer alone: empty in the administrator's
-                            // e-mail, filled into the template before the submitted values go in.
-                            $administrator_email_subject = pg_cf_fill_mail_links($administrator_email_subject, array(), 'plain_text');
-
-                            // check the subject line for variable data and replace any variables with content from the submitted form
-                            $administrator_email_subject = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, $administrator_email_subject, $prepare_for_html = FALSE);
-
-                            // if the format of the e-mail should be plain text, then prepare that
-                            if ($administrator_email_format == 'plain_text') {
-
-                                // Check the body for variable data and replace any variables with content from the submitted form.
-                                // An empty body becomes the list of the form's fields (pg_cf_email_body_or_default()).
-                                $body = get_variable_submitted_form_data_for_content($product['submit_form_custom_form_page_id'], $submitted_form_id, pg_cf_fill_mail_links(pg_cf_email_body_or_default($product['submit_form_custom_form_page_id'], $administrator_email_body), array(), 'plain_text'), $prepare_for_html = FALSE);
-
-                            // else the format of the e-mail should be HTML, so prepare that
-                            } else {
-
-                                require_once(dirname(__FILE__) . '/get_page_content.php');
-
-                                // The administrator's e-mail in the site's own language.
-                                if (function_exists('pg_tr_suspend')) {
-                                    pg_tr_suspend(true);
-                                }
-
-                                $body = get_page_content($administrator_email_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, array('form_id' => $submitted_form_id));
-
-                                if (function_exists('pg_tr_suspend')) {
-                                    pg_tr_suspend(false);
-                                }
-
-                                $body = pg_cf_fill_mail_link_tokens($body, array(), 'html');
-
-                            }
-
-                            // In the past we would set the from info to the submitter's address (if one existed),
-                            // however this caused issues with mail providers using DMARC (e.g. Yahoo, AOL),
-                            // so we now send it from this site's info and add a reply to for the submitter (if exists).
-                            
-                            email(array(
-                                'to' => $administrator_email_addresses,
-                                'bcc' => $administrator_email_bcc_email_address,
-                                'from_name' => ORGANIZATION_NAME,
-                                'from_email_address' => EMAIL_ADDRESS,
-                                'reply_to' => $billing_email_address,
-                                'subject' => $administrator_email_subject,
-                                'format' => $administrator_email_format,
-                                'body' => $body,
-                                'queue' => true));
-
-                        }
-
-                        // Check if there are auto e-mail campaigns that should be created based on this custom form being submitted.
-                        create_auto_email_campaigns(array(
-                            'action' => 'custom_form_submitted',
-                            'action_item_id' => $product['submit_form_custom_form_page_id'],
-                            'contact_id' => $contact_id));
+                    if ($created_form_id) {
+                        $submitted_form_id = $created_form_id;
 
                         // Remember that a form was created for this quantity number,
                         // for use later when we add a comment.
                         $forms[$quantity_number] = array(
                             'id' => $submitted_form_id,
                             'type' => 'created');
-
                     }
                 }
 
-                // If the add watcher feature has been used, and there is a page selected
-                // for the add comment feature, and the page exists, then add watcher for that page.
-                if (
-                    (!empty($add_watcher_user['id']))
-                    && ($product['add_comment_page_id'])
-                ) {
-                    // Check if form item view page exists for the add comment page.
-                    $add_watcher_page = db_item(
-                        "SELECT page_id AS id
-                        FROM page
-                        WHERE
-                            (page_id = '" . $product['add_comment_page_id'] . "')
-                            AND (page_type = 'form item view')
-                            AND (comments = '1')
-                            AND (comments_watcher_email_page_id != '0')");
-
-                    // If a page was found then continue to determine if we should add watcher.
-                    if ($add_watcher_page['id']) {
-                        // If the user is not already a watcher, then add watcher.
-                        if (db_value(
-                            "SELECT COUNT(*)
-                            FROM watchers
-                            WHERE
-                                (user_id = '" . $add_watcher_user['id'] . "')
-                                AND (page_id = '" . $add_watcher_page['id'] . "')
-                                AND (item_id = '$submitted_form_id')
-                                AND (item_type = 'submitted_form')") == 0
-                        ) {
-                            db(
-                                "INSERT INTO watchers (
-                                    user_id,
-                                    page_id,
-                                    item_id,
-                                    item_type)
-                                 VALUES (
-                                    '" . $add_watcher_user['id'] . "',
-                                    '" . $add_watcher_page['id'] . "',
-                                    '$submitted_form_id',
-                                    'submitted_form')");
-                        }
-                    }
-                }
+                // The watcher watches the unit's form on the add comment page.
+                pg_order_complete_line_watcher($product, $add_watcher_user, $submitted_form_id);
 
             }
             
