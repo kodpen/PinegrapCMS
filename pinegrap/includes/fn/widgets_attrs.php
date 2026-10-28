@@ -182,12 +182,31 @@ function pg_sw_attr_resolve($html, $nonce)
         }
     }
 
-    $out = '';
-    $pos = 0;
+    $out  = '';
+    $pos  = 0;
+    $drop = '/\s(?:' . implode('|', pg_sw_attr_dropped_when_empty()) . ')="$/i';
     foreach ($events as $i => $ev) {
         if ($ev[1] !== 0) continue;
-        $out .= substr($html, $pos, $ev[0] - $pos) . (isset($values[$i]) ? $values[$i] : '');
-        $pos  = $ev[3];
+        $out  .= substr($html, $pos, $ev[0] - $pos);
+        $value = isset($values[$i]) ? $values[$i] : '';
+        $pos   = $ev[3];
+        // A switch or a limit whose whole value is an empty token is left
+        // out: required="" would still require, maxlength="" is invalid.
+        if ($value === '' && substr($html, $pos, 1) === '"' && preg_match($drop, substr($out, -16), $m)) {
+            $out = substr($out, 0, -strlen($m[0]));
+            $pos++;
+            continue;
+        }
+        $out .= $value;
     }
     return $out . substr($html, $pos);
+}
+
+// The attributes left out when their whole value is one {{token}} that is
+// empty: the switches (any value turns them on) and the limits (an empty
+// one is invalid), so a row's value decides whether a control has them.
+function pg_sw_attr_dropped_when_empty()
+{
+    return array('required', 'multiple', 'checked', 'selected', 'disabled', 'readonly',
+                 'maxlength', 'minlength', 'min', 'max', 'step', 'size', 'rows', 'cols');
 }

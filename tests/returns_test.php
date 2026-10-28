@@ -398,6 +398,31 @@ function test_returns_badge_class()
 	pg_assert_contains('text-bg-secondary', pg_return_badge_class('unknown'));
 }
 
+// The panel twin: the same tone per status as a Bootstrap 6 theme, never
+// text-bg-* (the panel has no such class).
+function test_returns_panel_badge_class()
+{
+	foreach (pg_return_statuses() as $status) {
+		$site = pg_return_badge_class($status);
+		$panel = pg_return_panel_badge_class($status);
+		pg_assert_same(str_replace('text-bg-', 'theme-', $site), $panel, $status);
+		pg_assert_true(strpos($panel, 'text-bg-') === false, $status . ': no text-bg-*');
+	}
+
+	pg_assert_same('badge theme-warning', pg_return_panel_badge_class('requested'));
+	pg_assert_same('badge theme-secondary', pg_return_panel_badge_class('unknown'));
+	pg_assert_same('badge theme-secondary', pg_return_panel_badge_class(null));
+
+	foreach (array('view_returns.php', 'view_return.php') as $path) {
+		$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/' . $path);
+		pg_assert_contains('pg_return_panel_badge_class($status)', $source, $path);
+		pg_assert_true(strpos($source, 'pg_return_badge_class(') === false, $path . ': site badge in the panel');
+	}
+
+	$html = pg_returns_panel_card_html(array(array('id' => 7, 'status' => 'refunded', 'requested_at' => 0, 'items' => array())));
+	pg_assert_contains('badge theme-success', $html, 'panel card');
+}
+
 // The classic order view prints a long date as plain text: the builders
 // escape the dates, so a <time> element would show as text.
 function test_returns_classic_date()
@@ -687,7 +712,7 @@ function test_returns_panel_card_html()
 	pg_assert_contains('href="view_return.php?id=7"', $html, 'linked');
 	pg_assert_contains('href="view_return.php?id=3"', $html, 'every return');
 	pg_assert_contains('3 item(s)', $html, 'quantities added up');
-	pg_assert_contains('text-bg-info', $html, 'status badge');
+	pg_assert_contains('badge theme-info', $html, 'status badge');
 	pg_assert_contains('view_returns.php', $html, 'to the list');
 	pg_assert_false(strpos($html, 'add_return.php') !== false, 'no form offered when nothing is left');
 

@@ -165,7 +165,6 @@ function pg_short_link_form_cards($liveform, $form)
                                                     <div class="input-group ">
                                                         <label for="name" class="input-group-text material-icons" title="' . lang('This option determines the url address of the short link.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Short Link Name') . '}">public</label>
                                                         ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>pg_short_link_url_max(), 'placeholder'=>lang('Short Link Name'), 'required'=>'required')) . '
-                                                        <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                     </div>
                                                     <div class="form-text">' . pg_short_link_name_rule_text() . '</div>
                                                     <div class="form-text">' . lang('An old address can be pasted as it is: only its path is kept. A name with a * is tried only where no page answers, and it always redirects.') . '</div>

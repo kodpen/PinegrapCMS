@@ -114,3 +114,61 @@ function test_classic_style_frame_places_converted_common_region()
 	}
 	pg_assert_same(array('ref:9:Footer', 'common:note'), $kinds);
 }
+
+function test_classic_style_site_file_name()
+{
+	pg_assert_same('custom.css', pg_classic_style_site_file_name('{path}custom.css', '/'));
+	pg_assert_same('custom.css', pg_classic_style_site_file_name('{PATH}custom.css?v=3', '/'));
+	pg_assert_same('my file.js', pg_classic_style_site_file_name('{path}my%20file.js#x', '/'));
+	pg_assert_same('custom.css', pg_classic_style_site_file_name('/custom.css', '/'));
+	pg_assert_same('custom.css', pg_classic_style_site_file_name('/site/custom.css', '/site/'));
+	pg_assert_same('', pg_classic_style_site_file_name('{path}{software_directory}/livesite.src.css', '/'));
+	pg_assert_same('', pg_classic_style_site_file_name('//cdnjs.cloudflare.com/a/flexslider.css', '/'));
+	pg_assert_same('', pg_classic_style_site_file_name('https://example.com/custom.css', '/'));
+	pg_assert_same('', pg_classic_style_site_file_name('{path}css/custom.css', '/'));
+	pg_assert_same('', pg_classic_style_site_file_name('custom.css', '/'));
+	pg_assert_same('', pg_classic_style_site_file_name('{path}', '/'));
+}
+
+function test_classic_style_managed_files()
+{
+	$doc = _test_csd_doc(
+		'<link rel="stylesheet" href="{path}theme.css"><link rel="stylesheet" href="{path}custom.css?v=2">'
+		. '<link rel="stylesheet" href="//cdn.example.com/x.css"><link rel="stylesheet" href="{path}{software_directory}/livesite.src.css">'
+		. '<script src="{path}scripts.js"></script><script src="{path}missing.js"></script>',
+		'<pregion></pregion>'
+	);
+	$f = pg_classic_style_frame($doc);
+	$own = function ($name) { return in_array($name, array('custom.css', 'scripts.js'), true); };
+	$css = pg_classic_style_managed_files($f['css'], $own, '/');
+	$js  = pg_classic_style_managed_files($f['js'], $own, '/');
+
+	$row = function ($list) {
+		return array_map(function ($a) { return array($a['type'], $a['name'], $a['content'], $a['_file']); }, $list);
+	};
+	pg_assert_same(array(
+		array('external-css', '{path}theme.css', '{path}theme.css', false),
+		array('external-css', 'custom.css', '/custom.css', true),
+		array('external-css', 'x.css', '//cdn.example.com/x.css', false),
+		array('external-css', 'livesite.src.css', '{path}{software_directory}/livesite.src.css', false),
+	), $row($css));
+	pg_assert_same(array(
+		array('external-js', 'scripts.js', '/scripts.js', true),
+		array('external-js', '{path}missing.js', '{path}missing.js', false),
+	), $row($js));
+}
+
+function test_classic_style_managed_files_dedupes_and_keeps_module()
+{
+	$list = array(
+		pg_di_asset_entry('external-js', 'a.js', '{path}a.js', false),
+		pg_di_asset_entry('external-js', 'a.js', '{path}a.js?v=2', false),
+		pg_di_asset_entry('css', 'inline.css', 'body{}', false),
+	);
+	$list[0]['module'] = true;
+	$out = pg_classic_style_managed_files($list, function () { return true; }, '/');
+	pg_assert_same(2, count($out));
+	pg_assert_same('/a.js', $out[0]['content']);
+	pg_assert_true(!empty($out[0]['module']));
+	pg_assert_same('css', $out[1]['type']);
+}

@@ -90,7 +90,9 @@ $reviewed = array(
 	'assets/js/page_designer.js' => array('btn-danger -> btn-solid theme-danger' => 1),
 	// The form validation script sets v5's class; panel CSS styles it.
 	// A theme stem whose values are v6 themes (`'bg-' + tone`).
-	'assets/js/backend.src.js' => array('bg-"' => 1, 'was-validated' => 1),
+	// The DataTables column menu keeps dropdown-menu / dropdown-item beside
+	// menu / menu-item: DataTables' own rule for them keeps the list in flow.
+	'assets/js/backend.src.js' => array('bg-"' => 1, 'was-validated' => 1, 'dropdown-menu' => 1, 'dropdown-item' => 1),
 	'includes/fn/output.php' => array("bg-'" => 2),
 	'includes/workspace/render.php' => array("text-'" => 1),
 	// removeClass() naming both themes the status line switches between.
@@ -171,6 +173,15 @@ foreach (bs6_scope_files($product) as $path => $kind) {
 			}
 
 			$add($check, $kind, $path, bs6_line_of($source, $match[1]), $match[0]);
+		}
+	}
+
+	// v6 floats a .form-floating label only when it comes before its field.
+	if ($ext !== 'css' && strpos($source, 'form-floating') !== false) {
+		foreach (bs6_floating_labels_after_control($source) as $offset) {
+			if (!($site_output && bs6_in_ranges($offset, $site_output))) {
+				$add('form-floating label after its field (v6 floats it only before)', $kind, $path, bs6_line_of($source, $offset), 'form-floating');
+			}
 		}
 	}
 

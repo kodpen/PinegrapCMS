@@ -363,7 +363,7 @@ function pg_dashboard_widget_18($request, $user)
                    href="edit_file.php?id=' . h($fm_item['id']) . '&amp;send_to=' . h(PATH . SOFTWARE_DIRECTORY . '/welcome.php') . '">' . h($fm_shorten($fm_item['name'])) . '</a>
                 <span class="fg-secondary flex-shrink-0" style="font-size:11px">' . h(convert_bytes_to_string($fm_size, 1)) . '</span>
             </div>
-            <div class="progress mt-1" style="height:4px;background:rgba(0,0,0,.06)">
+            <div class="progress mt-1" style="height:4px;background:var(--pg-bg-2)">
                 <div class="progress-bar bg-secondary" style="width:' . $fm_width . '%"></div>
             </div>
         </div>';

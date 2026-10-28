@@ -199,8 +199,30 @@ if (!$_POST) {
     // date, once it is invoiced.
     $order_on_account = !empty($row['erp_on_account']);
 
+    // A PayPal Checkout payment PayPal left pending (under review, an eCheck)
+    // waits the same way, but on PayPal rather than on a bank statement.
+    $order_payment_pending = $order_awaiting_payment && pg_order_payment_pending($row);
+
+    if ($order_on_account) {
+        $awaiting_badge_text = lang('On account');
+    } elseif ($order_payment_pending) {
+        $awaiting_badge_text = lang('Payment pending on PayPal');
+    } else {
+        $awaiting_badge_text = lang('Awaiting bank transfer');
+    }
+
     $output_awaiting_badge = $order_awaiting_payment
-        ? ' <span class="badge theme-warning fg-black">' . ($order_on_account ? lang('On account') : lang('Awaiting bank transfer')) . '</span>'
+        ? ' <span class="badge theme-warning fg-black">' . $awaiting_badge_text . '</span>'
+        : '';
+
+    $output_payment_pending_banner = $order_payment_pending
+        ? '<div class="alert theme-warning d-flex align-items-center gap-3 pg-print-none" role="alert">
+                <i class="bi bi-hourglass-split"></i>
+                <div class="flex-grow-1">
+                    <strong>' . lang('Payment pending on PayPal') . '</strong>
+                    <div class="small">' . lang('PayPal has not settled this payment yet and may still deny it. Check it on PayPal before shipping, and record it with Payment Received once PayPal completes it.') . '</div>
+                </div>
+            </div>'
         : '';
 
     // The reason is typed when the order is cancelled and was stored without
@@ -2235,8 +2257,9 @@ if (!$_POST) {
     $output_cancel_button = '';
     $output_cancel_modal  = '';
 
-    // Bank transfer that has not arrived yet: the operator records the money
-    // when they see it on the statement. The button carries its own form,
+    // Bank transfer that has not arrived yet, or a PayPal payment still
+    // pending: the operator records the money when they see it on the
+    // statement or PayPal completes it. The button carries its own form,
     // because the button bar sits outside the order form and a nested form
     // would not post.
     $output_mark_paid_button = '';
@@ -2246,7 +2269,7 @@ if (!$_POST) {
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . h($_GET['id']) . '">
                 <input type="hidden" name="send_to" value="' . h($_GET['send_to'] ?? '') . '">
-                <button type="submit" name="submit_mark_paid" value="paid" class="btn btn-solid theme-primary btn-sm" data-confirm-content="' . lang('Record that the bank transfer for this order has arrived?') . '"><i class="bi bi-cash-coin me-1"></i>' . lang('Payment Received') . '</button>
+                <button type="submit" name="submit_mark_paid" value="paid" class="btn btn-solid theme-primary btn-sm" data-confirm-content="' . ($order_payment_pending ? lang('Record that PayPal completed the payment for this order?') : lang('Record that the bank transfer for this order has arrived?')) . '"><i class="bi bi-cash-coin me-1"></i>' . lang('Payment Received') . '</button>
             </form>';
     }
 
@@ -2658,6 +2681,7 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
+                ' . $output_payment_pending_banner . '
                 ' . $output_refund_banner . '
                 <div class="row mb-3  flex-wrap pg-print-none">
                     <div class="col-12 sm:col-12 text-center md:text-start">

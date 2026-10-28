@@ -187,7 +187,7 @@ $bucket_classes = array(
     'd1_30' => 'bg-info',
     'd31_60' => 'bg-warning',
     'd61_90' => 'bg-danger',
-    'd90p' => 'bg-black',
+    'd90p' => 'bg-inverse',
 );
 
 $output_bar = '';
@@ -230,7 +230,7 @@ if ($output_top === '') {
                         <tr data-pg-sort-fixed><td colspan="3" class="fg-secondary">' . lang('Nothing is overdue.') . '</td></tr>';
 }
 
-$card_header = 'card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold';
+$card_header = 'card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold';
 
 // ------------------------------------------------------------- e-documents
 // The counts are the lengths of the register's e-document views, so a click

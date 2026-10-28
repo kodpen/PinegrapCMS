@@ -130,6 +130,10 @@ function test_submitted_form_list_row()
 		define('DATE_FORMAT', 'day_month');
 	}
 
+	if (!defined('TIME_FORMAT')) {
+		define('TIME_FORMAT', 'twenty_four_hours');
+	}
+
 	$row = pg_submitted_form_list_row(array(
 		'id' => '12', 'complete' => '1', 'form_name' => '<b>Form</b>', 'reference_code' => 'R&1',
 		'contact_id' => '4', 'contact_name' => ' ', 'submitted_username' => null,

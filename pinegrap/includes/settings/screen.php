@@ -120,7 +120,7 @@ if (!$_POST) {
     foreach (array(array($pg_settings_prev, 'bi-chevron-left', lang('Previous')), array($pg_settings_next, 'bi-chevron-right', lang('Next'))) as $pg_settings_step) {
 
         if ($pg_settings_step[0] === '') {
-            $pg_settings_step_links .= '<button type="button" class="btn btn-sm btn-text theme-secondary" disabled="disabled"><i class="bi ' . $pg_settings_step[1] . '" aria-hidden="true"></i></button>';
+            $pg_settings_step_links .= '<button type="button" class="btn btn-sm btn-text theme-secondary" disabled="disabled" aria-label="' . h($pg_settings_step[2]) . '"><i class="bi ' . $pg_settings_step[1] . '" aria-hidden="true"></i></button>';
             continue;
         }
 
@@ -227,7 +227,7 @@ if (!$_POST) {
                     sign-in form, and it answers by writing the saved username into
                     whichever field it takes for the username box.
                 -->
-                <input id="fake_user_name" name="fake_user[name]" style="position:absolute; top:-100px;" type="text" value="No Autofill for Site Settings">
+                <input id="fake_user_name" name="fake_user[name]" style="position:absolute; top:-100px;" type="text" tabindex="-1" aria-hidden="true" value="No Autofill for Site Settings">
                 ' . get_token_field() . '
 
                 <div class="pg-set-masonry pg-settings-body" id="pg_settings_sections">

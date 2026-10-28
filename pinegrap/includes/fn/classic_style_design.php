@@ -97,6 +97,65 @@ function pg_classic_style_frame($style_code, $lookup = null)
 }
 
 /**
+ * The file name a classic style's link to one of the site's own files
+ * names ({path}custom.css, or the same under the site's output path), or ''
+ * for any other reference: a CDN, a software file ({software_directory}), a
+ * path below a folder (files are stored flat, by name).
+ *
+ * Pure: no query, no file.
+ *
+ * @param string $ref          the link's href or the script's src
+ * @param string $output_path  OUTPUT_PATH ('' to skip that form)
+ */
+function pg_classic_style_site_file_name($ref, $output_path)
+{
+    $ref = trim((string)$ref);
+    $rest = null;
+    if (stripos($ref, '{path}') === 0) {
+        $rest = (string)substr($ref, 6);
+    } elseif ($output_path !== '' && $output_path !== '/' && strpos($ref, (string)$output_path) === 0) {
+        $rest = (string)substr($ref, strlen($output_path));
+    } elseif ($output_path === '/' && $ref !== '' && $ref[0] === '/' && substr($ref, 0, 2) !== '//') {
+        $rest = (string)substr($ref, 1);
+    }
+    if ($rest === null || $rest === '' || stripos($rest, '{software_directory}') !== false) return '';
+    $rest = (string)preg_replace('/[?#].*$/s', '', $rest);
+    if ($rest === '' || strpos($rest, '/') !== false || strpos($rest, '\\') !== false) return '';
+    return rawurldecode($rest);
+}
+
+/**
+ * The style's own CSS/JS files made managed file entries of the design
+ * (the shape designer_file/create writes): the assets panel opens them as
+ * editable tabs (designer_file/read, save) once the page designer is gone.
+ * A link to anything else stays as the importer wrote it, and so does a
+ * theme file: the theme screens edit it.
+ *
+ * Pure apart from $is_own_file.
+ *
+ * @param array    $list         assets panel entries (css or js)
+ * @param callable $is_own_file  function ($name): true for a design file of
+ *                               the site that is not a theme
+ * @param string   $output_path  OUTPUT_PATH
+ */
+function pg_classic_style_managed_files($list, $is_own_file, $output_path)
+{
+    $out = array();
+    foreach ((array)$list as $a) {
+        if (is_array($a) && empty($a['_file']) && in_array($a['type'] ?? '', array('external-css', 'external-js'), true)) {
+            $name = pg_classic_style_site_file_name((string)($a['content'] ?? ''), (string)$output_path);
+            if ($name !== '' && $is_own_file($name)) {
+                $a['name']    = $name;
+                $a['content'] = (string)$output_path . $name;
+                $a['_file']   = true;
+            }
+        }
+        $out[] = $a;
+    }
+    return pg_di_dedupe_assets($out);
+}
+
+/**
  * The tree of one page of a converted style: the style's body attributes
  * and title on the root, the frame component as its only child.
  *
@@ -195,6 +254,14 @@ function pg_classic_style_design_open($style_id, $user)
         return array('regionType' => 'common');
     };
     $frame = pg_classic_style_frame((string)$row['style_code'], $lookup);
+
+    // The style's own design files stay editable in the designer.
+    $is_own_file = function ($name) {
+        $file = db_item("SELECT theme FROM files WHERE design = '1' AND name = '" . e($name) . "' LIMIT 1");
+        return is_array($file) && (string)$file['theme'] !== '1';
+    };
+    $frame['css'] = pg_classic_style_managed_files($frame['css'], $is_own_file, OUTPUT_PATH);
+    $frame['js']  = pg_classic_style_managed_files($frame['js'],  $is_own_file, OUTPUT_PATH);
 
     $component = pg_classic_style_component($style_id, (string)$row['style_name'], $frame['frame'], $user);
     if (!is_array($component)) {
