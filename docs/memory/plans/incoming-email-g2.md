@@ -4,7 +4,7 @@ description: G2 of incoming e-mail (IMAP read) cut into three PRs: G2a client (p
 ---
 
 ## Which steps, and where do they stand?
-- G2a: the socket IMAP client `pg_imap_*()` (`workspace/mail-imap-client.md`). PR #PRNUM.
+- G2a: the socket IMAP client `pg_imap_*()` (`workspace/mail-imap-client.md`). PR #2764.
 - G2b: the box card in `mail_settings.php`: provider (Gmail, Outlook.com, Yandex, iCloud, Zoho, other) filling IMAP host/port and `settings.auth_server` (`mx.google.com` for Gmail and Google Workspace…), user, password sealed with `pg_connect_seal()` (drawn empty, an empty box keeps it; no box saves a password while `pg_connect_can_seal()` is false), folder, after-fetch (seen | move + folder), "Test connection" (connect, sign in, EXAMINE the folder; says the error code in words, Gmail's app-password hint). No schema change: all in `settings` and the G1 columns.
 - G2c: `ws_mail_fetch($box)` and its inline pass in `job.php` (a `pg_cron_jobs()` entry `workspace_mail_job`, inline like `push_job`, own script for a dedicated cron line), `checked_at` / `ok_at` / `last_error` written, a System status row (a box whose `ok_at` is over an hour behind `checked_at`, or `last_error` set), the card's "Last checked" line and the Mailboxes card text that still says reading comes later.
 
