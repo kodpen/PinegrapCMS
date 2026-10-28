@@ -81,6 +81,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - edit-screen-wide-layout.md: Owner decision for panel edit screens: a wide screen is not spent on one column of stacked cards; form column, sticky status column, sticky save bar, modeled on product_builder.php.
 - email-campaign-profile-shared-form.md: The campaign profile create and edit screens share includes/forms/email_campaign_profile_form.php
 - explorer-grid-tiles.md: Explorer grid tiles (view_folders.php, catalog and files): the tile size scale, picture vs glyph, the missing-picture plate sized from --pg-tile-icon, the narrow pill it fixed (PR #2200)
+- explorer-keyboard.md: File manager (view_folders.php) from the keyboard: shortcuts leave focused controls alone, crumbs with href, Quick Look focus and Tab trap, the context menu from ContextMenu/Shift+F10 (#2783)
 - explorer-search-state.md: What the file manager (view_folders.php) redraws when its search box or filters narrow the listing: status bar count, selection strip, preview pane; what is still open (#2053)
 - field-shared-form.md: The form field create and edit screens share includes/forms/field_form.php
 - flex-overflow-hidden-pitfall.md: CSS pitfall - any overflow value other than visible zeroes a flex item's automatic minimum size (min-height: auto), collapsing panels on narrow screens.

@@ -1637,7 +1637,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 </div>
 
 <!-- Right-click menu. Rebuilt for each target; positioned fixed. -->
-<ul id="explorer_menu" class="menu"></ul>
+<ul id="explorer_menu" class="menu" tabindex="-1"></ul>
 
 <!-- Asking for a product file.
      A form rather than a link: a selection of several thousand products does
@@ -2028,17 +2028,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
      keys walk the listing under it -- which is how a folder of photographs is
      gone through. Not a Bootstrap modal: it takes the whole screen, carries
      its own keys, and must sit above the chat launcher. -->
-<div id="explorer_quicklook" class="d-none" role="dialog" aria-modal="true">
+<div id="explorer_quicklook" class="d-none" role="dialog" aria-modal="true" aria-labelledby="quicklook_name">
     <div class="ql-bar">
         <span class="ql-name" id="quicklook_name"></span>
         <span class="ql-meta" id="quicklook_meta"></span>
         <span class="ms-auto d-flex align-items-center gap-1" id="quicklook_tools"></span>
-        <button type="button" class="btn btn-sm btn-text theme-secondary no-popover" id="quicklook_close" title="<?php echo lang('Close'); ?>"><i class="bi bi-x-lg"></i></button>
+        <button type="button" class="btn btn-sm btn-text theme-secondary no-popover" id="quicklook_close" aria-label="<?php echo h(lang('Close')); ?>" title="<?php echo lang('Close'); ?>"><i class="bi bi-x-lg"></i></button>
     </div>
     <div class="ql-stage" id="quicklook_stage">
-        <button type="button" class="ql-nav ql-prev" id="quicklook_prev" title="<?php echo lang('Previous'); ?>"><i class="bi bi-chevron-left"></i></button>
+        <button type="button" class="ql-nav ql-prev" id="quicklook_prev" aria-label="<?php echo h(lang('Previous')); ?>" title="<?php echo lang('Previous'); ?>"><i class="bi bi-chevron-left"></i></button>
         <div id="quicklook_media" class="d-flex align-items-center justify-content-center"></div>
-        <button type="button" class="ql-nav ql-next" id="quicklook_next" title="<?php echo lang('Next'); ?>"><i class="bi bi-chevron-right"></i></button>
+        <button type="button" class="ql-nav ql-next" id="quicklook_next" aria-label="<?php echo h(lang('Next')); ?>" title="<?php echo lang('Next'); ?>"><i class="bi bi-chevron-right"></i></button>
     </div>
     <div class="ql-hint"><?php echo lang('Space closes, the arrow keys walk the folder'); ?></div>
 </div>
@@ -4141,7 +4141,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function renderBreadcrumb() {
         if (state.mode === 'catalog') {
 
-            var catalogCrumbs = '<li class="breadcrumb-item"><a data-catalog-id="0" class="pg-link-secondary"><span class="bi bi-boxes me-1"></span>' + esc(L.catalog_root) + '</a></li>';
+            var catalogCrumbs = '<li class="breadcrumb-item"><a href="#" draggable="false" data-catalog-id="0" class="pg-link-secondary"><span class="bi bi-boxes me-1"></span>' + esc(L.catalog_root) + '</a></li>';
 
             if (state.allFilter === 'products') {
 
@@ -4161,7 +4161,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     var last = (index === (state.catalogCrumbs.length - 1));
                     catalogCrumbs += last
                         ? ('<li class="breadcrumb-item active fg-body fw-semibold" aria-current="page">' + esc(crumb.name) + '</li>')
-                        : ('<li class="breadcrumb-item"><a data-catalog-id="' + crumb.id + '" class="pg-link-secondary">' + esc(crumb.name) + '</a></li>');
+                        : ('<li class="breadcrumb-item"><a href="#" draggable="false" data-catalog-id="' + crumb.id + '" class="pg-link-secondary">' + esc(crumb.name) + '</a></li>');
                 });
             }
 
@@ -4169,7 +4169,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             catalogBar.innerHTML = '<nav><ol class="breadcrumb">' + catalogCrumbs + '</ol></nav>';
 
             catalogBar.querySelectorAll('[data-catalog-id]').forEach(function (element) {
-                element.addEventListener('click', function () {
+                element.addEventListener('click', function (event) {
+                    event.preventDefault();
                     state.allFilter = '';
                     load(parseInt(element.getAttribute('data-catalog-id'), 10) || 0, highlightTree);
                 });
@@ -4179,7 +4180,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         if (state.mode === 'backups') {
-            var backupCrumbs = '<li class="breadcrumb-item"><a data-folder-id="0" class="pg-link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>' +
+            var backupCrumbs = '<li class="breadcrumb-item"><a href="#" draggable="false" data-folder-id="0" class="pg-link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>' +
                 '<li class="breadcrumb-item"><button type="button" class="btn btn-link p-0 pg-link-secondary text-decoration-none backup-crumb" data-path=""><span class="bi bi-database me-1"></span>' + esc(L.backups) + '</button></li>';
 
             (state.backupCrumbs || []).forEach(function (crumb, index) {
@@ -4200,7 +4201,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         if (state.mode === 'erp') {
-            var erpCrumbs = '<li class="breadcrumb-item"><a data-folder-id="0" class="pg-link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>';
+            var erpCrumbs = '<li class="breadcrumb-item"><a href="#" draggable="false" data-folder-id="0" class="pg-link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>';
 
             if (state.erpFolder === '') {
                 erpCrumbs += '<li class="breadcrumb-item active fg-body fw-semibold" aria-current="page"><i class="bi bi-safe2 me-1" aria-hidden="true"></i>' + esc(L.erp_files) + '</li>';
@@ -4222,7 +4223,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (state.mode === 'short_links') {
             document.getElementById('explorer_breadcrumb').innerHTML =
                 '<nav><ol class="breadcrumb">' +
-                '<li class="breadcrumb-item"><a data-folder-id="0" class="pg-link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>' +
+                '<li class="breadcrumb-item"><a href="#" draggable="false" data-folder-id="0" class="pg-link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>' +
                 '<li class="breadcrumb-item active fg-body fw-semibold" aria-current="page"><span class="bi bi-link-45deg me-1"></span>' + esc(L.short_links) + '</li>' +
                 '</ol></nav>';
             return;
@@ -4231,7 +4232,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (state.mode === 'shared') {
             document.getElementById('explorer_breadcrumb').innerHTML =
                 '<nav><ol class="breadcrumb">' +
-                '<li class="breadcrumb-item"><a data-folder-id="0" class="pg-link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>' +
+                '<li class="breadcrumb-item"><a href="#" draggable="false" data-folder-id="0" class="pg-link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>' +
                 '<li class="breadcrumb-item active fg-body fw-semibold" aria-current="page"><span class="bi bi-shield-lock me-1"></span>' + esc(L.shared_folders) + '</li>' +
                 '</ol></nav>';
             return;
@@ -4243,7 +4244,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             document.getElementById('explorer_breadcrumb').innerHTML =
                 '<nav><ol class="breadcrumb">' +
-                '<li class="breadcrumb-item"><a data-folder-id="0" class="pg-link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>' +
+                '<li class="breadcrumb-item"><a href="#" draggable="false" data-folder-id="0" class="pg-link-secondary"><span class="bi bi-hdd me-1"></span>' + esc(L.root) + '</a></li>' +
                 '<li class="breadcrumb-item active fg-body fw-semibold" aria-current="page"><span class="bi ' + allIcon + ' me-1"></span>' + esc(allName) + '</li>' +
                 '</ol></nav>';
             return;
@@ -4272,15 +4273,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             if (last && crumb.id !== 0) {
                 html += '<li class="breadcrumb-item active fg-body fw-semibold" aria-current="page">' + icon + esc(crumb.name) + '</li>';
             } else {
-                html += '<li class="breadcrumb-item"><a data-folder-id="' + crumb.id + '" class="pg-link-secondary" title="' + esc(crumb.name) + '">' + icon + esc(crumb.name) + '</a></li>';
+                html += '<li class="breadcrumb-item"><a href="#" draggable="false" data-folder-id="' + crumb.id + '" class="pg-link-secondary" title="' + esc(crumb.name) + '">' + icon + esc(crumb.name) + '</a></li>';
             }
 
             if ((index === 0) && (collapsed.length > 0)) {
                 var menu = '';
                 collapsed.forEach(function (middle) {
-                    menu += '<li><a class="menu-item" data-folder-id="' + middle.id + '"><span class="bi bi-folder me-3"></span>' + esc(middle.name) + '</a></li>';
+                    menu += '<li><a href="#" draggable="false" class="menu-item" data-folder-id="' + middle.id + '"><span class="bi bi-folder me-3"></span>' + esc(middle.name) + '</a></li>';
                 });
-                html += '<li class="breadcrumb-item pg-menu-wrap"><a class="pg-link-secondary" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" role="button">&hellip;</a><ul class="menu shadow" style="border-radius:.75rem;">' + menu + '</ul></li>';
+                html += '<li class="breadcrumb-item pg-menu-wrap"><a href="#" draggable="false" class="pg-link-secondary" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" role="button">&hellip;</a><ul class="menu shadow" style="border-radius:.75rem;">' + menu + '</ul></li>';
             }
         });
 
@@ -6324,6 +6325,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // key twice, because that is how every file manager that has one works.
 
     var quickLookItem = null;
+    var quickLookReturnFocus = null;
 
     function quickLookable(item) {
 
@@ -6429,18 +6431,31 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         document.getElementById('quicklook_prev').disabled = (at <= 0);
         document.getElementById('quicklook_next').disabled = ((at < 0) || (at >= (state.ordered.length - 1)));
+
+        // Stepping to the first or last item disables the button that did it
+        // and the browser drops its focus on the page behind; Close takes it.
+        var overlay = document.getElementById('explorer_quicklook');
+
+        if (!overlay.contains(document.activeElement) || document.activeElement.disabled) {
+            document.getElementById('quicklook_close').focus({ preventScroll: true });
+        }
     }
 
     function openQuickLook(item) {
 
         if (!quickLookable(item)) { return; }
 
+        if (!quickLookIsOpen()) { quickLookReturnFocus = document.activeElement; }
+
         quickLookItem = item;
         document.getElementById('explorer_quicklook').classList.remove('d-none');
         renderQuickLook();
+        document.getElementById('quicklook_close').focus({ preventScroll: true });
     }
 
     function closeQuickLook() {
+
+        var wasOpen = quickLookIsOpen();
 
         quickLookItem = null;
 
@@ -6448,6 +6463,45 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // playing behind a screen nobody can see.
         document.getElementById('quicklook_media').innerHTML = '';
         document.getElementById('explorer_quicklook').classList.add('d-none');
+
+        if (wasOpen) { restoreFocus(quickLookReturnFocus); }
+        quickLookReturnFocus = null;
+    }
+
+    // Tab and Shift+Tab walk the overlay's own controls and wrap: the page
+    // behind it is covered and aria-modal.
+    function trapQuickLookTab(event) {
+
+        var overlay = document.getElementById('explorer_quicklook');
+        var controls = Array.prototype.filter.call(overlay.querySelectorAll('button, a[href], video[controls], audio[controls]'), function (element) {
+            return !element.disabled && (element.offsetParent !== null);
+        });
+
+        event.preventDefault();
+
+        if (controls.length === 0) { return; }
+
+        var at = controls.indexOf(document.activeElement);
+        var next = event.shiftKey
+            ? ((at <= 0) ? controls.length - 1 : at - 1)
+            : (((at < 0) || (at >= controls.length - 1)) ? 0 : at + 1);
+
+        controls[next].focus();
+    }
+
+    // Focus goes back to what had it when an overlay opened. Nothing focused
+    // then (the listing has no focusable rows) means the page itself, where
+    // the shortcuts listen.
+    function restoreFocus(element) {
+
+        if (element && (element !== document.body) && document.body.contains(element) && (element.offsetParent !== null) && !element.disabled) {
+            element.focus({ preventScroll: true });
+            return;
+        }
+
+        if (document.activeElement && (document.activeElement !== document.body) && document.activeElement.blur) {
+            document.activeElement.blur();
+        }
     }
 
     function quickLookIsOpen() {
@@ -6880,7 +6934,135 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     var menuElement = document.getElementById('explorer_menu');
 
-    function hideMenu() { menuElement.style.display = 'none'; }
+    // What had the focus when the menu took it, so closing gives it back.
+    var menuReturnFocus = null;
+    var menuOpenedAt = 0;
+
+    function hideMenu() {
+        var hadFocus = menuElement.contains(document.activeElement);
+
+        menuElement.style.display = 'none';
+
+        if (hadFocus) { restoreFocus(menuReturnFocus); }
+        menuReturnFocus = null;
+    }
+
+    function menuIsOpen() { return menuElement.style.display === 'block'; }
+
+    // The entries of one level of the menu the keyboard can land on: the
+    // enabled ones, in order. A submenu's entries are a level of their own.
+    function menuEntries(list) {
+        var entries = [];
+
+        Array.prototype.forEach.call(list.children, function (li) {
+            var entry = li.firstElementChild;
+
+            if (entry && entry.classList.contains('menu-item') && !entry.classList.contains('disabled') && (entry.offsetParent !== null)) { entries.push(entry); }
+        });
+
+        return entries;
+    }
+
+    // Focus the entry at index (negative counts from the end); the menu
+    // itself when the level has none, so the keys still reach menuKeydown().
+    function focusMenuEntry(list, index) {
+        var entries = menuEntries(list);
+
+        if (entries.length === 0) { menuElement.focus({ preventScroll: true }); return; }
+
+        entries[(index < 0) ? Math.max(0, entries.length + index) : Math.min(index, entries.length - 1)].focus({ preventScroll: true });
+    }
+
+    function openSubmenu(li) {
+        menuElement.querySelectorAll('li.has-submenu.open').forEach(function (other) {
+            if (other !== li) { other.classList.remove('open'); }
+        });
+
+        if (li.classList.contains('open')) { return; }
+
+        li.classList.add('open');
+
+        // Flip left when the flyout would leave the viewport.
+        var flyout = li.querySelector('.pg-submenu');
+        if (flyout) {
+            li.classList.remove('submenu-left');
+            var rect = flyout.getBoundingClientRect();
+            if (rect.right > window.innerWidth - 8) { li.classList.add('submenu-left'); }
+        }
+    }
+
+    // The ContextMenu key and Shift+F10: the same menu a right click opens,
+    // for the item under the listing cursor (else the one selected item,
+    // else the folder itself), put where that item is on screen.
+    function openMenuFromKeyboard() {
+        var item = state.ordered[state.cursor] || null;
+
+        if (!item) {
+            var selected = selectedItems();
+            if (selected.length === 1) { item = selected[0]; }
+        }
+
+        var element = null;
+
+        if (item) {
+            if (!state.selection[itemKey(item)]) { setSelection([item], item); }
+
+            element = document.querySelector('#explorer_content .explorer-item[data-kind="' + item.kind + '"][data-id="' + item.id + '"]');
+
+            if (element && element.scrollIntoView) { element.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+        }
+
+        var rect = (element || document.getElementById('explorer_content')).getBoundingClientRect();
+
+        menuReturnFocus = document.activeElement;
+        showMenu({
+            clientX: Math.round(rect.left + Math.min(48, rect.width / 2)),
+            clientY: Math.round(rect.top + Math.min(28, rect.height / 2))
+        }, item);
+        focusMenuEntry(menuElement, 0);
+    }
+
+    // The menu's keys, taken on the window in the capture phase: the menu is
+    // a .menu, and Bootstrap's own capture handler for .menu would otherwise
+    // reach them first and look for a toggle this menu does not have.
+    function menuKeydown(event) {
+
+        if (!menuIsOpen() || !menuElement.contains(event.target)) { return; }
+
+        event.stopPropagation();
+
+        var key = event.key;
+        var entry = event.target.closest('.menu-item');
+        var list = entry ? entry.parentElement.parentElement : menuElement;
+        var entries = menuEntries(list);
+        var at = entries.indexOf(entry);
+
+        if (key === 'ArrowDown') { event.preventDefault(); focusMenuEntry(list, ((at < 0) || (at >= entries.length - 1)) ? 0 : at + 1); return; }
+        if (key === 'ArrowUp') { event.preventDefault(); focusMenuEntry(list, (at <= 0) ? -1 : at - 1); return; }
+        if (key === 'Home') { event.preventDefault(); focusMenuEntry(list, 0); return; }
+        if (key === 'End') { event.preventDefault(); focusMenuEntry(list, -1); return; }
+
+        if (entry && entry.hasAttribute('data-submenu') && ((key === 'ArrowRight') || (key === 'Enter') || (key === ' '))) {
+            event.preventDefault();
+            if (entry.classList.contains('disabled')) { return; }
+            openSubmenu(entry.parentElement);
+            focusMenuEntry(entry.parentElement.querySelector('.pg-submenu'), 0);
+            return;
+        }
+
+        var parentItem = (list !== menuElement) ? list.closest('li.has-submenu') : null;
+
+        if (parentItem && ((key === 'ArrowLeft') || (key === 'Escape'))) {
+            event.preventDefault();
+            parentItem.classList.remove('open');
+            parentItem.firstElementChild.focus({ preventScroll: true });
+            return;
+        }
+
+        if ((key === 'Escape') || (key === 'Tab')) { event.preventDefault(); hideMenu(); }
+    }
+
+    window.addEventListener('keydown', menuKeydown, true);
 
     function menuItem(icon, label, action, disabled) {
         return '<li><button type="button" class="menu-item' + (disabled ? ' disabled' : '') + '" data-menu-action="' + action + '">' +
@@ -6902,6 +7084,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     }
 
     function positionMenu(event) {
+        menuOpenedAt = Date.now();
         menuElement.style.display = 'block';
         var x = Math.min(event.clientX, window.innerWidth - menuElement.offsetWidth - 8);
         var y = Math.min(event.clientY, window.innerHeight - menuElement.offsetHeight - 8);
@@ -14378,7 +14561,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (item && !state.selection[itemKey(item)]) { setSelection([item], item); }
 
+        // Focus on the menu itself rather than an entry, so the arrow keys
+        // work after a right click without an entry looking picked.
+        if (!menuElement.contains(document.activeElement)) { menuReturnFocus = document.activeElement; }
         showMenu(event, item);
+        menuElement.focus({ preventScroll: true });
     });
 
     menuElement.addEventListener('click', function (event) {
@@ -14414,24 +14601,32 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             if (other !== li) { other.classList.remove('open'); }
         });
 
-        if (li && !li.classList.contains('open')) {
-            li.classList.add('open');
-            var flyout = li.querySelector('.pg-submenu');
-            if (flyout) {
-                li.classList.remove('submenu-left');
-                var rect = flyout.getBoundingClientRect();
-                if (rect.right > window.innerWidth - 8) { li.classList.add('submenu-left'); }
-            }
-        }
+        if (li) { openSubmenu(li); }
     });
 
     document.addEventListener('click', function (event) {
         if (!event.target.closest('#explorer_menu')) { hideMenu(); }
     });
 
-    document.addEventListener('scroll', hideMenu, true);
+    // A scroll closes the menu, but not one in the first moments after it
+    // opened: the keyboard brings its item into view first, and a page still
+    // gliding from the wheel would close a menu the moment it opened.
+    document.addEventListener('scroll', function () {
+        if ((Date.now() - menuOpenedAt) > 300) { hideMenu(); }
+    }, true);
+
+    // The ContextMenu key also raises the browser's own menu, on its release
+    // in some systems; the screen's menu already answered it.
+    var keyboardMenuAt = 0;
+
+    document.addEventListener('contextmenu', function (event) {
+        if ((Date.now() - keyboardMenuAt) < 1000) { event.preventDefault(); }
+    });
 
     document.getElementById('explorer_breadcrumb').addEventListener('click', function (event) {
+        // The crumbs carry href="#" only so the keyboard can reach them.
+        if (event.target.closest('a[href="#"]')) { event.preventDefault(); }
+
         var link = event.target.closest('a[data-folder-id]');
         if (link) { exitAllFiles(parseInt(link.getAttribute('data-folder-id'), 10)); }
     });
@@ -14592,6 +14787,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     });
 
     document.getElementById('quicklook_close').addEventListener('click', closeQuickLook);
+
+    // Escape closes Quick Look in one press, taken on the window before the
+    // tooltip of the focused Close button, whose own capture handler on the
+    // document would spend the first Escape hiding itself.
+    window.addEventListener('keydown', function (event) {
+        if ((event.key !== 'Escape') || !quickLookIsOpen() || document.querySelector('.dialog[open], .drawer[open]')) { return; }
+
+        event.preventDefault();
+        event.stopPropagation();
+        closeQuickLook();
+    }, true);
     document.getElementById('quicklook_prev').addEventListener('click', function () { stepQuickLook(-1); });
     document.getElementById('quicklook_next').addEventListener('click', function () { stepQuickLook(1); });
 
@@ -14660,6 +14866,29 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     document.getElementById('tree_toggle_button').addEventListener('click', function () { togglePane('explorer_tree_pane', 'pg_explorer_tree_open'); });
     document.getElementById('preview_toggle_button').addEventListener('click', function () { togglePane('explorer_preview_pane', 'pg_explorer_preview_open'); });
 
+    // A key pressed on a focused button, link or open menu is that control's
+    // own: Enter presses it, Space toggles it, the arrows walk its menu. The
+    // listing's shortcuts only take keys that land on the page itself.
+    function keyBelongsToControl(target) {
+
+        if (!target || !target.closest) { return false; }
+
+        return !!target.closest('button, a[href], [role="button"], [role="menuitem"], [tabindex], summary, video, audio, #pg-chat-root, #explorer_menu, .menu.show');
+    }
+
+    // A screen button pressed with the mouse keeps the focus, and Enter
+    // afterwards would press it again rather than open the selected item, as
+    // it did before the shortcuts left focused controls alone. A click raised
+    // from the keyboard has no detail, so keyboard focus stays where it is.
+    document.getElementById('explorer_app').addEventListener('click', function (event) {
+
+        if (event.detail === 0) { return; }
+
+        var control = event.target.closest('button, a[href]');
+
+        if (control && !control.hasAttribute('data-bs-toggle') && (document.activeElement === control)) { control.blur(); }
+    });
+
     // Keyboard shortcuts follow desktop file manager conventions.
     document.addEventListener('keydown', function (event) {
         // A key event raised on the document itself rather than on an element
@@ -14680,11 +14909,35 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // delete nobody meant.
         if (quickLookIsOpen()) {
 
-            if ((key === 'Escape') || (key === ' ')) { event.preventDefault(); closeQuickLook(); return; }
+            var overlay = document.getElementById('explorer_quicklook');
+            var onControl = (event.target !== overlay) && overlay.contains(event.target) && keyBelongsToControl(event.target);
+
+            if (key === 'Escape') { event.preventDefault(); closeQuickLook(); return; }
+            if (key === 'Tab') { trapQuickLookTab(event); return; }
+
+            // A video or a sound keeps its own keys: Space plays, the arrows seek.
+            if (event.target.closest && event.target.closest('#explorer_quicklook video, #explorer_quicklook audio')) { return; }
+
+            if ((key === 'Enter') && onControl) { return; }
+            if (key === ' ') {
+                if (onControl) { return; }
+                event.preventDefault();
+                closeQuickLook();
+                return;
+            }
             if (key === 'ArrowRight') { event.preventDefault(); stepQuickLook(1); return; }
             if (key === 'ArrowLeft') { event.preventDefault(); stepQuickLook(-1); return; }
 
             event.preventDefault();
+            return;
+        }
+
+        if (keyBelongsToControl(event.target)) { return; }
+
+        if ((key === 'ContextMenu') || ((key === 'F10') && event.shiftKey)) {
+            event.preventDefault();
+            keyboardMenuAt = Date.now();
+            openMenuFromKeyboard();
             return;
         }
 
