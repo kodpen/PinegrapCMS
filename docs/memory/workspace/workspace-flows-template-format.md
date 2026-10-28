@@ -24,8 +24,8 @@ description: Flow templates (G1 #2161, flow_templates.php): format, the schedule
 ## Which are a flow's own?
 - new_customer, quote_approval, text_review (G3): `workspace-flows-template-flow-only.md`.
 
-## Which wait, and why?
-- forms, orders (counts "since the last run", a flow reads the last day) and chain (started by another action): #2753, merge plan R1b.
+## Which came over last?
+- forms, orders and chain (R1b): `workspace-flows-template-last-day.md`.
 
 ## How does the canvas use it?
 - "New flow" with templates opens `showGallery(null)` in place of the canvas: Empty canvas, then the cards by category; Use creates a flow named after the template with its graph.
