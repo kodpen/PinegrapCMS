@@ -838,6 +838,9 @@ function bs6_shared_panel_blocks()
 		// The calendar screen and the dashboard calendar widget pass the
 		// signed-in user; site pages pass none.
 		'includes/fn/calendar.php' => array('get_calendar' => 'if ($user) {'),
+		// No login page: the default sign-in screen inside
+		// output_header_secure(); a login page's branches are site output.
+		'get_login.php' => array('get_login' => 'if ((int)$page_id <= 0) {'),
 	);
 }
 
@@ -1166,7 +1169,7 @@ function bs6_scope_kind($path)
 	if (strpos($path, 'includes/templates/') === 0) {
 		$panel_templates = array(
 			'duplicate_folder', 'edit_auto_dialog', 'edit_key_code', 'edit_offer', 'edit_products', 'generate_layout',
-			'view_auto_dialogs', 'view_key_codes', 'view_offers', 'shipping_method_service',
+			'view_auto_dialogs', 'view_key_codes', 'view_offers', 'shipping_method_service', 'si',
 		);
 		return in_array(substr($base, 0, -4), $panel_templates, true) ? 'panel' : 'site';
 	}

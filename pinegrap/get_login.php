@@ -81,9 +81,9 @@ function get_login($properties = array()) {
         $output_remember_me_checkbox = '';
         if (REMEMBER_ME == TRUE) {
             $output_remember_me_checkbox =
-                '<div class="form-check mb-3">
-                    ' . $form->output_field(array('type' => 'checkbox', 'name' => 'remember_me', 'id' => 'remember_me', 'value' => '1', 'class' => 'form-check-input')) . '
-                    <label class="form-check-label" for="remember_me">' . lang('Remember Me') . '</label>
+                '<div class="form-field mb-5">
+                    ' . $form->output_field(array('type' => 'checkbox', 'name' => 'remember_me', 'id' => 'remember_me', 'value' => '1', 'class' => 'check')) . '
+                    <label for="remember_me">' . lang('Remember Me') . '</label>
                 </div>';
         }
 
@@ -97,24 +97,24 @@ function get_login($properties = array()) {
         $output_links = '';
         if (($output_forgot_password_link != '') || ($output_google_signin != '')) {
             $output_links =
-                '<div class="d-flex flex-column gap-2 mt-3">
+                '<div class="d-flex flex-column gap-3 mt-5">
                     ' . $output_forgot_password_link . '
                     ' . $output_google_signin . '
                 </div>';
         }
 
         $output =
-            '<main class="container py-4 py-md-5">
+            '<main class="container py-7 md:py-12">
                 <div class="card mx-auto shadow-sm" style="max-width: 28rem;">
-                    <div class="card-body p-4">
-                        <h1 class="h4 mb-2"><i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i>' . lang('Login') . '</h1>
-                        <p class="text-muted mb-3">' . lang('Sign in with your email address or username.') . '</p>
+                    <div class="card-body p-7">
+                        <h1 class="h4 mb-3"><i class="bi bi-box-arrow-in-right me-3" aria-hidden="true"></i>' . lang('Login') . '</h1>
+                        <p class="fg-secondary mb-5">' . lang('Sign in with your email address or username.') . '</p>
                         ' . $form->output_errors() . $form->output_notices() . '
                         <form name="login" action="' . $action_url . '" method="post">
                             ' . get_token_field() . '
                             <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                             <input type="hidden" name="require_cookies" value="true" />
-                            <div class="mb-3">
+                            <div class="mb-5">
                                 <label for="email" class="form-label">' . lang('Email or username') . '</label>
                                 ' . $form->field(array(
                                     'type' => 'text',
@@ -126,7 +126,7 @@ function get_login($properties = array()) {
                                     'spellcheck' => 'false',
                                     'autofocus' => $email_autofocus)) . '
                             </div>
-                            <div class="mb-3">
+                            <div class="mb-5">
                                 <label for="password" class="form-label">' . lang('Password') . '</label>
                                 ' . $form->field(array(
                                     'type' => 'password',
@@ -139,7 +139,7 @@ function get_login($properties = array()) {
                                     'autofocus' => $password_autofocus)) . '
                             </div>
                             ' . $output_remember_me_checkbox . '
-                            <button type="submit" name="submit_login" value="Login" class="btn btn-primary w-100">' . lang('Login') . '</button>
+                            <button type="submit" name="submit_login" value="Login" class="btn btn-solid theme-primary w-100">' . lang('Login') . '</button>
                         </form>
                         ' . $output_links . '
                     </div>

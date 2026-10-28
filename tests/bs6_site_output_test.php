@@ -277,3 +277,23 @@ function test_bs6_site_output_shared_function_panel_block()
 	pg_assert_contains("\$b = '<select class=\"form-control\">';", $r['source']);
 	pg_assert_contains("return '<p class=\"mb-2\">';", $r['source']);
 }
+
+// System Info and get_login()'s default screen print inside
+// output_header_secure() (Bootstrap 6); a login page's branches are site
+// output.
+function test_bs6_panel_screens_under_secure_header()
+{
+	pg_assert_same('panel', bs6_scope_kind('includes/templates/si.php'));
+	pg_assert_true(bs6_codemod_converts('includes/templates/si.php'), 'System Info');
+
+	$blocks = bs6_shared_panel_blocks();
+	pg_assert_true(isset($blocks['get_login.php']['get_login']), 'get_login() default screen block');
+
+	$source = "<?php\nfunction get_login(\$properties = array()) {\n    if ((int)\$page_id <= 0) {\n        \$a = '<p class=\"text-muted mb-2\">';\n    } elseif (\$layout_type == 'system') {\n        \$a = '<p class=\"text-muted mb-2\">';\n    }\n}\n";
+	bs6_current_path('get_login.php');
+	$r = bs6_convert_source($source);
+	bs6_current_path(false);
+
+	pg_assert_contains("if ((int)\$page_id <= 0) {\n        \$a = '<p class=\"fg-secondary mb-3\">';", $r['source']);
+	pg_assert_contains("} elseif (\$layout_type == 'system') {\n        \$a = '<p class=\"text-muted mb-2\">';", $r['source']);
+}
