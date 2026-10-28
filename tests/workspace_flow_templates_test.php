@@ -28,6 +28,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/steps.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_conditions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_anchors.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/watch.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_templates.php');
 
 // What a person who reads every count is offered, with no channel open.
@@ -42,6 +43,8 @@ function ws_flow_templates_test_fill($overrides = array())
 		'metrics'  => array('tasks_open', 'tasks_overdue', 'tasks_due_today', 'orders_today', 'sales_today', 'forms_new',
 			'comments_pending', 'visitors_yesterday', 'stock_low', 'invoices_overdue', 'orders_new'),
 		'recap_ai' => false,
+		'join'     => true,
+		'events'   => array('order.created', 'form.submitted', 'stock.low', 'workspace.task.overdue', 'workspace.approval.decided'),
 	);
 }
 
@@ -187,7 +190,8 @@ function test_workspace_flow_templates_texts_are_translated()
 // The templates that come from the scheduled ones keep their sentences.
 function test_workspace_flow_templates_keep_the_scheduled_texts()
 {
-	$strings = ws_scheduled_js_strings();
+	// The event ones keep the sentences of workspace_events.js.
+	$strings = ws_scheduled_js_strings() + ws_events_js_strings();
 
 	foreach (ws_flow_templates(ws_flow_templates_test_fill()) as $template) {
 		if (in_array($template['key'], ws_flow_templates_test_flow_only(), true)) {
@@ -213,6 +217,30 @@ function test_workspace_flow_templates_need_their_counts()
 	pg_assert_true(in_array('stock', $all, true) && in_array('invoices', $all, true) && in_array('digest', $all, true), 'offered with the counts');
 	pg_assert_false(in_array('stock', $none, true) || in_array('invoices', $none, true) || in_array('digest', $none, true) || in_array('overdue', $none, true), 'left out without them');
 	pg_assert_true(in_array('uptime', $none, true) && in_array('monthly', $none, true), 'the rest stay');
+}
+
+// The welcome needs the join start and each event starter its event; the
+// welcome posts in the channel joined, any public one.
+function test_workspace_flow_templates_need_their_starts()
+{
+	$keys = function ($fill) {
+		return array_column(ws_flow_templates(ws_flow_templates_test_fill($fill)), 'key');
+	};
+	$started = array('welcome', 'order_event', 'form_event', 'stock_event', 'overdue_event', 'approval_event');
+
+	pg_assert_same(array(), array_values(array_diff($started, $keys(array()))), 'offered with the join start and the events');
+	pg_assert_same(array(), array_values(array_intersect($started, $keys(array('join' => false, 'events' => array())))), 'left out without them');
+	pg_assert_same(array('order_event'), array_values(array_intersect($started, $keys(array('join' => false, 'events' => array('order.created'))))), 'one event, one starter');
+
+	$by_key = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('channel' => 3))), null, 'key');
+
+	pg_assert_same(array('channel_id' => 0), $by_key['welcome']['graph']['nodes'][0]['config'], 'any public channel');
+	pg_assert_same(-1, $by_key['welcome']['graph']['nodes'][1]['config']['channel_id'], 'the channel joined');
+	pg_assert_same('event', $by_key['approval_event']['start']);
+	pg_assert_same(array('event' => 'workspace.approval.decided', 'page_id' => 0, 'status' => 'approved', 'channel_id' => 3),
+		$by_key['approval_event']['graph']['nodes'][0]['config'], 'approved requests of the channel open');
+	pg_assert_same('task_open', $by_key['stock_event']['graph']['nodes'][1]['kind']);
+	pg_assert_same('post', $by_key['order_event']['graph']['nodes'][1]['kind'], 'to the channel open');
 }
 
 // Where the texts go: the channel open when one is, else the person.

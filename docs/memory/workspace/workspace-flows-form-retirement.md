@@ -18,7 +18,7 @@ description: Retiring the scheduled actions form (merge plan R1-R4): the functio
 - `ws_scheduled_convert_due()` stays for rows of a site upgraded late; nothing makes new unconverted rows once `ws_scheduled_save()` is gone.
 
 ## Which starters does the flow gallery lack?
-- welcome (join) and the five event ones (`order_event`, `form_event`, `stock_event`, `overdue_event`, `approval_event`): a flow fills `{{newcomer}}`, `{{channel}}`, `{{record}}` since #2205, so they come over in R1.
+- welcome (join) and the five event ones (`order_event`, `form_event`, `stock_event`, `overdue_event`, `approval_event`): in the gallery since R1 (a flow fills `{{newcomer}}`, `{{channel}}`, `{{record}}` since #2205).
 - forms, orders ("since the last run") and chain (started by another action): issue #2753 question 2 (R1b).
 
 ## How big is each step?
