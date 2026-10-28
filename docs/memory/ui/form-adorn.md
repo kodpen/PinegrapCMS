@@ -15,7 +15,7 @@ description: Bootstrap 6 form-adorn in the panel (step B9f): which input-groups 
 
 ## Why do the focus rules in backend.src.css name it?
 - The panel's global `input:focus-visible` rule (custom layer) drew a ring around the borderless input inside the wrapper. `.form-adorn > .form-ghost:focus-visible` drops it; `.form-adorn:has(> .form-ghost:focus-visible)` joins the global ring list and `.form-control.form-adorn:focus-within` the focus border rule, so the wrapper looks focused like a plain field.
-- Result: the ring surrounds the whole field, add-on included; on an input-group it stopped at the add-on.
+- So the ring surrounds the whole field, add-on included.
 
 ## Where is it used?
 - #2219 pilot (product Unit Price, offer subtotals), #2280 (shipping, container, `product_builder.php`, `page_form.php`), #2355 (ERP amounts, stock count scan with `form-control-lg`, order refund, barcodes), #2404 (gift cards, workspace template icon, MCP alias). Heights unchanged: 38, 31 (sm), 48 (lg) px. `tests/bs6_form_adorn_test.php` pins parts 4 to 8.
@@ -25,8 +25,8 @@ description: Bootstrap 6 form-adorn in the panel (step B9f): which input-groups 
 - Part 8: Paraşüt tax rate, till "Received" (`form-control-lg`), designer home `#sdh-filter` (its `.sdh-head-tools` width rules name `.form-adorn`), offer tier fields (`aria-label` from `edit_offer.php`'s `L`).
 - An add-on whose text a script changes keeps its id on the span (`#erp_expense_currency_label`) or on the element inside it (`#ws_tpl_icon_preview`).
 - A disabled input leaves the wrapper white (the dist greys only `.chip-input`): a read-only MCP alias wrapper takes `bg-2`.
-- The add-on is `aria-hidden`, so every converted input needs its own name: a `<label for>` outside the wrapper, or `aria-label` through `lang()`.
-- A wrapper toggled by script keeps its id (container `#weight_pound` / `#weight_kg`); `d-none` on the label works. `is-invalid` stays on the input: Bootstrap marks the wrapper through `:has()`.
+- The add-on is `aria-hidden`: every converted input needs a `<label for>` outside the wrapper or an `aria-label` through `lang()`.
+- A wrapper toggled by script keeps its id (container `#weight_pound` / `#weight_kg`); `d-none` on the label works. `is-invalid` stays on the input (Bootstrap marks the wrapper via `:has()`); its message goes after the wrapper (`inline-feedback-placement.md`).
 
 ## What stays an input-group on purpose?
 - Several inputs or add-ons (shipping days, container dimensions), ERP +/- controls, `edit_erp_expense.php` files, a button (invoice scan, tax-number lookup, contact e-mail), a select (`view_contacts.php` filters, workspace "repeat every"), `label.unit` (rewritten by script), a `title` hint (product group address, start days, contact Parasut id).

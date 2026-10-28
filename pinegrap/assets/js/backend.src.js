@@ -465,15 +465,20 @@ $(document).ready(function () {
                     show_draw_lines();
                     break;
                 case 'q':
-                    var notifications = $('#notifications');
-                    if (notifications.length) {
+                    var notification_toggle = document.getElementById('notification_toggle');
+                    if (notification_toggle && $('#notifications').length) {
                         event.preventDefault();
                         // CTRL+Q on toolbar and backend shows notification panel. tested in chrome,edge(95.0+) and firefox.
                         // Timeout is necessary in order to workaround Firefox bug
                         // with Ctrl+Q where it would still open find area,
                         // even though we run preventDefault above.
+                        // The bell is clicked rather than the menu toggled: a
+                        // Bootstrap 6 Menu made on the .menu box is a second
+                        // instance that ignores the bell's data-bs-display,
+                        // positions the panel inline for good and leaves its
+                        // own aria-expanded on the box.
                         setTimeout(function () {
-                            pgUI.menu.toggle(notifications);
+                            notification_toggle.click();
                         }, 0);
                     }
 
@@ -1590,13 +1595,14 @@ $(document).ready(function () {
             $('#notifications').scrollTop(0);
         }
     });
+    // Bootstrap 6 fires the menu events on the toggle, not on the .menu box.
     //shown #notifications
-    pgUI.menu.on('#notifications', 'shown', function () {
+    pgUI.menu.on('#notification_toggle', 'shown', function () {
         $('#notification_toggle').addClass('show');
         get_notifications(true);
     });
     //hidden #notifications
-    pgUI.menu.on('#notifications', 'hidden', function () {
+    pgUI.menu.on('#notification_toggle', 'hidden', function () {
         $('#notification_toggle').removeClass('show');
         $('#notifications').scrollTop(0);
     });
@@ -2631,7 +2637,7 @@ function pg_push_watch() {
         }
     });
 
-    pgUI.menu.on('#notifications', 'shown', function () {
+    pgUI.menu.on('#notification_toggle', 'shown', function () {
         pg_push_refresh();
     });
 }
@@ -3225,7 +3231,7 @@ function check_unread_notifications(refresh_type) {
 
 
                     //if notifications active, edit callback and there is no notifications, get it. fix a issue when last notification removed.
-                    if (pgUI.menu.isOpen('#notifications')) {
+                    if (pgUI.menu.isOpen('#notification_toggle')) {
                         if (refresh_type == 'editcallback_check') {
                             if ($('#notifications .menu-scroll-area .list-group li.software_notification').length <= 1) {
                                 get_notifications();
@@ -3239,7 +3245,7 @@ function check_unread_notifications(refresh_type) {
                     // this check system dont get notifications we dont wanna more traffic.
                     if ($unreads > 0) {
                         // if notification view menu is active than we also get notifications and update all but we dont set notifications readed, because maybe sceen is forgetten and user close and go we be sure to readed.
-                        if (pgUI.menu.isOpen('#notifications')) {
+                        if (pgUI.menu.isOpen('#notification_toggle')) {
                             if ($unreads > $unreadsCallback && refresh_type != 'editcallback_check') {
                                 get_notifications();
                             }
@@ -8526,6 +8532,11 @@ function pg_background_calls_allowed() {
         };
 
         var container = ensureToastContainer();
+        // An open dialog's backdrop would cover a body-level toast: the
+        // container goes into the top dialog until it hides.
+        if (window.pgUI && pgUI.hostLayer) {
+            pgUI.hostLayer(container);
+        }
         var el = document.createElement('div');
         // Bootstrap 6 has no text-bg-*: the fill and its ink are two classes.
         el.className = 'toast align-items-center bg-' + variant + ' fg-contrast-' + variant + ' border-0';
@@ -8621,6 +8632,80 @@ function pg_background_calls_allowed() {
         });
     };
 
+    // Wrappers that lay the field and its add-ons out in one row (no wrap): an
+    // error message inside one squeezes the field to a sliver, so it goes
+    // after the wrapper.
+    var PG_FEEDBACK_WRAPPERS = '.input-group, .form-adorn, .chip-input, .switch';
+
+    function pgIsFeedback(node) {
+        return !!(node && node.classList && node.classList.contains('invalid-feedback'));
+    }
+
+    // Puts an invalid field's error message where it can be read: right after
+    // the field, or after the row wrapper holding it (a switch inside a
+    // .form-field: at the end of the .form-field). A message liveform printed
+    // after the field is moved there; one is made from errs (field name ->
+    // text) when the page has none. Runs for the output_errors() inline call
+    // and again on DOMContentLoaded, so a message already in place is kept
+    // and never doubled.
+    function pgPlaceInlineFeedback(el, errs) {
+        if (el.dataset.pgFeedbackInjected === '1') return;
+
+        var wrapper = el.closest ? el.closest(PG_FEEDBACK_WRAPPERS) : null;
+        var field = (wrapper && wrapper.classList.contains('switch') && wrapper.closest) ? wrapper.closest('.form-field') : null;
+        var own = pgIsFeedback(el.nextElementSibling) ? el.nextElementSibling : null;
+        var ownMovable = !!(own && own.classList.contains('pg-inline-feedback'));
+        var placed = null;
+
+        function put(feedback) {
+            if (field) {
+                field.appendChild(feedback);
+            } else if (wrapper) {
+                wrapper.insertAdjacentElement('afterend', feedback);
+            } else {
+                el.insertAdjacentElement('afterend', feedback);
+            }
+        }
+
+        if (wrapper) {
+            placed = field ? field.lastElementChild : wrapper.nextElementSibling;
+            if (!pgIsFeedback(placed) || placed === own) placed = null;
+        }
+
+        if (placed) {
+            if (ownMovable) own.remove();
+            el.dataset.pgFeedbackInjected = '1';
+            return;
+        }
+
+        if (own) {
+            // A static message of the page's own stays where the page put it.
+            if (wrapper && ownMovable) put(own);
+            el.dataset.pgFeedbackInjected = '1';
+            return;
+        }
+
+        if (!errs) return;
+        var name = el.getAttribute('name');
+        if (!name) return;
+        // Strip [] suffix used for array-valued inputs
+        var key = name.replace(/\[\]$/, '');
+        var msg = errs[name] || errs[key];
+        if (!msg) return;
+
+        var feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback d-block pg-inline-feedback';
+        feedback.textContent = msg;
+        var fid = el.id || ('pg-field-' + Math.random().toString(36).slice(2, 8));
+        if (!el.id) el.id = fid;
+        feedback.id = fid + '-feedback';
+        if (!el.hasAttribute('aria-describedby')) {
+            el.setAttribute('aria-describedby', feedback.id);
+        }
+        put(feedback);
+        el.dataset.pgFeedbackInjected = '1';
+    }
+
     // Auto-injectors: aria-invalid for .is-invalid fields and required-marker on labels.
     // Runs after DOM is ready and once on Bootstrap form re-renders aren't expected here.
     function pgInjectAriaAndRequiredMarkers(root) {
@@ -8633,32 +8718,7 @@ function pg_background_calls_allowed() {
         invalids.forEach(function (el) {
             if (!el.hasAttribute('aria-invalid')) el.setAttribute('aria-invalid', 'true');
 
-            // Faz 3c: inline per-field feedback from window.__pgFieldErrors map
-            var errs = window.__pgFieldErrors;
-            if (!errs || el.dataset.pgFeedbackInjected === '1') return;
-            var name = el.getAttribute('name');
-            if (!name) return;
-            // Strip [] suffix used for array-valued inputs
-            var key = name.replace(/\[\]$/, '');
-            var msg = errs[name] || errs[key];
-            if (!msg) return;
-            // Avoid duplicate injection if the page already renders an invalid-feedback sibling
-            var sibling = el.nextElementSibling;
-            if (sibling && sibling.classList && sibling.classList.contains('invalid-feedback')) {
-                el.dataset.pgFeedbackInjected = '1';
-                return;
-            }
-            var feedback = document.createElement('div');
-            feedback.className = 'invalid-feedback d-block pg-inline-feedback';
-            feedback.textContent = msg;
-            var fid = el.id || ('pg-field-' + Math.random().toString(36).slice(2, 8));
-            if (!el.id) el.id = fid;
-            feedback.id = fid + '-feedback';
-            if (!el.hasAttribute('aria-describedby')) {
-                el.setAttribute('aria-describedby', feedback.id);
-            }
-            el.insertAdjacentElement('afterend', feedback);
-            el.dataset.pgFeedbackInjected = '1';
+            pgPlaceInlineFeedback(el, window.__pgFieldErrors);
         });
 
         // Faz 4a: auto-bind <label> elements that have no `for` attribute to a

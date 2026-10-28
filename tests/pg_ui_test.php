@@ -260,6 +260,24 @@ async function main() {
     var drawerClosing = ui6.hide('drawer', drw);
     out.v6_drawer_closing = { isOpen: ui6.isOpen('drawer', drw), any: ui6.anyOpen('drawer') };
     await drawerClosing;
+    // A toast container follows the top open dialog and goes back to the body
+    // on that dialog's hide event (or a native close).
+    var toasts = d6.createElement('div');
+    d6.body.appendChild(toasts);
+    out.v6_layer_no_dialog = ui6.hostLayer(toasts) === d6.body && toasts.parentNode === d6.body;
+    await ui6.show('dialog', dlg);
+    var lifted = ui6.hostLayer(toasts) === dlg && toasts.parentNode === dlg;
+    var again = ui6.hostLayer(toasts) === dlg && (dlg.listeners['hide.bs.dialog'] || []).length === 1;
+    var hiding = ui6.hide('dialog', dlg);
+    var backOnHide = toasts.parentNode === d6.body;
+    out.v6_layer_closing_skipped = ui6.hostLayer(toasts) === d6.body;
+    await hiding;
+    await ui6.show('dialog', dlg);
+    ui6.hostLayer(toasts);
+    dlg.fire('close');
+    out.v6_layer = { lifted: lifted, once: again, back_on_hide: backOnHide, back_on_close: toasts.parentNode === d6.body, listeners_left: (dlg.listeners['hide.bs.dialog'] || []).length + (dlg.listeners.close || []).length };
+    dlg.open = false;
+    out.v5_layer_body = ui.hostLayer(d5.createElement('div')) === d5.body;
     out.v6_host_after_close_is_body = ui6.overlayHost(inside) === d6.body;
     var parts6 = ui6.dialog.build({ title: 'T', size: 'xl', scrollable: true, centered: true, footer: false });
     out.v6_build = {
@@ -352,6 +370,21 @@ function test_pg_ui_v6_closing_dialog_is_closed()
 	pg_assert_same(array('open' => false, 'isOpen' => false, 'hiding' => false), $r['v6_closed']);
 	pg_assert_same(array('isOpen' => true, 'any' => true, 'host_outside' => true), $r['v6_opening'], 'opening dialog counts as open');
 	pg_assert_same(array('isOpen' => false, 'any' => false), $r['v6_drawer_closing'], 'closing drawer: not counted');
+}
+
+// A toast container shown while a modal <dialog> is open sits in that
+// dialog, not under its ::backdrop, and leaves it when the dialog hides.
+function test_pg_ui_host_layer()
+{
+	$r = pg_ui_test_result();
+	if (!is_array($r) || isset($r['error'])) {
+		return;
+	}
+
+	pg_assert_true($r['v6_layer_no_dialog'], 'no dialog open: the body');
+	pg_assert_same(array('lifted' => true, 'once' => true, 'back_on_hide' => true, 'back_on_close' => true, 'listeners_left' => 0), $r['v6_layer']);
+	pg_assert_true($r['v6_layer_closing_skipped'], 'a closing dialog is not a host');
+	pg_assert_true($r['v5_layer_body'], 'Bootstrap 5: the body');
 }
 
 function test_pg_ui_build_dialog()

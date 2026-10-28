@@ -74,6 +74,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - form-item-view-variables.md: Variables a form item view layout (and form e-mail subject/body) can use: ^^field^^, conditional blocks, date and check box formats, and where the edit screen's clickable list comes from
 - form-mail-link-variables.md: ^^email_preferences_url^^ and ^^confirm_subscription_url^^ in form e-mails: who gets a link, where and in which order they are filled in, why they are not standard fields (PR #1385)
 - form-time-24-hour.md: Time and date-and-time form values: validate_time() and prepare_form_data_for_input() read 12-hour and 24-hour time (PR #1698), why, what stays as before
+- inline-feedback-placement.md: Where a panel field's error message goes on Bootstrap 6: pgPlaceInlineFeedback() moves or makes it after an input-group, form-adorn, chip-input or switch; forms that print their own message (#2578)
 - list-and-table-screens.md: Panel list and table rules: the DataTables list markup, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
 - liveform-notices-trap.md: Pitfalls: notices and warnings stay in the session until remove_form(), screens must print them, and a request run twice stacks the same notice.
 - loading-curtain.md: Loading curtain printed by pg_preloader_markup() on every panel screen: structure, PRIVATE_LABEL, logo ids, Visual Editor hold, exit curtain, four ways out, exclusions.
@@ -85,6 +86,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - menu-item-shared-form.md: The menu item create and edit screens share includes/forms/menu_item_form.php
 - menu-shared-form.md: The menu create and edit screens share includes/forms/menu_form.php: what it holds, the underscore name rule, what stays in the screens
 - money-field-input-mask.md: Panel money boxes with the currency input mask: panel-language separators (pg_money_mask_attributes()), filled with pg_format_input_amount(), read with pg_normalize_amount() (#728, #986)
+- notifications-menu.md: The header notifications panel (#notifications, bell #notification_toggle): one Bootstrap 6 Menu on the bell, Ctrl+Q clicks the bell, menu events and open state read on the toggle (#2578)
 - offer-editor.md: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON save, auto names, copy shared rows, two-sided type registry, write order, currency entity.
 - otp-fields.md: Code and PIN fields on the Bootstrap 6 OTP component (B9d, #2210): MFA app and recovery code modes, no auto-submit, developer lock masked slots and submit on complete
 - own-menu-dropdown-keydown.md: A right-click menu of a screen's own built on .menu: Bootstrap's capture-phase keydown handler acts on it, so its keys are taken on the window; closing on scroll and a long press

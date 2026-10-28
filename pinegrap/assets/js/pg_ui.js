@@ -24,6 +24,7 @@
  *   pgUI.on(el, kind, 'hidden', fn[, {once: true}])   both event names; returns off()
  *   pgUI.dialog.build({...})          dialog markup for the loaded version
  *   pgUI.overlayHost(el)              where a floating layer must be appended
+ *   pgUI.hostLayer(el)                a body-level layer into the top dialog, back on its hide
  *   pgUI.dialog.show(el), pgUI.menu.hide(el), ...   the same per kind
  *
  * @author      Erdal Güral (Kodpen)
@@ -272,6 +273,44 @@
         return open.length ? open[open.length - 1] : document.body;
     }
 
+    /**
+     * Moves a body-level floating layer (a toast container) into the top open
+     * dialog or drawer, so it is not left under the ::backdrop of a modal
+     * <dialog>, and back to the body when that dialog starts hiding: Bootstrap
+     * hides every .toast.show inside a dialog right after its 'hide' event, so
+     * 'hidden' is too late. The native 'close' covers a dialog closed without
+     * Bootstrap. Returns the host.
+     */
+    function hostLayer(target) {
+        var layer = node(target), host, kind, done = false, off;
+        if (!layer) {
+            return null;
+        }
+        host = overlayHost(null);
+        if (layer.parentNode === host) {
+            return host;
+        }
+        host.appendChild(layer);
+        if (host === document.body) {
+            return host;
+        }
+        kind = (host.classList && host.classList.contains('drawer')) ? 'drawer' : 'dialog';
+        function back() {
+            if (done) {
+                return;
+            }
+            done = true;
+            off();
+            host.removeEventListener('close', back);
+            if (layer.parentNode === host) {
+                document.body.appendChild(layer);
+            }
+        }
+        off = on(host, kind, 'hide', back, { once: true });
+        host.addEventListener('close', back);
+        return host;
+    }
+
     function make(tag, classes, attrs) {
         var el = document.createElement(tag), key;
         if (classes) {
@@ -404,6 +443,7 @@
         anyOpen: anyOpen,
         on: on,
         overlayHost: overlayHost,
+        hostLayer: hostLayer,
         show: function (kind, target, opts) { return run(kind, target, 'show', opts); },
         hide: function (kind, target) { return run(kind, target, 'hide'); },
         toggle: function (kind, target, opts) { return run(kind, target, 'toggle', opts); }
