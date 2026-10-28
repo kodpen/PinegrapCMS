@@ -4,10 +4,9 @@
  *
  * Workspace - flow templates: ready-made flows the canvas offers in its
  * gallery, a starting point a person places on the canvas and finishes.
- * They are the scheduled actions' ready templates (saTemplates() in
- * assets/js/workspace.js) drawn as boxes: the "when" a start box, each
- * condition a condition box, the step and its follow-ups step boxes on the
- * arrows of their outcomes. Their titles and texts are the same sentences,
+ * They are the ready templates the scheduled actions' form offered, drawn
+ * as boxes: the "when" a start box, each condition a condition box, the
+ * step and its follow-ups step boxes on the arrows of their outcomes. Their titles and texts are the same sentences,
  * so a language that has them has these.
  *
  * A template is:
