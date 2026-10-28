@@ -23,7 +23,7 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 3. Done. Parity boxes (F4, F5): 3a #2205 trigger values; 3b #2235 start a flow box; 3c #2249 arrows on always; 3d #2275 self-retry (workspace/workspace-flows-*.md).
 4. New rules on the canvas; the form stays for keys still `form`; templates are starters (flow gallery, G1). Parts:
    - 4a. Done (#2292). Scheduled actions section: New flow in the toolbar, the list's New hidden (`{ add: false }`); cards keep the form.
-   - 4b. The other ways in (composer insert menu, note toolbar, Duplicate): open the canvas instead of the form. 7 and 8 answered: may start.
+   - 4b. Done (#2730). Add › Scheduled flow, Duplicate and the note toolbar (entry removed) open the canvas (workspace/workspace-flows-scheduled-ways-in.md); the mini window is C3's.
    - 4c. Done: AI drafts on the canvas (F8): 4c1 #2306 `ws_flow_graph_from_scheduled()`; 4c2 #2323 a draft card opens as a new flow.
 5. Conversion (answer 2): in the 2026.11.0 upgrade every row becomes a converted anchor, its id and every parity row kept. Schema approved (#2396).
    - 5a #2558, 5b #2606 done (workspace-flows-converted-anchor.md). Form retires after 4b.
@@ -39,4 +39,4 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 8. A scheduled action kept in a note → b (#2395): no new ones from a note; the toolbar entry goes, converted ones keep their card and post step.
 
 ## Where to start?
-- Slices 1-3, 4a, 4c and 5 done. Next: 4b, then retire the form; read workspace/README.md.
+- Slices 1-5 done. Next: retire the form; read workspace/README.md.
