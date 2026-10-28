@@ -1,6 +1,6 @@
 ---
 name: workspace-composer-tools
-description: Plan (2026-10-23; 1, 2, 3, 4, 6, 7, 8, 9, 11 done, 5 partly): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
+description: Plan (2026-10-23; 1-9 and 11 done, 10 waits on the owner: schema): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -22,7 +22,7 @@ description: Plan (2026-10-23; 1, 2, 3, 4, 6, 7, 8, 9, 11 done, 5 partly): one t
 2. Lists and quotes, no schema, done: #1725, #1897 (workspace/workspace-text-lists.md, -editor-lists.md); autoformat in 4.
 3. Headings `#`-`###` and `---` in notes only, no schema; the import keeps headings. Done: #2649 (workspace/workspace-text-headings.md).
 4. Highlight `==x==`, autoformat (one Ctrl+Z undo, IME guard, off switch), no schema. Done: highlight #1972, #1999 (workspace-text-highlight.md), autoformat #2590 (workspace-editor-autoformat.md).
-5. Link Text field, Ctrl+/ sheet, done: #2101 (workspace/workspace-editor-link-keys.md); "Aa" expanded composer after question 2; no schema.
+5. Link Text field, Ctrl+/ sheet, done: #2101 (workspace/workspace-editor-link-keys.md); "Aa" expanded composer, done: #2692 (workspace/workspace-composer-expanded.md); no schema.
 6. Slash inserts in notes, done: #2009 (workspace/workspace-notes-slash-inserts.md).
 7. Smart paste, no schema, done: #2018 (workspace/workspace-editor-smart-paste.md).
 8. Small aids, no schema, done: unsent draft #2034 (workspace/workspace-unsent-draft.md), meter near `WS_MESSAGE_MAX` #2073 (workspace/workspace-message-meter.md), `:` emoji #2115 (workspace/workspace-colon-emoji.md).
@@ -39,4 +39,4 @@ description: Plan (2026-10-23; 1, 2, 3, 4, 6, 7, 8, 9, 11 done, 5 partly): one t
 5. Dictation: not now (b); plans/workspace-voice-messages.md covers recordings and transcripts.
 
 ## Where to start?
-- Steps needing no answer are done. Left: the "Aa" box of 5 (question 2), autoformat of 4 (`==x==`, "- " at a line's start; question 3), 10 (question 4, schema).
+- Steps 1-9 and 11 are done. Left: 10 (saved replies; question 4 answered, but it needs a schema step: ask the owner first, Fixed rules 5); 12 is "later".

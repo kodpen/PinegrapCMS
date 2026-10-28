@@ -4,7 +4,7 @@ description: One row of tools for every Workspace writing box (PGWsEditor.toolba
 ---
 
 ## What builds the row under a writing box?
-- `PGWsEditor.toolbar(editor, items, options)` (`assets/js/workspace_editor.js`). Items in order: tool names (`undo redo bold italic strike highlight code link bullets numbers quote checklist table calc codeblock`; lists: workspace-editor-lists.md), nodes the caller made (attach, emoji, voice, send), arrays for groups (`options.groupClass`). Options: `className`, `label` (aria-label), `insertLabel`, `scope` (table and calculation windows).
+- `PGWsEditor.toolbar(editor, items, options)` (`assets/js/workspace_editor.js`). Items in order: tool names (`undo redo bold italic strike highlight code link bullets numbers quote checklist table calc codeblock expand`; lists: workspace-editor-lists.md; `expand` is the "Aa" switch, put in by itself for a box with `onEnter`: workspace-composer-expanded.md), nodes the caller made (attach, emoji, voice, send), arrays for groups (`options.groupClass`). Options: `className`, `label` (aria-label), `insertLabel`, `scope` (table and calculation windows).
 - Users: `composer()` (`ws-composer-tools`; B I S, lists, undo redo as three `ws-composer-format` groups after `/`), the notes `toolbar()` (`ws-nb-tools`), `richField().tools()` (`ws-note-actions`). The templates form (`workspace_templates.js`) draws its own row.
 - `role="toolbar"` with a name; arrows, Home, End move between buttons (also ones appended later); mousedown is prevented on the row so the text keeps focus and selection; undo, redo off with nothing to undo; marks carry `aria-pressed`.
 
