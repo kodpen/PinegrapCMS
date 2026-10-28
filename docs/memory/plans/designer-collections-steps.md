@@ -23,7 +23,8 @@ description: Plan (collections half of designer-interactions-collections, steps 
 
 - **C4a — lists by kind. Done, #2709:** numeric sort for number; reference filter by address name or code, printing the record's label (`designer/collection-lists.md`). Image output already gets `pg_img_responsive_html()` (every widget's output).
 
-- **C4b — detail by kind.** C1's `ref` defaults from the field (needs `style_designer.js`); "records that reference this one" on a detail page; product/page reference tokens (name, link, price, image) after C3c.
+- **C4b1 — references by kind.** C1's `ref` defaults from the field's kind and target (needs `style_designer.js`); a `__ref` on a product / page field prints the product's name, link, price, image or the page's name, link.
+- **C4b2 — "records that reference this one"** on a detail page (a list filtered by the shown record's code).
 
 - **C5 — slug field and feeds.** A slug field feeds `update_submitted_form_address_name()`; RSS `category` and JSON-LD print a reference's label, not its code.
 
@@ -38,4 +39,4 @@ description: Plan (collections half of designer-interactions-collections, steps 
 - Q4 `forms.publish_at` / `unpublish_at`: not added; the templates' `publish_date` field and live filter cover it.
 
 ## Where to start?
-- C1–C4a and C3c are done. Next is C4b (edits `assets/js/style_designer.js` for the `ref` default; claim it once no open PR holds that file); its product/page tokens read the ids C3c stores (`designer/collection-inputs.md`). C5 does not depend on it.
+- C1–C4a and C3c are done. Next is C4b1 (edits `assets/js/style_designer.js` for the `ref` default; claim it once no open PR holds that file); its product/page tokens read the ids C3c stores (`designer/collection-inputs.md`). C4b2 follows it. C5 does not depend on it.
