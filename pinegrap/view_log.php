@@ -22,6 +22,7 @@ $user = validate_user();
 validate_area_access($user, 'manager');
 
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_log_list.php');
 $liveform = new liveform('view_log');
 
 // Path to error log file (can be extended later to include other locations)
@@ -194,34 +195,15 @@ if (!$_POST) {
     // get query data for URL
     $keys_and_values = h("&start_month=$start_month&start_day=$start_day&start_year=$start_year&stop_month=$stop_month&stop_day=$stop_day&stop_year=$stop_year");
 
-    // The columns this list sorts by, in the order the table shows them.
-    // pg_list_state() keeps the choice in the session as a code, so it survives
-    // a language change, and falls back to the default for anything else.
-    $sort_columns = array(
-        'time'        => lang('Time'),
-        'user'        => lang('User'),
-        'description' => lang('Description'),
-        'ip_address'  => lang('IP Address'),
-    );
-
-    $sort_default = array('sort' => 'time', 'order' => 'desc');
-
-    $list_state = pg_list_state('view_log', $sort_columns, $sort_default);
-    $sort_levels = $list_state['sorts'];
-
-    // The column each sort code orders by, in SQL and in the rows below. Only
-    // codes pg_list_state() let through reach pg_list_order_by(), and it
-    // writes nothing but these. Rows that tie on every level keep the order
-    // they were logged in, in the first level's direction.
-    $sort_keys = array(
-        'time'        => 'log_timestamp',
-        'user'        => 'log_user',
-        'description' => 'log_description',
-        'ip_address'  => 'log_ip',
-    );
-
-    $tie_direction = ($sort_levels[0]['order'] === 'desc') ? 'desc' : 'asc';
-    $order_by = pg_list_order_by($sort_levels, $sort_keys) . ', log_id ' . $tie_direction;
+    // The sort kept in the session, and what each column orders by
+    // (includes/fn/site_log_list.php).
+    $list_sort = pg_site_log_list_sort();
+    $sort_columns = $list_sort['sort_columns'];
+    $sort_default = $list_sort['sort_default'];
+    $sort_levels = $list_sort['sort_levels'];
+    $sort_keys = $list_sort['sort_keys'];
+    $tie_direction = $list_sort['tie_direction'];
+    $order_by = $list_sort['order_by'];
 
     // Determine whether to include error_log entries (only for admins and if enabled in settings)
     $include_error_logs = (defined('USER_ROLE') && (USER_ROLE < 1) && !empty($_SESSION['software']['settings']['view_log']['error_log']));
@@ -229,76 +211,19 @@ if (!$_POST) {
     $output_rows = '';
     $number_of_results = 0;
 
-    // Renders the description cell.  error_log entries are frequently multi line stack
-    // traces that push every other row off the screen, so long messages are clipped to a
-    // few lines and can be expanded on demand.  Error messages also get a copy button so
-    // the trace can be pasted somewhere else without selecting it by hand.
-    $description_index = 0;
-    $render_description = function ($text, $is_error) use (&$description_index) {
-        // convert_text_to_html() already runs nl2br() internally, so it must not be wrapped again.
-        $message_html = convert_text_to_html($text);
-        $is_long = ((substr_count($text, "\n") > 2) || (strlen($text) > 300));
-
-        $description_index++;
-        $message_id = 'pg_log_msg_' . $description_index;
-
-        $tools = '';
-        if ($is_long) {
-            $tools .= '<button type="button" class="btn btn-link btn-sm p-0 text-decoration-none pg-log-toggle"'
-                . ' data-target="' . $message_id . '"'
-                . ' data-more="' . h(lang('Show More')) . '"'
-                . ' data-less="' . h(lang('Show Less')) . '">'
-                . '<i class="bi bi-chevron-down me-1"></i><span class="pg-log-toggle-label">' . lang('Show More') . '</span></button>';
-        }
-        if ($is_error) {
-            $tools .= '<button type="button" class="btn btn-link btn-sm p-0 ms-5 text-decoration-none pg-log-copy"'
-                . ' data-target="' . $message_id . '"'
-                . ' data-copy="' . h(lang('Copy')) . '"'
-                . ' data-copied="' . h(lang('Copied')) . '">'
-                . '<i class="bi bi-clipboard me-1"></i><span class="pg-log-copy-label">' . lang('Copy') . '</span></button>';
-        }
-
-        $classes = 'pg-log-msg text-break';
-        if ($is_error) {
-            $classes .= ' pg-log-msg-code';
-        }
-        if ($is_long) {
-            $classes .= ' pg-log-clip';
-        }
-
-        $output = '<div id="' . $message_id . '" class="' . $classes . '">' . $message_html . '</div>';
-        if ($tools != '') {
-            $output .= '<div class="pg-log-tools">' . $tools . '</div>';
-        }
-        return $output;
-    };
+    $output_list_attributes = '';
 
     if (!$include_error_logs) {
-        // Fast path: only DB logs are needed — stream results directly without building intermediate arrays
-        $query = "SELECT log_id, log_description, log_ip, log_user, log_timestamp "
-            ."FROM log "
-            ."WHERE (log_timestamp >= $start_timestamp) AND (log_timestamp <= $stop_timestamp) "
-            ."ORDER BY $order_by ";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+        // Only the database is read: the rows come one page at a time from
+        // the site_log_list_rows action (includes/panel/lists.php) for the
+        // range shown here.
+        $number_of_results = pg_site_log_list_count(array('start' => $start_timestamp, 'stop' => $stop_timestamp));
 
-        while ($row = mysqli_fetch_assoc($result)) {
-            $log_id = $row['log_id'];
-            $log_description = $row['log_description'];
-            $log_ip = isset($row['log_ip']) ? $row['log_ip'] : '';
-            $log_user = $row['log_user'] === '' ? 'UNKNOWN' : $row['log_user'];
-            $log_timestamp = $row['log_timestamp'];
-            $log_location = lang('Database');
-            $number_of_results++;
-
-            $output_rows .= '
-            <tr id="' . h($log_id) . '" class="unselectable ">
-                <td>'. get_relative_time(array('timestamp' => $log_timestamp)). '</td>
-                <td><span title="' . h($log_location) . '" class="badge theme-success me-1">' . lang('Site Log') . '</span><span class="d-none">pglogsite</span></td>
-                <td>' . h($log_user) . '</td>
-                <td>' . $render_description($log_description, false) . '</td>
-                <td>' . ($log_ip != '' ? h($log_ip) : '<span class="fg-secondary">&mdash;</span>') . '</td>
-            </tr>';
+        if ($number_of_results === false) {
+            output_error('Query failed.');
         }
+
+        $output_list_attributes = ' data-pg-list-action="site_log_list_rows" data-pg-list-params="' . h(encode_json(array('start_time' => (string) $start_timestamp, 'stop_time' => (string) $stop_timestamp))) . '"';
     } else {
         // Full path: collect DB logs into array, gather error_log entries, merge and sort
         $db_logs = array();
@@ -313,7 +238,7 @@ if (!$_POST) {
                 $row['log_user'] = 'UNKNOWN';
             }
             $row['log_type'] = 'Site Log';
-            $row['log_location'] = lang('Database');
+            $row['log_location'] = h(lang('Database'));
             
             $db_logs[] = $row;
         }
@@ -483,56 +408,8 @@ if (!$_POST) {
 
         // Build rows
         foreach ($all_entries as $row) {
-            $log_id = $row['log_id'];
-            $log_description = $row['log_description'];
-            $log_ip = isset($row['log_ip']) ? $row['log_ip'] : '';
-            $log_user = isset($row['log_user']) ? $row['log_user'] : '';
-            if ($log_user == '') {
-            $log_user = 'UNKNOWN';
-            }
-            $log_location = isset($row['log_location']) ? $row['log_location'] : '';
-            $log_type = isset($row['log_type']) ? $row['log_type'] : 'Site Log';
-
-
-            // Hidden tokens let the type filter buttons search this column without
-            // depending on the translated badge text.
-            $output_log_type = '';
-            $row_class = '';
-            $is_error_entry = false;
-            if($log_type == 'Site Log') {
-            $output_log_type = '<span title="' . $log_location . '" class="badge theme-success me-1">' . h(lang($log_type)) . '</span><span class="d-none">pglogsite</span>';
-            } else {
-            $is_error_entry = true;
-            // Determine badge color based on message severity
-            // warning -> bg-warning, fatal/error/uncaught/exception -> bg-danger (default for non-warning)
-            $badge_class = 'bg-danger';
-            $type_token = 'pglogerror';
-            $row_class = ' pg-log-row-error';
-            if (preg_match('/\bwarning\b/i', $log_description)) {
-                // bg-warning needs dark text, the default white is unreadable on yellow.
-                $badge_class = 'bg-warning fg-black';
-                $type_token = 'pglogwarn';
-                $row_class = ' pg-log-row-warn';
-            } elseif (preg_match('/\b(fatal|fatal error|uncaught|uncaught exception|exception|error)\b/i', $log_description)) {
-                $badge_class = 'bg-danger';
-            }
-            $output_log_type = '<span title="' . $log_location . '" class="badge ' . $badge_class . ' me-1">' . h(lang($log_type)) . '</span><span class="d-none">' . $type_token . '</span>';
-            }
-
-
-            $log_timestamp = $row['log_timestamp'];
-
             $number_of_results++;
-
-            $output_rows .= '
-            <tr id="' . h($log_id) . '" class="unselectable' . $row_class . '">
-                <td>'. get_relative_time(array('timestamp' => $log_timestamp)). '</td>
-                <td>' . $output_log_type  . '</td>
-                <td>' . h($log_user) . '</td>
-                <td>' . $render_description($log_description, $is_error_entry) . '</td>
-                <td>' . ($log_ip != '' ? h($log_ip) : '<span class="fg-secondary">&mdash;</span>') . '</td>
-            </tr>
-            ';
+            $output_rows .= pg_list_row_html(pg_site_log_list_row($row));
         }
     }
 
@@ -727,7 +604,7 @@ if (!$_POST) {
                 ' . $output_toolbar . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">
-                        <table class="chart table-hover table " style="width:100%;display:none">
+                        <table class="chart table-hover table " style="width:100%;display:none"' . $output_list_attributes . '>
                             <thead>
                                 <tr>
                                     <th>' . get_column_heading(lang('Time'), $sort_levels, '', $keys_and_values, 'time') . '</th>
@@ -737,7 +614,7 @@ if (!$_POST) {
                                     <th>' . get_column_heading(lang('IP Address'), $sort_levels, '', $keys_and_values, 'ip_address') . '</th>
                                 </tr>
                             </thead>
-                            ' . $output_rows . '
+                            <tbody>' . $output_rows . '</tbody>
                         </table>
                     </div>
                 </div>
