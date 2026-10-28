@@ -1049,6 +1049,12 @@ function pg_purge_caches()
         $cleared[] = lang('Page Cache');
     }
 
+    // The kept sitemap.xml (includes/fn/seo.php), drawn again on its next
+    // request.
+    if (function_exists('pg_sitemap_cache_purge') && pg_sitemap_cache_purge()) {
+        $cleared[] = lang('Sitemap');
+    }
+
     // The pages drawn in the other languages (page_translations): their
     // bodies, and what they answered the search engines, which sitemap.xml
     // and the hreflang alternates follow. Each is drawn and answered again

@@ -1535,14 +1535,15 @@ function pg_page_cache_announce_dirties($event)
 
 /**
  * Marks this request as one that changed what pages show: once it ends
- * without an error status, every stored page is made old. Nothing while the
- * cache is off.
+ * without an error status, every stored page is made old. The number is
+ * raised while the page cache is off too: the kept sitemap.xml follows it
+ * (pg_sitemap_info_cached()).
  */
 function pg_page_cache_mark_dirty()
 {
     static $registered = false;
 
-    if ($registered || !pg_page_cache_file_enabled()) {
+    if ($registered) {
         return;
     }
 

@@ -4289,6 +4289,184 @@ function update_tag_cloud_keywords_for_search_results_page_product_group($page_i
     }
 }
 
+// sitemap.xml is drawn from every public page, product, record and event,
+// which takes seconds on a large site, so the drawn file is kept in
+// data/cache/sitemap.txt under config.page_cache_generation. Every write that
+// may change what pages show raises that number once its request ends
+// (pg_page_cache_mark_dirty(), whether or not pages are stored), so a copy
+// made before the write is drawn again. A copy older than
+// PG_SITEMAP_CACHE_TTL is drawn again too: it bounds what the number does not
+// see (records and comments sent by visitors, the index answer a translated
+// page keeps when it is drawn, a GET write, a change made in the database).
+// A copy of another software version is never read.
+
+// Seconds a kept sitemap is served before it is drawn again anyway.
+define('PG_SITEMAP_CACHE_TTL', 3600);
+
+// The layout of the kept file; a file of another layout is a miss.
+define('PG_SITEMAP_CACHE_FORMAT', 1);
+
+/**
+ * The file the drawn sitemap is kept in.
+ *
+ * @return string
+ */
+function pg_sitemap_cache_file()
+{
+    return PG_FUNCTIONS_DIR . '/data/cache/sitemap.txt';
+}
+
+/**
+ * The kept file: one line of JSON (layout, time drawing began, generation,
+ * software version, whether it lists any address), then the sitemap.
+ *
+ * @param array  $meta created, generation, version, urls_exist
+ * @param string $content
+ * @return string '' when the line cannot be written
+ */
+function pg_sitemap_cache_pack(array $meta, $content)
+{
+    $line = json_encode(array(
+        'v' => PG_SITEMAP_CACHE_FORMAT,
+        'created' => (int) ($meta['created'] ?? 0),
+        'generation' => (int) ($meta['generation'] ?? 0),
+        'version' => (string) ($meta['version'] ?? ''),
+        'urls_exist' => !empty($meta['urls_exist']),
+    ), JSON_UNESCAPED_SLASHES);
+
+    return is_string($line) ? $line . "\n" . (string) $content : '';
+}
+
+/**
+ * Reads the kept file back; null for anything that is not one whole.
+ *
+ * @param string $raw
+ * @return array|null ['meta' => [created, generation, version, urls_exist], 'content' => string]
+ */
+function pg_sitemap_cache_unpack($raw)
+{
+    $raw = (string) $raw;
+    $eol = strpos($raw, "\n");
+
+    if ($eol === false) {
+        return null;
+    }
+
+    $meta = json_decode(substr($raw, 0, $eol), true);
+
+    if (!is_array($meta) || ((int) ($meta['v'] ?? 0) !== PG_SITEMAP_CACHE_FORMAT)
+        || !isset($meta['created'], $meta['generation'], $meta['version'], $meta['urls_exist'])) {
+        return null;
+    }
+
+    $content = (string) substr($raw, $eol + 1);
+
+    // A cut file has no closing tag.
+    if (substr(rtrim($content), -9) !== '</urlset>') {
+        return null;
+    }
+
+    return array(
+        'meta' => array(
+            'created' => (int) $meta['created'],
+            'generation' => (int) $meta['generation'],
+            'version' => (string) $meta['version'],
+            'urls_exist' => (bool) $meta['urls_exist'],
+        ),
+        'content' => $content,
+    );
+}
+
+/**
+ * What a kept sitemap is worth now: 'fresh' to serve, 'stale' to draw again
+ * (the old copy still answers while another request draws it), 'miss' when
+ * there is none or it belongs to another software version.
+ *
+ * @param array|null $entry pg_sitemap_cache_unpack()
+ * @param int        $generation config.page_cache_generation
+ * @param string     $version
+ * @param int        $now
+ * @param int        $ttl
+ * @return string
+ */
+function pg_sitemap_cache_state($entry, $generation, $version, $now, $ttl)
+{
+    if (!is_array($entry) || ($entry['meta']['version'] !== (string) $version)) {
+        return 'miss';
+    }
+
+    $age = (int) $now - $entry['meta']['created'];
+
+    // A clock set back leaves a copy from the future; it is not trusted.
+    if (($entry['meta']['generation'] !== (int) $generation) || ($age >= (int) $ttl) || ($age < -60)) {
+        return 'stale';
+    }
+
+    return 'fresh';
+}
+
+/**
+ * get_sitemap_info() through the kept copy. Drawn on a miss; when stale, the
+ * request that takes the lock draws it and the others get the old copy. Drawn
+ * every time before the upgrade step that adds the generation.
+ *
+ * @return array content, urls_exist, cache (hit, stale, miss, off)
+ */
+function pg_sitemap_info_cached()
+{
+    require_once(PG_FUNCTIONS_DIR . '/get_sitemap_info.php');
+
+    if (!function_exists('pg_page_cache_generation') || !pg_schema_has('config', 'page_cache_generation')) {
+        return get_sitemap_info() + array('cache' => 'off');
+    }
+
+    // Read before drawing: a write during the draw raises the number past
+    // the one the copy is kept under, so the copy is drawn again.
+    $generation = pg_page_cache_generation();
+    $created = time();
+    $file = pg_sitemap_cache_file();
+    $raw = is_file($file) ? @file_get_contents($file) : false;
+    $entry = is_string($raw) ? pg_sitemap_cache_unpack($raw) : null;
+    $state = pg_sitemap_cache_state($entry, $generation, VERSION, $created, PG_SITEMAP_CACHE_TTL);
+
+    if ($state !== 'miss') {
+        $kept = array('content' => $entry['content'], 'urls_exist' => $entry['meta']['urls_exist']);
+
+        if ($state === 'fresh') {
+            return $kept + array('cache' => 'hit');
+        }
+
+        if (!pg_page_cache_lock($file)) {
+            return $kept + array('cache' => 'stale');
+        }
+    }
+
+    $info = get_sitemap_info();
+
+    pg_page_cache_write($file, pg_sitemap_cache_pack(array(
+        'created' => $created,
+        'generation' => $generation,
+        'version' => VERSION,
+        'urls_exist' => $info['urls_exist'],
+    ), $info['content']));
+
+    pg_page_cache_unlock();
+
+    return $info + array('cache' => 'miss');
+}
+
+/**
+ * The purge (pg_purge_caches()): the kept sitemap is deleted.
+ *
+ * @return bool whether there was one
+ */
+function pg_sitemap_cache_purge()
+{
+    $file = pg_sitemap_cache_file();
+
+    return is_file($file) && @unlink($file);
+}
+
 /**
  * Checks if the sitemap content has changed and securely pings IndexNow if necessary.
  * This unifies the sitemap check logic safely on the backend.
@@ -4301,8 +4479,7 @@ function update_sitemap_and_ping()
     $query = "UPDATE config SET last_sitemap_check_timestamp = UNIX_TIMESTAMP()";
     mysqli_query(db::$con, $query);
 
-    require_once(PG_FUNCTIONS_DIR . '/get_sitemap_info.php');
-    $sitemap_info = get_sitemap_info();
+    $sitemap_info = pg_sitemap_info_cached();
 
     if ($sitemap_info['urls_exist'] === true) {
 
