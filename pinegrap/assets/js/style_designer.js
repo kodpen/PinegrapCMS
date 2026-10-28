@@ -43781,7 +43781,9 @@ const StyleDesigner = (function () {
                     if (extra ? !_swFormFieldShown(ff) : (ff.type === 'information')) return;
                     var t = _swFormFieldToken(ff).toLowerCase();
                     if (t === cur) known = true;
-                    out += '<option value="' + esc(t) + '"' + (t === cur ? ' selected' : '') + '>' + esc(ff.label || ff.name || ('#' + ff.id)) + '</option>';
+                    out += '<option value="' + esc(t) + '"' + (t === cur ? ' selected' : '') +
+                        (extra ? '' : ' data-kind="' + esc(ff.collection_kind || '') + '" data-ref="' + esc(String(parseInt(ff.reference_page_id, 10) || 0)) + '"') +
+                        '>' + esc(ff.label || ff.name || ('#' + ff.id)) + '</option>';
                 });
                 (extra || []).forEach(function (o) {
                     if (o[0] === cur) known = true;
@@ -43797,8 +43799,23 @@ const StyleDesigner = (function () {
             pageOptions += _swFormOptions(target);
             var html = '<div class="sd-sw-ref mt-3">' +
                 label(_sdT('Field holding the reference')) +
-                '<select class="form-control form-control-sm sd-sw-ref-field" data-ref-prop="' + esc(prop) + '" aria-label="' + esc(_sdT('Field holding the reference')) + '">' + fieldOptions(fields, spec.field) + '</select>' +
-                label(_sdT('Form it points into')) +
+                '<select class="form-control form-control-sm sd-sw-ref-field" data-ref-prop="' + esc(prop) + '" aria-label="' + esc(_sdT('Field holding the reference')) + '">' + fieldOptions(fields, spec.field) + '</select>';
+            if (spec.kind) {
+                // A product or page field: what to print of it.
+                var shows = _swRefShows(spec.kind);
+                var showOptions = '<option value=""' + (spec.show === '' ? ' selected' : '') + '>' + esc(_sdT('— Choose a field —')) + '</option>';
+                shows.forEach(function (o) {
+                    showOptions += '<option value="' + esc(o[0]) + '"' + (o[0] === spec.show ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                });
+                return html + label(_sdT('Field to show')) +
+                    '<select class="form-control form-control-sm sd-sw-ref-show" data-ref-prop="' + esc(prop) + '" aria-label="' + esc(_sdT('Field to show')) + '">' + showOptions + '</select>' +
+                    '<div style="font-size:.66rem;margin-top:3px;line-height:1.4;color:#888">' +
+                    esc(spec.kind === 'product'
+                        ? _sdT('The field holds product ids. Only enabled products are read; the price is the product\'s own, before offers.')
+                        : _sdT('The field holds page ids. Only pages the visitor may see are read.')) +
+                    '</div></div>';
+            }
+            html += label(_sdT('Form it points into')) +
                 '<select class="form-control form-control-sm sd-sw-ref-page" data-ref-prop="' + esc(prop) + '" aria-label="' + esc(_sdT('Form it points into')) + '">' + pageOptions + '</select>';
             if (target) {
                 html += label(_sdT('Field to show')) +
@@ -43909,7 +43926,7 @@ const StyleDesigner = (function () {
                 if (!bp._bindParams[propName]) bp._bindParams[propName] = { page_id: 0, params: [{ name: '', token: '' }] };
             } else if (bp && value === SW_REF_TOKEN) {
                 if (!bp._bindParams || typeof bp._bindParams !== 'object' || Array.isArray(bp._bindParams)) bp._bindParams = {};
-                if (!bp._bindParams[propName]) bp._bindParams[propName] = { field: '', page_id: 0, show: '' };
+                if (!bp._bindParams[propName]) bp._bindParams[propName] = { field: '', page_id: 0, show: '', kind: '' };
             } else if (bp && bp._bindParams) {
                 delete bp._bindParams[propName];
                 if (!Object.keys(bp._bindParams).length) delete bp._bindParams;
@@ -43953,8 +43970,23 @@ const StyleDesigner = (function () {
             sel.addEventListener('change', function () {
                 var v = this.value;
                 var key = this.classList.contains('sd-sw-ref-field') ? 'field' : (this.classList.contains('sd-sw-ref-page') ? 'page_id' : 'show');
+                var opt = this.options[this.selectedIndex];
+                var fieldKind = (opt && opt.dataset) ? (opt.dataset.kind || '') : '';
+                var fieldRef = (opt && opt.dataset) ? (parseInt(opt.dataset.ref, 10) || 0) : 0;
                 _sdRefEdit(this.dataset.refProp, function (spec) {
-                    if (key === 'page_id') {
+                    if (key === 'field') {
+                        // The field's kind and target fill in the rest:
+                        // a reference its form, a product or page field
+                        // its kind; what to show stays while it fits.
+                        spec.field = v;
+                        var kind = (fieldKind === 'product' || fieldKind === 'page') ? fieldKind : '';
+                        if (kind !== spec.kind) spec.show = '';
+                        spec.kind = kind;
+                        if (!kind && fieldKind === 'reference' && fieldRef > 0 && spec.page_id !== fieldRef) {
+                            spec.page_id = fieldRef;
+                            spec.show = '';
+                        }
+                    } else if (key === 'page_id') {
                         // Another form: its fields are other fields.
                         if (String(spec.page_id) !== v) spec.show = '';
                         spec.page_id = /^tab:/.test(v) ? v : (parseInt(v, 10) || 0);
@@ -56210,14 +56242,23 @@ const StyleDesigner = (function () {
     // A field of a record the record points at (props._bindParams.<prop>
     // beside the binding SW_REF_TOKEN), as the panel edits it: twin of
     // pg_coll_ref_spec(), except that a tab of this design not published
-    // yet ('tab:<key>') stays the form until Publish resolves it.
+    // yet ('tab:<key>') stays the form until Publish resolves it. A field of
+    // kind product or page points into no form (`kind`).
     function _swRefSpec(spec) {
         spec = (spec && typeof spec === 'object') ? spec : {};
         var tok = function (v) { return (typeof v === 'string') ? v.replace(/[^a-z0-9_-]/gi, '').toLowerCase() : ''; };
-        var pid = spec.page_id, page = 0;
+        var kind = (spec.kind === 'product' || spec.kind === 'page') ? spec.kind : '';
+        var pid = kind ? 0 : spec.page_id, page = 0;
         if (typeof pid === 'string' && /^tab:/.test(pid)) page = pid;
         else if (parseInt(pid, 10) > 0 && /^\d+$/.test(String(pid))) page = parseInt(pid, 10);
-        return { field: tok(spec.field), page_id: page, show: tok(spec.show) };
+        return { field: tok(spec.field), page_id: page, show: tok(spec.show), kind: kind };
+    }
+    // What a reference to a product or a page may print: twin of
+    // pg_coll_ref_shows(), with the panel's labels.
+    function _swRefShows(kind) {
+        if (kind === 'product') return [['name', _sdT('Name')], ['url', _sdT('Link')], ['price', _sdT('Price')], ['image', _sdT('Image')]];
+        if (kind === 'page') return [['name', _sdT('Name')], ['url', _sdT('Link')]];
+        return [];
     }
     // A link's page and values (props._bindParams.href) as the panel edits
     // them. Not the server's normaliser (pg_sw_page_link_spec()): the page

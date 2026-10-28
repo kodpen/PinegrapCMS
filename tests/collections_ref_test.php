@@ -22,11 +22,11 @@ if (!defined('PG_TEST_RUNNER')) {
 
 function test_collections_ref_spec()
 {
-	$empty = array('field' => '', 'page_id' => 0, 'show' => '');
+	$empty = array('field' => '', 'page_id' => 0, 'show' => '', 'kind' => '');
 	pg_assert_same($empty, pg_coll_ref_spec(null), 'not an array');
 	pg_assert_same($empty, pg_coll_ref_spec('x'), 'a string');
 	pg_assert_same(
-		array('field' => 'category', 'page_id' => 12, 'show' => 'title-tr'),
+		array('field' => 'category', 'page_id' => 12, 'show' => 'title-tr', 'kind' => ''),
 		pg_coll_ref_spec(array('field' => ' Cate gory', 'page_id' => '12', 'show' => 'Title-TR')),
 		'tokens cut to the characters a binding keeps and lowercased, digits read as an id'
 	);
@@ -54,8 +54,8 @@ function test_collections_ref_bindings()
 	$refs = pg_coll_ref_bindings($tree);
 
 	pg_assert_same(array('__ref_0', '__ref_1', '__ref_2'), array_keys($refs), 'one token per binding, in walk order');
-	pg_assert_same(array('field' => 'category', 'page_id' => 4, 'show' => 'title'), $refs['__ref_0']);
-	pg_assert_same(array('field' => '', 'page_id' => 0, 'show' => ''), $refs['__ref_1'], 'a binding without its spec reads nothing');
+	pg_assert_same(array('field' => 'category', 'page_id' => 4, 'show' => 'title', 'kind' => ''), $refs['__ref_0']);
+	pg_assert_same(array('field' => '', 'page_id' => 0, 'show' => '', 'kind' => ''), $refs['__ref_1'], 'a binding without its spec reads nothing');
 	pg_assert_same('__ref_0', $tree['children'][0]['props']['_bindings']['text']);
 	pg_assert_same('__ref_1', $tree['children'][0]['props']['_bindings']['href']);
 	pg_assert_same('title', $tree['children'][1]['props']['_bindings']['text'], 'another binding is left alone');
@@ -156,7 +156,10 @@ function test_collections_ref_editor_spec()
 		. "_swRefSpec(null),"
 		. "_swRefSpec({field: ' Cate gory', page_id: '12', show: 'Title'}),"
 		. "_swRefSpec({field: 'a', page_id: 'tab:k1', show: 'b'}),"
-		. "_swRefSpec({page_id: -3})"
+		. "_swRefSpec({page_id: -3}),"
+		. "_swRefSpec({field: 'item', page_id: 12, show: 'price', kind: 'product'}),"
+		. "_swRefSpec({field: 'about', show: 'url', kind: 'page'}),"
+		. "_swRefSpec({field: 'x', page_id: 3, kind: 'reference'})"
 		. "]));";
 	$file = tempnam(sys_get_temp_dir(), 'pgref');
 	file_put_contents($file, $script);
@@ -166,10 +169,13 @@ function test_collections_ref_editor_spec()
 
 	pg_assert_same(0, $code, implode("\n", $out));
 	pg_assert_same(array(
-		array('field' => '', 'page_id' => 0, 'show' => ''),
-		array('field' => 'category', 'page_id' => 12, 'show' => 'title'),
-		array('field' => 'a', 'page_id' => 'tab:k1', 'show' => 'b'),
-		array('field' => '', 'page_id' => 0, 'show' => ''),
+		array('field' => '', 'page_id' => 0, 'show' => '', 'kind' => ''),
+		array('field' => 'category', 'page_id' => 12, 'show' => 'title', 'kind' => ''),
+		array('field' => 'a', 'page_id' => 'tab:k1', 'show' => 'b', 'kind' => ''),
+		array('field' => '', 'page_id' => 0, 'show' => '', 'kind' => ''),
+		array('field' => 'item', 'page_id' => 0, 'show' => 'price', 'kind' => 'product'),
+		array('field' => 'about', 'page_id' => 0, 'show' => 'url', 'kind' => 'page'),
+		array('field' => 'x', 'page_id' => 3, 'show' => '', 'kind' => ''),
 	), json_decode(implode('', $out), true));
 }
 
@@ -180,6 +186,69 @@ function test_collections_ref_panel_wiring()
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
 	pg_assert_contains("var SW_REF_TOKEN = '__ref';", $js);
 	pg_assert_contains('var withRef = _pageLinkOffered && _SW_REF_PROPS[prop] === 1;', $js, 'offered in the widget kinds that expand it');
-	pg_assert_contains("bp._bindParams[propName] = { field: '', page_id: 0, show: '' };", $js, 'picking it starts an empty spec');
+	pg_assert_contains("bp._bindParams[propName] = { field: '', page_id: 0, show: '', kind: '' };", $js, 'picking it starts an empty spec');
 	pg_assert_contains("p._bindParams[prop] = _swRefSpec(spec);", $js, 'an edit is stored normalised');
+}
+
+function test_collections_ref_spec_kind()
+{
+	pg_assert_same(
+		array('field' => 'item', 'page_id' => 0, 'show' => 'price', 'kind' => 'product'),
+		pg_coll_ref_spec(array('field' => 'item', 'page_id' => 12, 'show' => 'price', 'kind' => 'product')),
+		'a product points into no form'
+	);
+	pg_assert_same('page', pg_coll_ref_spec(array('kind' => 'page'))['kind']);
+	foreach (array('reference', 'number', 'Product', array('page'), 1) as $kind) {
+		pg_assert_same('', pg_coll_ref_spec(array('kind' => $kind))['kind'], var_export($kind, true));
+	}
+	pg_assert_same(array('name', 'url', 'price', 'image'), pg_coll_ref_shows('product'));
+	pg_assert_same(array('name', 'url'), pg_coll_ref_shows('page'));
+	pg_assert_same(array(), pg_coll_ref_shows(''));
+}
+
+function test_collections_ref_wanted_by_kind()
+{
+	$refs = array(
+		'__ref_0' => pg_coll_ref_spec(array('field' => 'item', 'show' => 'name', 'kind' => 'product')),
+		'__ref_1' => pg_coll_ref_spec(array('field' => 'about', 'show' => 'url', 'kind' => 'page')),
+		'__ref_2' => pg_coll_ref_spec(array('field' => 'item', 'show' => 'title', 'kind' => 'product')),
+	);
+	$records = array(
+		1 => array('item' => array('data' => '12, x7, 9'), 'about' => array('data' => '4')),
+		2 => array('item' => array('data' => '12')),
+	);
+	pg_assert_same(array('product' => array('12', '9'), 'page' => array('4')), pg_coll_ref_wanted($refs, $records),
+		'ids only, each once; a show the kind does not have asks nothing');
+}
+
+function test_collections_ref_value_by_kind()
+{
+	$loaded = array('codes' => array('12' => 12, '9' => 9), 'rows' => array(
+		12 => array('name' => 'Shoes', 'url' => '/shop/shoes', 'price' => '10.00', 'image' => '/shoes.jpg'),
+		9  => array('name' => 'Bags', 'url' => '/shop/bags', 'price' => '', 'image' => ''),
+	), 'records' => array());
+	$spec = pg_coll_ref_spec(array('field' => 'item', 'show' => 'name', 'kind' => 'product'));
+	$value = pg_coll_ref_value($spec, array('item' => array('data' => '12, 5, 9')), $loaded);
+	pg_assert_same('Shoes, Bags', $value['data']);
+	pg_assert_same('', $value['type']);
+	$value = pg_coll_ref_value(array('show' => 'image') + $spec, array('item' => array('data' => '9, 12')), $loaded);
+	pg_assert_same('/shoes.jpg', $value['data'], 'an empty value is left out');
+	pg_assert_same(null, pg_coll_ref_value(array('show' => 'reference_code') + $spec, array('item' => array('data' => '12')), $loaded), 'not a product field');
+}
+
+function test_collections_ref_product_and_page_fields()
+{
+	$row = array('id' => 12, 'name' => 'SKU-1', 'short_description' => 'Red shoes', 'address_name' => 'red shoes', 'price' => 1250, 'image_name' => 'red shoes.jpg');
+	$fields = pg_coll_ref_product_fields($row, '/shop/', '/');
+	pg_assert_same('Red shoes', $fields['name']);
+	pg_assert_same('/shop/red%20shoes', $fields['url']);
+	pg_assert_same(pg_money_text(pg_visitor_amount(12.5), null, defined('VISITOR_CURRENCY_CODE_FOR_OUTPUT') ? VISITOR_CURRENCY_CODE_FOR_OUTPUT : ''), $fields['price']);
+	pg_assert_same('/red%20shoes.jpg', $fields['image']);
+
+	$fields = pg_coll_ref_product_fields(array('short_description' => '', 'address_name' => '', 'image_name' => '') + $row, '', '/');
+	pg_assert_same('SKU-1', $fields['name'], 'the name when there is no short description');
+	pg_assert_same('', $fields['url'], 'no detail page or no address name: no link');
+	pg_assert_same('', $fields['image']);
+
+	pg_assert_same(array('name' => 'about us', 'url' => '/site/about%20us'), pg_coll_ref_page_fields(array('page_name' => 'about us'), '/site/'));
 }

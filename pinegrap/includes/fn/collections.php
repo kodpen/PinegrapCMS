@@ -61,19 +61,54 @@ function pg_coll_ref_standard_shows()
 }
 
 /**
+ * What an element may print of the product or page a field of that kind
+ * points at (pg_coll_ref_product_fields(), pg_coll_ref_page_fields()).
+ *
+ * @param string $kind 'product' or 'page'
+ * @return array
+ */
+function pg_coll_ref_shows($kind)
+{
+    if ($kind === 'product') return array('name', 'url', 'price', 'image');
+    if ($kind === 'page') return array('name', 'url');
+    return array();
+}
+
+/**
+ * Where a spec's references are read: the form page id, 'product' or
+ * 'page'; null when the spec asks for nothing (no field, nothing to show,
+ * no form, or a show its kind does not have).
+ *
+ * @param array $spec pg_coll_ref_spec()
+ * @return int|string|null
+ */
+function pg_coll_ref_target($spec)
+{
+    if (!is_array($spec) || empty($spec['field']) || empty($spec['show'])) return null;
+    $kind = isset($spec['kind']) ? $spec['kind'] : '';
+    if ($kind !== '') return in_array($spec['show'], pg_coll_ref_shows($kind), true) ? $kind : null;
+    return !empty($spec['page_id']) ? (int)$spec['page_id'] : null;
+}
+
+/**
  * A stored reference spec in the shape the renderer reads: `field` and
  * `show` cut to the characters a binding token keeps and lowercased, as the
  * record index is keyed; `page_id` a positive id, else 0 (a tab of the
  * design not published yet, 'tab:<key>', is 0 here until Publish resolves
- * it).
+ * it); `kind` 'product' or 'page' when the field holds product or page ids
+ * (pg_coll_ref_shows()), which point into no form, else ''.
  *
  * @param mixed $spec
  * @return array
  */
 function pg_coll_ref_spec($spec)
 {
-    $out = array('field' => '', 'page_id' => 0, 'show' => '');
+    $out = array('field' => '', 'page_id' => 0, 'show' => '', 'kind' => '');
     if (!is_array($spec)) return $out;
+
+    if (isset($spec['kind']) && is_string($spec['kind']) && in_array($spec['kind'], array('product', 'page'), true)) {
+        $out['kind'] = $spec['kind'];
+    }
 
     foreach (array('field', 'show') as $key) {
         if (isset($spec[$key]) && is_string($spec[$key])) {
@@ -81,7 +116,7 @@ function pg_coll_ref_spec($spec)
         }
     }
 
-    $page_id = isset($spec['page_id']) ? $spec['page_id'] : 0;
+    $page_id = ($out['kind'] === '' && isset($spec['page_id'])) ? $spec['page_id'] : 0;
     if (is_int($page_id) && $page_id > 0) {
         $out['page_id'] = $page_id;
     } elseif (is_string($page_id) && $page_id !== '' && ctype_digit($page_id) && (int)$page_id > 0) {
@@ -146,7 +181,8 @@ function pg_coll_ref_codes($value)
 
 /**
  * What the references of a page's records ask for: the other form's page id
- * => its references, each listed once.
+ * (or 'product', 'page': pg_coll_ref_target()) => its references, each
+ * listed once; a product or page reference is an id.
  *
  * @param array $refs    token => spec (pg_coll_ref_bindings())
  * @param array $records record id => fields as stored (pg_sw_index_form_data())
@@ -156,15 +192,17 @@ function pg_coll_ref_wanted($refs, $records)
 {
     $wanted = array();
     foreach ((array)$refs as $spec) {
-        if (empty($spec['page_id']) || $spec['field'] === '' || $spec['show'] === '') continue;
+        $target = pg_coll_ref_target($spec);
+        if ($target === null) continue;
         foreach ((array)$records as $fields) {
             if (!isset($fields[$spec['field']]['data'])) continue;
             foreach (pg_coll_ref_codes($fields[$spec['field']]['data']) as $code) {
-                $wanted[$spec['page_id']][$code] = true;
+                if (is_string($target) && !ctype_digit((string)$code)) continue;
+                $wanted[$target][(string)$code] = true;
             }
         }
     }
-    return array_map('array_keys', $wanted);
+    return array_map(function ($codes) { return array_map('strval', array_keys($codes)); }, $wanted);
 }
 
 /**
@@ -172,7 +210,8 @@ function pg_coll_ref_wanted($refs, $records)
  * record its references point at, in the order the references are stored,
  * joined by ", "; a reference that points at nothing is left out. The value
  * has the shape of an indexed field (data, type, wysiwyg, translate) and
- * takes the type of the first record that answers; null when none does.
+ * takes the type of the first record that answers; null when none does. A
+ * product or page value is plain text (a link, a price, an image address).
  *
  * @param array $spec   pg_coll_ref_spec()
  * @param array $fields the record's own fields as stored
@@ -181,14 +220,15 @@ function pg_coll_ref_wanted($refs, $records)
  */
 function pg_coll_ref_value($spec, $fields, $loaded)
 {
-    if (empty($spec['page_id']) || $spec['field'] === '' || $spec['show'] === '') return null;
+    if (pg_coll_ref_target($spec) === null) return null;
     if (!isset($fields[$spec['field']]['data']) || !is_array($loaded) || empty($loaded['codes'])) return null;
+    $from_row = !empty($spec['kind']) || in_array($spec['show'], pg_coll_ref_standard_shows(), true);
 
     $out = null;
     foreach (pg_coll_ref_codes($fields[$spec['field']]['data']) as $code) {
         if (!isset($loaded['codes'][$code])) continue;
         $id = $loaded['codes'][$code];
-        if (in_array($spec['show'], pg_coll_ref_standard_shows(), true)) {
+        if ($from_row) {
             $value = array('data' => isset($loaded['rows'][$id][$spec['show']]) ? (string)$loaded['rows'][$id][$spec['show']] : '', 'type' => '', 'wysiwyg' => 0, 'translate' => 0);
         } elseif (isset($loaded['records'][$id][$spec['show']])) {
             $value = $loaded['records'][$id][$spec['show']];
@@ -277,6 +317,102 @@ function pg_coll_ref_load($page_id, $codes)
 }
 
 /**
+ * What an element prints of one product: its short description (else its
+ * name), the link to it on $detail_prefix (the catalog detail page, '' for
+ * none: no link), its price as the visitor reads it (plain text, the
+ * product's own price before offers) and the address of its image.
+ *
+ * @param array  $row           products row: name, short_description, address_name, price, image_name
+ * @param string $detail_prefix the detail page's address with a trailing '/', or ''
+ * @param string $base_path     the site's output path
+ * @return array show => text
+ */
+function pg_coll_ref_product_fields($row, $detail_prefix, $base_path)
+{
+    $title = trim((string)(isset($row['short_description']) ? $row['short_description'] : ''));
+    $address = (string)(isset($row['address_name']) ? $row['address_name'] : '');
+    $image = (string)(isset($row['image_name']) ? $row['image_name'] : '');
+    return array(
+        'name'  => ($title !== '') ? $title : (string)(isset($row['name']) ? $row['name'] : ''),
+        'url'   => ($detail_prefix !== '' && $address !== '') ? $detail_prefix . encode_url_path($address) : '',
+        'price' => pg_money_text(pg_visitor_amount(round((float)(isset($row['price']) ? $row['price'] : 0)) / 100), null,
+            defined('VISITOR_CURRENCY_CODE_FOR_OUTPUT') ? VISITOR_CURRENCY_CODE_FOR_OUTPUT : ''),
+        'image' => ($image !== '') ? $base_path . encode_url_path($image) : '',
+    );
+}
+
+/**
+ * What an element prints of one page: its name and its address.
+ *
+ * @param array  $row       page row: page_name
+ * @param string $base_path the site's output path
+ * @return array show => text
+ */
+function pg_coll_ref_page_fields($row, $base_path)
+{
+    $name = (string)(isset($row['page_name']) ? $row['page_name'] : '');
+    return array('name' => $name, 'url' => $base_path . encode_url_path($name));
+}
+
+/**
+ * The products $ids name, in pg_coll_ref_load()'s shape (codes: id => id,
+ * rows: id => pg_coll_ref_product_fields()): enabled ones out of the
+ * recycle bin only, as the product pick list offers them.
+ *
+ * @param array $ids
+ * @return array
+ */
+function pg_coll_ref_load_products($ids)
+{
+    $out = array('codes' => array(), 'rows' => array(), 'records' => array());
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array)$ids))));
+    if (!$ids) return $out;
+
+    $base   = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
+    $detail = pg_sw_catalog_detail_page_name(0);
+    $prefix = ($detail !== '') ? $base . encode_url_path($detail) . '/' : '';
+    $binned = pg_schema_has('products', 'recycled') ? "AND recycled = '0'" : '';
+    foreach ((array)db_items(
+        "SELECT id, name, short_description, address_name, price, image_name
+         FROM products
+         WHERE id IN (" . implode(',', $ids) . ") AND enabled = '1' $binned") as $row) {
+        $id = (int)$row['id'];
+        $out['codes'][(string)$id] = $id;
+        $out['rows'][$id] = pg_coll_ref_product_fields($row, $prefix, $base);
+    }
+    return $out;
+}
+
+/**
+ * The pages $ids name, in pg_coll_ref_load()'s shape (rows: id =>
+ * pg_coll_ref_page_fields()): those the page pick list offers the visitor
+ * (folder neither archived nor in the recycle bin, check_view_access()).
+ *
+ * @param array $ids
+ * @return array
+ */
+function pg_coll_ref_load_pages($ids)
+{
+    $out = array('codes' => array(), 'rows' => array(), 'records' => array());
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array)$ids))));
+    if (!$ids) return $out;
+
+    $base = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
+    foreach ((array)db_items(
+        "SELECT page.page_id, page.page_name, page.page_folder
+         FROM page
+         INNER JOIN folder ON folder.folder_id = page.page_folder
+         WHERE page.page_id IN (" . implode(',', $ids) . ")
+           AND folder.folder_archived = '0'" . pg_designer_not_binned_sql('page.page_folder')) as $row) {
+        if (!check_view_access((int)$row['page_folder'])) continue;
+        $id = (int)$row['page_id'];
+        $out['codes'][(string)$id] = $id;
+        $out['rows'][$id] = pg_coll_ref_page_fields($row, $base);
+    }
+    return $out;
+}
+
+/**
  * Put each '__ref' element's value beside the fields of every record it is
  * drawn for: $by_form[record id]['__ref_<n>']. The references are read from
  * the values as stored ($by_form_source).
@@ -290,13 +426,20 @@ function pg_coll_ref_fill($refs, &$by_form, $by_form_source)
     if (!$refs || !is_array($by_form_source)) return;
 
     $loaded = array();
-    foreach (pg_coll_ref_wanted($refs, $by_form_source) as $page_id => $codes) {
-        $loaded[$page_id] = pg_coll_ref_load($page_id, $codes);
+    foreach (pg_coll_ref_wanted($refs, $by_form_source) as $target => $codes) {
+        if ($target === 'product') {
+            $loaded[$target] = pg_coll_ref_load_products($codes);
+        } elseif ($target === 'page') {
+            $loaded[$target] = pg_coll_ref_load_pages($codes);
+        } else {
+            $loaded[$target] = pg_coll_ref_load($target, $codes);
+        }
     }
 
     foreach ($by_form_source as $id => $fields) {
         foreach ($refs as $token => $spec) {
-            $value = pg_coll_ref_value($spec, $fields, isset($loaded[$spec['page_id']]) ? $loaded[$spec['page_id']] : array());
+            $target = pg_coll_ref_target($spec);
+            $value = pg_coll_ref_value($spec, $fields, ($target !== null && isset($loaded[$target])) ? $loaded[$target] : array());
             if ($value !== null) $by_form[$id][$token] = $value;
         }
     }
