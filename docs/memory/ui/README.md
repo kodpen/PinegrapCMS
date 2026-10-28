@@ -136,3 +136,4 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - translations-screen-recent-jobs.md: Translations screen (translations.php), recent jobs list: how a job's scope (all, group:catalog / forms / ui, page:ID) is labelled
 - user-permission-rows.md: Permission rows in add_user/edit_user/import_users (includes/user_permissions.php): value rules, gate_field/gate_scope, drawer panels, top layer, multiselect pitfalls.
 - user-shared-form.md: The user create and edit screens share includes/forms/user_form.php (rights cards, folder rights, access save)
+- zone-shared-form.md: add_zone.php and edit_zone.php draw the shipping zone form and read its rates through includes/forms/zone_form.php; what each screen keeps
