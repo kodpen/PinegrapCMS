@@ -176,10 +176,12 @@ echo pg_page_shell($shell) . '
             <div class="card my-7">
                 <div class="card-header">' . h(lang('Checklist')) . '</div>
                 <div class="card-body p-0">
-                    <table class="table table-sm mb-0">
-                        <thead><tr><th>' . h(lang('Criterion')) . '</th><th>' . h(lang('Level')) . '</th><th>' . h(lang('Check')) . '</th><th>' . h(lang('Result')) . '</th></tr></thead>
-                        <tbody>' . $output_checklist . '</tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead><tr><th>' . h(lang('Criterion')) . '</th><th>' . h(lang('Level')) . '</th><th>' . h(lang('Check')) . '</th><th>' . h(lang('Result')) . '</th></tr></thead>
+                            <tbody>' . $output_checklist . '</tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
             <div class="card my-7">
@@ -187,10 +189,12 @@ echo pg_page_shell($shell) . '
                 <div class="card-body p-0">
                     ' . (($output_rows === '')
                         ? '<p class="fg-secondary m-7">' . h($last_run ? lang('Nothing was found.') : lang('Not checked yet')) . '</p>'
-                        : '<table class="table table-sm table-hover mb-0">
-                            <thead><tr><th>' . h(lang('Page')) . '</th><th>' . h(lang('Problem')) . '</th><th>' . h(lang('Times')) . '</th><th>' . h(lang('Example')) . '</th></tr></thead>
-                            <tbody>' . $output_rows . '</tbody>
-                        </table>') . '
+                        : '<div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead><tr><th>' . h(lang('Page')) . '</th><th>' . h(lang('Problem')) . '</th><th>' . h(lang('Times')) . '</th><th>' . h(lang('Example')) . '</th></tr></thead>
+                                <tbody>' . $output_rows . '</tbody>
+                            </table>
+                        </div>') . '
                 </div>
             </div>
         </div>

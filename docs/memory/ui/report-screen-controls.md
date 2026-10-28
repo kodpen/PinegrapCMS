@@ -1,6 +1,6 @@
 ---
 name: report-screen-controls
-description: Order, visitor and shipping report controls on Bootstrap 6: period changer groups, named arrows, labelled layout selects, the 100 % cell, named date filter selects (#2716)
+description: Report and panel controls on Bootstrap 6: period changers, named arrows, labelled layout and date selects (#2716), calendar controls, comment rating, accessibility tables (#2900)
 ---
 
 ## How is a report's period changer built?
@@ -22,4 +22,9 @@ description: Order, visitor and shipping report controls on Bootstrap 6: period 
 - The SEO drawer's group weight prints `lang('{var:1}%')` (TR `%40`, EN `40%`); the Search Console chart days are `m/d` on a `month_day` site, else `d.m`.
 - The cash flow toolbar form wraps (`flex-wrap row-gap-2`), each date label in one `d-inline-flex` span with its field: panel CSS keeps a toolbar form on one line, so at 390 px Apply sat off-screen.
 
-Tests: `tests/report_screens_bs6_test.php`, `tests/report_formats_test.php`, `tests/list_period_test.php`, `tests/panel_accessible_names_test.php`.
+## Panel calendar, comment rating, accessibility report?
+- `get_calendar()`'s `$user` branches (`calendars.php`, dashboard widget): the `<` / `>` links carry `aria-label` Previous month / Next month (monthly) and Previous week / Next week (weekly); the Calendar, View and Status selects carry `aria-label`. Front-end branches are site output and stay as they are.
+- Edit Comment's star radios are `input.btn-check` with no inline `display:none` (that took them out of the tab order; the panel rule already hides them with `clip`), each named Rated {var:1} out of 5, in a `role="radiogroup"` labelled by `#comment_rating_label`; the screen's own `@layer custom` block draws the focus outline.
+- `view_accessibility.php` keeps both tables in `.table-responsive`: the `text-nowrap` criterion column pushed a 390 px phone sideways.
+
+Tests: `tests/comment_calendar_names_test.php`, `tests/report_screens_bs6_test.php`, `tests/report_formats_test.php`, `tests/list_period_test.php`, `tests/panel_accessible_names_test.php`.
