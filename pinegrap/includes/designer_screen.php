@@ -644,8 +644,8 @@ function pg_designer_screen_render($ctx)
         <script src="assets/js/pg_style_fields.js?v=' . pg_designer_asset_stamp('assets/js/pg_style_fields.js') . '"></script>
         <!-- Per-element custom style rule in User Styles (window.PgCustomStyle). -->
         <script src="assets/js/pg_custom_style.js?v=' . pg_designer_asset_stamp('assets/js/pg_custom_style.js') . '"></script>
-        <!-- The search keyword chips (pgChips). -->
-        ' . pg_fields_script() . '
+        <!-- The search keyword chips (pgChips) and the date-and-time control of the page schedule and the filter rows. -->
+        ' . get_date_picker_format() . pg_fields_script() . '
         <script src="assets/js/style_designer.js?v=' . pg_designer_asset_stamp('assets/js/style_designer.js') . '"></script>
         ' . pg_ai_write_assets() . '
         ' . (!empty($sd_ai['enabled']) ? '<script src="assets/js/designer_ai.js?v=' . pg_designer_asset_stamp('assets/js/designer_ai.js') . '"></script>' : '') . '
@@ -2249,11 +2249,11 @@ function pg_designer_settings_modal($ctx)
             <h3 class="sd-settings-group-title">' . lang('Schedule') . '</h3>
             ' . pg_designer_setting(lang('Publish at'),
                 lang('The page stays a draft until this time; then the general job puts it on the site, in the folder above. Empty: it is published by hand.'),
-                '<input type="datetime-local" id="pg_page_publish_at" class="form-control form-control-sm sd-page-field" data-page-key="page_publish_at" step="60">',
+                '<input type="datetime-local" id="pg_page_publish_at" class="form-control form-control-sm sd-page-field" data-page-key="page_publish_at" step="60" data-pg-datetime>',
                 array('for' => 'pg_page_publish_at')) . '
             ' . pg_designer_setting(lang('Take off the site at'),
                 lang('At this time the general job moves the page back to the private Drafts folder; the folder it returns to is kept. Empty: it stays on the site.'),
-                '<input type="datetime-local" id="pg_page_unpublish_at" class="form-control form-control-sm sd-page-field" data-page-key="page_unpublish_at" step="60">
+                '<input type="datetime-local" id="pg_page_unpublish_at" class="form-control form-control-sm sd-page-field" data-page-key="page_unpublish_at" step="60" data-pg-datetime>
                 <div class="sd-set-status" id="sd-page-schedule" aria-live="polite"></div>',
                 array('for' => 'pg_page_unpublish_at')) . '
             <p class="sd-settings-note"><span class="bi bi-clock me-1" aria-hidden="true"></span>' . h(lang(array('string' => 'Times are in the site\'s time zone, {var:1}. Both apply when the design is published; the home page takes neither.', 'vars' => array(date_default_timezone_get())))) . '</p>

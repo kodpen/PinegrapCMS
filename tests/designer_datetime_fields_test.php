@@ -60,7 +60,7 @@ function test_designer_schedule_values_written_by_script_are_drawn()
 	pg_assert_true(strpos(designer_datetime_js_function('_pgLoadPageIntoFields'), '_sdDateFieldRefresh(el)') !== false, 'a page loaded into the fields redraws a hooked date box');
 
 	$refresh = designer_datetime_js_function('_sdDateFieldRefresh');
-	pg_assert_true(strpos($refresh, 'pgDateTimeField.refresh') !== false && strpos($refresh, 'pgDatePicker.refresh') !== false, '_sdDateFieldRefresh() goes through the wrappers, never a change event');
+	pg_assert_true(strpos($refresh, 'window.pgFields.refresh(el)') !== false, '_sdDateFieldRefresh() goes through pgFields.refresh()');
 	pg_assert_same(false, strpos($refresh, 'change'), '_sdDateFieldRefresh() fires no change');
 }
 
