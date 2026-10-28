@@ -548,13 +548,20 @@ function pg_comments_widget_view_urls($path, $params)
  * pages, default 1), replying (the form answers a comment), is_watcher,
  * submitter_notified (the record's submitter, told of new comments anyway),
  * manage_watchers (may manage the thread's watchers), email (drawn in a
- * comment e-mail). The search index stores what a visitor who is not
+ * comment e-mail), review_refusal (why a product's review form is not
+ * offered: pg_review_eligibility()'s 'sign_in', 'not_bought', 'reviewed',
+ * '' when it is). The search index stores what a visitor who is not
  * signed in reads: no form, no sign-in note, no staff, no watch box.
  *
  * - is_watching / not_watching: watching on for the page, signed in and not
  *   the record's submitter (who is told anyway and is not asked, as on the
  *   classic block); one of them by is_watcher.
  * - can_manage_watchers: watching on, signed in, manage_watchers.
+ * - A product's review form: 'sign_in' asks a visitor to sign in as a
+ *   required login does (must_sign_in); 'not_bought' and 'reviewed' close
+ *   the form for this visitor (comments_closed, no comments_open, no
+ *   can_comment), so a design shows the reason where it shows the closed
+ *   message (__comments_closed_message carries it).
  * - is_email: the widget draws one comment in a comment e-mail
  *   (_pg_comments_widget_email()). The e-mail has no visitor and no form:
  *   every visitor, form, open-or-closed, featured and paging flag is false;
@@ -574,8 +581,10 @@ function pg_comments_widget_thread_flags($facts)
     $email = $on('email');
     $allow_new = $on('allow_new');
     $signed_in = $on('signed_in') && !$search && !$email;
-    $must_sign_in = $allow_new && !$on('signed_in') && $on('require_login') && !$search && !$email;
-    $can_comment = $allow_new && !$must_sign_in && !$search && !$email;
+    $refusal = (isset($facts['review_refusal']) && is_string($facts['review_refusal'])) ? $facts['review_refusal'] : '';
+    $must_sign_in = $allow_new && !$on('signed_in') && ($on('require_login') || ($refusal === 'sign_in')) && !$search && !$email;
+    $review_closed = $allow_new && in_array($refusal, array('not_bought', 'reviewed'), true) && !$search && !$email;
+    $can_comment = $allow_new && !$must_sign_in && !$review_closed && !$search && !$email;
     $count = (isset($facts['count']) && is_scalar($facts['count']) && !is_bool($facts['count'])) ? (int) $facts['count'] : 0;
     $mode = (isset($facts['featured_mode']) && is_string($facts['featured_mode'])) ? $facts['featured_mode'] : 'first';
     $name_mode = (isset($facts['name_mode']) && is_string($facts['name_mode'])) ? $facts['name_mode'] : '';
@@ -583,8 +592,8 @@ function pg_comments_widget_thread_flags($facts)
     $can_watch = $on('watching_on') && $signed_in && !$on('submitter_notified');
 
     $comments_thread_flags = array(
-        'comments_open' => $allow_new && !$email,
-        'comments_closed' => !$allow_new && !$email,
+        'comments_open' => $allow_new && !$review_closed && !$email,
+        'comments_closed' => (!$allow_new || $review_closed) && !$email,
         'can_comment' => $can_comment,
         'must_sign_in' => $must_sign_in,
         'is_signed_in' => $signed_in,
@@ -994,14 +1003,13 @@ function pg_comments_widget_escape($values)
  * Whether a page keeps its classic comments block, so a comments widget on
  * it neither draws nor claims the thread. Pure.
  *
- * A legacy form item view page shows the record its own settings pick (?r=
- * or the search index's form id), and add_comment.php takes any record
- * there; a catalog, catalog detail or calendar event view page shows the
- * thread of the product, product group or event in the address. The widget
- * does not draw per-item threads, so those pages keep the classic block,
- * which picks the item. A catalog, catalog detail or calendar event view
- * page with a top-level form_item_view widget is the exception: the classic
- * block, like the widget, then reads that record's thread.
+ * Only a legacy form item view page: it shows the record its own settings
+ * pick (?r= or the search index's form id), and add_comment.php takes any
+ * record there. A catalog, catalog detail or calendar event view page is
+ * drawn by the widget, which reads the product, product group or event in
+ * the address as the classic block does (pg_comment_address_item()); with
+ * a top-level form_item_view widget, that record's thread. A record widget
+ * does not change the answer.
  *
  * @param mixed $page_type         the page row's page_type
  * @param bool  $has_record_widget pg_sw_record_comment_context() found one
@@ -1009,13 +1017,7 @@ function pg_comments_widget_escape($values)
  */
 function pg_comments_widget_classic_thread($page_type, $has_record_widget)
 {
-    $page_type = is_string($page_type) ? $page_type : '';
-
-    if ($page_type === 'form item view') {
-        return true;
-    }
-
-    return !$has_record_widget && (pg_comment_classic_item_types($page_type) !== array());
+    return is_string($page_type) && ($page_type === 'form item view');
 }
 
 /**
@@ -3402,7 +3404,8 @@ function pg_comments_widget_draw($tree, $data)
  * - the comment is published;
  * - it belongs to a page's own thread (item type '') or to a form record's
  *   ('submitted_form'): product, product group and event threads keep the
- *   fixed markup, as the widget does not draw per-item threads;
+ *   fixed markup, as the e-mail builds its links from the page's address
+ *   and the item's address is not part of it;
  * - $page is the row of the page the comment was posted on;
  * - the e-mail page is that page's watcher e-mail page, or, for a record's
  *   comment, its submitter e-mail page. A comment named to any other page is
@@ -4370,11 +4373,15 @@ function pg_comments_widget_row_values($row, $flags, $env)
  * the visitor may not see, and on a page with a record widget below its top
  * level. The page
  * is claimed before those refusals, so the classic block never draws a
- * second copy of the thread, even when the widget prints nothing. A page
- * that keeps its classic block (pg_comments_widget_classic_thread(): a
- * 'form item view' page, a catalog, catalog detail or calendar event view
- * page without a record widget) is left to it, unclaimed: the widget does
- * not draw per-item threads.
+ * second copy of the thread, even when the widget prints nothing. A legacy
+ * 'form item view' page keeps its classic block (pg_comments_widget_classic_thread())
+ * and is left to it, unclaimed. A catalog, catalog detail or calendar event
+ * view page without a record widget shows the thread of the product,
+ * product group or event in its address (pg_comment_address_item()); an
+ * address naming no such thread, or one add_comment.php would refuse
+ * (pg_comment_thread_verify()), prints nothing. A product's reviews keep
+ * their rules: verified purchases only, newest first, the review form only
+ * for a buyer (pg_review_eligibility()).
  *
  * The comments come in the widget's order and layout, one page of them
  * (pg_comments_widget_paginate(): ?comments_page=, else the page of the
@@ -4452,9 +4459,8 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     // every comment on the page, as the classic block reads it.
     $record = function_exists('pg_sw_record_comment_context') ? pg_sw_record_comment_context($page_id) : null;
 
-    // A classic page that shows one item at a time keeps its classic block,
-    // which picks the item: the page is not claimed, so the block still
-    // draws that item's thread.
+    // A legacy form item view page keeps its classic block, which picks the
+    // record: the page is not claimed, so the block still draws its thread.
     if (pg_comments_widget_classic_thread($page['page_type'], ($record !== null))) {
         return '';
     }
@@ -4480,6 +4486,27 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         $post_type = 'submitted_form';
         $post_id = (int) $record['form']['id'];
         $read_thread = array('item_type' => 'submitted_form', 'item_id' => $post_id);
+    } elseif (pg_comment_classic_item_types($page['page_type']) !== array()) {
+        // A catalog, catalog detail or calendar event view page shows the
+        // thread of the item in its address, picked as the classic block
+        // picks it, and only one add_comment.php would take for this page.
+        $item = pg_comment_address_item($page['page_type'], pg_comment_address_item_facts($page_id, $page['page_type'], $ctx));
+
+        if ($item === null) {
+            return '';
+        }
+
+        if ($item['item_type'] !== '') {
+            $verified = pg_comment_thread_verify($page_id, $page['page_type'], $item['item_type'], $item['item_id']);
+
+            if (!$verified['accept']) {
+                return '';
+            }
+        }
+
+        $post_type = $item['item_type'];
+        $post_id = $item['item_id'];
+        $read_thread = $item;
     } else {
         if (pg_comments_page_nested_record($page_id)) {
             return '';
@@ -4546,6 +4573,18 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     }
 
     $allow_new = pg_comments_allow_new($page_id, $post_type, $post_id, $settings['allow_new']);
+
+    // A review of a product comes only from somebody who bought it, as on
+    // the classic block (includes/fn/reviews.php): a visitor is asked to
+    // sign in, a customer with no purchase left to review is told why.
+    // Staff who may edit the page are not asked; a render that is not the
+    // visitor's own draws no form anyway.
+    $review_refusal = '';
+
+    if ($allow_new && $audience['session'] && !$is_staff && pg_review_gate_applies($post_type, $post_id)) {
+        $review_refusal = (string) pg_review_eligibility($signed_in ? $user_id : 0, $post_type, $post_id)['refusal'];
+    }
+
     $folder_access = false;
 
     if ($signed_in && ((string) $role === '3')) {
@@ -4587,6 +4626,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         'rating_on' => $settings['rating'],
         'files_on' => $settings['attachments'],
         'watching_on' => $watching_on,
+        'review_refusal' => $review_refusal,
     );
     $can_comment = pg_comments_widget_thread_flags($facts)['can_comment'];
 
@@ -4681,7 +4721,9 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         '__comments_label' => $label,
         '__comments_label_plural' => get_comment_label(array('label' => $settings['label'], 'number' => 2)),
         '__comments_intro' => $settings['message'],
-        '__comments_closed_message' => ($settings['closed_message'] !== '') ? $settings['closed_message'] : lang("We're sorry. New comments are no longer being accepted."),
+        '__comments_closed_message' => in_array($review_refusal, array('not_bought', 'reviewed'), true)
+            ? pg_review_refusal_message($review_refusal)
+            : (($settings['closed_message'] !== '') ? $settings['closed_message'] : lang("We're sorry. New comments are no longer being accepted.")),
         '__comments_show_all_url' => $read['featured_view'] ? $urls['all'] : '',
         '__comments_show_featured_url' => (($options['featured'] === 'filter') && $read['has_featured'] && !$read['featured_view']) ? $urls['featured'] : '',
         '__login_url' => $thread_flags['must_sign_in'] ? pg_comments_widget_login_url($page_id) : '',

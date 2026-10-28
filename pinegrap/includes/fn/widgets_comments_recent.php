@@ -191,7 +191,10 @@ function pg_comments_recent_sign_in_page($page_type, $properties)
  * a visitor who is not signed in, and every background render, to sign in
  * first), 'comments_off', 'classic'
  * (a page that keeps its classic comments block,
- * pg_comments_widget_classic_thread()), 'nested' (a page source whose
+ * pg_comments_widget_classic_thread(), or a catalog, catalog detail or
+ * calendar event view page without a record view: its comments are each
+ * item's thread, read under the item's address, and a page source adds its
+ * own thread only), 'nested' (a page source whose
  * record view is below the top level: its thread cannot be told), 'no_form'
  * (a record view without a form), 'filters' (a list with record filters
  * reads one page with a record view only: the filters name that form's
@@ -235,7 +238,10 @@ function pg_comments_recent_source_decision($facts)
     if (!$on('comments_on')) {
         return $refuse('comments_off');
     }
-    if (pg_comments_widget_classic_thread(isset($facts['page_type']) ? $facts['page_type'] : '', $kind === 'record')) {
+    $page_type = isset($facts['page_type']) ? $facts['page_type'] : '';
+
+    if (pg_comments_widget_classic_thread($page_type, $kind === 'record')
+        || (($kind === 'page') && (pg_comment_classic_item_types($page_type) !== array()))) {
         return $refuse('classic');
     }
     if (($kind === 'page') && $on('nested')) {
