@@ -714,6 +714,7 @@
     "Pinegrap AI translates on the server through the site's own model connection, a few texts at a time with their context, the glossary and the style note. The update runs while this screen is open; the scheduled job finishes what is left.": "Pinegrap AI, sitenin kendi model bağlantısıyla sunucuda çevirir; metinleri bağlamı, sözlük ve üslup notuyla birkaçar birkaçar gönderir. Güncelleme bu ekran açıkken sürer; kalanı zamanlanmış iş bitirir.",
     "Pinegrap AI uses only this application's name and permissions; its key and secret are not needed here.": "Pinegrap AI bu uygulamanın yalnızca adını ve izinlerini kullanır; anahtarı ve gizli anahtarı burada gerekmez.",
     "Pinegrap AI · asked with @ai": "Pinegrap AI · @ai ile çağrılır",
+    "Pinegrap AI's changes, marked until the flow is published:": "Pinegrap AI'ın değişiklikleri, akış yayımlanana kadar işaretli:",
     "Pinegrap AI's key could not be made.": "Pinegrap AI'ın anahtarı oluşturulamadı.",
     "Pinegrap AI's key needs writing in the Workspace and the Tasks, which your account cannot hand on.": "Pinegrap AI'ın anahtarı Çalışma Alanı'na ve Görevler'e yazabilmeli; hesabınız bu izni devredemiyor.",
     "Pinegrap AI's key was made. It cannot sign in anywhere and needs no secret.": "Pinegrap AI'ın anahtarı oluşturuldu. Hiçbir yerde oturum açamaz ve gizli anahtara ihtiyaç duymaz.",

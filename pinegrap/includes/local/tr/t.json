@@ -2205,6 +2205,7 @@
     "The marketplace sent an order with no package number.": "Pazaryeri, paket numarası olmayan bir sipariş gönderdi.",
     "The marketplace was not removed, because its webhook could not be removed from {var:1}: {var:2} Try again, or remove the webhook in your {var:1} seller panel and then remove the marketplace here.": "Webhook'u {var:1} üzerinden kaldırılamadığı için pazaryeri kaldırılmadı: {var:2} Yeniden deneyin ya da webhook'u {var:1} satıcı panelinizden kaldırıp ardından pazaryerini burada kaldırın.",
     "The marketplace was not removed, because its webhook could not be removed from {var:1}: {var:2} Try again, remove the webhook in your {var:1} seller panel first, or tick the box below the button to remove the marketplace anyway.": "Webhook'u {var:1} üzerinden kaldırılamadığı için pazaryeri kaldırılmadı: {var:2} Yeniden deneyin, önce webhook'u {var:1} satıcı panelinizden kaldırın ya da pazaryerini yine de kaldırmak için düğmenin altındaki kutuyu işaretleyin.",
+    "The marks are hidden.": "İşaretler gizlendi.",
     "The markup of these pages has at least one serious fault, such as invalid nesting or images with no alt text.": "Bu sayfaların işaretlemesinde en az bir ciddi kusur var: geçersiz iç içe geçme veya alt metni olmayan görsel gibi.",
     "The maximum link pin limit has been reached. Remove one to pin a new one.": "Maksimum bağlantı pini sınırına ulaşıldı. Yenisini sabitlemek için birini kaldırın.",
     "The meeting link is not a web address.": "Toplantı bağlantısı bir web adresi değil.",
