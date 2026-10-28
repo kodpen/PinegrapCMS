@@ -7,6 +7,11 @@ description: Panel list and table rules: the DataTables list markup, which lists
 - `<table class="chart table-hover table" style="width:100%;display:none;">`: `backend.src.js` turns every `table.chart` into a DataTable (search, paging, column visibility) and shows it when it is ready. The action column comes first as `<th class="noVis">` with `lang('Action')`; `noVis` keeps a column out of the column picker.
 - Adding and editing happen on separate pages (`add_*.php` / `edit_*.php`), not inside the list.
 
+## How are list cells and icons made safe and named?
+- A preview of stored markup (login region headers and footers) is cut to 50 characters first, then escaped with `h()` in its cell; it once printed short previews raw, so a stored `<h3>` or `<style>` rendered in the list.
+- A Material ligature that stands for a value says it: a `task_alt` check mark is `role="img" aria-label` Yes, the pages list's `home` mark Home Page; a decorative one beside a name (`folder`) is `aria-hidden="true"`. A row checkbox carries `aria-label` "Select {var:1}" with the row's name.
+- File lists: `download` holds the file's name (it once held the type, `jpg`); thumbnails keep 50x50 with `object-fit: cover`. Pinned by `tests/content_lists_test.php`.
+
 ## Which lists must not be DataTables?
 - Lists whose order is their meaning (account statement, cash ledger, invoice lines): a running balance is right only in date order, and a line number is the document itself. Draw them as a plain `table table-hover` (`erp/erp-list-edit-screen-pattern.md`).
 - Such a table can still sort by its headings: `table[data-pg-sort]` (`backend.src.js`; cell `data-sort`, fixed and paired rows, a heading opts out with `data-pg-sort="none"`): `erp/erp-list-edit-screen-pattern.md`.
