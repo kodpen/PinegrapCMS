@@ -1,6 +1,6 @@
 ---
 name: workspace-voice-messages
-description: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, answers #2417, V3a #2674, V3b #2696, V3c1 #PRNUM): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
+description: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, answers #2417, V3a #2674, V3b #2696, V3c1 #2744): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -15,7 +15,7 @@ description: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, ans
 4. V3 transcripts (schema approved in #2417), four PRs, each after the previous merges:
    - V3a (#2674): schema 11.0.89 (`ws_voice`, `ws_channels.voice_access`, two config columns, texts in `config_text`), the settings card, `ws_voice_channel_allowed()`: workspace/workspace-voice-transcripts.md.
    - V3b (#2696): the row on a voice upload, `ws_voice_kick()`/`ws_voice_job()` (pinned HTTPS call, size cap, holds), delete for everyone, `file.voice` in the API and MCP. Server side only.
-   - V3c1 (#PRNUM): server side of V3c (`channel.voice`, `ws_voice_channel_set()`, `file.voice` in the panel payload, the recorder's measure stored, `workspace.message.transcribed`): workspace/workspace-voice-transcript-job.md.
+   - Done: V3c1 (#2744): server side of V3c (`channel.voice`, `ws_voice_channel_set()`, `file.voice` in the panel payload, the recorder's measure stored, `workspace.message.transcribed`): workspace/workspace-voice-transcript-job.md.
    - V3c2 (panel; waits for V3c1 and for #2730, which holds `assets/js/workspace.js`, `workspace.min.js`, `includes/workspace/actions.php` and `includes/panel/actions.php`), about 300-450 product lines:
      - Action `ws_channel_voice` in actions.php beside `ws_channel_ai` (`ws_action_channel(..., 'manage')`, then `ws_voice_channel_set()`); the menu item in workspace.js beside `ai_allow`, shown while `channel.voice` is set and the reader `can_manage`, a private-channel confirm naming `channel.voice.provider`; texts through `ws_voice_js_strings()`.
      - Action `ws_voice_kick` (in the `pg_panel_actions()` list of `includes/panel/actions.php` beside `ws_ai_kick`) returning `ws_voice_kick(1)`'s status; the screen calls it after `voiceSend()` posted and from `schedule()` while a shown message's `file.voice.status` is queued or running (throttled like `kickAi()`), then `sync()`.

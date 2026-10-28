@@ -1,6 +1,6 @@
 ---
 name: workspace-voice-transcript-job
-description: Voice message transcripts at work (V3b #2696, V3c1 #PRNUM): queue, ws_voice_kick(), answers and holds, delete for everyone, file.voice, channel switch, workspace.message.transcribed
+description: Voice message transcripts at work (V3b #2696, V3c1 #2744): queue, ws_voice_kick(), answers and holds, delete for everyone, file.voice, channel switch, workspace.message.transcribed
 ---
 
 ## How is a recording written out? (V3b, #2696)
