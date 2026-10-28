@@ -63,7 +63,8 @@ function test_order_submit_affiliate_commission_starts_at_zero()
 // read as empty instead of an offset on null.
 function test_order_submit_affiliate_private_access_first_purchase()
 {
-	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+	// The private folder access of an order line (pg_order_complete_line_folder_access()).
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php');
 
 	pg_assert_contains("\$rights = \$row['rights'] ?? '';", $source, 'rights default');
 	pg_assert_contains("\$expiration_date = \$row['expiration_date'] ?? '';", $source, 'expiration date default');
