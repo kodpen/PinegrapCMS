@@ -96,6 +96,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-store.md: Workspace flows store (graph check, API; runs: workspace-flows-runner.md): the four tables (11.0.80), graph JSON, problem codes, access, routes, why publishing is the person's own
 - workspace-flows-template-format.md: Flow templates (G1 #2161, G3 flow-only, flow_templates.php): format, the scheduled templates that came over or wait, the flow-only ones, the gallery
 - workspace-flows-template-setup.md: Placing a flow template (G2): motion schedule from ws_flow_template_motion(), drawn threads, reduced motion, the setup panel, ws_flow_template_setup action, answers checked on the server
+- workspace-flows-thread-drawing.md: Data threads on the Flows canvas (T1, read only): read from the fields, field chips and value dots under a box, tones, dimming, the toggle, the outline lines
 - workspace-flows-trigger-values.md: What a flow's step boxes read of what started the run (#2205, D5 #2341): {{trigger.<field>}} declared per start kind, event and record values, the newcomer, a post box in the channel joined (-1)
 - workspace-flows-value-picker.md: "Add value" in a Flows box's side panel (data-passing D6): the text boxes with value chips, what the list offers, "empty if skipped", how a chip is kept and edited
 - workspace-flows-versions.md: A paused flow resumed on its live version, and a flow's published versions listed, read and brought back into the draft (flow_versions.php, API routes, no schema)

@@ -40,6 +40,7 @@
     "Data": "Veri",
     "Data Received successfully.": "Veriler Başarıyla Alındı.",
     "Data bound": "Veri bağlı",
+    "Data threads": "Veri ipleri",
     "Database": "Veritabanı",
     "Database Engine": "Veritabanı Motoru",
     "Database Engine: {var:1}": "Veritabanı Motoru: {var:1}",
