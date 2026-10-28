@@ -951,7 +951,7 @@ JS
 function test_workspace_flows_canvas_condition_value_rule()
 {
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups', 'valueNames',
+		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups', 'valueSources', 'valueNames',
 			'field', 'textInput', 'changeInput', 'conditionValue', 'conditionCompare', 'conditionValueRule', 'conditionMeta'),
 		<<<'JS'
 var uid = 0;
@@ -1030,4 +1030,71 @@ JS
 	pg_assert_same(array('ref' => '{{node.web_check_1.text}}', 'op' => 'eq', 'redrawn' => 1), $result['after'], 'a text after "is more than" goes back to "is"');
 	pg_assert_same(array('eq', 'neq', 'contains', 'empty', 'not_empty'), $result['textOps'], 'a text\'s comparisons');
 	pg_assert_same(1, $result['alone'], 'a box with nothing before offers no value');
+}
+
+// The data threads drawn on the canvas are read from the references the
+// fields hold (Flows T1): one per value and field, from the box that gives
+// it (a start box for what started the run), typed and toned by type in
+// turn; a value no box before gives has no source, one from a branch that
+// may be skipped is marked; a value written twice in a field is one thread,
+// in two fields two. A condition on a value reads its one value.
+function test_workspace_flows_canvas_data_threads_come_from_the_fields()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+	$constants = '';
+
+	foreach (array('VALUE_TOKEN', 'VALUE_FIELDS', 'THREAD_TONES') as $name) {
+		pg_assert_true((bool) preg_match('/^( *)var ' . $name . ' = (?:[^\n]*;\n|\{\n.*?\n\1\};\n)/ms', $source, $found), 'workspace_flow.js has ' . $name);
+		$constants .= $found[0];
+	}
+
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups', 'valueSources',
+			'fieldTexts', 'dataThreads'),
+		$constants . <<<'JS'
+var KINDS = {
+    event: { name: 'Event', into: false, out: ['next'] },
+    web_check: { name: 'Check a web address', into: true, out: ['done', 'failed'] },
+    condition: { name: 'Condition', into: true, out: ['yes', 'no'] },
+    post: { name: 'Post', into: true, out: ['done', 'failed'] },
+    email: { name: 'Email', into: true, out: ['done', 'failed'] }
+};
+var FL = {
+    outputs: { web_check: [{ key: 'status_code', type: 'number', label: 'Status code', mode: 'status' }], post: [{ key: 'message_id', type: 'number', label: 'Message' }], condition: [], email: [] },
+    trigger_outputs: { kinds: { event: [{ key: 'event', label: 'What happened' }] }, events: { 'order.created': [{ key: 'order_number', type: 'text', label: 'Order number' }] } },
+    steps: {}
+};
+function box(id, kind, config, y) { return { id: id, kind: kind, label: '', config: config || {}, x: 0, y: y }; }
+state = { graph: { nodes: [
+    box('event_1', 'event', { event: 'order.created' }, 0),
+    box('web_check_1', 'web_check', { mode: 'status' }, 1),
+    box('condition_1', 'condition', { rule: { type: 'value', ref: '{{node.web_check_1.status_code}}' } }, 2),
+    box('post_1', 'post', { body: 'Code {{node.web_check_1.status_code}} {{node.web_check_1.status_code}}, {{node.web_check_1.text}}, {{node.gone_1.text}}' }, 3),
+    box('email_1', 'email', { subject: 'Order {{trigger.order_number}}', body: '{{node.post_1.message_id}} {{node.web_check_1.status_code}}' }, 4)
+], edges: [
+    { from: 'event_1', to: 'web_check_1', on: 'next' },
+    { from: 'web_check_1', to: 'condition_1', on: 'done' },
+    { from: 'condition_1', to: 'post_1', on: 'yes' },
+    { from: 'condition_1', to: 'email_1', on: 'no' },
+    { from: 'post_1', to: 'email_1', on: 'done' }
+] } };
+console.log(JSON.stringify(dataThreads().map(function (thread) {
+    return [thread.from, thread.to, thread.field, thread.fieldLabel, thread.label, thread.type + '-' + thread.tone, thread.skipped ? 'skipped' : ''].join(' | ');
+})));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'web_check_1 | condition_1 | rule | fl_cond_value_ref | Check a web address › Status code | number-0 | ',
+		'web_check_1 | post_1 | body | fl_post_body | Check a web address › Status code | number-1 | ',
+		'web_check_1 | post_1 | body | fl_post_body | Check a web address › fl_values_text | text-0 | ',
+		' | post_1 | body | fl_post_body | node.gone_1.text | text-1 | ',
+		'event_1 | email_1 | subject | fl_email_subject | Event › Order number | text-2 | ',
+		'post_1 | email_1 | body | fl_email_body | Post › Message | number-2 | skipped',
+		'web_check_1 | email_1 | body | fl_email_body | Check a web address › Status code | number-0 | ',
+	), $result, 'one thread per value and field, from the box that gives it');
 }

@@ -199,6 +199,7 @@
         selected: null,     // { type: node | edge, id }
         view: { x: 40, y: 40, k: 1 },
         outline: false,
+        threads: true,      // the data threads shown (the "Data threads" toggle)
         dirty: false,
         changes: 0,         // counts every change, to tell one made while a request ran
         saving: null,
@@ -584,6 +585,7 @@
         }
 
         state.outline = !!(window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches);
+        state.threads = threadsShown();
         layout(root);
         bindCanvas();
         bindWindow();
@@ -1128,51 +1130,15 @@
         }, at + ms + 50);
     }
 
-    // The data threads of a template: from the bottom of the box that gives
-    // the value to the bottom of the box that reads it, a curve hanging
-    // 10 px + 0.06 of its span below its middle. Threads that leave or reach
-    // one box are spread a few px apart, the farthest leaving on the left.
-    // They stay until the canvas is drawn again.
+    // The data threads of a template are the ones its fields hold
+    // (ws_flow_template_threads(): from, to, the setting), drawn with the
+    // canvas (drawData()): each gives the lines drawn for it.
     function drawThreads(threads) {
-        var leaving = {};
-        var reaching = {};
-        var span = function (thread) {
-            var from = nodeById(thread.from);
-            var to = nodeById(thread.to);
-
-            return (from && to) ? Math.abs(to.x - from.x) : 0;
-        };
-
-        threads.forEach(function (thread) {
-            (leaving[thread.from] = leaving[thread.from] || []).push(thread);
-            (reaching[thread.to] = reaching[thread.to] || []).push(thread);
-        });
-
-        Object.keys(leaving).forEach(function (id) {
-            leaving[id].sort(function (a, b) { return span(b) - span(a); });
-        });
-
         return threads.map(function (thread) {
-            var from = nodeById(thread.from);
-            var to = nodeById(thread.to);
+            var at = '[data-from="' + String(thread.from).replace(/"/g, '') + '"][data-to="' + String(thread.to).replace(/"/g, '')
+                + '"][data-field="' + String(thread.key).replace(/"/g, '') + '"]';
 
-            if (!from || !to) {
-                return null;
-            }
-
-            var out = leaving[thread.from];
-            var into = reaching[thread.to];
-            var x1 = from.x + BOX_W / 2 + (out.indexOf(thread) - (out.length - 1) / 2) * 6;
-            var x2 = to.x + BOX_W / 2 + (into.indexOf(thread) - (into.length - 1) / 2) * 12;
-            var y1 = from.y + BOX_H;
-            var y2 = to.y + BOX_H;
-            var sag = 10 + 0.06 * Math.abs(x2 - x1);
-            var path = svgEl('path', 'wsf-thread');
-
-            path.setAttribute('d', 'M' + x1 + ' ' + y1 + ' Q' + ((x1 + x2) / 2) + ' ' + (Math.max(y1, y2) + sag) + ' ' + x2 + ' ' + y2);
-            ui.svg.appendChild(path);
-
-            return path;
+            return Array.prototype.slice.call(ui.svg.querySelectorAll('.wsf-thread' + at));
         });
     }
 
@@ -1216,9 +1182,9 @@
             });
 
             motion.threads.forEach(function (item, index) {
-                if (paths[index]) {
-                    grow(paths[index], item.at, item.ms);
-                }
+                (paths[index] || []).forEach(function (path) {
+                    grow(path, item.at, item.ms);
+                });
             });
         }
 
@@ -1804,6 +1770,11 @@
             }
         });
         ui.bar.appendChild(outline);
+
+        if (!state.outline) {
+            ui.bar.appendChild(threadsButton());
+        }
+
         runsButton();
 
         if (FL.build) {
@@ -1941,6 +1912,7 @@
 
     function drawAll() {
         ui.stage.classList.toggle('d-none', state.outline);
+        ui.stage.classList.toggle('wsf-threads-off', !state.threads);
         ui.outlineBox.classList.toggle('d-none', !state.outline);
         ui.app.classList.toggle('wsf-outlined', state.outline);
         drawCanvas();
@@ -2126,8 +2098,329 @@
             ui.svg.appendChild(group);
         });
 
+        drawData();
         markSelected();
         markProblems();
+    }
+
+    // ── Data threads ───────────────────────────────────────────────────
+
+    // The fields of a box a run fills with values, as ws_flow_node_texts()
+    // reads them, with the words the side panel names them by. A condition
+    // reads the one value its rule compares (fieldTexts()).
+    var VALUE_FIELDS = {
+        task: [['title', 'fl_title'], ['description', 'fl_description']],
+        post: [['body', 'fl_post_body']],
+        email: [['subject', 'fl_email_subject'], ['body', 'fl_email_body']],
+        notify: [['text', 'fl_notify_text']],
+        task_open: [['title', 'fl_title'], ['description', 'fl_description']],
+        webhook: [['text', 'fl_post_body']],
+        task_digest: [['subject', 'fl_email_subject'], ['intro', 'fl_digest_intro']],
+        report: [['title', 'fl_report_title']],
+        checkin: [['question', 'fl_checkin_question']],
+        approval: [['title', 'fl_title'], ['text', 'fl_description']]
+    };
+
+    // How many tones a type's threads take turns in (.wsf-tone-<type>-<n>).
+    var THREAD_TONES = { number: 3, text: 3 };
+
+    // The row under a box: a field chip's and a value dot's width, the gap
+    // between them and where the row starts; both are 18 px high, half
+    // under the box's bottom edge.
+    var DATA_ROW = { field: 76, out: 84, gap: 4, left: 8, half: 9 };
+
+    function fieldTexts(node) {
+        var config = node.config || {};
+
+        if (node.kind === 'condition') {
+            var rule = config.rule || {};
+
+            return ((rule.type === 'value') && (typeof rule.ref === 'string') && rule.ref) ? [{ key: 'rule', label: t('fl_cond_value_ref'), text: rule.ref }] : [];
+        }
+
+        return (VALUE_FIELDS[node.kind] || []).filter(function (item) {
+            return typeof config[item[0]] === 'string';
+        }).map(function (item) {
+            return { key: item[0], label: t(item[1]), text: config[item[0]] };
+        });
+    }
+
+    // One thread for each value a field of a box holds, read from the
+    // references kept in the fields: nothing else stores them, so a removed
+    // chip takes its thread with it. A value no box before gives has no
+    // source (from ''). Threads of one type take turns in its tones.
+    function dataThreads() {
+        var threads = [];
+        var tones = {};
+
+        if (!state.graph) {
+            return threads;
+        }
+
+        orderedNodes().forEach(function (node) {
+            var sources = null;
+
+            fieldTexts(node).forEach(function (item) {
+                var seen = {};
+                var match;
+
+                if (item.text.indexOf('{{') === -1) {
+                    return;
+                }
+
+                sources = sources || valueSources(node);
+                VALUE_TOKEN.lastIndex = 0;
+
+                while ((match = VALUE_TOKEN.exec(item.text)) !== null) {
+                    if (seen[match[0]]) {
+                        continue;
+                    }
+
+                    seen[match[0]] = true;
+
+                    var source = sources[match[0]];
+                    var type = (source && THREAD_TONES[source.value.type]) ? source.value.type : 'text';
+
+                    tones[type] = (tones[type] || 0) + 1;
+                    threads.push({
+                        token: match[0],
+                        from: source ? source.node.id : '',
+                        to: node.id,
+                        field: item.key,
+                        fieldLabel: item.label,
+                        label: source ? nameOf(source.node) + ' › ' + source.value.label : match[0].slice(2, -2),
+                        value: source ? source.value.label : '',
+                        type: type,
+                        tone: (tones[type] - 1) % THREAD_TONES[type],
+                        skipped: !!(source && source.skipped)
+                    });
+                }
+            });
+        });
+
+        return threads;
+    }
+
+    function toneClass(thread) {
+        return 'wsf-tone-' + thread.type + '-' + thread.tone;
+    }
+
+    // The threads on the canvas: under each box a row of the fields it fills
+    // (chips, first) and of the values it gives (dots), and from each dot a
+    // 1 px line to the chip of each field it fills, hanging below both by
+    // 10 px + 0.06 of its span. The threads of one dot leave it a few px
+    // apart, the one going farthest on the left (it sags more, so they do not
+    // cross near the dot); threads between the same two boxes hang 4 px
+    // apart. Read only: the row takes no pointer and the outline says the
+    // same in words.
+    function drawData() {
+        Array.prototype.slice.call(ui.layer.querySelectorAll('.wsf-thread, .wsf-data')).forEach(function (node) {
+            node.remove();
+        });
+
+        var threads = dataThreads();
+        var rows = {};
+        var row = function (id) {
+            return (rows[id] = rows[id] || { fields: [], outs: [], ends: {} });
+        };
+        var slot = function (id, part, key) {
+            var item = rows[id];
+            var at = DATA_ROW.left;
+
+            if (part === 'out') {
+                at += item.fields.length * (DATA_ROW.field + DATA_ROW.gap) + item.outs.indexOf(key) * (DATA_ROW.out + DATA_ROW.gap);
+            } else {
+                at += item.fields.indexOf(key) * (DATA_ROW.field + DATA_ROW.gap);
+            }
+
+            return at;
+        };
+        var add = function (map, key, thread) {
+            (map[key] = map[key] || []).push(thread);
+        };
+        var leaving = {};
+        var reaching = {};
+        var pairs = {};
+
+        threads.forEach(function (thread) {
+            var into = row(thread.to);
+
+            if (into.fields.indexOf(thread.field) === -1) {
+                into.fields.push(thread.field);
+            }
+
+            into.ends[thread.field] = (into.ends[thread.field] || [thread.to]).concat(thread.from ? [thread.from] : []);
+
+            if (thread.from) {
+                var from = row(thread.from);
+
+                if (from.outs.indexOf(thread.token) === -1) {
+                    from.outs.push(thread.token);
+                }
+
+                from.ends[thread.token] = (from.ends[thread.token] || [thread.from]).concat([thread.to]);
+                add(leaving, thread.from + ' ' + thread.token, thread);
+                add(reaching, thread.to + ' ' + thread.field, thread);
+                add(pairs, thread.from + ' ' + thread.to, thread);
+            }
+        });
+
+        Object.keys(rows).forEach(function (id) {
+            var node = nodeById(id);
+            var box = ui.boxes.querySelector('.wsf-node[data-node="' + id + '"]');
+
+            if (!node || !box) {
+                return;
+            }
+
+            rows[id].fields.forEach(function (key) {
+                var into = threads.filter(function (thread) { return (thread.to === id) && (thread.field === key); });
+                var chip = el('span', 'wsf-data wsf-data-field ' + toneClass(into[0]) + (into.some(function (thread) { return !thread.from; }) ? ' wsf-data-bad' : ''), into[0].fieldLabel);
+
+                chip.style.left = slot(id, 'field', key) + 'px';
+                chip.setAttribute('data-ends', rows[id].ends[key].join(' '));
+                chip.setAttribute('aria-hidden', 'true');
+                box.appendChild(chip);
+            });
+
+            rows[id].outs.forEach(function (token) {
+                var given = threads.filter(function (thread) { return (thread.from === id) && (thread.token === token); });
+                var dot = el('span', 'wsf-data wsf-data-out ' + toneClass(given[0]));
+
+                dot.appendChild(el('span', 'wsf-data-ring', (given[0].type === 'number') ? '#' : 'T'));
+                dot.appendChild(el('span', 'wsf-data-label', given[0].value));
+                dot.style.left = slot(id, 'out', token) + 'px';
+                dot.setAttribute('data-ends', rows[id].ends[token].join(' '));
+                dot.setAttribute('aria-hidden', 'true');
+                box.appendChild(dot);
+            });
+        });
+
+        var start = {};
+        var end = {};
+        var span = function (thread) {
+            return Math.abs(nodeById(thread.to).x - nodeById(thread.from).x);
+        };
+
+        Object.keys(leaving).forEach(function (key) {
+            var list = leaving[key].sort(function (a, b) { return span(b) - span(a); });
+
+            list.forEach(function (thread, index) {
+                start[threads.indexOf(thread)] = (index - (list.length - 1) / 2) * 4;
+            });
+        });
+
+        Object.keys(reaching).forEach(function (key) {
+            var list = reaching[key].sort(function (a, b) { return nodeById(a.from).x - nodeById(b.from).x; });
+
+            list.forEach(function (thread, index) {
+                end[threads.indexOf(thread)] = (index - (list.length - 1) / 2) * 6;
+            });
+        });
+
+        threads.forEach(function (thread, index) {
+            var from = thread.from ? nodeById(thread.from) : null;
+            var to = nodeById(thread.to);
+
+            if (!from || !to || !rows[from.id] || !rows[to.id]) {
+                return;
+            }
+
+            var x1 = from.x + slot(from.id, 'out', thread.token) + DATA_ROW.half + start[index];
+            var x2 = to.x + slot(to.id, 'field', thread.field) + DATA_ROW.field / 2 + end[index];
+            var y1 = from.y + BOX_H + DATA_ROW.half;
+            var y2 = to.y + BOX_H + DATA_ROW.half;
+            var sag = 10 + 0.06 * Math.abs(x2 - x1) + 4 * pairs[from.id + ' ' + to.id].indexOf(thread);
+            var path = svgEl('path', 'wsf-thread ' + toneClass(thread) + (thread.skipped ? ' wsf-thread-skipped' : ''));
+
+            path.setAttribute('d', 'M' + x1 + ' ' + y1 + ' Q' + ((x1 + x2) / 2) + ' ' + (Math.max(y1, y2) + sag) + ' ' + x2 + ' ' + y2);
+            path.setAttribute('data-from', from.id);
+            path.setAttribute('data-to', to.id);
+            path.setAttribute('data-field', thread.field);
+            path.setAttribute('data-ends', from.id + ' ' + to.id);
+            ui.svg.appendChild(path);
+        });
+
+        markThreads();
+    }
+
+    // With a box selected its threads are drawn at full colour, the others
+    // dimmed; with none (or an arrow) all of them.
+    function markThreads() {
+        var selected = state.selected;
+        var id = (selected && (selected.type === 'node')) ? String(selected.id) : '';
+
+        Array.prototype.forEach.call(ui.layer.querySelectorAll('.wsf-thread, .wsf-data'), function (item) {
+            item.classList.toggle('wsf-dim', !!id && ((item.getAttribute('data-ends') || '').split(' ').indexOf(id) === -1));
+        });
+    }
+
+    // The "Data threads" toggle: shown unless the viewer hid them, kept in
+    // this browser.
+    function threadsShown() {
+        try {
+            return window.localStorage.getItem('pg_wsf_threads') !== 'off';
+        } catch (error) {
+            return true;
+        }
+    }
+
+    function threadsButton() {
+        var button = K.button('btn btn-sm btn-ghost' + (state.threads ? ' active' : ''), t('fl_threads'), 'bi-bezier2');
+
+        button.setAttribute('aria-pressed', state.threads ? 'true' : 'false');
+        button.addEventListener('click', function () {
+            state.threads = !state.threads;
+            button.classList.toggle('active', state.threads);
+            button.setAttribute('aria-pressed', state.threads ? 'true' : 'false');
+            ui.stage.classList.toggle('wsf-threads-off', !state.threads);
+
+            try {
+                window.localStorage.setItem('pg_wsf_threads', state.threads ? 'on' : 'off');
+            } catch (error) {
+                // Not kept: shown again next time.
+            }
+        });
+
+        return button;
+    }
+
+    // What each box reads, in words under its heading in the outline: the
+    // canvas's threads for a screen reader and a phone.
+    function drawReads(threads) {
+        Array.prototype.forEach.call(ui.outlineBox.querySelectorAll('.wsf-outline-item[data-node]'), function (item) {
+            var id = item.getAttribute('data-node');
+            var reads = threads.filter(function (thread) { return thread.to === id; });
+            var old = item.querySelector('.wsf-outline-reads');
+
+            if (old) {
+                old.remove();
+            }
+
+            if (!reads.length) {
+                return;
+            }
+
+            var list = el('ul', 'wsf-outline-reads list-unstyled small');
+
+            list.setAttribute('aria-label', t('fl_threads'));
+            reads.forEach(function (thread) {
+                var line = el('li', toneClass(thread) + (thread.from ? '' : ' wsf-data-bad'));
+                var text = t('fl_thread_line', thread.fieldLabel, thread.label);
+
+                if (!thread.from) {
+                    text += ' ' + t('fl_values_missing');
+                } else if (thread.skipped) {
+                    text += ' (' + t('fl_values_skipped') + ')';
+                }
+
+                line.appendChild(K.icon(thread.from ? 'bi-arrow-return-right' : 'bi-exclamation-triangle', 'wsf-outline-read-icon'));
+                line.appendChild(el('span', '', text));
+                list.appendChild(line);
+            });
+
+            item.insertBefore(list, item.querySelector('.wsf-outline-head').nextSibling);
+        });
     }
 
     // The buttons that add a box; on the canvas they may also be dragged to
@@ -2199,6 +2492,8 @@
 
     function markSelected() {
         var selected = state.selected;
+
+        markThreads();
 
         Array.prototype.forEach.call(ui.layer.querySelectorAll('.wsf-selected'), function (node) {
             node.classList.remove('wsf-selected');
@@ -2562,14 +2857,27 @@
         return groups;
     }
 
-    // token => what its chip reads and whether the box may be skipped.
-    function valueNames(node) {
-        var names = {};
+    // token => the box that gives it, the value and whether that box may be
+    // skipped.
+    function valueSources(node) {
+        var sources = {};
 
         valueGroups(node).forEach(function (group) {
             group.values.forEach(function (value) {
-                names[value.token] = { label: nameOf(group.node) + ' › ' + value.label, skipped: group.skipped };
+                sources[value.token] = { node: group.node, value: value, skipped: group.skipped };
             });
+        });
+
+        return sources;
+    }
+
+    // token => what its chip reads and whether the box may be skipped.
+    function valueNames(node) {
+        var names = {};
+        var sources = valueSources(node);
+
+        Object.keys(sources).forEach(function (token) {
+            names[token] = { label: nameOf(sources[token].node) + ' › ' + sources[token].value.label, skipped: sources[token].skipped };
         });
 
         return names;
@@ -4717,6 +5025,7 @@
         }
 
         ui.outlineBox.appendChild(list);
+        drawReads(dataThreads());
 
         if (state.edit) {
             var adds = el('div', 'd-flex flex-wrap gap-3 mb-5');
@@ -4744,6 +5053,11 @@
         Array.prototype.forEach.call(ui.root.querySelectorAll('.wsf-node[data-node="' + node.id + '"]'), function (box) {
             fillBox(box, node);
         });
+
+        // The values it reads may have changed, and its name is in the
+        // outline's lines of the boxes it gives to.
+        drawData();
+        drawReads(dataThreads());
 
         Array.prototype.forEach.call(ui.outlineBox.querySelectorAll('[data-node="' + node.id + '"] > .wsf-outline-head .wsf-outline-title'), function (title) {
             title.textContent = outlineTitle(node);
