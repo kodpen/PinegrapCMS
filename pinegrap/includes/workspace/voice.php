@@ -681,11 +681,12 @@ function ws_voice_measure_clean($duration_ms, $peaks)
  * @param int    $file_id
  * @param string $name    the name it was posted with
  * @param array  $measure duration_ms and peaks the recorder sent, if any
+ * @return bool it waits to be written out
  */
 function ws_voice_queue($channel, $message_id, $file_id, $name, $measure = array())
 {
     if (!ws_voice_schema_ready() || ((int) $file_id <= 0) || !ws_voice_is_recording($name)) {
-        return;
+        return false;
     }
 
     $queued = ws_voice_config()['enabled'] && ws_voice_channel_allowed($channel);
@@ -698,6 +699,63 @@ function ws_voice_queue($channel, $message_id, $file_id, $name, $measure = array
 
     if ($queued) {
         ws_voice_carry_on();
+    }
+
+    return $queued;
+}
+
+/**
+ * After a recording was posted: the assistants its words ask (a tag typed
+ * beside it, an answer to one of their answers) are asked once it is
+ * written out, so that they hear what was said (ws_voice_ask()); at once
+ * when it will not be (transcripts off, the channel closed to them). Any
+ * other file asks nobody, as before.
+ *
+ * @param array  $viewer     who posted it
+ * @param array  $channel
+ * @param int    $message_id
+ * @param string $body       the words posted with it
+ * @param string $name       the name it was posted with
+ * @param bool   $queued     ws_voice_queue()
+ * @return array claude, agent, ai: the requests queued now
+ */
+function ws_voice_posted($viewer, $channel, $message_id, $body, $name, $queued)
+{
+    if ($queued || !ws_voice_is_recording($name) || !function_exists('ws_message_ask_assistants')) {
+        return array('claude' => false, 'agent' => false, 'ai' => false);
+    }
+
+    return ws_message_ask_assistants($viewer, $channel, $message_id, $body);
+}
+
+/**
+ * A recording was written out, or ended without a text: the assistants its
+ * words ask are asked now, in the name of the person who posted it while
+ * they may still write in the channel. Called once, when the row leaves the
+ * queue for good. Pinegrap AI and an MCP agent are carried on by the screens
+ * showing the message; Claude's routine is called here.
+ *
+ * @param int $message_id
+ */
+function ws_voice_ask($message_id)
+{
+    $message = ws_message((int) $message_id);
+
+    if (!$message || ((int) $message['deleted_at'] > 0) || ((string) $message['sender_kind'] !== 'user') || !function_exists('ws_message_ask_assistants')) {
+        return;
+    }
+
+    $channel = ws_channel((int) $message['channel_id']);
+    $viewer = function_exists('ws_ai_viewer') ? ws_ai_viewer((int) $message['sender_id']) : null;
+
+    if (!$channel || !$viewer || !ws_can_post_channel($viewer, $channel)) {
+        return;
+    }
+
+    $asked = ws_message_ask_assistants($viewer, $channel, (int) $message['id'], (string) $message['body']);
+
+    if (!empty($asked['claude']) && function_exists('ws_claude_dispatch')) {
+        ws_claude_dispatch();
     }
 }
 
@@ -742,12 +800,22 @@ function ws_voice_job()
 function ws_voice_watchdog()
 {
     $now = time();
+    $old = "status = 'queued' AND created_at < '" . ($now - WS_VOICE_QUEUE_TTL) . "'";
+    $stale = "status = 'running' AND updated_at < '" . ($now - WS_VOICE_STALE) . "'";
+
+    // The messages whose recording fails here still ask what their words
+    // ask (ws_voice_ask()).
+    $failing = (array) db_values("SELECT message_id FROM ws_voice WHERE (" . $old . ") OR (" . $stale . " AND attempts >= '" . WS_VOICE_ATTEMPTS . "')");
 
     db("UPDATE ws_voice SET status = 'failed', error = '" . e(lang('It could not be sent to the transcription service within a day.')) . "', updated_at = '" . $now . "'
-        WHERE status = 'queued' AND created_at < '" . ($now - WS_VOICE_QUEUE_TTL) . "'");
+        WHERE " . $old);
 
     db("UPDATE ws_voice SET status = IF(attempts >= '" . WS_VOICE_ATTEMPTS . "', 'failed', 'queued'), updated_at = '" . $now . "'
-        WHERE status = 'running' AND updated_at < '" . ($now - WS_VOICE_STALE) . "'");
+        WHERE " . $stale);
+
+    foreach ($failing as $message_id) {
+        ws_voice_ask((int) $message_id);
+    }
 }
 
 /**
@@ -760,11 +828,17 @@ function ws_voice_watchdog()
  */
 function ws_voice_kick($budget = 60)
 {
-    if (!ws_voice_schema_ready() || !ws_voice_config()['enabled']) {
+    if (!ws_voice_schema_ready()) {
         return 'idle';
     }
 
+    // Before the switch: recordings left queued when transcripts were
+    // switched off still fail after a day and ask what they ask.
     ws_voice_watchdog();
+
+    if (!ws_voice_config()['enabled']) {
+        return 'idle';
+    }
 
     if (((int) db_value("SELECT COUNT(*) FROM ws_voice WHERE status = 'queued'") === 0) || !empty(ws_voice_missing())) {
         return 'idle';
@@ -872,6 +946,7 @@ function ws_voice_run($row)
             // Screens and apps holding the message read it again.
             ws_message_touch((int) $row['message_id']);
             ws_voice_announce($message, $channel, $row, $outcome, $config['provider'], $model);
+            ws_voice_ask((int) $row['message_id']);
 
             if ($config['error'] !== '') {
                 pg_config_text_save('ws_voice_error', '');
@@ -950,6 +1025,9 @@ function ws_voice_finish($row, $status, $error)
 {
     db("UPDATE ws_voice SET status = '" . e($status) . "', error = '" . e(mb_substr((string) $error, 0, 250)) . "', updated_at = '" . time() . "'
         WHERE id = '" . (int) $row['id'] . "'");
+
+    // Asked without a transcript: the assistant is told it was not heard.
+    ws_voice_ask((int) $row['message_id']);
 
     return $status;
 }
@@ -1362,4 +1440,26 @@ function ws_voice_found_in_transcript($text, $transcript, $query)
     }
 
     return (mb_stripos((string) $text, $query) === false) ? $heard : '';
+}
+
+/**
+ * A message as an assistant reads it: its words with the recording's
+ * transcript (ws_voice_with_transcript()), or a note when it carries a
+ * recording that was not written out. The assistant is then asked without
+ * what was said (transcripts off, the channel closed to them, the service
+ * failed) and must say it could not hear it rather than guess.
+ *
+ * @param string $text       the message's words as the assistant reads them
+ * @param string $transcript ws_voice.transcript, '' for none
+ * @param string $name       the name its file was posted with, '' for none
+ * @param int    $limit      characters of the transcript, 0 for all
+ * @return string
+ */
+function ws_voice_heard($text, $transcript, $name, $limit = 0)
+{
+    if ((ws_voice_transcript_clean($transcript) !== '') || !ws_voice_is_recording((string) $name)) {
+        return ws_voice_with_transcript($text, $transcript, $limit);
+    }
+
+    return trim($text . ' [voice message, not transcribed]');
 }

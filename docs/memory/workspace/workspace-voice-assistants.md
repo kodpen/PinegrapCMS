@@ -22,5 +22,4 @@ description: Voice transcripts the assistants, recaps, bells, banners and search
 - `ws_voice_search_or($like)` joins `OR file_id IN (SELECT … ws_voice … status 'done' AND transcript LIKE …)` to `ws_message_search()` (the channel search, the palette's messages group, GET /workspace/search) and the palette's files group; '' while the table is missing. Reach rules unchanged: rows are still kept by `ws_can_read_channel()`.
 - A hit matched only by its transcript (`ws_voice_found_in_transcript()`) is titled "Voice message: <snippet>" with `bi-mic`; a file hit shows the transcript snippet in its detail.
 
-## What is still open?
-- A recording that asks an assistant once written out (V4c): plans/workspace-voice-messages.md. Tests: tests/workspace_voice_assistants_test.php.
+- A recording that asks an assistant: workspace-voice-asks.md. Tests: tests/workspace_voice_assistants_test.php.

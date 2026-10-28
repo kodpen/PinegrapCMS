@@ -728,8 +728,10 @@ function ws_message_send_file_bytes($viewer, $channel, $body, $original_name, $b
         ws_upload_discard($stored['file_id']);
     } elseif (function_exists('ws_voice_queue')) {
         // A voice message waits to be written out (voice.php), with the
-        // length and waveform its recorder measured.
-        ws_voice_queue($channel, $result['message_id'], $stored['file_id'], $stored['name'], (array) ($options['voice'] ?? array()));
+        // length and waveform its recorder measured; the assistants its
+        // words ask are asked once it is, or now when it will not be.
+        $queued = ws_voice_queue($channel, $result['message_id'], $stored['file_id'], $stored['name'], (array) ($options['voice'] ?? array()));
+        $result['asked'] = empty($options['app_id']) ? ws_voice_posted($viewer, $channel, $result['message_id'], $body, $stored['name'], $queued) : array();
     }
 
     return $result;

@@ -168,6 +168,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-unsent-draft.md: The Workspace composer's unsent text kept on the browser (localStorage) per site, viewer, channel and discussion: key, when saved, restored, cleared, limits, what is never kept
 - workspace-upload-refusals.md: What a Workspace channel refuses to take (ws_upload_refused()): the file manager's list, page and script types, Office files with macros (PR #1322); why, every door it covers, the message
 - workspace-variant-set-change.md: A variant set added from a change card (variant_set, PR #1943): fields, variants and price_rules values, checks, writer, events, matrix card, proposers
+- workspace-voice-asks.md: A voice message that asks Claude, Pinegrap AI or an MCP server (V4c): tags beside the mic, a voice answer, asked once transcribed (ws_voice_posted(), ws_voice_ask())
 - workspace-voice-assistants.md: Voice transcripts the assistants, recaps, bells, banners and search read (V4a #2798, V4b): ws_voice_transcripts(), ws_voice_with_transcript(), ws_voice_excerpt(), ws_voice_search_or()
 - workspace-voice-recording.md: Voice messages (workspace_voice.js): the mic in place of Send, a sound's reply mic, the 5-minute cap, .weba/.ogg/.m4a names, the player
 - workspace-voice-screen.md: Voice transcripts on the channel screen (V3c2): recorder waveform and length, the player's peaks and transcript, the panel kick, the channel menu switch

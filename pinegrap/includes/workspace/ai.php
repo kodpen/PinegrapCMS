@@ -2859,7 +2859,9 @@ function ws_ai_text($viewer, $body, $refs = null, $limit = 0)
 
 /**
  * A message as the model reads it (ws_ai_text()), with its recording's
- * transcript once written out (ws_voice_with_transcript()).
+ * transcript once written out (ws_voice_with_transcript()); a recording
+ * with none says so (ws_voice_heard()), so the answer does not guess
+ * at what was said.
  *
  * @param array $viewer
  * @param array $row   ws_messages row
@@ -2870,7 +2872,11 @@ function ws_ai_heard_text($viewer, $row, $limit = 0)
 {
     $text = ws_ai_text($viewer, (string) $row['body'], null, $limit);
 
-    return function_exists('ws_voice_transcript_of') ? ws_voice_with_transcript($text, ws_voice_transcript_of($row), $limit) : $text;
+    if (!function_exists('ws_voice_transcript_of')) {
+        return $text;
+    }
+
+    return ws_voice_heard($text, ws_voice_transcript_of($row), (string) ($row['file_name'] ?? ''), $limit);
 }
 
 /**
