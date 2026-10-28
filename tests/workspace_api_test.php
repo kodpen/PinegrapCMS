@@ -2221,7 +2221,7 @@ function test_ws_api_files_create_answers_a_message()
 
 	pg_assert_true(strpos($attach, 'ws_message_parent_check(') !== false, 'the panel checks the parent');
 	pg_assert_true(strpos($attach, 'ws_message_parent_check(') < strpos($attach, 'ws_message_send_file('), 'the panel checks the parent first');
-	pg_assert_contains("array('parent_id' => \$parent_id)", $attach, 'the panel hands the parent to the upload');
+	pg_assert_contains("'parent_id' => \$parent_id,", $attach, 'the panel hands the parent to the upload');
 }
 
 // Every write of the module can be rehearsed: X-Dry-Run is offered on the

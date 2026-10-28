@@ -8,6 +8,7 @@
     "MM / YY": "AA / YY",
     "MPN": "MPN",
     "Machine": "Makine",
+    "Machine transcript by {var:1}": "{var:1} tarafından makineyle yazıya döküldü",
     "Machine translations too": "Makine çevirileri de",
     "Made by {var}": "Oluşturan: {var}",
     "Made each morning": "Her sabah hazırlanır",
