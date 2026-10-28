@@ -1,6 +1,6 @@
 ---
 name: workspace-voice-messages
-description: Plan (2026-10-23; V1-V2 done, answers #2417, V3 transcripts done #2674 #2696 #2744 #2775, V4a done #2798): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
+description: Plan (2026-10-23): voice messages in the Workspace, a quick voice reply, transcripts the assistants read; V1-V3 done, V4a #2798, V4b #PR, V4c next
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -20,7 +20,7 @@ description: Plan (2026-10-23; V1-V2 done, answers #2417, V3 transcripts done #2
    - The event is not a Flows trigger: that would need `ws_events_catalog()`, a `ws_event()` call and its `workspace_flows_parity_table()` line (tests/workspace_flows_parity_test.php); left for a later step.
 5. V4 assistants hear it, three PRs, each after the previous merges:
    - Done: V4a (#2798): `ws_voice_transcripts()`, `ws_voice_with_transcript()`; the transcript in Pinegrap AI's context and request (`ws_ai_channel_context()`, `ws_ai_heard_text()`, the MCP ask), `ws_api_claude_request_present()` (`message.transcript`), `ws_api_channel_context()` (`messages[].transcript`), recaps: workspace/workspace-voice-assistants.md.
-   - V4b: push (the line a voice message sends reads its transcript once written out, or "Voice message") and search (`ws_voice.transcript` found as its message, same reach rules).
+   - Done: V4b (#PR): push (the line a voice message sends reads its transcript once written out, or "Voice message") and search (`ws_voice.transcript` found as its message, same reach rules).
    - V4c: a recording with typed tags (the mic kept while the box holds only tags; the tags ride the upload as the body) and a voice reply to an assistant's answer: the assistant is asked once the transcript is done (from `ws_voice_run()`), or with "[voice message, not transcribed]" when it failed or transcripts are off.
 6. V5 (optional) answers read aloud by `speechSynthesis`; V6 a recording in a note (`ws_note_file`).
 
@@ -28,4 +28,4 @@ description: Plan (2026-10-23; V1-V2 done, answers #2417, V3 transcripts done #2
 - #2417: transcript in `ws_voice`; the site's own OpenAI-compatible key (a gateway preset later); private channels off until a manager allows; delete for everyone removes recording and transcript; cap 5 minutes.
 
 ## Where to start?
-- V4b next; memory: workspace/workspace-voice-transcripts.md, workspace-voice-transcript-job.md and workspace-voice-screen.md.
+- V4c next; memory: workspace/workspace-voice-transcripts.md, workspace-voice-transcript-job.md and workspace-voice-screen.md.
