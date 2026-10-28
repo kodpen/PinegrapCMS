@@ -200,3 +200,28 @@ function test_panel_accessible_names_dashboard_cards()
 	pg_assert_contains('<a href="edit_user.php?id=\' . (int) $eg_person[\'id\'] . \'"', $engagement);
 	pg_assert_contains('<button type="button" class="btn btn-sm', $engagement);
 }
+
+// The Paraşüt inbox: both lists scroll inside their card on a phone, the pager
+// has a name, named arrows and a current page that is no link, the detail
+// dialog shows the translated type and status, the toolbar name is translated.
+function test_panel_accessible_names_parasut_inbox()
+{
+	$source = panel_accessible_names_source('view_parasut_inbox.php');
+
+	pg_assert_same(2, substr_count($source, '<div class="card-body p-0 table-responsive">'), 'both lists scroll in their card');
+	pg_assert_contains("<nav aria-label=\"' . h(lang('Pagination')) . '\">", $source);
+	pg_assert_contains("aria-label=\"' . h(lang('Previous page')) . '\"", $source);
+	pg_assert_contains("aria-label=\"' . h(lang('Next page')) . '\"", $source);
+	pg_assert_same(2, substr_count($source, '<span aria-hidden="true">&'), 'arrow glyphs hidden');
+	pg_assert_contains('<li class="page-item active" aria-current="page"><span class="page-link">', $source);
+	pg_assert_true(strpos($source, "disabled' : '') . '\">\n        <a") === false, 'a disabled arrow is no link');
+
+	pg_assert_same(2, substr_count($source, 'data-type-label="'), 'both detail buttons carry the type label');
+	pg_assert_same(2, substr_count($source, 'data-status-label="'), 'both detail buttons carry the status label');
+	pg_assert_contains('btn.dataset.typeLabel', $source);
+	pg_assert_contains('btn.dataset.statusLabel', $source);
+	pg_assert_true(strpos($source, 'btn.dataset.type ') === false && strpos($source, 'btn.dataset.status ') === false, 'raw codes not shown');
+
+	pg_assert_contains("aria-label=\"' . h(lang('Button Bar')) . '\"", $source);
+	pg_assert_true(strpos($source, 'aria-label="Button Bar"') === false, 'no literal toolbar name');
+}
