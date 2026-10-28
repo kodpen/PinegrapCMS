@@ -5,8 +5,8 @@ module: audit_view
 ---
 
 ## What is it?
-- `view_audit_log.php` (manager and up, like the Site Log; Settings hub, Monitoring group): `audit_log` lines newest first, 50 a page (one line more is read to know an older page exists; no COUNT). Nothing on it writes a line except the CSV export.
-- Helpers in `includes/fn/audit_view.php` (pure, `tests/audit_view_test.php`): `pg_audit_view_filters()`, `pg_audit_view_where()`, `pg_audit_view_changes()`, `pg_audit_view_value()`, `pg_audit_view_csv_line()`, `pg_audit_view_record_url()`, `pg_audit_view_label()`.
+- `view_audit_log.php` (manager and up, like the Site Log; Settings hub, Monitoring group): `audit_log` lines newest first by default, paged, sorted and searched on the server (`ui/audit-log-paging.md`, PR #2719). Nothing on it writes a line except the CSV export.
+- Helpers in `includes/fn/audit_view.php` (pure, `tests/audit_view_test.php`): `pg_audit_view_filters()`, `pg_audit_view_condition()` (bound values) / `pg_audit_view_where()`, `pg_audit_view_changes()`, `pg_audit_view_value()`, `pg_audit_view_csv_line()`, `pg_audit_view_record_url()`, `pg_audit_view_labels()` / `pg_audit_view_label()`.
 
 ## When does a line get an "Open" link?
 - Only when its record still exists: `pg_audit_view_live_records()` looks up the page's ids with one query per type (`pg_audit_view_record_tables()`: products, page, files, user, orders, offers, contacts), and the screen drops the link of a missing one. The name's history link stays. Before (#2521), deleted pages and files linked to their edit screen's 404. API types keep their `api_settings.php` link.
