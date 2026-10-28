@@ -495,6 +495,54 @@
         }
     }
 
+    // Whether the viewer writes messages in the "Aa" expanded box (Enter a
+    // new line, Ctrl+Enter sends): off unless they switched it on, kept in
+    // this browser as autoformat is.
+    var EXPANDED_KEY = 'ws-composer-expanded';
+    var expandedHeld = null;
+
+    function expandedOn() {
+        if (expandedHeld !== null) {
+            return expandedHeld;
+        }
+
+        try {
+            return window.localStorage.getItem(EXPANDED_KEY) === 'on';
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function expandedSet(on) {
+        expandedHeld = !!on;
+
+        try {
+            if (on) {
+                window.localStorage.setItem(EXPANDED_KEY, 'on');
+            } else {
+                window.localStorage.removeItem(EXPANDED_KEY);
+            }
+        } catch (error) {
+            // Storage refused (a private window): the choice lasts this page.
+        }
+    }
+
+    // Whether Enter sends in a box that sends (onEnter), from the keys held
+    // with it: in the expanded box only Ctrl+Enter (Cmd+Enter on a Mac)
+    // sends and Enter is a new line; in the one-line box Enter sends,
+    // Shift+Enter is a new line, and so is Enter on a touch screen.
+    function enterSends(keys, expanded, touch) {
+        if (keys.shiftKey) {
+            return false;
+        }
+
+        if (expanded) {
+            return !!(keys.ctrlKey || keys.metaKey);
+        }
+
+        return !touch;
+    }
+
     // The lines of running text grouped into text and lists: the twin of
     // ws_text_blocks(). Only a shape that cannot have meant anything else is
     // a list; every other shape stays text, as the server draws it. lines:
@@ -3369,9 +3417,10 @@
     }
 
     // What the shortcut sheet lists, as [keys, label key]: the marks, undo
-    // and redo, Enter as the box takes it (enterSends: the composer's Enter
-    // sends) where the box is an Editor, and the sheet itself.
-    function shortcutRows(enterSends, editor) {
+    // and redo, Enter as the box takes it where the box is an Editor (send:
+    // true when Enter sends, as in the composer; 'ctrl' when Ctrl+Enter
+    // sends, as in its expanded box), and the sheet itself.
+    function shortcutRows(send, editor) {
         var rows = [
             ['Control+B', 'fmt_bold'],
             ['Control+I', 'fmt_italic'],
@@ -3383,8 +3432,11 @@
             ['Control+Y', 'keys_redo']
         ];
 
-        if (editor) {
-            rows.push(['Enter', enterSends ? 'keys_send' : 'keys_newline']);
+        if (editor && (send === 'ctrl')) {
+            rows.push(['Enter', 'keys_newline']);
+            rows.push(['Control+Enter', 'keys_send']);
+        } else if (editor) {
+            rows.push(['Enter', send ? 'keys_send' : 'keys_newline']);
             rows.push(['Shift+Enter', 'keys_newline']);
         }
 
@@ -3400,7 +3452,8 @@
         var range = selectionRange();
         var saved = (range && surface.contains(range.startContainer)) ? range.cloneRange() : null;
         var editor = surface.wsEditor || null;
-        var rows = shortcutRows(!!(editor && editor.options.onEnter && !touchScreen()), !!editor);
+        var send = (editor && editor.options.onEnter) ? (editor.expanded ? 'ctrl' : !touchScreen()) : false;
+        var rows = shortcutRows(send, !!editor);
 
         hideBar();
         hideTip();
@@ -3687,6 +3740,10 @@
      * headings (a note's box: "# " to "### " lines are headings, "---" a
      * rule, as the server draws a note)
      *
+     * A box with onEnter sends on Enter; its row of tools (toolbar()) then
+     * has the "Aa" switch to the expanded box (expand()), where Enter is a
+     * new line and Ctrl+Enter sends.
+     *
      * The box keeps its own undo history: the browser's own cannot follow
      * the cards, chips and results the box draws into itself, and loses its
      * steps as soon as one of them is redrawn.
@@ -3712,6 +3769,9 @@
         node.classList.add('is-empty');
         self.node = node;
         node.wsEditor = self;
+
+        self.expanded = !!(self.options.onEnter && expandedOn());
+        node.classList.toggle('is-expanded', self.expanded);
 
         bindSurface(node, false);
 
@@ -3782,14 +3842,14 @@
                 return;
             }
 
-            if (!event.shiftKey && !touchScreen() && self.options.onEnter) {
+            if (self.options.onEnter && enterSends(event, self.expanded, touchScreen())) {
                 event.preventDefault();
                 self.options.onEnter(event);
                 return;
             }
 
             // In an item the list goes on: Shift+Enter in the composer, whose
-            // Enter sends.
+            // Enter sends, Enter in its expanded box.
             event.preventDefault();
 
             if (self.listEnter() || self.headingEnter()) {
@@ -4103,6 +4163,22 @@
             var self = this;
 
             self.watchers.forEach(function (callback) { callback(self); });
+        },
+
+        // The "Aa" expanded box of a box that sends: a taller field with
+        // every tool of its row, Enter a new line and Ctrl+Enter sends. The
+        // choice is the viewer's, kept for every channel's box.
+        expand: function (on) {
+            if (!this.options.onEnter) {
+                return;
+            }
+
+            this.expanded = !!on;
+            expandedSet(this.expanded);
+            this.node.classList.toggle('is-expanded', this.expanded);
+            this.notify();
+            // The owner fits its layout to the new height.
+            this.announce();
         },
 
         // A change the box makes to itself (a mark, a link): what was typed
@@ -5188,7 +5264,8 @@
         checklist: { icon: 'bi-ui-checks', label: 'tool_checklist', block: 'checklist' },
         table: { icon: 'bi-table', label: 'tool_table', block: 'table' },
         calc: { icon: 'bi-calculator', label: 'tool_calc', block: 'calc' },
-        codeblock: { icon: 'bi-code-slash', label: 'tool_codeblock', block: 'code' }
+        codeblock: { icon: 'bi-code-slash', label: 'tool_codeblock', block: 'code' },
+        expand: { text: 'Aa', label: 'tool_expand', expand: true }
     };
 
     // What "/" offers in a note's box (options.slashInserts), in order: the
@@ -5271,8 +5348,9 @@
      * items, in order, each one of:
      *   - the name of one of the box's own tools: undo, redo, bold, italic,
      *     strike, highlight, code, link, bullets, numbers, quote, checklist, table,
-     *     calc, codeblock, and for a note's box (options.headings) heading1,
-     *     heading2, heading3, rule;
+     *     calc, codeblock, expand (a box that sends: the "Aa" switch, put in
+     *     before the first group when the caller does not place it), and for
+     *     a note's box (options.headings) heading1, heading2, heading3, rule;
      *   - a node the caller made (attach, emoji, voice, send), put in as it is;
      *   - an array of those, drawn as a group of options.groupClass.
      * options: className (the row's class), groupClass, label (the row's name
@@ -5290,6 +5368,20 @@
         var row = el('div', (opts.className || 'ws-note-actions') + ' ws-rich-tools');
         var pressed = {};
         var steps = {};
+        var expander = null;
+        var list = (items || []).slice();
+
+        function named(within, name) {
+            return within.some(function (item) {
+                return (item === name) || (Array.isArray(item) && named(item, name));
+            });
+        }
+
+        if (editor.options.onEnter && !named(list, 'expand')) {
+            var first = list.findIndex(Array.isArray);
+
+            list.splice((first === -1) ? list.length : first, 0, 'expand');
+        }
 
         row.setAttribute('role', 'toolbar');
         row.setAttribute('aria-label', opts.label || t('tool_bar'));
@@ -5301,8 +5393,12 @@
                 return null;
             }
 
+            if (spec.expand && !editor.options.onEnter) {
+                return null;
+            }
+
             var label = t(spec.label);
-            var node = button('btn btn-sm btn-text theme-secondary', '', spec.icon, MAC ? label.replace(/Ctrl\+/g, '⌘') : label);
+            var node = button('btn btn-sm btn-text theme-secondary', spec.text || '', spec.icon, MAC ? label.replace(/Ctrl\+/g, '⌘') : label);
 
             node.setAttribute('data-ws-tool', name);
 
@@ -5325,6 +5421,12 @@
                 steps[name] = node;
             }
 
+            if (spec.expand) {
+                node.classList.add('ws-rich-expand');
+                node.setAttribute('aria-pressed', 'false');
+                expander = node;
+            }
+
             node.addEventListener('click', function () {
                 if (name === 'undo') {
                     editor.undo();
@@ -5338,6 +5440,8 @@
                     editor.heading(spec.heading);
                 } else if (spec.rule) {
                     editor.rule();
+                } else if (spec.expand) {
+                    editor.expand(!editor.expanded);
                 } else {
                     insertFrom(editor, spec.block, opts);
                 }
@@ -5367,7 +5471,7 @@
             }
         }
 
-        (items || []).forEach(function (item) { put(row, item); });
+        list.forEach(function (item) { put(row, item); });
 
         // mousedown, as on the bar over a selection: the text keeps the focus
         // and its selection while a button (or the row between them) is hit.
@@ -5416,6 +5520,33 @@
 
             if (steps.redo) {
                 steps.redo.disabled = !editor.canRedo();
+            }
+
+            if (expander) {
+                expanded();
+            }
+        }
+
+        // The expanded box shows every tool of the row (the stylesheet hides
+        // the groups of a narrow one) and the composer's hint names the keys
+        // that send there.
+        function expanded() {
+            var on = !!editor.expanded;
+            var hint = row.querySelector('.ws-composer-hint');
+
+            expander.setAttribute('aria-pressed', on ? 'true' : 'false');
+            row.classList.toggle('is-expanded', on);
+
+            if (hint) {
+                if (hint.wsHint === undefined) {
+                    hint.wsHint = hint.textContent;
+                }
+
+                var text = on ? keyLabel(t('tool_expand_hint'), MAC) : hint.wsHint;
+
+                if (hint.textContent !== text) {
+                    hint.textContent = text;
+                }
             }
         }
 
