@@ -1174,3 +1174,96 @@ function ws_voice_panel_present($file_id)
         'model'       => $done ? (string) $row['model'] : '',
     );
 }
+
+/**
+ * The transcripts of the recordings among some messages, for the readers
+ * that take a message as words (the assistants, recaps): file id =>
+ * transcript, written-out ones only. One query for all of them; the reader
+ * has already been allowed the messages, and a transcript is read as its
+ * message is.
+ *
+ * @param array[] $rows ws_messages rows
+ * @return string[]
+ */
+function ws_voice_transcripts($rows)
+{
+    $ids = array();
+
+    foreach ((array) $rows as $row) {
+        if (is_array($row) && ((int) ($row['file_id'] ?? 0) > 0) && ((int) ($row['deleted_at'] ?? 0) === 0)) {
+            $ids[(int) $row['file_id']] = (int) $row['file_id'];
+        }
+    }
+
+    if (empty($ids) || !ws_voice_schema_ready()) {
+        return array();
+    }
+
+    $out = array();
+
+    foreach ((array) db_items("SELECT file_id, transcript FROM ws_voice
+        WHERE file_id IN ('" . implode("', '", $ids) . "') AND status = 'done'") as $row) {
+        if (trim((string) $row['transcript']) !== '') {
+            $out[(int) $row['file_id']] = (string) $row['transcript'];
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The transcript of one message's recording, '' when it has none (yet).
+ *
+ * @param array|null $row ws_messages row
+ * @return string
+ */
+function ws_voice_transcript_of($row)
+{
+    if (!is_array($row) || ((int) ($row['file_id'] ?? 0) <= 0)) {
+        return '';
+    }
+
+    return (string) (ws_voice_transcripts(array($row))[(int) $row['file_id']] ?? '');
+}
+
+/**
+ * A transcript as a reader is given it: one line, tag-shaped text taken out
+ * (a tag is what a person chose to point at; a speaking voice points at
+ * nothing, and the service may write anything), cut at $limit characters.
+ *
+ * @param string $transcript
+ * @param int    $limit characters, 0 for all
+ * @return string
+ */
+function ws_voice_transcript_clean($transcript, $limit = 0)
+{
+    $text = preg_replace('/<[@#][a-z_]{1,30}:[0-9]{1,10}>/i', '', (string) $transcript);
+    $text = trim((string) preg_replace('/\s+/u', ' ', (string) $text));
+
+    if (($limit > 0) && (mb_strlen($text) > $limit)) {
+        $text = rtrim(mb_substr($text, 0, $limit)) . '…';
+    }
+
+    return $text;
+}
+
+/**
+ * A message as words with its recording's transcript after the person's own
+ * words, marked as machine text so that it never passes as theirs. Without a
+ * transcript the words are returned as they came.
+ *
+ * @param string $text       the message's words as the reader reads them
+ * @param string $transcript ws_voice.transcript, '' for none
+ * @param int    $limit      characters of the transcript, 0 for all
+ * @return string
+ */
+function ws_voice_with_transcript($text, $transcript, $limit = 0)
+{
+    $heard = ws_voice_transcript_clean($transcript, $limit);
+
+    if ($heard === '') {
+        return (string) $text;
+    }
+
+    return ((trim((string) $text) !== '') ? $text . ' ' : '') . '[voice message, machine transcript: ' . $heard . ']';
+}

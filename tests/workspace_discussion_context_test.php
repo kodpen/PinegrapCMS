@@ -60,6 +60,7 @@ function test_workspace_discussion_context_thread()
 			'sender_kind' => 'app',
 			'author'      => 'Claude',
 			'text'        => '@Ayşe the list is ready',
+			'transcript'  => null,
 			'task_id'     => null,
 			'created_at'  => api_time(1792580000),
 		),
