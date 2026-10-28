@@ -19,6 +19,7 @@
 include('init.php');
 $user = validate_user();
 validate_area_access($user, 'administrator');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/dynamic_region_form.php');
 
 // Stop early when the screen is opened without an existing record (stale
 // link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
@@ -63,33 +64,7 @@ if (!isset($_POST['name'])) {
                 <form action="edit_dynamic_region.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Options') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
-                                            <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Dynamic Region'))) . '</label>
-                                            <div class="input-group">
-                                                <div class="input-group-text">' . h('<dregion>') . '</div>
-                                                <input value="' . h($dregion_name) . '" name="name" id="name" type="text" class="form-control" maxlength="100" />
-                                                <div class="input-group-text">' . h('</dregion>') . '</div>
-                                            </div>
-                                        </div>
-                                        <h5 class="mt-12">' . lang('PHP Code to appear on associated Pages') . '</h5>
-                                        <div class="col-12 my-3">
-                                            <label for="name" class="form-label">' . lang('PHP Code Snippet') . '</label>
-                                            <textarea name="code" id="code" rows="30" cols="60" wrap="off">' . h($dregion_code) . '</textarea>
-                                            ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'php')) . '
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    ' . pg_dynamic_region_form_card($dregion_name, $dregion_code) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -117,7 +92,7 @@ if (!isset($_POST['name'])) {
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('dynamic region'), $_POST['name']) )), $_SESSION['sessionusername']);
         $notice = lang(array('string'=>'{var:1} was deleted successfully','vars'=>lang('Dynamic Region') ));
     } else {
-        $_POST['name'] = trim($_POST['name']);
+        list($name, $code) = pg_dynamic_region_form_values($_POST);
         // update region
         $query = "UPDATE dregion "
                 ."SET dregion_name = ?, "
@@ -126,12 +101,12 @@ if (!isset($_POST['name'])) {
                     ."dregion_timestamp = UNIX_TIMESTAMP() "
                 ."WHERE dregion_id = ?";
         $result = db_q($query, array(
-            (string) ($_POST['name'] ?? ''),
-            (string) ($_POST['code'] ?? ''),
+            $name,
+            $code,
             (int) $user['id'],
             (string) ($_POST['id'] ?? ''),
         )) or output_error('Query failed');
-        log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('dynamic region'), $_POST['name']) )), $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('dynamic region'), $name) )), $_SESSION['sessionusername']);
         $notice = lang(array('string'=>'{var:1} was edited successfully','vars'=>lang('Dynamic Region') ));
     }
     
