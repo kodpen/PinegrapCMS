@@ -95,7 +95,8 @@ $comments_watcher_email_page_id = $row['comments_watcher_email_page_id'];
 // rather than a page type, and its comments are that record's: for the checks
 // below it is a form item view page, and the widget's access setting is its
 // submitter security (see pg_sw_record_comment_context()). A classic catalog,
-// catalog detail or calendar event view page takes only a product, product
+// catalog detail or calendar event view page, or a designed page showing one
+// product (pg_comment_thread_page_type()), takes only a product, product
 // group or calendar event it shows (pg_comment_classic_item_shown()). A
 // refusal is answered further down, after the page's own gates.
 $comment_thread = pg_comment_thread_verify($page_id, $page_type, $item_type, $item_id);

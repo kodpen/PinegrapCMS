@@ -219,6 +219,14 @@ class liveform {
             $autocomplete = ' autocomplete="' . h($attributes['autocomplete']) . '"';
         }
 
+        // A field with no visible label (an invoice line's quantity, a notes
+        // box under a card heading) is named by the aria-label it is given.
+        $output_aria_label = '';
+
+        if (isset($attributes['aria-label']) && is_scalar($attributes['aria-label']) && (string) $attributes['aria-label'] !== '') {
+            $output_aria_label = ' aria-label="' . h((string) $attributes['aria-label']) . '"';
+        }
+
         $spellcheck = '';
 
         if (isset($attributes['spellcheck']) && $attributes['spellcheck']) {
@@ -387,7 +395,7 @@ class liveform {
                 if($size != ''){
                     $output_size = ' size="' . h($size) . '"';
                 }
-                return "<input type=\"$type\" name=\"" . h($field) . "\"" . $output_id_attribute . " value=\"" . h($value) . "\"  class=\"$class\" style=\"$style\"$output_readonly$output_onchange$output_onclick$output_onfocus$output_onblur$output_min$output_max$output_step " . $output_datalist . $output_placeholder . $output_size . $output_required . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . $output_inline_feedback;
+                return "<input type=\"$type\" name=\"" . h($field) . "\"" . $output_id_attribute . " value=\"" . h($value) . "\"  class=\"$class\" style=\"$style\"$output_readonly$output_onchange$output_onclick$output_onfocus$output_onblur$output_min$output_max$output_step " . $output_datalist . $output_placeholder . $output_size . $output_required . $output_aria_label . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . $output_inline_feedback;
                 break;
 
             case 'checkbox':
@@ -424,7 +432,7 @@ class liveform {
                 $output_onclick = ($onclick) ? ' onclick="' . $onclick . '"' : '';
                 $output_onfocus = ($onfocus) ? ' onfocus="' . $onfocus . '"' : '';
                 
-                return "<input type=\"checkbox\" name=\"" . h($field_name) . "\"" . $output_id_attribute . "$output_value$checked class=\"$class\" style=\"$style\"$output_onclick$output_onfocus" . $output_required . $output_aria_invalid . $autofocus . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . $output_inline_feedback;
+                return "<input type=\"checkbox\" name=\"" . h($field_name) . "\"" . $output_id_attribute . "$output_value$checked class=\"$class\" style=\"$style\"$output_onclick$output_onfocus" . $output_required . $output_aria_label . $output_aria_invalid . $autofocus . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . $output_inline_feedback;
                 break;
 
             case 'radio':
@@ -444,7 +452,7 @@ class liveform {
                 $output_onclick = ($onclick) ? ' onclick="' . $onclick . '"' : '';
                 $output_onfocus = ($onfocus) ? ' onfocus="' . $onfocus . '"' : '';
                 
-                return "<input type=\"radio\" name=\"" . h($field) . "\"" . $output_id_attribute . " value=\"" . h($value) . "\"$checked class=\"$class\" style=\"$style\"$output_onclick$output_onfocus" . $output_required . $output_aria_invalid . $autofocus . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . $output_inline_feedback;
+                return "<input type=\"radio\" name=\"" . h($field) . "\"" . $output_id_attribute . " value=\"" . h($value) . "\"$checked class=\"$class\" style=\"$style\"$output_onclick$output_onfocus" . $output_required . $output_aria_label . $output_aria_invalid . $autofocus . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . $output_inline_feedback;
                 break;
 
             case 'select':
@@ -470,7 +478,7 @@ class liveform {
                 $output_onclick = ($onclick) ? ' onclick="' . $onclick . '"' : '';
                 $output_onfocus = ($onfocus) ? ' onfocus="' . $onfocus . '"' : '';
                 
-                $output = "<select name=\"" . h($field_name) . "\"" . $output_id_attribute . " $multiple class=\"$class\" style=\"$style\" onchange=\"$onchange\"$output_onclick$output_onfocus" . $output_size . $output_required . $output_aria_invalid . $autocomplete . $autofocus . $output_data_pg . $output_data_bs_target . ">";
+                $output = "<select name=\"" . h($field_name) . "\"" . $output_id_attribute . " $multiple class=\"$class\" style=\"$style\" onchange=\"$onchange\"$output_onclick$output_onfocus" . $output_size . $output_required . $output_aria_label . $output_aria_invalid . $autocomplete . $autofocus . $output_data_pg . $output_data_bs_target . ">";
 
                 // If options were not directly passed into this function,
                 // then check for options in session.
@@ -564,7 +572,7 @@ class liveform {
                     $output_maxlength = ' maxlength="' . h($maxlength) . '"';
                 }
                 
-                return "<textarea name=\"" . h($field) . "\"" . $output_id_attribute . " rows=\"$rows\" cols=\"$cols\" class=\"$class\" style=\"$style\"$output_onclick$output_onfocus$output_readonly" . $output_placeholder . $output_required . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . h($value) . "</textarea>" . $output_inline_feedback;
+                return "<textarea name=\"" . h($field) . "\"" . $output_id_attribute . " rows=\"$rows\" cols=\"$cols\" class=\"$class\" style=\"$style\"$output_onclick$output_onfocus$output_readonly" . $output_placeholder . $output_required . $output_aria_label . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . h($value) . "</textarea>" . $output_inline_feedback;
                 break;
 
             case 'password':
@@ -592,7 +600,7 @@ class liveform {
                     $output_size = ' size="' . h($size) . '"';
                 }
 
-                return "<input type=\"password\" name=\"" . h($field) . "\"" . $output_id_attribute . " value=\"" . h($value) . "\" class=\"$class\" style=\"$style\"$output_onclick$output_onfocus" . $output_size . $output_required . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . ">" . $output_inline_feedback;
+                return "<input type=\"password\" name=\"" . h($field) . "\"" . $output_id_attribute . " value=\"" . h($value) . "\" class=\"$class\" style=\"$style\"$output_onclick$output_onfocus" . $output_size . $output_required . $output_aria_label . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . ">" . $output_inline_feedback;
                 break;
                 
             case 'hidden':
@@ -622,7 +630,7 @@ class liveform {
                 $output_onclick = ($onclick) ? ' onclick="' . $onclick . '"' : '';
                 $output_onfocus = ($onfocus) ? ' onfocus="' . $onfocus . '"' : '';
                 
-                return '<input type="file" name="' . h($field) . '" size="' . $size . '" class="' . $class . '" style="' . $style . '"' . $output_onclick . $output_onfocus . $output_required . $output_aria_invalid . $autofocus . '>' . $output_inline_feedback;
+                return '<input type="file" name="' . h($field) . '" size="' . $size . '" class="' . $class . '" style="' . $style . '"' . $output_onclick . $output_onfocus . $output_required . $output_aria_label . $output_aria_invalid . $autofocus . '>' . $output_inline_feedback;
                 break;
 
             case 'submit':

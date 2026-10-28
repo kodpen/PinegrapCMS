@@ -66,6 +66,59 @@ function pg_comment_classic_item_types($page_type)
 }
 
 /**
+ * The page type a page's comments follow, from its own type and the widgets
+ * its top level places. Pure: pg_comment_thread_page_type() reads them.
+ *
+ * A designed page ('standard') that places a catalog_item_view widget and no
+ * form_item_view widget shows one product or select group, the one its
+ * address names, as a catalog detail page does: its comments are that item's
+ * thread (product reviews), picked and checked as on a catalog detail page,
+ * so it answers 'catalog detail'. A record view decides first, as it does for
+ * every page (pg_sw_record_comment_context()). Any other page keeps its type.
+ *
+ * @param mixed $page_type          the page row's page_type
+ * @param bool  $has_record_widget  a form_item_view widget at the top level
+ * @param bool  $has_product_widget a catalog_item_view widget at the top level
+ * @return string
+ */
+function pg_comment_product_view_page_type($page_type, $has_record_widget, $has_product_widget)
+{
+    $page_type = is_scalar($page_type) ? (string) $page_type : '';
+
+    if (($page_type === 'standard') && !$has_record_widget && $has_product_widget) {
+        return 'catalog detail';
+    }
+
+    return $page_type;
+}
+
+/**
+ * The page type the comments of page $page_id follow
+ * (pg_comment_product_view_page_type()): 'catalog detail' for a designed
+ * product page, else the page's own type. Only a 'standard' page is asked
+ * for its widgets (read once per request, pg_sw_page_widgets()).
+ *
+ * @param mixed $page_id
+ * @param mixed $page_type the page row's page_type
+ * @return string
+ */
+function pg_comment_thread_page_type($page_id, $page_type)
+{
+    $page_type = is_scalar($page_type) ? (string) $page_type : '';
+    $page_id = (is_scalar($page_id) && !is_bool($page_id)) ? (int) $page_id : 0;
+
+    if (($page_type !== 'standard') || ($page_id <= 0) || !function_exists('pg_sw_page_widget')) {
+        return $page_type;
+    }
+
+    return pg_comment_product_view_page_type(
+        $page_type,
+        pg_sw_page_widget($page_id, 'form_item_view') !== null,
+        pg_sw_page_widget($page_id, 'catalog_item_view') !== null
+    );
+}
+
+/**
  * Which thread a comment posted to a page may join. Pure: the caller reads
  * the page, its record view widget and the item (pg_comment_thread_verify()).
  *
@@ -270,6 +323,12 @@ function pg_comment_thread_verify($page_id, $page_type, $item_type, $item_id)
         $record = pg_sw_record_comment_context((int) $page_id, is_scalar($item_id) ? (int) $item_id : 0);
     }
 
+    // A designed page that shows one product takes that product's thread,
+    // as a catalog detail page does.
+    if ($record === null) {
+        $page_type = pg_comment_thread_page_type($page_id, $page_type);
+    }
+
     $record_id = 0;
 
     if (($record !== null) && is_array($record['form']) && !empty($record['form']['id'])) {
@@ -317,13 +376,18 @@ function pg_comment_thread_verify($page_id, $page_type, $item_type, $item_id)
  * - 'event_id': the event the sender of the render names (the search index's
  *   'calendar_event_id'), null when none.
  * - 'get_id': ?id= of the address.
+ * - 'product_view': the page is a designed page showing one product
+ *   (pg_comment_thread_page_type()), read as 'catalog detail'.
+ * - 'pid': ?pid= of the address, read for such a page only.
  *
  * - 'catalog': the product group the address names, else the page's own,
  *   else the top-level one. An address naming a product or nothing names no
  *   thread: the classic block posts such an id as a product group there.
  * - 'catalog detail': the product or product group the address names; with
  *   no '/' the page's own thread ('' and 0); an address naming nothing (the
- *   not-found screen) no thread.
+ *   not-found screen) no thread. A designed product page ('product_view')
+ *   with no '/' shows the product ?pid= names, as its catalog_item_view
+ *   widget does, else nothing: no thread.
  * - 'calendar event view': the event the sender names, else ?id=; without
  *   one the page's own thread. A recurrence (?recurrence_number=) shows the
  *   same event, so it shares the thread, as on the classic block. An id
@@ -367,6 +431,10 @@ function pg_comment_address_item($page_type, $facts)
             return ($group_id > 0) ? array('item_type' => 'product_group', 'item_id' => $group_id) : null;
 
         case 'catalog detail':
+            if (($address === null) && !empty($facts['product_view'])) {
+                return ($int('pid') > 0) ? array('item_type' => 'product', 'item_id' => $int('pid')) : null;
+            }
+
             if ($address === null) {
                 return $page_itself;
             }
@@ -404,18 +472,25 @@ function pg_comment_address_item($page_type, $facts)
  * page's own product group and, only when it has none, the top-level group,
  * the event the render's sender names ($ctx 'calendar_event_id', as
  * pg_sw_render_context() carries the search index's dynamic properties) and
- * ?id=. A page type with no item in its address reads nothing.
+ * ?id=. A page type with no item in its address reads nothing. A designed
+ * product page ($product_view, read as 'catalog detail') adds ?pid=.
  *
  * @param int   $page_id
  * @param mixed $page_type
  * @param mixed $ctx pg_sw_render_context()
+ * @param bool  $product_view
  * @return array
  */
-function pg_comment_address_item_facts($page_id, $page_type, $ctx)
+function pg_comment_address_item_facts($page_id, $page_type, $ctx, $product_view = false)
 {
     $page_type = is_string($page_type) ? $page_type : '';
     $ctx = is_array($ctx) ? $ctx : array();
-    $facts = array('address_item' => null, 'catalog_group_id' => 0, 'top_group_id' => 0, 'event_id' => null, 'get_id' => null);
+    $facts = array('address_item' => null, 'catalog_group_id' => 0, 'top_group_id' => 0, 'event_id' => null, 'get_id' => null,
+        'product_view' => (bool) $product_view, 'pid' => null);
+
+    if ($product_view && isset($_GET['pid'])) {
+        $facts['pid'] = $_GET['pid'];
+    }
 
     if (($page_type === 'catalog') || ($page_type === 'catalog detail')) {
         $page_param = isset($_GET['page']) ? $_GET['page'] : null;

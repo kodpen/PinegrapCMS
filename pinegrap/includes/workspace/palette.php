@@ -227,6 +227,8 @@ function ws_palette_message_items($viewer, $rows, $type, $query)
         }
     }
 
+    // A voice message found by its transcript shows the transcript.
+    $heard = function_exists('ws_voice_transcripts') ? ws_voice_transcripts($rows) : array();
     $out = array();
 
     foreach ($rows as $row) {
@@ -235,6 +237,11 @@ function ws_palette_message_items($viewer, $rows, $type, $query)
         $text = ws_plain_text($viewer, (string) $row['body']);
         $title = ws_palette_snippet($text, $query, 140);
         $file_url = '';
+        $voice = isset($heard[(int) $row['file_id']]) ? ws_voice_found_in_transcript($text, $heard[(int) $row['file_id']], $query) : '';
+
+        if (($voice !== '') && ($type !== 'file')) {
+            $title = lang('Voice message') . ': ' . ws_palette_snippet($voice, $query, 120);
+        }
 
         if ($type === 'file') {
             $title = (string) $row['file_name'];
@@ -251,7 +258,9 @@ function ws_palette_message_items($viewer, $rows, $type, $query)
         }
 
         // A file found by the line written with it says so.
-        if (($type === 'file') && ($text !== '')) {
+        if (($type === 'file') && ($voice !== '')) {
+            $sub[] = ws_palette_snippet($voice, $query, 60);
+        } elseif (($type === 'file') && ($text !== '')) {
             $sub[] = ws_palette_snippet($text, $query, 60);
         }
 
@@ -261,7 +270,7 @@ function ws_palette_message_items($viewer, $rows, $type, $query)
             'title'      => $title,
             'sub'        => implode(' · ', $sub),
             'date'       => ws_time_label($row['created_at']),
-            'icon'       => ($type === 'decision') ? 'bi-patch-check' : (($type === 'file') ? 'bi-file-earmark' : 'bi-chat-left-text'),
+            'icon'       => ($type === 'decision') ? 'bi-patch-check' : (($type === 'file') ? 'bi-file-earmark' : (($voice !== '') ? 'bi-mic' : 'bi-chat-left-text')),
             'url'        => ($type === 'file') ? $file_url : $link,
             'message_url' => $link,
             'channel_id' => (int) $channel['id'],
@@ -810,7 +819,7 @@ function ws_palette_search($viewer, $q, $options = array())
                 break;
 
             case 'files':
-                $items = ws_palette_message_items($viewer, ws_palette_message_rows($viewer, "file_id > 0 AND (file_name LIKE '%" . $like . "%' OR body LIKE '%" . $like . "%')", $channel_id, $limit), 'file', $query);
+                $items = ws_palette_message_items($viewer, ws_palette_message_rows($viewer, "file_id > 0 AND (file_name LIKE '%" . $like . "%' OR body LIKE '%" . $like . "%'" . ws_voice_search_or($like) . ")", $channel_id, $limit), 'file', $query);
                 break;
 
             case 'records':

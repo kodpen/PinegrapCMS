@@ -111,7 +111,8 @@ if (!$_POST) {
                             'type' => 'text', 'name' => 'qty_' . (int) $line['id'],
                             'id' => 'qty_' . (int) $line['id'],
                             'class' => 'form-control form-control-sm text-end',
-                            'inputmode' => 'decimal', 'maxlength' => '10', 'autocomplete' => 'off'))
+                            'inputmode' => 'decimal', 'maxlength' => '10', 'autocomplete' => 'off',
+                            'aria-label' => lang('Returning')))
                             . (((int) $line['line_total'] < 0) ? '<div class="form-text">' . lang('Left empty or at 0, it comes back with the goods in proportion.') . '</div>' : '')
                         : '<span class="fg-secondary">&mdash;</span>') . '</td>
             </tr>';
@@ -172,7 +173,7 @@ if (!$_POST) {
                     <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Lines') . '
                     </div>
-                    <div class="card-body p-0 position-relative">
+                    <div class="card-body p-0 position-relative table-responsive">
                         <table class="table table-hover align-middle mb-0">
                             <thead>
                                 <tr>
@@ -192,7 +193,7 @@ if (!$_POST) {
                     </div>
                 </div>
 
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><i class="bi bi-arrow-return-left me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Create the Return')) . '</span></button>

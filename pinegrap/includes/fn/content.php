@@ -728,6 +728,29 @@ function get_page_options($page_id = '', $page_type = '', $access = 'edit', $inc
     }
     return $page_options;
 }
+
+/**
+ * The picker options a previewed form prints after its hooked date and time
+ * fields. They are drawn once the page has loaded and all read the one
+ * datetimepicker_options, so a form with a date and time field gets the
+ * variant with the time wording; a date or time row the site's date order.
+ *
+ * @param array $picker_kinds  The hooked kinds as keys ('date', 'date and time', 'time').
+ * @return string
+ */
+function pg_form_info_picker_format($picker_kinds)
+{
+    if (isset($picker_kinds['date and time'])) {
+        return get_date_time_picker_format();
+    }
+
+    if ($picker_kinds) {
+        return get_date_picker_format();
+    }
+
+    return '';
+}
+
 // get form info (i.e. field content, wysiwyg fields, file upload exists)
 function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, $label_column_width, $office_use_only, $liveform, $interface, $editable = false, $device_type = 'desktop', $folder_id_for_default_value = 0, $reference_code_field_id = 0, $express_order_form_type = '', $prefix = '')
 {
@@ -1395,19 +1418,27 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                     </tr>';
                 break;
             case 'time':
+                // The panel preview draws the time on the date-and-time
+                // control; the site keeps the plain text box.
+                $time_hook = array();
+                if ($interface == 'backend') {
+                    $time_hook = array('data-pg-time' => '');
+                    $picker_kinds['time'] = true;
+                }
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
                         <td style="' . $output_label_column_width . '">' . h($field['label']) . '</td>
 
                         <td style="vertical-align: top">' . $liveform->output_field(array(
                                 'type' => 'text',
+                                'id' => $html_field_name,
                                 'name' => $html_field_name,
                                 'value' => $default_value,
                                 'size' => $field['size'],
                                 'maxlength' => '11',
                                 'class' => 'software_input_text',
                                 'required' => $required
-                            )) . ' ' . ((pg_time_format_code() === 'H:i') ? lang('(Format: HH:mm)') : lang('(Format: h:mm AM/PM)')) . '</td>
+                            ) + $time_hook) . ' ' . ((pg_time_format_code() === 'H:i') ? lang('(Format: HH:mm)') : lang('(Format: h:mm AM/PM)')) . '</td>
 
                     </tr>';
                 break;
@@ -1430,16 +1461,8 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                 </tr>';
         }
     }
-    // What the hooked panel fields need, printed once after the table: the
-    // pickers are drawn when the page has loaded and all read the one
-    // datetimepicker_options, so a form with a date and time field gets the
-    // variant with the time wording.
-    $form_info['picker_scripts'] = '';
-    if (isset($picker_kinds['date and time'])) {
-        $form_info['picker_scripts'] = get_date_time_picker_format();
-    } elseif (isset($picker_kinds['date'])) {
-        $form_info['picker_scripts'] = get_date_picker_format();
-    }
+    // What the hooked panel fields need, printed once after the table.
+    $form_info['picker_scripts'] = pg_form_info_picker_format($picker_kinds);
     if ($picker_kinds) {
         $form_info['picker_scripts'] .= pg_fields_script();
     }
@@ -2721,6 +2744,15 @@ function get_query_string_for_page_url($page_type, $item_id, $item_type)
                 $result = db_q($query, array((string) $item_id)) or output_error(lang('Query failed.'));
                 $row = mysqli_fetch_assoc($result);
                 $query_string = '?r=' . $row['reference_code'];
+                break;
+            default:
+                // A designed page that shows one product (a catalog_item_view
+                // widget, pg_comment_thread_page_type()) holds the comments
+                // of the product or group in its address, as catalog detail.
+                if (($item_type === 'product') || ($item_type === 'product_group')) {
+                    $address_name = get_catalog_item_address_name_from_id($item_id, $item_type);
+                    $query_string = ($address_name != '') ? '/' . $address_name : '';
+                }
                 break;
         }
     }

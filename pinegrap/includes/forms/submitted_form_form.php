@@ -141,20 +141,18 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
 
         // A collection's reference pick list, radio button or check box
         // group offers the records of the form it points into instead of
-        // the options drawn for it, a pick list after an empty choice, as
-        // the site form does (pg_cf_apply_field_bindings()).
+        // the options drawn for it, a product or page pick list the
+        // products or pages, a pick list after an empty choice, as the site
+        // form does (pg_cf_apply_field_bindings()).
         $coll_kind = isset($coll_kinds[(int) $field['id']]) ? $coll_kinds[(int) $field['id']] : array('kind' => '', 'reference_page_id' => 0);
+        $coll_choices = in_array($field['type'], array('pick list', 'radio button', 'check box'), true) ? pg_coll_kind_options($coll_kind) : null;
 
-        if (
-            ($coll_kind['kind'] == 'reference')
-            && ($coll_kind['reference_page_id'] > 0)
-            && in_array($field['type'], array('pick list', 'radio button', 'check box'), true)
-        ) {
+        if ($coll_choices !== null) {
             $options = ($field['type'] == 'pick list')
                 ? array(array('id' => $field['id'] . '_ref', 'label' => '', 'value' => '', 'default_selected' => 0))
                 : array();
 
-            foreach (pg_coll_reference_options($coll_kind['reference_page_id']) as $code => $label) {
+            foreach ($coll_choices as $code => $label) {
                 $options[] = array('id' => $field['id'] . '_ref' . count($options), 'label' => $label, 'value' => $code, 'default_selected' => 0);
             }
         }

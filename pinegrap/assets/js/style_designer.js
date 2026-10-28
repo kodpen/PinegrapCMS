@@ -2030,14 +2030,18 @@ const StyleDesigner = (function () {
     var _CF_KINDS = {
         number:    ['text box'],
         image:     ['file upload'],
-        reference: ['text box', 'pick list', 'radio button', 'check box']
+        reference: ['text box', 'pick list', 'radio button', 'check box'],
+        product:   ['pick list'],
+        page:      ['pick list']
     };
     // The [kind, label] pairs a field of `type` may take.
     function _cfKindsFor(type) {
         var labels = {
             number:    _sdT('Number'),
             image:     _sdT('Image'),
-            reference: _sdT('Reference to another form')
+            reference: _sdT('Reference to another form'),
+            product:   _sdT('Product'),
+            page:      _sdT('Page')
         };
         return Object.keys(_CF_KINDS).filter(function (k) { return _CF_KINDS[k].indexOf(type) !== -1; })
             .map(function (k) { return [k, labels[k]]; });

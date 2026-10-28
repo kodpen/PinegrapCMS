@@ -2410,6 +2410,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         renderStatusbar();
     }
 
+    // The address follows the view the screen shows, without a page load;
+    // the main menu then marks the entry of its panel that is that view
+    // again (pgMenu.refreshCurrent(), backend.src.js), as on a full load.
+    function setAddress(url) {
+        window.history.replaceState(null, '', url);
+
+        if (window.pgMenu && (typeof window.pgMenu.refreshCurrent === 'function')) {
+            window.pgMenu.refreshCurrent();
+        }
+    }
+
     // The toolbar search narrows the folder it was typed in, and nothing
     // else: it is a way of finding a file in a long listing, not a filter
     // the operator switched on. It is let go the moment the listing shows a
@@ -2532,7 +2543,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             if ((state.mode === 'all') && (state.allFilter === '') && (state.fileScope !== '')) { query += '&scope=' + encodeURIComponent(state.fileScope); }
 
-            window.history.replaceState(null, '', 'view_folders.php' + query);
+            setAddress('view_folders.php' + query);
 
             document.getElementById('new_page_item').classList.toggle('d-none', !state.caps.can_create_pages);
             dragPreviewHold = false;
@@ -2695,7 +2706,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             state.lastIndex = -1;
             lastListingKey = listingKey(0);
 
-            window.history.replaceState(null, '', 'view_folders.php?view=erp' + (state.erpFolder ? ('&erp=' + encodeURIComponent(state.erpFolder)) : ''));
+            setAddress('view_folders.php?view=erp' + (state.erpFolder ? ('&erp=' + encodeURIComponent(state.erpFolder)) : ''));
 
             updateCreateLinks();
             renderBreadcrumb();
@@ -3378,7 +3389,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             state.backupZip = !!response.zip_available;
             state.backupTotal = response.total_label || '';
 
-            window.history.replaceState(null, '', 'view_folders.php?view=backups');
+            setAddress('view_folders.php?view=backups');
 
             updateCreateLinks();
             renderBreadcrumb();
@@ -3537,7 +3548,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 : ((state.allFilter === 'variants')
                     ? '?view=variants'
                     : ((state.allFilter === 'recycled') ? '?view=bin' : (state.groupId > 0 ? ('?group=' + state.groupId) : '')));
-            window.history.replaceState(null, '', 'view_product_groups.php' + query);
+            setAddress('view_product_groups.php' + query);
 
             var countElement = document.getElementById('all_products_count');
             if (countElement) { countElement.textContent = state.catalogTotals.products || ''; }
@@ -3639,7 +3650,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             state.selection = {};
             state.lastIndex = -1;
 
-            window.history.replaceState(null, '', 'view_folders.php?view=short_links');
+            setAddress('view_folders.php?view=short_links');
 
             updateCreateLinks();
             renderBreadcrumb();
@@ -3689,7 +3700,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             state.lastIndex = -1;
             state.sharedGroups = response.groups || [];
 
-            window.history.replaceState(null, '', 'view_folders.php?view=shared');
+            setAddress('view_folders.php?view=shared');
 
             updateCreateLinks();
             renderBreadcrumb();

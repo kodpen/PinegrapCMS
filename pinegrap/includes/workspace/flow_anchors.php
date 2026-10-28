@@ -531,11 +531,12 @@ function ws_flow_anchor_start($viewer, $row, $fill)
 
     // Not db(): the duplicate start key of a step carried out twice is an
     // answer here.
-    $written = @mysqli_query(db::$con, "INSERT INTO ws_flow_runs (flow_id, version_id, status, started_by, actor_id, start_key,
+    $written = db_q("INSERT INTO ws_flow_runs (flow_id, version_id, status, started_by, actor_id, start_key,
             subject_type, subject_id, context, depth, boxes_run, started_at, updated_at, finished_at)
-        SELECT '" . $flow_id . "', '" . (int) $version['id'] . "', 'running', '" . (int) $flow['owner_id'] . "', '" . (int) $flow['owner_id'] . "',
-            '" . e($start_key) . "', '', 0, '" . e((string) $context) . "', '" . (int) ($fill['depth'] ?? 0) . "', 0, '" . $now . "', '" . $now . "', 0
-        FROM ws_flows WHERE id = '" . $flow_id . "' AND status = 'live'");
+        SELECT ?, ?, 'running', ?, ?, ?, '', 0, ?, ?, 0, ?, ?, 0
+        FROM ws_flows WHERE id = ? AND status = 'live'",
+        array($flow_id, (int) $version['id'], (int) $flow['owner_id'], (int) $flow['owner_id'], (string) $start_key, (string) $context,
+            (int) ($fill['depth'] ?? 0), $now, $now, $flow_id));
 
     if (!$written) {
         return ((int) mysqli_errno(db::$con) === 1062)

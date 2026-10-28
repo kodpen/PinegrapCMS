@@ -809,6 +809,7 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                         <div class="col-12 mt-5 mb-3">
                                             <label for="excluded_transit_dates" class="form-label">' . lang('Excluded Dates') . '</label>
                                             <input value="' . $value('excluded_transit_dates') . '" type="text" name="excluded_transit_dates" id="excluded_transit_dates" class="form-control tagin min-height-tagin" data-pg-chips maxlength="255"/>
+                                            <input type="text" id="excluded_transit_date_pick" class="form-control mt-2" data-pg-date data-pg-add-to-chips="excluded_transit_dates" autocomplete="off" placeholder="' . h(lang('Add Date')) . '" aria-label="' . h(lang('Add Date')) . '"/>
                                             <div class="form-text text-end">' . lang('Excluded Dates for Shipping & Handling (e.g. Holidays). Split dates with enter key or \',\' key') . ' (' . get_date_format_help() . ')</div>
                                         </div>
                                         <div class="col-12 lg:col-8 my-5">

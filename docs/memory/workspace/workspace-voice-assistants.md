@@ -1,6 +1,6 @@
 ---
 name: workspace-voice-assistants
-description: Voice transcripts the assistants and recaps read (V4a): ws_voice_transcripts(), ws_voice_with_transcript(), Pinegrap AI's context, the MCP ask, Claude's request and channel context, recaps
+description: Voice transcripts the assistants, recaps, bells, banners and search read (V4a #2798, V4b): ws_voice_transcripts(), ws_voice_with_transcript(), ws_voice_excerpt(), ws_voice_search_or()
 ---
 
 ## How does a reader get a recording's transcript? (V4a)
@@ -14,5 +14,13 @@ description: Voice transcripts the assistants and recaps read (V4a): ws_voice_tr
 - Claude's API: `message.transcript` and `message.reply_to_transcript` on `WorkspaceClaudeRequest` ('' for none; a note, task or editor request has none); `transcript` (string or null) on each message of `ws_api_channel_context()` and on `WorkspaceContextMessage` (a discussion's message). Kept apart from `text`, which stays the person's words.
 - Recaps: `ws_recap_transcript()` writes the transcript in place of `[file: name]` (400 characters).
 
+## How do bells and device banners show a voice message? (V4b)
+- `ws_voice_excerpt()` in `ws_inbox_describe()` (mention, read-receipt reminder): the words, then "Voice message: <transcript>" once written out; "Voice message" before that, so a recording without words is never an empty banner (`ws_voice_excerpt_text()`, cut at 140).
+- The banner is described when it is sent, after its wait (`ws_push_pending()`, `ws_bell_describe()`), so a transcript written out meanwhile is in it.
+
+## How does search find it? (V4b)
+- `ws_voice_search_or($like)` joins `OR file_id IN (SELECT … ws_voice … status 'done' AND transcript LIKE …)` to `ws_message_search()` (the channel search, the palette's messages group, GET /workspace/search) and the palette's files group; '' while the table is missing. Reach rules unchanged: rows are still kept by `ws_can_read_channel()`.
+- A hit matched only by its transcript (`ws_voice_found_in_transcript()`) is titled "Voice message: <snippet>" with `bi-mic`; a file hit shows the transcript snippet in its detail.
+
 ## What is still open?
-- Push and search (V4b), a recording that asks an assistant once written out (V4c): plans/workspace-voice-messages.md. Tests: tests/workspace_voice_assistants_test.php.
+- A recording that asks an assistant once written out (V4c): plans/workspace-voice-messages.md. Tests: tests/workspace_voice_assistants_test.php.

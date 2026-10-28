@@ -152,7 +152,7 @@ function test_comments_widget_threads_renderer_order()
 	}
 
 	$claim = strpos($body, 'pg_comments_widget_claim($page_id)');
-	$item = strpos($body, 'pg_comment_address_item($page[\'page_type\'], pg_comment_address_item_facts($page_id, $page[\'page_type\'], $ctx))');
+	$item = strpos($body, 'pg_comment_address_item($thread_type, pg_comment_address_item_facts($page_id, $thread_type, $ctx, $thread_type !== $page[\'page_type\']))');
 	$verify = strpos($body, 'pg_comment_thread_verify($page_id, $page[\'page_type\'], $item[\'item_type\'], $item[\'item_id\'])');
 	$read = strpos($body, 'pg_comments_rows($page_id, $read_thread');
 	$gate = strpos($body, 'pg_review_gate_applies($post_type, $post_id)');
