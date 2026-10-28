@@ -196,7 +196,7 @@ function test_comment_parent_add_comment_wiring()
 	$check = strpos($add, 'pg_comment_parent_ok(');
 	$item_refusal = strpos($add, "\$comment_thread['refusal'] === 'item'");
 	$record_block = strpos($add, "if (\$item_type == 'submitted_form') {");
-	$review_gate = strpos($add, 'pg_review_gate_applies($item_type, $item_id)');
+	$review_gate = strpos($add, '$is_product_review = pg_review_gate_applies($item_type, $item_id)');
 	$upload = strpos($add, 'copy($file_temp_name');
 	$insert = strpos($add, 'INSERT INTO comments');
 	$found = ($check !== false) && ($item_refusal !== false) && ($record_block !== false) && ($review_gate !== false) && ($upload !== false) && ($insert !== false);

@@ -1489,6 +1489,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     $barcode_enabled_checked = ($barcode_enabled == 1) ? ' checked="checked"' : '';
 
+    // Photo reviews (2026.11.0, 11.0.57): the switch shows once the column
+    // is there.
+    $review_photos_ready = array_key_exists('review_photos', $row);
+    $review_photos_checked = ((int) ($row['review_photos'] ?? 0) == 1) ? ' checked="checked"' : '';
+
     if ($ecommerce_show_product_images == 1) {
         $ecommerce_show_product_images_checked = ' checked="checked"';
     } else {

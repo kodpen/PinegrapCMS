@@ -62,6 +62,15 @@ $pg_settings_cards[] = '
                                                                 <label class="" for="ecommerce_show_product_images">' . lang('Show Product Images in Tables') . '</label>
                                                             </div>
                                                         </div>
+' . ($review_photos_ready ? '
+                                                        <div class="col-12 ">
+                                                            <div class="form-field">
+                                                                <div class="switch"><input value="1"' . $review_photos_checked . ' class="" type="checkbox" id="review_photos" name="review_photos" aria-describedby="review_photos_hint"/></div>
+                                                                <label class="" for="review_photos">' . lang('Photo Reviews') . '</label>
+                                                                <div class="form-text" id="review_photos_hint">' . lang('A customer may add one image (JPG, PNG, GIF or WebP) to a product review. Other files are never taken on a review, whatever the page allows.') . '</div>
+                                                            </div>
+                                                        </div>
+' : '') . '
 
                                                         <!-- ── Barcode ── -->
                                                         <div class="col-12 ">

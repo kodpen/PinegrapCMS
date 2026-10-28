@@ -110,6 +110,12 @@ if ($comment_thread['accept']) {
     }
 }
 
+// Whether the comment may carry a file: on a product review by the photo
+// review setting alone, and only an image (includes/fn/reviews.php); on any
+// other thread by the page's switch.
+$review_photo_thread = $comment_thread['accept'] && pg_review_gate_applies($item_type, $item_id);
+$comments_allow_file_attachments = pg_comment_attachments_allowed(($comments_allow_file_attachments == 1), $review_photo_thread, pg_review_photos_on()) ? 1 : 0;
+
 $comment_label = get_comment_label(array('label' => $comments_label));
 $output_comment_label = h($comment_label);
 $comment_label_lowercase = mb_strtolower($comment_label);
@@ -151,6 +157,17 @@ if (CAPTCHA == TRUE) {
 // quietly landing in the upload folder.
 if (isset($_FILES['file']) && ($_FILES['file']['name'] != '') && pg_upload_name_blocked($_FILES['file']['name'])) {
     $liveform->mark_error('file', pg_upload_blocked_message(htmlspecialchars($_FILES['file']['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')));
+}
+
+// A review photo must be an image by its name and its content.
+if (
+    $review_photo_thread
+    && ($comments_allow_file_attachments == 1)
+    && isset($_FILES['file']) && ($_FILES['file']['name'] != '')
+    && ($liveform->check_field_error('file') == false)
+    && !pg_review_photo_ok($_FILES['file']['name'], $_FILES['file']['tmp_name'] ?? '')
+) {
+    $liveform->mark_error('file', lang('A review photo must be a JPG, PNG, GIF or WebP image.'));
 }
 
 // if an error exists, then send user back to previous screen
@@ -492,7 +509,7 @@ if ($name == '') {
 $file_id = 0;
 
 // If file attachments are allowed and a file was uploaded, then add file.
-if (($comments_allow_file_attachments == 1) && ($_FILES['file']['name'])) {
+if (($comments_allow_file_attachments == 1) && isset($_FILES['file']) && ($_FILES['file']['name'])) {
     $file_name = prepare_file_name($_FILES['file']['name']);
 
     // Check if file name is already in use and change it if necessary.
