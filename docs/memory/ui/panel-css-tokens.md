@@ -22,7 +22,7 @@ description: The panel's --pg-* CSS token layer (Bootstrap 6 step B3): names rul
 
 ## Which stylesheets have the block?
 - `assets/css/backend.src.css` (after the dark palette block) for every screen that prints the panel head, inline `<style>` blocks included.
-- Pages that load Bootstrap without backend.src.css carry their own short block with only the names they read: `assets/css/workspace_guest.css` (guest page), `workspace_approval.css` (approval link page, #NNNN; both pinned by `standalone_css_tokens_test.php`) and the inline styles of the prototype pages (`includes/fn/prototype.php`, `prototype_links.php`). A new name read there goes into that block too.
+- Pages that load Bootstrap without backend.src.css carry their own short block with only the names they read: `assets/css/workspace_guest.css` (guest page), `workspace_approval.css` (approval link page, #2659; both pinned by `standalone_css_tokens_test.php`) and the inline styles of the prototype pages (`includes/fn/prototype.php`, `prototype_links.php`). A new name read there goes into that block too.
 - Outside this layer: site CSS and `design_themes.php` (values go into site designs), JavaScript (step B2b), and shared files (`chat.php`, `toolbar.php`, `output.php`, `seo.php`), converted by hand per function.
 - Converted by hand: the panel chat window and `pg_chat_render_backend_launcher()` in `chat.php` (#2490), the SEO panel in `toolbar.php` (#2448), the page bar CSS of `pg_page_action_bar()` in `output.php`, printed only in `toolbar.php` (#2505). Their v5 reads fell back to light colours.
 

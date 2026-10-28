@@ -18,6 +18,6 @@ description: Bootstrap 6 changed .placeholder min-height (1em to 1.25em) and .sp
 - The dialog loader in `backend.src.js` and a central `.spinner-border` rule in `backend.src.css` are still open.
 
 ## How is it checked?
-- `tests/bs6_js_leftovers_test.php` (`test_bs6_js_leftovers_loader_metrics`) pins the rule and the four spinners (#NNNN). The placeholder opacity (.18/.1 in v6) is the v6 design and was left.
+- `tests/bs6_js_leftovers_test.php` (`test_bs6_js_leftovers_loader_metrics`) pins the rule and the four spinners (#2659). The placeholder opacity (.18/.1 in v6) is the v6 design and was left.
 
 Related: docs/memory/ui/bootstrap-6-codemod.md, docs/memory/ui/bootstrap-6-runtime-markup.md

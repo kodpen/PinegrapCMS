@@ -21,6 +21,6 @@ description: The order print view and packing slip force the light theme (they s
 - The fax label, the gift card table (Code, Amount, Recipient Email, From Name, Message, Delivery Date) as `lang('X') . ':'`, and the ship-to address type through `pg_order_view_address_type()` (`includes/fn/order_view.php`), as the order view does.
 
 ## How is it checked?
-- `tests/print_views_theme_test.php` pins the script, the titles, the icons and the labels (#NNNN). Not checked by a unit test: the printed result itself.
+- `tests/print_views_theme_test.php` pins the script, the titles, the icons and the labels (#2659). Not checked by a unit test: the printed result itself.
 
 Related: docs/memory/ui/dark-theme-fixed-fills.md, docs/memory/ui/panel-css-tokens.md
