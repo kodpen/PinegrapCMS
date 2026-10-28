@@ -1226,9 +1226,11 @@ function pg_checkout_contact_tax_fill(array $card, string $number, string $offic
  * @param string $number   Typed at checkout
  * @param string $office   Typed at checkout
  * @param int    $user_id  The signed-in customer, recorded as the card's last editor
+ * @param bool   $audit    False for a contact this request made, whose create
+ *                         line is written once it is filled in
  * @return bool  True when the card took the number
  */
-function pg_checkout_fill_contact_tax(int $contact_id, string $number, string $office, int $user_id): bool
+function pg_checkout_fill_contact_tax(int $contact_id, string $number, string $office, int $user_id, bool $audit = true): bool
 {
     if ($contact_id <= 0) {
         return false;
@@ -1252,13 +1254,21 @@ function pg_checkout_fill_contact_tax(int $contact_id, string $number, string $o
         $set[] = $column . " = '" . e($value) . "'";
     }
 
+    $audit_before = $audit ? pg_audit_fetch('contacts', $contact_id) : array();
+
     // The empty-number condition again: a card that took a number since it
     // was read keeps it.
     db("UPDATE contacts
         SET " . implode(', ', $set) . ", user = '" . $user_id . "', timestamp = UNIX_TIMESTAMP()
         WHERE id = '" . $contact_id . "' AND tax_number = ''");
 
-    return mysqli_affected_rows(db::$con) > 0;
+    $filled = mysqli_affected_rows(db::$con) > 0;
+
+    if ($filled && $audit) {
+        pg_audit_site_record('update', 'contacts', $contact_id, $audit_before);
+    }
+
+    return $filled;
 }
 
 /**
