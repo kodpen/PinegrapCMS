@@ -10,7 +10,7 @@ module: seo
 - The sitemap does not depend on the request: scheme and host come from `config` (`URL_SCHEME`, `HOSTNAME_SETTING`), so one copy serves everyone. The stylesheet line is added after the copy is read.
 
 ## What draws it again?
-- `config.page_cache_generation` differs from the one it was kept under. Every write that may change what pages show raises it: `page-cache-invalidation.md` (signed-in POSTs, panel write actions, MCP writes, `pg_announce()` of pages, products, groups and files, page schedule, the purge). Since this PR `pg_page_cache_mark_dirty()` raises it while the page cache is off too (one UPDATE per such request).
+- `config.page_cache_generation` differs from the one it was kept under. Every write that may change what pages show raises it: `page-cache-invalidation.md` (signed-in POSTs, panel write actions, MCP writes, `pg_announce()` of pages, products, groups and files, page schedule, the purge). Since #2797 `pg_page_cache_mark_dirty()` raises it while the page cache is off too (one UPDATE per such request).
 - This covers every switch the sitemap reads: page add/edit/bulk screens (sitemap, noindex, folder, archive), folders and their access, products and groups, catalog and list records saved in the panel, calendar events, Settings (additional sitemap content, hostname, scheme), Settings > Languages and the translation writes that drop index answers.
 - The generation is read before drawing, so a write during the 6 s draw leaves the copy under an older number: drawn again on the next request.
 - Another `VERSION` (an upgrade may change what is listed): miss.
