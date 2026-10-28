@@ -92,6 +92,13 @@ function pg_test_form_adorn_settings_fields()
 	return array(
 		'api.php' => array('api_log_retention_days' => "lang('day(s)')"),
 		'appearance.php' => array('dashboard_refresh' => "lang('seconds')"),
+		'commerce.php' => array(
+			'ecommerce_gift_card_validity_days' => "lang('day(s)')",
+			'ecommerce_reward_program_points' => "lang('point(s)')",
+			'ecommerce_reward_program_membership_days' => "lang('day(s)')",
+			'ecommerce_surcharge_percentage' => '>%</span>',
+			'affiliate_default_commission_rate' => '>%</span>',
+		),
 		'contact.php' => array('mailchimp_sync_days' => "lang('days in the past')"),
 		'features.php' => array(
 			'image_quality_webp' => '>%</span>',
@@ -236,14 +243,44 @@ function test_bs6_form_adorn_settings_cards_keep_no_single_add_on_group()
 
 	// The groups left are the ones form-adorn cannot hold: two add-ons
 	// (language address prefix), a hint on the add-on (membership warning) and
-	// buttons (SEO). commerce.php is converted on its own.
-	$left = array('languages.php' => 1, 'security.php' => 1, 'seo.php' => 2);
+	// buttons (SEO, the Paraşüt connect code).
+	$left = array('commerce.php' => 1, 'languages.php' => 1, 'security.php' => 1, 'seo.php' => 2);
 
-	foreach (array('api.php', 'appearance.php', 'contact.php', 'features.php', 'firewall.php', 'languages.php', 'prep.php', 'screen.php', 'security.php', 'seo.php') as $file) {
+	foreach (array('api.php', 'appearance.php', 'commerce.php', 'contact.php', 'features.php', 'firewall.php', 'languages.php', 'prep.php', 'screen.php', 'security.php', 'seo.php') as $file) {
 		$source = (string) file_get_contents($root . $file);
 
 		pg_assert_same(isset($left[$file]) ? $left[$file] : 0, preg_match_all('/class="input-group[ "]/', $source), $file . ': input-groups left');
 	}
+}
+
+function test_bs6_form_adorn_commerce_add_ons_name_their_own_field()
+{
+	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/settings/commerce.php');
+
+	// The surcharge add-on was a <label> pointing at the affiliate rate; the
+	// installment label pointed at the secret key.
+	pg_assert_same(1, substr_count($source, 'for="affiliate_default_commission_rate"'), 'only the affiliate rate label names the affiliate rate');
+	pg_assert_same(1, substr_count($source, 'for="ecommerce_iyzipay_secret_key"'), 'only the secret key label names the secret key');
+	pg_assert_contains('<label class="form-label" for="ecommerce_iyzipay_installment">', $source);
+}
+
+function test_bs6_form_adorn_order_screens_keep_only_compound_groups()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+
+	// The input-groups left on the panel order screens hold buttons or
+	// selects: the shipped quantity +/- controls, the start and stop
+	// day/year selects, the shipping report status select.
+	$left = array('view_order.php' => 1, 'view_orders.php' => 2, 'view_order_report.php' => 0, 'view_shipping_report.php' => 1);
+
+	foreach ($left as $file => $count) {
+		$source = (string) file_get_contents($root . $file);
+
+		pg_assert_same($count, preg_match_all('/class="input-group[ "]/', $source), $file . ': input-groups left');
+	}
+
+	$order = (string) file_get_contents($root . 'view_order.php');
+	pg_assert_contains('<div class="input-group number-controls">', $order);
 }
 
 function test_bs6_form_adorn_settings_row_rules_name_the_wrapper()

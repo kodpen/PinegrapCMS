@@ -8,7 +8,7 @@ Table structures and SQL pitfalls.
 
 <!-- key-rules:start -->
 - New code runs a query with values through `db_q($sql, array($v, …))` (`?` placeholders), not `mysqli_query()`; it returns `false` on failure like `mysqli_query()`, so keep the caller's check (`db-q-placeholder-helper.md`).
-- Escape every value with `e()`; in LIKE write `e(escape_like($v))`: `escape_like()` alone escapes no quote and is an SQL injection (`db-helpers-and-error-contract.md`).
+- Escape every value with `e()`; in LIKE write `e(escape_like($v))` (`escape_like()` alone escapes no quote: SQL injection); a search box's "contains" pattern is `pg_list_like_pattern($term)`, so `%` and `_` stay plain (`db-helpers-and-error-contract.md`).
 - Never compare an INT column with `''` (every row that belongs to nothing matches) or a DATE column with `''` (use `'0000-00-00'`); check a LEFT JOIN id first (`sql-silent-wrong-results.md`).
 - Read with a one-shape helper (`db_value`, `db_values`, `db_item`, `db_items`): `db()`'s answer changes with the row count, so a loop over it breaks on one row (`db-helpers-and-error-contract.md`).
 - Probe a table or column a migration adds with `pg_schema_has()` behind a readiness function before reading it (`sql-silent-wrong-results.md`).

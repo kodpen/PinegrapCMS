@@ -6,10 +6,10 @@ description: Form-adorn on the Site Settings cards (B9f part 6, #2501): which fi
 ## Which settings fields are form-adorn?
 - Every single add-on field in `includes/settings/` api, appearance, contact, features, firewall, prep, security and seo (30 fields, #2501), with `form-adorn-end` and the unit in the add-on. Each keeps its `<label for>` above the wrapper; the tracking code duration label pointed at a wrong id and now names its input.
 - The toolbar search of `screen.php` (`#pg_settings_filter`): a small `rounded-pill` wrapper with `pg-toolbar-search`, the input named by `aria-label`, as on the other toolbar searches (#2478).
-- `commerce.php` is not converted yet.
+- `commerce.php` (#2760): gift card validity, reward goal and membership length, surcharge, affiliate default commission rate. The surcharge add-on was a `<label for>` naming the affiliate rate and the installment label named the secret key; both now name their own field.
 
 ## What stays an input-group?
-- The language address prefix (two add-ons), the membership warning days (`title` hint on the add-on), the SEO groups with buttons. `tests/bs6_form_adorn_test.php` counts the groups left per file.
+- The language address prefix (two add-ons), the membership warning days (`title` hint on the add-on), the SEO groups and the Paraşüt authorization code with buttons. `tests/bs6_form_adorn_test.php` counts the groups left per file.
 
 ## How does the card CSS hold the wrapper?
 - The `.pg-set-card` row shape test (`:has(> .form-label):has(...)`) and the control placement (`grid-area: pgctrl`) in backend.src.css list `> .form-adorn` beside `> .input-group`; without it a converted cell fell out of the two-column row.

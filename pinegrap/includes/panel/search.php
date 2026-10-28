@@ -175,7 +175,7 @@ function pg_panel_backend_search($request, $action)
         exit();
     }
 
-    $s = escape('%' . $search . '%');
+    $s = escape(pg_list_like_pattern($search));
 
     // Relevance score: exact=100, starts-with=60, contains=30, secondary=15
     $score_fn = function ($name, $secondary = '') use ($search) {

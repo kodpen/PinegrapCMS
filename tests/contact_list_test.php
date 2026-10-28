@@ -118,7 +118,7 @@ function test_contact_list_filter_advanced_boxes()
 	pg_assert_contains("(contacts.expiration_date IS NULL)))", $list['where'], 'the active member condition');
 	pg_assert_contains('(contacts.affiliate_code LIKE ?)', $list['where']);
 	pg_assert_true(in_array('%Kaya%', $list['params'], true));
-	pg_assert_true(in_array('%A%%', $list['params'], true));
+	pg_assert_true(in_array('%A\\%%', $list['params'], true), 'a typed % is a plain character');
 	pg_assert_same(contact_list_test_placeholders($list), count($list['params']), 'one value per placeholder');
 	pg_assert_same(substr_count($list['where'], '('), substr_count($list['where'], ')'), 'balanced brackets');
 

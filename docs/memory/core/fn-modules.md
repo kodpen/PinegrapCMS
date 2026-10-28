@@ -10,6 +10,7 @@ description: Generated from the module field of the memory files: each includes/
 - `audit`: [[consent-log-and-audit-trail]]
 - `audit_list`: [[audit-log-paging]]
 - `audit_view`: [[audit-trail-screen]]
+- `auth`: [[sign-in-one-message]]
 - `backup`: [[fn-module-errors-mail-backup-consent]]
 - `bundles`: [[product-bundles]]
 - `carrier_labels`: [[carrier-label-drivers]]

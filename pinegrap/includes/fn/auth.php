@@ -1729,7 +1729,7 @@ function pg_password_verify($user_id, $password, $stored, $algo)
     // empty submitted password would meet an empty column on a Google-only
     // account and authenticate.
     if (($algo === 3) || ($stored === null) || ($stored === '')) {
-        return false;
+        return pg_password_dummy_verify($password);
     }
 
     if ($algo === 0) {
@@ -2034,7 +2034,10 @@ function validate_login($username, $password)
             )
         LIMIT 1");
 
+    // An unknown name is checked against a stand-in hash, so it costs the
+    // same as a wrong password and the time taken does not tell the two apart.
     if (!is_array($row) || !isset($row['user_id'])) {
+        pg_password_dummy_verify($password);
         return false;
     }
 
@@ -2049,6 +2052,7 @@ function validate_login($username, $password)
         log_activity(lang(array(
             'string' => 'sign-in refused because the email address is blocked ({var:1})',
             'vars'   => array($row['user_email']))), '');
+        pg_password_dummy_verify($password);
         return false;
     }
 
@@ -2057,6 +2061,44 @@ function validate_login($username, $password)
     }
 
     return false;
+}
+
+// A fixed bcrypt hash at the cost password_hash() uses on this PHP (10, and
+// 12 from PHP 8.4), which is also the cost password_needs_rehash() brings
+// every stored hash to. Its password is never accepted anywhere.
+function pg_password_dummy_hash()
+{
+    if (PHP_VERSION_ID >= 80400) {
+        return '$2y$12$cRw5uiniJnS5egEKMe2qL.La8f0t7A.NG8IfrW2X.CczTFWaNFhA.';
+    }
+
+    return '$2y$10$8d78LxjPMkcan.rahcgELOY.mDd8cf5LTJN2M6pWsPe1tN2crBTdG';
+}
+
+// Spends one password_verify() on the stand-in hash and refuses. A refusal
+// that needs no real hash (unknown name, blocked address, an account without
+// a password) calls it so it costs what a wrong password costs.
+function pg_password_dummy_verify($password)
+{
+    password_verify(is_string($password) ? $password : '', pg_password_dummy_hash());
+
+    return false;
+}
+
+// The one message a sign-in screen gives when validate_login() refuses, for an
+// unknown name and a wrong password alike, so the screen does not tell which
+// accounts exist. The site log still records which half was wrong.
+function pg_login_refused_message($forgot_password_link = false, $current_password = false)
+{
+    $message = $current_password
+        ? lang('The email address, username or current password you entered is incorrect. Please remember that passwords are case sensitive.')
+        : lang('The email address, username or password you entered is incorrect. Please remember that passwords are case sensitive.');
+
+    if ($forgot_password_link) {
+        $message .= lang(' If you have forgotten your password, please click on the forgot password link below.');
+    }
+
+    return $message;
 }
 
 // True when this session holds a signed-in user that still exists. Replaces the
