@@ -18,4 +18,4 @@ description: Steps of refactor-candidates item 3: the big panel lists (users, su
 
 - 4. Products (`view_products.php`): many filters with their own sort columns, the impact score sort, inline quick edits posted to the same screen (`pg_pb_quick_update()`) on cells the rows carry, Export through `export_products_f.php`, Modify Selected reads checked rows; the variant sets mode is a separate screen. Done: PR #2655, `includes/fn/product_list.php`, action `product_list_rows`; cells carry attributes for the quick edits (`ui/product-list-paging.md`).
 
-- 5. Commissions (`view_commissions.php`, `view_recurring_commission_profiles.php`): paged by PHP like the forms list, so the search box searches one page (#2038); the PR that finishes them closes #2038 (`Fixes #2038`).
+- 5. Commissions (`view_commissions.php`, `view_recurring_commission_profiles.php`): paged by PHP like the forms list, so the search box searched one page (#2038). Done: PR #2675, `includes/fn/commission_list.php`, actions `commission_list_rows` and `commission_profile_list_rows`; closes #2038.

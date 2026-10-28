@@ -6529,9 +6529,14 @@ function pg_sw_item_summary($html, $max = 140)
 //   Legal documents (copies kept at checkout, includes/fn/legal_documents.php):
 //     __legal_preinfo_url      the pre-information form's kept copy
 //     __legal_contract_url     the distance sales contract's kept copy
-//     visibility flags: has_legal_documents, has_legal_preinfo, has_legal_contract
+//     __legal_kvkk_url         the KVKK copy: the notice the checkout linked
+//                              and the consent sentence, whether it was given
+//     visibility flags: has_legal_documents, has_legal_preinfo,
+//                       has_legal_contract, has_legal_kvkk
 //     Empty in the receipt e-mail (it attaches the copies). A layout that
-//     binds neither link gets a card listing them after the widget.
+//     binds no link gets a card listing them after the widget; one that
+//     binds a document link but not the KVKK copy gets that line in a card
+//     of its own.
 //     __withdrawal_deadline    last day of the right of withdrawal (14 days
 //                              from the last delivery; date text)
 //     visibility flags: has_withdrawal_deadline, withdrawal_deadline_firm,
@@ -7206,8 +7211,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     $can_print_invoice = ($current_user_id > 0 && $current_user_id === (int)$order['user_id']);
 
     // ── Legal documents ───────────────────────────────────────────────
-    // The pre-information form and the distance sales contract as they were
-    // kept with the order at checkout (includes/fn/legal_documents.php).
+    // The pre-information form, the distance sales contract and the KVKK
+    // copy as they were kept with the order at checkout
+    // (includes/fn/legal_documents.php).
     // legal_document.php shows a copy to the visitors this widget lets in:
     // the signed-in owner and the guest who has just placed the order. The
     // receipt e-mail carries the copies as attachments and its reader may
@@ -7222,9 +7228,11 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // The receipt e-mail goes out before anything is shipped, so it gets none.
     $withdrawal = empty($sw_ctx['email']) ? pg_legal_withdrawal_of_order((int)$order['id']) : null;
     $withdrawal_date = is_array($withdrawal) ? $fmt_gc_date($withdrawal['deadline']) : '';
-    // A layout made before the links existed binds neither of them: it is
+    // A layout made before the links existed binds none of them: it is
     // given the legal documents card, with the withdrawal line under the
-    // links unless the layout places that itself (widgets_parts.php).
+    // links unless the layout places that itself; one made before the KVKK
+    // copy had a link is given that line in a card of its own
+    // (widgets_parts.php).
 
     // ── Apply visibility bindings BEFORE tree split + render ──────────
     // Reuses _eo_apply_visibility_bindings (defined in this same file for
@@ -7341,6 +7349,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         'has_legal_documents'      => implode('', $legal_urls) !== '',
         'has_legal_preinfo'        => $legal_urls['preinfo'] !== '',
         'has_legal_contract'       => $legal_urls['contract'] !== '',
+        'has_legal_kvkk'           => $legal_urls['kvkk'] !== '',
         // Right of withdrawal: the line while a deadline is known; then one
         // of three: the deadline is firm and ahead, estimated, or passed.
         'has_withdrawal_deadline'       => $withdrawal_date !== '',
@@ -7591,6 +7600,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         // carry. Empty when the order has no copy of that document.
         '__legal_preinfo_url'       => h($legal_urls['preinfo']),
         '__legal_contract_url'      => h($legal_urls['contract']),
+        '__legal_kvkk_url'          => h($legal_urls['kvkk']),
         '__withdrawal_deadline'     => h($withdrawal_date),
         // The whole line, its words in the site's language: "Last day of
         // the right of withdrawal: …", an estimate's note, or that it ended.

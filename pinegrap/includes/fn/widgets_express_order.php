@@ -225,6 +225,10 @@ function _eo_restore_cart_from_reference_code()
 //                                           charged, in the base currency
 //   ^^__currency_disclaimer^^               the exchange-rate note; both for
 //                                           the has_foreign_currency flag
+//   ^^__legal_kvkk_notice_url^^             the KVKK notice page's address
+//   ^^__legal_kvkk_consent_html^^           the KVKK consent sentence, line
+//                                           breaks as <br>; flags
+//                                           has_legal_kvkk(_notice|_consent)
 //
 // Tokens — PER ITEM (replaced inside loop template for each cart item):
 //   ^^__item_id^^                    "612"            (order_items.id)
@@ -291,6 +295,18 @@ function _eo_compute_static_tokens($state)
         // (legal_document.php), for the links beside their acceptance boxes.
         '^^__legal_preinfo_url^^'            => h(pg_legal_document_cart_url('preinfo')),
         '^^__legal_contract_url^^'           => h(pg_legal_document_cart_url('contract')),
+    ) + _eo_legal_kvkk_tokens($state['legal_kvkk'] ?? array());
+}
+
+// The KVKK lines' values (pg_legal_kvkk_html()): the notice page's address
+// and the consent sentence with its line breaks, '' while not set.
+// $kvkk is pg_legal_kvkk_settings() of the page; no lines without it.
+function _eo_legal_kvkk_tokens($kvkk)
+{
+    $kvkk = (is_array($kvkk) ? $kvkk : array()) + array('url' => '', 'consent' => '');
+    return array(
+        '^^__legal_kvkk_notice_url^^'   => h((string)$kvkk['url']),
+        '^^__legal_kvkk_consent_html^^' => nl2br(h((string)$kvkk['consent']), false),
     );
 }
 
@@ -1122,6 +1138,45 @@ function _eo_default_designer_tree()
         ));
     };
 
+    // ── KVKK lines ──
+    // The sentence linking the store's notice page (__legal_kvkk_notice_url)
+    // and the explicit consent box labelled with the store's sentence
+    // (__legal_kvkk_consent_html), each while the store has set it. The box
+    // is never required: consent cannot be a condition of the order. The
+    // pg-legal-kvkk class tells pg_legal_documents_inject() the page has
+    // the lines, so it adds none.
+    $kvkk_block = function () use ($sem) {
+        list($before, $after) = _eo_sentence_around(lang('How your personal data is processed is explained in {var:1}'));
+        $notice = array();
+        if ($before !== '') $notice[] = $sem('span', '', $before);
+        $notice[] = $sem('a', '', lang('the Personal Data Notice'), array(
+            'attrs' => array(
+                array('name' => 'href',   'value' => '#'),
+                array('name' => 'target', 'value' => '_blank'),
+                array('name' => 'rel',    'value' => 'noopener'),
+            ),
+            'bindings' => array('href' => '__legal_kvkk_notice_url'),
+        ));
+        if ($after !== '') $notice[] = $sem('span', '', $after);
+        return $sem('div', 'pg-legal-kvkk mb-2', array(
+            $sem('p', 'pg-legal-kvkk-notice small mb-2', $notice,
+                 array('bindings' => array('eo_visible_if' => 'has_legal_kvkk_notice'))),
+            $sem('div', 'form-check mb-2', array(
+                $sem('input', 'form-check-input', null, array(
+                    'attrs' => array(
+                        array('name' => 'type',  'value' => 'checkbox'),
+                        array('name' => 'value', 'value' => '1'),
+                    ),
+                    'bindings' => array('eo_field' => 'legal_kvkk'),
+                )),
+                $sem('label', 'form-check-label small', lang('I consent to the processing of my personal data'), array(
+                    'attrs'    => array(array('name' => 'for', 'value' => 'legal_kvkk')),
+                    'bindings' => array('text' => '__legal_kvkk_consent_html'),
+                )),
+            ), array('bindings' => array('eo_visible_if' => 'has_legal_kvkk_consent'))),
+        ), array('bindings' => array('eo_visible_if' => 'has_legal_kvkk')));
+    };
+
     // ── Textarea helper ──
     $textarea = function ($eo_field, $rows, $placeholder = '') use ($sem) {
         return $sem('textarea', 'form-control', null, array(
@@ -1554,6 +1609,8 @@ function _eo_default_designer_tree()
                                     $legal_row('preinfo',  lang('I have read and approve {var:1}'), lang('the Pre-Information Form')),
                                     $legal_row('contract', lang('I have read and accept {var:1}'),  lang('the Distance Sales Contract')),
                                 ), array('bindings' => array('eo_visible_if' => 'has_legal_documents'))),
+                                // KVKK notice link and optional consent box.
+                                $kvkk_block(),
 
                                 // ── Terms consent checkbox ─────────────────
                                 // Real form-check with real <input> (eo_field bound)

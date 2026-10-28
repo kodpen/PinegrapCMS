@@ -1,11 +1,11 @@
 ---
 name: checkout-kvkk-notice
-description: KVKK notice link and optional explicit consent box at checkout and sign-up (11.0.48): settings, why a page and a config_text row, injection, the kvkk copy in order_documents, consent log row
+description: KVKK notice link and optional consent box at checkout and sign-up (11.0.48): settings, why a page and a config_text row, injection and designer node, the kvkk copy, consent log row
 ---
 
 ## What does the checkout show?
 - With the legal documents switch on, `pg_legal_documents_inject()` adds `pg_legal_kvkk_html()` in front of the purchase button: a sentence linking the notice page (`config.ecommerce_kvkk_page_id`, 0 = none) and, when the `config_text` row `ecommerce_kvkk_consent_text` is set (`pg_config_text()`), a checkbox `legal_kvkk` (value 1) labelled with that sentence. Neither set: nothing. The box is never `required` and `submit_order.php` never checks it: explicit consent cannot be a condition of the order.
-- Added once per page (marker class `pg-legal-kvkk`), also to designer trees that bind the two document boxes themselves; the designer has no KVKK node or token yet.
+- Added once per page (marker class `pg-legal-kvkk`), also to designer trees that bind the two document boxes themselves. Since PR #2648 the express order starter trees carry the lines as real elements (designer/express-order-legal-documents.md), so the class keeps the injection off them; a tree saved before still gets the injected lines.
 - Settings › Ecommerce › Legal Documents: page select and consent textarea inside the switch's popover (`includes/settings/commerce.php`, saved only when the column exists). Constant `ECOMMERCE_KVKK_PAGE_ID` (`init.php`); `pg_legal_kvkk_settings()` reads it and the sentence, '' when the switch is off or the page is gone.
 
 ## Why a page and a config_text row, not config columns?
@@ -18,6 +18,3 @@ description: KVKK notice link and optional explicit consent box at checkout and 
 ## What does a sign-up form get?
 - The same lines (PR #2397): `pg_legal_kvkk_signup_inject()` wraps the registration and membership entrance screens (`get_page_content.php`, the fallback screens in `forms.php`) and their designer widgets (`designer.php`), in front of `submit_register` (the legacy page also holds a login form), else a widget's first submit control. Values read before drawing.
 - `registration_entrance.php` / `membership_entrance.php` pass `kvkk_consent` (`pg_legal_kvkk_consent_given()`) to `pg_member_register()` / `pg_member_activate()`, which write a granted `contract:kvkk` answer through `pg_consent_log_answers()` (source `signup`): no order, so no `order_documents` row; no refusal row; a person who granted it before adds nothing. Decided in #2403.
-
-## What is left?
-- plans/checkout-legal-documents.md: a designer node/token for the lines, the order view link to the kvkk copy.

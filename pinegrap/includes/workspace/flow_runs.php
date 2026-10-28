@@ -1079,20 +1079,22 @@ function ws_flow_task_marker($flow_name, $run_id, $box_name)
 
 /**
  * The context a run keeps from its start, written once: how it was started,
- * from which box, the flow's home channel and name as they were then. A draft
- * save may change the flow's home at once, so the channel a run opens its
- * tasks in, and whose readers read it, is the one it started with.
+ * from which box, the flow's home channel (or the channel its starter named,
+ * ws_flow_run_channel_check()) and name as they were then. A draft save may
+ * change the flow's home at once, so the channel a run opens its tasks in,
+ * and whose readers read it, is the one it started with.
  *
- * @param array $flow    ws_flows row
- * @param array $trigger the start box
+ * @param array    $flow       ws_flows row
+ * @param array    $trigger    the start box
+ * @param int|null $channel_id the channel the starter named, null for the flow's home
  * @return array trigger, node, channel_id, flow_name
  */
-function ws_flow_run_context_new($flow, $trigger)
+function ws_flow_run_context_new($flow, $trigger, $channel_id = null)
 {
     return array(
         'trigger'    => 'manual',
         'node'       => (string) $trigger['id'],
-        'channel_id' => max(0, (int) ($flow['channel_id'] ?? 0)),
+        'channel_id' => max(0, (int) ($channel_id ?? ($flow['channel_id'] ?? 0))),
         'flow_name'  => (string) ($flow['name'] ?? ''),
     );
 }
@@ -1471,6 +1473,50 @@ function ws_flow_run_for_token($viewer, $flow_id, $token)
 }
 
 /**
+ * May a run open its tasks in a channel its starter names instead of the
+ * flow's home? Only in a public or private channel (the kinds a run's
+ * readers are counted in, ws_flow_share_channel_readable()) that the starter
+ * reads and the flow's owner, whose name the tasks carry, may write in.
+ *
+ * @param array|null $channel       ws_channels row
+ * @param bool       $starter_reads the starter reads it
+ * @param bool       $owner_posts   the flow's owner may write in it
+ * @return bool
+ */
+function ws_flow_run_channel_allowed($channel, $starter_reads, $owner_posts)
+{
+    return is_array($channel) && in_array((string) ($channel['kind'] ?? ''), array('public', 'private'), true) && $starter_reads && $owner_posts;
+}
+
+/**
+ * Whether a run of the flow may be started in the channel the person names
+ * (ws_flow_run_channel_allowed()): the check of a start over the API and of
+ * the composer's Start a flow. A channel that is gone, or one they do not
+ * read, is refused as one the owner may not write in, so whether it exists
+ * is not told.
+ *
+ * @param array      $viewer     the starter
+ * @param array      $flow       ws_flows row
+ * @param int        $channel_id
+ * @param array|null $owner      the flow's owner (ws_change_viewer_for_id()), read when left out
+ * @return array ok, error, status, field, channel_id
+ */
+function ws_flow_run_channel_check($viewer, $flow, $channel_id, $owner = null)
+{
+    $channel_id = (int) $channel_id;
+    $channel = ($channel_id > 0) ? ws_channel($channel_id) : null;
+    $owner = $owner ?? ws_change_viewer_for_id($flow['owner_id']);
+    $starter_reads = is_array($channel) && ws_can_read_channel($viewer, $channel);
+    $owner_posts = is_array($channel) && is_array($owner) && ws_can_post_channel($owner, $channel);
+
+    if (!ws_flow_run_channel_allowed($channel, $starter_reads, $owner_posts)) {
+        return ws_flow_refusal(lang('A run is started only in a public or private channel you read and the owner of the flow may write in.'), 403, 'channel_id');
+    }
+
+    return array('ok' => true, 'error' => '', 'status' => 200, 'field' => '', 'channel_id' => $channel_id);
+}
+
+/**
  * Whether the person may start a run of the flow now: the checks of
  * ws_flow_run_start(), made on their own so that the API's dry run meets the
  * same refusals. The flow is live with a version that is started by hand,
@@ -1483,12 +1529,14 @@ function ws_flow_run_for_token($viewer, $flow_id, $token)
  * to view) gets that run back while they may read it
  * (ws_flow_run_for_token()); anybody else gets the 404 of a flow they cannot
  * see, or the 403 of a flow shared with them at view, never a refusal of the
- * token's shape.
+ * token's shape. A channel_id names the channel the run opens its tasks in
+ * instead of the flow's home (ws_flow_run_channel_check(), 403 otherwise);
+ * a token's run is answered whatever channel the retry names.
  *
  * @param array      $viewer
  * @param array|null $flow
- * @param array      $data   token (optional, ws_flow_start_token_valid())
- * @return array ok, error, status, field, version, graph, trigger, start_key ('' when one is to be made), existing (the run the token started, 0 for none)
+ * @param array      $data   token (optional, ws_flow_start_token_valid()), channel_id (optional)
+ * @return array ok, error, status, field, version, graph, trigger, start_key ('' when one is to be made), existing (the run the token started, 0 for none), channel_id (the run's channel, null for the flow's home)
  */
 function ws_flow_run_start_check($viewer, $flow, $data = array())
 {
@@ -1504,15 +1552,16 @@ function ws_flow_run_start_check($viewer, $flow, $data = array())
         $graph = is_array($version) ? ws_flow_graph_of($version) : ws_flow_graph_empty();
 
         return array(
-            'ok'        => true,
-            'error'     => '',
-            'status'    => 200,
-            'field'     => '',
-            'start_key' => $start_key,
-            'version'   => is_array($version) ? $version : array('id' => 0, 'n' => 0),
-            'graph'     => $graph,
-            'trigger'   => ws_flow_trigger_node($graph),
-            'existing'  => (int) $run['id'],
+            'ok'         => true,
+            'error'      => '',
+            'status'     => 200,
+            'field'      => '',
+            'start_key'  => $start_key,
+            'version'    => is_array($version) ? $version : array('id' => 0, 'n' => 0),
+            'graph'      => $graph,
+            'trigger'    => ws_flow_trigger_node($graph),
+            'existing'   => (int) $run['id'],
+            'channel_id' => null,
         );
     };
 
@@ -1565,6 +1614,18 @@ function ws_flow_run_start_check($viewer, $flow, $data = array())
         return ws_flow_refusal(lang('The owner of this flow is no longer on the staff, so it cannot run.'));
     }
 
+    $channel_id = null;
+
+    if (array_key_exists('channel_id', $data)) {
+        $channel = ws_flow_run_channel_check($viewer, $flow, $data['channel_id'], $owner);
+
+        if (!$channel['ok']) {
+            return $channel;
+        }
+
+        $channel_id = $channel['channel_id'];
+    }
+
     $open = (int) db_value("SELECT COUNT(*) FROM ws_flow_runs WHERE flow_id = '" . (int) $flow['id'] . "' AND status IN ('running', 'waiting')");
     $recent = (int) db_value("SELECT COUNT(*) FROM ws_flow_runs WHERE flow_id = '" . (int) $flow['id'] . "' AND started_at > '" . (time() - 3600) . "'");
 
@@ -1576,7 +1637,7 @@ function ws_flow_run_start_check($viewer, $flow, $data = array())
             return ws_flow_refusal(lang(array('string' => 'This flow was started {var:1} times in the last hour; try again later.', 'vars' => WS_FLOW_STARTS_HOURLY)));
     }
 
-    return $ok + array('version' => $version, 'graph' => $graph, 'trigger' => $trigger, 'existing' => 0);
+    return $ok + array('version' => $version, 'graph' => $graph, 'trigger' => $trigger, 'existing' => 0, 'channel_id' => $channel_id);
 }
 
 /**
@@ -1612,7 +1673,7 @@ function ws_flow_run_start($viewer, $flow, $data = array())
 
     $flow_id = (int) $flow['id'];
     $start_key = ($check['start_key'] !== '') ? $check['start_key'] : 'manual:' . bin2hex(random_bytes(16));
-    $context = json_encode(ws_flow_run_context_new($flow, $check['trigger']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $context = json_encode(ws_flow_run_context_new($flow, $check['trigger'], $check['channel_id']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     $now = time();
 
     // Not db(): a failed statement there ends the request with an HTML page,
@@ -2873,7 +2934,7 @@ function ws_flow_run_cancel($viewer, $run)
     db("UPDATE ws_flow_runs SET status = 'cancelled', finished_at = '" . $now . "', updated_at = '" . $now . "'
         WHERE id = '" . (int) $run['id'] . "' AND status IN ('running', 'waiting')");
 
-    if ((int) mysqli_affected_rows(db::$con) < 1) {
+    if ((int) mysqli_affected_rows(db::$con) !== 1) {
         return ws_flow_refusal(lang('This run has ended already.'), 409);
     }
 
@@ -2893,6 +2954,9 @@ function ws_flow_run_cancel($viewer, $run)
     $flow = ws_flow($run['flow_id']);
 
     log_activity(lang(array('string' => 'workspace flow ({var:1}) run {var:2} was cancelled', 'vars' => array($flow ? $flow['name'] : '', (int) $run['id']))), (string) ($_SESSION['sessionusername'] ?? ''));
+
+    // Announced by this request alone: its UPDATE above took the row.
+    ws_flow_run_announce_cancelled((int) $run['id'], (int) $viewer['id']);
 
     return $check;
 }

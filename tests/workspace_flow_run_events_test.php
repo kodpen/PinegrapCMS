@@ -8,9 +8,10 @@
  * answer, the box a result comes from, what a waiting box waits for, the
  * words left out of a run outside a public channel and the channel every
  * body names; and, read from the source, that each move is announced once,
- * by the request whose conditional write made it: an end, a box that
- * starts to wait, and nothing on a look that keeps it waiting, a box that
- * waits again after stopping half way, a cancel, a retry made ready or a
+ * by the request whose conditional write made it: an end, a cancel, a box
+ * that starts to wait, and nothing on a look that keeps it waiting, a box
+ * that waits again after stopping half way, the runs of a deleted flow, a
+ * retry made ready or a
  * box tried again by hand before its run ends again.
  *
  * @author      Erdal Güral (Kodpen)
@@ -107,13 +108,13 @@ function test_workspace_flow_run_events_end_names()
 	}
 }
 
-// The three events are in the catalogue, fit the queue's column, and the
+// The four events are in the catalogue, fit the queue's column, and the
 // workspace does not record them: no flow starts or wakes on another run.
 function test_workspace_flow_run_events_catalogue()
 {
 	$events = ws_webhook_events();
 
-	foreach (array('finished', 'failed', 'waiting') as $what) {
+	foreach (array('finished', 'failed', 'cancelled', 'waiting') as $what) {
 		$event = 'workspace.flow.run.' . $what;
 
 		pg_assert_true(isset($events[$event]), $event . ' is listed');
@@ -121,7 +122,8 @@ function test_workspace_flow_run_events_catalogue()
 		pg_assert_false(in_array($event, pg_event_workspace_events(), true), $event . ' is not recorded for the workspace');
 	}
 
-	pg_assert_contains('a cancelled run is not announced', $events['workspace.flow.run.finished']);
+	pg_assert_contains('a cancelled run is announced as workspace.flow.run.cancelled', $events['workspace.flow.run.finished']);
+	pg_assert_contains('cancelled_by', $events['workspace.flow.run.cancelled']);
 	pg_assert_contains('public channel', $events['workspace.flow.run.failed']);
 	pg_assert_contains('Once per wait', $events['workspace.flow.run.waiting']);
 }
@@ -305,6 +307,32 @@ function test_workspace_flow_run_events_end_is_announced_once()
 	pg_assert_contains("pg_announce('workspace.flow.run.finished', ws_flow_run_event_body(", $announce);
 }
 
+// Cancelled: announced by the request whose UPDATE cancelled the run, once,
+// after its open boxes were skipped, with who cancelled it; a request that
+// lost the row returns first, and the run read again must stand cancelled.
+function test_workspace_flow_run_events_cancel_is_announced_once()
+{
+	$cancel = ws_flow_run_events_test_source('ws_flow_run_cancel');
+	$write = strpos($cancel, "SET status = 'cancelled'");
+	$counted = strpos($cancel, 'if ((int) mysqli_affected_rows(db::$con) !== 1) {', (int) $write);
+	$skipped = strpos($cancel, "SET status = 'skipped'", (int) $counted);
+	$announced = strpos($cancel, "ws_flow_run_announce_cancelled((int) \$run['id'], (int) \$viewer['id']);");
+
+	pg_assert_true(($write !== false) && ($counted > $write) && ($skipped > $counted) && ($announced > $skipped), 'after the counted UPDATE and the skipped boxes');
+	pg_assert_same(1, substr_count($cancel, 'ws_flow_run_announce_cancelled('), 'one place');
+	pg_assert_contains("return ws_flow_refusal(lang('This run has ended already.'), 409);", substr($cancel, (int) $counted, (int) ($skipped - $counted)), 'a lost row returns before the announce');
+
+	$announce = ws_flow_run_events_test_source('ws_flow_run_announce_cancelled');
+	pg_assert_contains("(string) \$read['run']['status'] !== 'cancelled'", $announce);
+	pg_assert_contains("pg_announce('workspace.flow.run.cancelled', ws_flow_run_event_body(", $announce);
+	pg_assert_contains("'cancelled_by' => (int) \$by", $announce);
+
+	// The body is the other run events' body, cancelled_by last.
+	$run = ws_flow_run_events_test_run('cancelled');
+	$body = ws_flow_run_event_body(ws_flow_run_event_run($run, 4), ws_flow_run_context($run), true, array('cancelled_by' => 3));
+	pg_assert_same(array('id', 'channel_id', 'flow_id', 'flow_name', 'run', 'cancelled_by'), array_keys($body));
+}
+
 // Waiting: announced by the request whose UPDATE put the box from running to
 // waiting, once, after the run was walked, with the key that UPDATE wrote.
 function test_workspace_flow_run_events_waiting_is_announced_once()
@@ -348,15 +376,15 @@ function test_workspace_flow_run_events_waiting_is_announced_once()
 
 // No other move announces: a look that keeps a box waiting, a box that
 // stopped half way and waits again for what it began (or is made ready for
-// its retry), a retry whose moment came, a wake, a cancel by hand or with a
-// deleted flow, a box tried again or skipped by hand (its run announces
+// its retry), a retry whose moment came, a wake, a cancel with a deleted
+// flow, a box tried again or skipped by hand (its run announces
 // when the walk ends it again), a start.
 function test_workspace_flow_run_events_other_moves_announce_nothing()
 {
 	$quiet = array(
 		'ws_flow_steps_stale', 'ws_flow_steps_recheck', 'ws_flow_step_recheck', 'ws_flow_delay_recheck',
 		'ws_flow_retry_recheck', 'ws_flow_approval_recheck', 'ws_flow_wake', 'ws_flow_step_settle', 'ws_flow_run_touch',
-		'ws_flow_run_cancel', 'ws_flow_runs_cancel_ids', 'ws_flow_runs_cancel_for_flow', 'ws_flow_step_mend',
+		'ws_flow_runs_cancel_ids', 'ws_flow_runs_cancel_for_flow', 'ws_flow_step_mend',
 		'ws_flow_run_start', 'ws_flow_step_claim', 'ws_flow_advance',
 	);
 
@@ -384,10 +412,10 @@ function test_workspace_flow_run_events_other_moves_announce_nothing()
 			pg_assert_same(0, preg_match("~pg_announce\\(\\s*'workspace\\.flow\\.run\\.~", $source), basename($file) . ' does not announce a run event');
 		}
 
-		if (preg_match_all('~(ws_flow_run_announce_(?:end|waiting))\(~', $source, $found)) {
+		if (preg_match_all('~(ws_flow_run_announce_(?:end|waiting|cancelled))\(~', $source, $found)) {
 			$callers[basename($file)] = count($found[1]);
 		}
 	}
 
-	pg_assert_same(array('flow_run_events.php' => 2, 'flow_runs.php' => 6), $callers, 'two definitions, six calls');
+	pg_assert_same(array('flow_run_events.php' => 3, 'flow_runs.php' => 7), $callers, 'three definitions, seven calls');
 }
