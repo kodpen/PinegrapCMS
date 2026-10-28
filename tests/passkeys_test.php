@@ -572,6 +572,30 @@ function test_passkeys_email_code()
 	pg_assert_same('email_expired', pg_passkey_email_code_check($store, 7, '123456', 1001), 'nothing kept');
 }
 
+// A code works only for what it was sent for: adding a passkey, or new
+// recovery codes. One kept before purposes existed was sent for adding.
+function test_passkeys_email_code_purpose()
+{
+	pg_assert_same('recovery', pg_passkey_email_code_purpose('recovery'));
+	pg_assert_same('add', pg_passkey_email_code_purpose('add'));
+	pg_assert_same('add', pg_passkey_email_code_purpose(''));
+	pg_assert_same('add', pg_passkey_email_code_purpose('other'));
+	pg_assert_same('add', pg_passkey_email_code_purpose(null));
+
+	$store = null;
+	pg_passkey_email_code_keep($store, 7, '123456', 1000, 'recovery');
+	pg_assert_same('email_expired', pg_passkey_email_code_check($store, 7, '123456', 1001), 'a recovery code does not add a passkey');
+	pg_assert_same('', pg_passkey_email_code_check($store, 7, '123456', 1002, 'recovery'), 'another purpose does not use it up');
+
+	pg_passkey_email_code_keep($store, 7, '123456', 1000);
+	pg_assert_same('email_expired', pg_passkey_email_code_check($store, 7, '123456', 1001, 'recovery'), 'an adding code makes no recovery codes');
+	pg_assert_same('', pg_passkey_email_code_check($store, 7, '123456', 1002, 'add'), 'the default purpose is adding');
+
+	$store = array('user_id' => 7, 'hash' => hash('sha256', 'passkey-email-code:7:123456'), 'time' => 1000, 'misses' => 0);
+	pg_assert_same('email_expired', pg_passkey_email_code_check($store, 7, '123456', 1001, 'recovery'), 'an older code was for adding');
+	pg_assert_same('', pg_passkey_email_code_check($store, 7, '123456', 1001), 'and still adds');
+}
+
 // -- sign-in with a passkey alone ----------------------------------------------------
 
 // The account a passkey names must still be there, and a member whose

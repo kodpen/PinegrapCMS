@@ -15,6 +15,9 @@ module: classic_style_design
 - `<cregion>` tags (L3): a common region already made a shared component (category `common_region:<id>`) is placed as a `shared_ref` to it, the component its tag draws anyway; any other common or designer region stays a region node. No region is converted by opening a style: each conversion stays opt-in on its own screen or node. A designer region made a component from the designer (R3, `cregion:<id>`) stays a region node: its tag still draws the row, so placing the component could change what the page shows.
 - Region tags inside the component render per page: `_expand_shared_refs()` runs before the region passes of `get_page_content.php`.
 
+## What happens to the style's own CSS/JS files?
+- They become managed file entries of the design (P7): `classic-style-design-files.md`.
+
 ## What happens before and at Save?
 - Opening writes only the component row. The pages arrive with `converted: 1`, so their tabs start unsaved (baseline null in `_pgTabsInit()`); the editor opens with framework `custom` and the style's head assets in the asset panel.
 - Save (`pg_designer_screen_post()`): `$converting` when the stored row is not `visual_designer`; a content-level save is refused. `save_system_style()` sets `style_type = 'system'`, `style_layout = 'visual_designer'`; then `style_framework` gets the posted key (an update never changes it otherwise). `style_code` stays: the fallback of a page with no tree. `layout_type`, `collection`, `theme_id` stay; pages keep `page_type`, `layout_type`, `layout_modified`.

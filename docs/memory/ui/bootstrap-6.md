@@ -12,14 +12,14 @@ description: The panel on Bootstrap 6 (switch #1866, tag bs6-switch): docs and s
 - They assume Bootstrap's Sass and npm setup; the panel has neither. Take from `bootstrap-component` its markup, token and layer conventions, from `bootstrap-color-system` only "Step 7: Runtime overrides". Panel CSS stays plain CSS. They never apply to site output.
 
 ## What runs Bootstrap 6 and what stays on 5.3.8?
-- Bootstrap 6: the panel and every screen `output_header_secure()` prints (sign-in, MFA, device limit, set password, OAuth consent, print views, the installer), and the visual editor's own chrome and dialogs.
+- Bootstrap 6: the panel and every screen `output_header_secure()` prints (sign-in, MFA, device limit, set password, OAuth consent, print views, the installer), and the visual editor's own chrome and dialogs. `tools/bs6_rules.php` scopes them: System Info (`includes/templates/si.php`) is a panel template and `get_login()`'s no-login-page branch a shared panel block; a login page's branches stay site output.
 - 5.3.8 and jQuery UI: sites (designs, classic themes, site forms, `frontend.src.js`, site renderers, palette and widget output, e-mails) and the editor's canvas. Renderers printing on both sides choose at run time: `get_calendar()` by `$user`, liveform notices through v5 alert rules the panel maps to v6 themes.
 - v6 JS is ESM-only: `pg_bs6_bridge.js` imports the bundle, sets `window.bootstrap`, fires `pg:bootstrap-ready`; panel code reaches Bootstrap only through `pgUI` (`pg-ui-adapter.md`). No jQuery plugins.
 
 ## What do panel rules rely on?
 - Layer order: colors, config, root, reboot, layout, content, forms, components, vendor, custom, helpers, utilities. Panel stylesheets and inline `<style>` blocks sit in `@layer custom`: they beat any Bootstrap component rule whatever its weight, utilities beat them. Utilities carry no `!important`; `[hidden]` does.
 - Dialogs and drawers are native `<dialog>` in the top layer: z-index does not lift body-level overlays over them (`pgUI.overlayHost()`).
-- Breakpoints: `sm` 576, `md` 768, `lg` 1024, `xl` 1280, `2xl` 1536, written as prefixes (`lg:col-6`). The panel's own media queries use the same widths (`workflow/decisions-made-panel.md`). `.fixed-top` z-index is 1020.
+- Breakpoints: `sm` 576, `md` 768, `lg` 1024, `xl` 1280, `2xl` 1536, written as prefixes (`lg:col-6`). The panel's own media queries use the same widths (`workflow/decisions-made-panel.md`). Their JavaScript copies too: `LIST_BREAKPOINTS` in `view_folders.php`, the tour's `narrow()`, `MENU_DRAWER_BREAKPOINT` (`tests/panel_js_breakpoints_test.php`, #2574); `style_designer.js` (~L5665, ~L6829) still uses 992. `.fixed-top` z-index is 1020.
 - `.hover-lift` (helpers layer) is tuned through `--pg-lift-y` (default -1px), `--pg-lift-shadow` (none), `--pg-lift-duration` and `--pg-lift-also` (the element's own fades) set in the element's rule; an unlayered bridge at the end of backend.src.css reads them (#2217).
 - v6 owns `.menu`, `.btn-text`, `.submenu`: label spans are `.pg-btn-label`, the file manager's flyout `.pg-submenu`.
 

@@ -229,3 +229,44 @@ function test_page_facts_record()
 	pg_assert_same('<p class="x">Not found</p>' . "\n", $missing);
 	pg_page_record_end($prev);
 }
+
+// A value of the page's record bound to an element outside a widget: the
+// stored body keeps a placeholder, each request fills it escaped; an
+// address takes only an http(s) or site address; no record leaves it empty.
+function test_page_facts_record_values()
+{
+	pg_assert_true(in_array('__record__post_title', pg_page_record_value_tokens(), true));
+	pg_assert_false(in_array('__record_found', pg_page_record_value_tokens(), true));
+
+	$tree = _pf_root(array(
+		array('type' => 'content', 'props' => array('contentType' => 'heading', 'tag' => 'h1', 'text' => 'Title',
+			'_bindings' => array('text' => '__record__post_title')), 'children' => array()),
+		array('type' => 'semantic', 'props' => array('tag' => 'a', 'href' => '#', 'text' => 'Picture',
+			'_bindings' => array('href' => '__record__post_image')), 'children' => array()),
+		array('type' => 'semantic', 'props' => array('tag' => 'p', 'text' => 'Kept',
+			'_bindings' => array('text' => '__record__price')), 'children' => array()),
+	));
+	$body = _render_tree_node($tree, 0, 0);
+	pg_assert_contains('{pg-rv:__record__post_title}', $body);
+	pg_assert_contains('href="{pg-ru:__record__post_image}"', $body);
+	pg_assert_false(strpos($body, 'data-pg-bind="text:record__post_title"') !== false, 'not a widget binding');
+	pg_assert_false(strpos($body, '{pg-rv:__record__price}') !== false, 'a value off the list stays a binding');
+
+	$prev = pg_page_record_begin();
+	try {
+		pg_assert_contains('<h1></h1>', pg_page_facts_apply($body), 'no record: empty');
+
+		pg_page_record_publish('form_record', array('__post_title' => 'Fish & <Chips>', '__post_image' => 'javascript:alert(1)'));
+		$out = pg_page_facts_apply($body);
+		pg_assert_contains('<h1>Fish &amp; &lt;Chips&gt;</h1>', $out, 'escaped once');
+		pg_assert_contains('href=""', $out, 'no script address');
+		pg_assert_false(strpos($out, '{pg-r') !== false, 'every placeholder filled');
+	} finally {
+		pg_page_record_end($prev);
+	}
+
+	$inner = pg_page_record_begin();
+	pg_page_record_publish('form_record', array('__post_image' => '/files/a.jpg'));
+	pg_assert_contains('href="/files/a.jpg"', pg_page_facts_apply($body));
+	pg_page_record_end($inner);
+}

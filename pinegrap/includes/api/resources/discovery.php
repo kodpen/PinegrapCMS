@@ -19,9 +19,10 @@
 //   GET integration.php/discovery         the same through the API, under its
 //                                         usual gates
 //
-// Nothing about people, keys, scopes or the firewall is in it: everything it
-// says is already public (the version is in changelog.txt and the outgoing
-// User-Agent).
+// Nothing about people, keys, scopes or the firewall is in it. The version is
+// given as its major line only (2026, not 2026.11.0), so one unauthenticated
+// request does not name the exact build; GET /meta gives the exact version
+// after sign-in.
 
 if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
@@ -54,7 +55,7 @@ function api_discovery_document($facts) {
 
 	return array(
 		'software'        => 'pinegrap',
-		'version'         => (string)$facts['version'],
+		'version'         => api_discovery_version_line($facts['version']),
 		'api_version'     => 1,
 		'api_base'        => (string)$facts['api_base'],
 		'title'           => (string)$facts['title'],
@@ -66,6 +67,17 @@ function api_discovery_document($facts) {
 		'https_required'  => !empty($facts['https_required']),
 		'min_app_version' => API_DISCOVERY_MIN_APP_VERSION
 	);
+
+}
+
+// The major line of a version (2026.11.0 -> 2026): the part before the first
+// dot, '' for an empty version.
+function api_discovery_version_line($version) {
+
+	$version = trim((string)$version);
+	$dot = strpos($version, '.');
+
+	return ($dot === false) ? $version : substr($version, 0, $dot);
 
 }
 

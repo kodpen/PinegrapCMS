@@ -4524,6 +4524,15 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     }
 
     $read = pg_comments_rows($page_id, $read_thread, $viewer, array('featured' => $options['featured'], 'view' => $view, 'parent_id' => true, 'thread_key' => true));
+
+    // A product's reviews come newest first and are never pinned or filtered
+    // by featured, whatever the widget's order and featured settings say:
+    // the order read is kept as it is.
+    if (!empty($read['review'])) {
+        $options['order'] = 'oldest';
+        $options['featured'] = 'none';
+    }
+
     $entries = pg_comments_widget_order($read['rows'], $options);
     $paged = pg_comments_widget_paginate($entries, $search ? 0 : $options['per_page'], $wanted, $target);
     $by_id = array();

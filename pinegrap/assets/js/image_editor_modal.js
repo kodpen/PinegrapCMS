@@ -140,7 +140,7 @@
                                 'id="pgImageEditorFull" aria-pressed="false">' +
                                 '<span class="bi bi-arrows-fullscreen" id="pgImageEditorFullIcon"></span>' +
                             '</button>' +
-                            '<button type="button" class="btn-close" data-bs-dismiss="dialog"></button>' +
+                            '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + t('Close') + '"></button>' +
                         '</div>' +
                         '<div class="dialog-body p-0 position-relative" style="overflow:hidden">' +
                             '<div id="pgImageEditorHost" style="width:100%;height:100%"></div>' +

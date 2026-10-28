@@ -109,51 +109,22 @@
             return;
         }
 
-        /* Applied on ready, not now, and every option is spelled out even where
-           it repeats a default.
-
-           backend.src.js runs $(".ui-sortable").sortable({...}) on ready.
-           "ui-sortable" is the class jQuery UI puts on an element when you make
-           it sortable, so that line does not find lists somebody marked up as
-           sortable — it finds every sortable already on the page and re-opens
-           it. Calling .sortable() on a live widget sets options rather than
-           building a second one, so ours was quietly rewritten with items:"a",
-           handle:document, axis:"y", delay:300 and containment:"parent". There
-           are no <a> elements in a tile, so after that nothing was draggable at
-           all.
-
-           Two consequences for the code below. It has to run after that handler
-           — ready callbacks fire in the order they were registered and
-           backend.src.js is loaded first, so registering here is enough. And it
-           has to name every option that line touches, because whatever is left
-           out keeps the value it was given. */
-        if ($.fn.sortable) {
-            $(function () {
-                $container.sortable({
-                    items: '> .item',
-                    placeholder: 'col',
-                    revert: 100,
-                    tolerance: 'pointer',
-                    cursor: 'move',
-                    /* Otherwise a press on the remove button starts a sort, and
-                       the click that was meant to delete the tile never lands. */
-                    cancel: 'button, a, input',
-                    update: refreshCoverBadge,
-
-                    /* Undoing the options above. A grid of tiles wraps, so the
-                       drag is not confined to one axis; the tiles are the
-                       picker's markup, so the drag helper must be the tile
-                       itself; and a third of a second of holding still before
-                       anything moves reads as "this is not draggable". */
-                    axis: false,
-                    handle: false,
-                    containment: false,
-                    helper: 'original',
-                    delay: 0,
-                    distance: 1,
-                    scroll: true,
-                    dropOnEmpty: true
-                });
+        /* SortableJS (assets/lib/sortablejs/), loaded by product_builder.php.
+           A tile is dragged as soon as it moves: the grid wraps, so the drag
+           is on both axes. forceFallback keeps it on mouse events: the tiles
+           turn the native drag off (user-drag: none in product_builder.php),
+           and a native drag would also light up the upload drop area. */
+        if (typeof Sortable !== 'undefined') {
+            Sortable.create($container[0], {
+                draggable: '.item',
+                animation: 100,
+                forceFallback: true,
+                /* Otherwise a press on the remove button starts a sort, and
+                   the click that was meant to delete the tile never lands.
+                   preventOnFilter stays off so that click still goes through. */
+                filter: 'button, a, input',
+                preventOnFilter: false,
+                onUpdate: refreshCoverBadge
             });
         }
 

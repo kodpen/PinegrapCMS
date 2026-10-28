@@ -29,6 +29,7 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM product_attributes WHERE 
 }
 
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/product_attribute_form.php');
 $liveform = new liveform('edit_product_attribute');
 
 $product_attribute = db_item(
@@ -56,14 +57,6 @@ if (!$_POST) {
         $liveform->assign_field_value('options', encode_json($options));
     }
 
-    $options = $liveform->get_field_value('options');
-
-    if (($options != '') && ($options != '[]')) {
-        $output_options = $options;
-    } else {
-        $output_options = '[{label: ""},{label: ""}]';
-    }
-    
     echo
     pg_page_shell([
         'title'=> lang('Edit Product Attribute'),
@@ -85,69 +78,7 @@ if (!$_POST) {
                 <form  method="post" class="product_attribute_form">
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type' => 'hidden', 'name' => 'id', 'value' => $_GET['id'])) . '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Main Informations') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 sm:col-4 my-3">
-                                            <label for="name" class="form-label">' . lang('Name') . '</label>
-                                            ' . $liveform->output_field(array(
-                                                'type' => 'text',
-                                                'name' => 'name',
-                                                'id' => 'name',
-                                                'placeholder'=>lang('Attribute Name'),
-                                                'class'=>'form-control',
-                                                'maxlength' => '100')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                        </div>
-                                        <div class="col-12 sm:col-8 my-3">
-                                            <label for="label" class="form-label">' . lang('Label') . '</label>
-                                            ' . $liveform->output_field(array(
-                                                'type' => 'text',
-                                                'name' => 'label',
-                                                'id' => 'label',
-                                                'placeholder'=>lang('Attribute Label'),
-                                                'class'=>'form-control',
-                                                'maxlength' => '255')) . '
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Options') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 mt-1 mb-3">
-                                            <label class="form-label" >' . lang('Atribute Options') . '</label>
-                                            <div class="options">
-                                                <div class="option_list row" ></div>
-                                                <button type="button" class="add_option btn btn-solid theme-primary mt-3"><span class="bi bi-plus-circle me-3"></span>' . lang('Add Option') . '</button>
-                                            </div>
-                                            <script>
-                                                init_product_attribute_options({
-                                                    options: ' . $output_options . ',
-                                                    labels:{
-                                                        "\'No Thanks\' Option":"' . lang('\'No Thanks\' Option') . '",
-                                                        "Move Up":"' . lang('Move Up') . '",
-                                                        "Move Down":"' . lang('Move Down') . '",
-                                                        "Remove":"' . lang('Remove') . '"
-                                                    }
-                                                });
-                                            </script>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>         
+                    ' . pg_product_attribute_form_cards($liveform) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -191,20 +122,7 @@ if (!$_POST) {
     } else {
         $liveform->validate_required_field('name', lang('Name is required.'));
 
-        // If there is not already an error for the name field,
-        // and that name is already in use, then output error.
-        if (
-            ($liveform->check_field_error('name') == false)
-            && (db_value("SELECT COUNT(*) FROM product_attributes WHERE (name = '" . e($liveform->get_field_value('name')) . "') AND (id != '" . e($liveform->get_field_value('id')) . "')") != 0)
-        ) {
-            $liveform->mark_error('name', lang('Sorry, the name that you entered is already in use, so please enter a different name.'));
-        }
-
-        $options = decode_json($liveform->get_field_value('options'));
-
-        if (count($options) == 0) {
-            $liveform->mark_error('', lang('Please add an option.'));
-        }
+        $options = pg_product_attribute_form_check($liveform, (string) $liveform->get_field_value('id'));
         
         // If there is an error, forward user back to previous screen.
         if ($liveform->check_form_errors() == true) {

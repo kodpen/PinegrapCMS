@@ -20,4 +20,4 @@ module: widgets_parts_forms
 - A node bound to `__cancel_form`, `__return_form` or `__return_actions_html` becomes the part's host (`pg_sw_default_part_tokens()`); the returns card added after an order view holds the return form part, placed also by an `order.return_deliveries` list. The starter builds both parts. The server still fills `__cancel_form` and `__return_form` for a token inside a longer text.
 
 ## What is left?
-- The cart's product order form (`__item_form_data_html` in the cart rows). A browser round (cancel, a return request, a rejected request, sent, withdraw) is owed.
+- A browser round (cancel, a return request, a rejected request, sent, withdraw) is owed.

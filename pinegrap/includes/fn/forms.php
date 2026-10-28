@@ -1264,7 +1264,8 @@ function get_registration_entrance_screen()
         // else there is not a registration entrance page, so use default screen
     } else {
         require_once(PG_FUNCTIONS_DIR . '/get_registration_entrance.php');
-        $output = output_header_secure() . get_registration_entrance() . output_footer_secure();
+        $kvkk_values = pg_legal_documents_form_values('register');
+        $output = output_header_secure() . pg_legal_kvkk_signup_inject(get_registration_entrance(), $kvkk_values) . output_footer_secure();
     }
     return $output;
 }
@@ -1282,7 +1283,8 @@ function get_membership_entrance_screen()
         // else there is not a membership entrance page, so use default screen
     } else {
         require_once(PG_FUNCTIONS_DIR . '/get_membership_entrance.php');
-        $output = output_header_secure() . get_membership_entrance() . output_footer_secure();
+        $kvkk_values = pg_legal_documents_form_values('membership_entrance');
+        $output = output_header_secure() . pg_legal_kvkk_signup_inject(get_membership_entrance(), $kvkk_values) . output_footer_secure();
     }
     return $output;
 }

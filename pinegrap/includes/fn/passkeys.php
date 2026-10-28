@@ -340,7 +340,20 @@ function pg_auth_tokens_have_passkey()
 // ── E-mailed code ───────────────────────────────────────────────────────────
 
 /**
- * How long a code e-mailed for adding a passkey works, in seconds.
+ * What an e-mailed code was asked for: 'recovery' for new recovery codes of
+ * an account whose second factor is its passkeys, else 'add' (adding a
+ * passkey). A code works only for what it was sent for.
+ *
+ * @param mixed $value passkey.php's purpose field
+ * @return string 'add' or 'recovery'
+ */
+function pg_passkey_email_code_purpose($value)
+{
+    return ((string) $value === 'recovery') ? 'recovery' : 'add';
+}
+
+/**
+ * How long an e-mailed code works, in seconds.
  *
  * @return int
  */
@@ -368,11 +381,13 @@ function pg_passkey_email_code_new()
  * @param int    $user_id
  * @param string $code
  * @param int    $now
+ * @param string $purpose pg_passkey_email_code_purpose()
  */
-function pg_passkey_email_code_keep(&$store, $user_id, $code, $now)
+function pg_passkey_email_code_keep(&$store, $user_id, $code, $now, $purpose = 'add')
 {
     $store = array(
         'user_id' => (int) $user_id,
+        'purpose' => pg_passkey_email_code_purpose($purpose),
         'hash'    => hash('sha256', 'passkey-email-code:' . (int) $user_id . ':' . (string) $code),
         'time'    => (int) $now,
         'misses'  => 0,
@@ -382,20 +397,25 @@ function pg_passkey_email_code_keep(&$store, $user_id, $code, $now)
 /**
  * Checks a typed e-mailed code. A right one is used up; a wrong one counts,
  * and the fifth wrong guess ends the code, so six digits cannot be walked
- * through. A code kept for another account is left as it is.
+ * through. A code kept for another account or sent for another purpose is
+ * left as it is.
  *
  * @param mixed  $store   by reference
  * @param int    $user_id
  * @param string $code    white space is ignored
  * @param int    $now
+ * @param string $purpose pg_passkey_email_code_purpose(); a code kept
+ *                        before purposes existed was sent for 'add'
  * @return string '' when accepted, 'email_code' when wrong, 'email_expired'
  *                when there is none to check (never sent, too old, used,
- *                too many wrong guesses, another account's)
+ *                too many wrong guesses, another account's, another
+ *                purpose's)
  */
-function pg_passkey_email_code_check(&$store, $user_id, $code, $now)
+function pg_passkey_email_code_check(&$store, $user_id, $code, $now, $purpose = 'add')
 {
     if (!is_array($store) || !isset($store['user_id'], $store['hash'], $store['time'], $store['misses'])
-        || ((int) $store['user_id'] !== (int) $user_id)) {
+        || ((int) $store['user_id'] !== (int) $user_id)
+        || (pg_passkey_email_code_purpose($store['purpose'] ?? 'add') !== pg_passkey_email_code_purpose($purpose))) {
         return 'email_expired';
     }
 
@@ -767,15 +787,19 @@ function pg_passkey_registered($user_id)
 
 /**
  * E-mails the code an account without two-step verification types to add a
- * passkey, to the address kept on the account, and keeps it in the session
- * (pg_passkey_email_code_keep()). At most five codes an hour per account.
+ * passkey, or to get new recovery codes for its passkeys, to the address kept
+ * on the account, and keeps it in the session (pg_passkey_email_code_keep()).
+ * At most five codes an hour per account, whatever they are for.
  *
- * @param array $account id, username, email
+ * @param array  $account id, username, email
+ * @param string $purpose pg_passkey_email_code_purpose()
  * @return string '' when sent, else 'email_none' (no address), 'email_limit'
  *                or 'email_send'
  */
-function pg_passkey_email_code_send($account)
+function pg_passkey_email_code_send($account, $purpose = 'add')
 {
+    $purpose = pg_passkey_email_code_purpose($purpose);
+
     $email = trim((string) ($account['email'] ?? ''));
 
     if (($email === '') || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -796,9 +820,11 @@ function pg_passkey_email_code_send($account)
         'to'                 => $email,
         'from_name'          => ORGANIZATION_NAME,
         'from_email_address' => EMAIL_ADDRESS,
-        'subject'            => lang('Your code for adding a passkey'),
+        'subject'            => ($purpose === 'recovery') ? lang('Your code for new recovery codes') : lang('Your code for adding a passkey'),
         'body'               =>
-            lang(array('string' => 'Your code for adding a passkey to your account at {var:1}:', 'vars' => $site)) . "\n"
+            (($purpose === 'recovery')
+                ? lang(array('string' => 'Your code for new recovery codes for your account at {var:1}:', 'vars' => $site))
+                : lang(array('string' => 'Your code for adding a passkey to your account at {var:1}:', 'vars' => $site))) . "\n"
             . "\n"
             . $code . "\n"
             . "\n"
@@ -811,7 +837,7 @@ function pg_passkey_email_code_send($account)
         return 'email_send';
     }
 
-    pg_passkey_email_code_keep($_SESSION['software']['passkey_email_code'], (int) $account['id'], $code, time());
+    pg_passkey_email_code_keep($_SESSION['software']['passkey_email_code'], (int) $account['id'], $code, time(), $purpose);
 
     return '';
 }
@@ -1589,6 +1615,55 @@ function pg_passkey_account_section($user_id, $password_algo, $action_url, $toke
             . '</tr></thead><tbody>' . $rows_html . '</tbody></table>';
     }
 
+    // New recovery codes for an account whose second factor is its passkeys:
+    // the password and a code e-mailed for this purpose, the proofs of adding
+    // a passkey (account_security.php, mfa_recovery_regenerate). Drawn before
+    // the refusals below, which are about adding one, and its script needs
+    // no passkey support from the browser. The codes are then shown by
+    // pg_mfa_account_section().
+    $json = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
+
+    if (pg_mfa_table_exists() && (pg_mfa_recovery_proof($mfa, pg_mfa_has_passkey($user_id)) === 'email')) {
+        $html .= '<p style="margin:1em 0 .5em"><strong>' . h(lang('New recovery codes')) . '</strong></p>'
+            . '<p>' . h(lang(array(
+                'string' => '{var:1} recovery codes left. New codes replace them.',
+                'vars'   => (string) pg_mfa_recovery_remaining($user_id)))) . '</p>'
+            . $form('mfa_recovery_regenerate',
+                ($proofs['password'] ? $password_input('pg_passkey_recovery_password') : '')
+                . $field('pg_passkey_recovery_email_code', lang('Code we e-mail you'),
+                    '<input type="text" id="pg_passkey_recovery_email_code" name="email_code" class="software_input_text" required="required" inputmode="numeric" autocomplete="one-time-code" maxlength="12" spellcheck="false" style="margin-bottom:.5em"/> '
+                    . '<button type="button" id="pg_passkey_recovery_send" class="software_input_submit_secondary">' . h(lang('Send the code')) . '</button><br/>')
+                . '<p id="pg_passkey_recovery_sent" role="status" style="margin-bottom:.5em"></p>'
+                . '<button type="submit" class="software_input_submit_secondary">' . h(lang('New recovery codes')) . '</button>')
+            . '<script>
+        (function () {
+            var send = document.getElementById("pg_passkey_recovery_send");
+            if (!send || !window.fetch || !window.FormData) {
+                return;
+            }
+            var sent = document.getElementById("pg_passkey_recovery_sent");
+            var failed = ' . json_encode(lang('The e-mail could not be sent. Please try again later.'), $json) . ';
+            send.addEventListener("click", function () {
+                var body = new FormData();
+                body.append("action", "email_code");
+                body.append("purpose", "recovery");
+                body.append("token", send.form.elements.namedItem("token").value);
+                send.disabled = true;
+                sent.textContent = "";
+                fetch(' . json_encode(PATH . SOFTWARE_DIRECTORY . '/passkey.php', $json | JSON_UNESCAPED_SLASHES) . ', { method: "POST", body: body, credentials: "same-origin" }).then(function (response) {
+                    return response.json();
+                }).then(function (answer) {
+                    sent.textContent = (answer && answer.message) || failed;
+                }).catch(function () {
+                    sent.textContent = failed;
+                }).then(function () {
+                    send.disabled = false;
+                });
+            });
+        })();
+        </script>';
+    }
+
     if (!$ready['ok']) {
         return $html . '<p>' . h(pg_passkey_refusal($ready['error'], 'register')) . '</p>';
     }
@@ -1600,8 +1675,6 @@ function pg_passkey_account_section($user_id, $password_algo, $action_url, $toke
     if ($count >= PG_PASSKEYS_MAX) {
         return $html . '<p>' . h(pg_passkey_refusal('limit', 'register')) . '</p>';
     }
-
-    $json = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
 
     // The add form posts nowhere itself: its script asks passkey.php for the
     // options with the proofs, lets the browser make the passkey and sends it

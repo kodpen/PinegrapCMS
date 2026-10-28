@@ -1638,8 +1638,8 @@ function local_sale_render_pay($user)
     // The amount handed over and the change, for the till view. Nothing of
     // it is stored.
     $output .= '<div class="pg-kasa pg-sale-recv" data-sale-when="cash"><label class="form-label" for="pg_sale_received">' . lang('Received') . '</label>'
-        . '<div class="input-group input-group-lg"><span class="input-group-text">' . h(html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8')) . '</span>'
-        . '<input type="text" class="form-control fw-semibold" id="pg_sale_received" inputmode="decimal" autocomplete="off" placeholder="0' . h(local_sale_number_separators()['decimal']) . '00"></div>'
+        . '<label class="form-control form-control-lg form-adorn"><span class="form-adorn-text" aria-hidden="true">' . h(html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8')) . '</span>'
+        . '<input type="text" class="form-ghost fw-semibold" id="pg_sale_received" inputmode="decimal" autocomplete="off" placeholder="0' . h(local_sale_number_separators()['decimal']) . '00"></label>'
         . '<div class="pg-sale-quick" id="pg_sale_quick"></div>'
         . '<div class="pg-sale-change" id="pg_sale_change" hidden><span></span><b></b></div>'
         . (!$erp ? '<div class="pg-sale-note mt-3"><i class="bi bi-info-circle" aria-hidden="true"></i><span>' . lang('This amount is not stored; it only works out the change.') . '</span></div>' : '')

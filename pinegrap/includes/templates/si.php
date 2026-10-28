@@ -22,12 +22,12 @@ if (!defined('PG_INIT_LOADED')) {
     <div class="container-fluid">
         <span class="navbar-text me-auto" ><?=lang(array('string'=>'Site Info' ))?></span>
         <ul class="navbar-nav ms-auto">
-            <li class="nav-item dropdown no-popover"  title="<?=lang('Software Theme')?>">
-                <button class="nav-link nav-link-sm position-relative dropdown-toggle dropdown-menu-right d-none" data-bs-toggle="dropdown" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
-                <ul aria-labelledby="bd-theme" class="dropdown-menu shadow dropdown-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-dropdown-min-width: 8rem;">
-                    <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-2"></i><?=lang('Light')?></button></li>
-                    <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-2"></i><?=lang('Dark')?></button></li>
-                    <li><button class="dropdown-item dropdown-item-sm rounded p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-2"></i><?=lang('Auto')?></button></li>
+            <li class="nav-item pg-menu-wrap no-popover"  title="<?=lang('Software Theme')?>">
+                <button class="nav-link nav-link-sm position-relative pg-menu-caret d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
+                <ul aria-labelledby="bd-theme" class="menu shadow pg-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-menu-min-width: 8rem;">
+                    <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i><?=lang('Light')?></button></li>
+                    <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i><?=lang('Dark')?></button></li>
+                    <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-3"></i><?=lang('Auto')?></button></li>
                 </ul>
             </li>
             <li class="nav-item">
@@ -39,15 +39,15 @@ if (!defined('PG_INIT_LOADED')) {
     </div>
 </nav>
 <main class="container">
-    <div class="site_info row row-cols-1 row-cols-md-2 g-4 my-4">
+    <div class="site_info row row-cols-1 md:row-cols-2 g-7 my-7">
         <div class="col">
-            <div class="card my-4 h-100">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card my-7 h-100">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     <?=lang('General')?>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-12 my-2">
+                        <div class="col-12 my-3">
                             <dl>
                                 <dt><?=lang('Hostname')?></dt>
                                 <dd> <?=h(HOSTNAME_SETTING)?> </dd>
@@ -77,13 +77,13 @@ if (!defined('PG_INIT_LOADED')) {
             </div> 
         </div>
         <div class="col">
-            <div class="card my-4 h-100">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card my-7 h-100">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     <?=lang('Server')?>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-12 my-2">
+                        <div class="col-12 my-3">
                            
                             <dl>
                                 <dt><?=lang('PHP Version')?></dt>
@@ -111,16 +111,16 @@ if (!defined('PG_INIT_LOADED')) {
             </div> 
         </div>
     </div>
-    <div class="row my-4">
+    <div class="row my-7">
         <div class="col-12">
-            <div class="card my-4">
-                <div class="card-header bg-reset border-0 text-uppercase h5 text-primary fw-bold">
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     <?=lang('PHP')?>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-12 my-2">
-                            <iframe src="pi.php" class="bg-light rounded w-100" onload="resizeIframe(this)"></iframe>
+                        <div class="col-12 my-3">
+                            <iframe src="pi.php" class="bg-1 rounded-4 w-100" onload="resizeIframe(this)"></iframe>
                         </div>
                     </div>
                 </div>

@@ -90,7 +90,10 @@ function ws_flows_ready()
  * it ({{node.<id>.<key>}}; key, type, label): a task box its task, a step
  * box those of ws_step_kinds().
  *
- * @return array kind => label, trigger, outcomes, step, outputs
+ * A value box (pure) has no arrows: it only gives values, read when a box
+ * reading them runs (flow_values.php).
+ *
+ * @return array kind => label, trigger, outcomes, step, outputs; pure on a value box
  */
 function ws_flow_kinds()
 {
@@ -122,6 +125,11 @@ function ws_flow_kinds()
     if (function_exists('ws_flow_chain_normalize')) {
         $kinds['start_flow'] = array('label' => lang('Start a flow'), 'trigger' => false, 'outcomes' => array('done', 'failed'), 'step' => false,
             'outputs' => array(array('key' => 'run_id', 'type' => 'number', 'label' => lang('Run'))));
+    }
+
+    // Values written by hand, given to the boxes that read them (flow_values.php).
+    if (function_exists('ws_flow_constants_normalize')) {
+        $kinds['constants'] = array('label' => lang('Constants'), 'trigger' => false, 'outcomes' => array(), 'step' => false, 'outputs' => array(), 'pure' => true);
     }
 
     // The steps of a scheduled action, each a box of its own (steps.php).
@@ -308,6 +316,9 @@ function ws_flow_config_normalize($kind, $config)
         case 'start_flow':
             return function_exists('ws_flow_chain_normalize') ? ws_flow_chain_normalize($config) : array();
 
+        case 'constants':
+            return function_exists('ws_flow_constants_normalize') ? ws_flow_constants_normalize($config) : array();
+
         case 'schedule':
         case 'event':
         case 'join':
@@ -477,6 +488,13 @@ function ws_flow_node_texts($node)
 function ws_flow_node_fields($node, $kinds)
 {
     $kind = (string) $node['kind'];
+
+    // A constants box gives its rows only: it never runs, so it has no
+    // text, outcome or status.
+    if ($kind === 'constants') {
+        return function_exists('ws_flow_constants_outputs') ? array_column(ws_flow_constants_outputs($node['config']), 'key') : array();
+    }
+
     $outputs = (!empty($kinds[$kind]['step']) && function_exists('ws_step_outputs')) ? ws_step_outputs($kind, $node['config']) : ($kinds[$kind]['outputs'] ?? array());
 
     return array_merge(array('text', 'outcome', 'status'), array_column($outputs, 'key'));
@@ -724,6 +742,12 @@ function ws_flow_graph_check($graph)
             }
         }
 
+        if ($node['kind'] === 'constants') {
+            foreach (ws_flow_constants_problems($node['config'], $name) as $text) {
+                $problems[] = ws_flow_problem('bad_config', $id, null, $text);
+            }
+        }
+
         if (($node['kind'] === 'start_flow') && ((int) ($node['config']['flow_id'] ?? 0) <= 0)) {
             $problems[] = ws_flow_problem('bad_config', $id, null, lang(array('string' => 'The box {var:1} needs the flow to start.', 'vars' => $name)));
         }
@@ -757,6 +781,12 @@ function ws_flow_graph_check($graph)
         if ($from === $to) {
             $problems[] = ws_flow_problem('bad_edge', $from, $index, lang(array('string' => 'An arrow joins the box {var:1} to itself.', 'vars' => ws_flow_box_name($nodes[$from]))));
             continue;
+        }
+
+        // A value box gives values through threads only: no arrow leads into
+        // it (one leaving it has no outcome to leave on).
+        if (!empty($kinds[$nodes[$to]['kind']]['pure'])) {
+            $problems[] = ws_flow_problem('bad_edge', $to, $index, lang(array('string' => 'No arrow may lead into the box {var:1}: it gives its values to the boxes that read them.', 'vars' => ws_flow_box_name($nodes[$to]))));
         }
 
         if (in_array($to, $triggers, true)) {
@@ -841,7 +871,7 @@ function ws_flow_graph_check($graph)
         }
 
         foreach ($nodes as $id => $node) {
-            if (!isset($reached[$id]) && isset($kinds[$node['kind']])) {
+            if (!isset($reached[$id]) && isset($kinds[$node['kind']]) && empty($kinds[$node['kind']]['pure'])) {
                 $problems[] = ws_flow_problem('unreachable', (string) $id, null, lang(array('string' => 'No arrow from the start leads to the box {var:1}.', 'vars' => ws_flow_box_name($node))));
             }
         }
@@ -921,11 +951,11 @@ function ws_flow_reference_problems($nodes, $kinds, $next, $always)
 
             if (($other === null) || !isset($kinds[$other['kind']])) {
                 $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the flow has no box {var:3}.', 'vars' => array($name, $ref, $box))));
-            } elseif (!isset($before[$box])) {
+            } elseif (!isset($before[$box]) && empty($kinds[$other['kind']]['pure'])) {
                 $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the box {var:3} does not come before it.', 'vars' => array($name, $ref, ws_flow_box_name($other)))));
             } elseif (!in_array($field, ws_flow_node_fields($other, $kinds), true)) {
                 $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the box {var:3} gives no value {var:4}.', 'vars' => array($name, $ref, ws_flow_box_name($other), $field))));
-            } else {
+            } elseif (empty($kinds[$other['kind']]['pure'])) {
                 $sure = $sure ?? ws_flow_sure_before($next, $always);
 
                 if (isset($sure[$id]) && !isset($sure[$id][$box])) {
@@ -2037,6 +2067,29 @@ function ws_flow_js_strings()
         'fl_fit'              => lang('Fit to the screen'),
         'fl_outline'          => lang('Outline view'),
         'fl_outline_help'     => lang('The boxes in the order of their arrows, each with its settings. Everything the canvas does can be done here too.'),
+        'fl_threads'          => lang('Data threads'),
+        'fl_thread_line'      => ws_js_template('{var:1} reads {var:2}', 2),
+        'fl_kind_constants'   => lang('Constants'),
+        'fl_constants_none'   => lang('No value yet'),
+        'fl_constants_rows'   => lang('Values it gives'),
+        'fl_constants_name'   => lang('Name'),
+        'fl_constants_type'   => lang('Type'),
+        'fl_constants_value'  => lang('Value'),
+        'fl_constants_text'   => lang('Text'),
+        'fl_constants_number' => lang('Number'),
+        'fl_constants_add'    => lang('Add a value'),
+        'fl_constants_remove' => ws_js_template('Remove {var:1}', 1),
+        'fl_constants_help'   => lang('This box has no arrows: each value reaches the boxes that read it by a data thread, the same in every run.'),
+        'fl_thread_dot'       => lang('Drag to a field, or double-click and choose the field'),
+        'fl_thread_fork'      => lang('Fork'),
+        'fl_thread_pass'      => lang('Pass to a field…'),
+        'fl_thread_title'     => ws_js_template('Pass a value of {var:1} to a field', 1),
+        'fl_thread_field'     => lang('Field it goes into'),
+        'fl_thread_add'       => lang('Pass the value'),
+        'fl_thread_none'      => lang('No field after this box can take this value.'),
+        'fl_thread_pick'      => lang('Choose the field the value goes into; Esc stops.'),
+        'fl_thread_bound'     => ws_js_template('{var:1} goes into {var:2}', 2),
+        'fl_thread_full'      => lang('This field has no room for another value.'),
         'fl_new'              => lang('New flow'),
         'fl_list_mine'        => lang('My flows'),
         'fl_list_shared'      => lang('Shared with me and my channels'),
@@ -2367,6 +2420,7 @@ function ws_flow_js_strings()
         'fl_key_tab'          => lang('Tab: from box to box, in the order of the arrows'),
         'fl_key_arrows'       => lang('Arrow keys: move the selected box (with Shift, further)'),
         'fl_key_connect'      => lang('C: connect the selected box to the one that comes after it'),
+        'fl_key_thread'       => lang('V: pass a value of the selected box to a field of a box after it'),
         'fl_key_delete'       => lang('Delete: remove the selected box or arrow'),
         'fl_key_enter'        => lang('Enter: go to the settings of the selected box'),
         'fl_key_zoom'         => lang('+ and −: zoom; 0: fit everything on the screen'),
@@ -2554,6 +2608,6 @@ function ws_flow_js_config($viewer, $mode)
         'outputs'  => $outputs,
         'trigger_outputs' => $trigger_outputs,
         'subjects' => $subjects,
-        'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'coord' => WS_FLOW_COORD_MAX),
+        'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'coord' => WS_FLOW_COORD_MAX, 'constants' => defined('WS_FLOW_CONSTANTS_MAX') ? WS_FLOW_CONSTANTS_MAX : 20),
     );
 }
