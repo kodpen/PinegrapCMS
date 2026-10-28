@@ -1586,6 +1586,8 @@
     "The email address you entered could not be found. Please register if you have not already done so.": "Girdiğiniz e-posta adresi bulunamadı. Henüz yapmadıysanız lütfen kaydolun.",
     "The email address you entered is already in use. Please enter a different email address.": "Girdiğiniz e-posta adresi zaten kullanımda. Lütfen farklı bir e-posta adresi girin.",
     "The email address you entered is invalid.": "Girdiğiniz e-mail adresi geçersiz.",
+    "The email address, username or current password you entered is incorrect. Please remember that passwords are case sensitive.": "Girdiğiniz e-posta adresi, kullanıcı adı veya mevcut parola hatalı. Parolaların büyük/küçük harf duyarlı olduğunu unutmayın.",
+    "The email address, username or password you entered is incorrect. Please remember that passwords are case sensitive.": "Girdiğiniz e-posta adresi, kullanıcı adı veya parola hatalı. Parolaların büyük/küçük harf duyarlı olduğunu unutmayın.",
     "The email preferences link is not valid.": "E-posta tercihleri bağlantısı geçerli değil.",
     "The empty cell width must be a numeric value.": "Boş hücre genişliği sayısal bir değer olmalıdır.",
     "The enabled products of this group are offered, in the group's order.": "Bu grubun etkin ürünleri, grubun sırasıyla sunulur.",
