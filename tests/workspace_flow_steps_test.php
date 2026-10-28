@@ -622,3 +622,67 @@ function test_workspace_flow_steps_trigger_values()
 	pg_assert_contains('$step_context += ws_step_trigger_context($context)', $run);
 	pg_assert_false(strpos($run, "if (\$kind === 'lead')") !== false, 'every box, not the lead box alone');
 }
+
+// The texts a run fills with ws_scheduled_fill(), by box kind: every one a
+// text of the kind, every one filled by ws_scheduled_do() or the function
+// it hands the kind to; a check-in's question goes out as written.
+function test_workspace_flow_steps_scheduled_texts()
+{
+	$map = ws_step_scheduled_texts();
+	$kinds = ws_step_kinds();
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php');
+
+	foreach ($map as $kind => $keys) {
+		pg_assert_true(isset($kinds[$kind]), $kind);
+
+		foreach ($keys as $key) {
+			pg_assert_true(in_array($key, $kinds[$kind]['texts'], true), $kind . '.' . $key);
+			pg_assert_true((bool) preg_match('~ws_scheduled_fill\([^;]*\$action\[\'' . $key . '\'\]~', $source), $kind . '.' . $key . ' is filled at run time');
+		}
+	}
+
+	pg_assert_false(isset($map['checkin']), 'the question is not filled');
+	pg_assert_false((bool) preg_match('~ws_scheduled_fill\([^;]*\$action\[\'question\'\]~', $source));
+
+	foreach ($kinds as $kind => $info) {
+		if (($info['texts'] !== array()) && ($kind !== 'checkin')) {
+			pg_assert_true(isset($map[$kind]), $kind . ' has its line');
+		}
+	}
+}
+
+// A box tried with a run: the texts the run fills get what started that run
+// ({{source}}, {{record}} …), the tokens it leaves empty are named, a value
+// of a box before it is never read again as a token, and a check-in's
+// question stays as written.
+function test_workspace_flow_steps_try_scheduled()
+{
+	$context = array('viewer' => array(), 'row' => array('name' => 'Flow', 'run_count' => 2), 'source' => 'Nightly', 'source_result' => 'done');
+	$fill = function ($text) use ($context) {
+		return ws_scheduled_fill($text, $context);
+	};
+
+	$values = array('say' => array('text' => '{{source}}', 'outcome' => 'done', 'status' => 'done'));
+	$tried = ws_step_try_texts('email', array('type' => 'email', 'to' => array('a@example.com'), 'subject' => '{{source}}: {{source_result}}', 'body' => '{{node.say.text}} {{record}} {{newcomer}} {{run}} {{custom}}'), $values);
+	$tried = ws_step_try_scheduled('email', $tried, $fill);
+
+	pg_assert_same(array(
+		array('key' => 'subject', 'text' => 'Nightly: done'),
+		array('key' => 'body', 'text' => "{\u{2060}{\u{2060}source}}   3 {{custom}}"),
+	), $tried['texts']);
+	pg_assert_same('Nightly: done', $tried['action']['subject'], 'the sentence reads the filled action');
+	pg_assert_same(array('{{record}}', '{{newcomer}}'), $tried['empty']);
+
+	$question = ws_step_try_scheduled('checkin', ws_step_try_texts('checkin', array('type' => 'checkin', 'question' => 'How was {{source}}?'), array()), $fill);
+
+	pg_assert_same(array(array('key' => 'question', 'text' => 'How was {{source}}?')), $question['texts']);
+	pg_assert_same(array(), $question['empty']);
+
+	$try = ws_flow_steps_test_source('ws_flow_box_try');
+
+	pg_assert_contains('ws_step_try_scheduled($kind, $tried', $try);
+	pg_assert_contains('ws_step_trigger_context($context)', $try);
+	pg_assert_contains('ws_step_action_row($run, $context, ws_step_run_anchor($context))', $try);
+	pg_assert_contains("'viewer' => \$owner", $try);
+	pg_assert_contains('ws_step_run_anchor($context)', ws_flow_steps_test_source('ws_step_run'));
+}
