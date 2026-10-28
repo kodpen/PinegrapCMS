@@ -19,7 +19,8 @@ description: payment_callback.php?driver=<key> (PR #2143): what reaches notify()
 - An `alerted` line goes to `log_activity(…, 'SYSTEM')` and to `pg_ops_alert('payment_notice', …)`; the alert keeps its once-a-day rule, the log line is written every time.
 
 ## Why alert only?
-- Whether a webhook may complete an incomplete order is the owner's open question (plan 3b); PayTR (4c) needs it. Until then nothing in the order changes.
+- Decided (#2382): the webhook will complete an incomplete order, once the completion tail of `submit_order()` runs without a session (`plans/order-completion-function.md`, A2/A3). Until then nothing in the order changes.
+- Since #2199 a Stripe order sent to 3-D Secure already keeps the PaymentIntent in `transaction_id` and the started amount in `total` (`pg_payment_started_order_values()`), so the order is found by its own payment and another intent is `unknown_order`.
 
 ## Firewall?
 - In `waf_is_api_request()` and `waf_country_api_scripts()` (service servers, any country). No offence on a bad signature: a wrong secret stored here would ban the service.

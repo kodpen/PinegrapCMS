@@ -1425,7 +1425,7 @@ function local_sale_render_customer($user)
         return '<div class="pg-sale-cust">'
             . '<span class="pg-sale-av" aria-hidden="true"><i class="bi bi-shop"></i></span>'
             . '<span class="pg-sale-who"><b>' . lang('Walk-in sale') . '</b><small>' . lang('No customer is recorded on the order') . '</small></span>'
-            . '<button type="button" class="btn btn-sm btn-ghost no-submit" data-sale-cust="change">' . lang('Pick') . ' <kbd>F4</kbd></button>'
+            . '<button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-sale-cust="change">' . lang('Pick') . ' <kbd>F4</kbd></button>'
             . '</div>';
     }
 
@@ -1450,8 +1450,8 @@ function local_sale_render_customer($user)
     return '<div class="pg-sale-cust">'
         . '<span class="pg-sale-av is-picked" aria-hidden="true"><i class="bi ' . $icon . '"></i></span>'
         . '<span class="pg-sale-who"><b>' . h($customer['label']) . '</b><small>' . h(implode(' · ', array_filter($sub, 'strlen'))) . '</small></span>'
-        . '<button type="button" class="btn btn-sm btn-ghost no-submit" data-sale-cust="change">' . lang('Change') . '</button>'
-        . '<button type="button" class="btn btn-sm btn-ghost no-submit" data-sale-cust="clear" aria-label="' . h(lang('Remove the customer')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>'
+        . '<button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-sale-cust="change">' . lang('Change') . '</button>'
+        . '<button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-sale-cust="clear" aria-label="' . h(lang('Remove the customer')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>'
         . '</div>';
 }
 
@@ -1551,7 +1551,7 @@ function local_sale_render_ledger($user)
     }
 
     return '<div class="card pg-belge-block">' . $header
-        . '<button type="button" class="btn btn-sm btn-ghost no-submit" data-sale-ledger="' . $account_id . '"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . lang('Account summary') . '</button></div>'
+        . '<button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-sale-ledger="' . $account_id . '"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . lang('Account summary') . '</button></div>'
         . '<div class="card-body">'
         . '<div class="pg-sale-balance"><b class="' . $balance_class . '">' . h(erp_money_out(abs($balance))) . '</b><span class="fg-secondary">' . h($balance_side) . '</span></div>'
         . '<dl class="pg-sale-facts">' . $facts . '</dl>' . $warning
@@ -1638,8 +1638,8 @@ function local_sale_render_pay($user)
     // The amount handed over and the change, for the till view. Nothing of
     // it is stored.
     $output .= '<div class="pg-kasa pg-sale-recv" data-sale-when="cash"><label class="form-label" for="pg_sale_received">' . lang('Received') . '</label>'
-        . '<div class="input-group input-group-lg"><span class="input-group-text">' . h(html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8')) . '</span>'
-        . '<input type="text" class="form-control fw-semibold" id="pg_sale_received" inputmode="decimal" autocomplete="off" placeholder="0' . h(local_sale_number_separators()['decimal']) . '00"></div>'
+        . '<label class="form-control form-control-lg form-adorn"><span class="form-adorn-text" aria-hidden="true">' . h(html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8')) . '</span>'
+        . '<input type="text" class="form-ghost fw-semibold" id="pg_sale_received" inputmode="decimal" autocomplete="off" placeholder="0' . h(local_sale_number_separators()['decimal']) . '00"></label>'
         . '<div class="pg-sale-quick" id="pg_sale_quick"></div>'
         . '<div class="pg-sale-change" id="pg_sale_change" hidden><span></span><b></b></div>'
         . (!$erp ? '<div class="pg-sale-note mt-3"><i class="bi bi-info-circle" aria-hidden="true"></i><span>' . lang('This amount is not stored; it only works out the change.') . '</span></div>' : '')
@@ -1781,7 +1781,7 @@ function local_sale_render_recent($user)
             . '<br><small class="fg-secondary">' . h(lang(array('string' => '{var:1} · {var:2} lines', 'vars' => array($who, (int) $row['item_count'])))) . '</small></div>'
             . '<div class="text-end fw-semibold">' . local_sale_money($row['total']) . '</div>'
             . '<div class="pg-sale-rs-acts">' . $invoice
-            . '<a class="btn btn-sm btn-ghost ms-auto" href="view_order.php?id=' . (int) $row['id'] . '" title="' . h(lang('View')) . '" aria-label="' . h(lang('View')) . '"><i class="bi bi-eye" aria-hidden="true"></i></a></div>'
+            . '<a class="btn btn-sm btn-text theme-secondary ms-auto" href="view_order.php?id=' . (int) $row['id'] . '" title="' . h(lang('View')) . '" aria-label="' . h(lang('View')) . '"><i class="bi bi-eye" aria-hidden="true"></i></a></div>'
             . '</div>';
     }
 

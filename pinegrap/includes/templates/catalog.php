@@ -40,6 +40,8 @@ if (!defined('PG_INIT_LOADED')) {
 				</a>
 				<?php endif ?> <?php if ($item['price_info']): ?> 
 				<div> <?=$item['price_info']?> </div>
+				<?php endif ?> <?php if ($item['reference_price_info']): ?> 
+				<?=$item['reference_price_info'] // The price before the discount ?> 
 				<?php endif ?> <?=$item['edit_end'] // Close the edit grid ?> 
 			</div>
 			<?php endforeach ?> 

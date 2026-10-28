@@ -8,6 +8,7 @@ description: custom_form field derivation on the server, per-page ids map and it
 - Client `_cfFieldsOf()` is the twin of the same read and **only feeds the panel**. Label, type and grouping rules must match on both sides; change one, change the other.
 - **Save order:** `_flushDirtyShared()` returns a promise and `_saveAjaxImpl` awaits it. Page save reads the widget tree from the server, so it cannot overtake the widget update.
 - A page without a form widget: its form is untouched (deleting it is not this function's job). Widget present but no controls => list empty and fields are deleted (with warning).
+- Information and signature rows are never deleted by the sync: no designed control carries them, a classic layout beside the widget still prints them (W22b), and a signature's evidence stays.
 
 ## How does the per-page `ids` map work?
 - The widget is a shared component; it can stand in "new form" mode on two pages, each with its own rows: `_cf.ids[page_id]`. Ids not belonging to the page are ignored; matching is by name.

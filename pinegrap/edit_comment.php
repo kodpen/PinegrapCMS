@@ -386,7 +386,6 @@ if (!$_POST) {
                                                 </div>
                                             </div>
                                         </div>
-                                        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
                                         ' . get_date_time_picker_format() . pg_fields_script() . '
                                         <script>init_edit_comment_publish()</script>
                                         <div class="col-12 my-5">

@@ -196,6 +196,8 @@ function pg_sw_list_order_sources()
                 array('__return_tracking_number', lang('Tracking number')),
                 array('__return_refund_deadline', lang('Refund due by')),
                 array('__return_actions_html', lang('The customer\'s moves: sent, withdraw (HTML)')),
+                array('__return_can_mark_sent', lang('The customer may say the parcel is sent (1 or empty)')),
+                array('__return_can_withdraw', lang('The customer may withdraw the request (1 or empty)')),
             ),
         ),
         'order.return_lines' => array(
@@ -747,6 +749,8 @@ function pg_sw_list_order_return_rows($returns, $form)
             '__return_tracking_number'    => (string)$return['tracking_number'],
             '__return_refund_deadline'    => (string)$return['refund_deadline'],
             '__return_actions_html'       => pg_return_actions_html($return, $form),
+            '__return_can_mark_sent'      => !empty($return['can_mark_sent']) ? '1' : '',
+            '__return_can_withdraw'       => !empty($return['can_withdraw']) ? '1' : '',
         );
     }
     return $out;

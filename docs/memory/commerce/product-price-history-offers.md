@@ -29,4 +29,4 @@ description: Offer rows of product_price_history (2026.11.0, PR #681): the hourl
 ## How was it verified?
 - `tests/price_history_test.php` (offer prices, marker, timing, source left out). On MariaDB with `php -S`: a 10 % offer wrote its row; a rerun was not due; the offer's end wrote the stored price; the next pass was idle; a same-price API save during the offer wrote nothing; a raised price wrote an `api` row, then the pass the new offer price; a manager's web run skipped; a cut pass resumed from `after_id`; the API listed the rows.
 
-Related: docs/memory/commerce/product-price-history.md, docs/memory/plans/price-history-reference-price.md
+Related: docs/memory/commerce/product-price-history.md, docs/memory/commerce/product-reference-price-decisions.md

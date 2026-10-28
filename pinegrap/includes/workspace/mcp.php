@@ -1981,10 +1981,10 @@ function ws_mcp_settings_form($self_url, $server, $admin, $typed = array(), $pro
             <div class="row g-3">
                 <div class="sm:col-4">
                     <label class="form-label small" for="' . $prefix . 'alias">' . h(lang('Alias')) . '</label>
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text">@</span>
-                        <input class="form-control" type="text" name="mcp_alias" id="' . $prefix . 'alias" value="' . h($values['mcp_alias']) . '" maxlength="32" pattern="[A-Za-z][A-Za-z0-9_\-]{1,31}" required autocomplete="off"' . $disabled . '>
-                    </div>
+                    <label class="form-control form-control-sm form-adorn' . ($admin ? '' : ' bg-2') . '">
+                        <span class="form-adorn-text" aria-hidden="true">@</span>
+                        <input class="form-ghost" type="text" name="mcp_alias" id="' . $prefix . 'alias" value="' . h($values['mcp_alias']) . '" maxlength="32" pattern="[A-Za-z][A-Za-z0-9_\-]{1,31}" required autocomplete="off"' . $disabled . '>
+                    </label>
                 </div>
                 <div class="sm:col-8">
                     <label class="form-label small" for="' . $prefix . 'name">' . h(lang('Name')) . '</label>
@@ -2259,7 +2259,7 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null)
                     ' . get_token_field() . '
                     <input type="hidden" name="ws_action" value="mcp_disconnect">
                     <input type="hidden" name="mcp_id" value="' . $id . '">
-                    <button type="submit" class="btn btn-sm btn-ghost" title="' . h(lang('Disconnect')) . '"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
+                    <button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Disconnect')) . '"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Disconnect')) . '</button>
                 </form>';
         }
 
@@ -2297,25 +2297,25 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null)
                     ' . $own . '
                 </div>
                 ' . $sign_in . '
-                <button type="button" class="btn btn-sm btn-ghost" data-bs-toggle="collapse" data-bs-target="#ws-mcp-edit-' . $id . '" aria-controls="ws-mcp-edit-' . $id . '" aria-expanded="' . ($open ? 'true' : 'false') . '"><i class="bi bi-sliders me-1" aria-hidden="true"></i>' . h(lang('Tools and settings')) . '</button>
+                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="collapse" data-bs-target="#ws-mcp-edit-' . $id . '" aria-controls="ws-mcp-edit-' . $id . '" aria-expanded="' . ($open ? 'true' : 'false') . '"><i class="bi bi-sliders me-1" aria-hidden="true"></i>' . h(lang('Tools and settings')) . '</button>
                 ' . ($admin ? '
                 <form method="post" action="' . h($self_url) . '" class="d-inline">
                     ' . get_token_field() . '
                     <input type="hidden" name="ws_action" value="mcp_refresh">
                     <input type="hidden" name="mcp_id" value="' . $id . '">
-                    <button type="submit" class="btn btn-sm btn-ghost" title="' . h(lang('Ask the server for its tools again')) . '"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>
+                    <button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Ask the server for its tools again')) . '"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>
                 </form>
                 <form method="post" action="' . h($self_url) . '" class="d-inline">
                     ' . get_token_field() . '
                     <input type="hidden" name="ws_action" value="mcp_toggle">
                     <input type="hidden" name="mcp_id" value="' . $id . '">
-                    <button type="submit" class="btn btn-sm btn-ghost" title="' . h(($server['status'] === 'active') ? lang('Turn off') : lang('Turn on')) . '"><i class="bi ' . (($server['status'] === 'active') ? 'bi-pause-circle' : 'bi-play-circle') . '" aria-hidden="true"></i></button>
+                    <button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . h(($server['status'] === 'active') ? lang('Turn off') : lang('Turn on')) . '"><i class="bi ' . (($server['status'] === 'active') ? 'bi-pause-circle' : 'bi-play-circle') . '" aria-hidden="true"></i></button>
                 </form>
                 <form method="post" action="' . h($self_url) . '" class="d-inline" onsubmit="return confirm(' . h(json_encode(lang('Remove this MCP server and its credential?'))) . ');">
                     ' . get_token_field() . '
                     <input type="hidden" name="ws_action" value="mcp_delete">
                     <input type="hidden" name="mcp_id" value="' . $id . '">
-                    <button type="submit" class="btn btn-sm btn-ghost" title="' . h(lang('Remove')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                    <button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Remove')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>
                 </form>' : '') . '
             </div>
             <div class="collapse' . ($open ? ' show' : '') . '" id="ws-mcp-edit-' . $id . '">
@@ -2367,7 +2367,7 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null)
         <div class="card mt-7" id="ws-mcp">
             <div class="card-header d-flex align-items-center gap-3">
                 <h2 class="h6 mb-0 ws-grow"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('MCP servers')) . '</h2>
-                <a class="btn btn-sm btn-ghost" href="workspace_mcp.php" title="' . h(lang('Your own accounts in one place, and the tools that read run with a form')) . '"><i class="bi bi-person-gear me-1" aria-hidden="true"></i>' . h(lang('My MCP connections')) . '</a>
+                <a class="btn btn-sm btn-text theme-secondary" href="workspace_mcp.php" title="' . h(lang('Your own accounts in one place, and the tools that read run with a form')) . '"><i class="bi bi-person-gear me-1" aria-hidden="true"></i>' . h(lang('My MCP connections')) . '</a>
                 ' . ($admin ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="#ws-mcp-catalogue"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add a server')) . '</a>' : '') . '
             </div>
             <div class="card-body">

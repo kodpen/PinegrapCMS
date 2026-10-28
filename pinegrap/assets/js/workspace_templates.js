@@ -265,7 +265,7 @@
             applyModal.tabIndex = -1;
             applyModal.innerHTML = '<div class="dialog-header"><h2 class="dialog-title h6" data-ws-tpl-title></h2><button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>'
                 + '<div class="dialog-body"><p class="small fg-secondary" data-ws-tpl-help></p><div data-ws-tpl-list></div></div>'
-                + '<div class="dialog-footer"><a class="btn btn-sm btn-ghost me-auto d-none" data-ws-tpl-manage></a><button type="button" class="btn btn-sm btn-ghost" data-bs-dismiss="dialog" data-ws-tpl-cancel></button>'
+                + '<div class="dialog-footer"><a class="btn btn-sm btn-text theme-secondary me-auto d-none" data-ws-tpl-manage></a><button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-dismiss="dialog" data-ws-tpl-cancel></button>'
                 + '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-ws-tpl-ok></button></div>';
             document.body.appendChild(applyModal);
         }
@@ -375,8 +375,8 @@
                 window.getSelection().removeAllRanges();
 
                 var tools = el('div', 'ws-note-actions');
-                var list = button('btn btn-sm btn-ghost', '', 'bi-ui-checks', t('insert_checklist'));
-                var table = button('btn btn-sm btn-ghost', '', 'bi-table', t('insert_table'));
+                var list = button('btn btn-sm btn-text theme-secondary', '', 'bi-ui-checks', t('insert_checklist'));
+                var table = button('btn btn-sm btn-text theme-secondary', '', 'bi-table', t('insert_table'));
 
                 list.addEventListener('click', function () {
                     window.PGWsEditor.openChecklist('', function (markup) {
@@ -483,7 +483,7 @@
         var dragged = null;
 
         function draggable(row, list, items, item, redraw) {
-            var handle = button('btn btn-sm btn-ghost ws-tpl-handle', '', 'bi-grip-vertical', t('tpl_drag'));
+            var handle = button('btn btn-sm btn-text theme-secondary ws-tpl-handle', '', 'bi-grip-vertical', t('tpl_drag'));
 
             handle.addEventListener('mousedown', function () { row.draggable = true; });
             handle.addEventListener('touchstart', function () { row.draggable = true; }, { passive: true });
@@ -544,7 +544,7 @@
             title.setAttribute('aria-label', t('title'));
             head.appendChild(title);
 
-            var remove = button('btn btn-sm btn-ghost', '', 'bi-trash', t('tpl_remove_task'));
+            var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-trash', t('tpl_remove_task'));
             remove.addEventListener('click', function () {
                 collect();
                 tasks.splice(tasks.indexOf(row), 1);
@@ -719,7 +719,7 @@
             title.setAttribute('aria-label', t('title'));
             head.appendChild(title);
 
-            var remove = button('btn btn-sm btn-ghost', '', 'bi-trash', t('tpl_remove_note'));
+            var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-trash', t('tpl_remove_note'));
             remove.addEventListener('click', function () {
                 collect();
                 notes.splice(notes.indexOf(row), 1);

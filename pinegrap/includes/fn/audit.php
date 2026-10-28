@@ -530,19 +530,14 @@ function pg_audit($action, $entity_type, $entity_id = 0, array $before = array()
         'after_json'  => $row['after_json'],
     );
 
+    // A null goes in as NULL, everything else quoted, an int included.
     $values = array();
 
     foreach ($row as $value) {
-        if ($value === null) {
-            $values[] = 'NULL';
-        } elseif (is_int($value)) {
-            $values[] = "'" . $value . "'";
-        } else {
-            $values[] = "'" . e($value) . "'";
-        }
+        $values[] = ($value === null) ? null : (string) $value;
     }
 
-    return (bool) @mysqli_query(db::$con, "INSERT INTO audit_log (" . implode(', ', array_keys($row)) . ") VALUES (" . implode(', ', $values) . ")");
+    return (bool) db_q("INSERT INTO audit_log (" . implode(', ', array_keys($row)) . ") VALUES (" . implode(', ', array_fill(0, count($values), '?')) . ")", $values);
 }
 
 /**
@@ -665,6 +660,7 @@ function pg_audit_fetch_many($table, array $ids)
     }
 
     $key = $tables[$table]['id'];
+    $params = array();
 
     if ($key === '') {
         $sql = "SELECT * FROM `" . $table . "` LIMIT 1";
@@ -677,10 +673,11 @@ function pg_audit_fetch_many($table, array $ids)
             return array();
         }
 
-        $sql = "SELECT * FROM `" . $table . "` WHERE `" . $key . "` IN (" . implode(',', $ids) . ")";
+        $sql = "SELECT * FROM `" . $table . "` WHERE `" . $key . "` IN (" . implode(',', array_fill(0, count($ids), '?')) . ")";
+        $params = $ids;
     }
 
-    return _pg_audit_fetch_sql($table, $key, $sql);
+    return _pg_audit_fetch_sql($table, $key, $sql, $params);
 }
 
 /**
@@ -721,7 +718,7 @@ function pg_audit_fetch_by($table, $column, $value)
 
     $key = pg_audit_tables()[$table]['id'];
 
-    return _pg_audit_fetch_sql($table, $key, "SELECT * FROM `" . $table . "` WHERE `" . $column . "` = '" . e((string) $value) . "'");
+    return _pg_audit_fetch_sql($table, $key, "SELECT * FROM `" . $table . "` WHERE `" . $column . "` = ?", array((string) $value));
 }
 
 /**
@@ -750,11 +747,12 @@ function pg_audit_created_rows(array $ids)
  * @param string $table
  * @param string $key    id column, '' for config
  * @param string $sql
+ * @param array  $params values for the ? placeholders of $sql (db_q())
  * @return array  id => row
  */
-function _pg_audit_fetch_sql($table, $key, $sql)
+function _pg_audit_fetch_sql($table, $key, $sql, array $params = array())
 {
-    $result = @mysqli_query(db::$con, $sql);
+    $result = db_q($sql, $params);
 
     if (!$result) {
         return array();

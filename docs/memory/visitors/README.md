@@ -31,6 +31,7 @@ Visitor statistics, page and article views, search engine index flags.
 - page-view-beacon.md: How a visit answered from the page file cache is still counted (PR #1402): the signed beacon in the stored copy, page_view.php, what it counts and what it cannot
 - robots-txt-disallow-rules.md: How noindex pages are written into robots.txt: anchored lines, which User-agent group, private folders, and the no-noindex byte-identical guarantee.
 - seo-structure-non-html-output.md: Pages may output JSON/XML/CSV, so SEO/structure rules must not assume an HTML document; what the structure check does with such output and the robots splice risk.
+- sitemap-listed-pages.md: Which pages sitemap.xml lists bare: the page types (pg_sitemap_page_types()), designed pages whose system widget stands in for an unlisted type, the home page exception, detail pages vs their records
 - translation-index-verdict.md: One rule for a translated page's robots meta, hreflang alternates and sitemap.xml under the "reviewed" policy; no kept answer means not offered; what drops or keeps the answer
 - visitor-counter-dedup-key.md: Why http_referer is not part of the visitor dedup key in init_tracking(), how the visitor IP is resolved, and the defensive user_agent column probe (2026.2.5).
 - visitor-ip-early-removal.md: A visit's IP address set to 0 after config.visitor_ip_days (default 30, step 10.8) by the visitor cleanup, chunked with a cursor marker; dedup check safety, screens that show 0

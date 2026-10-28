@@ -601,16 +601,22 @@ function pg_payment_iyzico_threeds_keep($row)
         INSERT INTO iyzipay_3ds_state
             (conversation_id, order_id, subtotal_cents, discount_cents, installment_charge_cents, base_total_cents)
         VALUES (
-            '" . mysqli_real_escape_string(db::$con, (string) $row['conversation_id']) . "',
-            '" . (int) $row['order_id'] . "',
-            '" . (int) $row['subtotal_cents'] . "',
-            '" . (int) $row['discount_cents'] . "',
-            '" . (int) $row['installment_charge_cents'] . "',
-            '" . (int) $row['base_total_cents'] . "'
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?
         )
     ";
 
-    mysqli_query(db::$con, $query) or output_error(lang('3DS state insert failed.'));
+    db_q($query, array(
+        (string) $row['conversation_id'],
+        (string) (int) $row['order_id'],
+        (string) (int) $row['subtotal_cents'],
+        (string) (int) $row['discount_cents'],
+        (string) (int) $row['installment_charge_cents'],
+        (string) (int) $row['base_total_cents'])) or output_error(lang('3DS state insert failed.'));
 }
 
 /**
@@ -624,11 +630,11 @@ function pg_payment_iyzico_threeds_find($conversation_id)
     $query = "
         SELECT *
         FROM iyzipay_3ds_state
-        WHERE conversation_id = '" . mysqli_real_escape_string(db::$con, (string) $conversation_id) . "'
+        WHERE conversation_id = ?
         LIMIT 1
     ";
 
-    $result = mysqli_query(db::$con, $query) or output_error(lang('3DS state select failed.'));
+    $result = db_q($query, array((string) $conversation_id)) or output_error(lang('3DS state select failed.'));
     $row = mysqli_fetch_assoc($result);
 
     return is_array($row) ? $row : null;
@@ -646,14 +652,14 @@ function pg_payment_iyzico_threeds_claim($row, $payment_id)
 {
     $query = "
         UPDATE iyzipay_3ds_state
-        SET payment_id = '" . mysqli_real_escape_string(db::$con, (string) $payment_id) . "'
+        SET payment_id = ?
         WHERE
-            (id = '" . (int) $row['id'] . "')
+            (id = ?)
             AND ((payment_id IS NULL) OR (payment_id = ''))
         LIMIT 1
     ";
 
-    mysqli_query(db::$con, $query) or output_error('3DS state update failed.');
+    db_q($query, array((string) $payment_id, (string) (int) $row['id'])) or output_error('3DS state update failed.');
 
     return mysqli_affected_rows(db::$con) === 1;
 }

@@ -1125,6 +1125,36 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_shipping_method($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'order_form' — the classic order form: a product group's
+            // products put into the cart at once, posting to order_form.php
+            // (widgets_order_form.php).
+            if ($region_type === 'order_form') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_order_form($tree_json, $sid, $cfg, $mode);
+            }
+
+            // 'folder_view' — the classic folder view: the pages and files
+            // of the page's folder and the folders below it
+            // (widgets_folder_view.php).
+            if ($region_type === 'folder_view') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_folder_view($tree_json, $sid, $cfg, $mode);
+            }
+
+            // 'photo_gallery' — the classic photo gallery: the albums and
+            // photos of the page's folder (widgets_photo_gallery.php).
+            if ($region_type === 'photo_gallery') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_photo_gallery($tree_json, $sid, $cfg, $mode);
+            }
+
+            // 'affiliate_sign_up_form' — the classic affiliate sign up form,
+            // posting to affiliate_sign_up_form.php (widgets_affiliate_sign_up.php).
+            if ($region_type === 'affiliate_sign_up_form') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_affiliate_sign_up_form($tree_json, $sid, $cfg, $mode);
+            }
+
             // 'menu_region' — one of the site's menus, its items kept in
             // the menu screen (widgets_menu.php).
             if ($region_type === 'menu_region') {
@@ -2807,7 +2837,12 @@ function pg_designer_rename_design($style_id, $name, $user)
     return $out;
 }
 
-function pg_designer_load_pages($style_id, $style_name = '')
+/**
+ * $classic: the pages of a classic style about to be opened in the visual
+ * designer (pg_classic_style_design_open()), which are not design pages yet:
+ * every page naming the style, without the legacy same-name link.
+ */
+function pg_designer_load_pages($style_id, $style_name = '', $classic = false)
 {
     $style_id = (int)$style_id;
     if ($style_id <= 0) return array();
@@ -2818,6 +2853,7 @@ function pg_designer_load_pages($style_id, $style_name = '')
     $jsonld_ready  = pg_page_custom_jsonld_ready();
     $extras_ready  = pg_page_seo_extras_ready();
     $sched_ready   = function_exists('pg_page_schedule_ready') && pg_page_schedule_ready();
+    $ai_ready      = pg_ai_fields_ready('page');
 
     $cols = "page.page_id, page.page_name, page.page_type, page.page_folder, page.page_title,
              page.page_meta_description, page.page_search, page.page_search_keywords,
@@ -2836,6 +2872,7 @@ function pg_designer_load_pages($style_id, $style_name = '')
              " . ($jsonld_ready ? "page.custom_jsonld," : "'' AS custom_jsonld,") . "
              " . ($extras_ready ? "page.canonical_url, page.noarchive, page.max_snippet," : "'' AS canonical_url, 0 AS noarchive, NULL AS max_snippet,") . "
              " . ($sched_ready ? "page.publish_at, page.unpublish_at," : "0 AS publish_at, 0 AS unpublish_at,") . "
+             " . ($ai_ready ? "page.ai_fields," : "NULL AS ai_fields,") . "
              " . pg_page_tree_sql_expr() . " AS tree_json";
 
     $rows = db_items(
@@ -2843,12 +2880,12 @@ function pg_designer_load_pages($style_id, $style_name = '')
          FROM page
          INNER JOIN style ON page.page_style = style.style_id
          WHERE page.page_style = '$style_id'
-           AND " . pg_page_visual_design_sql() . pg_designer_not_binned_sql() . "
+           AND " . ($classic ? '1' : pg_page_visual_design_sql()) . pg_designer_not_binned_sql() . "
          ORDER BY page.page_id ASC");
     if (!is_array($rows)) $rows = array();
 
     // Legacy bridge: nothing linked, but a same-named system page exists.
-    if (empty($rows) && $style_name !== '') {
+    if (empty($rows) && $style_name !== '' && !$classic) {
         $orphan_id = (int)db_value(
             "SELECT page_id FROM page
              WHERE page_name = '" . e($style_name) . "'
@@ -2879,6 +2916,8 @@ function pg_designer_load_pages($style_id, $style_name = '')
             'page_draft'            => $draft ? 1 : 0,
             'page_title'            => (string)$r['page_title'],
             'page_meta_description' => (string)$r['page_meta_description'],
+            // The columns whose text is still the AI draft used on it.
+            'ai_fields'             => pg_ai_fields_marked('page', $r['ai_fields'], pg_ai_fields_values('page', $r)),
             'page_search'           => !empty($r['page_search']) ? 1 : 0,
             'page_search_keywords'  => (string)$r['page_search_keywords'],
             'page_sitemap'          => !empty($r['sitemap']) ? 1 : 0,
@@ -3710,6 +3749,16 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         $page_id = (int)mysqli_insert_id(db::$con);
         update_tag_cloud_keywords_for_page($page_id, $search, $keywords, 0, '');
         log_activity(lang(array('string' => 'page ({var:1}) was created', 'vars' => array($name))), $_SESSION['sessionusername']);
+    }
+
+    // The texts written with AI (page.ai_fields): the columns the editor
+    // lists are marked on the text written now, and without a list the
+    // stored marks stay only on a text left as it was.
+    if ($page_id > 0 && pg_ai_fields_ready('page')) {
+        $ai_fields = pg_ai_fields_page_save($page,
+            db_value("SELECT ai_fields FROM page WHERE page_id = '$page_id' LIMIT 1"),
+            array('page_title' => $title, 'page_meta_description' => $meta_desc));
+        db("UPDATE page SET ai_fields = " . (($ai_fields === null) ? 'NULL' : "'" . e($ai_fields) . "'") . " WHERE page_id = '$page_id'");
     }
 
     // Every save that changed the page is kept as a revision

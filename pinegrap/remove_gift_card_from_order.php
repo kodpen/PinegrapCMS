@@ -24,8 +24,8 @@ validate_token_field();
 pg_request_single_values(array('applied_gift_card_id'));
 
 // delete applied gift card
-$query = "DELETE FROM applied_gift_cards WHERE (id = '" . escape($_GET['applied_gift_card_id'] ?? '') . "') AND (order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$query = "DELETE FROM applied_gift_cards WHERE (id = ?) AND (order_id = ?)";
+$result = db_q($query, array((string) ($_GET['applied_gift_card_id'] ?? ''), (string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
 
 // send user back to previous screen
 header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($_GET['send_to'] ?? ''));

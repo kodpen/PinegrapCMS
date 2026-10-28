@@ -199,7 +199,8 @@ $range_options = array(
 );
 
 // Each filter is one value; one sent as an array (?range[]=x) counts as not
-// given: it ended in an error page.
+// given: it ended in an error page. PHP turns the numeric keys above into
+// integers, so the period select compares (string) $value with $range.
 $range = (isset($_GET['range']) && is_string($_GET['range']) && isset($range_options[$_GET['range']])) ? $_GET['range'] : '7';
 $start_timestamp = time() - ((int) $range * 86400);
 
@@ -506,7 +507,7 @@ echo '<form method="get" action="view_waf_log.php" class="row g-3 align-items-en
         <select name="range" id="range" class="form-control">';
 
 foreach ($range_options as $value => $label) {
-    echo '<option value="' . h($value) . '"' . ($range === $value ? ' selected="selected"' : '') . '>' . h($label) . '</option>';
+    echo '<option value="' . h($value) . '"' . ($range === (string) $value ? ' selected="selected"' : '') . '>' . h($label) . '</option>';
 }
 
 echo '</select>

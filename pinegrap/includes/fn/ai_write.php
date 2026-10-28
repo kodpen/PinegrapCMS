@@ -2098,6 +2098,25 @@ function pg_ai_fields_after_save($record, $posted, $stored, $values)
 }
 
 /**
+ * What a save of one page of a visual design stores in page.ai_fields
+ * (pg_designer_save_page()). The editor sends the page's marked columns as a
+ * list beside its settings (ai_fields), kept up to date the way the panel's
+ * script does; a save without one (the API, the page assistant, a request
+ * made by hand) keeps the stored marks whose text it leaves as it was.
+ *
+ * @param mixed $page   the page as the save reads it
+ * @param mixed $stored page.ai_fields before the save, null for none
+ * @param array $values column => the text the save writes
+ * @return string|null pg_ai_fields_encode()
+ */
+function pg_ai_fields_page_save($page, $stored, $values)
+{
+    $posted = (is_array($page) && isset($page['ai_fields']) && is_array($page['ai_fields'])) ? $page['ai_fields'] : null;
+
+    return pg_ai_fields_after_save('page', $posted, $stored, $values);
+}
+
+/**
  * What a copy of a product or a page stores in ai_fields: the source's marks
  * whose text the copy writes unchanged. A text the copy changes (the letters
  * replaced at the end of a product's short description, a page's find and

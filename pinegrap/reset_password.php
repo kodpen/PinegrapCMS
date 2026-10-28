@@ -59,8 +59,8 @@ $query =
         user_manage_calendars,
         user_manage_visitors
     FROM user
-    WHERE user_id = '" . escape($_POST['user_id'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE user_id = ?";
+$result = db_q($query, array((string) ($_POST['user_id'] ?? ''))) or output_error('Query failed.');
 
 // if a user could not be found, then output error
 if (mysqli_num_rows($result) == 0) {

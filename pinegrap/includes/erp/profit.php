@@ -91,6 +91,32 @@ function erp_profit_period($input)
 }
 
 /**
+ * A period as a person reads it, for a heading: "October 2026" for a whole
+ * month, "Year 2026" for a whole year, else the two dates in the site's
+ * format. The period picker names its choices the same way.
+ * erp_accountant_period_label() is the file-name form of the same period.
+ *
+ * @param string $from Y-m-d
+ * @param string $to   Y-m-d
+ * @return string plain text
+ */
+function erp_profit_period_title($from, $to)
+{
+    $from = (string) $from;
+    $to = (string) $to;
+
+    if ((substr($from, 5, 5) === '01-01') && ($to === substr($from, 0, 4) . '-12-31')) {
+        return lang(array('string' => 'Year {var:1}', 'vars' => substr($from, 0, 4)));
+    }
+
+    if ((substr($from, 8, 2) === '01') && ($to === date('Y-m-t', strtotime($from)))) {
+        return get_month_name_from_number(substr($from, 5, 2)) . ' ' . substr($from, 0, 4);
+    }
+
+    return prepare_form_data_for_output($from, 'date', false) . ' – ' . prepare_form_data_for_output($to, 'date', false);
+}
+
+/**
  * Whether the completed orders without an invoice count in the report: the
  * choice the form sent, kept in this browser for a year, or the one kept.
  *

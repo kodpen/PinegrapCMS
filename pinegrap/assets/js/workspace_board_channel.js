@@ -117,7 +117,7 @@
         groups.setAttribute('aria-label', t('cb_group'));
 
         GROUPS.forEach(function (key) {
-            var item = k.button('btn btn-ghost' + (prefs.group === key ? ' active' : ''), t('cb_by_' + key));
+            var item = k.button('btn btn-text theme-secondary' + (prefs.group === key ? ' active' : ''), t('cb_by_' + key));
             item.setAttribute('aria-pressed', prefs.group === key ? 'true' : 'false');
             item.addEventListener('click', function () {
                 if (prefs.group !== key) {
@@ -161,8 +161,12 @@
 
         bar.appendChild(k.el('div', 'pg-toolbar-grow'));
 
-        var searchGroup = k.el('div', 'input-group input-group-sm rounded-pill pg-toolbar-search');
-        var search = k.el('input', 'form-control');
+        var searchGroup = k.el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
+        var searchIcon = k.el('span', 'form-adorn-text');
+        searchIcon.setAttribute('aria-hidden', 'true');
+        searchIcon.appendChild(k.icon('bi-search'));
+        searchGroup.appendChild(searchIcon);
+        var search = k.el('input', 'form-ghost');
         search.type = 'search';
         search.value = self.q;
         search.placeholder = t('cb_search');
@@ -276,7 +280,7 @@
 
         // A new task with the column's value: its status, its person, its day.
         if (column.add && self.data.can_post) {
-            var add = k.button('btn btn-sm btn-ghost ws-cb-add', '', 'bi-plus-lg', t('cb_add'));
+            var add = k.button('btn btn-sm btn-text theme-secondary ws-cb-add', '', 'bi-plus-lg', t('cb_add'));
             add.addEventListener('click', function () { newTask(self, column); });
             head.appendChild(add);
         }

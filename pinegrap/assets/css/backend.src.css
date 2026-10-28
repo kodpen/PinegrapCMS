@@ -3869,7 +3869,7 @@ body:not(.toolbar) .software-content {
     .btn-outline.theme-danger
   ):not(.btn-outline.theme-warning):not(.btn-outline.theme-info):not(
     .btn-outline-light
-  ):not(.btn-outline-dark):not(.btn-close):not(.btn-ghost) {
+  ):not(.btn-outline-dark):not(.btn-close):not(.btn-ghost):not(.btn-text.theme-secondary) {
   --bs-btn-bg: transparent;
   --bs-btn-hover-bg: var(--pg-bg-1);
   --bs-btn-active-bg: color-mix(in srgb, var(--pg-bg-1) 50%, transparent);
@@ -4266,6 +4266,31 @@ table.chart thead th {
   width: 1%;
 }
 
+/* A combobox searching the server (data-pg-source): its own search box,
+   which Bootstrap must not filter, and the line that says what the search
+   is doing. */
+.pg-combobox-query {
+  width: 100%;
+}
+
+/* Answers are long category paths: the menu stays within the screen and an
+   item wraps instead of widening it. */
+.pg-combobox-remote {
+  width: max-content;
+  max-width: min(36rem, calc(100vw - 1rem));
+}
+
+.pg-combobox-remote .menu-item {
+  white-space: normal;
+}
+
+.pg-combobox-status {
+  padding: .75rem 1rem;
+  font-size: .875rem;
+  color: var(--pg-fg-3);
+  text-align: center;
+}
+
 .min-height-tagin {
   min-height: 66px;
 }
@@ -4273,7 +4298,6 @@ table.chart thead th {
 .min-width-tagin {
   min-width: 150px !important;
 }
-textarea.select2-search__field:focus-visible,
 .pg-chips > .form-ghost:focus-visible {
     outline: none !important;
     box-shadow: none !important;
@@ -4315,10 +4339,6 @@ body.toolbar {
     padding-right: 20px;
     justify-content: space-evenly;
   }
-}
-
-.select2-selection.select2-selection--multiple {
-  min-height: 75px;
 }
 
 .bg-reset {
@@ -4702,12 +4722,7 @@ a.dt-button {
 :is(select.form-control),
 .form-control,
 .pg-chips,
-.input-group-text,
-.select2-container--bootstrap-5 .select2-selection,
-.select2-container--bootstrap-5
-  .select2-selection--multiple
-  .select2-selection__rendered
-  .select2-selection__choice {
+.input-group-text {
   border-radius: var(--pg-radius-lg);
 }
 .dialog-header,
@@ -4915,30 +4930,6 @@ html[data-bs-theme="dark"] #product_group_tree ul {
 
 html[data-bs-theme="dark"] #product_group_tree span.row:before {
   border-bottom: 1px solid #0000006c;
-}
-
-html[data-bs-theme="dark"] .select2-search,
-html[data-bs-theme="dark"] .select2-search input,
-html[data-bs-theme="dark"] .select2-results {
-  background-color: var(--pg-bg-body);
-}
-
-html[data-bs-theme="dark"] .select2-container--bootstrap-5 .select2-selection {
-  color: var(--pg-fg-2);
-  background-color: var(--pg-bg-body);
-  border: var(--pg-border-width) solid var(--pg-border-color);
-}
-
-html[data-bs-theme="dark"]
-  .select2-container--bootstrap-5
-  .select2-selection--single
-  .select2-selection__rendered,
-html[data-bs-theme="dark"]
-  .select2-container--bootstrap-5
-  .select2-selection--multiple
-  .select2-selection__rendered
-  .select2-selection__choice {
-  color: #ffffff;
 }
 
 html[data-bs-theme="dark"] .cke_bottom {
@@ -8094,8 +8085,30 @@ button.no-popover:focus-visible {
   --bs-btn-active-border-color: transparent;
 }
 
+/* Bootstrap 6's text button in the secondary theme is the same object, and
+   the classic screens carry it instead of .btn-ghost (Workspace and the
+   editor still use the class above). Its tokens are set to what the ghost
+   resolves to, so the two look alike in every state:
+   - colours: the ghost's ink and hover surface, not the secondary theme's;
+   - focus: the panel-wide focus ring above still wins over the theme's;
+   - disabled: left undefined like the ghost's, so the label keeps the
+     parent's ink and the border falls back to it, as before. */
+.btn-text.theme-secondary {
+  --bs-btn-color: var(--pg-fg-2);
+  --bs-btn-hover-color: var(--pg-fg-body);
+  --bs-btn-hover-bg: var(--pg-bg-2);
+  --bs-btn-active-color: var(--pg-fg-body);
+  --bs-btn-active-bg: var(--pg-bg-2);
+  --bs-btn-border-color: transparent;
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-border-color: transparent;
+  --bs-btn-disabled-color: initial;
+  --bs-btn-disabled-border-color: initial;
+}
+
 /* A view switch that is currently on. Not :active - that is the pressed
    state and lasts a moment; this one has to hold. */
+.btn-text.theme-secondary.active,
 .btn-ghost.active {
   background: var(--pg-bg-2);
   color: var(--pg-fg-body);
@@ -9311,7 +9324,7 @@ body.pg-side-panel-open .pg-chat-launcher {
    in a stylesheet: the screen still works, it is just plainer. */
 @supports selector(:has(*)) {
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range),
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range),
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) {
     /* The rule and the text start at the same place, which is the card's own
        content edge. A .row carries a negative horizontal margin and gives each
@@ -9366,7 +9379,7 @@ body.pg-side-panel-open .pg-chat-launcher {
      row on screen is hardly ever the last child. A card with one setting in it
      -- Sign in with Google, when it is off -- then ended with a rule under the
      only thing in it and a gap under that. */
-  .pg-set-card .row > * + [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range),
+  .pg-set-card .row > * + [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range),
   .pg-set-card .row > * + [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) {
     padding-top: .85rem;
     border-top: var(--pg-border-width) solid var(--pg-border-color-translucent);
@@ -9388,7 +9401,7 @@ body.pg-side-panel-open .pg-chat-launcher {
      the amount changed with the control, which is what made the card look
      crooked rather than merely offset. Sharing one row makes that row as tall
      as whichever of the two is taller and centres both in it, at any height. */
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range),
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range),
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(7rem, 19rem);
@@ -9404,28 +9417,29 @@ body.pg-side-panel-open .pg-chat-launcher {
   /* Anything the two columns were not expecting takes a line of its own under
      them rather than being wedged into a cell it does not belong in. Stated
      before the placements below so that the placements win. */
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > *,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > *,
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > * {
     grid-column: 1 / -1;
   }
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > .form-label,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .form-label,
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > :is(.form-field > label) {
     grid-area: pgname;
     margin-bottom: 0;
     font-weight: 500;
   }
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > .form-text,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .form-text,
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > .form-text {
     grid-area: pgnote;
     margin-top: .1rem;
   }
 
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > input.form-control,
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > :is(select.form-control),
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > .input-group,
-  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > .form-range {
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > input.form-control,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > :is(select.form-control),
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .input-group,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .form-adorn,
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .form-range {
     grid-area: pgctrl;
     justify-self: end;
     width: 100%;
@@ -9443,7 +9457,7 @@ body.pg-side-panel-open .pg-chat-launcher {
      name, and the rule between settings is what keeps them apart. */
   @container (max-width: 34rem) {
 
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range),
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range),
     .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field {
       grid-template-columns: minmax(0, 1fr);
       grid-template-areas:
@@ -9454,10 +9468,11 @@ body.pg-side-panel-open .pg-chat-launcher {
       row-gap: .4rem;
     }
 
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > input.form-control,
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > :is(select.form-control),
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > .input-group,
-    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-range) > .form-range,
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > input.form-control,
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > :is(select.form-control),
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .input-group,
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .form-adorn,
+    .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .form-range,
     .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > :is(.check, .radio, .switch) {
       justify-self: start;
     }
@@ -9553,9 +9568,11 @@ body.pg-side-panel-open .pg-chat-launcher {
 
 /* The cell owns the row, the control owns the cell. Direct children only:
    inside an .input-group the control belongs to the group, and capping it
-   there would pull the group apart -- so the group is capped instead. A cell
-   whose control is wrapped in something else keeps the whole cell, which is
-   the safe way to be wrong. */
+   there would pull the group apart -- so the group is capped instead. A
+   form-adorn field needs no line of its own: its wrapper is the .form-control,
+   the add-on inside its border, so the .form-control cap holds it whole. A
+   cell whose control is wrapped in something else keeps the whole cell, which
+   is the safe way to be wrong. */
 .pg-set-card .pg-f-xs > .form-control,
 .pg-set-card .pg-f-xs > :is(select.form-control),
 .pg-set-card .pg-f-xs > .input-group { max-width: 11rem; }
@@ -9571,6 +9588,19 @@ body.pg-side-panel-open .pg-chat-launcher {
 .pg-set-card .pg-f-lg > .form-control,
 .pg-set-card .pg-f-lg > :is(select.form-control),
 .pg-set-card .pg-f-lg > .input-group { max-width: 34rem; }
+
+/* A form-adorn add-on keeps the type of the input-group add-on it replaced,
+   the body size rather than the 13px of the field, so a converted row stays
+   as tall as it was (38px) and the unit reads the same. The two sizes meet
+   on one baseline, not on their centres, so the value and its unit read as
+   one line. */
+.pg-set-card .form-adorn {
+  align-items: baseline;
+}
+.pg-set-card .form-adorn > .form-adorn-text {
+  font-size: var(--bs-btn-input-font-size);
+  line-height: var(--bs-btn-input-line-height);
+}
 
 /* ── The hub ──────────────────────────────────────────────────────────────
    Tiles of a fixed width, as many per row as fit, full width on a phone. The
@@ -10155,7 +10185,7 @@ body.pg-side-panel-open .pg-chat-launcher {
 }
 /* A switched-off ghost button stays borderless; Bootstrap's disabled state
    would draw the outline the ghost recipe exists to leave out. */
-.pg-sale .btn-ghost:disabled { border-color: transparent; }
+.pg-sale .btn-text.theme-secondary:disabled { border-color: transparent; }
 /* The view switch (till / document): one frame round both, the chosen
    view filled - a segmented control, as in the approved preview, rather
    than the joined .btn-group of the toolbar recipe. */
@@ -19394,11 +19424,144 @@ html[data-bs-theme="dark"] .wsf-node-end { --wsf-kind: #b3ab9b; }
 .wsf-edge-line.wsf-arrow-hold {
   marker-end: none;
 }
+/* Data threads (drawData()): 1 px from a value's dot under the box that
+   gives it to the chip of the field under the box that reads it, in its
+   type's colour, threads of one type a few tones apart. The tones are the
+   dark canvas's; the light one takes deeper ones. */
+.wsf-tone-number-0 { --wsf-tone: #2f6fcc; }
+.wsf-tone-number-1 { --wsf-tone: #5a8fdd; }
+.wsf-tone-number-2 { --wsf-tone: #1d56a8; }
+.wsf-tone-text-0 { --wsf-tone: #a8760f; }
+.wsf-tone-text-1 { --wsf-tone: #c08f2e; }
+.wsf-tone-text-2 { --wsf-tone: #8c6200; }
+html[data-bs-theme="dark"] .wsf-tone-number-0 { --wsf-tone: #6ea8ff; }
+html[data-bs-theme="dark"] .wsf-tone-number-1 { --wsf-tone: #9cc4ff; }
+html[data-bs-theme="dark"] .wsf-tone-number-2 { --wsf-tone: #4d8fe8; }
+html[data-bs-theme="dark"] .wsf-tone-text-0 { --wsf-tone: #e9b44c; }
+html[data-bs-theme="dark"] .wsf-tone-text-1 { --wsf-tone: #f5cf7d; }
+html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
 .wsf-thread {
   fill: none;
-  stroke: #e9b44c;
+  stroke: var(--wsf-tone, #a8760f);
   stroke-width: 1;
   pointer-events: none;
+}
+.wsf-thread-skipped {
+  stroke-dasharray: 4 3;
+}
+/* Placed from the box's outer edges (drawData()), so the box's 1 px border
+   and 4 px kind edge are taken back. */
+.wsf-data {
+  position: absolute;
+  top: calc(100% - 8px);
+  margin-left: -4px;
+  display: flex;
+  align-items: center;
+  height: 18px;
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.wsf-data-field {
+  width: 76px;
+  padding: 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid var(--wsf-tone);
+  border-radius: 999px;
+  background: var(--pg-bg-body);
+  color: var(--pg-fg-2);
+}
+.wsf-data-field.wsf-data-bad {
+  border-color: var(--pg-danger);
+  color: var(--pg-danger);
+}
+.wsf-data-out {
+  width: 84px;
+  gap: 3px;
+  color: var(--pg-fg-2);
+}
+.wsf-data-ring {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--wsf-tone);
+  border-radius: 50%;
+  background: var(--pg-bg-body);
+  color: var(--wsf-tone);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+}
+.wsf-data-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wsf-thread.wsf-dim,
+.wsf-data.wsf-dim {
+  opacity: .25;
+}
+/* Drawing a thread (T2): the dots of a draft take the pointer; while a
+   thread is on its way the fields it may go into are lit and the one
+   under the pointer is filled. */
+.wsf-data-live {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+.wsf-data-unused .wsf-data-ring {
+  border-style: dashed;
+}
+.wsf-data-unused {
+  opacity: .75;
+}
+.wsf-data-live:hover .wsf-data-ring,
+.wsf-data-out.wsf-data-hot .wsf-data-ring {
+  background: var(--wsf-tone);
+  color: var(--pg-bg-body);
+}
+.wsf-data-target {
+  pointer-events: auto;
+  cursor: copy;
+  border-style: dashed;
+  border-color: var(--ws-accent);
+  color: var(--ws-accent);
+  box-shadow: 0 0 0 2px rgba(var(--ws-accent-rgb), .25);
+}
+.wsf-data-target.wsf-data-hot {
+  border-style: solid;
+  background: var(--ws-soft);
+}
+.wsf-binding .wsf-data.wsf-dim.wsf-data-target {
+  opacity: 1;
+}
+.wsf-edge-temp.wsf-temp-thread {
+  stroke: var(--ws-accent);
+  stroke-width: 1;
+  stroke-dasharray: none;
+}
+.wsf-threads-off .wsf-thread,
+.wsf-threads-off .wsf-data {
+  display: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .wsf-thread,
+  .wsf-data {
+    transition: opacity 120ms ease-out;
+  }
+}
+.wsf-outline-reads {
+  margin: var(--ws-space-1) 0 var(--ws-space-2);
+  color: var(--pg-fg-2);
+}
+.wsf-outline-read-icon {
+  margin-right: var(--ws-space-1);
+  color: var(--wsf-tone);
+}
+.wsf-outline-reads .wsf-data-bad,
+.wsf-outline-reads .wsf-data-bad .wsf-outline-read-icon {
+  color: var(--pg-danger);
 }
 .wsf-setup {
   position: absolute;
@@ -19481,6 +19644,68 @@ html[data-bs-theme="dark"] .wsf-node-end { --wsf-kind: #b3ab9b; }
 }
 .wsf-problem.wsf-warning {
   color: var(--pg-warning-fg-emphasis);
+}
+/* A text a box writes in, its values as chips (valueInput()); the list
+   "Add value" opens under it (valueField()). */
+.wsf-values {
+  min-height: calc(1.5em + .5rem + 2px);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.wsf-values-multi {
+  min-height: 5rem;
+}
+.wsf-chip {
+  display: inline-block;
+  margin: 0 .1rem;
+  padding: 0 .4rem;
+  border: 1px solid var(--pg-primary-border-subtle);
+  border-radius: 999px;
+  background: var(--pg-primary-bg-subtle);
+  color: var(--pg-primary-fg-emphasis);
+  font-size: .8rem;
+  line-height: 1.4;
+  white-space: nowrap;
+  user-select: all;
+}
+.wsf-chip-skipped {
+  border-style: dashed;
+  border-color: var(--pg-warning-border-subtle);
+  background: var(--pg-warning-bg-subtle);
+  color: var(--pg-warning-fg-emphasis);
+}
+.wsf-chip-bad {
+  border-color: var(--pg-danger-border-subtle);
+  background: var(--pg-danger-bg-subtle);
+  color: var(--pg-danger-fg-emphasis);
+}
+.wsf-values-list {
+  max-height: 16rem;
+  overflow-y: auto;
+  margin-top: var(--ws-space-1);
+  padding: var(--ws-space-1);
+  border: 1px solid var(--pg-border-color);
+  border-radius: var(--ws-radius-sm);
+}
+.wsf-values-group {
+  padding: .35rem .25rem .1rem;
+  font-size: .75rem;
+  font-weight: 600;
+}
+.wsf-values-pick {
+  display: block;
+  width: 100%;
+  padding: .2rem .5rem;
+  border: 0;
+  border-radius: var(--ws-radius-sm);
+  background: transparent;
+  color: inherit;
+  font-size: .85rem;
+  text-align: left;
+}
+.wsf-values-pick:hover,
+.wsf-values-pick:focus-visible {
+  background: var(--pg-secondary-bg-subtle);
 }
 .wsf-people-list {
   max-height: 12rem;

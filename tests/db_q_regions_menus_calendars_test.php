@@ -5,7 +5,7 @@
  * Static checks on the region, menu, form list view and calendar screens
  * (save_region_content.php, edit_ad_region.php, edit_menu.php,
  * edit_menu_item.php, edit_form_list_view.php, edit_calendar.php,
- * add_calendar_event.php, update_calendar_event_exception.php): their raw
+ * add_calendar_event.php and its shared form, update_calendar_event_exception.php): their raw
  * queries with values run through db_q() placeholders, not escape()/e()
  * concatenated into the SQL text, and every db_q() call passes one value
  * per '?'. The raw queries left have no values. Optional SQL pieces carry
@@ -123,10 +123,12 @@ function db_q_regions_menus_calendars_test_files()
 		'save_region_content.php' => 10,
 		'edit_ad_region.php' => 9,
 		'edit_menu.php' => 8,
-		'edit_menu_item.php' => 12,
+		'edit_menu_item.php' => 9,
+		'includes/forms/menu_item_form.php' => 2,
 		'edit_form_list_view.php' => 11,
 		'edit_calendar.php' => 10,
-		'add_calendar_event.php' => 5,
+		'add_calendar_event.php' => 3,
+		'includes/forms/calendar_event_form.php' => 4,
 		'update_calendar_event_exception.php' => 7,
 	);
 }

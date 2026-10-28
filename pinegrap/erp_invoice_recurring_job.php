@@ -40,7 +40,9 @@ if (function_exists('pg_cron_ran')) {
     pg_cron_ran('erp_invoice_recurring_job');
 }
 
-if (php_sapi_name() === 'cli') {
+// The summary is for a person running the script by hand; under the general
+// job's dispatcher printed text goes to the site log (pg_cron_dispatch_output()).
+if ((php_sapi_name() === 'cli') && !defined('PG_CRON_DISPATCH')) {
     print 'repeating invoices: ' . (int) $result['written'] . ' written, ' . (int) $result['skipped'] . ' skipped'
         . (!empty($result['errors']) ? (', ' . count($result['errors']) . ' error(s): ' . implode('; ', $result['errors'])) : '') . "\n";
 } elseif (!pg_cron_is_background_run()) {

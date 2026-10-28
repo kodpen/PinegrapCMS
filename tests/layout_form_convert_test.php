@@ -253,6 +253,37 @@ function test_layout_form_convert_select_date_and_missing()
 	pg_assert_same('date', _test_lfc_attr($date, 'type'));
 	pg_assert_same('2026-10-27', _test_lfc_attr($date, 'value'));
 	pg_assert_same(array(124, 125), $res['missing'], 'fields the layout does not draw');
+	$names = array_keys(_pg_cf_controls($res['tree'], 5));
+	pg_assert_same(array('salutation', 'game_date', 'winner'), $names, 'added after the drawn ones');
+	pg_assert_contains('"x"', json_encode($res['tree']), 'the information too');
+}
+
+// A row the layout leaves out comes before the CAPTCHA and the button,
+// inside the row that holds them; a signature is left to its row.
+function test_layout_form_convert_missing_before_the_end()
+{
+	$code = '<div class="row"><div class="col-sm-12"><label for="1"><?=$field[\'1\'][\'label\']?></label><input type="text" name="1" id="1"></div>'
+		. '<?php if ($captcha_question): ?><div class="col-sm-12"><input type="number" name="captcha_submitted_answer"></div><?php endif ?>'
+		. '<div class="col-sm-12"><button type="submit"><?=h($submit_button_label)?></button></div></div>';
+	$fields = array(
+		_test_lfc_field(1, 'name', 'Name', 'text box'),
+		_test_lfc_field(2, 'topic', 'Topic', 'radio button', array('options' => array(_test_lfc_option('A'), _test_lfc_option('B')))),
+		_test_lfc_field(3, 'sign', 'Sign here', 'signature'),
+		_test_lfc_field(4, 'notes', 'Notes', 'text area'),
+	);
+	$res = pg_layout_form_convert($code, $fields, array('page_id' => 8));
+	pg_assert_same(array(2, 4), $res['missing']);
+	pg_assert_same(array('signature'), $res['dropped']);
+	$row = $res['tree']['children'][0]['children'];
+	pg_assert_same(5, count($row), 'name, topic, notes, CAPTCHA, button');
+	pg_assert_same('fieldset', $row[1]['children'][0]['props']['tag']);
+	pg_assert_same('Topic', $row[1]['children'][0]['children'][0]['props']['text']);
+	pg_assert_same('notes', _test_lfc_attr($row[2]['children'][1], 'name'));
+	pg_assert_same('captcha', $row[3]['children'][0]['props']['_bindings']['section']);
+	$derived = _pg_cf_controls($res['tree'], 8);
+	pg_assert_same(array('name', 'topic', 'notes'), array_keys($derived));
+	pg_assert_same('Notes', $derived['notes']['label']);
+	pg_assert_same(2, count($derived['topic']['options']));
 }
 
 // The generated part of an unmodified layout is converted from the text the

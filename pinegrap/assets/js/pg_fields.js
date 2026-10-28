@@ -8,17 +8,18 @@
  * whose Chips, Combobox and Datepicker replace tagin, select2 and the jQuery
  * UI pickers. Screens mark a field with a data-pg-* hook and read or write it
  * through these objects, so the swap changes the engine here, not the
- * screens. Every kind runs on Bootstrap 6 ('v6') but a combobox that searches
- * the server, which stays a select2 ('v5'). A page without Bootstrap 6 keeps
- * plain fields that still post.
+ * screens. Every kind runs on Bootstrap 6 ('v6'); only a page without it that
+ * has select2 (a site page) draws a combobox that searches the server as a
+ * select2 ('v5'). A page without either keeps plain fields that still post.
  *
  *   <input data-pg-chips>                 Bootstrap 6 Chips drawn after the hidden
  *                                         input, which keeps the joined list: comma
  *                                         or data-pg-separator (" " for classes)
  *   <select data-pg-combobox>             Bootstrap 6 Combobox drawn after the hidden
  *                                         <select>, which keeps the value; data-placeholder
- *     data-pg-source="url"                select2: options searched on the server as you type:
- *                                         GET url?q=<text> answers {results: [{id, text}]};
+ *     data-pg-source="url"                options searched on the server as you type:
+ *                                         GET url?q=<text> answers {results: [{id, text}]}
+ *                                         or {error: text};
  *                                         data-pg-min-length, data-pg-free-text (a typed
  *                                         value is kept), data-placeholder
  *   <input data-pg-date>                  Bootstrap 6 Datepicker on the field, site date
@@ -44,7 +45,8 @@
  *   pgFields.switchKind(el, kind)         the same field as another kind ('date' <-> 'datetime')
  *
  * set() fires a native change event that bubbles; listen with onChange() or
- * jQuery .on('change'): select2 announces a pick only through jQuery.
+ * jQuery .on('change'): select2 (site pages) announces a pick only through
+ * jQuery.
  * Bootstrap 6 Datepicker reads an input's date with Date(), which takes
  * 5/3/2026 as May; it is given our own parse instead and writes our own
  * format.
@@ -251,6 +253,13 @@
                 ready: function () { var $ = jq(); return !!($ && $.fn.select2); },
                 init: function (el) {
                     var $ = jq(), opts = { theme: 'bootstrap-5' };
+                    // select2's own texts are English; the tag's labels are
+                    // in the page language.
+                    opts.language = {
+                        noResults: function () { return label('no-results', 'No results'); },
+                        searching: function () { return label('searching', 'Searching\u2026'); },
+                        search: function () { return label('search', 'Search'); }
+                    };
                     if ($(el).data('allowClear')) {
                         opts.allowClear = true;
                     }
@@ -364,7 +373,32 @@
         toggle.appendChild(shown);
         toggle.insertAdjacentHTML('beforeend', CARET);
         menu.className = 'menu pg-combobox-menu';
-        var count = el.options.length, search = count >= COMBOBOX_SEARCH_FROM;
+        var source = el.getAttribute('data-pg-source'), query = null, status = null;
+        var count = el.options.length, search = !source && count >= COMBOBOX_SEARCH_FROM;
+        if (source) {
+            menu.className += ' pg-combobox-remote';
+            // Our own search box: Bootstrap's would hide the server's answers
+            // that do not contain the typed text word for word.
+            var qbox = document.createElement('div');
+            query = document.createElement('input');
+            status = document.createElement('div');
+            qbox.className = 'combobox-search';
+            query.type = 'text';
+            query.className = 'form-control pg-combobox-query';
+            query.setAttribute('autocomplete', 'off');
+            query.setAttribute('placeholder', label('search', 'Search'));
+            query.setAttribute('aria-label', label('search', 'Search'));
+            query.setAttribute('aria-autocomplete', 'list');
+            qbox.appendChild(query);
+            menu.appendChild(qbox);
+            status.setAttribute('role', 'status');
+            status.setAttribute('aria-live', 'polite');
+            menu.appendChild(status);
+            if (el.id) {
+                menu.id = el.id + '_menu';
+                query.setAttribute('aria-controls', menu.id);
+            }
+        }
         if (search) {
             var box = document.createElement('div'), input = document.createElement('input'), none = document.createElement('div');
             box.className = 'combobox-search';
@@ -416,11 +450,16 @@
                 var items = menu.querySelectorAll('.menu-item'), chosen = {};
                 for (var n = 0; n < items.length; n++) {
                     if ((' ' + items[n].className + ' ').indexOf(' selected ') >= 0) {
-                        chosen[items[n].getAttribute('data-bs-value')] = true;
+                        chosen[items[n].getAttribute('data-bs-value')] = items[n].textContent.trim();
                     }
                 }
+                // A server's answer is not among the options: the pick
+                // becomes the select's option, the others it found go.
+                if (source) {
+                    keepChosenOptions(el, chosen);
+                }
                 for (var m = 0; m < el.options.length; m++) {
-                    el.options[m].selected = !!chosen[el.options[m].value];
+                    el.options[m].selected = Object.prototype.hasOwnProperty.call(chosen, el.options[m].value);
                 }
                 if (!multiple && !Object.keys(chosen).length) {
                     el.value = '';
@@ -443,10 +482,165 @@
         };
         toggle.addEventListener('click', open);
         offs.push(function () { toggle.removeEventListener('click', open); });
+        if (source) {
+            offs = offs.concat(serverSearch(el, menu, query, status, toggle));
+        }
         el.pgComboboxOff = function () {
             offs.forEach(function (off) { off(); });
         };
         return combobox;
+    }
+
+    // The select keeps the empty option and the chosen ones, each with the
+    // text of the item it was picked from.
+    function keepChosenOptions(el, chosen) {
+        var have = {};
+        for (var i = el.options.length - 1; i >= 0; i--) {
+            var o = el.options[i];
+            if (o.value === '' || Object.prototype.hasOwnProperty.call(chosen, o.value)) {
+                have[o.value] = true;
+            } else {
+                o.parentNode.removeChild(o);
+            }
+        }
+        Object.keys(chosen).forEach(function (value) {
+            if (!have[value]) {
+                var option = document.createElement('option');
+                option.value = value;
+                option.textContent = chosen[value];
+                el.appendChild(option);
+            }
+        });
+    }
+
+    // Wait after the last key before asking the server.
+    var SEARCH_PAUSE = 250;
+
+    // Server search for a data-pg-source combobox: the typed text is sent
+    // as q after a pause, the answer is drawn as the menu's items (the
+    // stored choice marked, the typed text last when data-pg-free-text), an
+    // older answer arriving late is dropped. Opening shows the stored
+    // choice and the empty item. Returns the listeners' off functions.
+    function serverSearch(el, menu, query, status, toggle) {
+        var source = el.getAttribute('data-pg-source'), timer = null, asked = 0, aborter = null;
+        var min = parseInt(el.getAttribute('data-pg-min-length'), 10) || 0, free = el.hasAttribute('data-pg-free-text');
+        var placeholder = el.getAttribute('data-placeholder');
+
+        var say = function (text) {
+            status.textContent = text || '';
+            status.className = 'pg-combobox-status' + (text ? '' : ' d-none');
+        };
+        var items = function (list) {
+            var old = menu.querySelectorAll('.menu-item');
+            for (var i = 0; i < old.length; i++) {
+                menu.removeChild(old[i]);
+            }
+            list.forEach(function (item) { menu.appendChild(item); });
+        };
+        // The select's own options: the empty item and the stored choice.
+        var stored = function () {
+            var list = [];
+            for (var i = 0; i < el.options.length; i++) {
+                list.push(comboboxItem(el.options[i], !!el.multiple, placeholder));
+            }
+            items(list);
+            say(label('type', 'Type to search...'));
+        };
+        var answer = function (text, data) {
+            var results = (data && data.results) ? data.results : [], list = [], seen = {};
+            if (data && data.error) {
+                items([]);
+                say(String(data.error));
+                return;
+            }
+            results.forEach(function (r) {
+                var id = String(r.id);
+                if (seen[id]) {
+                    return;
+                }
+                seen[id] = true;
+                list.push(comboboxItem({ value: id, textContent: String(r.text === undefined ? id : r.text), selected: el.value === id }, false, placeholder));
+            });
+            if (free && !seen[text]) {
+                list.push(comboboxItem({ value: text, textContent: text, selected: el.value === text }, false, placeholder));
+            }
+            items(list);
+            say(list.length ? '' : label('no-results', 'No results'));
+        };
+        var ask = function () {
+            timer = null;
+            var text = String(query.value).trim(), mine = ++asked;
+            if (aborter) {
+                aborter.abort();
+                aborter = null;
+            }
+            if (text.length < min || text === '') {
+                stored();
+                return;
+            }
+            say(label('searching', 'Searching\u2026'));
+            var init = { credentials: 'same-origin', headers: { Accept: 'application/json' } };
+            if (typeof window.AbortController === 'function') {
+                aborter = new window.AbortController();
+                init.signal = aborter.signal;
+            }
+            window.fetch(source + (source.indexOf('?') >= 0 ? '&' : '?') + 'q=' + encodeURIComponent(text), init)
+                .then(function (response) { return response.json(); })
+                .then(function (data) {
+                    if (mine === asked) {
+                        answer(text, data);
+                    }
+                }, function (error) {
+                    if (mine === asked && !(error && error.name === 'AbortError')) {
+                        answer(text, null);
+                    }
+                });
+        };
+        var typed = function () {
+            if (timer) {
+                window.clearTimeout(timer);
+            }
+            timer = window.setTimeout(ask, SEARCH_PAUSE);
+        };
+        // Enter picks the first item instead of submitting the form; arrows
+        // and Escape are Bootstrap's own menu keys.
+        var keys = function (event) {
+            if (event.key !== 'Enter') {
+                return;
+            }
+            event.preventDefault();
+            var first = menu.querySelectorAll('.menu-item')[0];
+            if (first && !first.disabled) {
+                first.click();
+            }
+        };
+        var opened = function () {
+            if (timer) {
+                window.clearTimeout(timer);
+                timer = null;
+            }
+            asked++;
+            query.value = '';
+            stored();
+            query.focus();
+        };
+        stored();
+        query.addEventListener('input', typed);
+        query.addEventListener('keydown', keys);
+        return [
+            window.pgUI.combobox.on(toggle, 'shown', opened),
+            function () {
+                if (timer) {
+                    window.clearTimeout(timer);
+                }
+                if (aborter) {
+                    aborter.abort();
+                }
+                asked++;
+                query.removeEventListener('input', typed);
+                query.removeEventListener('keydown', keys);
+            }
+        ];
     }
 
     function removeCombobox(el) {
@@ -474,6 +668,7 @@
     // Translated words the widgets show, printed by pg_fields_script() on its
     // tag as data-pg-<name>-label: 'remove' (a chip's button, which Bootstrap
     // hard-codes as "Remove"), 'search' and 'no-results' (a combobox),
+    // 'searching' and 'type' (a combobox searching the server),
     // 'locale' (the panel language a calendar names months and days in).
     function label(name, fallback) {
         var attr = 'data-pg-' + name + '-label', tag = document.querySelector('script[' + attr + ']');
@@ -516,6 +711,11 @@
         ghost.setAttribute('autocomplete', 'off');
         if (el.getAttribute('data-placeholder')) {
             ghost.setAttribute('placeholder', el.getAttribute('data-placeholder'));
+        }
+        // The field's <label> names the hidden input; the box typed in gets
+        // its text, or a screen reader announces only the placeholder.
+        if (el.labels && el.labels.length && el.labels[0].textContent.trim()) {
+            ghost.setAttribute('aria-label', el.labels[0].textContent.replace(/\s+/g, ' ').trim());
         }
         // Not readOnly: the settings dialog shuts every text field read-only
         // until it is reached, the hidden input too.
@@ -838,11 +1038,13 @@
         el.pgParts = null;
     }
 
-    // The engine of a kind; a combobox that searches the server
-    // (data-pg-source) stays on select2, Combobox searches only its items.
+    // The engine of a kind. A combobox that searches the server
+    // (data-pg-source) is a select2 only on a page without Bootstrap 6 (a
+    // site page on 5.3.8); the panel draws it as a Combobox.
     function engineName(kind, el) {
         if (kind === 'combobox' && el && el.hasAttribute && el.hasAttribute('data-pg-source')) {
-            return 'v5';
+            var v = window.pgUI ? window.pgUI.version() : -1;
+            return (v === 6 || v === 0) ? 'v6' : 'v5';
         }
         return ENGINES.v6[kind] ? 'v6' : 'v5';
     }

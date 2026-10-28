@@ -53,9 +53,9 @@ $query = "SELECT
          LEFT JOIN page ON form_item_view_pages.custom_form_page_id = page.page_id
          LEFT JOIN custom_form_pages ON custom_form_pages.page_id = form_item_view_pages.custom_form_page_id
          WHERE
-            (form_item_view_pages.page_id = '" . e($_REQUEST['page_id']) . "')
+            (form_item_view_pages.page_id = ?)
             AND (form_item_view_pages.collection = 'a')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = db_q($query, array((string) $_REQUEST['page_id'])) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 $custom_form_folder_id = $row['page_folder'];
@@ -126,9 +126,9 @@ if (!$_POST) {
             layout
         FROM form_item_view_pages
         WHERE
-            (page_id = '" . e($page['id']) . "')
+            (page_id = ?)
             AND (collection = 'a')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) $page['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     $custom_form_page_id = $row['custom_form_page_id'];
@@ -225,7 +225,7 @@ if (!$_POST) {
                 <dialog class="dialog dialog-xl" id="hints" aria-labelledby="hints">
                             <div class="dialog-header">
                                 <h5 class="dialog-title">' . lang('Hints') . '</h5>
-                                <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+                                <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                             </div>
                             <div class="dialog-body ">
                                 <div class="row">
@@ -268,8 +268,8 @@ if (!$_POST) {
                                                 </div>
                                                 <div class="col-12 lg:col-4 2xl:col-3 order-2 my-3" id="pg_fiv_variables">
                                                     <div class="d-flex align-items-center justify-content-between gap-3">
-                                                        <button type="button" class="btn btn-sm btn-ghost px-1 fw-bold fg-primary" data-bs-toggle="collapse" data-bs-target="#pg_fiv_variables_list" aria-expanded="true" aria-controls="pg_fiv_variables_list"><i class="bi bi-chevron-down me-1" aria-hidden="true"></i>' . lang('Available variables') . '</button>
-                                                        <button type="button" class="btn btn-sm btn-ghost" data-bs-toggle="dialog" data-bs-target="#hints"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('Hints') . '</button>
+                                                        <button type="button" class="btn btn-sm btn-text theme-secondary px-1 fw-bold fg-primary" data-bs-toggle="collapse" data-bs-target="#pg_fiv_variables_list" aria-expanded="true" aria-controls="pg_fiv_variables_list"><i class="bi bi-chevron-down me-1" aria-hidden="true"></i>' . lang('Available variables') . '</button>
+                                                        <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#hints"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . lang('Hints') . '</button>
                                                     </div>
                                                     <div class="collapse show" id="pg_fiv_variables_list">
                                                         <p class="form-text mt-1 mb-3">' . lang('Click a variable to insert it at the cursor in the layout.') . '</p>
@@ -360,9 +360,9 @@ if (!$_POST) {
     $query = "UPDATE page
              SET
                 page_timestamp = UNIX_TIMESTAMP(),
-                page_user = '" . $user['id'] . "'
-             WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                page_user = ?
+             WHERE page_id = ?";
+    $result = db_q($query, array((string) $user['id'], (string) ($_POST['page_id'] ?? ''))) or output_error('Query failed.');
 
     log_activity(lang(array('string'=>'page ({var:1}) was modified','vars'=>$page['name'])), $_SESSION['sessionusername']);
 

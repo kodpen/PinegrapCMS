@@ -59,6 +59,7 @@ function pg_sw_default_part_tokens()
             array('__returns', 'pg_sw_part_order_returns_list'),
             array('__cancel_form', 'pg_sw_part_order_cancel_form'),
             array('__return_form', 'pg_sw_part_order_return_form'),
+            array('__return_actions_html', 'pg_sw_part_order_return_moves'),
         ),
         'comments' => array(
             array('__comment_stars_html', 'pg_sw_part_comment_stars'),
@@ -887,7 +888,7 @@ function pg_sw_return_badge_classes()
 // and a status badge per status; its products (order.return_lines); the
 // reason, the notes; how to send the goods back once approved, the code
 // after it; the tracking number, the refund date; then the customer's
-// moves, forms built by returns.php (__return_actions_html). Shown when
+// moves (pg_sw_part_order_return_moves()). Shown when
 // the order has returns (has_returns).
 function pg_sw_part_order_returns_list($cfg = array())
 {
@@ -930,15 +931,15 @@ function pg_sw_part_order_returns_list($cfg = array())
                 )),
                 $detail(lang('Tracking number'), '__return_tracking_number', ''),
                 $detail(lang('Refund due by'), '__return_refund_deadline', ''),
-                pg_sw_part_el('div', '', 'The customer\'s moves', pg_sw_part_value('__return_actions_html', '')),
+                pg_sw_part_el('div', '', 'The customer\'s moves', array(), pg_sw_part_order_return_moves($cfg)),
             )),
         )),
     )));
 }
 
 // The legal documents card: a link to each copy kept with the order, in a
-// new window, and the last day of the right of withdrawal under them unless
-// the layout shows that day itself.
+// new window, and the last day of the right of withdrawal under them (as a
+// sentence: firm, estimated or ended) unless the layout shows that day itself.
 function pg_sw_part_order_legal_documents($cfg = array(), $tree = array())
 {
     $types = pg_legal_document_types();
@@ -955,9 +956,14 @@ function pg_sw_part_order_legal_documents($cfg = array(), $tree = array())
         $link('contract', '__legal_contract_url', 'has_legal_contract'),
     )));
     if (!pg_sw_placed($tree, array('__withdrawal_deadline', '__withdrawal_text'))) {
-        $body[] = pg_sw_part_el('p', 'small text-muted mt-2 mb-0', 'Right of Withdrawal', array(
-            'text' => '', '_bindings' => array('text' => '__withdrawal_text', 'eo_visible_if' => 'has_withdrawal_deadline'),
-        ));
+        // One sentence per state, the day where the language puts it: the
+        // words pg_legal_withdrawal_text() writes, each under its own flag.
+        $line = function ($name, $text, $flag) {
+            return pg_sw_part_sentence('p', 'small text-muted mt-2 mb-0', $name, $text, '__withdrawal_deadline', array('_bindings' => array('eo_visible_if' => $flag)));
+        };
+        $body[] = $line('Right of Withdrawal', lang('Last day of the right of withdrawal: {var:1}'), 'withdrawal_deadline_firm');
+        $body[] = $line('Estimated Right of Withdrawal', lang('Last day of the right of withdrawal: {var:1} (estimated; the 14 days run from delivery).'), 'withdrawal_deadline_estimated');
+        $body[] = $line('Ended Right of Withdrawal', lang('The right of withdrawal ended on {var:1}.'), 'withdrawal_ended');
     }
     return array(pg_sw_part_order_card('pg-ov-legal-documents', 'Legal Documents', 'has_legal_documents', lang('Legal Documents'), $body));
 }

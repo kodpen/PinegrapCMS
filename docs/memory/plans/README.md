@@ -17,14 +17,15 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
 - ai-agent-prompts.md: Plan (2026-10-21, steps 1, 2, 2b, 5 done, answers open): Pinegrap AI's briefing for every agent, one rules block for every prompt, untrusted text framed as data, Claude's instructions from the site
-- ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, text buttons, browser model, panel AI marks done): "Write with AI"; image alt text, designer marks and the __ai_generated token left
+- ai-write-buttons.md: Plan (approved 2026-10-19, in progress: endpoint, text buttons, browser model, panel and designer AI marks done): "Write with AI"; image alt text and the __ai_generated token left
+- big-list-paging.md: Steps of refactor-candidates item 3: the big panel lists (users, submitted forms, contacts, products) paged, searched and counted on the server through a JSON action, one screen per step
 - bootstrap-6-components.md: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped for native Bootstrap 6 components, the conditions research found, what stays as it is
 - bootstrap-6-findings.md: Research of 2026-10-25 behind plans/bootstrap-6-panel.md: old browsers, conflict rates, work size, hot spots, the visual editor split, third-party coupling
 - bootstrap-6-panel-done.md: Finished steps of the Bootstrap 6 panel plan with their PRs and topic files; the open steps are in bootstrap-6-panel-steps.md
 - bootstrap-6-panel-steps.md: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status (each done step names its PR); claim as [plan:bootstrap-6-panel] B<n>
 - bootstrap-6-panel.md: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps.md): panel UI from Bootstrap 5.3.8 to 6.0.0-alpha.1 by pre-landing adapters on development, then one generated switch
 - bootstrap-6-redesign.md: Steps B10-B12 of plans/bootstrap-6-panel.md: token tuning, the redesign of legacy form screens and tables, jQuery UI out of the panel; decisions and open points
-- checkout-legal-documents.md: Plan (approved 2026-10-19; checkout, bindings, kept copy, API, order view links, Turkish install default, withdrawal deadline built): pre-information form, distance sales contract; left: KVKK
+- checkout-legal-documents.md: Plan (approved 2026-10-19): pre-information form, distance sales contract, checkout KVKK built; left: KVKK at registration, designer KVKK node, order view link to the kvkk copy
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, an explicit "who may write PHP" rule; CI checks (PR #673) and nested named functions (PR #972) done
 - designable-comments-contract.md: Contract of the planned comments widget (2026-10-23): what is stored where, token, flag and control names, thread order, the security rules every slice of designable-comments keeps
@@ -51,10 +52,10 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - merge-flow-tools.md: Plan (2026-10-25, steps 1 to 5 done): merge_train.php (lock, build, fast-forward landing), CI guards, filtered install matrix, generated fn-module map, lang cache, merge queue
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what M1–M6 built, what M7 (native push) and M8 add, decisions, how its needs arrive
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export, Markdown/zip, .enex, Keep and HTML import, note revision, delete, sources and unshare in sync done; later Notion/OneNote; open questions
+- order-completion-function.md: Plan (#2382; A1 done in #2199): submit_order() completion tail as one session-free function with a once-only lock; then the Stripe webhook and PayTR complete orders through it
 - passkeys.md: Plan (approved 2026-10-19): WebAuthn passkeys as a second factor and for sign-in with a passkey alone
-- payment-driver-layer.md: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b½, 4a, 5 done; rest of 3b, 4b, 4c open): payment drivers beside submit_order.php; iyzico and Stripe on it; one checkout method list, then PayPal v2 and PayTR
+- payment-driver-layer.md: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b, 4a, 4b, 5 done; 4b2, 4c open): payment drivers beside submit_order.php; iyzico and Stripe on it; one checkout method list, then PayPal v2 and PayTR
 - php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, leftover deprecations, dead remnants; done: #972, #1039, #1930, #1450, #1669, #1744, #1757
-- price-history-reference-price.md: Plan (approved 2026-10-19; done: history, writers, API read, compare-at, offers, retention, window function, rule setting): automatic "price before discount" (TR 10/30-day, EU 30-day rules)
 - privacy-data-pack-audit-log.md: Plan (approved 2026-10-19; all steps done, open questions remain): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 - prototype-sharing-code.md: What the code holds for plans/prototype-sharing.md: drafts and their revisions, how a draft opens today, what Preview draws, token links, the password throttle, MCP routes, flow and note rights
 - prototype-sharing.md: Plan (2026-10-24; slices 1-4 done: #1867, #1579, #1595, #1578; 5 later): drafts play as a clickable prototype shared by a view-only link; flows with the team
@@ -62,7 +63,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - reverse-oauth-leftovers.md: Remaining outside-account connections (calendar, notes, cloud picker, Meta, Merchant, GA4, Business Profile, social, AI), the connect.pinegrap.com broker and open decisions
 - security-findings-2026-10-waf.md: Security findings of the 2026-10-20 firewall and helper scan: IP matching, proxy headers, path exclusions, bot rate exemption, country rule, db error text, back URLs; one PR each
 - security-findings-2026-10.md: 2026-10-19 security audit: fixed by that day's PRs and #713 (installer lockout); open: eval order, form renderers, CVV, gateway secrets, designed-form rich text; owner questions
-- shipping-carrier-labels.md: Plan (approved 2026-10-19, not started, after shipping-management): carrier APIs for label/barcode creation, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct
+- shipping-carrier-labels.md: Plan (approved 2026-10-19, step 1 done): carrier APIs for label/barcode creation, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct
 - shipping-management.md: Shipping plan (2026-10-08; phases 1-4, 5, 6 and 7a done, phase 1 waits for new carriers): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
 - sms-and-iys.md: Plan (approved 2026-10-19): SMS layer, order messages, consent writers, İYS client and card, consents API done; left: first İYS live run, COD code and member OTP
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19, watch list): public storefront API (cart, checkout, customer auth) as the base for agentic commerce bindings (OpenAI ACP checkout_sessions, Google UCP manifest)

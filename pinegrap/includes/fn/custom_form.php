@@ -1079,8 +1079,12 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
     // Removed by the operator. Counted first so the caller can report how much
     // submitted data goes with them - a field deleted is a column heading gone
     // from every past submission, and that has to be said out loud.
+    // An information or signature row has no control a designed form could
+    // carry: a classic layout drawn beside the widget still prints it, and a
+    // signature's evidence is never deleted from here.
     foreach ($existing as $id => $row) {
         if (isset($kept[$id])) continue;
+        if (in_array((string)$row['type'], array('information', 'signature'), true)) continue;
         $result['deleted']++;
         $result['lost_values'] += (int)db_value(
             "SELECT COUNT(*) FROM form_data WHERE form_field_id = '" . (int)$id . "'");

@@ -97,7 +97,7 @@ if ($product_attributes) {
                 $output_no_value = lang(' [\'No Thanks\' Option]');
             }
 
-            $output_options .= '<li><span class="menu-text badge fg-black fw-light py-3" >' . h($option['label']) . $output_no_value . '</span></li>';
+            $output_options .= '<li><span class="menu-text badge fg-body fw-light py-3" >' . h($option['label']) . $output_no_value . '</span></li>';
         }
 
        
@@ -133,7 +133,7 @@ if ($product_attributes) {
                     <div class="row row-cols-2 align-middle">
                         <div class="col align-self-center">' . $output_label . '</div>
                         <div class="pg-menu-wrap col">
-                            <button type="button" class="m-1 btn btn-sm p-1 no-popover pg-menu-caret" data-bs-auto-close="outside" data-bs-toggle="menu" aria-expanded="false">' . lang('Options') . '</button>
+                            <button type="button" class="m-1 btn btn-sm p-1 no-popover pg-menu-caret" data-bs-auto-close="outside" data-bs-strategy="fixed" data-bs-toggle="menu" aria-expanded="false">' . lang('Options') . '</button>
                             <ul class="menu">
                                 ' . $output_options . '
                             </ul>

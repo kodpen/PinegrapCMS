@@ -26,7 +26,7 @@ description: validate_area_access() gates, real role numbering (Designer above M
 - In the visual designer roles 2 and 3 work at content level (text, image addresses, marked areas; `pg_designer_access()` in `includes/designer_access.php`): designer/designer-content-roles-save-gate.md, designer/designer-content-roles-translations.md.
 
 ## Is Designer above or below Manager?
-- Designer (1) is ABOVE Manager (2). Verified in code: `select_user_role()` builds the dropdown 0=Administrator, 1=Designer, 2=Manager, 3=User; `validate_area_access()` maps `'designer'`->1, `'manager'`->2, `'user'`->3; `view_users.php` filters `all_site_designers` -> role<2, `all_site_managers` -> role<3. (An old table said 1=Manager, 2=Designer, 3=Contributor; that was wrong.)
+- Designer (1) is ABOVE Manager (2). Verified in code: `select_user_role()` builds the dropdown 0=Administrator, 1=Designer, 2=Manager, 3=User; `validate_area_access()` maps `'designer'`->1, `'manager'`->2, `'user'`->3; the users list (`includes/fn/user_list.php`) filters `all_site_designers` -> role<2, `all_site_managers` -> role<3. (An old table said 1=Manager, 2=Designer, 3=Contributor; that was wrong.)
 
 ## What is the ecommerce (ECOMMERCE) permission pattern?
 - Roles 0-2 are EXEMPT from the `manage_ecommerce` flag. Role 3 requires `manage_ecommerce = true`.

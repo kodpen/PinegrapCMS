@@ -344,7 +344,7 @@ function test_widget_parts_item_editor_twin()
 		. $cut("\n    var SW_DEFAULT_LOOP_TAILS = {", "\n    };\n");
 	foreach (array('_sdDefaultParts', '_sdPartTokenOf', '_sdPartHost', '_sdPartEl', '_sdPartWhen', '_sdPartOrderTimeline', '_sdPartOrderStatusBadge',
 		'_sdPartPlaced', '_sdPartValue', '_sdPartItemLegend', '_sdPartItemLine', '_sdPartOrderItemForm', '_sdPartOrderItemGiftCard',
-		'_sdMainLoop', '_sdDefaultLoopTails', '_sdDefaultTails', '_sdPartOrderCard', '_sdPartOrderReturns', '_sdPartOrderReturnForm', '_sdPartSentence', '_sdPartOrderReturnQtyCell', '_sdPartOrderReturnReason', '_sdPartOrderReturnSubmit', '_sdPartOrderCancelForm', '_sdPartOrderCancelSubmit', '_sdPartOrderReturnsList', '_sdPartOrderLegal') as $fn) {
+		'_sdMainLoop', '_sdDefaultLoopTails', '_sdDefaultTails', '_sdPartOrderCard', '_sdPartOrderReturns', '_sdPartOrderReturnMoves', '_sdPartOrderReturnMoveSubmit', '_sdPartOrderReturnForm', '_sdPartSentence', '_sdPartOrderReturnQtyCell', '_sdPartOrderReturnReason', '_sdPartOrderReturnSubmit', '_sdPartOrderCancelForm', '_sdPartOrderCancelSubmit', '_sdPartOrderReturnsList', '_sdPartOrderLegal') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
 	}
 	$tree = _pitem_tree(array(

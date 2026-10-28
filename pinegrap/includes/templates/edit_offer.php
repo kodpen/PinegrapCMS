@@ -26,7 +26,7 @@ if (!defined('PG_INIT_LOADED')) {
             <div class="pg-toolbar-grow"></div>
             <?= $output_workspace_button ?? '' ?>
             <div class="pg-menu-wrap ms-auto">
-                <button type="button" class="btn btn-sm btn-ghost" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="<?=lang('More')?>"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="<?=lang('More')?>"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
                 <ul class="menu pg-menu-end">
                     <?php // Only meaningful once the offer has an id; the script reveals them after the first save. ?>
                     <li data-saved-only<?php if ($is_new): ?> class="d-none"<?php endif ?>><a class="menu-item pg-link-body-emphasis" href="#" data-on="duplicate"><i class="bi bi-copy me-3" aria-hidden="true"></i><?=lang('Duplicate')?></a></li>
@@ -148,7 +148,7 @@ if (!defined('PG_INIT_LOADED')) {
                                         <button type="button" class="btn btn-sm btn-outline theme-danger" data-on="keycodes-delete"><i class="bi bi-trash" aria-hidden="true"></i> <?=lang('Delete all codes')?></button>
                                     </div>
                                     <div class="col-auto">
-                                        <a class="btn btn-sm btn-ghost" href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/view_key_codes.php"><?=lang('Manage key codes')?></a>
+                                        <a class="btn btn-sm btn-text theme-secondary" href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/view_key_codes.php"><?=lang('Manage key codes')?></a>
                                     </div>
                                     <div class="col-12 xl:col small fg-secondary"><?=lang('single-use or per-customer aliases of this code')?></div>
                                     <div class="col-12 d-none" id="pg-if-keycodes-new">

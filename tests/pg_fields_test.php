@@ -105,6 +105,8 @@ function FakeElement(doc, tag, attrs) {
     doc.all.push(this);
 }
 FakeElement.prototype.insertAdjacentHTML = function () {};
+FakeElement.prototype.click = function () { this.ownerDocument.clicked.push(this.getAttribute('data-bs-value')); };
+FakeElement.prototype.focus = function () { this.ownerDocument.activeElement = this; };
 FakeElement.prototype.appendChild = function (c) {
     c.parentNode = this;
     this.children.push(c);
@@ -118,7 +120,7 @@ FakeElement.prototype.insertBefore = function (c, ref) {
     if (i < 0) { this.children.push(c); } else { this.children.splice(i, 0, c); }
     return c;
 };
-FakeElement.prototype.removeChild = function (c) { this.children = this.children.filter(function (x) { return x !== c; }); c.parentNode = null; return c; };
+FakeElement.prototype.removeChild = function (c) { this.children = this.children.filter(function (x) { return x !== c; }); this.options = this.options.filter(function (x) { return x !== c; }); c.parentNode = null; return c; };
 Object.defineProperty(FakeElement.prototype, 'childNodes', { get: function () { return this.children; } });
 // Only '.class' up the parents, as the drawer test needs.
 FakeElement.prototype.closest = function (sel) {
@@ -148,7 +150,7 @@ FakeElement.prototype.matches = function (sel) {
 };
 
 function makeDocument() {
-    var doc = { all: [], readyState: 'complete' };
+    var doc = { all: [], readyState: 'complete', clicked: [], activeElement: null };
     doc.create = function (tag, attrs) { return new FakeElement(doc, tag, attrs); };
     doc.querySelectorAll = function (sel) { return doc.all.filter(function (el) { return el.matches(sel); }); };
     doc.querySelector = function (sel) {
@@ -274,6 +276,20 @@ function load(opts) {
     if (opts.jquery) { win.jQuery = makeJQuery(calls); }
     if (opts.format) { win.date_picker_format = opts.format; win.datetimepicker_options = { dateFormat: opts.format }; }
     if (!opts.noBootstrap) { win.pgUI = makePgUI(calls, opts.late); }
+    // fetch() records the URL and answers when the test resolves it;
+    // setTimeout() waits for flush(), as a typing pause would.
+    if (opts.fetch) {
+        win.fetched = [];
+        win.fetch = function (url, init) {
+            return new Promise(function (resolve) {
+                win.fetched.push({ url: url, credentials: init && init.credentials, answer: function (data) { resolve({ ok: true, json: function () { return Promise.resolve(data); } }); } });
+            });
+        };
+        win.timers = [];
+        win.setTimeout = function (fn, ms) { win.timers.push({ fn: fn, ms: ms }); return win.timers.length; };
+        win.clearTimeout = function (id) { if (win.timers[id - 1]) { win.timers[id - 1].fn = null; } };
+        win.flush = function () { var t = win.timers.splice(0); t.forEach(function (x) { if (x.fn) { x.fn(); } }); return t.filter(function (x) { return x.fn; }).map(function (x) { return x.ms; }); };
+    }
     var form = doc.create('form', {});
     (opts.fields || []).forEach(function (f) { form.appendChild(doc.create(f[0], f[1])); });
     (opts.options || []).forEach(function (o) {
@@ -283,7 +299,7 @@ function load(opts) {
     });
     (opts.labels || []).forEach(function (l) { form.appendChild(doc.create('label', l)); });
     if (opts.firstDay !== undefined) { win.datetimepicker_options.firstDay = opts.firstDay; }
-    if (opts.label) { doc.create('script', { 'data-pg-remove-label': opts.label, 'data-pg-search-label': 'Ara', 'data-pg-no-results-label': 'Sonuç bulunamadı', 'data-pg-locale-label': 'tr' }); }
+    if (opts.label) { doc.create('script', { 'data-pg-remove-label': opts.label, 'data-pg-search-label': 'Ara', 'data-pg-no-results-label': 'Sonuç bulunamadı', 'data-pg-locale-label': 'tr', 'data-pg-searching-label': 'Aranıyor…', 'data-pg-type-label': 'Aramak için yazın...' }); }
     new Function('window', 'document', PG_FIELDS_SOURCE)(win, doc);
     return { win: win, doc: doc, calls: calls };
 }
@@ -317,6 +333,8 @@ function main() {
     a.win.pgFields.init();
     var sourced = a.doc.create('select', { 'data-pg-source': 'x.php' });
     out.engine = [a.win.pgFields.engine('chips'), a.win.pgFields.engine('combobox'), a.win.pgFields.engine('combobox', sourced), a.win.pgFields.engine('date')];
+    var site = load({ jquery: true, noBootstrap: true });
+    out.engine_site = [site.win.pgFields.engine('combobox', site.doc.create('select', { 'data-pg-source': 'x.php' })), site.win.pgFields.engine('combobox')];
     out.init_calls = a.calls.map(function (c) { return c[0] + ':' + c[1]; });
     var dayOpts = a.calls.filter(function (c) { return c[0] === 'datepicker'; })[0][2];
     out.date_options = [dayOpts.locale, dayOpts.firstWeekday, dayOpts.inline, dayOpts.selectedDates, dayOpts.vcpOptions];
@@ -402,11 +420,15 @@ function main() {
     // combobox with a source searches the server, the answer read as
     // {results: [...]}.
     var c = load({ jquery: true, label: 'Kaldır', format: 'm/d/yy', firstDay: 1, fields: [
-        ['input', { id: 'shipped', 'data-pg-date': 'plain' }],
-        ['select', { id: 'cat', 'data-pg-combobox': '', 'data-pg-source': 'tax.php?action=search', 'data-pg-min-length': '2', 'data-pg-free-text': '', 'data-placeholder': 'Category' }]
+        ['input', { id: 'shipped', 'data-pg-date': 'plain' }]
     ] });
     c.win.pgFields.init();
-    var catOpts = c.calls.filter(function (x) { return x[0] === 'select2'; })[0][2];
+    // A site page (no Bootstrap 6) keeps select2 for a server-searched field.
+    var c5 = load({ jquery: true, noBootstrap: true, fields: [
+        ['select', { id: 'cat', 'data-pg-combobox': '', 'data-pg-source': 'tax.php?action=search', 'data-pg-min-length': '2', 'data-pg-free-text': '', 'data-placeholder': 'Category' }]
+    ] });
+    c5.win.pgFields.init();
+    var catOpts = c5.calls.filter(function (x) { return x[0] === 'select2'; })[0][2];
     out.select2_theme = catOpts.theme;
     var plainOpts = c.calls.filter(function (x) { return x[0] === 'datepicker'; })[0][2];
     out.plain_date = [plainOpts.locale, plainOpts.firstWeekday];
@@ -544,10 +566,105 @@ function main() {
     dp.win.pgFields.destroy(drawerField);
     out.dp_drawer.after = drawerField.nextSibling === null;
 
-    console.log(JSON.stringify(out));
+    return out;
 }
 
-try { main(); } catch (e) { console.log('FAILED ' + (e && e.stack || e)); process.exit(1); }
+// Combobox searching the server (data-pg-source): the typed text fetched
+// after a pause, the answer drawn as items, a pick written into the select.
+function remote(out) {
+    var r = load({ label: 'Kaldır', fetch: true, labels: [{ 'for': 'gpc', text: 'Google Product Category' }], fields: [
+        ['select', { id: 'gpc', name: 'google_product_category', 'class': 'form-control', 'data-pg-combobox': '', 'data-pg-source': 'tax.php?action=search', 'data-pg-min-length': '2', 'data-pg-free-text': '', 'data-placeholder': 'Category' }]
+    ], options: [['gpc', { value: '', text: '' }], ['gpc', { value: '187', text: 'Apparel > Shoes  (187)', selected: '' }]] });
+    r.win.pgFields.init();
+    var el = r.doc.querySelector('#gpc'), toggle = el.nextSibling, menu = toggle.nextSibling;
+    var input = menu.children[0].children[0], heard = [];
+    el.addEventListener('change', function (e) { heard.push(el.value + ':' + e.bubbles); });
+    var shape = function () { return menu.children.map(function (c) {
+        if (c.className === 'combobox-search') { return 'search:' + c.children[0].className + ':' + c.children[0].getAttribute('placeholder') + ':' + c.children[0].getAttribute('aria-controls'); }
+        if (c.tagName === 'BUTTON') { return 'item:' + c.getAttribute('data-bs-value') + ':' + c.textContent + (c.classList.contains('selected') ? ':selected' : ''); }
+        return c.className + ':' + c.textContent;
+    }); };
+    var type = function (text) { input.value = text; input.dispatchEvent({ type: 'input' }); };
+    var tick = function () { return new Promise(function (resolve) { setImmediate(resolve); }); };
+    out.remote6 = {
+        calls: r.calls.map(function (c) { return c[0] + ':' + c[1]; }),
+        options: r.calls.map(function (c) { return c[2]; }),
+        native: el.className,
+        toggle: [toggle.getAttribute('aria-labelledby'), toggle.children[0].textContent],
+        menu_id: menu.id,
+        drawn: shape()
+    };
+    (toggle.listeners['shown.bs.combobox'] || []).forEach(function (f) { f({}); });
+    out.remote6.focused = r.doc.activeElement === input;
+    type('a');
+    out.remote6.short = { waits: r.win.flush(), fetched: r.win.fetched.length, menu: shape() };
+    type('sh');
+    type('shoe');
+    out.remote6.waits = r.win.flush();
+    out.remote6.searching = shape();
+    var first = r.win.fetched[0];
+    out.remote6.fetched = r.win.fetched.map(function (f) { return f.url + ':' + f.credentials; });
+    first.answer({ results: [{ id: '187', text: 'Apparel > Shoes  (187)' }, { id: '188', text: 'Apparel > Shoe Laces  (188)' }] });
+    return tick().then(function () {
+        out.remote6.results = shape();
+        // An older answer arriving after a newer one is dropped.
+        type('bo');
+        r.win.flush();
+        type('boot');
+        r.win.flush();
+        r.win.fetched[2].answer({ results: [{ id: '187', text: 'Boots' }] });
+        return tick();
+    }).then(function () {
+        r.win.fetched[1].answer({ results: [{ id: '1', text: 'Books' }] });
+        return tick();
+    }).then(function () {
+        out.remote6.stale = shape();
+        // Enter in the search box picks the first result, never submits.
+        var prevented = 0, ev = { type: 'keydown', key: 'Enter', preventDefault: function () { prevented++; } };
+        input.dispatchEvent(ev);
+        out.remote6.enter = { prevented: prevented, clicked: r.doc.clicked.slice() };
+        type('shoe');
+        r.win.flush();
+        r.win.fetched[3].answer({ results: [{ id: '187', text: 'Apparel > Shoes  (187)' }, { id: '188', text: 'Apparel > Shoe Laces  (188)' }] });
+        return tick();
+    }).then(function () {
+        toggle.instance.pick('188');
+        out.remote6.pick = {
+            value: el.value,
+            options: el.options.map(function (o) { return o.value + ':' + o.textContent + (o.selected ? ':selected' : ''); }),
+            heard: heard.slice(),
+            text: toggle.children[0].textContent,
+            get: r.win.pgCombobox.get(el)
+        };
+        // Free text: the typed words are an item of their own.
+        type('My own category');
+        r.win.flush();
+        r.win.fetched[4].answer({ results: [] });
+        return tick();
+    }).then(function () {
+        out.remote6.free = shape();
+        toggle.instance.pick('My own category');
+        out.remote6.free_pick = [el.value, toggle.children[0].textContent];
+        // The server refuses: its words are shown, nothing to pick.
+        type('xx');
+        r.win.flush();
+        r.win.fetched[5].answer({ error: 'Access denied' });
+        return tick();
+    }).then(function () {
+        out.remote6.error = shape();
+        // Opening again starts from the stored choice.
+        (toggle.listeners['shown.bs.combobox'] || []).forEach(function (f) { f({}); });
+        out.remote6.reopened = [input.value, shape()];
+        r.win.pgFields.destroy(el);
+        out.remote6.destroyed = [el.className, el.value, el.parentNode.children.length];
+        return out;
+    });
+}
+
+try {
+    var result = main();
+    remote(result).then(function (o) { console.log(JSON.stringify(o)); }, function (e) { console.log('FAILED ' + (e && e.stack || e)); process.exit(1); });
+} catch (e) { console.log('FAILED ' + (e && e.stack || e)); process.exit(1); }
 JS;
 }
 
@@ -604,13 +721,14 @@ function test_pg_fields_hooks_drawn_by_their_engine()
 		return;
 	}
 
-	pg_assert_same(array('v6', 'v6', 'v5', 'v6'), $r['engine'], 'every kind on Bootstrap 6 but a server-searched combobox');
+	pg_assert_same(array('v6', 'v6', 'v6', 'v6'), $r['engine'], 'every kind on Bootstrap 6, a server-searched combobox too');
+	pg_assert_same(array('v5', 'v6'), $r['engine_site'], 'a site page without Bootstrap 6 keeps select2 for a server-searched combobox');
 	pg_assert_same(
 		array('chips:chip-input pg-chips min-height-tagin border-subtle-danger', 'chips:chip-input pg-chips pg-chips-sm', 'combobox:form-control combobox-toggle pg-combobox', 'datepicker:day', 'datepicker:form-control pg-datetime-date'),
 		$r['init_calls'],
 		'each hook once (a time field has no calendar), the plain field untouched, a second init() draws nothing'
 	);
-	pg_assert_same('bootstrap-5', $r['select2_theme'], 'a server-searched combobox is a select2 as before');
+	pg_assert_same('bootstrap-5', $r['select2_theme'], 'on a site page a server-searched combobox is a select2 as before');
 	pg_assert_same(array('en', 0, false, array('2026-10-26'), array('enableDateToggle' => false)), $r['date_options'], 'no language on the tag: English, Sunday first; the stored date parsed by us');
 	pg_assert_same(array(array('separator' => ','), array('separator' => ' ')), $r['chips_options'], 'Chips gets the data-pg-separator, a comma without one');
 	pg_assert_same(array('chips' => array('a', 'b', 'c'), 'classes' => array('one', 'two'), 'date' => '2026-10-26', 'datetime' => '2026-10-26 17:00', 'time' => '17:00'), $r['get']);
@@ -837,4 +955,66 @@ function test_pg_fields_dates_on_bootstrap_6()
 		'destroy() leaves the field visible with its own tab order and value'
 	);
 	pg_assert_same(array('wrap' => 'pg-date-inline', 'inline' => true, 'value' => '9/2/2027', 'after' => true), $r['dp_drawer'], 'in a drawer the calendar is drawn open after the field');
+}
+
+function test_pg_fields_combobox_server_search()
+{
+	$r = pg_fields_test_result();
+	if (!$r) {
+		return;
+	}
+
+	$m = $r['remote6'];
+	pg_assert_same(array('combobox:form-control combobox-toggle pg-combobox'), $m['calls'], 'a server-searched field is a Bootstrap 6 Combobox on the panel');
+	pg_assert_same(array(array('multiple' => false, 'search' => false, 'placeholder' => 'Category')), $m['options'], 'its search box is ours: Bootstrap does not filter the server\'s answer');
+	pg_assert_same('form-control pg-combobox-native', $m['native'], 'the select stays as the posted store');
+	pg_assert_same(array('gpc_label', 'Apparel > Shoes  (187)'), $m['toggle'], 'named by its label, showing the stored choice');
+	pg_assert_same('gpc_menu', $m['menu_id']);
+	pg_assert_same(
+		array('search:form-control pg-combobox-query:Ara:gpc_menu', 'pg-combobox-status:Aramak için yazın...', 'item::Category', 'item:187:Apparel > Shoes  (187):selected'),
+		$m['drawn'],
+		'a search box, a status line, the empty item and the stored choice'
+	);
+	pg_assert_same(true, $m['focused'], 'opening puts the cursor in the search box');
+	pg_assert_same(
+		array('waits' => array(250), 'fetched' => 0, 'menu' => array('search:form-control pg-combobox-query:Ara:gpc_menu', 'pg-combobox-status:Aramak için yazın...', 'item::Category', 'item:187:Apparel > Shoes  (187):selected')),
+		$m['short'],
+		'under data-pg-min-length nothing is asked'
+	);
+	pg_assert_same(array(250), $m['waits'], 'one request after the typing pause');
+	pg_assert_same(array('tax.php?action=search&q=shoe:same-origin'), $m['fetched'], 'GET url&q=<text> with the session cookie');
+	pg_assert_same('pg-combobox-status:Aranıyor…', $m['searching'][1], 'searching is announced');
+	pg_assert_same(
+		array('search:form-control pg-combobox-query:Ara:gpc_menu', 'pg-combobox-status d-none:', 'item:187:Apparel > Shoes  (187):selected', 'item:188:Apparel > Shoe Laces  (188)', 'item:shoe:shoe'),
+		$m['results'],
+		'the answer as items, the stored one marked, the typed text last as free text'
+	);
+	pg_assert_same(
+		array('search:form-control pg-combobox-query:Ara:gpc_menu', 'pg-combobox-status d-none:', 'item:187:Boots:selected', 'item:boot:boot'),
+		$m['stale'],
+		'an older answer arriving late is dropped'
+	);
+	pg_assert_same(array('prevented' => 1, 'clicked' => array('187')), $m['enter'], 'Enter picks the first item and does not submit the form');
+	pg_assert_same(
+		array('value' => '188', 'options' => array(':', '188:Apparel > Shoe Laces  (188):selected'), 'heard' => array('188:true'), 'text' => 'Apparel > Shoe Laces  (188)', 'get' => '188'),
+		$m['pick'],
+		'a pick becomes the select\'s option and fires one bubbling change'
+	);
+	pg_assert_same(
+		array('search:form-control pg-combobox-query:Ara:gpc_menu', 'pg-combobox-status d-none:', 'item:My own category:My own category'),
+		$m['free'],
+		'data-pg-free-text: the typed text can be picked'
+	);
+	pg_assert_same(array('My own category', 'My own category'), $m['free_pick']);
+	pg_assert_same(
+		array('search:form-control pg-combobox-query:Ara:gpc_menu', 'pg-combobox-status:Access denied'),
+		$m['error'],
+		'the server\'s refusal is shown, nothing to pick'
+	);
+	pg_assert_same(
+		array('', array('search:form-control pg-combobox-query:Ara:gpc_menu', 'pg-combobox-status:Aramak için yazın...', 'item::Category', 'item:My own category:My own category:selected')),
+		$m['reopened'],
+		'opening again starts from the stored choice'
+	);
+	pg_assert_same(array('form-control', 'My own category', 2), $m['destroyed'], 'destroy() leaves the plain select with its value');
 }

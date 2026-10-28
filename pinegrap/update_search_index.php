@@ -102,7 +102,7 @@ output_header_secure(array(
             
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
-                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.close()" aria-label="Close">
+                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.close()" aria-label="' . h(lang('Close')) . '">
                         <span class="bi bi-x-lg"></span>
                     </button>
                 </li>
@@ -345,8 +345,8 @@ foreach ($pages as $page) {
                     FROM calendar_view_pages
                     LEFT JOIN page AS calendar_event_view_page ON calendar_view_pages.calendar_event_view_page_id = calendar_event_view_page.page_id
                     LEFT JOIN folder AS calendar_event_view_folder ON calendar_event_view_page.page_folder = calendar_event_view_folder.folder_id
-                    WHERE calendar_view_pages.page_id = '" . $page['id'] . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    WHERE calendar_view_pages.page_id = ?";
+                $result = db_q($query, array((string) $page['id'])) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 
                 $calendar_event_view_page_id = $row['calendar_event_view_page_id'];
@@ -529,9 +529,9 @@ foreach ($pages as $page) {
                     AND (form_item_view_page_properties.collection = 'a')
                 LEFT JOIN folder AS form_item_view_folder ON form_item_view_page.page_folder = form_item_view_folder.folder_id
                 WHERE
-                    (form_list_view_pages.page_id = '" . $page['id'] . "')
+                    (form_list_view_pages.page_id = ?)
                     AND (form_list_view_pages.collection = 'a')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $page['id'])) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             
             $custom_form_page_id = $row['custom_form_page_id'];

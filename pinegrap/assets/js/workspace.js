@@ -409,7 +409,7 @@
                 dialog.id = 'ws-ask';
                 dialog.tabIndex = -1;
                 dialog.innerHTML = '<div class="dialog-body"><p class="mb-3" data-ws-ask-text></p><div data-ws-ask-details></div></div>'
-                    + '<div class="dialog-footer"><button type="button" class="btn btn-sm btn-ghost" data-bs-dismiss="dialog" data-ws-ask-cancel></button>'
+                    + '<div class="dialog-footer"><button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-dismiss="dialog" data-ws-ask-cancel></button>'
                     + '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-ws-ask-ok></button></div>';
                 document.body.appendChild(dialog);
 
@@ -529,6 +529,21 @@
     // What a message says as it reads on the screen: its lines, list items and
     // table rows each on a line of their own. innerText follows the layout,
     // so the markup is laid out off screen for a moment.
+    // White or near-black, whichever reads at 4.5:1 on a #rrggbb background;
+    // white for anything else (pg_readable_ink_on() in PHP).
+    function readableInk(hex) {
+        var m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex || '').trim());
+        if (!m) {
+            return '#fff';
+        }
+        var lum = 0, weights = [0.2126, 0.7152, 0.0722];
+        for (var i = 0; i < 3; i++) {
+            var c = parseInt(m[i + 1], 16) / 255;
+            lum += weights[i] * (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+        }
+        return (1.05 / (lum + 0.05) >= 4.5) ? '#fff' : '#18181b';
+    }
+
     function readableText(markup) {
         var box = el('div');
 
@@ -754,8 +769,8 @@
             previewModal.id = 'ws-preview';
             previewModal.tabIndex = -1;
             previewModal.innerHTML = '<div class="dialog-header py-3"><h5 class="dialog-title text-truncate"></h5>'
-                + '<a class="btn btn-sm btn-ghost ms-auto" data-ws-open target="_blank" rel="noopener"></a>'
-                + '<a class="btn btn-sm btn-ghost" data-ws-download></a>'
+                + '<a class="btn btn-sm btn-text theme-secondary ms-auto" data-ws-open target="_blank" rel="noopener"></a>'
+                + '<a class="btn btn-sm btn-text theme-secondary" data-ws-download></a>'
                 + '<button type="button" class="btn-close ms-1" data-bs-dismiss="dialog"></button></div>'
                 + '<div class="dialog-body p-0"></div><div class="dialog-footer py-3 d-none"></div>';
             document.body.appendChild(previewModal);
@@ -3400,14 +3415,14 @@
                             return;
                         }
 
-                        var move = button('btn btn-sm ' + (status === 'done' ? 'btn-outline theme-success' : 'btn-ghost'), BOOT.statuses[status]);
+                        var move = button('btn btn-sm ' + (status === 'done' ? 'btn-outline theme-success' : 'btn-text theme-secondary'), BOOT.statuses[status]);
                         move.addEventListener('click', function () { self.setStatus(status); });
                         quick.appendChild(move);
                     });
 
                     body.appendChild(quick);
                 } else if (editable) {
-                    var reopen = button('btn btn-sm btn-ghost mb-5', t('reopen'), 'bi-arrow-counterclockwise');
+                    var reopen = button('btn btn-sm btn-text theme-secondary mb-5', t('reopen'), 'bi-arrow-counterclockwise');
                     reopen.addEventListener('click', function () { self.setStatus('todo'); });
                     body.appendChild(reopen);
                 }
@@ -3671,7 +3686,7 @@
             save.disabled = !editable;
             save.addEventListener('click', function () { self.save(false); });
 
-            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             cancel.setAttribute('data-bs-dismiss', 'drawer');
 
             footer.appendChild(cancel);
@@ -4062,7 +4077,7 @@
                 var tools = el('span', 'ws-task-note-tools');
 
                 if (note.can_edit) {
-                    var edit = button('btn btn-sm btn-ghost py-0 px-1', '', 'bi-pencil', t('edit'));
+                    var edit = button('btn btn-sm btn-text theme-secondary py-0 px-1', '', 'bi-pencil', t('edit'));
                     edit.addEventListener('click', function () {
                         main.replaceChild(self.noteComposer(note), text);
                         tools.remove();
@@ -4071,7 +4086,7 @@
                 }
 
                 if (note.can_delete) {
-                    var remove = button('btn btn-sm btn-ghost py-0 px-1 ws-tool-danger', '', 'bi-trash', t('delete'));
+                    var remove = button('btn btn-sm btn-text theme-secondary py-0 px-1 ws-tool-danger', '', 'bi-trash', t('delete'));
                     remove.addEventListener('click', function () {
                         ask(t('delete_note_confirm'), t('delete'), true).then(function (yes) {
                             if (!yes) {
@@ -4161,11 +4176,11 @@
             }
 
             if (!rich) {
-                var mention = button('btn btn-sm btn-ghost', '', 'bi-at', t('mention'));
+                var mention = button('btn btn-sm btn-text theme-secondary', '', 'bi-at', t('mention'));
                 mention.addEventListener('click', function () { field.insertTrigger('@'); });
                 actions.appendChild(mention);
 
-                var tag = button('btn btn-sm btn-ghost', '', 'bi-hash', t('tag_record'));
+                var tag = button('btn btn-sm btn-text theme-secondary', '', 'bi-hash', t('tag_record'));
                 tag.addEventListener('click', function () { field.insertTrigger('#'); });
                 actions.appendChild(tag);
 
@@ -4523,7 +4538,7 @@
                 row.appendChild(info);
 
                 if (data.can_clear) {
-                    var rename = button('btn btn-sm btn-ghost', '', 'bi-pencil', t('era_rename'));
+                    var rename = button('btn btn-sm btn-text theme-secondary', '', 'bi-pencil', t('era_rename'));
                     rename.addEventListener('click', function () {
                         var input = el('input', 'form-control form-control-sm');
                         input.maxLength = 160;
@@ -4821,7 +4836,7 @@
         }
 
         var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', channel ? t('save') : t('create_channel'), 'bi-check2');
-        var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'drawer');
         footer.appendChild(cancel);
         footer.appendChild(save);
@@ -5045,7 +5060,7 @@
         }
 
         var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('guest_create'), 'bi-door-open');
-        var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'drawer');
         footer.appendChild(cancel);
         footer.appendChild(save);
@@ -5133,7 +5148,7 @@
         body.appendChild(link);
 
         var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('share_create'), 'bi-link-45deg');
-        var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'drawer');
         footer.appendChild(cancel);
         footer.appendChild(save);
@@ -5181,7 +5196,7 @@
 
         footer.classList.remove('d-none');
 
-        var all = button('btn btn-sm btn-ghost', t('mark_all_read'), 'bi-check2-all');
+        var all = button('btn btn-sm btn-text theme-secondary', t('mark_all_read'), 'bi-check2-all');
         all.addEventListener('click', function () {
             api('ws_inbox_read', { ids: 'all' }).then(function () {
                 hideOffcanvas(node);
@@ -5442,7 +5457,7 @@
             // The workspace's own tour (includes/workspace/tour.php), played
             // again from here.
             if (window.PgTour && window.PG_TOUR && window.PG_TOUR.key) {
-                var tour = button('btn btn-sm btn-ghost rounded-pill', '', 'bi-signpost-split', t('tour_start'));
+                var tour = button('btn btn-sm btn-text theme-secondary rounded-pill', '', 'bi-signpost-split', t('tour_start'));
 
                 tour.setAttribute('data-ws-tour', '1');
                 tour.addEventListener('click', function () {
@@ -5462,7 +5477,7 @@
 
             // The search box of the whole workspace (workspace_palette.js).
             if (window.PGWsPalette) {
-                var find = button('btn btn-sm btn-ghost rounded-pill', '', 'bi-search', t('pal_shortcut'));
+                var find = button('btn btn-sm btn-text theme-secondary rounded-pill', '', 'bi-search', t('pal_shortcut'));
 
                 find.setAttribute('data-ws-palette', '1');
                 head.appendChild(find);
@@ -5742,7 +5757,7 @@
                 head.setAttribute('data-ws-group', group.id);
 
                 if (manage) {
-                    var more = button('btn btn-sm btn-ghost ws-group-more', '', 'bi-three-dots', t('more'));
+                    var more = button('btn btn-sm btn-text theme-secondary ws-group-more', '', 'bi-three-dots', t('more'));
                     more.addEventListener('click', function (event) {
                         event.stopPropagation();
                         var rect = more.getBoundingClientRect();
@@ -5972,7 +5987,7 @@
                 bar.appendChild(pinAck);
             }
 
-            var close = button('btn btn-sm btn-ghost py-0', '', 'bi-x-lg', t('pin_close'));
+            var close = button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', t('pin_close'));
             close.addEventListener('click', function () {
                 if (self.channel.joined) {
                     api('ws_pin_hide', { channel_id: self.channel.id }).catch(function () {});
@@ -6130,7 +6145,7 @@
                 bar.appendChild(note);
             }
 
-            var done = button('btn btn-sm btn-ghost ms-auto', t('sel_cancel'), 'bi-x-lg');
+            var done = button('btn btn-sm btn-text theme-secondary ms-auto', t('sel_cancel'), 'bi-x-lg');
             done.addEventListener('click', function () { self.endSelect(); });
             bar.appendChild(done);
 
@@ -6233,7 +6248,7 @@
                 body.appendChild(el('div', 'alert theme-warning small py-3', t('fwd_private')));
             }
 
-            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             var send = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sel_forward'), 'bi-forward');
 
             cancel.setAttribute('data-bs-dismiss', 'drawer');
@@ -6297,7 +6312,7 @@
                 slot.appendChild(el('div', 'small fg-danger', error.message));
             });
 
-            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sel_to_note'), 'bi-journal-plus');
 
             cancel.setAttribute('data-bs-dismiss', 'drawer');
@@ -6595,7 +6610,7 @@
             body.appendChild(formRow(t('grp_parent'), parent, t('grp_levels', CFG.groups.depth)));
 
             var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('save'), 'bi-check2');
-            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             cancel.setAttribute('data-bs-dismiss', 'drawer');
             footer.appendChild(cancel);
             footer.appendChild(save);
@@ -6685,7 +6700,7 @@
 
                     row.appendChild(text);
 
-                    var take = button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('grp_access_take'));
+                    var take = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('grp_access_take'));
                     take.addEventListener('click', function () {
                         ask(t('grp_access_take_confirm', data.path, person.name), t('grp_access_take'), true).then(function (yes) {
                             if (yes) {
@@ -7114,7 +7129,7 @@
                         return;
                     }
 
-                    var openButton = button('btn btn-sm ' + (channel.opened ? 'btn-ghost' : 'btn-outline theme-warning'), channel.opened ? t('open') : t('open_for_audit'), 'bi-eye');
+                    var openButton = button('btn btn-sm ' + (channel.opened ? 'btn-text theme-secondary' : 'btn-outline theme-warning'), channel.opened ? t('open') : t('open_for_audit'), 'bi-eye');
                     openButton.addEventListener('click', function () {
                         var go = function () {
                             hideOffcanvas(node);
@@ -7872,7 +7887,7 @@
                 row.appendChild(el('div', 'small fg-secondary', guest.label + (guest.seen ? ' · ' + t('guest_seen', guest.seen) : '')));
 
                 var tools = el('div', 'd-flex flex-wrap gap-1 mt-1');
-                var relink = button('btn btn-sm btn-ghost', t('guest_relink'), 'bi-link-45deg');
+                var relink = button('btn btn-sm btn-text theme-secondary', t('guest_relink'), 'bi-link-45deg');
                 relink.addEventListener('click', function () {
                     var fields = guestLinkFields(info.durations);
 
@@ -7893,7 +7908,7 @@
                 tools.appendChild(relink);
 
                 if (guest.open) {
-                    var end = button('btn btn-sm btn-ghost fg-danger', t('share_end'), 'bi-x-circle');
+                    var end = button('btn btn-sm btn-text theme-secondary fg-danger', t('share_end'), 'bi-x-circle');
                     end.addEventListener('click', function () {
                         hideOffcanvas(node);
                         ask(t('share_end_confirm', guest.name), t('share_end'), true).then(function (yes) {
@@ -8002,7 +8017,9 @@
             }
 
             if (channel.department) {
-                topic.appendChild(el('span', 'badge me-1', channel.department.name)).style.background = channel.department.color;
+                var departmentBadge = topic.appendChild(el('span', 'badge me-1', channel.department.name));
+                departmentBadge.style.background = channel.department.color;
+                departmentBadge.style.color = readableInk(channel.department.color);
             }
 
             topic.appendChild(document.createTextNode(channel.topic || ''));
@@ -8010,13 +8027,13 @@
             head.appendChild(title);
 
             var actions = el('div', 'ws-head-actions');
-            var faces = button('btn btn-sm btn-ghost d-inline-flex align-items-center gap-1', '', '', t('members'));
+            var faces = button('btn btn-sm btn-text theme-secondary d-inline-flex align-items-center gap-1', '', '', t('members'));
             faces.appendChild(avatarStack('', channel.members, 4));
             faces.appendChild(el('span', 'small', channel.members.length));
             faces.addEventListener('click', function () { self.showMembers(); });
             actions.appendChild(faces);
 
-            var addTask = button('btn btn-sm btn-ghost', '', 'bi-check2-square', t('new_task'));
+            var addTask = button('btn btn-sm btn-text theme-secondary', '', 'bi-check2-square', t('new_task'));
             addTask.addEventListener('click', function () {
                 var about = channel.customer ? channel.customer.customer : null;
                 var refs = about
@@ -8210,7 +8227,7 @@
             var self = this;
             var channel = self.channel;
             var wrap = el('div', 'pg-menu-wrap');
-            var toggle = button('btn btn-sm btn-ghost', '', 'bi-three-dots-vertical', t('more'));
+            var toggle = button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots-vertical', t('more'));
             toggle.setAttribute('data-bs-toggle', 'menu');
             toggle.setAttribute('data-bs-placement', 'bottom-end');
             wrap.appendChild(toggle);
@@ -8420,7 +8437,7 @@
                 row.appendChild(el('span', 'badge rounded-pill ' + (member.presence === 'online' ? 'theme-success' : 'theme-secondary'), t('presence_' + member.presence)));
 
                 if (channel.can_manage && member.id !== channel.owner_id && member.id !== BOOT.me.id) {
-                    var remove = button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('remove'));
+                    var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('remove'));
                     remove.addEventListener('click', function () {
                         api('ws_channel_member_remove', { channel_id: channel.id, user_id: member.id }).then(function () {
                             hideOffcanvas(node);
@@ -8470,7 +8487,7 @@
             var pane = clear(self.pane);
 
             if (self.hasMore) {
-                var older = button('btn btn-sm btn-ghost d-block mx-auto mb-3', t('older_messages'), 'bi-arrow-up');
+                var older = button('btn btn-sm btn-text theme-secondary d-block mx-auto mb-3', t('older_messages'), 'bi-arrow-up');
                 older.addEventListener('click', function () { self.loadOlder(older); });
                 pane.appendChild(older);
             }
@@ -9376,12 +9393,12 @@
                 bar.appendChild(el('span', 'ws-grow text-truncate', file.name));
 
                 if (kind === 'video') {
-                    var large = button('btn btn-sm btn-ghost py-0', '', 'bi-arrows-fullscreen', t('preview'));
+                    var large = button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-arrows-fullscreen', t('preview'));
                     large.addEventListener('click', function () { previewFile(file); });
                     bar.appendChild(large);
                 }
 
-                var save = el('a', 'btn btn-sm btn-ghost py-0');
+                var save = el('a', 'btn btn-sm btn-text theme-secondary py-0');
                 save.href = file.url;
                 save.setAttribute('download', file.name);
                 save.title = t('download');
@@ -9416,7 +9433,7 @@
                 card.appendChild(read);
             }
 
-            var get = el('a', 'btn btn-sm btn-ghost');
+            var get = el('a', 'btn btn-sm btn-text theme-secondary');
             get.href = file.url;
             get.setAttribute('download', file.name);
             get.title = t('download');
@@ -9634,7 +9651,7 @@
 
                 footer.appendChild(el('div', 'ws-grow small fg-secondary', data.can_replace ? t('file_text_mine_help') : (data.can_send ? t('file_text_copy_help') : t('file_text_readonly'))));
 
-                var close = button('btn btn-sm btn-ghost', t('close'));
+                var close = button('btn btn-sm btn-text theme-secondary', t('close'));
                 close.setAttribute('data-bs-dismiss', 'dialog');
                 footer.appendChild(close);
 
@@ -10351,7 +10368,7 @@
                 var dismiss = null;
 
                 if (change.can_dismiss) {
-                    dismiss = button('btn btn-sm btn-ghost', t('change_dismiss'), 'bi-x-lg');
+                    dismiss = button('btn btn-sm btn-text theme-secondary', t('change_dismiss'), 'bi-x-lg');
 
                     dismiss.addEventListener('click', function () {
                         dismiss.disabled = true;
@@ -10477,7 +10494,7 @@
                 var actions = el('div', 'ws-draft-actions');
 
                 if (proposal.can_open && proposal.edit_url) {
-                    var preview = el('a', 'btn btn-sm btn-ghost', '');
+                    var preview = el('a', 'btn btn-sm btn-text theme-secondary', '');
                     preview.href = proposal.edit_url;
                     preview.target = '_blank';
                     preview.rel = 'noopener';
@@ -10488,7 +10505,7 @@
 
                 var buttons = [];
                 var act = function (label, iconName, name, question, done) {
-                    var b = button(name === 'apply' ? 'btn btn-sm btn-solid theme-primary rounded-pill px-5' : 'btn btn-sm btn-ghost', label, iconName);
+                    var b = button(name === 'apply' ? 'btn btn-sm btn-solid theme-primary rounded-pill px-5' : 'btn btn-sm btn-text theme-secondary', label, iconName);
 
                     b.addEventListener('click', function () {
                         var go = question ? ask(question, label, name !== 'dismiss') : Promise.resolve(true);
@@ -10592,7 +10609,7 @@
                 if (draft.can_decide) {
                     var actions = el('div', 'ws-draft-actions');
                     var accept = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('claude_draft_open'), 'bi-plus-lg');
-                    var dismiss = button('btn btn-sm btn-ghost', t('claude_draft_dismiss'), 'bi-x-lg');
+                    var dismiss = button('btn btn-sm btn-text theme-secondary', t('claude_draft_dismiss'), 'bi-x-lg');
 
                     accept.addEventListener('click', function () {
                         accept.disabled = dismiss.disabled = true;
@@ -10774,13 +10791,13 @@
             foot.appendChild(el('span', 'ws-grow', t('poll_voters', poll.voters)));
 
             if (poll.voted && poll.can_vote) {
-                var undo = button('btn btn-sm btn-ghost', t('poll_withdraw'), 'bi-arrow-counterclockwise');
+                var undo = button('btn btn-sm btn-text theme-secondary', t('poll_withdraw'), 'bi-arrow-counterclockwise');
                 undo.addEventListener('click', function () { self.vote(message, []); });
                 foot.appendChild(undo);
             }
 
             if (poll.result_id) {
-                var result = button('btn btn-sm btn-ghost', t('poll_result'), 'bi-patch-check');
+                var result = button('btn btn-sm btn-text theme-secondary', t('poll_result'), 'bi-patch-check');
                 result.addEventListener('click', function () { self.jumpTo(poll.result_id); });
                 foot.appendChild(result);
             }
@@ -10863,7 +10880,7 @@
 
             var optionsWrap = el('div');
             var optionsBox = el('div', 'ws-poll-form-options');
-            var addOption = button('btn btn-sm btn-ghost', t('poll_add_option'), 'bi-plus-lg');
+            var addOption = button('btn btn-sm btn-text theme-secondary', t('poll_add_option'), 'bi-plus-lg');
 
             function renumber() {
                 Array.prototype.forEach.call(optionsBox.children, function (line, index) {
@@ -11005,7 +11022,7 @@
             outcome.appendChild(document.createTextNode(t('poll_result_help')));
             body.appendChild(outcome);
 
-            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             cancel.setAttribute('data-bs-dismiss', 'drawer');
             footer.appendChild(cancel);
 
@@ -12439,7 +12456,7 @@
                 waiting.appendChild(icon('bi-clock'));
                 waiting.appendChild(el('span', '', t('sm_editing') + ' · ' + t('sm_at', self.editingScheduled.when)));
 
-                var stop = button('btn btn-sm btn-ghost py-0', '', 'bi-x-lg', t('cancel'));
+                var stop = button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', t('cancel'));
                 stop.addEventListener('click', function () { self.cancelCompose(); });
                 waiting.appendChild(stop);
                 bar.appendChild(waiting);
@@ -12459,7 +12476,7 @@
             } else if (!self.editing && self.reply.sender && self.reply.sender.mcp) {
                 row.appendChild(el('span', 'fg-secondary ms-1', t('mcp_reply_hint', self.reply.sender.mcp)));
             }
-            var cancel = button('btn btn-sm btn-ghost py-0', '', 'bi-x-lg', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', t('cancel'));
             cancel.addEventListener('click', function () { self.cancelCompose(); });
             row.appendChild(cancel);
             bar.appendChild(row);
@@ -12663,7 +12680,7 @@
                 if (result.command && result.command.type === 'ephemeral') {
                     var box = el('div', 'ws-ephemeral');
                     setHtml(box, result.command.html);
-                    var close = button('btn btn-sm btn-ghost float-end py-0', '', 'bi-x-lg', t('close'));
+                    var close = button('btn btn-sm btn-text theme-secondary float-end py-0', '', 'bi-x-lg', t('close'));
                     close.addEventListener('click', function () { box.remove(); });
                     box.insertBefore(close, box.firstChild);
                     self.pane.appendChild(box);
@@ -12794,7 +12811,7 @@
                 actions.appendChild(force);
             }
 
-            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             cancel.addEventListener('click', function () {
                 self.pending = null;
                 clear(self.previewBox);
@@ -12854,7 +12871,7 @@
             });
             actions.appendChild(save);
 
-            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             cancel.addEventListener('click', function () {
                 self.pending = null;
                 clear(self.previewBox);
@@ -12945,7 +12962,7 @@
             });
             actions.appendChild(all);
 
-            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             cancel.addEventListener('click', function () {
                 self.pending = null;
                 clear(self.previewBox);
@@ -12977,7 +12994,7 @@
             });
 
             box.appendChild(list);
-            var close = button('btn btn-sm btn-ghost float-end py-0', '', 'bi-x-lg', t('close'));
+            var close = button('btn btn-sm btn-text theme-secondary float-end py-0', '', 'bi-x-lg', t('close'));
             close.addEventListener('click', function () { box.remove(); });
             box.insertBefore(close, box.firstChild);
             this.pane.appendChild(box);
@@ -14303,7 +14320,7 @@
 
                 data.messages.forEach(function (message) {
                     var node = self.messageNode(message, null);
-                    var jump = button('btn btn-sm btn-ghost', t('show_in_conversation'), 'bi-arrow-right-short');
+                    var jump = button('btn btn-sm btn-text theme-secondary', t('show_in_conversation'), 'bi-arrow-right-short');
                     jump.addEventListener('click', function () { self.open(self.channel.id, message.id); });
                     node.querySelector('.ws-msg-meta').appendChild(jump);
                     pane.appendChild(node);
@@ -14448,7 +14465,7 @@
                         row.appendChild(el('small', 'fg-secondary ws-grow', (message.sender ? message.sender.name + ' · ' : '') + message.time));
 
                         if (message.file.kind === 'pdf' || message.file.kind === 'audio' || message.file.office) {
-                            var look = button('btn btn-sm btn-ghost', '', message.file.kind === 'audio' ? 'bi-play-circle' : 'bi-eye', t('preview'));
+                            var look = button('btn btn-sm btn-text theme-secondary', '', message.file.kind === 'audio' ? 'bi-play-circle' : 'bi-eye', t('preview'));
                             look.addEventListener('click', function () {
                                 if (message.file.kind === 'pdf' || message.file.office) {
                                     previewFile(message.file, function (result) { self.fileEdited(result); });
@@ -14464,7 +14481,7 @@
                             row.appendChild(look);
                         }
 
-                        var jump = button('btn btn-sm btn-ghost', '', 'bi-chat-left-text', t('show_in_conversation'));
+                        var jump = button('btn btn-sm btn-text theme-secondary', '', 'bi-chat-left-text', t('show_in_conversation'));
                         jump.addEventListener('click', function () { self.open(self.channel.id, message.id); });
                         row.appendChild(jump);
 
@@ -14483,6 +14500,7 @@
             var bar = el('div', 'pg-toolbar mb-3');
             var status = select([['open', t('open_tasks')], ['closed', t('closed_tasks')], ['all', t('all_tasks')]], self.taskStatus || 'open');
             status.classList.add('w-auto');
+            status.setAttribute('aria-label', t('task_status_filter'));
             status.addEventListener('change', function () {
                 self.taskStatus = status.value;
                 self.drawCenter();
@@ -14560,7 +14578,7 @@
                             toast(t('summary_saved'), 'success');
                         }).catch(fail);
                     });
-                    var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+                    var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
                     cancel.addEventListener('click', function () { self.drawCenter(); });
                     actions.appendChild(save);
                     actions.appendChild(cancel);
@@ -15214,14 +15232,14 @@
             head.appendChild(title);
 
             var actions = el('div', 'ws-head-actions');
-            var faces = button('btn btn-sm btn-ghost d-inline-flex align-items-center gap-1', '', '', t('th_people'));
+            var faces = button('btn btn-sm btn-text theme-secondary d-inline-flex align-items-center gap-1', '', '', t('th_people'));
             faces.appendChild(avatarStack('', channel.members, 4));
             faces.appendChild(el('span', 'small', (channel.members || []).length));
             faces.addEventListener('click', function () { self.showPeople(); });
             actions.appendChild(faces);
             actions.appendChild(self.threadMenu());
 
-            var shut = button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('th_close_panel'));
+            var shut = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('th_close_panel'));
             shut.addEventListener('click', function () { self.close(); });
             actions.appendChild(shut);
             head.appendChild(actions);
@@ -15297,7 +15315,7 @@
             var self = this;
             var channel = self.channel;
             var thread = channel.thread || {};
-            var more = button('btn btn-sm btn-ghost', '', 'bi-three-dots-vertical', t('more'));
+            var more = button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots-vertical', t('more'));
 
             more.addEventListener('click', function (event) {
                 var place = more.getBoundingClientRect();
@@ -15740,7 +15758,7 @@
     function saConditionRow(rule, onRemove) {
         var row = el('div', 'ws-sa-condition');
         var config = CFG.scheduled || {};
-        var removeButton = button('btn btn-sm btn-ghost ws-sa-remove', '', 'bi-x-lg', t('delete'));
+        var removeButton = button('btn btn-sm btn-text theme-secondary ws-sa-remove', '', 'bi-x-lg', t('delete'));
 
         removeButton.addEventListener('click', function () {
             row.remove();
@@ -16366,7 +16384,7 @@
             var verbBox = el('div');
             var verb = null;
             var fieldsBox = el('div', 'ws-sa-fields');
-            var addField = button('btn btn-sm btn-ghost', t('sa_add_field'), 'bi-plus-lg');
+            var addField = button('btn btn-sm btn-text theme-secondary', t('sa_add_field'), 'bi-plus-lg');
             var rows = [];
 
             function info() {
@@ -16379,7 +16397,7 @@
                 var which = select(fields.map(function (key) { return [key, info().fields[key].label]; }), name || fields[0]);
                 var slot = el('div', 'flex-grow-1');
                 var input = null;
-                var remove = button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('delete'));
+                var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('delete'));
                 var entry = { row: row };
 
                 function draw() {
@@ -16515,7 +16533,7 @@
         var row = el('div', 'ws-sa-follow');
         var head = el('div', 'ws-sa-follow-head');
         var on = select(Object.keys(config.outcomes || {}).map(function (key) { return [key, config.outcomes[key]]; }), (item && item.on) || 'done');
-        var removeButton = button('btn btn-sm btn-ghost ws-sa-remove', '', 'bi-x-lg', t('delete'));
+        var removeButton = button('btn btn-sm btn-text theme-secondary ws-sa-remove', '', 'bi-x-lg', t('delete'));
         var editor = saActionEditor(item ? item.do : null, false, selfId, { join: !!(state && state.join) });
 
         row.editor = editor;
@@ -16952,7 +16970,7 @@
             }
         });
 
-        var addRule = button('btn btn-sm btn-ghost', t('sa_add_rule'), 'bi-plus-lg');
+        var addRule = button('btn btn-sm btn-text theme-secondary', t('sa_add_rule'), 'bi-plus-lg');
         addRule.addEventListener('click', function (event) {
             var box = addRule.getBoundingClientRect();
             var add = function (rule) { return function () { conditions.appendChild(saConditionRow(rule)); preview(); }; };
@@ -16982,7 +17000,7 @@
 
         if (config.chains) {
             var after = step(4, 'bi-signpost-split', t('sa_follow'), t('sa_follow_help'));
-            var addFollow = button('btn btn-sm btn-ghost', t('sa_add_follow'), 'bi-plus-lg');
+            var addFollow = button('btn btn-sm btn-text theme-secondary', t('sa_add_follow'), 'bi-plus-lg');
             var countFollow = function () {
                 addFollow.hidden = (follows.children.length >= (config.max_follow || 5));
                 actionEditors = [actionEditor].concat(Array.prototype.map.call(follows.children, function (row) { return row.editor; }).filter(Boolean));
@@ -17165,7 +17183,7 @@
 
         // ── saving ──
 
-        var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'drawer');
         footer.appendChild(cancel);
 
@@ -17428,7 +17446,7 @@
         };
 
         if (item.can_edit) {
-            var edit = button('btn btn-sm btn-ghost', t('edit'), 'bi-pencil');
+            var edit = button('btn btn-sm btn-text theme-secondary', t('edit'), 'bi-pencil');
             edit.addEventListener('click', function () {
                 scheduledForm(null, item, function (fresh) { refresh({ item: fresh }); });
             });
@@ -17436,7 +17454,7 @@
         }
 
         if (item.status === 'active' || item.status === 'paused') {
-            var pause = button('btn btn-sm btn-ghost', item.status === 'active' ? t('sa_pause') : t('sa_resume'), item.status === 'active' ? 'bi-pause' : 'bi-play');
+            var pause = button('btn btn-sm btn-text theme-secondary', item.status === 'active' ? t('sa_pause') : t('sa_resume'), item.status === 'active' ? 'bi-pause' : 'bi-play');
             pause.addEventListener('click', function () {
                 api('ws_scheduled_status', { id: item.id, status: item.status === 'active' ? 'paused' : 'active' }).then(refresh).catch(fail);
             });
@@ -17444,7 +17462,7 @@
         }
 
         if (item.can_edit) {
-            var run = button('btn btn-sm btn-ghost', t('sa_run_now'), 'bi-lightning');
+            var run = button('btn btn-sm btn-text theme-secondary', t('sa_run_now'), 'bi-lightning');
             run.addEventListener('click', function () {
                 ask(t('sa_run_now_confirm'), t('sa_run_now')).then(function (yes) {
                     if (yes) {
@@ -17460,7 +17478,7 @@
         }
 
         // A copy to start a new one from.
-        var copy = button('btn btn-sm btn-ghost', t('sa_duplicate'), 'bi-copy');
+        var copy = button('btn btn-sm btn-text theme-secondary', t('sa_duplicate'), 'bi-copy');
         copy.addEventListener('click', function () {
             var data = JSON.parse(JSON.stringify(item.data || {}));
 
@@ -17472,14 +17490,14 @@
         // The action drawn read-only on the flow canvas: in the Scheduled
         // actions section of Flows, where workspace_flow.js is loaded.
         if ((CFG.mode === 'flows') && window.PGWsFlow && window.PGWsFlow.showAction) {
-            var canvas = button('btn btn-sm btn-ghost', t('sa_show_canvas'), 'bi-diagram-3');
+            var canvas = button('btn btn-sm btn-text theme-secondary', t('sa_show_canvas'), 'bi-diagram-3');
             canvas.addEventListener('click', function () {
                 scheduledGraph(item.id);
             });
             tools.appendChild(canvas);
         }
 
-        var history = button('btn btn-sm btn-ghost', t('sa_history'), 'bi-clock-history');
+        var history = button('btn btn-sm btn-text theme-secondary', t('sa_history'), 'bi-clock-history');
         var historyBox = el('div', 'ws-sa-history');
         historyBox.hidden = true;
         history.addEventListener('click', function () {
@@ -17508,7 +17526,7 @@
         tools.appendChild(history);
 
         if (item.status === 'active' || item.status === 'paused' || item.status === 'failed') {
-            var cancelButton = button('btn btn-sm btn-ghost fg-danger', t('sa_cancel'), 'bi-x-circle');
+            var cancelButton = button('btn btn-sm btn-text theme-secondary fg-danger', t('sa_cancel'), 'bi-x-circle');
             cancelButton.addEventListener('click', function () {
                 ask(t('sa_cancel_confirm'), t('sa_cancel'), true).then(function (yes) {
                     if (yes) {
@@ -17654,7 +17672,7 @@
         }
 
         var tools = el('div', 'ws-sm-tools');
-        var sendNow = button('btn btn-sm btn-ghost', t('sm_send_now'), 'bi-send');
+        var sendNow = button('btn btn-sm btn-text theme-secondary', t('sm_send_now'), 'bi-send');
         sendNow.addEventListener('click', function () {
             sendNow.disabled = true;
             api('ws_scheduled_message_send', { id: item.id }).then(function () {
@@ -17667,7 +17685,7 @@
         });
         tools.appendChild(sendNow);
 
-        var move = button('btn btn-sm btn-ghost', t('sm_reschedule'), 'bi-calendar-event');
+        var move = button('btn btn-sm btn-text theme-secondary', t('sm_reschedule'), 'bi-calendar-event');
         move.addEventListener('click', function () {
             smAskWhen(item.date, item.time).then(function (when) {
                 if (!when) {
@@ -17683,12 +17701,12 @@
         tools.appendChild(move);
 
         if (onEdit) {
-            var edit = button('btn btn-sm btn-ghost', t('sm_edit_text'), 'bi-pencil');
+            var edit = button('btn btn-sm btn-text theme-secondary', t('sm_edit_text'), 'bi-pencil');
             edit.addEventListener('click', function () { onEdit(item); });
             tools.appendChild(edit);
         }
 
-        var remove = button('btn btn-sm btn-ghost fg-danger', t('sm_delete'), 'bi-trash');
+        var remove = button('btn btn-sm btn-text theme-secondary fg-danger', t('sm_delete'), 'bi-trash');
         remove.addEventListener('click', function () {
             ask(t('sm_delete_confirm'), t('sm_delete'), true).then(function (yes) {
                 if (!yes) {
@@ -17806,7 +17824,7 @@
             row.appendChild(avatarStack('', task.assignees, 4));
 
             if (task.can_edit && task.open) {
-                var done = button('btn btn-sm btn-ghost', '', 'bi-check2-circle', t('mark_done'));
+                var done = button('btn btn-sm btn-text theme-secondary', '', 'bi-check2-circle', t('mark_done'));
                 done.addEventListener('click', function (event) {
                     event.stopPropagation();
                     api('ws_task_status', { task_id: task.id, status: 'done' }).then(function () {
@@ -17901,7 +17919,7 @@
         }
 
         scopeList.forEach(function (scope) {
-            var item = button('btn btn-ghost' + (state.scope === scope[0] ? ' active' : ''), scope[1]);
+            var item = button('btn btn-text theme-secondary' + (state.scope === scope[0] ? ' active' : ''), scope[1]);
             item.addEventListener('click', function () {
                 state.scope = scope[0];
                 Array.prototype.forEach.call(scopes.children, function (child) { child.classList.remove('active'); });
@@ -17915,6 +17933,7 @@
 
         var status = select([['open', t('open_tasks')], ['closed', t('closed_tasks')], ['all', t('all_tasks')]], state.status);
         status.classList.add('w-auto');
+        status.setAttribute('aria-label', t('task_status_filter'));
         status.addEventListener('change', function () {
             state.status = status.value;
             load();
@@ -17962,8 +17981,12 @@
         var grow = el('div', 'pg-toolbar-grow');
         bar.appendChild(grow);
 
-        var searchGroup = el('div', 'input-group input-group-sm rounded-pill pg-toolbar-search');
-        var search = el('input', 'form-control');
+        var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
+        var searchIcon = el('span', 'form-adorn-text');
+        searchIcon.setAttribute('aria-hidden', 'true');
+        searchIcon.appendChild(icon('bi-search'));
+        searchGroup.appendChild(searchIcon);
+        var search = el('input', 'form-ghost');
         search.type = 'search';
         search.placeholder = t('search_tasks');
         search.setAttribute('aria-label', search.placeholder);
@@ -18036,14 +18059,14 @@
         addEvent.addEventListener('click', function () { eventForm(null, {}, load); });
         bar.appendChild(addEvent);
 
-        var addTask = button('btn btn-sm btn-ghost', t('new_task'), 'bi-check2-square');
+        var addTask = button('btn btn-sm btn-text theme-secondary', t('new_task'), 'bi-check2-square');
         addTask.addEventListener('click', function () { taskDrawer.open(0, {}, load); });
         bar.appendChild(addTask);
 
         var nav = el('div', 'btn-group btn-group-sm');
-        var prev = button('btn btn-ghost', '', 'bi-chevron-left', t('previous'));
-        var today = button('btn btn-ghost', t('today'));
-        var next = button('btn btn-ghost', '', 'bi-chevron-right', t('next'));
+        var prev = button('btn btn-text theme-secondary', '', 'bi-chevron-left', t('previous'));
+        var today = button('btn btn-text theme-secondary', t('today'));
+        var next = button('btn btn-text theme-secondary', '', 'bi-chevron-right', t('next'));
 
         function shift(days) {
             var date = new Date(state.from + 'T12:00:00');
@@ -18070,7 +18093,7 @@
         var span = el('div', 'btn-group btn-group-sm');
 
         [[7, t('one_week')], [14, t('two_weeks')]].forEach(function (option) {
-            var item = button('btn btn-ghost' + (state.days === option[0] ? ' active' : ''), option[1]);
+            var item = button('btn btn-text theme-secondary' + (state.days === option[0] ? ' active' : ''), option[1]);
             item.addEventListener('click', function () {
                 state.days = option[0];
                 Array.prototype.forEach.call(span.children, function (child) { child.classList.remove('active'); });
@@ -18484,9 +18507,9 @@
         // ── toolbar ──
 
         var nav = el('div', 'btn-group btn-group-sm');
-        var prev = button('btn btn-ghost', '', 'bi-chevron-left', t('previous_month'));
-        var now = button('btn btn-ghost', t('this_month'));
-        var next = button('btn btn-ghost', '', 'bi-chevron-right', t('next_month'));
+        var prev = button('btn btn-text theme-secondary', '', 'bi-chevron-left', t('previous_month'));
+        var now = button('btn btn-text theme-secondary', t('this_month'));
+        var next = button('btn btn-text theme-secondary', '', 'bi-chevron-right', t('next_month'));
 
         prev.addEventListener('click', function () { if (data) { state.month = data.prev; load(); } });
         next.addEventListener('click', function () { if (data) { state.month = data.next; load(); } });
@@ -18523,6 +18546,7 @@
 
         var statusFilter = select([['all', t('all_tasks')], ['open', t('open_tasks')], ['closed', t('closed_tasks')]], 'all');
         statusFilter.classList.add('w-auto');
+        statusFilter.setAttribute('aria-label', t('task_status_filter'));
         statusFilter.addEventListener('change', function () {
             state.status = statusFilter.value;
             draw();
@@ -18535,7 +18559,7 @@
         shows.setAttribute('role', 'group');
 
         [['tasks', t('tasks'), 'bi-check2-square'], ['talk', t('conversations'), 'bi-chat-dots'], ['events', t('plan_items'), 'bi-calendar-event']].forEach(function (option) {
-            var toggle = button('btn btn-ghost active', option[1], option[2]);
+            var toggle = button('btn btn-text theme-secondary active', option[1], option[2]);
             toggle.setAttribute('aria-pressed', 'true');
             toggle.addEventListener('click', function () {
                 state.show[option[0]] = !state.show[option[0]];
@@ -18831,7 +18855,7 @@
             node.querySelector('.drawer-title').textContent = day.label;
             footer.classList.remove('d-none');
 
-            var addEvent = button('btn btn-sm btn-ghost', t('add_plan_item'), 'bi-calendar-plus');
+            var addEvent = button('btn btn-sm btn-text theme-secondary', t('add_plan_item'), 'bi-calendar-plus');
             addEvent.addEventListener('click', function () {
                 hideOffcanvas(node);
                 eventForm(null, { start: day.date, people: forWhom() }, load);
@@ -19020,7 +19044,7 @@
             peopleHead.appendChild(el('h3', 'ws-side-card-title ws-grow mb-0', t('people_this_month')));
 
             if (state.person_id) {
-                var all = button('btn btn-sm btn-ghost py-0', t('everyone'), 'bi-x');
+                var all = button('btn btn-sm btn-text theme-secondary py-0', t('everyone'), 'bi-x');
                 all.addEventListener('click', function () {
                     state.person_id = 0;
                     load();
@@ -19343,7 +19367,7 @@
             footer.appendChild(remove);
         }
 
-        var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'drawer');
         footer.appendChild(cancel);
 
@@ -19585,7 +19609,7 @@
         var section = el('div', 'ws-record-section ws-qe');
         var head = el('div', 'd-flex align-items-center justify-content-between');
         var title = el('div', 'ws-record-title mb-0', t('qe_title'));
-        var toggle = button('btn btn-sm btn-ghost', open ? t('close') : t('qe_edit'), open ? 'bi-chevron-up' : 'bi-pencil-square');
+        var toggle = button('btn btn-sm btn-text theme-secondary', open ? t('close') : t('qe_edit'), open ? 'bi-chevron-up' : 'bi-pencil-square');
         var form = el('div', 'ws-qe-form mt-3' + (open ? '' : ' d-none'));
         var fields = data.fields.slice();
         var short = data.short || [];
@@ -19668,7 +19692,7 @@
         form.appendChild(shortBox);
 
         if (moreBox.childNodes.length) {
-            var more = button('btn btn-sm btn-ghost mb-3', short.length ? t('qe_more') : t('qe_fewer'), 'bi-chevron-down');
+            var more = button('btn btn-sm btn-text theme-secondary mb-3', short.length ? t('qe_more') : t('qe_fewer'), 'bi-chevron-down');
 
             if (!short.length) {
                 moreBox.classList.remove('d-none');
@@ -19879,7 +19903,7 @@
         section.appendChild(shortBox);
 
         if (moreBox.childNodes.length) {
-            var more = button('btn btn-sm btn-ghost mb-3', t('qe_more'), 'bi-chevron-down');
+            var more = button('btn btn-sm btn-text theme-secondary mb-3', t('qe_more'), 'bi-chevron-down');
 
             more.addEventListener('click', function () {
                 var showing = moreBox.classList.contains('d-none');
@@ -20057,7 +20081,7 @@
 
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
-        var notesToggle = button('btn btn-sm btn-ghost' + (state.notes ? ' active' : ''), t('tl_notes'), 'bi-sticky');
+        var notesToggle = button('btn btn-sm btn-text theme-secondary' + (state.notes ? ' active' : ''), t('tl_notes'), 'bi-sticky');
         notesToggle.setAttribute('aria-pressed', state.notes ? 'true' : 'false');
         notesToggle.addEventListener('click', function () {
             state.notes = !state.notes;
@@ -20067,8 +20091,12 @@
         });
         bar.appendChild(notesToggle);
 
-        var searchGroup = el('div', 'input-group input-group-sm rounded-pill pg-toolbar-search');
-        var search = el('input', 'form-control');
+        var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
+        var searchIcon = el('span', 'form-adorn-text');
+        searchIcon.setAttribute('aria-hidden', 'true');
+        searchIcon.appendChild(icon('bi-search'));
+        searchGroup.appendChild(searchIcon);
+        var search = el('input', 'form-ghost');
         search.type = 'search';
         search.value = state.search;
         search.placeholder = t('tl_search');
@@ -20389,7 +20417,7 @@
                 foot.appendChild(el('span', '', t('edited')));
             }
 
-            var jump = el('a', 'btn btn-sm btn-ghost ms-auto');
+            var jump = el('a', 'btn btn-sm btn-text theme-secondary ms-auto');
             jump.href = item.url;
             jump.appendChild(icon('bi-arrow-right-short', 'me-1'));
             jump.appendChild(document.createTextNode(t('show_in_conversation')));
@@ -20627,7 +20655,7 @@
 
         // My Notes pinned to the panel menu, right under the workspace: the
         // person's own choice, shown once the list says it can be made.
-        var menuPin = button('btn btn-sm btn-ghost d-none ws-nb-menu-pin', '', 'bi-pin-angle');
+        var menuPin = button('btn btn-sm btn-text theme-secondary d-none ws-nb-menu-pin', '', 'bi-pin-angle');
         var menuPinned = false;
 
         function drawMenuPin() {
@@ -20714,7 +20742,7 @@
 
         // Every note as a zip that opens as a vault in Obsidian and the like.
         if (CFG.urls.notes_export) {
-            var exportAll = button('btn btn-sm btn-ghost', t('notes_export_all'), 'bi-file-earmark-zip');
+            var exportAll = button('btn btn-sm btn-text theme-secondary', t('notes_export_all'), 'bi-file-earmark-zip');
             exportAll.addEventListener('click', function () { window.location.href = CFG.urls.notes_export + '?all=1'; });
             bar.appendChild(exportAll);
         }
@@ -20722,15 +20750,19 @@
         // Notes from another app: Markdown and text files, or a zip of them
         // (workspace_notes_import.php).
         if (CFG.urls.notes_import && CFG.notes_import) {
-            var importNotes = button('btn btn-sm btn-ghost', t('notes_import'), 'bi-box-arrow-in-down');
+            var importNotes = button('btn btn-sm btn-text theme-secondary', t('notes_import'), 'bi-box-arrow-in-down');
             importNotes.addEventListener('click', function () { save().then(openImport); });
             bar.appendChild(importNotes);
         }
 
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
-        var searchGroup = el('div', 'input-group input-group-sm rounded-pill pg-toolbar-search');
-        var searchInput = el('input', 'form-control');
+        var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
+        var searchIcon = el('span', 'form-adorn-text');
+        searchIcon.setAttribute('aria-hidden', 'true');
+        searchIcon.appendChild(icon('bi-search'));
+        searchGroup.appendChild(searchIcon);
+        var searchInput = el('input', 'form-ghost');
         searchInput.type = 'search';
         searchInput.placeholder = t('notes_search');
         searchInput.setAttribute('aria-label', searchInput.placeholder);
@@ -21281,7 +21313,7 @@
 
             clear(headNode);
 
-            var back = button('btn btn-sm btn-ghost lg:d-none', '', 'bi-arrow-left', t('notes_back'));
+            var back = button('btn btn-sm btn-text theme-secondary lg:d-none', '', 'bi-arrow-left', t('notes_back'));
             back.addEventListener('click', function () {
                 save();
                 current = null;
@@ -21314,7 +21346,7 @@
             setStatus(dirty ? 'unsaved' : (current.id && editable() ? 'saved' : ''));
 
             if (current.access === 'owner' || !current.id) {
-                var share = button('btn btn-sm btn-ghost', t('notes_share'), 'bi-send');
+                var share = button('btn btn-sm btn-text theme-secondary', t('notes_share'), 'bi-send');
                 share.disabled = !current.id;
                 share.addEventListener('click', function (event) {
                     var box = share.getBoundingClientRect();
@@ -21334,7 +21366,7 @@
             // action items): its own button to bring them into a channel.
             if (CFG.meetings && current.id && editable() && /<#plan:\d+>/.test(current.body || '')
                 && ((current.body || '').indexOf('::: ' + t('meeting_decisions')) !== -1 || (current.body || '').indexOf('::: ' + t('meeting_actions')) !== -1)) {
-                var transfer = button('btn btn-sm btn-ghost', t('meeting_transfer'), 'bi-box-arrow-in-right');
+                var transfer = button('btn btn-sm btn-text theme-secondary', t('meeting_transfer'), 'bi-box-arrow-in-right');
                 transfer.addEventListener('click', function () { meetingTransfer(current); });
                 headNode.appendChild(transfer);
             }
@@ -21342,12 +21374,12 @@
             // What the note held before: kept on the server, put back as a
             // step the person can undo.
             if (current.id && current.versions) {
-                var versions = button('btn btn-sm btn-ghost', '', 'bi-clock-history', t('notes_versions'));
+                var versions = button('btn btn-sm btn-text theme-secondary', '', 'bi-clock-history', t('notes_versions'));
                 versions.addEventListener('click', function () { showVersions(current); });
                 headNode.appendChild(versions);
             }
 
-            var more = button('btn btn-sm btn-ghost', '', 'bi-three-dots', t('more'));
+            var more = button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots', t('more'));
             more.disabled = !current.id;
             more.addEventListener('click', function (event) {
                 var box = more.getBoundingClientRect();
@@ -21443,7 +21475,7 @@
 
             view.appendChild(el('div', 'small fg-secondary', t('notes_version_pick')));
 
-            var close = button('btn btn-sm btn-ghost', t('close'));
+            var close = button('btn btn-sm btn-text theme-secondary', t('close'));
             close.setAttribute('data-bs-dismiss', 'dialog');
             footer.appendChild(close);
 
@@ -21662,7 +21694,7 @@
             }
 
             function closeButton(label) {
-                var close = button('btn btn-sm btn-ghost', label || t('cancel'));
+                var close = button('btn btn-sm btn-text theme-secondary', label || t('cancel'));
                 close.setAttribute('data-bs-dismiss', 'dialog');
                 return close;
             }
@@ -22071,7 +22103,7 @@
                 var bytes = el('span');
                 var bar = progressBar({ percent: 0 });
                 var fill = bar.firstChild;
-                var stop = button('btn btn-sm btn-ghost', t('notes_import_cancel_upload'));
+                var stop = button('btn btn-sm btn-text theme-secondary', t('notes_import_cancel_upload'));
 
                 // The step is announced, not every percent.
                 label.setAttribute('role', 'status');
@@ -22929,7 +22961,7 @@
                 }
 
                 if (share.share_id) {
-                    var remove = button('btn btn-sm btn-ghost ws-tool-danger', '', 'bi-x-lg', t('notes_unshare'));
+                    var remove = button('btn btn-sm btn-text theme-secondary ws-tool-danger', '', 'bi-x-lg', t('notes_unshare'));
                     remove.addEventListener('click', function () {
                         api('ws_note_unshare', { note_id: note.id, share_id: share.share_id }).then(function () {
                             row.remove();
@@ -23022,7 +23054,7 @@
 
             footer.classList.remove('d-none');
 
-            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             cancel.setAttribute('data-bs-dismiss', 'drawer');
             footer.appendChild(cancel);
 

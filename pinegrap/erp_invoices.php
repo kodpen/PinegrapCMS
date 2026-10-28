@@ -398,7 +398,7 @@ if (!empty($edoc_filters)) {
 
     $output_edoc_menu = '
                 <div class="pg-menu-wrap">
-                    <button class="btn btn-sm btn-ghost pg-menu-caret' . (($edoc_filter !== '') ? ' active' : '') . '" type="button" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false"><i class="bi bi-send-check me-1" aria-hidden="true"></i>' . (($edoc_filter !== '') ? h($edoc_filters[$edoc_filter]['label']) : lang('e-Document')) . '</button>
+                    <button class="btn btn-sm btn-text theme-secondary pg-menu-caret' . (($edoc_filter !== '') ? ' active' : '') . '" type="button" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false"><i class="bi bi-send-check me-1" aria-hidden="true"></i>' . (($edoc_filter !== '') ? h($edoc_filters[$edoc_filter]['label']) : lang('e-Document')) . '</button>
                     <ul class="menu pg-menu-end">' . $output_edoc_items . '
                         <li><hr class="menu-divider"></li>
                         <li><a class="menu-item pg-link-body-emphasis" href="erp_invoices.php">' . lang('All') . '</a></li>

@@ -943,25 +943,32 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                 } else {
                     $output_monthly_calendar_class = ' class="software_monthly_calendar"';
                 }
+                // The dashboard card is too narrow for full day names, which
+                // it cut to "Cu…" for both Friday and Saturday: it gets the
+                // short ones, with the full name for screen readers.
+                $output_day_headings = '';
+
+                $day_names = array(
+                    array(lang('Sunday'), lang('Sun')),
+                    array(lang('Monday'), lang('Mon')),
+                    array(lang('Tuesday'), lang('Tue')),
+                    array(lang('Wednesday'), lang('Wed')),
+                    array(lang('Thursday'), lang('Thu')),
+                    array(lang('Friday'), lang('Fri')),
+                    array(lang('Saturday'), lang('Sat')),
+                );
+
+                foreach ($day_names as $day_name) {
+                    $output_day_headings .= ($output_minimal_calendar == true)
+                        ? '<th><abbr class="text-decoration-none" title="' . h($day_name[0]) . '">' . h($day_name[1]) . '</abbr></th>'
+                        : '<th>' . h($day_name[0]) . '</th>';
+                }
+
                 $output_calendar = '<div class="monthly">
 
                         <table' . $output_monthly_calendar_class . '>
 
-                        <tr class="heading">
-
-                            <th>' . lang('Sunday') . '</th>
-
-                            <th>' . lang('Monday') . '</th>
-
-                            <th>' . lang('Tuesday') . '</th>
-
-                            <th>' . lang('Wednesday') . '</th>
-
-                            <th>' . lang('Thursday') . '</th>
-
-                            <th>' . lang('Friday') . '</th>
-
-                            <th>' . lang('Saturday') . '</th>
+                        <tr class="heading">' . $output_day_headings . '
 
                         </tr>
 

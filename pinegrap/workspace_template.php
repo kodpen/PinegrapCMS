@@ -197,7 +197,7 @@ pg_page_shell([
     ' . $liveform->output_notices() . '
     ' . (($draft_from !== '') ? '<div class="alert theme-info small">' . h(lang(array('string' => 'A draft made from #{var:1}: its open tasks, the notes shared in it, its summary and its pinned message. Nothing is kept until it is saved.', 'vars' => $draft_from))) . '</div>' : '') . '
     <nav id="button_bar" class="pg-toolbar navigation mb-5" aria-label="' . h(lang('Button Bar')) . '">
-        <a class="btn btn-sm btn-ghost" href="' . h($settings_url) . '"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>' . h(lang('Channel templates')) . '</a>
+        <a class="btn btn-sm btn-text theme-secondary" href="' . h($settings_url) . '"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>' . h(lang('Channel templates')) . '</a>
     </nav>
     <form method="post" action="' . h($self_url) . '" id="ws-template-form" class="row g-7">
         ' . get_token_field() . '
@@ -219,10 +219,10 @@ pg_page_shell([
                         </div>
                         <div class="col-12 md:col-4">
                             <label class="form-label" for="ws_tpl_icon">' . h(lang('Icon')) . '</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="bi ' . h($icon) . '" id="ws_tpl_icon_preview" aria-hidden="true"></i></span>
-                                <input class="form-control" type="text" name="icon" id="ws_tpl_icon" maxlength="40" placeholder="bi-briefcase" value="' . h($template['icon']) . '">
-                            </div>
+                            <label class="form-control form-adorn">
+                                <span class="form-adorn-text" aria-hidden="true"><i class="bi ' . h($icon) . '" id="ws_tpl_icon_preview"></i></span>
+                                <input class="form-ghost" type="text" name="icon" id="ws_tpl_icon" maxlength="40" placeholder="bi-briefcase" value="' . h($template['icon']) . '">
+                            </label>
                             <div class="form-text">' . h(lang('A Bootstrap Icons class, such as bi-briefcase.')) . ' ' . h(lang('A channel made from the template takes the icon only when it is one of the channel icons.')) . '</div>
                         </div>
                         <div class="col-12 md:col-4">
@@ -305,7 +305,7 @@ pg_page_shell([
 
         <div class="col-12 order-3">
             <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                <a class="btn btn-sm btn-ghost" href="' . h($settings_url) . '">' . h(lang('Cancel')) . '</a>
+                <a class="btn btn-sm btn-text theme-secondary" href="' . h($settings_url) . '">' . h(lang('Cancel')) . '</a>
                 <button type="submit" name="submit_save" value="Save" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save the template')) . '</button>
             </nav>
         </div>

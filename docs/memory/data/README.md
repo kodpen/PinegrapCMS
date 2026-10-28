@@ -24,21 +24,26 @@ Table structures and SQL pitfalls.
 - comments-author-index.md: comments.idx_author (created_user_id, created_timestamp), 2026.11.0 step 11.0.36: why it exists, what reads it, how the step pauses, how it was checked
 - comments-table.md: The comments table: thread key, 2026.11.0 columns (reviews 11.0.14, parent_id 11.0.31), indexes and their readers, copy cost on MyISAM, code that copies or exports rows.
 - common-region-queries.md: Classic pages read <cregion> rows through pg_common_regions(): one query per nesting level per request, how a name finds its row (collation, lowest id), what the output must keep
-- config-table-no-varchar.md: Rule that the config table gets no new VARCHAR columns (TEXT only), with the InnoDB row-size reasons and the test that enforces it.
+- config-table-no-varchar.md: Rule that the config table gets no new VARCHAR columns (TEXT only), the InnoDB row-size reasons, the test that enforces it, and config_text for new long texts.
 - content-tables.md: Columns, joins and edit-screen URLs for page, pregion, cregion, dregion, forms/form_data, style, ads and comments; the form_data.id vs forms.id trap.
 - date-column-empty-comparison.md: Why DATE columns (ship_date, expiration_date, arrival_date) must be compared to '0000-00-00' and never to '', and what happens under strict mode and PHP 8.1.
 - db-helpers-and-error-contract.md: The db helpers (db, db_value, db_values, db_item, db_items, e, escape_like) and what a failed query does: helpers end the request, raw mysqli_query() and db_q() return false.
 - db-q-converted-access.md: Sign-in, access check, contact merge and designer asset files converted to db_q() (fn/auth, fn/contacts, fn/designer, the forms.php clauses): PR, special cases, what stayed raw, guard test.
+- db-q-converted-calendars-small-functions.md: Calendar and contact group screens, SMS and mail queues, sign-in, consent log, passkeys, WAF unban, order claim, idempotency and ERP audit on db_q(): PR, special cases, what stayed raw, test.
+- db-q-converted-campaign-screens.md: E-mail campaign screens, submitted form delete, e-mail a friend, affiliate, account, billing, gift card and password reset screens on db_q(): special cases, what stayed raw, guard test.
 - db-q-converted-campaigns-visitor-report.md: E-mail campaign files and the visitor report converted to db_q() (PR #2331): how values are passed, what stayed raw and why, the guard test.
 - db-q-converted-catalog-forms.md: get_catalog.php, get_photo_gallery.php and custom_form.php converted to db_q() (PR #2291): how values are passed, what stayed raw and why, the guard test.
 - db-q-converted-comments-search.md: Users list, user delete, account profile, comment add/edit, site search and sitemap files converted to db_q(): PR, special cases, what stayed raw and why, guard test.
+- db-q-converted-commerce-tail.md: Commerce panel tail screens, add to cart, private label, widgets 5, 21, 22 and the iyzico 3-D Secure row on db_q() (PR #2369): special cases, what stayed raw, guard test.
 - db-q-converted-commerce.md: Cart, checkout, form, order and product screen files converted to db_q(): PR, special cases, what stayed raw and why, guard tests.
 - db-q-converted-contacts-forms.md: Contact, contact group, form field and submitted form panel screens converted to db_q() (PRs #2299, #2316): what stayed raw and why, guard test.
 - db-q-converted-core-logs.md: Price history, core callers, calendar, mail, not-found log, db maintenance and backup restore functions converted to db_q(): PR, special cases, what stayed raw, guard test.
 - db-q-converted-editors-explorer-waf.md: Theme and file editors, custom style, explorer panel, page form and firewall log screen converted to db_q() (PR #2333): special cases, what stayed raw and why, guard test.
 - db-q-converted-files.md: Content files converted to db_q() (get_page_content, content, seo, get_page): PR, how values are passed, what stayed raw and why, guard tests; the conversion rules.
 - db-q-converted-front.md: Front-end files converted to db_q() (shopping cart, form item view, view order, email preferences, watchers, affiliate sign-up): PR, clauses with values, what stayed raw, guard test.
+- db-q-converted-logs-short-links-system.md: Short link screens and module, comment toggle, search index, audit trail, privacy retention, dashboard and sessions converted to db_q(): special cases, what stayed raw and why, guard test.
 - db-q-converted-order-front.md: Order preview, receipts, shipping address step, reorder, retrieve order and remove item converted to db_q(): special cases, what stayed raw, guard test.
+- db-q-converted-pages-regions-themes.md: Page, region, menu, ad, theme and code editor screens, page revisions and the panel's content actions converted to db_q(): PR, optional SQL pieces, what stayed raw, guard test.
 - db-q-converted-panel-content.md: Folder, page copy, calendar event, image editor and theme designer screens converted to db_q(): PR, optional SQL pieces with their values, what stayed raw, guard test.
 - db-q-converted-panel-menus-calendars.md: Region, menu, form list view and calendar panel screens converted to db_q(): PR, optional SQL pieces with their values, what stayed raw, guard test.
 - db-q-converted-panel-styles.md: Calendar location, calendar event copy, ad, login and common region, style, design file, menu item, field and file screens converted to db_q(): PR, special cases, what stayed raw and why, guard test.

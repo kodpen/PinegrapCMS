@@ -159,7 +159,7 @@ echo
             ' . $output_customer_switch . '
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
                 ' . ($ready ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_return.php"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Record a Return')) . '</a>' : '') . '
-                <a class="btn btn-sm btn-ghost" href="view_orders.php"><i class="bi bi-cart4 me-1" aria-hidden="true"></i>' . h(lang('All Orders')) . '</a>
+                <a class="btn btn-sm btn-text theme-secondary" href="view_orders.php"><i class="bi bi-cart4 me-1" aria-hidden="true"></i>' . h(lang('All Orders')) . '</a>
                 <div class="pg-toolbar-grow"></div>
                 ' . pg_filter_select('status', pg_return_filter_options(pg_return_status_counts()), $filter, array('label' => lang('Status'), 'action' => 'view_returns.php', 'id' => 'status')) . '
             </nav>

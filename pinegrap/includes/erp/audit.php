@@ -119,24 +119,25 @@ function erp_audit_write($line)
 
     $query = "INSERT INTO erp_audit_log
             (created_at, request_id, source, user_id, username, ip, event, object_type, object_id, label, amount, currency, description, detail)
-        VALUES (
-            UNIX_TIMESTAMP(),
-            '" . escape(erp_audit_request_id()) . "',
-            '" . escape($actor['source']) . "',
-            '" . (int) $actor['user_id'] . "',
-            '" . escape($username) . "',
-            '" . escape($ip) . "',
-            '" . escape(mb_substr((string) ($line['event'] ?? ''), 0, 64)) . "',
-            '" . escape(mb_substr((string) ($line['object_type'] ?? ''), 0, 20)) . "',
-            '" . max(0, (int) ($line['object_id'] ?? 0)) . "',
-            '" . escape(mb_substr((string) ($line['label'] ?? ''), 0, 255)) . "',
-            '" . (int) ($line['amount'] ?? 0) . "',
-            '" . escape(mb_substr(strtoupper((string) ($line['currency'] ?? '')), 0, 3)) . "',
-            " . ((isset($line['description']) && ((string) $line['description'] !== '')) ? "'" . escape(mb_substr((string) $line['description'], 0, 5000)) . "'" : "NULL") . ",
-            " . (is_string($detail) ? "'" . escape($detail) . "'" : "NULL") . "
-        )";
+        VALUES (UNIX_TIMESTAMP(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-    return (bool) @mysqli_query(db::$con, $query);
+    // Every value quoted as before; an empty description and a missing
+    // detail are written as NULL.
+    return (bool) db_q($query, array(
+        (string) erp_audit_request_id(),
+        (string) $actor['source'],
+        (string) (int) $actor['user_id'],
+        (string) $username,
+        (string) $ip,
+        (string) mb_substr((string) ($line['event'] ?? ''), 0, 64),
+        (string) mb_substr((string) ($line['object_type'] ?? ''), 0, 20),
+        (string) max(0, (int) ($line['object_id'] ?? 0)),
+        (string) mb_substr((string) ($line['label'] ?? ''), 0, 255),
+        (string) (int) ($line['amount'] ?? 0),
+        (string) mb_substr(strtoupper((string) ($line['currency'] ?? '')), 0, 3),
+        (isset($line['description']) && ((string) $line['description'] !== '')) ? (string) mb_substr((string) $line['description'], 0, 5000) : null,
+        is_string($detail) ? $detail : null,
+    ));
 }
 
 /**

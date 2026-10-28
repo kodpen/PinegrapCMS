@@ -367,7 +367,7 @@ pg_page_shell([
                 <div class="col-12 xl:col-9">
                     <div class="card h-100">
                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">'
-                            . h(lang(array('string' => 'Expenses {var:1}', 'vars' => erp_accountant_period_label($period['from'], $period['to'])))) . '</div>
+                            . h(lang('Expenses') . ' · ' . erp_profit_period_title($period['from'], $period['to'])) . '</div>
                         <div class="card-body p-0 table-responsive">
                             <table class="table table-hover align-middle mb-0" data-pg-sort id="erp_expenses_list">
                                 <thead>

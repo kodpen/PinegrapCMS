@@ -78,7 +78,7 @@
   margin-left: auto;
 }
 
-.sdh-head-tools .input-group {
+.sdh-head-tools .form-adorn {
   width: 15rem;
 }
 
@@ -806,7 +806,7 @@ button.sdh-page:hover {
   }
 
   .sdh-head-tools,
-  .sdh-head-tools .input-group {
+  .sdh-head-tools .form-adorn {
     width: 100%;
   }
 }

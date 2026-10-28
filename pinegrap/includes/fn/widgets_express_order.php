@@ -810,8 +810,9 @@ function _eo_known_input_names()
         'tax_number','tax_office','billing_same_as_shipping',
         'card_number','expiration','card_verification_number',
         // The checkout documents' acceptance boxes (pg_legal_documents_inject()
-        // adds its own pair only to a page that draws neither).
-        'legal_preinfo','legal_contract',
+        // adds its own pair only to a page that draws neither) and the
+        // optional KVKK consent box.
+        'legal_preinfo','legal_contract','legal_kvkk',
         // payment_method/installment are NOT pre-filled here — they're set by
         // their own dedicated section renderers (radio/installment selector).
     ));

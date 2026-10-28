@@ -28,8 +28,8 @@ function get_my_account_profile($properties = array()) {
     // page shown in a system region can be reached without signing in. There
     // is then no user and no contact, so every field starts blank, as it
     // always did.
-    $query = "SELECT user_contact, timezone FROM user WHERE user_username = '" . escape($_SESSION['sessionusername'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+    $query = "SELECT user_contact, timezone FROM user WHERE user_username = ?";
+    $result = db_q($query, array((string) ($_SESSION['sessionusername'] ?? ''))) or output_error('Query failed');
     $row = mysqli_fetch_assoc($result);
 
     if (is_array($row) == false) {
@@ -61,8 +61,8 @@ function get_my_account_profile($properties = array()) {
                 tax_number,
                 tax_office
              FROM contacts
-             WHERE id = '" . $contact_id . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+             WHERE id = ?";
+    $result = db_q($query, array((string) $contact_id)) or output_error('Query failed');
     $row = mysqli_fetch_assoc($result);
 
     // A user without a contact record (an administrator created in the control

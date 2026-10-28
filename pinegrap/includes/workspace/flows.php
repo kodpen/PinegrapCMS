@@ -436,7 +436,8 @@ function ws_flow_problem($code, $node, $edge, $text, $warning = false)
 
 /**
  * The texts of a box a run fills {{node.<id>.<field>}} into: a step box's
- * texts (ws_step_kinds()), a task box's title and description. Pure.
+ * texts (ws_step_kinds()), a task box's title and description, the value a
+ * condition box compares. Pure.
  *
  * @param array $node ws_flow_graph_normalize() box
  * @return string[]
@@ -444,6 +445,14 @@ function ws_flow_problem($code, $node, $edge, $text, $warning = false)
 function ws_flow_node_texts($node)
 {
     $kind = (string) $node['kind'];
+
+    // A condition on a value reads that one value.
+    if ($kind === 'condition') {
+        $rule = (array) ($node['config']['rule'] ?? array());
+
+        return ((($rule['type'] ?? '') === 'value') && is_string($rule['ref'] ?? null) && ($rule['ref'] !== '')) ? array($rule['ref']) : array();
+    }
+
     $keys = ($kind === 'task') ? array('title', 'description') : ((function_exists('ws_step_kinds') ? (ws_step_kinds()[$kind]['texts'] ?? array()) : array()));
     $out = array();
 
@@ -1940,12 +1949,13 @@ function ws_flow_version_numbers($rows)
 /**
  * A flow in the screen's list.
  *
- * @param array $viewer
- * @param array $flow ws_flows row with access
- * @param int   $n    the number of its live version, 0 for none
+ * @param array  $viewer
+ * @param array  $flow  ws_flows row with access
+ * @param int    $n     the number of its live version, 0 for none
+ * @param string $start how it starts (ws_flow_start_kind()), '' for no start box
  * @return array
  */
-function ws_flow_brief($viewer, $flow, $n)
+function ws_flow_brief($viewer, $flow, $n, $start = '')
 {
     return array(
         'id'         => (int) $flow['id'],
@@ -1956,6 +1966,7 @@ function ws_flow_brief($viewer, $flow, $n)
         'channel_id' => (int) $flow['channel_id'],
         'draft_rev'  => (int) $flow['draft_rev'],
         'version'    => (int) $n,
+        'start'      => (string) $start,
     );
 }
 
@@ -1990,7 +2001,9 @@ function ws_flow_detail($viewer, $flow)
     $edit = ((string) $flow['access'] === 'edit');
     $draft = ws_flow_draft_readable((string) $flow['access'], is_array($version) ? (int) $version['id'] : 0) ? ws_flow_graph_of($flow) : null;
 
-    return ws_flow_brief($viewer, $flow, is_array($version) ? (int) $version['n'] : 0) + array(
+    $start = ws_flow_start_kind(ws_flow_start_graph($flow, $version));
+
+    return ws_flow_brief($viewer, $flow, is_array($version) ? (int) $version['n'] : 0, $start) + array(
         'draft'    => ($draft !== null) ? ws_flow_graph_present($draft, $edit) : null,
         'graph'    => ($live !== null) ? ws_flow_graph_present($live, $edit) : null,
         'problems' => ($edit && ($draft !== null)) ? ws_flow_problems($draft) : array(),
@@ -2024,10 +2037,25 @@ function ws_flow_js_strings()
         'fl_fit'              => lang('Fit to the screen'),
         'fl_outline'          => lang('Outline view'),
         'fl_outline_help'     => lang('The boxes in the order of their arrows, each with its settings. Everything the canvas does can be done here too.'),
+        'fl_threads'          => lang('Data threads'),
+        'fl_thread_line'      => ws_js_template('{var:1} reads {var:2}', 2),
+        'fl_thread_dot'       => lang('Drag to a field, or double-click and choose the field'),
+        'fl_thread_fork'      => lang('Fork'),
+        'fl_thread_pass'      => lang('Pass to a field…'),
+        'fl_thread_title'     => ws_js_template('Pass a value of {var:1} to a field', 1),
+        'fl_thread_field'     => lang('Field it goes into'),
+        'fl_thread_add'       => lang('Pass the value'),
+        'fl_thread_none'      => lang('No field after this box can take this value.'),
+        'fl_thread_pick'      => lang('Choose the field the value goes into; Esc stops.'),
+        'fl_thread_bound'     => ws_js_template('{var:1} goes into {var:2}', 2),
+        'fl_thread_full'      => lang('This field has no room for another value.'),
         'fl_new'              => lang('New flow'),
         'fl_list_mine'        => lang('My flows'),
         'fl_list_shared'      => lang('Shared with me and my channels'),
         'fl_none'             => lang('No flows yet.'),
+        'fl_none_start'       => lang('No flow starts this way.'),
+        'fl_start_filter'     => lang('How the flow starts'),
+        'fl_start_all'        => lang('Every start'),
         'fl_none_build'       => lang('No flows yet. "New flow" starts one: the box that starts it, the tasks that follow one another, the end.'),
         'fl_none_run'         => lang('No flows yet. A published flow of a channel you read, or a flow shared with you, appears here.'),
         'fl_not_ready'        => lang('The database has to be updated first.'),
@@ -2190,6 +2218,9 @@ function ws_flow_js_strings()
         'fl_cond_any_channel' => lang('Every channel'),
         'fl_cond_threshold'   => lang('At most'),
         'fl_cond_record'      => lang('A field of a record'),
+        'fl_cond_value_rule'  => lang('A value of an earlier box'),
+        'fl_cond_value_ref'   => lang('Value'),
+        'fl_cond_value_ref_pick' => lang('Choose a value'),
         'fl_cond_field'       => lang('Field'),
         'fl_cond_field_pick'  => lang('Choose a field'),
         'fl_cond_op'          => lang('Comparison'),
@@ -2250,7 +2281,14 @@ function ws_flow_js_strings()
         'fl_email_to_help'    => lang('E-mail addresses, separated by commas.'),
         'fl_email_subject'    => lang('Subject'),
         'fl_email_body'       => lang('Text of the e-mail'),
-        'fl_values_help'      => lang('Written in your name when the box runs. {{node.ID.text}} puts in what an earlier box of the run did, {{node.ID.message_id}} the message it posted; {{date}} and the other words of scheduled actions work too.'),
+        'fl_values_hint'      => lang('Add value puts in what started the run or what an earlier box gave; {{date}} and the other words of scheduled actions work too.'),
+        'fl_values_add'       => lang('Add value'),
+        'fl_values_text'      => lang('What it did'),
+        'fl_values_outcome'   => lang('Outcome'),
+        'fl_values_status'    => lang('Status'),
+        'fl_values_skipped'   => lang('Empty if skipped'),
+        'fl_values_missing'   => lang('No box before this one gives this value.'),
+        'fl_values_none'      => lang('No box before this one gives a value yet: connect it after a box or a start.'),
         'fl_add_manual'       => lang('Start manually'),
         'fl_add_task'         => lang('Task'),
         'fl_add_end'          => lang('End'),
@@ -2341,6 +2379,7 @@ function ws_flow_js_strings()
         'fl_key_tab'          => lang('Tab: from box to box, in the order of the arrows'),
         'fl_key_arrows'       => lang('Arrow keys: move the selected box (with Shift, further)'),
         'fl_key_connect'      => lang('C: connect the selected box to the one that comes after it'),
+        'fl_key_thread'       => lang('V: pass a value of the selected box to a field of a box after it'),
         'fl_key_delete'       => lang('Delete: remove the selected box or arrow'),
         'fl_key_enter'        => lang('Enter: go to the settings of the selected box'),
         'fl_key_zoom'         => lang('+ and −: zoom; 0: fit everything on the screen'),

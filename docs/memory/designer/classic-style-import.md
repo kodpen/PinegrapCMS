@@ -18,7 +18,7 @@ description: A classic style's code read by the HTML importer (L1): placeholders
 
 ## Site paths?
 - `pg_di_is_absolute()` counts a reference starting with `{path}` or `{software_directory}` as absolute: kept as written, a head link or script becomes an external asset entry, no "not in the archive" warning. `get_page_content.php` fills both in on the assembled page.
-- The framework filter still drops `{path}bootstrap.css` and `{path}jquery.min.js` unless `keep_framework` is set: the starting site's theme Bootstrap is not Bootstrap 5; the caller (L2) decides.
+- The framework filter still drops `{path}bootstrap.css` and `{path}jquery.min.js` unless `keep_framework` is set: the starting site's theme Bootstrap is not Bootstrap 5, so L2 sets it (`classic-style-to-design.md`).
 
 ## Tests?
 - `tests/designer_import_legacy_test.php`: every placeholder, names and lookup, text segments, site paths, and every classic style of both starting sites' SQL dumps converted and written back with the same placeholders in the same order.

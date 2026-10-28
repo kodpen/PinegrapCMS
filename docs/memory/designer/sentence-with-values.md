@@ -1,6 +1,6 @@
 ---
 name: sentence-with-values
-description: Words beside a value (W26): props._sentence draws one translatable sentence, its N-th child at {var:N}; twins, panel row, code view lock, comment stars' label
+description: Words beside a value (W26): props._sentence draws one translatable sentence, its N-th child at {var:N}; twins, panel row, code view lock, comment stars' label, order view's withdrawal line
 ---
 
 ## What is it?
@@ -19,8 +19,9 @@ description: Words beside a value (W26): props._sentence draws one translatable 
 ## Where is it used?
 - The comment stars' `aria-label` (`pg_sw_part_comment_stars()`, `_sdPartCommentStars()`): the label's own words `Rated {var:1} out of 5` with `{{__comment_rating}}` in place of `{var:1}` (an attribute holds no element, so the value is the W15 attribute token, [[widget-attr-bindings]]). The output equals the old `__comment_rating_label`; that token stays filled for saved trees.
 
+- The order view's right of withdrawal line (#2458): in the legal documents part (`pg_sw_part_order_legal_documents()`, `_sdPartOrderLegal()`) and the order view starter, three sentences with `__withdrawal_deadline` as the value, one per state under its flag: `withdrawal_deadline_firm` "Last day of the right of withdrawal: {var:1}", `withdrawal_deadline_estimated` the same with the estimate's note, `withdrawal_ended` "The right of withdrawal ended on {var:1}." The words are `pg_legal_withdrawal_text()`'s keys, so the part's output equals the old `__withdrawal_text` line; that token stays filled for saved trees. Helpers `pg_sw_part_sentence()` / `_sdPartSentence()`.
+
 ## What is left?
-- The order view's withdrawal "ended" line (`__withdrawal_text`, [[widget-default-parts-order]]) still one value.
 - No canvas preview inside an attribute; no drag of a value within the words (the placeholder is moved as text).
 
 ## Tests?

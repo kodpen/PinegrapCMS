@@ -30,6 +30,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - account-email-pages.md: Designable welcome and password reset e-mails: Account E-mail widget, *_email_page_id settings, resolver, stored recipient, 'secret' mail (#1192).
 - account-widget-forms.md: Designed account widgets: the login region's two states and per-placement ids, account_security's one form per block, links dropped in a grid, comments on a form detail page, one-screen widget kinds.
 - ad-region-widget.md: Ad Region widget (ad_region, #1836): the classic <ad> region in the designer; which ads show and in which order, the carousel and its rotation, raw ad markup, edit chips, what is left out.
+- affiliate-sign-up-widget.md: The Affiliate Sign Up Form widget (classic "affiliate sign up form" page type): handler and page row, controls by name, prefill, terms, what is left out.
 - attrs-panel-undo.md: Undo steps of the designer's Attributes panel text fields (id, prop-bound attributes, custom attribute name and value) and when its style row is written
 - billing-information-widget.md: The Billing Information widget (third classic checkout step): handler and page row, prefill from order and contact, parts the page turns off, helpers shared with step 1.
 - bootstrap-direct-child-canvas.md: Bootstrap direct-child selectors break on the canvas because of .sd-wrap: two-part fix (display:contents + re-applied rule), the td display:flex ban, the selected-child lift.
@@ -40,6 +41,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - catalog-stock-notify-form.md: The back-in-stock form of the catalog item view: stock_notify_email and stock_notify bindings, the can_notify flag and its variant switch, the hidden form after the widget, the starter block
 - classic-regions-in-designer.md: Where each classic region type goes in the visual designer (common, designer, dynamic, page, data-driven regions), the owner's decisions behind it, and what is still open
 - classic-style-import.md: A classic style's code read by the HTML importer (L1): placeholders to region nodes, meta_tags/stylesheet dropped, title and body on the root, site paths kept, what stays text
+- classic-style-to-design.md: A classic style opened in the visual designer (L2, #2370): the style list button, the frame as one shared component, page trees placing it, what Save writes and what stays
 - code-view-tab-search.md: Search in all tabs of the designer's code view (page and file tabs): the bar, PgCodeEditor.findAll(), why it searches only and does not replace
 - collection-references.md: A form list or detail element prints a field of the record a reference points at (__ref binding, spec, one read per form, escaping, what is never read)
 - comment-counters-recount.md: Upgrade step 11.0.33 (data only) counts the comments of form records on designed pages again: two walks, a time pause, a per-database data/temp progress file with a done marker
@@ -188,6 +190,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - dynamic-region-in-designer.md: A dynamic region placed in the visual designer: the region node's attribute ($dregion_attribute), its PHP code as a code-view tab for administrators, the dynamic_region_code endpoint
 - error-page-widget.md: The error page system widget: when it is shown, which block shows for 404, maintenance and other errors, its tokens, and the maintenance screen's title.
 - express-order-legal-documents.md: Checkout document boxes in the designer's express order tree: legal_preinfo/legal_contract field bindings, has_legal_documents flag, __legal_*_url href tokens, sentence split of the label
+- folder-view-widget.md: The Folder View widget (classic "folder view" page type): settings and their fallback, the folder tree as a main loop plus nested folder_view.children lists, row tokens, flags, what is left out.
 - form-item-ai-summary.md: AI on a designed form item view (2026.4.8): four assistant links and when they fill, the prompt setting, the in-browser summary wired by bindings, why the box is an aside, the translator bridge.
 - form-list-filters-fail-closed.md: A form list filter on a missing field or unknown operator shows no record (page, feeds, sitemap, index); address filters unchanged; editor warning; unanswered lists use comments less than 1
 - form-list-result-count.md: form_list_view ^^__result_count^^ (records matched, capped at max_results, grouped digits), the flags has_records / no_records, the count strip (empty loop area), canvas and installer preview
@@ -203,6 +206,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - inline-drop-links-buttons.md: Designer drops: links and buttons go back into headings and paragraphs, never into a link or button; a label holds one control; a palette block is judged by what it holds.
 - language-switcher-component.md: The Language Switcher Button component (COMPONENTS.language_switcher, 2026.4.7): a placeholder in the saved body, drawn per request after the language pass; the pattern for request-bound output.
 - layout-code-tab.md: A classic page's custom layout (data/layouts/<id>.php) as a code tab of the visual designer: who may edit it, the layout_code endpoint, regenerate, unmodified on save, Ctrl+G, hosted sites
+- layout-form-converter-editor.md: W22b "Convert to design elements" on a custom form page's system region: the button, the layout_code convert action, the widget placed after the region, toasts, rows the sync keeps
 - layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing
 - legacy-region-preview.md: The canvas preview of a classic page's system region drawn by its custom layout (designer/legacy_region_preview): who sees it, the markers, the background render, read only, when it is asked again
 - link-button-inline-children.md: Spans and icons inside a link or button: two ways to hold them, why an inline edit keeps a link's markup, which drops a button accepts, where the label prints beside children.
@@ -217,6 +221,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - multi-page-designer-editor.md: Editor screen code, save flow, JSON api.php body, the dirty check and unchanged pages, tab switching/menu/rename DOM rules, toolbar overflow, palette order and designer texts.
 - no-form-in-form.md: No form inside a form in the designer: semantic forms at any depth, widgets the server wraps in a form (_SD_FORM_WIDGET_TYPES), blocks, widgets and components that bring one.
 - node-text-and-whitespace.md: Designer node props.text: innerHTML (content nodes) vs plain text (semantic nodes), and whitespace-sensitive tags pre/textarea/code in generateHTML().
+- order-form-widget.md: The Order Form widget (classic "order form" page type): handler and page row, list and drop-down layouts, row controls by name, flags, schedule section, what is left out.
 - order-preview-widget.md: The Order Preview widget (last classic checkout step): values from get_order_preview()'s custom-layout branch, page row, controls by name, sections, what is left out.
 - page-conditions.md: W18: an element outside a widget shown by visit facts (signed in, cart) or the page's record (found, allow-listed values); stored-body markers decided per request, cache, editor
 - page-drafts.md: Drafts of visual-designer pages (2026.4.7): the private Drafts folder, page_drafts and the folder a page returns to, how a save sets the state, new pages start as drafts, Save vs Publish, copies.
@@ -234,12 +239,13 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - palette-component-rules.md: Rules for a new designer palette component: the full guide, no script or stylesheet, render equals toHTML, tree by default, inline style, cssClass vs _attrs, grid, canDrop, accessibility, registration
 - palette-insert-at-selection.md: Where a palette double-click or command palette insert lands: in the selection, else beside it (in a widget too), where the operator may edit, wrapped as a drop; widgets stop at a system widget.
 - passkey-widget-list.md: Passkeys in the designed account_security widget (PR #1843, #2279): the list, row tokens, flags, rename/remove, the add form with the e-mailed code, device rows
+- photo-gallery-widget.md: The Photo Gallery widget (classic "photo gallery" page type): the folder it shows and the ?folder_id= scope check, album and photo rows, tokens, flags, what is left out.
 - record-value-page-links.md: A form list or detail link opening another page with the record's values in its address (__page_link + _bindParams.href): shape, pre-pass, escaping, values, Publish, export, editor, code view
 - record-view-counts.md: Views on designed record pages (form counters, people only, counted after sending) and form lists ordered by views, comments, recent views or newest activity; why not visitor_content_hourly
 - record-view-filters.md: form_item_view filters (opt-in record visibility, e.g. Status = Published): where they apply, fail-closed cases, the e-mail bypass, viewer_filter lists without feed or sitemap (#1194)
 - region-node-to-widget.md: "Make designable" on a classic menu, menu sequence, ad or tag cloud region node: the widget kind and setting per type, where the widget goes, what stays the same.
 - responsive-images.md: Designer and widget images with srcset/sizes, AVIF/WebP <picture> on the Image element: which images, sizes rule, widget pass, variant swap, version stamp, e-mail strip (loading order: image-loading)
-- sentence-with-values.md: Words beside a value (W26): props._sentence draws one translatable sentence, its N-th child at {var:N}; twins, panel row, code view lock, comment stars' label
+- sentence-with-values.md: Words beside a value (W26): props._sentence draws one translatable sentence, its N-th child at {var:N}; twins, panel row, code view lock, comment stars' label, order view's withdrawal line
 - seo-score-live-check-parity.md: pg_seo_compose() must get all four groups wherever the same SEO score is computed (designer seo_check vs pg_seo_recalculate); which inputs come from where.
 - shared-component-content-editing.md: Shared components opened to content editors (the designer's common region): content_editable flag, users_shared_components_xref grants, the rule, content_update under the page merge, schema 11.0.8
 - shared-component-editor-cache.md: The editor's shared component cache: prefetch keeps a changed entry, the snapshot every drawn tree gets, what marks a component dirty, the flush at Save, a template placeholder.
@@ -282,10 +288,10 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-default-parts-comments.md: The comment stars default part (W16, #1908): what replaced __comment_stars_html, its conditions and tokens, the flex rule, the e-mail characters, starters, canvas
 - widget-default-parts-cross-sell.md: The catalog detail view's cross-sell default part (W16, #1973): the product.related cards that replaced __cross_sell_html, __has_related, where it is added, the variant script's server redraw
 - widget-default-parts-filter-chips.md: The catalog listing's filter chip parts (W16, #2218): the catalog.active_filters list, the six placements replaced, the clear button, the pushed chip row by pg_sw_placed()
-- widget-default-parts-order-forms.md: The order view's cancel and return request forms as parts with controls (W16): bindings the system wires, lists, restored controls, what is left
+- widget-default-parts-order-forms.md: The order view's cancel form, return request form and each return's moves as parts with controls (W16): bindings the system wires, lists, restored controls
 - widget-default-parts-order-items.md: The order view's item form and gift card parts (W16, #1863): the three item lists, their keys and tokens, the loop tail, the boxes' flags, raw tokens, what the cart keeps
 - widget-default-parts-order.md: The order view's default parts (W16): timeline, status badge, the returns and legal documents cards added after it, their flags and tokens, e-mail look
-- widget-default-parts-returns.md: The order view's returns list part (W16, #2067): order.returns and order.return_lines lists replacing __returns, tokens, badges, the customer's moves kept as server forms
+- widget-default-parts-returns.md: The order view's returns list part (W16, #2067): order.returns and order.return_lines lists replacing __returns, tokens, badges, where the customer's moves are
 - widget-default-parts.md: W16 placed beats pushed: the one placement rule (pg_sw_placed()), default parts drawing old HTML tokens with design elements, tail and lead parts, slices left
 - widget-designability-decisions-2.md: Owner's 2026-10-27 widget designability answers: OR conditions, hide-if-empty, words beside a value, converter (W22), page facts, placement settings, form parts, express lists, W12, W19.
 - widget-designability-decisions.md: The owner's 2026-10-26 answers for widget designability: W16 old blocks equal in look and behaviour (not bytes), W5 gallery sources, W8 entity fields (who sees what, secrets, yes/no, words).

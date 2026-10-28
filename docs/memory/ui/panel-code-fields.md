@@ -21,6 +21,7 @@ description: Code fields on panel screens: pg_code_editor_attach(), loading thro
 ## Which other places use the facade?
 - The File Manager's file window (`view_folders.php`): `PgCodeEditor.create()` after the hidden textarea, `destroy()` on close, language from `pg_explorer_editor_language()`.
 - The legacy page designer (`page_designer.js`): `PgCodeEditor.open()` per item, `activeLineMarker` for the region button, `insertAtCursor()` for region tags, image preview on hover via `posAtCoords()` + `syntaxTree()`.
+- `get_wysiwyg_editor_code()` sets `CKEDITOR.disableAutoInline = true` (a property of `CKEDITOR`, not of `CKEDITOR.config`): with the config form a code editor's `contenteditable` `.cm-content` became an inline CKEditor that asked for the missing `config.js` (#2036).
 - The rich text editor (CKEditor 4, `get_wysiwyg_editor_code()`, also on site pages): Source mode and Source dialog through its plugin `pgcodeeditor` (`assets/js/pg_ckeditor_source.js`, which loads the facade itself where `pgCodeEditorUse()` is missing). The dialog: `rich-text-source-dialog.md`.
 
 ## How does the colour scheme reach the editors?
