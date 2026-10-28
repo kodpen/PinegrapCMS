@@ -947,6 +947,69 @@ function ws_step_try_texts($kind, $action, $values)
 }
 
 /**
+ * The texts of a step box its run fills with ws_scheduled_fill() in
+ * ws_scheduled_do() (or the function it hands the kind to), by kind. A
+ * check-in's question goes out as written. Pure.
+ *
+ * @return array kind => list of text keys
+ */
+function ws_step_scheduled_texts()
+{
+    return array(
+        'post'        => array('body'),
+        'email'       => array('subject', 'body'),
+        'notify'      => array('text'),
+        'task_open'   => array('title', 'description'),
+        'webhook'     => array('text'),
+        'task_digest' => array('subject', 'intro'),
+        'report'      => array('title'),
+        'approval'    => array('title', 'text'),
+    );
+}
+
+/**
+ * A tried step's texts (ws_step_try_texts()) with the placeholders its run
+ * fills as well: {{record}}, {{newcomer}}, {{source}} and the rest, through
+ * $fill, on the texts ws_step_scheduled_texts() names. A placeholder the
+ * fill leaves empty joins the empty ones. The values of the boxes before it
+ * are already escaped, so they are never read as placeholders, as in a run.
+ * Pure but for $fill.
+ *
+ * @param string   $kind
+ * @param array    $tried ws_step_try_texts()
+ * @param callable $fill  text => text, ws_scheduled_fill() with the run's context
+ * @return array action, texts, empty, as ws_step_try_texts()
+ */
+function ws_step_try_scheduled($kind, $tried, $fill)
+{
+    $keys = ws_step_scheduled_texts()[$kind] ?? array();
+
+    foreach ($tried['texts'] as $i => $text) {
+        if (!in_array($text['key'], $keys, true)) {
+            continue;
+        }
+
+        if (preg_match_all('/\{\{[a-z_]+\}\}/', (string) $text['text'], $matches)) {
+            foreach (array_unique($matches[0]) as $name) {
+                if (!in_array($name, $tried['empty'], true) && ((string) $fill($name) === '')) {
+                    $tried['empty'][] = $name;
+                }
+            }
+        }
+
+        $tried['texts'][$i]['text'] = (string) $fill((string) $text['text']);
+    }
+
+    foreach ($keys as $key) {
+        if (isset($tried['action'][$key]) && is_string($tried['action'][$key])) {
+            $tried['action'][$key] = (string) $fill($tried['action'][$key]);
+        }
+    }
+
+    return $tried;
+}
+
+/**
  * The Idempotency-Key a webhook box sends: one per run, box and pass, the
  * same however often the call is made. Pure.
  *
@@ -1055,6 +1118,28 @@ function ws_step_action_row($run, $context, $anchor)
 }
 
 /**
+ * The converted scheduled action a run started from, as its steps count
+ * from it: the action's run that started this one has already counted as
+ * its last, so "since the last run" counts from the run before it.
+ *
+ * @param array $context ws_flow_run_context()
+ * @return array|null ws_scheduled(), null for a run no action started
+ */
+function ws_step_run_anchor($context)
+{
+    $anchor = ((int) ($context['anchor_id'] ?? 0) > 0) ? ws_scheduled((int) $context['anchor_id']) : null;
+
+    if (!is_array($anchor)) {
+        return null;
+    }
+
+    $anchor['last_run_at'] = (int) db_value("SELECT MAX(started_at) FROM ws_scheduled_runs
+        WHERE action_id = '" . (int) $anchor['id'] . "' AND id < '" . (int) ($context['sched_run'] ?? 0) . "'");
+
+    return $anchor;
+}
+
+/**
  * Carries out a step box this request claimed, with the owner's rights now:
  * writes that it began, checks the step again, fills in the values of the
  * boxes before it and does it.
@@ -1107,14 +1192,7 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     $values[WS_STEP_TRIGGER] = ws_step_trigger_values_for($owner, $context);
     $values = ws_flow_pure_values($graph, $values) + $values;
 
-    $anchor = ((int) ($context['anchor_id'] ?? 0) > 0) ? ws_scheduled((int) $context['anchor_id']) : null;
-
-    // The action's run that started this one has already counted as its
-    // last: "since the last run" counts from the run before it.
-    if ($anchor) {
-        $anchor['last_run_at'] = (int) db_value("SELECT MAX(started_at) FROM ws_scheduled_runs
-            WHERE action_id = '" . (int) $anchor['id'] . "' AND id < '" . (int) ($context['sched_run'] ?? 0) . "'");
-    }
+    $anchor = ws_step_run_anchor($context);
     $row = ws_step_action_row($run, $context, $anchor);
 
     $action = ws_step_fill_action($kind, $check['action'], $values);
@@ -1225,6 +1303,7 @@ function ws_flow_box_try($viewer, $flow, $data)
     // The values of the boxes a run of the person's choice has settled; a
     // box it has not reached gives none. The value boxes give theirs always.
     $values = array();
+    $fill = null;
     $run_id = (int) ($data['run_id'] ?? 0);
 
     if ($run_id > 0) {
@@ -1237,7 +1316,14 @@ function ws_flow_box_try($viewer, $flow, $data)
         $values = ws_step_node_values(array_filter(ws_flow_run_steps($run_id), function ($row) {
             return ws_flow_step_settled((string) $row['status']);
         }));
-        $values[WS_STEP_TRIGGER] = ws_step_trigger_values_for($owner, ws_flow_run_context($run));
+        $context = ws_flow_run_context($run);
+        $values[WS_STEP_TRIGGER] = ws_step_trigger_values_for($owner, $context);
+
+        // What a run's texts read beside the boxes' values, as ws_step_run()
+        // hands it to ws_scheduled_do(): the record, the newcomer, the flow
+        // that started it, the date and counts of now with the owner's
+        // rights.
+        $fill = array('viewer' => $owner, 'row' => ws_step_action_row($run, $context, ws_step_run_anchor($context))) + ws_step_trigger_context($context);
     }
 
     $values = ws_flow_pure_values($graph, $values) + $values;
@@ -1268,6 +1354,13 @@ function ws_flow_box_try($viewer, $flow, $data)
         }
 
         $tried = ws_step_try_texts($kind, $check['action'], $values);
+
+        if ($fill !== null) {
+            $tried = ws_step_try_scheduled($kind, $tried, function ($text) use ($fill) {
+                return ws_scheduled_fill($text, $fill);
+            });
+        }
+
         $action = $tried['action'];
 
         // As the run sends it: a notice names the flow it comes from.

@@ -13,8 +13,8 @@ description: What a flow's step boxes read of what started the run (#2205, D5 #2
 - Declared per start box like outputs: `ws_flow_trigger_outputs($kind, $config)` (flow_anchors.php). join: `newcomer_id`, `newcomer_name`, `channel_id`, `channel_name`; event: `event` (its key), `record_id` (`ws_events_record_of()`), plus `ws_flow_event_outputs()[event]`: the scalar payload keys its announcer always sends (lists never). manual, schedule: none. Canvas: `ws_flow_js_config()` `trigger_outputs` (kinds, events), read by the value picker (`workspace-flows-value-picker.md`).
 - Filled by `ws_step_trigger_values()` (pure) from the run context, under `WS_STEP_TRIGGER` among the box values, so `ws_step_fill_nodes()` (`WS_STEP_VALUE_PATTERN`) escapes it per destination like a box value. Every declared field is written; one the context lacks is ''. Only the context's trigger kind declares: a run another flow's box started (manual) carries the event but gives no trigger values.
 - Rights: `ws_step_trigger_values_for()` gives record and payload only while the owner holds the catalogue right of the event's record and, for the workspace's own events, still sees it (`ws_events_creator_sees()`); else only `event`. Before, a payload value would have bypassed the gates `ws_events_fill_values()` keeps.
-- Check: an undeclared field is `bad_reference` (`ws_flow_trigger_fields()`); no skippable warning, the start always ran. A box try fills them from the chosen run.
+- Check: an undeclared field is `bad_reference` (`ws_flow_trigger_fields()`); no skippable warning, the start always ran. A box try fills them, and the scheduled tokens, from the chosen run (`workspace-flows-box-try.md`).
 - Tests `tests/workspace_flow_trigger_values_test.php`.
 
 ## What is left?
-- A box try still leaves the scheduled tokens (`{{record}}`, `{{newcomer}}` …) unfilled. The waiting task box fills no values at run time.
+- The waiting task box fills no values at run time.
