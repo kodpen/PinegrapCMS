@@ -111,3 +111,36 @@ function test_workspace_scheduled_draft_flow_left()
 
 	pg_assert_same(1, count(ws_scheduled_draft_flow_input($snapshot, array())['left']));
 }
+
+// An application's proposed scheduled action is kept as a flow draft card:
+// the snapshot a flow card reads (name, home, graph), its notes followed by
+// what the flow keeps otherwise, the home its card opens the flow in.
+function test_workspace_scheduled_draft_flow_snapshot()
+{
+	$data = workspace_scheduled_draft_flow_snapshot()['data'];
+	$data['follow'][] = array('on' => 'skipped', 'do' => array('type' => 'notify', 'user_ids' => array(7), 'text' => 'Skipped'));
+	$data['rules'] = array($data['rules'][0]);
+
+	$snapshot = ws_scheduled_draft_flow_snapshot($data, 9, array('Clean up after the sale'), array());
+	$left = ws_scheduled_draft_flow_input(array('data' => $data), array())['left'];
+
+	pg_assert_same(array('sentence', 'data', 'notes', 'channel_id'), array_keys($snapshot));
+	pg_assert_same('', $snapshot['sentence']);
+	pg_assert_same(array('name', 'channel_id', 'graph'), array_keys($snapshot['data']));
+	pg_assert_same('Morning sales', $snapshot['data']['name']);
+	pg_assert_same(9, $snapshot['data']['channel_id']);
+	pg_assert_same(9, $snapshot['channel_id']);
+	pg_assert_same('schedule', workspace_scheduled_draft_flow_node($snapshot['data']['graph'], 'start')['kind']);
+	pg_assert_same(1, count($left));
+	pg_assert_same(array_merge(array('Clean up after the sale'), $left), $snapshot['notes'], 'the reason first, then what the flow keeps otherwise');
+}
+
+// No home: the card's flow is opened without one.
+function test_workspace_scheduled_draft_flow_snapshot_no_home()
+{
+	$snapshot = ws_scheduled_draft_flow_snapshot(array(), 0, array(), array());
+
+	pg_assert_same(0, $snapshot['channel_id']);
+	pg_assert_same('Scheduled action', $snapshot['data']['name']);
+	pg_assert_same(array(), $snapshot['notes']);
+}

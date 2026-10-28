@@ -348,7 +348,8 @@ function test_workspace_scheduled_draft_home()
 }
 
 // A proposed draft is rehearsed with the save's own check, for the person
-// it is proposed to, and kept as Pinegrap AI's drafts are.
+// it is proposed to, then with the check of a new flow, and kept as a flow
+// draft card: a card of the kind scheduled would open the retired form.
 function test_workspace_scheduled_draft_proposal_row_rehearses_the_save()
 {
 	require_once(__DIR__ . '/helpers/source_reader.php');
@@ -362,7 +363,9 @@ function test_workspace_scheduled_draft_proposal_row_rehearses_the_save()
 	pg_assert_contains('ws_scheduled_draft_proposal_input(', $code, 'the body read first');
 	pg_assert_contains('ws_scheduled_save_check(', $code, 'the save rehearsed');
 	pg_assert_false(strpos($code, 'ws_scheduled_save(') !== false, 'nothing saved');
-	pg_assert_contains("'scheduled'", $code, 'kept as a scheduled draft');
+	pg_assert_contains('ws_flow_save_check(', $code, 'the flow it becomes rehearsed');
+	pg_assert_contains("'type' => 'flow'", preg_replace('/\s+/', ' ', $code), 'kept as a flow draft');
+	pg_assert_false(strpos($code, "'scheduled'") !== false, 'not as a scheduled draft');
 }
 
 // The code of a loaded function without its comments and with its runs of
@@ -495,7 +498,7 @@ function test_workspace_scheduled_draft_proposal_keeps_the_checked_form_data()
 {
 	$code = workspace_scheduled_draft_test_code('ws_scheduled_draft_proposal_row');
 
-	pg_assert_contains("'data' => ws_scheduled_form_data(\$viewer, \$checked['row'])", $code, 'the card keeps the checked action as the form opens a saved one');
+	pg_assert_contains("ws_scheduled_draft_flow_snapshot(ws_scheduled_form_data(\$viewer, \$checked['row'])", $code, 'the flow is made from the checked action as the form opens a saved one');
 	pg_assert_false(strpos($code, "'data' => \$input['data']") !== false, 'not the body as it was sent');
 
 	$result = workspace_scheduled_draft_test_kept_alone(array(
