@@ -1212,20 +1212,19 @@ function pg_sw_filter_value_html($value)
     return str_replace('^', '&#94;', h((string)$value));
 }
 
-// The query string (without "?") that names a URL-filtered list page: the
-// applied parameters sorted by name, encoded as RFC 3986, then the page
+// The query string (without "?") that names a list page: the applied
+// address parameters sorted by name, encoded as RFC 3986, then the page
 // number under the list's page parameter (`page_param`, else page_number)
-// when the list showed a later page and $with_page. '' when no parameter
-// applies: a page without an address value keeps its bare canonical.
+// when the list showed a later page and $with_page. '' when neither
+// applies: page 1 of a list keeps its bare canonical.
 function pg_sw_url_filter_query($state, $with_page = true)
 {
     $params = (is_array($state) && isset($state['params']) && is_array($state['params'])) ? $state['params'] : array();
-    if (!$params) return '';
     ksort($params, SORT_STRING);
-    $query = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+    $query = $params ? http_build_query($params, '', '&', PHP_QUERY_RFC3986) : '';
     $page  = (is_array($state) && isset($state['page_number'])) ? (int)$state['page_number'] : 0;
     $name  = (is_array($state) && isset($state['page_param'])) ? pg_sw_list_page_param(array('page_param' => $state['page_param'])) : 'page_number';
-    if ($with_page && $page > 1) $query .= '&' . $name . '=' . $page;
+    if ($with_page && $page > 1) $query .= (($query !== '') ? '&' : '') . $name . '=' . $page;
     return $query;
 }
 
@@ -1250,13 +1249,14 @@ function pg_sw_url_filter_value($filter_sql, $total_records)
 }
 
 // The page number a list adds to the page's canonical: the later page it
-// showed, when it applied an address value, is not being searched (a
-// searched page 2 is not page 2 of the list) and showed the page the
-// address asked for (a page past the last one is clamped to it, and that
-// page is not this address). 0 otherwise.
+// showed, when it is not being searched (a searched page 2 is not page 2
+// of the list) and showed the page the address asked for (a page past the
+// last one is clamped to it, and that page is not this address). Every
+// later page is its own address, with or without an address value. 0
+// otherwise.
 function pg_sw_url_filter_page($filter_sql, $request, $current_page, $total_pages, $search_active, $page_param = 'page_number')
 {
-    if (!is_array($filter_sql) || empty($filter_sql['params']) || $search_active) return 0;
+    if ($search_active) return 0;
     $current_page = (int)$current_page;
     if ((int)$total_pages <= 1 || $current_page <= 1) return 0;
     if (!is_array($request) || !isset($request[$page_param]) || !is_scalar($request[$page_param])) return 0;
@@ -1316,6 +1316,49 @@ function pg_sw_url_filter_state($add = null)
         if (isset($add['page_param']) && $add['page_param'] !== 'page_number') $state['page_param'] = (string)$add['page_param'];
     }
     return $state;
+}
+
+// The later pages the address asked the page's lists for, by page
+// parameter: whether a list showed that page (`shown`) and whether one had
+// fewer pages than that (`past`). get_page_content() resets it (false)
+// before its widget pass and asks pg_sw_list_page_past() after it. A list
+// adds array(page_param, requested, pages); a request for page 1 or less,
+// an e-mail body and a render inside another request (SEO pass, preview)
+// add nothing. Returns the state.
+function pg_sw_list_page_requests($add = null)
+{
+    static $state = array();
+    if ($add === false) $state = array();
+    if (!is_array($add) || count($add) !== 3) return $state;
+
+    list($param, $requested, $pages) = array_values($add);
+    $requested = is_scalar($requested) ? (int)$requested : 0;
+    if ($requested <= 1) return $state;
+
+    $ctx = pg_sw_render_context();
+    if (!empty($ctx['email']) || (function_exists('pg_seo_rendering') && pg_seo_rendering())) return $state;
+
+    $param = (string)$param;
+    if (!isset($state[$param])) $state[$param] = array('shown' => false, 'past' => false);
+    if ($requested <= (int)$pages) {
+        $state[$param]['shown'] = true;
+    } else {
+        $state[$param]['past'] = true;
+    }
+    return $state;
+}
+
+// Whether the address asked for a page past the last one: some list had
+// fewer pages than the number under its page parameter and no list on the
+// page reading that parameter showed it (a short "latest" box beside the
+// main list does not make page 3 of the main list a missing page).
+function pg_sw_list_page_past($requests)
+{
+    if (!is_array($requests)) return false;
+    foreach ($requests as $one) {
+        if (is_array($one) && !empty($one['past']) && empty($one['shown'])) return true;
+    }
+    return false;
 }
 
 // The fields a filter may name on form $custom_form_page_id, keyed by their
@@ -2029,6 +2072,11 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // The pages: a count strip draws no rows, so it has one page at most.
     $total_pages  = $loop_empty ? min(1, $result_count) : (int)ceil($result_count / $items_per_page);
     $current_page = pg_sw_list_current_page($requested_page, $total_pages);
+    // A later page the address asked for, shown or past the last one; a
+    // count strip draws no pages and has no say.
+    if (!$loop_empty && isset($request[$page_param])) {
+        pg_sw_list_page_requests(array($page_param, $request[$page_param], $total_pages));
+    }
     $paging       = pg_sw_list_paging($page_param, $current_page, $total_pages);
     $paging_tokens = $paging['tokens'];
 
@@ -2077,8 +2125,8 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // A count strip: the head state above is registered, no row is read.
     if ($loop_empty) return $stitch('', '');
 
-    // A later page of an address-filtered list is its own address (the
-    // classic list keeps page_number in its canonical too).
+    // A later page of a list is its own address (the classic list keeps
+    // page_number in its canonical too).
     $url_filter_page = pg_sw_url_filter_page($filter_sql, $request, $current_page, $total_pages, $search_active, $page_param);
     if ($url_filter_page > 0) {
         pg_sw_url_filter_state(array('page_number' => $url_filter_page, 'page_param' => $page_param));

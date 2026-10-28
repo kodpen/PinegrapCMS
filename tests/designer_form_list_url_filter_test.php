@@ -346,14 +346,16 @@ function test_url_filter_value_printed_only_for_exact_matches()
 	pg_assert_same('Jane', pg_sw_url_filter_value($sql, 5));
 }
 
-// The page number goes into the canonical only from a list that applied an
-// address value, as the page the address asked for (not a clamped one),
-// and not while searching.
+// The page number goes into the canonical as the page the address asked
+// for (not a clamped one), with or without an address value, and not
+// while searching.
 function test_url_filter_page()
 {
 	$applied = array('params' => array('author' => 'Jane'));
 	pg_assert_same(2, pg_sw_url_filter_page($applied, array('page_number' => '2'), 2, 5, false));
-	pg_assert_same(0, pg_sw_url_filter_page(array('params' => array()), array('page_number' => '2'), 2, 5, false));
+	pg_assert_same(2, pg_sw_url_filter_page(array('params' => array()), array('page_number' => '2'), 2, 5, false), 'a plain list keeps its later page');
+	pg_assert_same(3, pg_sw_url_filter_page(null, array('page_number' => '3'), 3, 5, false), 'no filter at all');
+	pg_assert_same(0, pg_sw_url_filter_page(array('params' => array()), array('page_number' => '2'), 2, 5, true), 'a search is not a page of the list');
 	pg_assert_same(0, pg_sw_url_filter_page($applied, array('page_number' => '2'), 2, 5, true));
 	pg_assert_same(0, pg_sw_url_filter_page($applied, array('page_number' => '1'), 1, 5, false));
 	pg_assert_same(0, pg_sw_url_filter_page($applied, array('page_number' => '7'), 3, 3, false));
@@ -385,8 +387,10 @@ function test_url_filter_query()
 {
 	pg_assert_same('', pg_sw_url_filter_query(array('params' => array(), 'page_number' => 0)));
 	pg_assert_same('', pg_sw_url_filter_query(array('params' => array(), 'page_number' => 1)));
-	// A page without an address value keeps its bare canonical, page 2 too.
-	pg_assert_same('', pg_sw_url_filter_query(array('params' => array(), 'page_number' => 2)));
+	// A later page is its own address without an address value too.
+	pg_assert_same('page_number=2', pg_sw_url_filter_query(array('params' => array(), 'page_number' => 2)));
+	pg_assert_same('topics_page=4', pg_sw_url_filter_query(array('params' => array(), 'page_number' => 4, 'page_param' => 'topics_page')));
+	pg_assert_same('', pg_sw_url_filter_query(array('params' => array(), 'page_number' => 2), false), 'the feed has no page');
 	pg_assert_same('author=Jane&page_number=2', pg_sw_url_filter_query(array('params' => array('author' => 'Jane'), 'page_number' => 2)));
 	pg_assert_same(
 		'author=Jane%20Cooper&tag=a%26b&page_number=3',
