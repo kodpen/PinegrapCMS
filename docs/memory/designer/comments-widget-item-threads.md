@@ -1,6 +1,6 @@
 ---
 name: comments-widget-item-threads
-description: The comments widget on catalog, catalog detail and calendar event view pages (slice 20a): the item in the address, its check, the product review rules, what waits for 20b
+description: The comments widget on catalog, catalog detail and calendar event view pages (slices 20a, 20b): the item in the address, its check, the product review rules, the item's flags and name, the canvas
 module: comments
 ---
 
@@ -20,15 +20,19 @@ module: comments
 - Write: for a live render, not staff, the widget asks `pg_review_eligibility()`. `sign_in` sets `must_sign_in` (with `__login_url`); `not_bought` and `reviewed` set `comments_closed` and put `pg_review_refusal_message()` in `__comments_closed_message`, so every design shows the reason where it shows the closed note (`pg_comments_widget_thread_flags()` fact `review_refusal`).
 - `add_comment.php` checks again, writes `verified_order_id` and recounts the rating (`pg_review_comment_changed()`); unchanged.
 
-## Why no new tokens or flags yet?
-- `tools/check_bindings.php` fails a token or flag the renderer gives that `style_designer.js` does not list, and that file was held by #2600. Dedicated names (a review flag, the item's name) come with 20b, together with the canvas states.
+## Which flags and token does an item thread give? (20b)
+- `is_item_thread` (fact `item`: a product, group or event thread) and `is_review_thread` (fact `review`: `pg_comments_rows()` read a review thread; implies the item flag), in `pg_comments_widget_thread_flags()` and its JS twin, which also took the `review_refusal` rules. They follow the facts, e-mail included.
+- `__comments_item_name`: `pg_comment_item_name()` (`includes/fn/comments.php`, one read per item and request) -> pure `pg_comment_item_label()`: a product's or group's short description as text, else its name; an event's name; '' for a page or record thread. Escaped once with the other tokens.
+- A list of recent comments switches all three off (`pg_comments_mode_off_bindings()` and twin).
 
-## What else changed?
-- `pg_comments_widget_classic_thread()` keeps only `form item view` pages ([[comments-widget-hand-off]]).
-- A list of recent comments still refuses those pages as sources ('classic'): their comments are item threads ([[comments-widget-recent-gates]]).
-- Comment e-mails still keep the fixed markup for item threads: the e-mail builds links from the page's address.
+## What does the editor show? (20b)
+- The canvas reads the thread from the page type on screen (`_sdCommentsPageThread()`): catalog detail = a product's reviews, catalog = a group, calendar event view = an event. States: [[comments-widget-canvas]].
+- Canvas Preview and Make designable say whose comments such a page shows and that e-mails about them keep the fixed markup (`_sdCommentsPageThreadText()`).
+
+## What stays out?
+- Recent lists refuse those pages as sources ([[comments-widget-recent-gates]]); e-mails keep the fixed markup (links from the page's address).
 
 ## Where is it tested?
-- `tests/comments_widget_threads_test.php`: the address table per page type, the review flags, the renderer's order.
+- `tests/comments_widget_threads_test.php`: the address table, the review and item flags, the name, the renderer's order; the canvas: `comments_widget_designer_test.php`.
 
-Related: [[comments-widget]], [[comment-thread-verify]], [[designable-comments]]
+Related: [[comments-widget]], [[comment-thread-verify]]

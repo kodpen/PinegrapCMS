@@ -31,7 +31,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - datetime-picker-steps.md: Panel steps P1-P11 of plans/datetime-picker.md: what each changes, its files, tests and size, its dependencies; claim as [plan:datetime-picker] P<n>
 - datetime-picker.md: Plan (decided in #2693, 2026-10-28): one date-and-time control for the whole software, the time in the same popup, on vanilla-calendar-pro; panel P1-P11, sites S1-S4, steps in datetime-picker-steps.md
 - designable-comments-contract.md: Contract of the planned comments widget (2026-10-23): what is stored where, token, flag and control names, thread order, the security rules every slice of designable-comments keeps
-- designable-comments.md: Plan (1-19, 3b and 20a done; 20b-20c open): comments as a designable system widget kind; the steps of slice 20 (product and event threads) and where to start
+- designable-comments.md: Plan (1-19, 3b, 20a and 20b done; 20c open): comments as a designable system widget kind; the steps of slice 20 (product and event threads) and where to start
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license)
 - designer-collections-steps.md: Plan (collections half of designer-interactions-collections, steps C1–C7): typed collections over designer forms and their schema
 - designer-interactions-collections.md: Plan (approved 2026-10-19, watch list, designer session): interaction/animation builder for designer nodes and typed collections with relations and dynamic pages beyond forms-as-collections
@@ -44,6 +44,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
 - graph-canvas-core.md: Plan (2026-10-24, not started, answers open): a reusable box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
+- incoming-email-g2.md: G2 of incoming e-mail (IMAP read) cut into three PRs: G2a client (pure, tested), G2b box card and Test connection, G2c fetch run, inline job, System status row; the read rules decided for G2c
 - incoming-email-plan.md: Incoming e-mail into Workspace channels (G1 done, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
 - legacy-layouts-in-designer.md: Plan (2026-10-19; Y1-Y4, Y6 done): how a classic page's custom layout (layout_type 'custom', data/layouts/<id>.php) lives on in the visual designer once page_designer.php retires; Y1-Y6
 - legacy-page-designer-l5-list.md: What step L5 (retire page_designer.php) reroutes or removes beyond the three files: Edit Layout links, help row, menu case, panel actions used only by page_designer.js
@@ -61,7 +62,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - prototype-sharing.md: Plan (2026-10-24; slices 1-4 done: #1867, #1579, #1595, #1578; 5 later): drafts play as a clickable prototype shared by a view-only link; flows with the team
 - refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
 - reverse-oauth-leftovers.md: Remaining outside-account connections (calendar, notes, cloud picker, Meta, Merchant, GA4, Business Profile, social, AI), the connect.pinegrap.com broker and open decisions
-- security-findings-2026-10-waf.md: Security findings of the 2026-10-20 firewall and helper scan: 1, 2, 3, 4, 5, 7 done; 6 (country rule) decided by the owner 2026-10-28; one PR each
 - security-findings-2026-10.md: 2026-10-19 security audit: fixed by that day's PRs and #713; items 2-8 decided by the owner 2026-10-28 (labels, CVV, escape_like, sign-in message, gateway secrets, ERP host, rich text)
 - shipping-carrier-labels.md: Plan (approved 2026-10-19, step 1 done): carrier APIs for label/barcode creation, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct
 - shipping-management.md: Shipping plan (2026-10-08; phases 1-4, 5, 6 and 7 done, phase 1 waits for new carriers): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
@@ -103,4 +103,4 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-phase3-leftovers.md: Workspace phase 3 (bots): app.mentioned webhook done (#809), app commands done (#2213), app membership moved to workspace-agent-handles; ERP overdue to task done; left: designer task panel
 - workspace-quotes.md: Plan (2026-10-23, 1 #1546, 2 #1614, 3 #1705, 6 #1826 #1907 done, answers 1, 3 given): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
 - workspace-slash-commands.md: Plan (2026-10-23, 1 done #1440, 2-3 #1499, 4 #1731, 5 #1991, 6 #1896 #1938, answer 2a): /task fixes, command registry, Tab suggestions, live line, more commands, GET /workspace/commands
-- workspace-voice-messages.md: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, answers #2417, V3a #2674, V3b #2696, V3c1 #2744): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
+- workspace-voice-messages.md: Plan (2026-10-23; V1-V2 done, answers #2417, V3 transcripts done #2674 #2696 #2744 #2775): voice messages in the Workspace, a quick voice reply, transcripts the assistants read

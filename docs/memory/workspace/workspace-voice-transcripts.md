@@ -25,5 +25,5 @@ description: Voice message transcripts (V3a #2674): ws_voice, the settings card 
 - At most `WS_VOICE_MAX_SECONDS` (300, owner 5b), the recorder's own cap.
 
 ## What is not built yet?
-- V3c2 (plans/workspace-voice-messages.md): the channel menu switch (`ws_channel_voice`, private-channel consent naming the provider), the transcript and peaks in the player, the recorder's measure sent with `ws_attach`, a panel kick. The server side is there (V3c1): workspace-voice-transcript-job.md.
+- Assistants, search, recaps and push hearing it (V4, plans/workspace-voice-messages.md). The panel side: workspace-voice-recording.md, the job: workspace-voice-transcript-job.md.
 - Never checked with a real service (no key in the sandbox).

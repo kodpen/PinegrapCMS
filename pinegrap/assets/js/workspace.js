@@ -7878,6 +7878,23 @@
                 divider();
             }
 
+            // Whether its voice messages are transcribed: a channel that is
+            // not public sends them out only once a manager agrees, told
+            // which service hears them.
+            if (channel.voice && channel.can_manage && !channel.archived) {
+                item(t('voice_allow') + (channel.voice.allowed ? ' ✓' : ''), 'bi-mic', function () {
+                    var allow = !channel.voice.allowed;
+                    var asked = (allow && channel.kind !== 'public') ? ask(t('voice_allow_private', channel.voice.provider), t('voice_allow'), false) : Promise.resolve(true);
+
+                    asked.then(function (yes) {
+                        if (yes) {
+                            api('ws_channel_voice', { channel_id: channel.id, allowed: allow ? 1 : 0 }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
+                        }
+                    });
+                });
+                divider();
+            }
+
             if (channel.kind === 'public' && channel.can_change_kind) {
                 item(t('make_private'), 'bi-lock', function () {
                     ask(t('make_private_confirm', (channel.members || []).length), t('make_private'), true).then(function (yes) {
@@ -9614,6 +9631,28 @@
                 self.sync();
             }).catch(function () {
                 self.aiKicking = false;
+            });
+        },
+
+        // Voice messages are written out one call at a time, carried on by
+        // the screens showing one that waits where the server cannot do it
+        // after the upload (includes/workspace/voice.php). A call may wait
+        // for the service, so not more often than every 15 seconds.
+        kickVoice: function (now) {
+            var self = this;
+
+            if (self.voiceKicking || (!now && (Date.now() - (self.voiceKickAt || 0)) < 15000)) {
+                return;
+            }
+
+            self.voiceKicking = true;
+            self.voiceKickAt = Date.now();
+
+            api('ws_voice_kick').then(function () {
+                self.voiceKicking = false;
+                self.sync();
+            }).catch(function () {
+                self.voiceKicking = false;
             });
         },
 
@@ -11708,7 +11747,7 @@
 
             window.PGWsVoice.start({
                 box: box,
-                send: function (file) { self.voiceSend(file); },
+                send: function (file, measure) { self.voiceSend(file, measure); },
                 done: function () {
                     self.voiceSwap();
 
@@ -11742,20 +11781,25 @@
 
         // A recording leaves as a file of its own: the words in the box stay
         // there, and it answers the message the reply bar shows when it is
-        // sent. The bar closes once it is posted.
-        voiceSend: function (file) {
+        // sent. The bar closes once it is posted. measure: the length and
+        // waveform the recorder heard, kept for the player; its transcript
+        // is asked for at once (kickVoice()).
+        voiceSend: function (file, measure) {
             var self = this;
             var parent = (self.reply && self.voiceAnswers(self.reply)) ? self.reply : null;
 
             self.uploadFiles([file], {
                 body: '',
                 parent_id: parent ? parent.id : 0,
+                voice: measure || null,
                 sent: function () {
                     if (parent && (self.reply === parent)) {
                         self.reply = null;
                         self.replyMore = null;
                         self.drawReplyBar();
                     }
+
+                    self.kickVoice(true);
                 }
             });
         },
@@ -12603,7 +12647,8 @@
         // (PHP, .htaccess, web.config, shell scripts, programs) the server
         // refuses here too, and says so. options (a recording, voiceSend()):
         // body sent instead of the box's text, which then stays in the box;
-        // parent_id, the message the files answer; sent(), once any is posted.
+        // parent_id, the message the files answer; voice, a recording's
+        // duration_ms and peaks; sent(), once any is posted.
         uploadFiles: function (files, options) {
             var self = this;
             var settings = options || {};
@@ -12648,7 +12693,9 @@
                         name: file.name || ('image-' + Date.now() + '.png'),
                         data: reader.result,
                         body: body,
-                        parent_id: settings.parent_id || 0
+                        parent_id: settings.parent_id || 0,
+                        voice_duration_ms: settings.voice ? Math.round(settings.voice.duration_ms || 0) : 0,
+                        voice_peaks: settings.voice ? (settings.voice.peaks || '') : ''
                     }).then(function () {
                         done++;
 
@@ -14225,6 +14272,13 @@
                 return message.claude && message.claude.agent === 'mcp' && /^(queued|sent|running)$/.test(message.claude.status);
             })) {
                 self.kickAgent();
+            }
+
+            // A voice message shown here waits for its transcript.
+            if ((self.tab === 'messages') && (self.messages || []).some(function (message) {
+                return message.file && message.file.voice && /^(queued|running)$/.test(message.file.voice.status);
+            })) {
+                self.kickVoice();
             }
 
             self.timer = setTimeout(function () {

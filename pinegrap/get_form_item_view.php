@@ -545,7 +545,7 @@ function get_form_item_view($properties) {
                             
                             $output_fields .=
                                 '<tr' . $row_class . '>
-                                    <td style="vertical-align: top' . $output_label_column_width . '">' . $field['label'] . '</td>
+                                    <td style="vertical-align: top' . $output_label_column_width . '">' . h($field['label']) . '</td>
                                     <td style="vertical-align: top">' . $liveform->output_field(array('type'=>'text', 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'maxlength'=>$field['maxlength'], 'class'=>'software_input_text')) . '</td>
                                 </tr>';
                             break;
@@ -571,7 +571,7 @@ function get_form_item_view($properties) {
                                 $output_fields .=
                                     '<tr' . $row_class . '>
                                         <td colspan="2">
-                                            <div style="margin-bottom: .5em">' . $field['label'] . '</div>
+                                            <div style="margin-bottom: .5em">' . h($field['label']) . '</div>
                                             <div>' . $liveform->output_field(array('type'=>'textarea', 'name'=>$field['id'], 'id'=>$field['id'], 'value'=>$field['default_value'], 'maxlength'=>$field['maxlength'], 'rows'=>$field['rows'], 'cols'=>$field['cols'], 'class'=>'software_textarea', 'style'=>$style)) . '</div>
                                         </td>
                                     </tr>';
@@ -580,7 +580,7 @@ function get_form_item_view($properties) {
                             } else {
                                 $output_fields .=
                                     '<tr' . $row_class . '>
-                                        <td style="vertical-align: top' . $output_label_column_width . '">' . $field['label'] . '</td>
+                                        <td style="vertical-align: top' . $output_label_column_width . '">' . h($field['label']) . '</td>
                                         <td style="vertical-align: top">' . $liveform->output_field(array('type'=>'textarea', 'name'=>$field['id'], 'id'=>$field['id'], 'value'=>$field['default_value'], 'maxlength'=>$field['maxlength'], 'rows'=>$field['rows'], 'cols'=>$field['cols'], 'class'=>'software_textarea')) . '</td>
                                     </tr>';
                             }
@@ -608,7 +608,7 @@ function get_form_item_view($properties) {
                             
                             $output_fields .=
                                 '<tr' . $row_class . '>
-                                    <td style="vertical-align: top' . $output_label_column_width . '">' . $field['label'] . '</td>
+                                    <td style="vertical-align: top' . $output_label_column_width . '">' . h($field['label']) . '</td>
                                     <td style="vertical-align: top">' . $liveform->output_field(array('type'=>'select', 'name'=>$name, 'value'=>$field['default_value'], 'options'=>$pick_list_options, 'size'=>$field['size'], 'multiple'=>$multiple, 'class'=>'software_select')) . '</td>
                                 </tr>';
                             
@@ -630,7 +630,7 @@ function get_form_item_view($properties) {
                             
                             $output_fields .=
                                 '<tr' . $row_class . '>
-                                    <td style="vertical-align: top' . $output_label_column_width . '">' . $field['label'] . '</td>
+                                    <td style="vertical-align: top' . $output_label_column_width . '">' . h($field['label']) . '</td>
                                     <td style="vertical-align: top">' . $output_options . '</td>
                                 </tr>';
                             
@@ -664,7 +664,7 @@ function get_form_item_view($properties) {
                             
                             $output_fields .=
                                 '<tr' . $row_class . '>
-                                    <td style="vertical-align: top' . $output_label_column_width . '">' . $field['label'] . '</td>
+                                    <td style="vertical-align: top' . $output_label_column_width . '">' . h($field['label']) . '</td>
                                     <td style="vertical-align: top"><input type="hidden" name="' . $field['id'] . '" />' . $output_options . '</td>
                                 </tr>';
                             
@@ -703,7 +703,7 @@ function get_form_item_view($properties) {
 
                             $output_fields .=
                                 '<tr' . $row_class . '>
-                                    <td style="vertical-align: top' . $output_label_column_width . '">' . $field['label'] . '</td>
+                                    <td style="vertical-align: top' . $output_label_column_width . '">' . h($field['label']) . '</td>
                                     <td style="vertical-align: top">
                                         ' . $output_file_info . '
                                         <div>' . $output_upload_label . $liveform->output_field(array('type'=>'file', 'name'=>$field['id'], 'size'=>$field['size'], 'class'=>'software_input_file')) . $output_delete_option . '</div>
@@ -717,7 +717,7 @@ function get_form_item_view($properties) {
                         case 'date':
                             $output_fields .=
                                 '<tr' . $row_class . '>
-                                    <td style="vertical-align: top' . $output_label_column_width . '">' . $field['label'] . '</td>
+                                    <td style="vertical-align: top' . $output_label_column_width . '">' . h($field['label']) . '</td>
                                     <td style="vertical-align: top">
                                         ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'maxlength'=>'10', 'class'=>'software_input_text')) . '
                                         ' . get_date_picker_format() . '
@@ -731,7 +731,7 @@ function get_form_item_view($properties) {
                         case 'date and time':
                             $output_fields .=
                                 '<tr' . $row_class . '>
-                                    <td style="vertical-align: top' . $output_label_column_width . '">' . $field['label'] . '</td>
+                                    <td style="vertical-align: top' . $output_label_column_width . '">' . h($field['label']) . '</td>
                                     <td style="vertical-align: top">
                                         ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'maxlength'=>'22', 'class'=>'software_input_text')) . '
                                         <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
@@ -760,7 +760,7 @@ function get_form_item_view($properties) {
                         case 'time':
                             $output_fields .=
                                 '<tr' . $row_class . '>
-                                    <td style="vertical-align: top' . $output_label_column_width . '">' . $field['label'] . '</td>
+                                    <td style="vertical-align: top' . $output_label_column_width . '">' . h($field['label']) . '</td>
                                     <td style="vertical-align: top">' . $liveform->output_field(array('type'=>'text', 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'maxlength'=>'11', 'class'=>'software_input_text')) . ' ' . ((pg_time_format_code() === 'H:i') ? lang('(Format: HH:mm)') : lang('(Format: h:mm AM/PM)')) . '</td>
                                 </tr>';
                             break;

@@ -1,6 +1,6 @@
 ---
 name: workspace-voice-recording
-description: Voice messages (workspace_voice.js): the mic in place of Send, a sound's reply mic (parent_id on ws_attach and files.create), the 5-minute cap, .weba/.ogg/.m4a names, the player, what is not built
+description: Voice messages (workspace_voice.js): the mic in place of Send, a sound's reply mic, the 5-minute cap, .weba/.ogg/.m4a names, the player
 ---
 
 ## What does a voice message do?
@@ -26,5 +26,5 @@ description: Voice messages (workspace_voice.js): the mic in place of Send, a so
 - `Permissions-Policy: microphone=(self)` (`waf.php`); keep `(self)`.
 
 ## What is not built yet?
-- `parent_id` in the API's message answer and in `messages.create`, a stored duration or waveform, assistants hearing it. Transcripts: workspace-voice-transcripts.md.
+- `parent_id` in the API's message answer and in `messages.create`, assistants hearing it (V4). Waveform, transcript and channel switch on the screen: workspace-voice-screen.md.
 - Checked in headless Chromium with a fake microphone and a stubbed API; not on Safari, Firefox or a running site.

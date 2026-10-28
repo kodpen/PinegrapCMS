@@ -45,6 +45,13 @@
         ['audio/mp4', 'm4a']
     ];
 
+    // The waveform kept with a recording: at most this many levels, each a
+    // digit from 0 (silence) to 9 (the loudest part of that recording).
+    var PEAKS = 120;
+
+    // A transcript this short is shown open under its player.
+    var SHORT_TRANSCRIPT = 280;
+
     var SPEEDS = [1, 1.5, 2];
     var SPEED_KEY = 'ws-voice-speed';
 
@@ -181,6 +188,85 @@
         });
     }
 
+    // Listens to the microphone while it records: the loudness of each tick
+    // (root mean square of the samples), for the waveform. Without the Web
+    // Audio API the recording goes without one.
+    function meter(stream) {
+        var Context = window.AudioContext || window.webkitAudioContext;
+        var context = null;
+        var analyser = null;
+        var samples = null;
+
+        if (!Context) {
+            return null;
+        }
+
+        try {
+            context = new Context();
+            analyser = context.createAnalyser();
+            analyser.fftSize = 1024;
+            context.createMediaStreamSource(stream).connect(analyser);
+            samples = new Uint8Array(analyser.fftSize);
+        } catch (error) {
+            if (context) {
+                try { context.close(); } catch (inner) { /* already closed */ }
+            }
+
+            return null;
+        }
+
+        return {
+            levels: [],
+            read: function () {
+                var sum = 0;
+
+                analyser.getByteTimeDomainData(samples);
+
+                for (var i = 0; i < samples.length; i++) {
+                    var value = (samples[i] - 128) / 128;
+
+                    sum += value * value;
+                }
+
+                this.levels.push(Math.sqrt(sum / samples.length));
+            },
+            close: function () {
+                try { context.close(); } catch (error) { /* already closed */ }
+            }
+        };
+    }
+
+    // The levels heard, as the server keeps them: the loudest of each of at
+    // most PEAKS stretches, against the loudest of the recording, on a square
+    // root scale so quiet speech still shows. A silent recording keeps none.
+    function peaksOf(levels) {
+        var count = Math.min(PEAKS, levels.length);
+        var buckets = [];
+        var loudest = 0;
+        var i;
+
+        for (i = 0; i < count; i++) {
+            var from = Math.floor(i * levels.length / count);
+            var to = Math.max(from + 1, Math.floor((i + 1) * levels.length / count));
+            var top = 0;
+
+            for (var j = from; j < to; j++) {
+                top = Math.max(top, levels[j]);
+            }
+
+            buckets.push(top);
+            loudest = Math.max(loudest, top);
+        }
+
+        if (loudest < 0.005) {
+            return '';
+        }
+
+        return buckets.map(function (value) {
+            return String(Math.min(9, Math.round(9 * Math.sqrt(value / loudest))));
+        }).join('');
+    }
+
     function record(stream, options, h) {
         var t = h.t;
         var el = h.el;
@@ -218,6 +304,7 @@
         var warned = false;
         var shown = -1;
         var timer = 0;
+        var listening = meter(stream);
 
         var row = el('div', 'ws-voice-rec');
         var time = el('span', 'ws-voice-rec-time', '0:00');
@@ -247,6 +334,11 @@
 
             document.removeEventListener('keydown', onKey, true);
             stopTracks(stream);
+
+            if (listening) {
+                listening.close();
+            }
+
             row.remove();
             box.classList.remove('ws-voice-recording');
             recording = null;
@@ -300,6 +392,14 @@
             var elapsed = (Date.now() - started) / 1000;
             var whole = Math.floor(elapsed);
 
+            if (listening) {
+                try {
+                    listening.read();
+                } catch (error) {
+                    listening = null;
+                }
+            }
+
             if (whole !== shown) {
                 shown = whole;
                 time.textContent = clock(whole);
@@ -342,6 +442,7 @@
             // As long as it was when Stop was pressed, not when the data came.
             var length = (stoppedAt || Date.now()) - started;
             var blob = chunks.length ? new Blob(chunks, { type: type }) : null;
+            var peaks = listening ? peaksOf(listening.levels) : '';
 
             finish();
 
@@ -356,7 +457,7 @@
                     file.name = name;
                 }
 
-                options.send(file);
+                options.send(file, { duration_ms: length, peaks: peaks });
             }
 
             if (options.done) {
@@ -430,9 +531,79 @@
         return text + '×';
     }
 
-    // A sound file in the conversation: file {url, name}. options.reply,
+    // A recording's transcript under its player: machine text, named as such
+    // with the service that wrote it, apart from the person's own words. A
+    // long one opens on a click; one still waiting says so.
+    function transcript(voice, h) {
+        var t = h.t;
+        var el = h.el;
+
+        if (voice.status === 'done' && voice.transcript) {
+            var details = el('details', 'ws-voice-transcript small mt-1');
+            var summary = el('summary', 'fg-secondary', t('voice_transcript'));
+            var text = el('div', 'mt-1', voice.transcript);
+            var by = el('div', 'fg-secondary fst-italic mt-1', t('voice_machine', voice.provider || '?'));
+
+            details.style.maxWidth = '22rem';
+            text.style.whiteSpace = 'pre-wrap';
+            text.style.overflowWrap = 'anywhere';
+
+            if (voice.language) {
+                text.lang = voice.language;
+            }
+
+            details.open = voice.transcript.length <= SHORT_TRANSCRIPT;
+            details.appendChild(summary);
+            details.appendChild(text);
+            details.appendChild(by);
+
+            return details;
+        }
+
+        if (voice.status === 'queued' || voice.status === 'running') {
+            return el('div', 'ws-voice-transcript small fg-secondary fst-italic mt-1', t('voice_transcribing'));
+        }
+
+        return null;
+    }
+
+    // The waveform in place of the seek line: one stroke per level, the part
+    // played drawn in the accent colour.
+    function waveform(bar, fill, peaks) {
+        var strokes = [];
+
+        bar.style.display = 'flex';
+        bar.style.alignItems = 'center';
+        bar.style.gap = '1px';
+        bar.style.height = '1.25rem';
+        bar.style.background = 'transparent';
+        fill.style.display = 'none';
+
+        peaks.split('').forEach(function (level) {
+            var stroke = document.createElement('span');
+
+            stroke.style.flex = '1 1 0';
+            stroke.style.minWidth = '1px';
+            stroke.style.height = (15 + Number(level) * 85 / 9) + '%';
+            stroke.style.borderRadius = '1px';
+            stroke.style.background = 'var(--pg-border-color)';
+            bar.appendChild(stroke);
+            strokes.push(stroke);
+        });
+
+        return function (share) {
+            var reached = Math.round(share * strokes.length);
+
+            strokes.forEach(function (stroke, index) {
+                stroke.style.background = (index < reached) ? 'var(--ws-accent)' : 'var(--pg-border-color)';
+            });
+        };
+    }
+
+    // A sound file in the conversation: file {url, name, voice}. options.reply,
     // when given, draws a microphone that answers it with a recording: a
-    // tap, since a phone's long press opens the message's menu.
+    // tap, since a phone's long press opens the message's menu. A recording
+    // with a row (file.voice) draws its waveform and, below, its transcript.
     function player(file, h, options) {
         var t = h.t;
         var el = h.el;
@@ -453,6 +624,10 @@
         var measuring = false;
         var settle = null;
         var length = 0;
+        var voice = file.voice || null;
+        // The length the recorder measured, shown until the file states one.
+        var stated = (voice && voice.duration_ms > 0) ? voice.duration_ms / 1000 : 0;
+        var paint = (voice && /^[0-9]+$/.test(voice.peaks || '')) ? waveform(bar, fill, voice.peaks) : null;
 
         audio.preload = 'metadata';
         audio.src = file.url;
@@ -502,9 +677,14 @@
             }
 
             var now = audio.currentTime || 0;
+            var shown = length || stated;
 
-            time.textContent = length ? (clock(now) + ' / ' + clock(length)) : clock(now);
+            time.textContent = shown ? (clock(now) + ' / ' + clock(shown)) : clock(now);
             fill.style.width = length ? (Math.min(100, (now / length) * 100) + '%') : '0';
+
+            if (paint) {
+                paint(length ? Math.min(1, now / length) : 0);
+            }
         }
 
         function drawButton() {
@@ -648,8 +828,20 @@
         });
 
         setRate(rate);
+        draw();
 
-        return box;
+        var under = voice ? transcript(voice, h) : null;
+
+        if (!under) {
+            return box;
+        }
+
+        var wrap = el('div', 'ws-voice-wrap');
+
+        wrap.appendChild(box);
+        wrap.appendChild(under);
+
+        return wrap;
     }
 
     // Whether a recording is running, or the browser is still asked for the

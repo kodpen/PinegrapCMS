@@ -725,6 +725,15 @@ function test_comments_widget_designer_thread_flags_twin()
 			'replying' => true, 'is_watcher' => true, 'manage_watchers' => true, 'featured_view' => true, 'has_featured' => true, 'pages' => 3,
 			'rating_on' => true, 'files_on' => true, 'watching_on' => true, 'name_mode' => 'typed'),
 		'email closed' => array('email' => '1', 'count' => 1, 'allow_new' => false, 'watching_on' => 1),
+		'review, sign in' => array('allow_new' => true, 'review_refusal' => 'sign_in', 'item' => true, 'review' => true, 'count' => 2),
+		'review, not bought' => array('allow_new' => 1, 'signed_in' => 1, 'review_refusal' => 'not_bought', 'review' => '1', 'name_mode' => 'fixed'),
+		'review, reviewed' => array('allow_new' => true, 'signed_in' => true, 'review_refusal' => 'reviewed', 'review' => true, 'replying' => true),
+		'review, buyer' => array('allow_new' => true, 'signed_in' => true, 'review_refusal' => '', 'item' => 1, 'review' => true, 'name_mode' => 'chosen'),
+		'review, closed' => array('allow_new' => false, 'signed_in' => true, 'review_refusal' => 'not_bought', 'review' => true),
+		'review, search index' => array('allow_new' => true, 'search_index' => true, 'review_refusal' => 'sign_in', 'review' => true),
+		'review, e-mail' => array('allow_new' => true, 'email' => true, 'review_refusal' => 'reviewed', 'item' => true),
+		'refusal not a string' => array('allow_new' => true, 'signed_in' => true, 'review_refusal' => array('reviewed')),
+		'event' => array('allow_new' => true, 'item' => 'yes', 'review' => 0, 'count' => 1),
 	);
 
 	$res = comments_widget_designer_test_node(array('_sdCommentsThreadFlags'),
@@ -735,7 +744,7 @@ function test_comments_widget_designer_thread_flags_twin()
 
 	foreach ($sets as $name => $facts) {
 		$php = pg_comments_widget_thread_flags($facts);
-		pg_assert_same(23, count($php), $name . ': 23 flags');
+		pg_assert_same(25, count($php), $name . ': 25 flags');
 		$js = isset($res[$name]) ? $res[$name] : array();
 		ksort($php);
 		ksort($js);
@@ -855,7 +864,7 @@ _sysWidgetRenderTreeRoot = null;
 JS;
 
 	$res = comments_widget_designer_test_node(
-		array('_swKindOf', '_sdCommentsThreadFlags', '_sdCommentsRecentFlags', '_sdCommentsRecentFacts', '_sdCommentsStateFlags', '_sdCommentsCanvasStates', '_sdCommentsCanvasFacts',
+		array('_swKindOf', '_sdCommentsThreadFlags', '_sdCommentsRecentFlags', '_sdCommentsRecentFacts', '_sdCommentsStateFlags', '_sdCommentsCanvasStates', '_sdCommentsPageThread', '_sdCommentsStateThread', '_sdCommentsCanvasFacts',
 			'_sdCommentsCanvasFlags', '_sdCommentsModeOffBindings', '_sdCommentsEmailDrops', '_sdCommentsEmailDrawsComment', '_sdListIsSourced', '_sdCommentsFlagOff', '_sdCommentsStateFor'),
 		comments_widget_designer_test_canvas_script($body));
 	if ($res === null) {
@@ -871,7 +880,7 @@ JS;
 	pg_assert_false($res['with_link']['root_in_email'], 'with the Share link the e-mail state draws the widget');
 	pg_assert_same('email', $res['with_link']['pick_card_text'], 'and keeps the e-mail state');
 
-	pg_assert_same(array('comments', 'replying', 'empty', 'member', 'sign_in', 'closed', 'staff', 'email'), $res['states'], 'the states in order');
+	pg_assert_same(array('comments', 'replying', 'empty', 'member', 'sign_in', 'closed', 'review', 'staff', 'email'), $res['states'], 'the states in order');
 
 	// The e-mail state draws what a comment e-mail gets: the comment, no
 	// form, field, button, replying box or cancel control.
@@ -2356,7 +2365,7 @@ _sdCommentsCanvasState = 'staff';
 out.staff_on = _sdCommentsFlagOff(named['staff controls'], list);
 JS;
 
-	$res = comments_widget_designer_test_node(array('_swKindOf', '_sdCommentsThreadFlags', '_sdCommentsRecentFlags', '_sdCommentsCanvasStates', '_sdCommentsCanvasFacts',
+	$res = comments_widget_designer_test_node(array('_swKindOf', '_sdCommentsThreadFlags', '_sdCommentsRecentFlags', '_sdCommentsCanvasStates', '_sdCommentsPageThread', '_sdCommentsStateThread', '_sdCommentsCanvasFacts',
 		'_sdCommentsRecentFacts', '_sdCommentsStateFlags', '_sdCommentsCanvasFlags', '_sdCommentsFlagOff', '_sdCommentsRecentSamples'), comments_widget_designer_test_canvas_script($body));
 	if ($res === null) {
 		return;
@@ -2364,7 +2373,7 @@ JS;
 
 	pg_assert_same(array('comments', 'empty', 'staff'), $res['states'], 'a list: comments, none, staff');
 	pg_assert_same(array('comments', 'empty', 'signed_out', 'staff'), $res['states_mine'], 'the member\'s own: signed out too');
-	pg_assert_same(array('comments', 'replying', 'empty', 'member', 'sign_in', 'closed', 'staff', 'email'), $res['states_thread'], 'a thread as before, with its e-mail state (a list draws nothing in an e-mail)');
+	pg_assert_same(array('comments', 'replying', 'empty', 'member', 'sign_in', 'closed', 'review', 'staff', 'email'), $res['states_thread'], 'a thread as before, with its e-mail state (a list draws nothing in an e-mail)');
 	pg_assert_true($res['flags']['comments']['has_comments'] && $res['flags']['comments']['is_signed_in'], 'mine: a member with comments');
 	pg_assert_true($res['flags']['empty']['no_comments'], 'none');
 	pg_assert_true($res['flags']['signed_out']['is_signed_out'] && $res['flags']['signed_out']['no_comments'], 'signed out: nothing');
@@ -2394,4 +2403,100 @@ JS;
 	pg_assert_false($res['loop_off'], 'comments: the card');
 	pg_assert_true($res['staff_off'], 'a staff box is left out for a visitor');
 	pg_assert_false($res['staff_on'], 'and drawn for staff');
+}
+
+// The thread of the page on screen: a catalog detail page draws a product's
+// reviews (a buyer, a visitor asked to sign in, a customer who has not bought
+// it), a catalog page a group's comments, an event view page an event's;
+// any other page offers a product's reviews as one more state. The samples
+// of a review thread are verified purchases; the item's name and the refusal
+// read on the canvas as on the page.
+function test_comments_widget_designer_item_threads()
+{
+	$script = <<<'JS'
+function _sdT(s, v) { return (v === undefined) ? s : String(s).replace(/\{var(?::1)?\}/g, v); }
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+var _cmt = { pg_comments_rating: '1', pg_comments_select_name: '0' };
+function _getCmtVal(k) { return _cmt[k] || ''; }
+var _sdCommentsCanvasState = 'comments';
+var _page = { page_type: 'standard' };
+function _pgActivePage() { return _page; }
+var cfg = { regionType: 'comments' };
+var keys = function (states) { return states.map(function (s) { return s[0]; }); };
+var out = {};
+['standard', 'catalog detail', 'catalog', 'calendar event view'].forEach(function (type) {
+    _page = { page_type: type };
+    var flags = {};
+    _sdCommentsCanvasStates(cfg).forEach(function (s) { flags[s[0]] = _sdCommentsStateFlags(s[0], cfg); });
+    var names = {};
+    _sdCommentsCanvasStates(cfg).forEach(function (s) {
+        _sdCommentsCanvasState = s[0];
+        names[s[0]] = [_sdCommentsPageToken('__comments_item_name'), _sdCommentsPageToken('__comments_closed_message')];
+    });
+    _sdCommentsCanvasState = 'comments';
+    out[type] = {
+        states: keys(_sdCommentsCanvasStates(cfg)),
+        flags: flags,
+        names: names,
+        text: _sdCommentsPageThreadText(),
+        verified: _sdCommentSamples(cfg, flags.comments).map(function (s) { return s.flags.comment_is_verified; }),
+        review_verified: _sdCommentSamples(cfg, _sdCommentsStateFlags(flags.review ? 'review' : 'not_bought', cfg)).map(function (s) { return s.flags.comment_is_verified; })
+    };
+});
+_page = null;
+out.no_page = keys(_sdCommentsCanvasStates(cfg));
+out.recent = keys(_sdCommentsCanvasStates({ regionType: 'comments', mode: 'recent' }));
+process.stdout.write(JSON.stringify(out));
+JS;
+
+	$res = comments_widget_designer_test_node(array('_swKindOf', '_sdCommentsThreadFlags', '_sdCommentsRecentFlags', '_sdCommentsRecentFacts', '_sdCommentsCanvasStates',
+		'_sdCommentsPageThread', '_sdCommentsStateThread', '_sdCommentsCanvasFacts', '_sdCommentsStateFlags', '_sdCommentSamples', '_sdCommentsPageToken',
+		'_sdCommentsPageThreadText'), $script);
+	if ($res === null) {
+		return;
+	}
+
+	$base = array('comments', 'replying', 'empty', 'member', 'sign_in', 'closed');
+	pg_assert_same(array_merge($base, array('review', 'staff', 'email')), $res['standard']['states'], 'a page\'s own thread offers a product\'s reviews');
+	pg_assert_same(array_merge($base, array('not_bought', 'staff', 'email')), $res['catalog detail']['states'], 'a product page offers the customer who has not bought it');
+	pg_assert_same($res['standard']['states'], $res['catalog']['states'], 'a catalog page as a page');
+	pg_assert_same($res['standard']['states'], $res['calendar event view']['states'], 'an event page as a page');
+	pg_assert_same($res['standard']['states'], $res['no_page'], 'no page on screen');
+	pg_assert_same(array('comments', 'empty', 'staff'), $res['recent'], 'a list of recent comments keeps its states');
+
+	$standard = $res['standard']['flags'];
+	pg_assert_false($standard['comments']['is_item_thread'] || $standard['comments']['is_review_thread'], 'a page\'s own thread');
+	pg_assert_true($standard['review']['is_review_thread'] && $standard['review']['is_item_thread'], 'the review state is a product\'s reviews');
+	pg_assert_true($standard['review']['can_comment'] && $standard['review']['is_signed_in'], 'written by a signed-in buyer');
+	pg_assert_false($standard['review']['has_featured'], 'never featured');
+	pg_assert_false($standard['email']['is_item_thread'], 'an e-mail draws no item thread');
+
+	$product = $res['catalog detail']['flags'];
+	foreach (array('comments', 'replying', 'member', 'not_bought', 'staff') as $state) {
+		pg_assert_true($product[$state]['is_review_thread'] && $product[$state]['is_signed_in'], 'a product page, ' . $state . ': a signed-in customer reads its reviews');
+	}
+	pg_assert_true($product['replying']['is_replying'], 'a buyer answers a review');
+	pg_assert_true($product['sign_in']['must_sign_in'] && !$product['sign_in']['can_comment'] && $product['sign_in']['is_signed_out'], 'a visitor is asked to sign in');
+	pg_assert_true($product['not_bought']['comments_closed'] && !$product['not_bought']['comments_open'] && !$product['not_bought']['can_comment'], 'not bought: the form is closed');
+	pg_assert_true($product['closed']['comments_closed'], 'closed for everyone');
+	pg_assert_false($product['email']['is_review_thread'], 'no review thread in an e-mail');
+
+	pg_assert_true($res['catalog']['flags']['comments']['is_item_thread'] && !$res['catalog']['flags']['comments']['is_review_thread'], 'a group\'s comments are no reviews');
+	pg_assert_true($res['catalog']['flags']['sign_in']['must_sign_in'], 'a group asks for a sign-in only when the page does');
+	pg_assert_true($res['calendar event view']['flags']['comments']['is_item_thread'], 'an event\'s comments');
+	pg_assert_true($res['calendar event view']['flags']['comments']['can_comment'] && $res['calendar event view']['flags']['comments']['has_featured'], 'with the page\'s rules');
+
+	pg_assert_same(array('', "We're sorry. New comments are no longer being accepted."), $res['standard']['names']['comments'], 'a page\'s own thread has no item name');
+	pg_assert_same(array('Linen Shirt', "We're sorry. New comments are no longer being accepted."), $res['standard']['names']['review'], 'the review state names a product');
+	pg_assert_same(array('Linen Shirt', 'Only customers who bought this product can review it.'), $res['catalog detail']['names']['not_bought'], 'not bought: the refusal in the closed message');
+	pg_assert_same('Summer Collection', $res['catalog']['names']['comments'][0], 'a group\'s name');
+	pg_assert_same('Spring Open Day', $res['calendar event view']['names']['member'][0], 'an event\'s name');
+	pg_assert_same('', $res['calendar event view']['names']['email'][0], 'none in an e-mail');
+
+	pg_assert_same('', $res['standard']['text'], 'no thread note on a page');
+	pg_assert_contains('product or product group in the address', $res['catalog detail']['text'], 'the product page says whose comments it shows');
+	pg_assert_contains('fixed comment markup', $res['calendar event view']['text'], 'and that e-mails keep their markup');
+	pg_assert_same(array(false, false, false), $res['standard']['verified'], 'a page\'s samples are not verified');
+	pg_assert_same(array(true, true, true), $res['standard']['review_verified'], 'a review thread\'s samples are verified purchases');
+	pg_assert_same(array(true, true, true), $res['catalog detail']['verified'], 'and on a product page');
 }

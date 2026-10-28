@@ -11,7 +11,7 @@ description: 2026-10-19 security audit: fixed by that day's PRs and #713; items 
 
 ## What is still open? (one PR each)
 1. **PHP-region eval re-ordering** (owner 2026-10-19: no change now; `legacy-page-designer-retirement.md`): evaluate designer code only (style code, designer regions) before text and widgets are expanded, so the eval never sees expanded content. #550 is the defence layer, not the architecture.
-2. **Classic front-end form renderers print the label raw**: `includes/fn/content.php` (8 sites), `get_form_item_view.php` (11), `get_custom_form_confirmation_screen_content.php:153`. `h()` there changes the output of a site that typed markup into a label. Decided (owner, 2026-10-28): escape the label everywhere; typed markup becomes text.
+2. **Done (PR #2780).** Classic front-end form renderers print the label through `h()`; typed markup becomes text (owner, 2026-10-28).
 3. **CVV stored in clear, card number never cleared** when no gateway is set (`submit_order.php` ~4258-4281, `edit_orders.php` ~517; `card_number` AES-CBC, plain without openssl). Legacy manual processing. Decided (owner, 2026-10-28): never store the CVV, clear the number once processed, refuse the save without openssl.
 4. **Done (PR #2756).** `escape_like()` in the panel lists: `%` and `_` are plain characters in list searches (owner, 2026-10-28).
 5. **Login screens name an existing account** (four sign-in screens; `validate_login()` skipped the hash on an unknown name; `core/sign-in-one-message.md`): Decided (owner, 2026-10-28): one message plus a dummy `password_verify()`. Done #2755.

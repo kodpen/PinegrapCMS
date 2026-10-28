@@ -48,6 +48,11 @@ function ws_voice_js_strings()
         'voice_speed'       => lang('Speed'),
         'voice_reply'       => lang('Reply with voice'),
         'voice_busy'        => lang('Sorry, please save or cancel your changes first.'),
+        'voice_transcript'  => lang('Transcript'),
+        'voice_machine'     => ws_js_template('Machine transcript by {var:1}', 1),
+        'voice_transcribing' => lang('Transcribing…'),
+        'voice_allow'       => lang('Voice messages are transcribed here'),
+        'voice_allow_private' => ws_js_template('Voice messages in this private channel will be sent to {var:1} to be transcribed. Allow it?', 1),
     );
 }
 

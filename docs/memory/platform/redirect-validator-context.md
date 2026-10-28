@@ -8,7 +8,7 @@ description: Redirect validation corner rules: leave escape_url() alone, validat
 - Screens printing `http_referer` (`print_order.php`, `edit_submitted_form.php`) and calendar links carry external addresses; there an external address is data, not an error. Tightening it does not fix redirects and breaks the reports.
 
 ## Can a validator be moved to another context?
-- `pg_safe_back_url()` allows relative `.php` paths and is correct inside `href=` (the browser resolves against the current directory, same origin).
+- `pg_safe_back_url()` allows relative `.php` paths and is correct inside `href=` (the browser resolves against the current directory, same origin). It refuses `/\host`, `\\host`, a backslash in an absolute URL and control characters anywhere: browsers read a backslash as a slash, so `/\evil.example` left the site (#950, `tests/back_url_test.php`).
 - The same output given to `go()` gets `HOSTNAME` glued in front: `x.evil.com/a.php` -> `https://site.comx.evil.com/a.php`, a subdomain the attacker can register.
 - Rule: when putting a value in a new place, separately prove its validation holds there. Two different places need two different validations.
 

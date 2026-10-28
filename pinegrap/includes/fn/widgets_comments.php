@@ -550,8 +550,10 @@ function pg_comments_widget_view_urls($path, $params)
  * manage_watchers (may manage the thread's watchers), email (drawn in a
  * comment e-mail), review_refusal (why a product's review form is not
  * offered: pg_review_eligibility()'s 'sign_in', 'not_bought', 'reviewed',
- * '' when it is). The search index stores what a visitor who is not
- * signed in reads: no form, no sign-in note, no staff, no watch box.
+ * '' when it is), item (the thread is a product's, product group's or
+ * event's: pg_comment_address_item()), review (it is a product's reviews:
+ * pg_review_gate_applies()). The search index stores what a visitor who is
+ * not signed in reads: no form, no sign-in note, no staff, no watch box.
  *
  * - is_watching / not_watching: watching on for the page, signed in and not
  *   the record's submitter (who is told anyway and is not asked, as on the
@@ -562,13 +564,15 @@ function pg_comments_widget_view_urls($path, $params)
  *   the form for this visitor (comments_closed, no comments_open, no
  *   can_comment), so a design shows the reason where it shows the closed
  *   message (__comments_closed_message carries it).
+ * - is_item_thread / is_review_thread: the thread is an item's, a product's
+ *   reviews (verified buyers only, newest first); they follow the facts.
  * - is_email: the widget draws one comment in a comment e-mail
  *   (_pg_comments_widget_email()). The e-mail has no visitor and no form:
  *   every visitor, form, open-or-closed, featured and paging flag is false;
  *   has_comments, rating_on, files_on and watching_on follow the facts.
  *
  * @param mixed $facts
- * @return array the 23 thread flags
+ * @return array the 25 thread flags
  */
 function pg_comments_widget_thread_flags($facts)
 {
@@ -615,6 +619,8 @@ function pg_comments_widget_thread_flags($facts)
         'not_watching' => $can_watch && !$on('is_watcher'),
         'can_manage_watchers' => $on('watching_on') && $signed_in && $on('manage_watchers'),
         'is_email' => $email,
+        'is_item_thread' => $on('item') || $on('review'),
+        'is_review_thread' => $on('review'),
     );
 
     return $comments_thread_flags;
@@ -4627,6 +4633,8 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         'files_on' => $settings['attachments'],
         'watching_on' => $watching_on,
         'review_refusal' => $review_refusal,
+        'item' => ($post_type !== '') && ($post_type !== 'submitted_form'),
+        'review' => !empty($read['review']),
     );
     $can_comment = pg_comments_widget_thread_flags($facts)['can_comment'];
 
@@ -4730,6 +4738,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         '__comment_author_name' => $author,
         '__reply_to_name' => $reply_name,
         '__watcher_count_text' => ($watching_on && !$search) ? pg_comments_watcher_count_text($watcher_count, $is_watcher, $label_lower) : '',
+        '__comments_item_name' => pg_comment_item_name($post_type, $post_id),
     );
 
     // The comments of this page.

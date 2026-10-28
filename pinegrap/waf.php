@@ -5033,10 +5033,12 @@ function waf_country_refused($code, $mode, $list, $refuse_unknown)
 
 /**
  * Whether the request is for the control panel: an address under the software
- * directory. get_file.php is not counted, because it serves the site's own
- * files, which the restriction covers. Nor is api.php on its own: the store,
- * the cart and the live chat of the site's pages talk to it as well as the
- * panel's screens, so it counts as the panel only for signed-in staff.
+ * directory, by signed-in staff or for one of the panel's sign-in screens
+ * (waf_country_panel_exempt()). get_file.php is not counted, because it
+ * serves the site's own files, which the restriction covers. The visitor
+ * scripts there - comments, forms, registration, checkout, and api.php, which
+ * the store, the cart and the live chat of the site's pages call - follow
+ * the restriction like the site's pages unless staff are signed in.
  */
 function waf_country_is_panel_request()
 {
@@ -5063,11 +5065,43 @@ function waf_country_is_panel_request()
         return false;
     }
 
-    if (waf_is_site_api_request()) {
-        return waf_country_staff_signed_in();
+    $script = waf_script_name();
+
+    if (waf_country_panel_exempt($script, false)) {
+        return true;
     }
 
-    return true;
+    return waf_country_panel_exempt($script, waf_country_staff_signed_in());
+}
+
+/**
+ * The panel's sign-in screens: the sign-in form, provider sign-in, the second
+ * step (code, passkey, text message), forgotten and new password, sign-out.
+ * They stay open from every country, so staff abroad can still sign in;
+ * waf_country_keeps_to_panel() sends staff from a refused country to them.
+ *
+ * @return array script file names
+ */
+function waf_country_panel_sign_in_scripts()
+{
+    return array(
+        'index.php', 'signin.php', 'mfa.php', 'passkey.php', 'sms_code.php',
+        'forgot_password.php', 'set_password.php', 'logout.php',
+    );
+}
+
+/**
+ * Whether a script under the software directory is exempt from the country
+ * restriction as the panel: a sign-in screen for anyone, any other script
+ * only for signed-in staff.
+ *
+ * @param string $script the running script's file name (waf_script_name())
+ * @param bool   $staff  whether staff are signed in
+ * @return bool
+ */
+function waf_country_panel_exempt($script, $staff)
+{
+    return $staff || in_array((string) $script, waf_country_panel_sign_in_scripts(), true);
 }
 
 /**

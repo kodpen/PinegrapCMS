@@ -175,6 +175,14 @@ function test_ws_voice_is_wired()
 	pg_assert_contains("ws_voice_panel_present((int) \$row['file_id'])", $read('includes/workspace/messages.php'), 'the panel\'s file part');
 	pg_assert_contains("\$brief['voice'] = function_exists('ws_voice_channel_state')", $read('includes/workspace/channels.php'), 'the channel screen');
 	pg_assert_contains("ws_voice_announce(\$message, \$channel, \$row, \$outcome", $read('includes/workspace/voice.php'), 'announced once written out');
+	pg_assert_contains("'voice'     => array('duration_ms' => \$request['voice_duration_ms'] ?? 0, 'peaks' => \$request['voice_peaks'] ?? '')", $read('includes/workspace/actions.php'), 'ws_attach hands the measure on');
+	pg_assert_contains("case 'ws_channel_voice':", $read('includes/workspace/actions.php'), 'the channel switch');
+	pg_assert_contains("(string) ws_voice_kick(1)", $read('includes/workspace/actions.php'), 'the panel kick, one call at most');
+	pg_assert_contains("'ws_channel_voice', 'ws_voice_kick'", $read('includes/panel/actions.php'), 'both actions routed');
+	pg_assert_contains("api('ws_channel_voice'", $read('assets/js/workspace.js'), 'the menu item');
+	pg_assert_contains("api('ws_voice_kick')", $read('assets/js/workspace.js'), 'the screen carries the queue on');
+	pg_assert_contains("options.send(file, { duration_ms: length, peaks: peaks })", $read('assets/js/workspace_voice.js'), 'the recorder sends what it measured');
+	pg_assert_contains('var PEAKS = ' . WS_VOICE_PEAKS . ';', $read('assets/js/workspace_voice.js'), 'the recorder keeps no more levels than the server');
 }
 
 // What the recorder measured is kept only in its own shape: a length within
