@@ -181,10 +181,18 @@ if (strpos($action, 'mfa_') === 0) {
         go($mfa_back);
     }
 
+    // New recovery codes for an account whose second factor is its passkeys
+    // are asked for with the password and an e-mailed code, not a TOTP code.
+    $mfa_recovery_proof = ($action === 'mfa_recovery_regenerate')
+        ? pg_mfa_recovery_proof(pg_mfa_enabled($user_id), pg_mfa_has_passkey($user_id))
+        : '';
+
     // Setting up a key, or checking a TOTP code, needs the key readable.
-    // Turning it off (with a recovery code) and dropping an unfinished setup
-    // do not, so a site that lost ENCRYPTION_KEY can still get out of it.
-    if (in_array($action, array('mfa_begin', 'mfa_confirm', 'mfa_recovery_regenerate'), true) && !pg_mfa_available()) {
+    // Turning it off (with a recovery code), dropping an unfinished setup and
+    // new codes proved by e-mail do not, so a site that lost ENCRYPTION_KEY
+    // can still get out of it.
+    if (in_array($action, array('mfa_begin', 'mfa_confirm', 'mfa_recovery_regenerate'), true)
+        && ($mfa_recovery_proof !== 'email') && !pg_mfa_available()) {
         output_error(lang('Two-step verification cannot be turned on because the site has no encryption key. Please ask the site owner.'));
     }
 
@@ -225,6 +233,36 @@ if (strpos($action, 'mfa_') === 0) {
 
         pg_mfa_attempt_clear($user_id);
         $_SESSION['software']['mfa_codes_show'] = $codes;
+        go($mfa_back);
+    }
+
+    if (($action === 'mfa_recovery_regenerate') && ($mfa_recovery_proof === 'email')) {
+        // The proofs of adding a passkey: the password (none for a
+        // Google-only account), then the code e-mailed for this purpose.
+        $mfa_refused = pg_mfa_reauth_refusal($user_id, $mfa_username,
+            (isset($_POST['current_password']) && is_scalar($_POST['current_password'])) ? (string) $_POST['current_password'] : '',
+            '');
+
+        // A locked name or address is answered as on the sign-in forms:
+        // 429 with the error page.
+        if ($mfa_refused === 'locked') {
+            pg_login_throttle_guard($mfa_username);
+        }
+
+        if ($mfa_refused === '') {
+            $mfa_refused = pg_passkey_email_code_check($_SESSION['software']['passkey_email_code'], $user_id,
+                (isset($_POST['email_code']) && is_scalar($_POST['email_code'])) ? (string) $_POST['email_code'] : '',
+                time(), 'recovery');
+        }
+
+        if ($mfa_refused !== '') {
+            $mfa_messages->add_error(pg_mfa_reauth_message($mfa_refused));
+            go($mfa_back);
+        }
+
+        pg_mfa_attempt_clear($user_id);
+        $_SESSION['software']['mfa_codes_show'] = pg_mfa_recovery_regenerate($user_id);
+        log_activity(lang('user created new two-step recovery codes'), $mfa_username);
         go($mfa_back);
     }
 
