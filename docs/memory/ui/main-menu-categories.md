@@ -13,6 +13,7 @@ description: Main menu rows in categories (pg_menu_categories(), pg_menu_layout(
 
 ## Where did the files go?
 - The File Manager row (slot 1, `view_folders.php`) is the destination; its panel: File Manager, Create Folder, then Files, Pictures, Upload Files or Folders, Create File (the explorer's views). The Files row (slot 3) is retired, like 13, 18 and 19; never reuse it. Every `view_folders.php` view, the folder screens and the old file screens mark row 1; the panel's current entry is the view.
+- The explorer switches views without a page load; it writes the address only through `setAddress()` (`view_folders.php`), which calls `pgMenu.refreshCurrent()`, so the row's hint and the panel's current entry follow the view.
 - The `files` drawing of `pg_menu_icon()` went with it.
 
 ## Why are the store rows renamed?

@@ -165,3 +165,21 @@ function test_menu_store_rows_are_named_for_their_subject()
 		pg_assert_contains("data-pg-menu-label=\\'' . h(lang('" . $title . "')) . '\\'", $menu, 'its first entry gives the row name as its hint label');
 	}
 }
+
+function test_menu_products_full_list_entries_name_the_row()
+{
+	$menu = pg_test_function_source('output_menu');
+
+	pg_assert_contains("/view_products.php?filter=all_products\\'' . \$output_parent_target . ' data-pg-menu-label=\\'' . h(lang('Products')) . '\\'", $menu, 'the filtered full list gives no hint either');
+}
+
+function test_menu_explorer_views_refresh_the_menu_mark()
+{
+	// The explorer changes its view in place; every address it writes goes
+	// through setAddress(), which asks the menu to mark the view again.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_folders.php');
+
+	pg_assert_contains("function setAddress(url) {\n        window.history.replaceState(null, '', url);\n\n        if (window.pgMenu && (typeof window.pgMenu.refreshCurrent === 'function')) {\n            window.pgMenu.refreshCurrent();", $source, 'the one place that writes the address');
+	pg_assert_same(1, substr_count($source, 'history.replaceState('), 'no other address write');
+	pg_assert_true(substr_count($source, "setAddress('view_") >= 6, 'every view switch uses it');
+}

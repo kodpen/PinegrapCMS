@@ -2492,7 +2492,7 @@ body:not(.toolbar) .software-content {
     position: relative;
     width: 1.75rem;
     height: 0;
-    margin: 0.4375rem 0.3125rem 0.5rem;
+    margin: 0.4375rem auto 0.5rem;
     padding: 0;
     border-top: var(--pg-border-width) solid var(--pg-border-color);
   }
