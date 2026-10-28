@@ -2587,7 +2587,7 @@ function pg_menu_mode_button($state)
                         <button type="button" id="menu_mode_toggle" class="btn btn-link pg-link-body-emphasis no-popover" aria-controls="menu" aria-expanded="' . (($state !== 'hidden') ? 'true' : 'false') . '" aria-label="' . h($label) . '" title="' . h($label) . ' (Ctrl+D)" data-label-view="' . h(lang('Menu view')) . '" data-label-collapsed="' . h($names['collapsed']) . '" data-label-expanded="' . h($names['expanded']) . '" data-label-hidden="' . h($names['hidden']) . '" data-label-show="' . h(lang('Show menu')) . '" data-label-hide="' . h(lang('Hide menu')) . '">
                             <i class="bi bi-layout-sidebar-inset pg-mt-collapsed" aria-hidden="true"></i>
                             <i class="bi bi-square-half pg-mt-expanded" aria-hidden="true"></i>
-                            <i class="bi bi-square pg-mt-hidden" aria-hidden="true"></i>
+                            <i class="bi bi-layout-sidebar pg-mt-hidden" aria-hidden="true"></i>
                             <i class="bi bi-layout-sidebar pg-mt-shut" aria-hidden="true"></i>
                             <i class="bi bi-layout-sidebar-inset pg-mt-open" aria-hidden="true"></i>
                         </button>
