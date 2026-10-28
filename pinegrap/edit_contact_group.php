@@ -36,6 +36,7 @@ if (validate_contact_group_access($user, $_REQUEST['id']) == false) {
 }
 
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/contact_group_form.php');
 $liveform = new liveform('edit_contact_group', $_REQUEST['id']);
 
 // get number of contacts in this contact group
@@ -97,56 +98,8 @@ if (!$_POST) {
                 
                 <form name="form" action="edit_contact_group.php" method="post" >
                     ' . get_token_field() . '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Main Informations') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 md:col-6 lg:col-4 my-3">
-                                            <label for="name" class="form-label">' . lang('Contact Group Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'placeholder'=>lang('Please enter a name'), 'maxlength'=>'255', 'class'=>'form-control')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                        </div>
+                    ' . pg_contact_group_form_card($liveform) . '
 
-                                        <div class="col-12 my-3">
-                                            <div class="form-field">
-                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'email_subscription', 'id'=>'email_subscription', 'value'=>'1', 'class'=>'collapse-switcher no-bs', 'data-bs-target'=>'#email_subscription_type_row')) . '</div>
-                                                <label class="" for="email_subscription">' . lang('Enable E-mail Subscription') . '</label>
-                                                <div class="form-text">' . lang('Allow Campaigns to send to this Contact Group') . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="collapse popover fade bs-popover-bottom p-0 mb-3" id="email_subscription_type_row">
-                                            <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                            <div class="popover-body">
-                                                <div class="row">
-                                                 
-                                                    <div class="col-12 my-5">
-                                                        <label class="form-label">' . lang('E-mail Subscription Type') . '</label>
-                                                        <div class="form-field">
-                                                        ' . $liveform->output_field(array('type'=>'radio', 'name'=>'email_subscription_type', 'id'=>'open', 'value'=>'open', 'checked'=>'checked', 'class'=>'radio')) . '
-                                                            <label class="" for="open">' . lang('Open') . '</label>
-                                                        </div>
-                                                        <div class="form-field">
-                                                            ' . $liveform->output_field(array('type'=>'radio', 'name'=>'email_subscription_type', 'id'=>'closed', 'value'=>'closed', 'class'=>'radio')) . '
-                                                            <label class="" for="closed">' . lang('Closed') . '</label>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-12 my-1">
-                                                        <label for="description" class="form-label">' . lang('Description') . '</label>
-                                                        ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'description', 'id'=>'description', 'class'=>'form-control', 'rows'=>'5', 'cols'=>'50')) . '
-                                                        <div class="form-text text-end">' . lang('Description/Subscription Message on My Account Pages') . '</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -220,27 +173,10 @@ if (!$_POST) {
     // else contact group was not selected for delete
     } else {
         $liveform->add_fields_to_session();
-        $liveform->validate_required_field('name', lang(array('string'=>'{var:1} is required','vars'=>lang('Name'))));
+        pg_contact_group_form_validate_name($liveform, (string) ($_POST['id'] ?? ''));
         
         // if there is an error, forward user back to edit contact group screen
         if ($liveform->check_form_errors() == true) {
-            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_contact_group.php?id=' . $_POST['id']);
-            exit();
-        }
-        
-        // check to see if name is already in use by a different contact group
-        $query =
-            "SELECT id
-            FROM contact_groups
-            WHERE
-                (name = ?)
-                AND (id != ?)";
-        $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-        
-        // if name is already in use by a different contact group, prepare error and forward user back to screen
-        if (mysqli_num_rows($result) > 0) {
-            $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
-            // forward user to edit contact group screen
             header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_contact_group.php?id=' . $_POST['id']);
             exit();
         }
@@ -256,7 +192,7 @@ if (!$_POST) {
                 last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
             WHERE id = ?";
-        $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) $liveform->get_field_value('email_subscription'), (string) $liveform->get_field_value('email_subscription_type'), (string) $liveform->get_field_value('description'), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        $result = db_q($query, array_merge(pg_contact_group_form_values($liveform), array((string) $user['id'], (string) ($_POST['id'] ?? '')))) or output_error('Query failed.');
         log_activity(lang(array('string'=>'contact group (name: {var:1}) was modified','vars'=>$liveform->get_field_value('name') )), $_SESSION['sessionusername']);
         $liveform->remove_form();
         $liveform_view_contact_groups = new liveform('view_contact_groups');
