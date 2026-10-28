@@ -6072,18 +6072,20 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 'author'      => $pg_blog_author ?? '',
             )), JSON_UNESCAPED_UNICODE) . '</script>';
 
-            // Home > list page > post - the middle step only when the post was
-            // reached through its pretty URL, which is what tells us the list
-            // page's name.
+            // Home > list page > post. The middle step is the page that lists
+            // these records and links them here (pg_record_list_page()), by its
+            // title and address; none when no public page does. The post's
+            // own address names the record page, not the list.
             $pg_breadcrumb_items = array(
                 array('name' => TITLE, 'url' => URL_SCHEME . HOSTNAME_SETTING . PATH),
             );
 
-            if (defined('PRETTY_URL_PATH') && (mb_strpos(PRETTY_URL_PATH, '/') !== FALSE)) {
-                $pg_list_page_name = mb_substr(PRETTY_URL_PATH, 0, mb_strpos(PRETTY_URL_PATH, '/'));
+            $pg_list_page = pg_record_list_page($page_id);
+
+            if ($pg_list_page && !$pg_list_page['home']) {
                 $pg_breadcrumb_items[] = array(
-                    'name' => $pg_list_page_name,
-                    'url'  => URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path($pg_list_page_name),
+                    'name' => $pg_list_page['name'],
+                    'url'  => URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path($pg_list_page['page_name']),
                 );
             }
 

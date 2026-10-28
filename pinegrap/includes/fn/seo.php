@@ -1494,6 +1494,173 @@ function pg_build_breadcrumb_jsonld($items)
 }
 
 /**
+ * Where a page request that arrived on another host name goes when the site
+ * redirects to its main host (config.main_host_redirect): the same path and
+ * query on $main_host, '' for no redirect. Only a GET or HEAD; never when the
+ * request already names the main host (case, a trailing dot and the same
+ * port aside), names no host, or names an IP address or localhost (a server
+ * reached by address, a local test copy). The path passes
+ * pg_safe_redirect_path(), so the answer never leaves for another host.
+ *
+ * @param bool   $enabled      the site setting
+ * @param string $method       the request method
+ * @param string $request_host the Host header
+ * @param string $main_host    config.hostname (HOSTNAME_SETTING)
+ * @param string $request_url  the path and query asked for (REQUEST_URL)
+ * @param string $scheme       URL_SCHEME
+ * @return string
+ */
+function pg_main_host_redirect_url($enabled, $method, $request_host, $main_host, $request_url, $scheme)
+{
+    if (!$enabled || !in_array(strtoupper((string) $method), array('GET', 'HEAD'), true)) {
+        return '';
+    }
+
+    $normalize = function ($host) {
+        $host = strtolower(trim((string) $host));
+
+        // example.com.:443 and example.com. name example.com
+        return preg_replace('/\.(?=:\d+$|$)/', '', $host);
+    };
+
+    $request = $normalize($request_host);
+    $main = $normalize($main_host);
+
+    if (($request === '') || ($main === '') || ($request === $main)
+        || !preg_match('/^[a-z0-9.-]+(:\d+)?$/', $main)
+    ) {
+        return '';
+    }
+
+    $request_name = preg_replace('/:\d+$/', '', $request);
+
+    if ((substr($request, 0, 1) === '[') || (filter_var($request_name, FILTER_VALIDATE_IP) !== false)
+        || ($request_name === 'localhost') || (substr($request_name, -10) === '.localhost')
+    ) {
+        return '';
+    }
+
+    return (string) $scheme . $main . pg_safe_redirect_path($request_url, '/');
+}
+
+/**
+ * The list page a record page belongs to, out of the pages that list its
+ * records and link them to it ($candidates, from pg_record_list_page()):
+ * public, not archived, not noindex and not the record page itself; a page
+ * other than the home page first, then one in the site map, then the oldest.
+ * Each candidate has page_id, page_name,
+ * page_title, page_home, sitemap, noindex, public and archived.
+ *
+ * @param array $candidates
+ * @param int   $record_page_id
+ * @return array|null array(name, page_name, home) or null when none fits
+ */
+function pg_record_list_page_pick($candidates, $record_page_id)
+{
+    $best = null;
+
+    foreach ((array) $candidates as $candidate) {
+        if (empty($candidate['public']) || !empty($candidate['archived']) || !empty($candidate['noindex'])
+            || ((int) ($candidate['page_id'] ?? 0) <= 0) || ((int) $candidate['page_id'] === (int) $record_page_id)
+            || ((string) ($candidate['page_name'] ?? '') === '')
+        ) {
+            continue;
+        }
+
+        // Not the home page, then in the site map, then the oldest.
+        $candidate['rank'] = array(
+            (($candidate['page_home'] ?? '') == 'yes') ? 1 : 0,
+            ((int) ($candidate['sitemap'] ?? 0) == 1) ? 0 : 1,
+            (int) $candidate['page_id'],
+        );
+
+        if (($best === null) || ($candidate['rank'] < $best['rank'])) {
+            $best = $candidate;
+        }
+    }
+
+    if ($best === null) {
+        return null;
+    }
+
+    $title = trim((string) ($best['page_title'] ?? ''));
+
+    return array(
+        'name'      => ($title !== '') ? $title : (string) $best['page_name'],
+        'page_name' => (string) $best['page_name'],
+        'home'      => (($best['page_home'] ?? '') == 'yes'),
+    );
+}
+
+/**
+ * The list page of the records shown on $record_page_id, for the middle step
+ * of a record page's breadcrumbs: a classic form list view whose form item
+ * view is this page, or a page carrying a list widget whose detail page it
+ * is (pg_sw_form_list_types()). Picked by pg_record_list_page_pick(); null
+ * when no page lists the records here.
+ *
+ * @param int $record_page_id
+ * @return array|null
+ */
+function pg_record_list_page($record_page_id)
+{
+    $record_page_id = (int) $record_page_id;
+
+    if ($record_page_id <= 0) {
+        return null;
+    }
+
+    $page_ids = array();
+
+    $result = db_q(
+        "SELECT page_id FROM form_list_view_pages
+        WHERE (form_item_view_page_id = ?) AND (collection = 'a')",
+        array((string) $record_page_id));
+
+    while ($result && ($row = mysqli_fetch_assoc($result))) {
+        $page_ids[(int) $row['page_id']] = true;
+    }
+
+    if (function_exists('pg_sw_form_list_types') && function_exists('pg_sw_widget_pages')) {
+        $links_here = function ($cfg) use ($record_page_id) {
+            return (int) ($cfg['detail_page_id'] ?? 0) === $record_page_id;
+        };
+
+        foreach (pg_sw_form_list_types() as $list_type) {
+            foreach (pg_sw_widget_pages($list_type, $links_here) as $row) {
+                $page_ids[(int) $row['page_id']] = true;
+            }
+        }
+    }
+
+    unset($page_ids[0]);
+
+    if (!$page_ids) {
+        return null;
+    }
+
+    $sql_noindex = pg_page_noindex_ready() ? 'page.noindex' : "'0'";
+    $ids = array_map('strval', array_keys($page_ids));
+    $candidates = array();
+
+    $result = db_q(
+        "SELECT page.page_id, page.page_name, page.page_title, page.page_home, page.page_folder, page.sitemap,
+            $sql_noindex AS noindex, folder.folder_archived
+        FROM page
+        LEFT JOIN folder ON page.page_folder = folder.folder_id
+        WHERE page.page_id IN (" . implode(', ', array_fill(0, count($ids), '?')) . ")",
+        $ids);
+
+    while ($result && ($row = mysqli_fetch_assoc($result))) {
+        $row['public'] = (get_access_control_type($row['page_folder']) == 'public');
+        $row['archived'] = ((string) ($row['folder_archived'] ?? '0') === '1');
+        $candidates[] = $row;
+    }
+
+    return pg_record_list_page_pick($candidates, $record_page_id);
+}
+
+/**
  * Wrap operator-authored JSON-LD for output.
  *
  * The stored text is decoded and RE-ENCODED rather than echoed: json_encode

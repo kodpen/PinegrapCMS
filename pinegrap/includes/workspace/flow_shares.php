@@ -133,7 +133,10 @@ function ws_flow_share_gives($target_type, $level, $staff)
  *   home     bool   they read its home channel, a public or private one
  *   person   string the level the flow is shared with them at, '' for none
  *   channel  bool   the flow is shared in a channel they read
- * The owner edits while on the staff; the home's readers run a live flow;
+ *   converted bool  the flow carries out a converted scheduled action
+ * The owner edits while on the staff, and so does any staff member a
+ * converted scheduled action's flow, as they changed the action; the home's
+ * readers run a live flow;
  * each share gives what ws_flow_share_gives() says. The highest wins, and a
  * deleted flow gives nothing.
  *
@@ -149,7 +152,7 @@ function ws_flow_access_level($facts)
     $staff = !empty($facts['staff']);
     $found = array();
 
-    if (!empty($facts['owner']) && $staff) {
+    if ((!empty($facts['owner']) || !empty($facts['converted'])) && $staff) {
         $found[] = 'edit';
     }
 
