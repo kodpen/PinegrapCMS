@@ -30,6 +30,7 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM login_regions WHERE id = 
 }
 
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/login_region_form.php');
 $liveform = new liveform('edit_login_region', $_REQUEST['id']);
 
 if (!$_POST) {
@@ -88,55 +89,7 @@ if (!$_POST) {
                 <form name="form" action="edit_login_region.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Options') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
-                                            <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Login Region'))) . '</label>
-                                            <div class="input-group">
-                                                <div class="input-group-text">' . h('<login>') . '</div>
-                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100')) . '
-                                                <div class="input-group-text">' . h('</login>') . '</div>
-                                            </div>
-                                        </div>
-                                        <h5 class="mt-12">' . lang('Not Logged In') . '</h5>
-                                        <div class="col-12 my-3">
-                                            <label for="name" class="form-label">' . lang('Header') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'not_logged_in_header', 'id'=>'not_logged_in_header', 'style'=>'width: 600px; height: 200px')) . '
-                                            ' . pg_code_editor_attach(array('id' => 'not_logged_in_header', 'code_type' => 'mixed', 'height' => '200px')) . '
-                                        </div>
-                                        <div class="col-12 my-3">
-                                            <div class="form-field">
-                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'login_form', 'id'=>'login_form', 'value'=>'1', 'class'=>'no-bs')) . '</div>
-                                                <label class="" for="login_form">' . lang('Show Login Form') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 my-3">
-                                            <label for="name" class="form-label">' . lang('Footer') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'not_logged_in_footer', 'id'=>'not_logged_in_footer', 'style'=>'width: 600px; height: 200px')) . '
-                                            ' . pg_code_editor_attach(array('id' => 'not_logged_in_footer', 'code_type' => 'mixed', 'height' => '200px')) . '
-                                        </div>
-                                        <h5 class="mt-12">' . lang('Logged In') . '</h5>
-                                        <div class="col-12 my-3">
-                                            <label for="name" class="form-label">' . lang('Header') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'logged_in_header', 'id'=>'logged_in_header', 'style'=>'width: 600px; height: 200px')) . '
-                                            ' . pg_code_editor_attach(array('id' => 'logged_in_header', 'code_type' => 'mixed', 'height' => '200px')) . '
-                                        </div>
-                                        <div class="col-12 my-3">
-                                            <label for="name" class="form-label">' . lang('Footer') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'logged_in_footer', 'id'=>'logged_in_footer', 'style'=>'width: 600px; height: 200px')) . '
-                                            ' . pg_code_editor_attach(array('id' => 'logged_in_footer', 'code_type' => 'mixed', 'height' => '200px')) . '
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    ' . pg_login_region_form_card($liveform) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -175,28 +128,10 @@ if (!$_POST) {
     } else {
         $liveform->add_fields_to_session();
         
-        // validate the required fields
-        $liveform->validate_required_field('name', lang('Name is required.'));
+        pg_login_region_form_validate_name($liveform, (string) ($_POST['id'] ?? ''));
         
         // if there is an error, forward user back to edit login region screen
         if ($liveform->check_form_errors() == true) {
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_login_region.php?id=' . $_POST['id']);
-            exit();
-        }
-        
-        // check to see if name is already in use
-        $query =
-            "SELECT id
-            FROM login_regions
-            WHERE (name = ?)
-            AND (id != ?)";
-        $result = db_q($query, array((string) ($liveform->get_field_value('name')), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-        
-        // if name is already in use, prepare error and forward user back to login region screen
-        if (mysqli_num_rows($result) > 0) {
-            $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
-            
-            // forward user to edit login region screen
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_login_region.php?id=' . $_POST['id']);
             exit();
         }
@@ -213,7 +148,7 @@ if (!$_POST) {
                 last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
             WHERE id = ?";
-        $result = db_q($query, array((string) ($liveform->get_field_value('name')), (string) ($liveform->get_field_value('not_logged_in_header')), (string) ($liveform->get_field_value('login_form')), (string) ($liveform->get_field_value('not_logged_in_footer')), (string) ($liveform->get_field_value('logged_in_header')), (string) ($liveform->get_field_value('logged_in_footer')), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed');
+        $result = db_q($query, array_merge(pg_login_region_form_values($liveform), array((string) $user['id'], (string) ($_POST['id'] ?? '')))) or output_error('Query failed');
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('login region'), $_POST['name']) )), $_SESSION['sessionusername']);
      

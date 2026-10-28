@@ -1417,6 +1417,10 @@ function ws_api_flow_runs_start($params)
 
     $data = array_key_exists('token', $params) ? array('token' => (string) $params['token']) : array();
 
+    if (array_key_exists('channel_id', $params) && ($params['channel_id'] !== null)) {
+        $data['channel_id'] = (int) $params['channel_id'];
+    }
+
     // A start retried with its token after the flow was paused, or after the
     // person's share was lowered to view: they may no longer run the flow,
     // but the run the token started is answered to them while they may read
@@ -1435,10 +1439,11 @@ function ws_api_flow_runs_start($params)
     }
 
     api_dry_run_stop('started', 'workspace_flow_run', array(
-        'flow_id'  => (int) $flow['id'],
-        'version'  => (int) $checked['version']['n'],
-        'boxes'    => count($checked['graph']['nodes']),
-        'existing' => ($checked['existing'] > 0) ? (int) $checked['existing'] : null,
+        'flow_id'    => (int) $flow['id'],
+        'version'    => (int) $checked['version']['n'],
+        'boxes'      => count($checked['graph']['nodes']),
+        'existing'   => ($checked['existing'] > 0) ? (int) $checked['existing'] : null,
+        'channel_id' => ($checked['existing'] > 0) ? null : ($checked['channel_id'] ?? (((int) $flow['channel_id'] > 0) ? (int) $flow['channel_id'] : null)),
     ));
 
     $result = ws_api_as_owner(function () use ($viewer, $flow, $data) {

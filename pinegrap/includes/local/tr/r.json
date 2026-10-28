@@ -304,6 +304,8 @@
     "Recorded once the sale has been taken back.": "Satış geri alındıktan sonra kaydedilir.",
     "Recorded, made another way": "Başka bir yolla yapıldı, kaydedildi",
     "Recorded, with its movement in the till and on the account.": "Kaydedildi; hareketi kasada ve caride.",
+    "Recordings are sent to": "Kayıtların gönderildiği yer",
+    "Recordings wait until {var:1}.": "Kayıtlar {var:1} tarihine kadar bekliyor.",
     "Records": "Kayıt",
     "Records are kept in one partition per month. Once all of a month is older than the period, the general job drops it in a moment and its file goes back to the disk; the records of the month the period ends in are removed a chunk at a time. Shrink now rebuilds the table at once.": "Kayıtlar her ay için ayrı bir bölümde tutulur. Bir ayın tamamı saklama süresinden eski olduğunda genel görev o bölümü bir anda kaldırır ve dosyası diske geri döner; sürenin bittiği ayın kayıtları parça parça silinir. «Şimdi küçült» tabloyu hemen yeniden kurar.",
     "Records how long each request takes, so slow pages can be found. The measurement is written after the response has been sent, so visitors do not wait for it.": "Her isteğin ne kadar sürdüğünü kaydeder, böylece yavaş sayfalar bulunabilir. Ölçüm yanıt gönderildikten sonra yazılır, ziyaretçi beklemez.",
@@ -346,6 +348,7 @@
     "Redirect answers come with an upgrade this site has not run yet.": "Yönlendirme seçenekleri bu sitenin henüz çalıştırmadığı bir yükseltmeyle gelir.",
     "Redirect for good to the destination's own address (301)": "Hedefin kendi adresine kalıcı olarak yönlendir (301)",
     "Redirect for now to the destination's own address (302)": "Hedefin kendi adresine geçici olarak yönlendir (302)",
+    "Redirect other host names to the site address": "Diğer alan adlarını site adresine yönlendir",
     "Redirect to the sign-in page": "Giriş sayfasına yönlendir",
     "Redirects from the old site": "Eski siteden yönlendirmeler",
     "Redo": "İleri al",
@@ -596,6 +599,7 @@
     "Removed the tables of the old site": "Eski sitenin tabloları kaldırıldı",
     "Removed {var:1} ({var:2}).": "{var:1} kaldırıldı ({var:2}).",
     "Removed: {var:1}": "Kaldırıldı: {var:1}",
+    "Removes": "Kaldırır",
     "Removing": "Kaldırılıyor",
     "Removing a language deletes its translations, its update history and its own glossary terms as well. Turn \"Served\" off instead to take it off the site for a while.": "Bir dili kaldırmak çevirilerini, güncelleme geçmişini ve yalnız ona ait sözlük terimlerini de siler. Dili bir süreliğine siteden çekmek için bunun yerine \"Yayında\" anahtarını kapatın.",
     "Removing a marketplace deletes its product matches and its queue. Your products are not touched, and nothing is removed from the marketplace itself.": "Pazaryerini kaldırmak ürün eşleştirmelerini ve kuyruğunu siler. Ürünlerinize dokunulmaz, pazaryerinden de bir şey silinmez.",
@@ -1244,5 +1248,6 @@
     "row(s)": "satır",
     "rows is a list of objects of field => value, one for each new record.": "rows, her yeni kayıt için bir tane olmak üzere alan => değer nesnelerinden oluşan bir listedir.",
     "running": "çalışıyor",
-    "running, marathon": "koşu, maraton"
+    "running, marathon": "koşu, maraton",
+    "runs the flow “{var:1}”": "“{var:1}” akışını çalıştırır"
 }

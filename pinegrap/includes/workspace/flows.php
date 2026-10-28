@@ -1089,12 +1089,13 @@ function ws_flow_access($viewer, $flow)
     $reach = ((int) ($flow['id'] ?? 0) > 0) ? ws_flow_share_reach($viewer, $flow) : array('person' => '', 'channel' => false);
 
     return ws_flow_access_level(array(
-        'owner'   => $owner,
-        'staff'   => $staff,
-        'status'  => (string) $flow['status'],
-        'home'    => $home,
-        'person'  => $reach['person'],
-        'channel' => $reach['channel'],
+        'owner'     => $owner,
+        'staff'     => $staff,
+        'status'    => (string) $flow['status'],
+        'home'      => $home,
+        'person'    => $reach['person'],
+        'channel'   => $reach['channel'],
+        'converted' => $staff && ws_flow_converted((int) ($flow['id'] ?? 0)),
     ));
 }
 
@@ -1567,7 +1568,11 @@ function ws_flow_publish_check($viewer, $flow, $data = array())
         return ws_flow_refusal(lang('The database has to be updated first.'), 503);
     }
 
-    if (!ws_flow_share_manager($viewer, $flow)) {
+    // A converted scheduled action's flow is published by any staff member,
+    // as they saved the action; it keeps running as its owner.
+    $converted = ws_flow_converted((int) $flow['id']) && (ws_flow_access($viewer, $flow) === 'edit');
+
+    if (!ws_flow_share_manager($viewer, $flow) && !$converted) {
         return ws_flow_refusal(lang('Only the owner of a flow can publish it.'), 403);
     }
 
@@ -2455,6 +2460,15 @@ function ws_flow_js_strings()
         'fl_run_task'         => lang('Open the task'),
         'fl_run_task_of'      => ws_js_template('Open the task of {var:1}', 1),
         'fl_run_result'       => lang('Result'),
+        'fl_run_values'       => lang('Values received'),
+        'fl_run_filled'       => lang('As filled in this run'),
+        'fl_run_template_show' => lang('Show the template'),
+        'fl_run_template_hide' => lang('Hide the template'),
+        'fl_run_value_empty'  => lang('Empty'),
+        'fl_run_value_pending' => lang('Not given yet'),
+        'fl_run_value_skipped' => lang('Empty: the box was skipped'),
+        'fl_run_value_unreached' => lang('Empty: the box was not reached'),
+        'fl_run_value_trigger' => lang('Not shown here: it comes with what started the run'),
         'fl_run_pick'         => lang('Select a box to see how it went in this run.'),
         'fl_run_boxes'        => lang('The boxes of this run'),
         'fl_run_pair'         => ws_js_template('{var:1}: {var:2}', 2),

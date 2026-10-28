@@ -242,7 +242,7 @@ function test_widget_parts_returns_editor_twin()
 		. $cut("\n    var SW_DEFAULT_LOOP_TAILS = {", "\n    };\n")
 		. $cut("\n    var SD_RETURN_BADGE_CLASSES = {", "\n    };\n");
 	foreach (array('_sdDefaultParts', '_sdPartTokenOf', '_sdPartHost', '_sdPartEl', '_sdPartWhen', '_sdPartPlaced', '_sdPartValue',
-		'_sdDefaultTails', '_sdPartOrderCard', '_sdPartOrderReturns', '_sdPartOrderReturnMoves', '_sdPartOrderReturnMoveSubmit', '_sdPartOrderReturnForm', '_sdPartSentence', '_sdPartOrderReturnQtyCell', '_sdPartOrderReturnReason', '_sdPartOrderReturnSubmit', '_sdPartOrderCancelForm', '_sdPartOrderCancelSubmit', '_sdPartOrderReturnsList', '_sdPartOrderLegal') as $fn) {
+		'_sdDefaultTails', '_sdPartOrderCard', '_sdPartOrderReturns', '_sdPartOrderReturnMoves', '_sdPartOrderReturnMoveSubmit', '_sdPartOrderReturnForm', '_sdPartSentence', '_sdPartOrderReturnQtyCell', '_sdPartOrderReturnReason', '_sdPartOrderReturnSubmit', '_sdPartOrderCancelForm', '_sdPartOrderCancelSubmit', '_sdPartOrderReturnsList', '_sdPartOrderLegalLink', '_sdPartOrderLegal', '_sdPartOrderLegalKvkk') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
 	}
 	$bare = _pret_node('root', array(), array(_pret_node('semantic', array('tag' => 'h6', 'text' => 'Order'))));

@@ -451,8 +451,8 @@ pg_page_shell(array(
                                     <label class="" for="range_dates">' . lang('From - to') . '</label>
                                 </div>
                                 <div class="d-flex gap-3 mt-1">
-                                    <input type="date" class="form-control" name="from" value="' . h($last_month['from']) . '" aria-label="' . h(lang('From')) . '" />
-                                    <input type="date" class="form-control" name="to" value="' . h($last_month['to']) . '" aria-label="' . h(lang('To')) . '" />
+                                    <input type="date" class="form-control" name="from" value="' . h($last_month['from']) . '" aria-label="' . h(lang('Start')) . '" />
+                                    <input type="date" class="form-control" name="to" value="' . h($last_month['to']) . '" aria-label="' . h(lang('End')) . '" />
                                 </div>
                             </div>
                             <div class="col-12 md:col-3">

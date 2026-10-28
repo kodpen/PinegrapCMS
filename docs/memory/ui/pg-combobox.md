@@ -21,6 +21,7 @@ description: data-pg-combobox on Bootstrap 6 Combobox (B9b, #2243, #2362): toggl
 
 ## When is it drawn?
 - As chips (`pg-chips.md`): DOMContentLoaded, after `pgUI.ready()` when Bootstrap's module has not run, `pgInitInjected()` for injected markup. Never put `data-bs-toggle="combobox"` on the toggle (Bootstrap's DOMContentLoaded pass would create an instance with default options): the toggle's own click listener calls `toggle()`; without it a click does nothing. Several choosable: each item has a `.menu-item-check`.
+- Inside a `.collapse` (a switch panel, which v6 clips with `overflow-y:clip`) the toggle gets `data-bs-strategy="fixed"`, so the menu is not cut off at the panel's edge: the product builder's "Allowed Zones" in "Shippable" (#2585).
 - Tests: `tests/pg_fields_test.php` (`test_pg_fields_combobox_on_bootstrap_6`, `test_pg_fields_combobox_server_search`), `tests/pg_ui_test.php`.
 
 Related: docs/memory/ui/pg-combobox-server-search.md

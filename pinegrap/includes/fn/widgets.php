@@ -1212,20 +1212,19 @@ function pg_sw_filter_value_html($value)
     return str_replace('^', '&#94;', h((string)$value));
 }
 
-// The query string (without "?") that names a URL-filtered list page: the
-// applied parameters sorted by name, encoded as RFC 3986, then the page
+// The query string (without "?") that names a list page: the applied
+// address parameters sorted by name, encoded as RFC 3986, then the page
 // number under the list's page parameter (`page_param`, else page_number)
-// when the list showed a later page and $with_page. '' when no parameter
-// applies: a page without an address value keeps its bare canonical.
+// when the list showed a later page and $with_page. '' when neither
+// applies: page 1 of a list keeps its bare canonical.
 function pg_sw_url_filter_query($state, $with_page = true)
 {
     $params = (is_array($state) && isset($state['params']) && is_array($state['params'])) ? $state['params'] : array();
-    if (!$params) return '';
     ksort($params, SORT_STRING);
-    $query = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+    $query = $params ? http_build_query($params, '', '&', PHP_QUERY_RFC3986) : '';
     $page  = (is_array($state) && isset($state['page_number'])) ? (int)$state['page_number'] : 0;
     $name  = (is_array($state) && isset($state['page_param'])) ? pg_sw_list_page_param(array('page_param' => $state['page_param'])) : 'page_number';
-    if ($with_page && $page > 1) $query .= '&' . $name . '=' . $page;
+    if ($with_page && $page > 1) $query .= (($query !== '') ? '&' : '') . $name . '=' . $page;
     return $query;
 }
 
@@ -1250,13 +1249,14 @@ function pg_sw_url_filter_value($filter_sql, $total_records)
 }
 
 // The page number a list adds to the page's canonical: the later page it
-// showed, when it applied an address value, is not being searched (a
-// searched page 2 is not page 2 of the list) and showed the page the
-// address asked for (a page past the last one is clamped to it, and that
-// page is not this address). 0 otherwise.
+// showed, when it is not being searched (a searched page 2 is not page 2
+// of the list) and showed the page the address asked for (a page past the
+// last one is clamped to it, and that page is not this address). Every
+// later page is its own address, with or without an address value. 0
+// otherwise.
 function pg_sw_url_filter_page($filter_sql, $request, $current_page, $total_pages, $search_active, $page_param = 'page_number')
 {
-    if (!is_array($filter_sql) || empty($filter_sql['params']) || $search_active) return 0;
+    if ($search_active) return 0;
     $current_page = (int)$current_page;
     if ((int)$total_pages <= 1 || $current_page <= 1) return 0;
     if (!is_array($request) || !isset($request[$page_param]) || !is_scalar($request[$page_param])) return 0;
@@ -1316,6 +1316,49 @@ function pg_sw_url_filter_state($add = null)
         if (isset($add['page_param']) && $add['page_param'] !== 'page_number') $state['page_param'] = (string)$add['page_param'];
     }
     return $state;
+}
+
+// The later pages the address asked the page's lists for, by page
+// parameter: whether a list showed that page (`shown`) and whether one had
+// fewer pages than that (`past`). get_page_content() resets it (false)
+// before its widget pass and asks pg_sw_list_page_past() after it. A list
+// adds array(page_param, requested, pages); a request for page 1 or less,
+// an e-mail body and a render inside another request (SEO pass, preview)
+// add nothing. Returns the state.
+function pg_sw_list_page_requests($add = null)
+{
+    static $state = array();
+    if ($add === false) $state = array();
+    if (!is_array($add) || count($add) !== 3) return $state;
+
+    list($param, $requested, $pages) = array_values($add);
+    $requested = is_scalar($requested) ? (int)$requested : 0;
+    if ($requested <= 1) return $state;
+
+    $ctx = pg_sw_render_context();
+    if (!empty($ctx['email']) || (function_exists('pg_seo_rendering') && pg_seo_rendering())) return $state;
+
+    $param = (string)$param;
+    if (!isset($state[$param])) $state[$param] = array('shown' => false, 'past' => false);
+    if ($requested <= (int)$pages) {
+        $state[$param]['shown'] = true;
+    } else {
+        $state[$param]['past'] = true;
+    }
+    return $state;
+}
+
+// Whether the address asked for a page past the last one: some list had
+// fewer pages than the number under its page parameter and no list on the
+// page reading that parameter showed it (a short "latest" box beside the
+// main list does not make page 3 of the main list a missing page).
+function pg_sw_list_page_past($requests)
+{
+    if (!is_array($requests)) return false;
+    foreach ($requests as $one) {
+        if (is_array($one) && !empty($one['past']) && empty($one['shown'])) return true;
+    }
+    return false;
 }
 
 // The fields a filter may name on form $custom_form_page_id, keyed by their
@@ -2029,6 +2072,11 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // The pages: a count strip draws no rows, so it has one page at most.
     $total_pages  = $loop_empty ? min(1, $result_count) : (int)ceil($result_count / $items_per_page);
     $current_page = pg_sw_list_current_page($requested_page, $total_pages);
+    // A later page the address asked for, shown or past the last one; a
+    // count strip draws no pages and has no say.
+    if (!$loop_empty && isset($request[$page_param])) {
+        pg_sw_list_page_requests(array($page_param, $request[$page_param], $total_pages));
+    }
     $paging       = pg_sw_list_paging($page_param, $current_page, $total_pages);
     $paging_tokens = $paging['tokens'];
 
@@ -2077,8 +2125,8 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // A count strip: the head state above is registered, no row is read.
     if ($loop_empty) return $stitch('', '');
 
-    // A later page of an address-filtered list is its own address (the
-    // classic list keeps page_number in its canonical too).
+    // A later page of a list is its own address (the classic list keeps
+    // page_number in its canonical too).
     $url_filter_page = pg_sw_url_filter_page($filter_sql, $request, $current_page, $total_pages, $search_active, $page_param);
     if ($url_filter_page > 0) {
         pg_sw_url_filter_state(array('page_number' => $url_filter_page, 'page_param' => $page_param));
@@ -4998,7 +5046,9 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
         $enclosure = '';
         if ($media_field_id > 0) {
             $media = db_item("SELECT data, file_id FROM form_data WHERE form_id = '" . $form_id . "' AND form_field_id = '" . $media_field_id . "' LIMIT 1");
-            if (is_array($media) && !empty($media['file_id'])) {
+            // An upload only when a visitor who is not signed in may open it: the
+            // enclosure's address must not answer with the sign-in screen.
+            if (is_array($media) && !empty($media['file_id']) && pg_file_open_to_everyone($media['file_id'])) {
                 $file = db_item("SELECT name, type, size FROM files WHERE id = '" . (int)$media['file_id'] . "' LIMIT 1");
                 if (is_array($file)) {
                     $enclosure = '<enclosure url="' . $site . PATH . h(rawurlencode($file['name'])) . '" length="' . (int)$file['size'] . '" type="' . h(get_mime_type($file['type'])) . '"/>';
@@ -5625,7 +5675,9 @@ function pg_search_highlight_inject($content)
 // and meta description, which a visitor expects a search to find.
 //
 // cfg: search_scope ('all' | 'pages' | 'products'), product_group_id (the
-// catalog branch searched; 0 = the top-level group), catalog_detail_page_id.
+// catalog branch searched; 0 = the top-level group), catalog_detail_page_id
+// (the page a catalog item opens on; without one, chosen or found, the
+// catalog is left out: an item nobody can open is no result).
 // The advanced search covers the whole site, within what the visitor may view.
 // Returns ['featured' => rows, 'catalog' => rows, 'pages' => rows,
 // 'limited' => bool]; every row is ['title', 'url', 'full_url', 'excerpt',
@@ -5671,12 +5723,13 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
     };
 
     // ── Catalog ──────────────────────────────────────────────────────────
+    // The page a catalog item opens on: the configured detail page, else the
+    // first page with a Catalog Detail widget, else the legacy catalog detail
+    // page. A site without one has no address for an item, so its catalog is
+    // not searched: an item listed with a '#' link would be counted in the
+    // heading and clicked for nothing.
+    $detail_name = '';
     if ($want_catalog) {
-        $group_id = isset($cfg['product_group_id']) ? (int)$cfg['product_group_id'] : 0;
-        if ($group_id <= 0) $group_id = (int)db_value("SELECT id FROM product_groups WHERE parent_id = '0' LIMIT 1");
-        // Boolean operators belong to the fulltext page search only.
-        $catalog_query = $advanced ? str_replace(array('"', '+'), '', $query) : $query;
-
         $detail_page_id = isset($cfg['catalog_detail_page_id']) ? (int)$cfg['catalog_detail_page_id'] : 0;
         if ($detail_page_id <= 0) {
             $pages = pg_sw_widget_pages('catalog_item_view');
@@ -5686,8 +5739,14 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
             $detail_page_id = (int)db_value("SELECT page_id FROM page WHERE page_type = 'catalog detail' ORDER BY page_id ASC LIMIT 1");
         }
         $detail_name = ($detail_page_id > 0) ? (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $detail_page_id . "' LIMIT 1") : '';
-        $back_query  = ($detail_name !== '') ? '?previous_url_id=' . urlencode(generate_url_id()) : '';
-        $discounted  = get_discounted_product_prices();
+    }
+    if ($want_catalog && $detail_name !== '') {
+        $group_id = isset($cfg['product_group_id']) ? (int)$cfg['product_group_id'] : 0;
+        if ($group_id <= 0) $group_id = (int)db_value("SELECT id FROM product_groups WHERE parent_id = '0' LIMIT 1");
+        // Boolean operators belong to the fulltext page search only.
+        $catalog_query = $advanced ? str_replace(array('"', '+'), '', $query) : $query;
+        $back_query    = '?previous_url_id=' . urlencode(generate_url_id());
+        $discounted    = get_discounted_product_prices();
 
         foreach ((array)get_catalog_search_results($catalog_query, $group_id) as $item) {
             $price = '';
@@ -5712,17 +5771,14 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
                 $is_discounted = isset($discounted[$item['id']]);
                 $price = prepare_price_for_output($item['price'], $is_discounted, $is_discounted ? $discounted[$item['id']] : '', 'html');
             }
-            $url = '';
-            if ($detail_name !== '') {
-                $url = $path . encode_url_path($detail_name) . '/'
-                     . encode_url_path(get_catalog_item_address_name_from_id($item['id'], $item['type'])) . $back_query;
-            }
+            $url   = $path . encode_url_path($detail_name) . '/'
+                   . encode_url_path(get_catalog_item_address_name_from_id($item['id'], $item['type'])) . $back_query;
             $title = ((string)$item['short_description'] !== '') ? (string)$item['short_description'] : (string)$item['name'];
             $out['catalog'][] = array(
                 'title'    => $title,
                 'url'      => $url,
                 // Shown under the title, so without the back-link query.
-                'full_url' => ($url !== '') ? $host . strtok($url, '?') : '',
+                'full_url' => $host . strtok($url, '?'),
                 'excerpt'  => '',
                 'type'     => ($item['type'] === 'product group') ? 'product group' : 'product',
                 'image'    => ((string)$item['image_name'] !== '') ? $path . encode_url_path($item['image_name']) : '',
@@ -6521,9 +6577,14 @@ function pg_sw_item_summary($html, $max = 140)
 //   Legal documents (copies kept at checkout, includes/fn/legal_documents.php):
 //     __legal_preinfo_url      the pre-information form's kept copy
 //     __legal_contract_url     the distance sales contract's kept copy
-//     visibility flags: has_legal_documents, has_legal_preinfo, has_legal_contract
+//     __legal_kvkk_url         the KVKK copy: the notice the checkout linked
+//                              and the consent sentence, whether it was given
+//     visibility flags: has_legal_documents, has_legal_preinfo,
+//                       has_legal_contract, has_legal_kvkk
 //     Empty in the receipt e-mail (it attaches the copies). A layout that
-//     binds neither link gets a card listing them after the widget.
+//     binds no link gets a card listing them after the widget; one that
+//     binds a document link but not the KVKK copy gets that line in a card
+//     of its own.
 //     __withdrawal_deadline    last day of the right of withdrawal (14 days
 //                              from the last delivery; date text)
 //     visibility flags: has_withdrawal_deadline, withdrawal_deadline_firm,
@@ -7198,8 +7259,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     $can_print_invoice = ($current_user_id > 0 && $current_user_id === (int)$order['user_id']);
 
     // ── Legal documents ───────────────────────────────────────────────
-    // The pre-information form and the distance sales contract as they were
-    // kept with the order at checkout (includes/fn/legal_documents.php).
+    // The pre-information form, the distance sales contract and the KVKK
+    // copy as they were kept with the order at checkout
+    // (includes/fn/legal_documents.php).
     // legal_document.php shows a copy to the visitors this widget lets in:
     // the signed-in owner and the guest who has just placed the order. The
     // receipt e-mail carries the copies as attachments and its reader may
@@ -7214,9 +7276,11 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // The receipt e-mail goes out before anything is shipped, so it gets none.
     $withdrawal = empty($sw_ctx['email']) ? pg_legal_withdrawal_of_order((int)$order['id']) : null;
     $withdrawal_date = is_array($withdrawal) ? $fmt_gc_date($withdrawal['deadline']) : '';
-    // A layout made before the links existed binds neither of them: it is
+    // A layout made before the links existed binds none of them: it is
     // given the legal documents card, with the withdrawal line under the
-    // links unless the layout places that itself (widgets_parts.php).
+    // links unless the layout places that itself; one made before the KVKK
+    // copy had a link is given that line in a card of its own
+    // (widgets_parts.php).
 
     // ── Apply visibility bindings BEFORE tree split + render ──────────
     // Reuses _eo_apply_visibility_bindings (defined in this same file for
@@ -7333,6 +7397,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         'has_legal_documents'      => implode('', $legal_urls) !== '',
         'has_legal_preinfo'        => $legal_urls['preinfo'] !== '',
         'has_legal_contract'       => $legal_urls['contract'] !== '',
+        'has_legal_kvkk'           => $legal_urls['kvkk'] !== '',
         // Right of withdrawal: the line while a deadline is known; then one
         // of three: the deadline is firm and ahead, estimated, or passed.
         'has_withdrawal_deadline'       => $withdrawal_date !== '',
@@ -7583,6 +7648,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         // carry. Empty when the order has no copy of that document.
         '__legal_preinfo_url'       => h($legal_urls['preinfo']),
         '__legal_contract_url'      => h($legal_urls['contract']),
+        '__legal_kvkk_url'          => h($legal_urls['kvkk']),
         '__withdrawal_deadline'     => h($withdrawal_date),
         // The whole line, its words in the site's language: "Last day of
         // the right of withdrawal: …", an estimate's note, or that it ended.

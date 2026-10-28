@@ -288,11 +288,11 @@ pg_page_shell([
                     <div class="card-body">
                         <div class="row">
                             <div class="col-12 sm:col-6 lg:col-3 my-3">
-                                <label for="from" class="form-label">' . lang('From') . '</label>
+                                <label for="from" class="form-label">' . lang('Start') . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'id' => 'from', 'data-pg-date' => '', 'name' => 'from', 'class' => 'form-control', 'size' => '10', 'maxlength' => '10', 'autocomplete' => 'off')) . '
                             </div>
                             <div class="col-12 sm:col-6 lg:col-3 my-3">
-                                <label for="to" class="form-label">' . lang('To') . '</label>
+                                <label for="to" class="form-label">' . lang('End') . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'id' => 'to', 'data-pg-date' => '', 'name' => 'to', 'class' => 'form-control', 'size' => '10', 'maxlength' => '10', 'autocomplete' => 'off')) . '
                                 ' . get_date_picker_format() . pg_fields_script() . '                            </div>
                             <div class="col-12 lg:col-6 my-3">

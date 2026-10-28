@@ -31,7 +31,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-data.md: Decisions list, data part: starter dumps, orders.notes, tracking_company, secret_key*, order_items.tax, tracking_code, fixing a released migration, MySQL 5.7, ERP schema approval.
 - decisions-made-files.md: Decisions list, files part: a submitted-form file whose record no view shows stays refused in a public folder too (no fallback); the RSS media field counts as shown with the record.
 - decisions-made-marketplace.md: Decisions list, marketplace part: n11 orders of products shipped from the n11 warehouse are not imported.
-- decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS.
+- decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS, the cash-on-delivery code's orders, the member's SMS sign-in code.
 - decisions-made-panel.md: Part of the decisions list: the control panel's Bootstrap 6 breakpoints (own media queries on 1024/1280, xxl to 2xl), kept as they are on purpose
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 - decisions-made-schema.md: Decisions list, schema part: steps approved in advance (ENUM appends in the 4.48 shape), the tables and columns approved on 2026-10-27 and 2026-10-28, who decides schema

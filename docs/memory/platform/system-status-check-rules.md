@@ -11,6 +11,9 @@ description: System Status panel rules - a check row and its action button must 
 ## How is the detail panel organised?
 - Rows made with `$makeIcon(..., $detail)` write into a box `system_status_detail_<n>`, and the box starts with which check it belongs to. There used to be one `#system_status_detail`; adding a second detailed check made two chevrons open the same box.
 
+## Why must a check's message be a single literal?
+- `$makeIcon()` stores `lang($title)` and `lang($content)`, so `check_lang.php` never sees those literals: each one must be a Turkish key, and a prefix joined to a list is translated on its own (`rtrim(lang('Disabled directive(s): ')) . ' ' . implode(…)`). `tests/system_status_lang_keys_test.php` reads the tokens and pins this, the literal `$backup_message`s and the `server_config.php` rule labels (#2668).
+
 ## What about confirm tiles?
 - If the confirm-asking tile is a `<button>`, read `event.isDefaultPrevented()`. The `.pg-health-tile[data-confirm-content]` handler only calls `preventDefault()`; on a link that stops navigation, on a button there is nothing to stop.
 

@@ -1760,6 +1760,7 @@ $(document).ready(function () {
             $("input[name=" + $(this).attr("name") + "]").each(function () {
                 if ($(this).attr("id") != multi_switcher_this_id) {
                     $($(this).attr("data-bs-target")).toggle(false);
+                    pgCollapseSwitcherShow($(this).attr("data-bs-target"), false);
                 }
             });
         }
@@ -1774,6 +1775,7 @@ $(document).ready(function () {
             returned = this.checked;
         }
         $(target).toggle(returned);
+        pgCollapseSwitcherShow(target, returned);
     });
 
     /* The e-document card's "test the connection".
@@ -1906,6 +1908,16 @@ $(document).ready(function () {
         var unit_in_label = $("input[name=length]").parent().find("label.unit");
         var unit_in_label_text = unit_in_label.text();
     }
+    // A dimension as typed on the product screen, with either decimal
+    // separator (the server reads "12,5" and "12.5" alike); no digits is 0.
+    function pgProductFigure(text) {
+        var n = parseFloat(String(text).replace(/\s+/g, "").replace(",", "."));
+        return isNaN(n) ? 0 : n;
+    }
+    // The converted figure to four places, the precision the columns hold.
+    function pgProductRound(n) {
+        return Math.round(n * 10000) / 10000;
+    }
     $("input[name=convert_to_metric_system]").on("click", function () {
         var switcher = $(this);
         $($(this).attr("data-bs-target")).each(function () {
@@ -1913,12 +1925,12 @@ $(document).ready(function () {
                 case "weight":
                     var input = $("#" + $(this).attr("id"));
                     if (switcher.is(':checked')) {
-                        input.val(input.val() * 0.45359237);
+                        input.val(pgProductRound(pgProductFigure(input.val()) * 0.45359237));
                         input.parent().find("label.unit").each(function () {
                             $(this).text("kg");
                         });
                     } else {
-                        input.val(input.val() * 2.20462262185);
+                        input.val(pgProductRound(pgProductFigure(input.val()) * 2.20462262185));
                         input.parent().find("label.unit").each(function () {
                             $(this).text(unit_lb_label_text);
                         });
@@ -1929,13 +1941,13 @@ $(document).ready(function () {
                 case "height":
                     var input = $("#" + $(this).attr("id"));
                     if (switcher.is(':checked')) {
-                        input.val(input.val() * 2.54);
+                        input.val(pgProductRound(pgProductFigure(input.val()) * 2.54));
                         input.parent().find("label.unit").each(function () {
                             $(this).text("cm");
                         });
 
                     } else {
-                        input.val(input.val() * 0.393700787);
+                        input.val(pgProductRound(pgProductFigure(input.val()) * 0.393700787));
                         input.parent().find("label.unit").each(function () {
                             $(this).text(unit_in_label_text);
                         });
@@ -2556,12 +2568,20 @@ function pgListServerOptions(options, $table) {
         });
     };
 
-    // The cells' classes; cells holds hidden columns' cells too.
+    // The cells' classes and other attributes (a quick edit's data-pg-edit);
+    // cells holds hidden columns' cells too.
     options.createdRow = function (row, data, index, cells) {
         var classes = (data && data.DT_RowData && data.DT_RowData.pgCells) || [];
+        var attributes = (data && data.DT_RowData && data.DT_RowData.pgAttrs) || {};
 
         for (var i = 0; (i < classes.length) && cells && (i < cells.length); i++) {
             cells[i].className = classes[i];
+
+            for (var name in (attributes[i] || {})) {
+                if (Object.prototype.hasOwnProperty.call(attributes[i], name)) {
+                    cells[i].setAttribute(name, attributes[i][name]);
+                }
+            }
         }
     };
 
@@ -6508,11 +6528,19 @@ function editBarcodeTemplate(opts) {
 /* ════════════════════════════════════════════════════════════════════════
    PRODUCT BARCODE PRINT  (view_products.php)
    Fetches the first barcode for a product and opens a print window.
-   Page must set window._pgViewBarcodeOpts = { apiUrl, token, labelTemplate, productMap }.
+   Page must set window._pgViewBarcodeOpts = { apiUrl, token, labelTemplate };
+   the button carries what the label prints in data-pg-barcode-product (JSON:
+   sku, short_description, price, productImageSrc).
 ════════════════════════════════════════════════════════════════════════ */
-function pgPrintProductBarcode(productId) {
+function pgPrintProductBarcode(productId, button) {
     var opts = window._pgViewBarcodeOpts || {};
-    var p = (opts.productMap || {})[productId] || {};
+    var p = {};
+
+    try {
+        p = JSON.parse((button && button.getAttribute('data-pg-barcode-product')) || '{}') || {};
+    } catch (e) {
+        p = {};
+    }
 
     /*
      * The print window has to be opened synchronously, while the click that started
@@ -8879,7 +8907,9 @@ function pg_background_calls_allowed() {
                 while (p && p.tagName !== 'LABEL' && p !== document.body) p = p.parentElement;
                 if (p && p.tagName === 'LABEL') label = p;
             }
-            if (label && !label.querySelector('.pg-required-marker')) {
+            // A label whose text already starts with "*" carries its own
+            // marker: a second one would read "*Name *".
+            if (label && !label.querySelector('.pg-required-marker') && !/^\s*\*/.test(label.textContent)) {
                 var span = document.createElement('span');
                 span.className = 'pg-required-marker fg-danger ms-1';
                 span.setAttribute('aria-hidden', 'true');
@@ -9526,6 +9556,18 @@ function pgBindTitlePopovers(scope) {
 
 
 /**
+ * Set .show on a switcher's plain .collapse section together with its display.
+ *
+ * Bootstrap 6 hides `.collapse:not(.show)` with display:none and block-size:0
+ * outside any layer, so an inline display alone leaves the section 0 px high.
+ * A callout (.collapse.popover) keeps its own .show toggle.
+ */
+function pgCollapseSwitcherShow(target, shown) {
+    $(target).filter('.collapse:not(.popover)').toggleClass('show', !!shown);
+}
+
+
+/**
  * Draw every collapse pair in the state its own control is in.
  *
  * The controls themselves are driven by two delegated listeners in the ready
@@ -9547,6 +9589,7 @@ function pgSyncCollapseSwitchers(scope) {
         }
 
         $(target).toggle(returned);
+        pgCollapseSwitcherShow(target, returned);
 
         if ($(target).hasClass('popover')) {
             $(target).toggleClass('show');

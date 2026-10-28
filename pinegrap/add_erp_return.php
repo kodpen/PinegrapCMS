@@ -38,7 +38,7 @@ $invoice = ($invoice_id > 0)
     : null;
 
 if (!is_array($invoice)) {
-    output_error(lang('The invoice could not be found.') . ' <a href="' . h($list_url) . '">' . lang('Invoices') . '</a>');
+    output_error(lang('The invoice could not be found.') . ' <a href="' . h($list_url) . '">' . lang('Invoices') . '</a>', 404);
     exit();
 }
 

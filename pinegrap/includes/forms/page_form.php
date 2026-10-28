@@ -737,6 +737,20 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         $custom_form_pretty_urls_checked = '';
     }
 
+    // The Schema author choice of the form's record pages, drawn only once
+    // the 11.0.53 column is there.
+    $custom_form_schema_author_rows = '';
+
+    if (pg_blogposting_author_setting_ready()) {
+        $custom_form_schema_author_rows = pg_page_form_schema_author_rows($custom_form_properties['schema_author'] ?? '', $page_id);
+    }
+
+    // The schema type of the form's record pages, drawn only once the
+    // 11.0.55 column is there.
+    if (pg_record_schema_type_setting_ready()) {
+        $custom_form_schema_author_rows .= pg_page_form_schema_type_row($custom_form_properties['schema_type'] ?? '');
+    }
+
     $form_list_view_viewer_filter_checked = '';
 
     if (($form_list_view_properties['viewer_filter'] ?? '') == 1) {
@@ -2043,7 +2057,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="popover-body">
                         <div class="row">
                             <div class="col-12 md:col-12 my-1">
-                                <label for="update_address_book_address_type_page_id" class="form-label">' . lang('Quiz Pass Percentage') . '</label>
+                                <label for="custom_form_quiz_pass_percentage" class="form-label">' . lang('Quiz Pass Percentage') . '</label>
                                 <label class="form-control form-adorn form-adorn-end">
                                     <span class="form-adorn-text" aria-hidden="true">%</span>
                                     <input value="' . h($custom_form_properties['quiz_pass_percentage'] ?? '') . '" type="text" name="custom_form_quiz_pass_percentage" id="custom_form_quiz_pass_percentage" maxlength="3" class="form-ghost" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
@@ -2455,6 +2469,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="switch"><input value="1"' . $custom_form_pretty_urls_checked . ' id="custom_form_pretty_urls" name="custom_form_pretty_urls" class="" type="checkbox" role="switch" /></div>
                     <label class="" for="custom_form_pretty_urls">' . lang('Enable Pretty URLs') . '</label>
                 </div>
+                ' . $custom_form_schema_author_rows . '
             </div>
             <div class="col-12 md:col-6 lg:col-4 my-3" id="custom_form_confirmation_continue_button_label_row" style="' . $custom_form_confirmation_continue_button_label_row_style . '">
                 <label for="custom_form_confirmation_continue_button_label" class="form-label">' . lang('Continue Button Label') . '</label>
@@ -2835,6 +2850,91 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
  * @return array  Page type name => properties, in the shape of a row of the
  *                type's <type>_pages table
  */
+/**
+ * The Schema author rows of a custom form's settings: where the BlogPosting
+ * author of the form's record pages comes from (the record's contact, the
+ * site as an organization, a field of the form) and, for a field, which one
+ * (includes/fn/seo.php). The fields offered are the form's at the time the
+ * page is edited; a new page has none yet.
+ *
+ * @param string $stored  custom_form_pages.schema_author
+ * @param int    $page_id The page being edited, 0 for a new page
+ * @return string
+ */
+function pg_page_form_schema_author_rows($stored, $page_id)
+{
+    $choice = pg_blogposting_author_choice($stored);
+
+    $sources = array(
+        'contact' => lang('The contact of the record'),
+        'organization' => lang('The site as an organization'),
+        'field' => lang('A field of the form'),
+    );
+
+    $source_options = '';
+
+    foreach ($sources as $value => $label) {
+        $source_options .= '<option value="' . $value . '"' . (($choice['source'] === $value) ? ' selected="selected"' : '') . '>' . h($label) . '</option>';
+    }
+
+    $field_options = '<option value="">-' . h(lang(array('string' => 'Select {var:1}', 'vars' => array(lang('field'))))) . '-</option>';
+
+    if ((int) $page_id > 0) {
+        $result = db_q(
+            "SELECT id, name, label
+            FROM form_fields
+            WHERE (page_id = ?) AND (type != 'file upload')
+            ORDER BY sort_order ASC",
+            array((string) (int) $page_id));
+
+        while ($result && ($row = mysqli_fetch_assoc($result))) {
+            $label = ((string) $row['label'] !== '') ? (string) $row['label'] : (string) $row['name'];
+            $field_options .= '<option value="' . (int) $row['id'] . '"' . (((int) $row['id'] === $choice['field_id']) ? ' selected="selected"' : '') . '>' . h($label) . '</option>';
+        }
+    }
+
+    return '
+                <div class="row mt-3">
+                    <div class="col-12 md:col-6 my-1">
+                        <label class="form-label" for="custom_form_schema_author">' . lang('Schema Author') . '</label>
+                        <select class="form-control" id="custom_form_schema_author" name="custom_form_schema_author">' . $source_options . '</select>
+                        <div class="form-text">' . lang('The author named in the structured data of the record pages.') . '</div>
+                    </div>
+                    <div class="col-12 md:col-6 my-1">
+                        <label class="form-label" for="custom_form_schema_author_field_id">' . lang('Author Field') . '</label>
+                        <select class="form-control" id="custom_form_schema_author_field_id" name="custom_form_schema_author_field_id">' . $field_options . '</select>
+                    </div>
+                </div>';
+}
+
+/**
+ * The Schema Type row of a custom form's settings: how the structured data
+ * of the form's record pages names them (includes/fn/seo.php), or None to
+ * leave the page's own JSON-LD as their only description.
+ *
+ * @param string $stored  custom_form_pages.schema_type
+ * @return string
+ */
+function pg_page_form_schema_type_row($stored)
+{
+    $current = pg_record_schema_type($stored);
+    $options = '';
+
+    foreach (pg_record_schema_types() as $type) {
+        $label = ($type === 'none') ? lang('None') : $type;
+        $options .= '<option value="' . h($type) . '"' . (($current === $type) ? ' selected="selected"' : '') . '>' . h($label) . '</option>';
+    }
+
+    return '
+                <div class="row mt-3">
+                    <div class="col-12 md:col-6 my-1">
+                        <label class="form-label" for="custom_form_schema_type">' . lang('Schema Type') . '</label>
+                        <select class="form-control" id="custom_form_schema_type" name="custom_form_schema_type">' . $options . '</select>
+                        <div class="form-text">' . lang('How the structured data of the record pages describes them. None leaves the page\'s own structured data as their only description.') . '</div>
+                    </div>
+                </div>';
+}
+
 function pg_page_form_new_page_properties()
 {
     $order_receipt_email = array(
@@ -3015,6 +3115,16 @@ function pg_page_form_type_properties_from_post($page_type, $page_id)
                 'return_alternative_page_id' => $field('custom_form_return_alternative_page_id'),
                 'pretty_urls' => $field('custom_form_pretty_urls', 0)
             );
+
+            // Written only once the 11.0.53 column is there: every key here
+            // becomes a column of the save query.
+            if (pg_blogposting_author_setting_ready()) {
+                $properties['schema_author'] = pg_blogposting_author_setting_value($field('custom_form_schema_author'), $field('custom_form_schema_author_field_id'));
+            }
+
+            if (pg_record_schema_type_setting_ready()) {
+                $properties['schema_type'] = pg_record_schema_type($field('custom_form_schema_type'));
+            }
 
             if ($hooks) {
                 $properties['hook_code'] = $field('custom_form_hook_code');

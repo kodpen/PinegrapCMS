@@ -1844,6 +1844,10 @@ function pg_marketplace_product_changed($product_id, $priority = 5)
         return 0;
     }
 
+    // Every stock and price writer ends here, so the bundles that hold the
+    // product follow it (includes/fn/bundles.php).
+    pg_bundle_refresh_for($product_id);
+
     $connectors = PG_FUNCTIONS_DIR . '/includes/api/outbound/connectors/base.php';
 
     if (!is_file($connectors)) {
@@ -2027,7 +2031,7 @@ function pg_product_out_of_stock_sql($tracked, $quantity, $was_flagged)
  * @param int      $product_id
  * @param int|null $before  stock before the write; null when it was not tracked
  * @param int|null $after   stock left after the write; null reads the row
- * @param string   $source  the writer: checkout, local_sale, panel, barcode, bulk_edit
+ * @param string   $source  the writer: checkout, local_sale, panel, barcode, bulk_edit, bundle
  * @return int|null the stock left, null when the product is not there
  */
 function pg_product_stock_changed($product_id, $before, $after, $source)
@@ -11884,6 +11888,22 @@ function pg_variant_price_rules_store($group_id, $rules, $base_cents)
  */
 function pg_product_image_cell($key, $image_name, $name, $short_description = '', $more_images = array())
 {
+    return '<td class="align-middle text-start">' . pg_product_image_cell_content($key, $image_name, $name, $short_description, $more_images) . '</td>';
+}
+
+/**
+ * What pg_product_image_cell() puts in its cell, for a row built as cells
+ * (pg_list_cell()) whose cell class is 'align-middle text-start'.
+ *
+ * @param string $key
+ * @param string $image_name
+ * @param string $name
+ * @param string $short_description
+ * @param array  $more_images
+ * @return string
+ */
+function pg_product_image_cell_content($key, $image_name, $name, $short_description = '', $more_images = array())
+{
     $image_name = trim((string) $image_name);
 
     $caption = trim((string) $name);
@@ -11894,14 +11914,13 @@ function pg_product_image_cell($key, $image_name, $name, $short_description = ''
     }
 
     if ($image_name === '') {
-        return '<td class="align-middle text-start"><svg class="bd-placeholder-img img-thumbnail" width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" ><rect width="100%" height="100%" fill="#868e96"></rect><text x="10%" y="50%" style="font-size: 8px;" fill="#dee2e6" dy=".3em">' . lang(array('string' => 'No Image')) . '</text></svg></td>';
+        return '<svg class="bd-placeholder-img img-thumbnail" width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" ><rect width="100%" height="100%" fill="#868e96"></rect><text x="10%" y="50%" style="font-size: 8px;" fill="#dee2e6" dy=".3em">' . lang(array('string' => 'No Image')) . '</text></svg>';
     }
 
     $gallery = 'pg-thumb-' . $key;
 
     $output =
-        '<td class="align-middle text-start">'
-        . '<button type="button" class="btn p-0 border-0 no-submit" style="cursor: zoom-in;"'
+        '<button type="button" class="btn p-0 border-0 no-submit" style="cursor: zoom-in;"'
         . ' data-pg-lb-gallery="' . h($gallery) . '" data-pg-lb-index="0"'
         . ' data-pg-lb-src="' . h(PATH . encode_url_path($image_name)) . '"'
         . ' data-pg-lb-alt="' . h($caption) . '" data-pg-lb-caption="' . h($caption) . '"'
@@ -11926,7 +11945,7 @@ function pg_product_image_cell($key, $image_name, $name, $short_description = ''
         $index++;
     }
 
-    return $output . '</td>';
+    return $output;
 }
 
 

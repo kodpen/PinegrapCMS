@@ -31,7 +31,7 @@ description: Plan (owner request 2026-10-27, draft being refined): the Flows can
 
 - T3 the constants box, then the derived value box with its allowlist. The constants box done (PR #2550, `workspace/workspace-flows-value-boxes.md`); next: the derived value box, a step of its own.
 
-- T4 the run view lists threads and values per box.
+- T4 the run view lists threads and values per box. Done (PR #2650, `workspace/workspace-flows-run-view.md`).
 
 ## Which questions are answered? (#2415)
 1. Pure boxes are computed when a thread reads them, cached per run, with no run row (as drawn).

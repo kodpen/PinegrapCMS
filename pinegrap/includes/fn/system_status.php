@@ -2558,7 +2558,7 @@ function get_system_status_checks()
             'bi-sliders',
             'fg-danger',
             'PHP Directives',
-            'Disabled directive(s): ' . implode(', ', $disabled)
+            rtrim(lang('Disabled directive(s): ')) . ' ' . implode(', ', $disabled)
         );
         $score -= $weights['directives'];
     }

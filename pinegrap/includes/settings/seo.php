@@ -61,6 +61,13 @@ $pg_settings_cards[] = '
                                                 <div class="form-text">' . lang('Adds max-image-preview:large to the robots meta tag of every page in the search engines, so a page can be shown with its large picture, as Google Discover does. Pages closed to search engines never get it.') . '</div>
                                             </div>
                                         </div>
+                                        <div class="col-12">
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . ($main_host_redirect ? ' checked="checked"' : '') . ' class="" type="checkbox" id="main_host_redirect" name="main_host_redirect"/></div>
+                                                <label class="" for="main_host_redirect">' . lang('Redirect other host names to the site address') . '</label>
+                                                <div class="form-text">' . h(lang(array('string' => 'A page opened on another name of this site (with or without www) moves to the same address on {var:1} with a permanent redirect, so search engines see one copy of each page. Turn it on only once that name opens this site. The panel, the API and file downloads answer on every name.', 'vars' => array(HOSTNAME_SETTING)))) . '</div>
+                                            </div>
+                                        </div>
                                         <div class="pg-f-lg">
                                             <label for="indexnow_key" class="form-label">' . lang('IndexNow Key') . '</label>
                                             <div class="input-group">
@@ -303,7 +310,7 @@ $pg_settings_cards[] = '
                                             <div class="form-text">' . lang('Full addresses starting with https://. The OpenAI feed passes them on with every product.') . '</div>
                                         </div>
                                         <div class="pg-f-lg">
-                                            <label for="product_feed_excluded_groups" class="form-label">' . lang('Leave out these product groups') . '</label>
+                                            <label' . (($product_feeds_group_options !== '') ? ' for="product_feed_excluded_groups"' : '') . ' class="form-label">' . lang('Leave out these product groups') . '</label>
                                             ' . (($product_feeds_group_options !== '')
                                                 ? '<select multiple size="6" name="product_feed_excluded_groups[]" id="product_feed_excluded_groups" class="form-control">' . $product_feeds_group_options . '</select>
                                             <div class="form-text">' . lang('A product in a chosen group, or in a group under it, is in no feed. Hold Ctrl (or ⌘) to choose several.') . '</div>'

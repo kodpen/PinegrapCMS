@@ -479,6 +479,44 @@ function test_workspace_flow_runs_channel_is_frozen()
 	pg_assert_contains('ws_flow_run_context_new($flow', ws_flow_runs_test_source('ws_flow_run_start'));
 }
 
+// A run started in a channel its starter names keeps that channel instead
+// of the flow's home: a public or private channel the starter reads and the
+// flow's owner may write in, else 403; the start check makes it, after the
+// token's run is answered and the owner is known, so the dry run meets it.
+function test_workspace_flow_runs_start_names_its_channel()
+{
+	$flow = array('name' => 'Hiring', 'channel_id' => 7);
+
+	pg_assert_same(9, ws_flow_run_context_new($flow, array('id' => 'start'), 9)['channel_id'], 'the channel named');
+	pg_assert_same(7, ws_flow_run_context_new($flow, array('id' => 'start'), null)['channel_id'], 'none named: the home');
+	pg_assert_same(7, ws_flow_run_context_new($flow, array('id' => 'start'))['channel_id']);
+
+	foreach (array('public', 'private') as $kind) {
+		pg_assert_true(ws_flow_run_channel_allowed(array('kind' => $kind), true, true), $kind);
+	}
+
+	pg_assert_false(ws_flow_run_channel_allowed(array('kind' => 'public'), false, true), 'the starter does not read it');
+	pg_assert_false(ws_flow_run_channel_allowed(array('kind' => 'public'), true, false), 'the owner may not write in it');
+	pg_assert_false(ws_flow_run_channel_allowed(null, true, true), 'a channel that is gone');
+
+	foreach (array('thread', 'guest', 'direct', '') as $kind) {
+		pg_assert_false(ws_flow_run_channel_allowed(array('kind' => $kind), true, true), $kind . ' is no channel a run is read through');
+	}
+
+	$check = ws_flow_runs_test_source('ws_flow_run_channel_check');
+
+	pg_assert_contains('ws_can_read_channel($viewer, $channel)', $check);
+	pg_assert_contains('ws_can_post_channel($owner, $channel)', $check);
+	pg_assert_contains("403, 'channel_id'", $check);
+
+	$start = ws_flow_runs_test_source('ws_flow_run_start_check');
+	$named = strpos($start, 'ws_flow_run_channel_check($viewer, $flow, $data[\'channel_id\'], $owner)');
+
+	pg_assert_true(($named !== false) && ($named > strpos($start, 'ws_can_schedule($owner)')) && ($named > strpos($start, 'return $found($existing, $start_key);')), 'after the owner check and the token\'s run');
+	pg_assert_contains("\$check['channel_id']", ws_flow_runs_test_source('ws_flow_run_start'), 'the run keeps the channel checked');
+	pg_assert_contains("'channel_id'", ws_flow_runs_test_source('ws_api_flow_runs_start'), 'the route passes it on');
+}
+
 // Who may read a run and who may cancel it: the flow's editors; the people
 // who may run the flow, or who started the run, while they read the channel
 // the run was started in; and the starter of a run while they may run the

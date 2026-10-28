@@ -116,6 +116,13 @@ if (!$_POST)
     output_header_secure(array('title'=>lang('Image Editor') . ' | Pintura | ' . h($file_name),'icon'=>'file')) . ' 
     <link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/image_editor/packages/doka/doka.css">
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/image_editor/packages/jquery_doka/doka.js"></script>
+    <style>
+        /* doka.css is unlayered, so a rule in the custom layer cannot override it.
+           Its palette is RGB triples declared on the editor element, which
+           derives its -NN shades from them there; the panel body triple keeps
+           the editor on the dark body colour. */
+        [data-bs-theme="dark"] .doka-image-editor { --color-background: var(--pg-body-bg-rgb, 16, 17, 20); --color-foreground: 222, 226, 230; }
+    </style>
     <style>@layer custom {
         img {
             max-width: 100%;
@@ -131,9 +138,9 @@ if (!$_POST)
                 <li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
                     <button class="nav-link nav-link-sm position-relative pg-menu-caret" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button" aria-label="' . h(lang('Software Theme')) . '"><span class="bi bi-circle-half"></span></button>
                     <ul aria-labelledby="bd-theme" class="menu shadow pg-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-menu-min-width: 8rem;">
-                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i>' . lang('Light') . '</button></li>
-                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i>' . lang('Dark') . '</button></li>
-                        <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-3"></i>' . lang('Auto') . '</button></li>
+                        <li><button id="theme-light" class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i>' . lang('Light') . '</button></li>
+                        <li><button id="theme-dark" class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i>' . lang('Dark') . '</button></li>
+                        <li><button id="theme-auto" class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="auto" type="button"><i class="bi bi-circle-half m-3"></i>' . lang('Auto') . '</button></li>
                     </ul>
                 </li>
                 <li class="nav-item">

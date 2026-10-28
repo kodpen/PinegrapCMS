@@ -514,6 +514,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     if (function_exists('pg_sw_item_missing')) pg_sw_item_missing(false);
     // An e-mail drawn while a page is drawn adds nothing and clears nothing.
     if (function_exists('pg_sw_url_filter_state') && !$email) pg_sw_url_filter_state(false);
+    if (function_exists('pg_sw_list_page_requests') && !$email) pg_sw_list_page_requests(false);
     // The pages whose comment thread a comments widget drew in this pass
     // (widgets_comments.php); the classic comments block below leaves them
     // alone.
@@ -537,6 +538,15 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = pg_expand_nested_components($content, $mode, $email);
         if (is_array($pg_cw_prev)) $pg_cw_pages = pg_comments_widget_pages($pg_cw_prev);
         if (is_array($pg_sw_prev_ctx)) pg_sw_render_context($pg_sw_prev_ctx);
+
+        // A list page asked for a page past its last one is not there: a
+        // 404 with noindex and no canonical (pg_sw_item_missing()), not an
+        // empty or repeated page answered 200.
+        if (!$email && ($mode != 'edit') && function_exists('pg_sw_list_page_past')
+            && pg_sw_list_page_past(pg_sw_list_page_requests())
+        ) {
+            pg_sw_item_missing(true);
+        }
     }
 
     // ── Page conditions ─────────────────────────────────────────────────────────
@@ -5730,6 +5740,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 $pg_og_image_candidate = pg_resolve_submitted_form_og_image($pg_blog_form['page_id'], $submitted_form['id']);
                 $pg_blog_author = pg_submitted_form_author_name($submitted_form['id']);
                 $pg_blog_form_id = (int) $submitted_form['id'];
+                $pg_blog_schema_type = pg_form_page_schema_type($pg_blog_form['page_id']);
             }
         }
     }
@@ -6060,9 +6071,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $pg_jsonld_out = '';
 
         // $pg_blog_form_id is set only for a resolved record: a legacy form
-        // item view page, or a visual-editor page with the form item view widget.
-        if (!empty($pg_blog_form_id)) {
+        // item view page, or a visual-editor page with the form item view
+        // widget. A form whose schema type is None describes its records
+        // with nothing but the page's own JSON-LD below.
+        if (!empty($pg_blog_form_id) && (($pg_blog_schema_type ?? 'BlogPosting') !== 'none')) {
             $pg_jsonld_out .= "\n" . '<script type="application/ld+json">' . json_encode(pg_build_blogposting_jsonld(array(
+                'type'        => $pg_blog_schema_type ?? 'BlogPosting',
                 'headline'    => $page_title,
                 'description' => $page_meta_description,
                 'url'         => $canonical_url,
@@ -6072,18 +6086,20 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 'author'      => $pg_blog_author ?? '',
             )), JSON_UNESCAPED_UNICODE) . '</script>';
 
-            // Home > list page > post - the middle step only when the post was
-            // reached through its pretty URL, which is what tells us the list
-            // page's name.
+            // Home > list page > post. The middle step is the page that lists
+            // these records and links them here (pg_record_list_page()), by its
+            // title and address; none when no public page does. The post's
+            // own address names the record page, not the list.
             $pg_breadcrumb_items = array(
                 array('name' => TITLE, 'url' => URL_SCHEME . HOSTNAME_SETTING . PATH),
             );
 
-            if (defined('PRETTY_URL_PATH') && (mb_strpos(PRETTY_URL_PATH, '/') !== FALSE)) {
-                $pg_list_page_name = mb_substr(PRETTY_URL_PATH, 0, mb_strpos(PRETTY_URL_PATH, '/'));
+            $pg_list_page = pg_record_list_page($page_id);
+
+            if ($pg_list_page && !$pg_list_page['home']) {
                 $pg_breadcrumb_items[] = array(
-                    'name' => $pg_list_page_name,
-                    'url'  => URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path($pg_list_page_name),
+                    'name' => $pg_list_page['name'],
+                    'url'  => URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path($pg_list_page['page_name']),
                 );
             }
 

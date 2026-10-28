@@ -1161,6 +1161,54 @@ function pg_first_image_url_from_html($html)
 }
 
 /**
+ * The share image of an uploaded file when a visitor who is not signed in
+ * may open it (pg_file_open_to_everyone()); null otherwise, so og:image falls
+ * back to the default share image instead of carrying an address that answers
+ * with the sign-in screen.
+ *
+ * @param mixed $file_id files.id
+ * @return array|null array(url, width, height, alt)
+ */
+function pg_og_image_from_open_file($file_id)
+{
+    $file_id = (int) $file_id;
+
+    if ($file_id <= 0) {
+        return null;
+    }
+
+    if (!pg_file_open_to_everyone($file_id)) {
+        return null;
+    }
+
+    return pg_og_image_from_file_id($file_id);
+}
+
+/**
+ * Whether a visitor who is not signed in may open a file: the answer
+ * get_file.php gives such a visitor, asked by the places that publish a
+ * file's address to everyone (og:image, the feed's enclosure). The folder
+ * must be public; a submitted form's upload must also be shown by a public
+ * view of its record, classic or designed (includes/record_files.php). A
+ * file that cannot be read stays closed.
+ *
+ * @param mixed $file_id files.id
+ * @return bool
+ */
+function pg_file_open_to_everyone($file_id)
+{
+    $file_id = (int) $file_id;
+
+    if ($file_id <= 0) {
+        return false;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/record_files.php');
+
+    return pg_record_file_anonymous_access($file_id);
+}
+
+/**
  * Resolve the RSS media field of a submitted form into a share image.
  *
  * The media field is a loose binding: operators point it at a file upload, a
@@ -1202,7 +1250,7 @@ function pg_resolve_submitted_form_og_image($custom_form_page_id, $submitted_for
     }
 
     if ((int) ($media['file_id'] ?? 0) > 0) {
-        return pg_og_image_from_file_id($media['file_id']);
+        return pg_og_image_from_open_file($media['file_id']);
     }
 
     $data = trim((string) ($media['data'] ?? ''));
@@ -1267,42 +1315,255 @@ function pg_og_default_image()
 }
 
 /**
- * Who wrote a submitted form, for the BlogPosting author.
+ * Whether custom_form_pages carries the Schema author choice (2026.11.0,
+ * 11.0.53). Files land before the upgrade runs, so the column is probed
+ * before it is read or written.
+ */
+function pg_blogposting_author_setting_ready()
+{
+    return pg_schema_has('custom_form_pages', 'schema_author');
+}
+
+/**
+ * A form's stored Schema author choice, read: 'contact' (the record's linked
+ * contact), 'organization' (the site) or 'field' with the form field whose
+ * value names the author.
  *
- * Only the linked contact's name is used (pg_contact_display_name(),
- * includes/fn/contacts.php). The account's login username is never printed:
- * it is half of a credential, and the account that signs a template's sample
- * records (the setup administrator) has no contact. An anonymous submission,
- * or one whose contact has no name, returns nothing, and the caller falls
- * back to naming the site.
+ * custom_form_pages.schema_author holds one word: contact, organization or
+ * field:<form_field_id>. Anything else, '' included, reads as contact, so a
+ * row older than the column and a choice whose field was deleted keep the
+ * output a form had before.
+ *
+ * @param string|null $stored
+ * @return array  'source' => contact|organization|field, 'field_id' => int
+ */
+function pg_blogposting_author_choice($stored)
+{
+    $stored = trim((string) $stored);
+
+    if ($stored === 'organization') {
+        return array('source' => 'organization', 'field_id' => 0);
+    }
+
+    if (preg_match('/^field:([1-9][0-9]*)$/', $stored, $match)) {
+        return array('source' => 'field', 'field_id' => (int) $match[1]);
+    }
+
+    return array('source' => 'contact', 'field_id' => 0);
+}
+
+/**
+ * The word custom_form_pages.schema_author stores for a posted choice: the
+ * source, with the field id when a field is the source. A field choice
+ * without a field, or an unknown source, is stored as contact.
+ *
+ * @param string     $source   contact | organization | field
+ * @param int|string $field_id
+ * @return string
+ */
+function pg_blogposting_author_setting_value($source, $field_id)
+{
+    $source = (string) $source;
+    $field_id = (int) $field_id;
+
+    if ($source === 'organization') {
+        return 'organization';
+    }
+
+    if (($source === 'field') && ($field_id > 0)) {
+        return 'field:' . $field_id;
+    }
+
+    return 'contact';
+}
+
+/**
+ * The author name a record's BlogPosting prints under its form's choice:
+ * the chosen field's value when the record filled it (its text, on one
+ * line, when the field is rich text), else the contact's name; '' when
+ * neither gives one, or when the form names the site, and the caller then
+ * writes the site's Organization (pg_blogposting_author_node()).
+ *
+ * @param string|null $stored        custom_form_pages.schema_author
+ * @param string      $contact_name  pg_contact_display_name() of the record's contact
+ * @param string      $field_value   form_data.data of the chosen field
+ * @return string
+ */
+function pg_blogposting_author_name_for($stored, $contact_name, $field_value)
+{
+    $choice = pg_blogposting_author_choice($stored);
+
+    if ($choice['source'] === 'organization') {
+        return '';
+    }
+
+    if ($choice['source'] === 'field') {
+        $value = html_entity_decode(strip_tags((string) $field_value), ENT_QUOTES, 'UTF-8');
+        $value = trim((string) preg_replace('/\s+/u', ' ', $value));
+
+        if ($value !== '') {
+            return $value;
+        }
+    }
+
+    return trim((string) $contact_name);
+}
+
+/**
+ * The author node of a BlogPosting: a Person for a name; the site as an
+ * Organization, with its address when known, for none (an anonymous
+ * submission still has a responsible publisher, and Google recommends the
+ * property); null when the site has no title either.
+ *
+ * @param string $name       The author's name, may be blank
+ * @param string $site_name  The site's title (TITLE)
+ * @param string $site_url   The site's root address, may be blank
+ * @return array|null
+ */
+function pg_blogposting_author_node($name, $site_name, $site_url)
+{
+    $name = trim((string) $name);
+
+    if ($name !== '') {
+        return array('@type' => 'Person', 'name' => $name);
+    }
+
+    $site_name = trim((string) $site_name);
+
+    if ($site_name === '') {
+        return null;
+    }
+
+    $node = array('@type' => 'Organization', 'name' => $site_name);
+    $site_url = trim((string) $site_url);
+
+    if ($site_url !== '') {
+        $node['url'] = $site_url;
+    }
+
+    return $node;
+}
+
+/**
+ * Who wrote a submitted form, for the BlogPosting author, under its form's
+ * Schema author choice (pg_blogposting_author_choice()): a field of the
+ * form, the linked contact's name (pg_contact_display_name(),
+ * includes/fn/contacts.php), or nothing when the form names the site.
+ *
+ * The account's login username is never printed: it is half of a
+ * credential, and the account that signs a template's sample records (the
+ * setup administrator) has no contact. An anonymous submission, or one
+ * whose contact has no name, returns nothing, and the caller falls back to
+ * naming the site.
  */
 function pg_submitted_form_author_name($submitted_form_id)
 {
+    $submitted_form_id = (int) $submitted_form_id;
     $form = db_item(
-        "SELECT contact_id FROM forms
-        WHERE id = '" . (int) $submitted_form_id . "'
+        "SELECT page_id, contact_id FROM forms
+        WHERE id = '" . $submitted_form_id . "'
         LIMIT 1");
 
     if (!is_array($form)) {
         return '';
     }
 
-    if ((int) ($form['contact_id'] ?? 0) > 0) {
+    $stored = '';
+
+    if (pg_blogposting_author_setting_ready()) {
+        $stored = (string) db_value(
+            "SELECT schema_author FROM custom_form_pages
+            WHERE page_id = '" . (int) ($form['page_id'] ?? 0) . "'
+            LIMIT 1");
+    }
+
+    $choice = pg_blogposting_author_choice($stored);
+    $field_value = '';
+    $contact_name = '';
+
+    if ($choice['source'] === 'field') {
+        $field_value = (string) db_value(
+            "SELECT data FROM form_data
+            WHERE (form_id = '" . $submitted_form_id . "') AND (form_field_id = '" . $choice['field_id'] . "')
+            LIMIT 1");
+    }
+
+    if (($choice['source'] !== 'organization') && ((int) ($form['contact_id'] ?? 0) > 0)) {
         $contact = db_item(
             "SELECT first_name, last_name, nickname FROM contacts
             WHERE id = '" . (int) $form['contact_id'] . "'
             LIMIT 1");
 
         if (is_array($contact)) {
-            $name = pg_contact_display_name($contact['first_name'] ?? '', $contact['last_name'] ?? '', $contact['nickname'] ?? '');
-
-            if ($name !== '') {
-                return $name;
-            }
+            $contact_name = pg_contact_display_name($contact['first_name'] ?? '', $contact['last_name'] ?? '', $contact['nickname'] ?? '');
         }
     }
 
-    return '';
+    return pg_blogposting_author_name_for($stored, $contact_name, $field_value);
+}
+
+/**
+ * Whether custom_form_pages carries the schema type of a form's record pages
+ * (2026.11.0, 11.0.55). Files land before the upgrade runs, so the column is
+ * probed before it is read or written.
+ */
+function pg_record_schema_type_setting_ready()
+{
+    return pg_schema_has('custom_form_pages', 'schema_type');
+}
+
+/**
+ * The schema types a form may give its record pages, as stored.
+ * BlogPosting, Article and NewsArticle share the properties
+ * pg_build_blogposting_jsonld() writes; 'none' writes no record block, and
+ * the page's own JSON-LD is left as its only description.
+ *
+ * @return array
+ */
+function pg_record_schema_types()
+{
+    return array('BlogPosting', 'Article', 'NewsArticle', 'none');
+}
+
+/**
+ * A stored schema type, read: one of the words of pg_record_schema_types()
+ * (case-insensitive). Anything else, '' included, reads as BlogPosting, the
+ * type every record page had before the setting.
+ *
+ * @param string|null $stored  custom_form_pages.schema_type
+ * @return string
+ */
+function pg_record_schema_type($stored)
+{
+    $stored = strtolower(trim((string) $stored));
+
+    foreach (pg_record_schema_types() as $type) {
+        if (strtolower($type) === $stored) {
+            return $type;
+        }
+    }
+
+    return 'BlogPosting';
+}
+
+/**
+ * The schema type the record pages of the form on a page are described
+ * with (pg_record_schema_type()); BlogPosting before the 11.0.55 column is
+ * there or when the page holds no form.
+ *
+ * @param int $form_page_id  The custom form's page (forms.page_id)
+ * @return string
+ */
+function pg_form_page_schema_type($form_page_id)
+{
+    if (((int) $form_page_id <= 0) || !pg_record_schema_type_setting_ready()) {
+        return 'BlogPosting';
+    }
+
+    return pg_record_schema_type(db_value(
+        "SELECT schema_type FROM custom_form_pages
+        WHERE page_id = '" . (int) $form_page_id . "'
+        LIMIT 1"));
 }
 
 /**
@@ -1391,13 +1652,17 @@ function pg_product_merchant_jsonld_parts($shippable)
  * schema.org BlogPosting for a submitted form shown on a form item view.
  *
  * properties: headline, description, url, image (array from the og resolvers
- * or null), published (unix), modified (unix), author (string, may be blank).
+ * or null), published (unix), modified (unix), author (string, may be blank),
+ * type (the form's schema type, pg_record_schema_type(); BlogPosting when
+ * missing; the three types share these properties).
  */
 function pg_build_blogposting_jsonld($properties)
 {
+    $type = pg_record_schema_type($properties['type'] ?? '');
+
     $data = array(
         '@context' => 'https://schema.org',
-        '@type'    => 'BlogPosting',
+        '@type'    => ($type === 'none') ? 'BlogPosting' : $type,
         'headline' => (string) ($properties['headline'] ?? ''),
         'url'      => (string) ($properties['url'] ?? ''),
         'mainEntityOfPage' => array(
@@ -1422,12 +1687,15 @@ function pg_build_blogposting_jsonld($properties)
         $data['dateModified'] = date('c', (int) $properties['modified']);
     }
 
-    // A person when we know one; the site otherwise. Google recommends the
-    // property, and an anonymous submission still has a responsible publisher.
-    if (trim((string) ($properties['author'] ?? '')) !== '') {
-        $data['author'] = array('@type' => 'Person', 'name' => trim((string) $properties['author']));
-    } elseif (defined('TITLE')) {
-        $data['author'] = array('@type' => 'Organization', 'name' => TITLE);
+    // A person when we know one; the site otherwise, at the address the home
+    // page's Organization gives (pg_build_organization_jsonld()).
+    $author = pg_blogposting_author_node(
+        $properties['author'] ?? '',
+        defined('TITLE') ? TITLE : '',
+        (defined('URL_SCHEME') && defined('HOSTNAME_SETTING')) ? URL_SCHEME . HOSTNAME_SETTING . (defined('PATH') ? PATH : '/') : '');
+
+    if ($author !== null) {
+        $data['author'] = $author;
     }
 
     if (defined('TITLE')) {
@@ -1491,6 +1759,173 @@ function pg_build_breadcrumb_jsonld($items)
         '@type'           => 'BreadcrumbList',
         'itemListElement' => $elements,
     );
+}
+
+/**
+ * Where a page request that arrived on another host name goes when the site
+ * redirects to its main host (config.main_host_redirect): the same path and
+ * query on $main_host, '' for no redirect. Only a GET or HEAD; never when the
+ * request already names the main host (case, a trailing dot and the same
+ * port aside), names no host, or names an IP address or localhost (a server
+ * reached by address, a local test copy). The path passes
+ * pg_safe_redirect_path(), so the answer never leaves for another host.
+ *
+ * @param bool   $enabled      the site setting
+ * @param string $method       the request method
+ * @param string $request_host the Host header
+ * @param string $main_host    config.hostname (HOSTNAME_SETTING)
+ * @param string $request_url  the path and query asked for (REQUEST_URL)
+ * @param string $scheme       URL_SCHEME
+ * @return string
+ */
+function pg_main_host_redirect_url($enabled, $method, $request_host, $main_host, $request_url, $scheme)
+{
+    if (!$enabled || !in_array(strtoupper((string) $method), array('GET', 'HEAD'), true)) {
+        return '';
+    }
+
+    $normalize = function ($host) {
+        $host = strtolower(trim((string) $host));
+
+        // example.com.:443 and example.com. name example.com
+        return preg_replace('/\.(?=:\d+$|$)/', '', $host);
+    };
+
+    $request = $normalize($request_host);
+    $main = $normalize($main_host);
+
+    if (($request === '') || ($main === '') || ($request === $main)
+        || !preg_match('/^[a-z0-9.-]+(:\d+)?$/', $main)
+    ) {
+        return '';
+    }
+
+    $request_name = preg_replace('/:\d+$/', '', $request);
+
+    if ((substr($request, 0, 1) === '[') || (filter_var($request_name, FILTER_VALIDATE_IP) !== false)
+        || ($request_name === 'localhost') || (substr($request_name, -10) === '.localhost')
+    ) {
+        return '';
+    }
+
+    return (string) $scheme . $main . pg_safe_redirect_path($request_url, '/');
+}
+
+/**
+ * The list page a record page belongs to, out of the pages that list its
+ * records and link them to it ($candidates, from pg_record_list_page()):
+ * public, not archived, not noindex and not the record page itself; a page
+ * other than the home page first, then one in the site map, then the oldest.
+ * Each candidate has page_id, page_name,
+ * page_title, page_home, sitemap, noindex, public and archived.
+ *
+ * @param array $candidates
+ * @param int   $record_page_id
+ * @return array|null array(name, page_name, home) or null when none fits
+ */
+function pg_record_list_page_pick($candidates, $record_page_id)
+{
+    $best = null;
+
+    foreach ((array) $candidates as $candidate) {
+        if (empty($candidate['public']) || !empty($candidate['archived']) || !empty($candidate['noindex'])
+            || ((int) ($candidate['page_id'] ?? 0) <= 0) || ((int) $candidate['page_id'] === (int) $record_page_id)
+            || ((string) ($candidate['page_name'] ?? '') === '')
+        ) {
+            continue;
+        }
+
+        // Not the home page, then in the site map, then the oldest.
+        $candidate['rank'] = array(
+            (($candidate['page_home'] ?? '') == 'yes') ? 1 : 0,
+            ((int) ($candidate['sitemap'] ?? 0) == 1) ? 0 : 1,
+            (int) $candidate['page_id'],
+        );
+
+        if (($best === null) || ($candidate['rank'] < $best['rank'])) {
+            $best = $candidate;
+        }
+    }
+
+    if ($best === null) {
+        return null;
+    }
+
+    $title = trim((string) ($best['page_title'] ?? ''));
+
+    return array(
+        'name'      => ($title !== '') ? $title : (string) $best['page_name'],
+        'page_name' => (string) $best['page_name'],
+        'home'      => (($best['page_home'] ?? '') == 'yes'),
+    );
+}
+
+/**
+ * The list page of the records shown on $record_page_id, for the middle step
+ * of a record page's breadcrumbs: a classic form list view whose form item
+ * view is this page, or a page carrying a list widget whose detail page it
+ * is (pg_sw_form_list_types()). Picked by pg_record_list_page_pick(); null
+ * when no page lists the records here.
+ *
+ * @param int $record_page_id
+ * @return array|null
+ */
+function pg_record_list_page($record_page_id)
+{
+    $record_page_id = (int) $record_page_id;
+
+    if ($record_page_id <= 0) {
+        return null;
+    }
+
+    $page_ids = array();
+
+    $result = db_q(
+        "SELECT page_id FROM form_list_view_pages
+        WHERE (form_item_view_page_id = ?) AND (collection = 'a')",
+        array((string) $record_page_id));
+
+    while ($result && ($row = mysqli_fetch_assoc($result))) {
+        $page_ids[(int) $row['page_id']] = true;
+    }
+
+    if (function_exists('pg_sw_form_list_types') && function_exists('pg_sw_widget_pages')) {
+        $links_here = function ($cfg) use ($record_page_id) {
+            return (int) ($cfg['detail_page_id'] ?? 0) === $record_page_id;
+        };
+
+        foreach (pg_sw_form_list_types() as $list_type) {
+            foreach (pg_sw_widget_pages($list_type, $links_here) as $row) {
+                $page_ids[(int) $row['page_id']] = true;
+            }
+        }
+    }
+
+    unset($page_ids[0]);
+
+    if (!$page_ids) {
+        return null;
+    }
+
+    $sql_noindex = pg_page_noindex_ready() ? 'page.noindex' : "'0'";
+    $ids = array_map('strval', array_keys($page_ids));
+    $candidates = array();
+
+    $result = db_q(
+        "SELECT page.page_id, page.page_name, page.page_title, page.page_home, page.page_folder, page.sitemap,
+            $sql_noindex AS noindex, folder.folder_archived
+        FROM page
+        LEFT JOIN folder ON page.page_folder = folder.folder_id
+        WHERE page.page_id IN (" . implode(', ', array_fill(0, count($ids), '?')) . ")",
+        $ids);
+
+    while ($result && ($row = mysqli_fetch_assoc($result))) {
+        $row['public'] = (get_access_control_type($row['page_folder']) == 'public');
+        $row['archived'] = ((string) ($row['folder_archived'] ?? '0') === '1');
+        $candidates[] = $row;
+    }
+
+    return pg_record_list_page_pick($candidates, $record_page_id);
 }
 
 /**

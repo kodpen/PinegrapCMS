@@ -301,6 +301,147 @@ function pg_comment_thread_verify($page_id, $page_type, $item_type, $item_id)
     return $decision;
 }
 
+/**
+ * The item thread a catalog, catalog detail or calendar event view page shows
+ * for the address it is drawn for, by the rule the classic comments block of
+ * get_page_content.php picks its item. Pure: pg_comment_address_item_facts()
+ * reads the facts.
+ *
+ * Facts:
+ * - 'address_item': null when the address has no '/' after the page name,
+ *   else array('id' => ..., 'type' => 'product'|'product group'|'') as
+ *   get_catalog_item_from_url() gives it ('' and an empty id: nothing found).
+ * - 'catalog_group_id': a catalog page's own product group (0 for none).
+ * - 'top_group_id': the top-level product group, read only when a catalog
+ *   page has neither.
+ * - 'event_id': the event the sender of the render names (the search index's
+ *   'calendar_event_id'), null when none.
+ * - 'get_id': ?id= of the address.
+ *
+ * - 'catalog': the product group the address names, else the page's own,
+ *   else the top-level one. An address naming a product or nothing names no
+ *   thread: the classic block posts such an id as a product group there.
+ * - 'catalog detail': the product or product group the address names; with
+ *   no '/' the page's own thread ('' and 0); an address naming nothing (the
+ *   not-found screen) no thread.
+ * - 'calendar event view': the event the sender names, else ?id=; without
+ *   one the page's own thread. A recurrence (?recurrence_number=) shows the
+ *   same event, so it shares the thread, as on the classic block. An id
+ *   that is not a whole number above 0 names no thread.
+ *
+ * Returns array('item_type' => string, 'item_id' => int), or null when the
+ * address names no thread (the widget then prints nothing). Any other page
+ * type returns null too: it has no item in its address.
+ *
+ * @param mixed $page_type the page row's page_type
+ * @param mixed $facts     see above
+ * @return array|null
+ */
+function pg_comment_address_item($page_type, $facts)
+{
+    $facts = is_array($facts) ? $facts : array();
+    $int = function ($key) use ($facts) {
+        $value = isset($facts[$key]) ? $facts[$key] : null;
+        return (is_scalar($value) && !is_bool($value) && preg_match('/^\s*[0-9]+\s*$/', (string) $value)) ? (int) $value : 0;
+    };
+    $page_itself = array('item_type' => '', 'item_id' => 0);
+    $address = (isset($facts['address_item']) && is_array($facts['address_item'])) ? $facts['address_item'] : null;
+    $address_id = 0;
+    $address_type = '';
+
+    if ($address !== null) {
+        $address_id = (isset($address['id']) && is_scalar($address['id']) && preg_match('/^[0-9]+$/', (string) $address['id'])) ? (int) $address['id'] : 0;
+        $address_type = (isset($address['type']) && is_string($address['type'])) ? $address['type'] : '';
+    }
+
+    switch (is_string($page_type) ? $page_type : '') {
+        case 'catalog':
+            if ($address !== null) {
+                return (($address_type === 'product group') && ($address_id > 0))
+                    ? array('item_type' => 'product_group', 'item_id' => $address_id)
+                    : null;
+            }
+
+            $group_id = ($int('catalog_group_id') > 0) ? $int('catalog_group_id') : $int('top_group_id');
+
+            return ($group_id > 0) ? array('item_type' => 'product_group', 'item_id' => $group_id) : null;
+
+        case 'catalog detail':
+            if ($address === null) {
+                return $page_itself;
+            }
+
+            if ($address_id <= 0) {
+                return null;
+            }
+
+            if ($address_type === 'product group') {
+                return array('item_type' => 'product_group', 'item_id' => $address_id);
+            }
+
+            return ($address_type === 'product') ? array('item_type' => 'product', 'item_id' => $address_id) : null;
+
+        case 'calendar event view':
+            $named = array_key_exists('event_id', $facts) && ($facts['event_id'] !== null);
+            $raw = $named ? $facts['event_id'] : (isset($facts['get_id']) ? $facts['get_id'] : null);
+
+            if (!$named && (!is_scalar($raw) || empty($raw))) {
+                return $page_itself;
+            }
+
+            $id = $int($named ? 'event_id' : 'get_id');
+
+            return ($id > 0) ? array('item_type' => 'calendar_event', 'item_id' => $id) : null;
+    }
+
+    return null;
+}
+
+/**
+ * The facts pg_comment_address_item() decides from, read for the page
+ * $page_id drawn for this request's address: the catalog item of the
+ * address (get_catalog_item_from_url(), cached per request), a catalog
+ * page's own product group and, only when it has none, the top-level group,
+ * the event the render's sender names ($ctx 'calendar_event_id', as
+ * pg_sw_render_context() carries the search index's dynamic properties) and
+ * ?id=. A page type with no item in its address reads nothing.
+ *
+ * @param int   $page_id
+ * @param mixed $page_type
+ * @param mixed $ctx pg_sw_render_context()
+ * @return array
+ */
+function pg_comment_address_item_facts($page_id, $page_type, $ctx)
+{
+    $page_type = is_string($page_type) ? $page_type : '';
+    $ctx = is_array($ctx) ? $ctx : array();
+    $facts = array('address_item' => null, 'catalog_group_id' => 0, 'top_group_id' => 0, 'event_id' => null, 'get_id' => null);
+
+    if (($page_type === 'catalog') || ($page_type === 'catalog detail')) {
+        $page_param = isset($_GET['page']) ? $_GET['page'] : null;
+
+        if (is_string($page_param) && (mb_strpos($page_param, '/') !== false)) {
+            $item = get_catalog_item_from_url();
+            $facts['address_item'] = array(
+                'id' => (is_array($item) && isset($item['id'])) ? $item['id'] : '',
+                'type' => (is_array($item) && isset($item['type'])) ? $item['type'] : '',
+            );
+        } elseif ($page_type === 'catalog') {
+            $properties = get_page_type_properties((int) $page_id, 'catalog');
+            $facts['catalog_group_id'] = (is_array($properties) && isset($properties['product_group_id'])) ? $properties['product_group_id'] : 0;
+
+            if ((int) $facts['catalog_group_id'] <= 0) {
+                $facts['top_group_id'] = db_value("SELECT id FROM product_groups WHERE parent_id = '0'");
+            }
+        }
+    } elseif ($page_type === 'calendar event view') {
+        $facts['event_id'] = isset($ctx['calendar_event_id']) ? $ctx['calendar_event_id'] : null;
+        $facts['get_id'] = isset($_GET['id']) ? $_GET['id'] : null;
+    }
+
+    return $facts;
+}
+
 // Moderation of a stored comment: which form record it belongs to, and that
 // record's counters.
 //

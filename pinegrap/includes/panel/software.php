@@ -301,7 +301,7 @@ function pg_panel_software_update($request, $action)
     if (!USER_LOGGED_IN) {
         respond(array(
             'status' => 'error',
-            'message' => 'Invalid login.'
+            'message' => lang('Invalid login.')
         ));
     }
     $user = validate_user();
@@ -378,7 +378,7 @@ function pg_panel_software_update($request, $action)
                 //return error json output
                 $response = array(
                     'status' => 'error',
-                    'message' => 'No access to the update server.'
+                    'message' => lang('No access to the update server.')
                 );
                 echo encode_json($response);
                 exit();
@@ -389,7 +389,7 @@ function pg_panel_software_update($request, $action)
                 //return error json output
                 $response = array(
                     'status' => 'error',
-                    'message' => 'No response from the update server.'
+                    'message' => lang('No response from the update server.')
                 );
                 echo encode_json($response);
                 exit();
@@ -468,7 +468,7 @@ function pg_panel_software_update($request, $action)
                 //return error json output
                 $response = array(
                     'status' => 'error',
-                    'message' => 'There is no update available.'
+                    'message' => lang('There is no update available.')
                 );
                 echo encode_json($response);
                 exit();
@@ -477,7 +477,7 @@ function pg_panel_software_update($request, $action)
             //return success json output
             $response = array(
                 'status' => 'success',
-                'message' => 'Downloading...'
+                'message' => lang('Downloading...')
             );
             echo encode_json($response);
             exit();
@@ -517,7 +517,7 @@ function pg_panel_software_update($request, $action)
 
                 $response = array(
                     'status' => 'error',
-                    'message' => 'The update server returned HTTP ' . $http_status . ' instead of the update package.'
+                    'message' => lang(array('string' => 'The update server returned HTTP {var:1} instead of the update package.', 'vars' => array($http_status)))
                 );
                 echo encode_json($response);
                 exit();
@@ -530,7 +530,7 @@ function pg_panel_software_update($request, $action)
 
                 $response = array(
                     'status' => 'error',
-                    'message' => 'The download was cut short (' . strlen($raw) . ' of ' . $expected_bytes . ' bytes). Please try again.'
+                    'message' => lang(array('string' => 'The download was cut short ({var:1} of {var:2} bytes). Please try again.', 'vars' => array(strlen($raw), $expected_bytes)))
                 );
                 echo encode_json($response);
                 exit();
@@ -541,7 +541,7 @@ function pg_panel_software_update($request, $action)
 
                 $response = array(
                     'status' => 'error',
-                    'message' => 'What was downloaded is not a zip archive. A proxy or firewall may have replaced the response.'
+                    'message' => lang('What was downloaded is not a zip archive. A proxy or firewall may have replaced the response.')
                 );
                 echo encode_json($response);
                 exit();
@@ -555,7 +555,7 @@ function pg_panel_software_update($request, $action)
                 //return error json output
                 $response = array(
                     'status' => 'error',
-                    'message' => 'Error while get files from the update server.' . pg_curl_tls_hint($curl_errno)
+                    'message' => lang(array('string' => 'Error while get files from the update server.{var:1}', 'vars' => array(pg_curl_tls_hint($curl_errno))))
                 );
                 echo encode_json($response);
                 exit();
@@ -575,7 +575,7 @@ function pg_panel_software_update($request, $action)
             if ($fp === false) {
                 $response = array(
                     'status' => 'error',
-                    'message' => 'Could not create the update file. Check write permission for the software directory.'
+                    'message' => lang('Could not create the update file. Check write permission for the software directory.')
                 );
                 echo encode_json($response);
                 exit();
@@ -591,7 +591,7 @@ function pg_panel_software_update($request, $action)
 
                 $response = array(
                     'status' => 'error',
-                    'message' => 'The update file could not be written completely. The disk may be full.'
+                    'message' => lang('The update file could not be written completely. The disk may be full.')
                 );
                 echo encode_json($response);
                 exit();
@@ -599,7 +599,7 @@ function pg_panel_software_update($request, $action)
             //zip file download success we can go step 3: replace the software files
             $response = array(
                 'status' => 'success',
-                'message' => 'Files overwriting...'
+                'message' => lang('Files overwriting...')
             );
             echo encode_json($response);
             exit();
@@ -705,7 +705,7 @@ function pg_panel_software_update($request, $action)
             //return success json output
             $response = array(
                 'status' => 'success',
-                'message' => 'Success. Being redirected for Upgrade.'
+                'message' => lang('Success. Being redirected for Upgrade.')
             );
             echo encode_json($response);
             exit();

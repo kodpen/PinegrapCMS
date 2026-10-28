@@ -23,16 +23,16 @@ description: Plan (owner request 2026-10-27, draft): flow API beyond the removed
 
 - A6 templates done (PR #2298): `GET /workspace/flow-templates`; `POST /workspace/flows` with `template` and `answers` (workspace-flows-api-templates.md). Never publishes.
 
-- A7 done (PR #2388): `workspace.flow.run.finished`, `.failed`, `.waiting` (workspace-flows-run-events.md). The run-level result waits for C1, as A5's flag does. Follow-up (decided in #2406): a fourth event `workspace.flow.run.cancelled`, announced once from the cancel's conditional UPDATE with the same body as the other run events, in a small PR.
+- A7 done (PR #2388): `workspace.flow.run.finished`, `.failed`, `.waiting` (workspace-flows-run-events.md). The run-level result waits for C1, as A5's flag does. Follow-up done (PR #2683, decision #2406): `workspace.flow.run.cancelled`.
 
 - A8 done (PR #2467): a `{type: flow}` draft card replaces `{type: scheduled}` (workspace-flow-draft-proposals.md).
 
 ## Where to start?
-- All steps done; open question 1 remains.
+- All steps and question 1 done (PR #2683); the plan is finished. Its rules below live in the topic files, so it can be deleted.
 
 ## Which rules hold?
 - Reads are MCP tools; a key or OAuth connection may write drafts; publishing, changing a live flow and resuming stay the person's own session (#1708 rule).
 - Every new route goes into the OpenAPI schema (`php tools/check_api_schema.php`) with its test.
 
 ## Which questions are answered?
-1. Answered (#2413): yes, an optional `channel_id` on the run start, accepted when the starter reads it and the flow's owner may post there (C2's rule), else 403; the home without it.
+1. Done (PR #2683, decision #2413): optional `channel_id` on the run start (workspace-flows-run-channel.md).

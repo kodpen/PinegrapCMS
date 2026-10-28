@@ -65,6 +65,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - iys-settings-card.md: The İYS card of Settings › Communication (includes/iys/settings.php): fields, save decision, brand check, cursor keys kept, iys_job switched on, what was not verified
 - language-address-prefix.md: A target language's address prefix (/en/, /pt-br/): lower case everywhere, fallback to the lower-cased code, collision check in the languages save, router matching
 - license-check.md: When the panel's licence check (license_check() in includes/fn/output.php) asks the licence server: once per session, 12 hours after an answer, 15 minutes after a failed attempt, once per request
+- main-host-redirect.md: Redirect to the main host (config.main_host_redirect, 11.0.52, #2179): which requests get a 301 to config.hostname, which never do, why it starts off everywhere
 - maintenance-mode-end-time.md: How Settings › General reads the maintenance end time (the zone of the same save) and when a passed end time refuses the save (only switching on or a new end)
 - maintenance-mode-health.md: Maintenance mode (503 + Retry-After on page renders only, who passes, end time) and health.php for uptime monitors (statuses, no session); settings, status tile, API field
 - not-found-log.md: The 404 log (2026.11.0, 11.0.30, not_found_log): which 404s are recorded and which not, bots and verified crawlers, the end-of-request write, row cap and 90 days, the screen and its Create redirect
@@ -86,6 +87,8 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - page-file-cache.md: Pinegrap's own page cache on disk (PR #1402): router serving, the key, when a page is stored, stale copies, the sweep, what a hit skips
 - page-rename-redirect.md: A renamed page's old address as a 301 short link to the page (2026.11.0): where it is offered, what is skipped, why a redirect of the page's own gives its name back
 - performance-monitor-cost.md: Performance monitor cost rules (perf_monitor_shutdown()): hourly perf_stats buckets, slow requests only in perf_log, no percentile, sanity gate, flush-gated sweep, row cap, sampling.
+- record-breadcrumb-list-step.md: The middle step of a post's BreadcrumbList JSON-LD: the list page that links its records to the record page (pg_record_list_page(), #2181), how one is picked, when there is none
+- record-page-schema-type.md: A custom form chooses the schema.org type of its record pages (BlogPosting, Article, NewsArticle, none); where it is stored, read and set.
 - redirect-after-hostname.md: Never append raw input after HOSTNAME in a redirect; use pg_safe_redirect_path() everywhere and why it checks only the first two characters (a design decision).
 - redirect-validator-context.md: Redirect validation corner rules: leave escape_url() alone, validators are context-bound (pg_safe_back_url vs go()), go() hardening, no hand-written checks.
 - router-no-functions-php.md: What runs before functions.php is loaded (router.php, the firewall's router phase, get_file.php), why lang() is unavailable there, and the waf_text() / get_file_text() wrappers.

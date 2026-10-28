@@ -222,14 +222,14 @@ if (!$_POST) {
 			
 		        $rootPath = realpath($dir);
 		        if (!$rootPath || !is_dir($rootPath)) {
-		            die("Backup folder not found or inaccessible.");
+		            output_error(lang('Backup folder not found or inaccessible.'));
 		        }
 			
 		        $zip = new ZipArchive();
 		        $openResult = $zip->open($zip_file, ZipArchive::CREATE | ZipArchive::OVERWRITE);
 			
 		        if ($openResult !== true) {
-		            die("Failed to create ZIP archive. Error code: " . $openResult);
+		            output_error(lang(array('string' => 'Failed to create ZIP archive. Error code: {var:1}', 'vars' => array((int) $openResult))));
 		        }
 			
 		        $iterator = new RecursiveIteratorIterator(
@@ -252,13 +252,13 @@ if (!$_POST) {
 			
 		        // Fallback: check if zip was created and has content
 		        if (!file_exists($zip_file) || filesize($zip_file) < 100) {
-		            die("ZIP creation failed or resulted in empty archive.");
+		            output_error(lang('ZIP creation failed or resulted in empty archive.'));
 		        }
 		    }
 		
 		    // Serve the ZIP file
 		    if (!is_readable($zip_file)) {
-		        die("ZIP file not readable.");
+		        output_error(lang('ZIP file not readable.'));
 		    }
 		
 		    header('Content-Description: File Transfer');

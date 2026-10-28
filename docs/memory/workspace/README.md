@@ -24,6 +24,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 
 ## Files
 
+- mail-parse.md: Incoming mail MIME parser pg_mail_parse() (G1a of incoming e-mail): result shape, charset fallback, limits, error codes, what it leaves to ws_mail_ingest()
 - workspace-ai-rewrite.md: "Rewrite with AI" in the Workspace composer (ai_write target ws_message): what the model reads, the button, Use as one undo step, tags kept, no AI mark
 - workspace-api-callers.md: Which Workspace API writes the person must make themselves: ws_api_person_only() vs ws_api_own_words_only(), whose name a write carries, refusals, which are no MCP tools
 - workspace-api-channel-customer.md: A channel's customer over the Workspace API and MCP (PR #1766): customer_type and customer_id on channels.create and channels.update, one half alone refused, null clears, the user role's contact rule
@@ -63,12 +64,14 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-customer-card.md: The customer card on a Workspace channel's Summary tab (CRM seams slice 3, #1666): the API's customer summary through the ws_channel_customer panel action, addresses per row, ids kept back
 - workspace-customer-history.md: A channel's customer history (CRM seams slice 4, #1681): union read of orders, invoices, quotes, forms and Workspace tags, rights per source, paging, API route, card part
 - workspace-customer-summary.md: A channel's customer summary (GET /workspace/channels/{id}/customer): identity, orders, ERP balance, sales quotes, forms; rights and key scopes per section, money, the cart quote seam
+- workspace-editor-autoformat.md: Autoformat while typing in a Workspace writing box: ==x== to a highlight, "- " "* " "1. " "> " at a line's start to a list or quote; one undo, IME and paste guards, the per-viewer off switch
 - workspace-editor-link-keys.md: The link tip's Text field (linkText()) and the Ctrl+/ shortcut sheet (openKeys(), shortcutRows(), keyLabel()) of the Workspace writing boxes, since #2101
 - workspace-editor-lists.md: Lists and quotes in the Workspace writing box (#1897): twins of the server's rules, lines written back as stored, keys, the three tools, a pick inside a mark, select all and delete
 - workspace-editor-smart-paste.md: Pasting into a Workspace writing box (#2018): HTML mapped to the box's markup and why it is safe, sheet ranges to the table window, a URL over words, a note's picture
 - workspace-editor-toolbar.md: One row of tools for every Workspace writing box (PGWsEditor.toolbar()); marks made on the nodes by format(), never execCommand; waiting marks, IME, pressed state, undo, labels
 - workspace-empty-states.md: Workspace empty lists with a small theme-coloured drawing (emptyState(), the shared ART kit / window.PGWsArt) and skeleton rows instead of "Loading…" (U4, PR #2027)
 - workspace-file-manager-files.md: A file of the file manager posted into a Workspace channel as a copy (library.php): "Send to a channel" in the file manager, "From the file manager" under the paperclip; who may pick what, refusals
+- workspace-flow-ai-drafts.md: Pinegrap AI drafts a flow (propose_flow, read_flow; D8a, #2605): catalogue schema, new graph or patch, automatic layout, the A8 draft card, a patch card opened onto its flow
 - workspace-flow-draft-proposals.md: An application proposes a flow as a draft card ({type: flow} in workspace.changes.propose, A8): what is sent, checked, kept, how the card opens it, what happens to {type: scheduled}
 - workspace-flows-anchors.md: Flow start boxes at a time, on an event, on a join (F4d, #2006, flow_anchors.php): the hidden anchor, the converted anchor (anchor column 11.0.88), publish sync, starts, write-back, lists
 - workspace-flows-api-filters.md: Flow list filters start, status, channel_id, updated_since and the start/start_text of GET /workspace/flows/{id} (A1, PR #2122); the Flows screen's start filter (C4, PR #2391)
@@ -82,7 +85,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-change-box.md: The change box of a flow (F4b3, PR #1957): the scheduled change step as a box, its settings, rights, what it writes, and why its record and values reach only the flow's editors
 - workspace-flows-condition-box.md: The condition box of a flow (F4c, PR #1980, flow_conditions.php): one scheduled-action condition, yes/no outcomes, a no without an arrow ends the branch, owner rights, what non-editors read
 - workspace-flows-condition-values.md: A condition box comparing a value of the run (data-passing D7): the value rule, its operators, reference check, how it holds at run time, masking, the canvas picker
-- workspace-flows-converted-anchor.md: A scheduled action converted into a flow (anchor converted, slice 5a): starts by hand and chain, boxes write as the action, the run's end written back with its news
+- workspace-flows-converted-anchor.md: A scheduled action converted into a flow (anchor converted, 5a #2558, 5b): how rows convert after the upgrade, starts, boxes write as the action, write-back, edit by any staff
 - workspace-flows-delay-box.md: The delay box of a flow (F5b, PR #2135): amount and unit up to a week, waits as a waiting box with wake_at, settles done with waited_until, problems, try, canvas form
 - workspace-flows-event-depth.md: The chain depth a flow run's events carry: ws_event_depth() said by a step box around its work, stamped as _depth by ws_event() and pg_event_record(), read by ws_events_start()
 - workspace-flows-from-scheduled.md: A scheduled action as a flow graph (ws_flow_graph_from_scheduled(), PR #2306): how each part maps to a box or arrow, self-retry, money, what is told in left
@@ -90,9 +93,10 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-parity-test.md: tests/workspace_flows_parity_test.php maps every scheduled-action key to the Flows box that keeps it; the changes far from scheduled.php that fail it, how call sites are keyed, what to do
 - workspace-flows-references.md: The reference check of a flow (data-passing D4, PR #2305): bad_reference for {{node.*}} of a missing, later or field-less box; a warning for a box that may not run; Problems list
 - workspace-flows-retry-skip.md: A failed box of a flow run tried again on its own (3d, PR #2275, retry/retry_after) or by hand or skipped (F5a, PR #2098, ws_flow_step_mend()): which boxes, owner only, double click, routes, canvas
-- workspace-flows-run-events.md: Webhook events of flow runs (A7): workspace.flow.run.finished, .failed, .waiting; where each is announced once, the body, words only in public channels, what is never announced
+- workspace-flows-run-channel.md: The channel a flow run opens its tasks in: the flow's home as the run starts, or the channel_id named on POST /workspace/flows/{id}/runs (decision #2413); ws_flow_run_channel_check(), shared with C2
+- workspace-flows-run-events.md: Webhook events of flow runs (A7, #2406): workspace.flow.run.finished, .failed, .cancelled, .waiting; where each is announced once, the body, words only in public channels, what is never announced
 - workspace-flows-run-values.md: What GET /workspace/flow-runs/{id} gives per box beyond its status (A5, #2284): threads_in as the walk reads them, outputs from the result's data, what a reader without edit does not get
-- workspace-flows-run-view.md: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, how it is read again, what a failed read shows
+- workspace-flows-run-view.md: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, the values each box received, how it is read again, what a failed read shows
 - workspace-flows-runner.md: Workspace flow runs (flow_runs.php): start, run channel, walk, task boxes, wake-ups, recovery, drivers, limits, end, cancel, routes
 - workspace-flows-shares.md: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/edit, who manages and publishes, access, runs, Claude's reach, lists, bell row, panel actions, API routes, the Share dialog
 - workspace-flows-steps.md: Step boxes of a flow (steps.php, F4a #1835, F4b #1857, F4b2 #1923, F4b3 #1957): thirteen step kinds run by ws_scheduled_do(), outcomes, owner rights, {{node.ID.FIELD}}, never twice
@@ -138,8 +142,10 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-sales-quote-invoice.md: A sales quote turned into an invoice draft from a change card (erp_quote action invoice, PR #1907): no fields, the shared state rule, the writer erp_quote_to_invoice(), the decision, the proposers
 - workspace-scheduled-actions-api.md: The /workspace/scheduled-actions routes were removed before 2026.11.0 shipped (PR #2107): why, what took their place, what stays (scheduled messages, the draft card)
 - workspace-scheduled-draft-proposals.md: A connected app proposes a scheduled action as a draft card (type scheduled in workspace.changes.propose): body, the save check, how it is kept, why never on a task
+- workspace-screen-companion-scripts.md: Why the Flows canvas and the channel Board tab wait for their own bundle (workspace_flow.js, workspace_board_channel.js) instead of racing ws_bootstrap; the "script did not load" fallback (#2516)
 - workspace-tag-card.md: A Workspace message that is one record tag and nothing else drawn as a card per reader (ws_tag_card_html(), PR #2150): which bodies, what the card shows, rights, where it is drawn, what stays text
 - workspace-task-command.md: The /task (/görev) command in the composer: Enter on its preview card creates the task (same text, card on screen, no leave clash), the / picker finds every Turkish and English name, /help is listed
+- workspace-text-headings.md: Headings "#" to "###" and "---" rules in Workspace notes only (#2649): server rule and fast path, plain text, editor twins, tools, Enter/Backspace, "# " autoformat, the import
 - workspace-text-highlight.md: ==x== as a highlight (<mark>): the pair rule, old shapes that stay text, server and editor twins, plain text, guest page, notes import, sums, table cells
 - workspace-text-lists.md: Lists and quotes in Workspace texts drawn by the server (#1725): which shapes become a list, which stay text so old messages look the same, plain text, guest page, approval mail
 - workspace-ui-notes.md: Where the Workspace screens are drawn and styled, its tokens, colour picker vs plan board legend class names, what a closed section of the channel list shows, cosmetic leftovers
@@ -148,4 +154,5 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-upload-refusals.md: What a Workspace channel refuses to take (ws_upload_refused()): the file manager's list, page and script types, Office files with macros (PR #1322); why, every door it covers, the message
 - workspace-variant-set-change.md: A variant set added from a change card (variant_set, PR #1943): fields, variants and price_rules values, checks, writer, events, matrix card, proposers
 - workspace-voice-recording.md: Voice messages (workspace_voice.js): the mic in place of Send, a sound's reply mic (parent_id on ws_attach and files.create), the 5-minute cap, .weba/.ogg/.m4a names, the player, what is not built
+- workspace-voice-transcripts.md: Voice message transcripts (V3, schema 11.0.89): ws_voice, the settings card with the site's own OpenAI-compatible key, ws_channels.voice_access, the 5-minute cap; what the next slices add
 - workspace-webhook-channel-groups.md: A webhook subscription narrowed to one group of Workspace channels (api_webhooks.channel_group_id, schema 10.76): what it hears, the checks, what removing the group does

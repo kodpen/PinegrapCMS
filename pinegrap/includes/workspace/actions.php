@@ -615,7 +615,7 @@ function ws_handle_action($action, $request)
                 }
 
                 foreach ($blocks as $index => $block) {
-                    $html[] = ($block === '') ? '' : ws_render_body($block, $refs, null, false, array('seed' => $seeds[$index], 'all' => $running));
+                    $html[] = ($block === '') ? '' : ws_render_body($block, $refs, null, false, array('seed' => $seeds[$index], 'all' => $running), null, true);
                 }
 
                 return ws_action_ok(array('blocks' => $html));

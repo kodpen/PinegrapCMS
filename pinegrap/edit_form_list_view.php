@@ -699,9 +699,9 @@ if (!$_POST) {
                         <p>' . $output_custom_form_information . '</p>
                     </div>
                 </div>
-                <dialog class="dialog dialog-xl" id="hints" aria-labelledby="hints">
+                <dialog class="dialog dialog-xl" id="hints" aria-labelledby="hints_title">
                             <div class="dialog-header">
-                                <h5 class="dialog-title">' . lang('Hints') . '</h5>
+                                <h5 class="dialog-title" id="hints_title">' . lang('Hints') . '</h5>
                                 <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                             </div>
                             <div class="dialog-body ">
@@ -724,9 +724,9 @@ if (!$_POST) {
                             </div>
                 </dialog>
                 
-                <dialog class="dialog dialog-xl" id="hints_for_advanced_search" aria-labelledby="hints_for_advanced_search">
+                <dialog class="dialog dialog-xl" id="hints_for_advanced_search" aria-labelledby="hints_for_advanced_search_title">
                             <div class="dialog-header">
-                                <h5 class="dialog-title">' . lang('Hints') . '</h5>
+                                <h5 class="dialog-title" id="hints_for_advanced_search_title">' . lang('Hints') . '</h5>
                                 <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                             </div>
                             <div class="dialog-body ">

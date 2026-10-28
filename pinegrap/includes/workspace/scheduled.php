@@ -2675,7 +2675,19 @@ function ws_scheduled_present($viewer, $row, $full = false)
         'can_edit'    => in_array($row['status'], array('active', 'paused', 'failed'), true),
         // What the form is filled with when it is changed.
         'data'        => ws_scheduled_form_data($viewer, $row),
+        'flow'        => null,
     );
+
+    // A converted action is changed on its flow's canvas, where its
+    // conditions, step and follow-ups are boxes.
+    if (ws_scheduled_anchor_converted($row) && function_exists('ws_flow')) {
+        $flow = ws_flow((int) $row['flow_id']);
+        $flow_name = is_array($flow) ? (string) $flow['name'] : (string) $row['name'];
+
+        $out['flow'] = array('id' => (int) $row['flow_id'], 'name' => $flow_name);
+        $out['action_text'] = lang(array('string' => 'runs the flow “{var:1}”', 'vars' => $flow_name));
+        $out['data'] = null;
+    }
 
     if ($full) {
         $out['history'] = array();
@@ -3068,6 +3080,12 @@ function ws_scheduled_save_check($viewer, $data)
         return $fail(422, lang('A scheduled action that is done or cancelled cannot be changed.'));
     }
 
+    // Its rules, step and follow-ups are its flow's boxes now: the form
+    // would write them over the flow's start.
+    if ($existing && ws_scheduled_anchor_converted($existing)) {
+        return $fail(422, lang('This scheduled action runs as a flow now: change it on the flow canvas.'));
+    }
+
     $checked = ws_scheduled_input($viewer, $data, $existing);
 
     if (!$checked['ok']) {
@@ -3389,6 +3407,12 @@ function ws_scheduled_due()
 function ws_scheduled_run($limit = WS_SCHEDULED_BATCH, $flow_budget = 0)
 {
     $result = array('ran' => 0, 'skipped' => 0, 'failed' => 0);
+
+    // Scheduled actions not yet converted into flows become flows first
+    // (scheduled_convert.php), so they run below as converted anchors.
+    if (function_exists('ws_scheduled_convert_due')) {
+        ws_scheduled_convert_due();
+    }
 
     // What happened on the site since the last run: the actions it starts
     // are queued and read below, the channels watching its records are told
@@ -5075,8 +5099,8 @@ function ws_scheduled_js_strings()
         'sa_rule_workday'   => lang('Only on a working day'),
         'sa_rule_weekdays'  => lang('Only on some days of the week'),
         'sa_rule_hours'     => lang('Only between some hours'),
-        'sa_from'           => lang('From'),
-        'sa_to_time'        => lang('To'),
+        'sa_from'           => lang('Start'),
+        'sa_to_time'        => lang('End'),
         'sa_metric'         => lang('Count'),
         'sa_metric_channel' => lang('Tasks of'),
         'sa_metric_all'     => lang('All channels'),

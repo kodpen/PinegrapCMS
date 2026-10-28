@@ -1138,7 +1138,7 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'from',        'in' => 'query', 'type' => 'datetime'),
 				array('name' => 'to',          'in' => 'query', 'type' => 'datetime'),
-				array('name' => 'source',      'in' => 'query', 'type' => 'enum', 'values' => array('panel', 'api', 'job')),
+				array('name' => 'source',      'in' => 'query', 'type' => 'enum', 'values' => array('panel', 'api', 'job', 'site')),
 				array('name' => 'user',        'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'A number is a user id (the operator, or the owner of an application); any other text matches part of the name the line was written under.'),
 				array('name' => 'action',      'in' => 'query', 'type' => 'string', 'max_length' => 64, 'description' => 'create, update, delete, recycle, restore, rotate, revoke, cancel, refund, export or erase.'),
 				array('name' => 'entity_type', 'in' => 'query', 'type' => 'string', 'max_length' => 32, 'description' => 'settings, user, product, page, order, order_return, file, offer, api_app, api_key, api_device, oauth_client, person or audit.'),
@@ -3015,6 +3015,25 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'auth.pair',
+			'method'  => 'POST',
+			'path'    => '/auth/pair',
+			'scope'   => '',
+			'public'  => true,
+			'handler' => 'api_auth_pair',
+			'returns' => 'AuthSession',
+			'status'  => 201,
+			'summary' => 'Sign a person in on a device with a pairing code',
+			'description' => 'The other way into POST /auth/login\'s session: the person shows a pairing code as a QR on the site (Pair a device), signed in there, and the app scans it. The QR holds JSON, {"pinegrap":"pair","v":1,"api_base":…,"code":"pgpc_…"}; send its code here. A code works once and for five minutes, and only through the Team devices application that was switched on when it was made. An unknown, used or expired code is 401 pairing_invalid; after ten of those from one address in fifteen minutes the answer is 429 with Retry-After. No password or two-step code is asked: the person passed both when they signed in to the site. The answer is the same session as POST /auth/login gives.',
+			'params'  => array(
+				array('name' => 'code',        'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The code from the QR, pgpc_ and 48 hex characters.'),
+				array('name' => 'device_name', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'What the person will recognise in their device list, such as "Ayşe\'s phone".'),
+				array('name' => 'platform',    'in' => 'body', 'type' => 'enum', 'values' => array('ios', 'android', 'web', 'desktop', 'other'), 'default' => 'other'),
+				array('name' => 'app_version', 'in' => 'body', 'type' => 'string', 'max_length' => 40)
+			)
+		),
+
+		array(
 			'id'      => 'auth.refresh',
 			'method'  => 'POST',
 			'path'    => '/auth/refresh',
@@ -3255,6 +3274,7 @@ function api_error_catalogue() {
 		'credentials_missing'      => array(401, 'No key and secret were sent. Authentication is HTTP Basic.'),
 		'unauthorized'             => array(401, 'The key is unknown or the secret is wrong. The two are not told apart on purpose.'),
 		'token_expired'            => array(401, 'The device\'s access token has run out. Renew it with POST /auth/refresh and repeat the call.'),
+		'pairing_invalid'          => array(401, 'The pairing code is unknown, was used already or has run out. The person shows a new one on the site.'),
 		'mfa_required'             => array(401, 'The account uses two-step verification. POST /auth/login wants the code from the authenticator app, or a recovery code, in otp.'),
 
 		'insufficient_scope'       => array(403, 'The application does not hold the permission this endpoint needs.'),

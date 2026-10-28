@@ -283,7 +283,7 @@ pg_page_shell([
                                         $status = response.status;
                                         if($status == "success"){
                                             Progress.attr("style","width:100%");
-                                            LogBox.html(response.message);
+                                            LogBox.text(response.message);
                                             window.setTimeout(function(){
                                                 window.location.replace("?mode=autoupgrade");
                                             }, 3000);
@@ -291,7 +291,7 @@ pg_page_shell([
                                         }else{
 
                                             Progress.addClass("bg-danger").removeClass("progress-bar-animated").attr("style","width:100%");
-                                            LogBox.html(response.message);
+                                            LogBox.text(response.message);
                                             update_btn.text("' . lang('Retry Update') . '").removeClass("disabled").addClass("ready");
                                         }
                                     }

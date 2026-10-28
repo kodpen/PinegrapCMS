@@ -1528,8 +1528,15 @@ function get_logout_screen()
         $output = get_page_content($row['page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = false, $dynamic_properties = array(), $toolbar = false, ($_SESSION['software']['device_type'] ?? ''));
         // else there is not a login page, so use default screen
     } else {
+        // The default screen, on the sign-in card inside
+        // output_header_secure()'s Bootstrap 6. The sentence also fills a
+        // logout page's system layout, so its trailing line break is
+        // dropped here rather than in get_logout_screen_content().
         require_once(PG_FUNCTIONS_DIR . '/get_logout_screen_content.php');
-        $output = output_header_secure() . get_logout_screen_content() . output_footer_secure();
+        $content = preg_replace('#(\s*<br\s*/?>)+\s*$#i', '', get_logout_screen_content());
+        $output = output_header_secure(array('title' => lang('Logout')))
+            . pg_secure_card('bi-box-arrow-right', lang('Logout'), '<p class="mb-0">' . $content . '</p>')
+            . output_footer_secure();
     }
     return $output;
 }
@@ -1603,9 +1610,11 @@ function log_activity($description, $user = '')
     if (($user == '') && defined('USER_USERNAME')) {
         $user = USER_USERNAME;
     }
-    // No remote address when the software runs from the command line, which is
-    // how the scheduled jobs reach this function.
-    $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
+    // The address the session rows carry (includes/authentication.php): the
+    // visitor behind a trusted proxy as the firewall resolves it, else the
+    // peer. Empty when the software runs from the command line, which is how
+    // the scheduled jobs reach this function.
+    $ip = pg_auth_request_address();
 
     $query = "INSERT INTO log (log_description, log_ip, log_user, log_timestamp) VALUES (?, ?, ?, UNIX_TIMESTAMP())";
     $result = db_q($query, array((string) $description, (string) $ip, (string) $user)) or output_error(lang('Query failed.'));

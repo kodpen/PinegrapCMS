@@ -1,12 +1,11 @@
 ---
 name: comments-widget-hand-off
-description: How the comments widget and the classic comments block share a page: the pages left to the classic block, the per-pass claim record, what a claim silences, lists that never claim
+description: How the comments widget and the classic comments block share a page: the page type left to the classic block, the per-pass claim record, what a claim silences, lists that never claim
 ---
 
 ## Which pages does the widget leave to the classic block?
-- `pg_comments_widget_classic_thread($page_type, $has_record_widget)` (pure, `includes/fn/widgets_comments.php`): a `form item view` page always; a `catalog`, `catalog detail` or `calendar event view` page (`pg_comment_classic_item_types()`) unless a top-level form_item_view widget decides the thread (the classic block then reads that record's thread too).
-- There the widget prints nothing and does not claim the page, so the classic block keeps drawing the item in the address (product, product group, event, the `?r=` record or the search index's form id) with its review gate, and the search index keeps each event's and record's own comments.
-- Why: the widget serves page-level and designed-record threads only; per-product and per-event threads are deferred (owner, 2026-10-23). Claiming first, it had shown every item's comments on such a page and posted new ones to the page's own thread ('' / 0), and on a `form item view` page it had printed nothing while silencing the block.
+- `pg_comments_widget_classic_thread($page_type, $has_record_widget)` (pure, `includes/fn/widgets_comments.php`): a `form item view` page only. There the widget prints nothing and does not claim the page, so the classic block keeps drawing the `?r=` record or the search index's form id. Claiming it, the widget had printed nothing while silencing the block.
+- A `catalog`, `catalog detail` or `calendar event view` page is the widget's since slice 20a: it reads the item in the address as the classic block does, with the review rules ([[comments-widget-item-threads]]). Until then (#2410) it was left to the classic block: claiming first, the widget had shown every item's comments on such a page and posted new ones to the page's own thread ('' / 0).
 
 ## When does it claim, and what does a claim do?
 - After that check, before every other refusal: comments off, a record the visitor may not see, a form_item_view below the top level (fail closed). The widget owns the thread even when it then prints nothing; a second comments widget on the page finds the claim and prints nothing.

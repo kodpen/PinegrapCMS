@@ -166,11 +166,11 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
 
                                 }
                                 if(response.status == "error"){
-                                    alert(response.status + ": " + response.message);
+                                    alert(response.message);
                                 }
                             },
                             error: function() {
-                                alert("Please try again");
+                                alert("' . escape_javascript(lang('Please try again.')) . '");
                             }
                         });
                     }
@@ -220,7 +220,7 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
         ) {
             respond(array(
                 'status' => 'error',
-                'message' => 'Invalid token.'));
+                'message' => lang('Invalid token.')));
         }
     }
 
@@ -230,7 +230,7 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
     if (!USER_LOGGED_IN) {
         respond(array(
             'status' => 'error',
-            'message' => 'Invalid login.'));
+            'message' => lang('Invalid login.')));
     }
     // User Must be logged in.
     $user = validate_user();
@@ -353,7 +353,7 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
         default:
             $response = array(
                 'status' => 'error',
-                'message' => 'Invalid action.');
+                'message' => lang('Invalid action.'));
             echo encode_json($response);
             exit();
             break;

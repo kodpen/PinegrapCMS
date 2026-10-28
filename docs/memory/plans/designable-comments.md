@@ -1,6 +1,6 @@
 ---
 name: designable-comments
-description: Plan (1-19 and 3b done; 20 open, waits for the owner): comments as a designable system widget kind; what slice 20 (product and event threads) needs and where to start
+description: Plan (1-19, 3b and 20a done; 20b-20c open): comments as a designable system widget kind; the steps of slice 20 (product and event threads) and where to start
 ---
 
 ## What did the owner decide (2026-10-23)?
@@ -17,12 +17,13 @@ description: Plan (1-19 and 3b done; 20 open, waits for the owner): comments as 
 - Slices 1-19 and 3b, one PR each (#1461-#1620): thread checks on designed and classic pages, counters and submitter mail on moderation, member names, `parent_id` and replies, the shared rule helpers, the widget (read, form, replies and quotes, watch and staff controls, pages and permalinks), its panel, canvas and Preview, Make designable and back, save warnings, template kinds, comment e-mails. The recent mode followed (#1619, #1638, #1679), and the forum template uses the widget since 1.1.0 (#1658). Topic files: [[comments-widget]] and the `comments-widget-*` files in designer/.
 
 ## What is left?
-- 20. Product and event threads in the widget. Today `pg_comments_widget_classic_thread()` leaves a `catalog` (product_group), `catalog detail` (product, product_group) or `calendar event view` (calendar_event) page without a top-level record view to the classic block, which picks the item in the address (`pg_comment_classic_item_types()`, [[comments-widget-hand-off]]).
-- It needs: the thread key from the address as the classic block reads it (product or group id, event id and recurrence); `pg_comment_thread_verify()` already checks those ids (slice 2); the review rules of a product thread (verified purchase, store reply, rating recount `pg_review_comment_changed()`: `commerce/product-reviews-verified.md`, `product-review-store-reply.md`); tokens and flags for them, the canvas samples and the panel; the search index's per-event comments; then `pg_comments_widget_classic_thread()` hands those pages to the widget, and Make designable offers them.
-- Size: more than one PR; cut it into steps of about 1,000 product lines when the owner says go.
+- 20. Product and event threads in the widget, in steps of about 1,000 product lines:
+  - 20a (server side, done #2678): `pg_comments_widget_classic_thread()` keeps only `form item view`; the widget reads the item in the address (`pg_comment_address_item()`), checks it with `pg_comment_thread_verify()`, keeps the review rules (verified only, newest first, the buyer gate), the search index's per-event comments. [[comments-widget-item-threads]].
+  - 20b (`style_designer.js`, after #2600): canvas states and samples for a product, a group and an event thread; dedicated tokens and flags (review thread, item name) in the PHP and JS lists together; the panel and Make designable offering catalog, catalog detail and calendar event view pages.
+  - 20c (if needed): comment e-mails for item threads (links to the item's address); `aggregateRating` on designer product pages (`commerce/product-reviews-verified.md`).
 
 ## What was decided for slice 20? (#2410)
 - Build it (M): the widget reads the item in the address on catalog detail and event pages, with a canvas state; product reviews become designable.
 
 ## Where to start?
-- Read [[comments-widget-hand-off]] and [[designable-comments-contract]], then write the steps of slice 20 into this file before the first draft PR.
+- 20b: read [[comments-widget-item-threads]] and [[comments-widget-canvas]], then `_sdCommentsSample*` and the comments panel in `style_designer.js`.

@@ -147,15 +147,10 @@ if ($filter != 'all_duplicate_contacts') {
     $increase_year['stop_day'] = '31';
     $increase_year['stop_year'] = (int)($_SESSION['software']['view_contacts']['start_year'] ?? '') + 1;
 
-    $decrease_month['new_time'] = mktime(0, 0, 0, (int)($_SESSION['software']['view_contacts']['start_month'] ?? '') - 1, 1, (int)($_SESSION['software']['view_contacts']['start_year'] ?? ''));
-    $decrease_month['new_month'] = date('m', $decrease_month['new_time']);
-    $decrease_month['new_year'] = date('Y', $decrease_month['new_time']);
-    $decrease_month['start_month'] = $decrease_month['new_month'];
-    $decrease_month['start_day'] = '01';
-    $decrease_month['start_year'] = $decrease_month['new_year'];
-    $decrease_month['stop_month'] = $decrease_month['new_month'];
-    $decrease_month['stop_day'] = date('t', $decrease_month['new_time']);
-    $decrease_month['stop_year'] = $decrease_month['new_year'];
+    // The arrows of the month unit step from the last month on screen
+    // (pg_list_period_month_steps()).
+    $month_steps = pg_list_period_month_steps($_SESSION['software']['view_contacts'] ?? array());
+    $decrease_month = $month_steps['previous'];
 
     $current_month['new_month'] = date('m');
     $current_month['new_year'] = date('Y');
@@ -166,15 +161,7 @@ if ($filter != 'all_duplicate_contacts') {
     $current_month['stop_day'] = date('t');
     $current_month['stop_year'] = $current_month['new_year'];
 
-    $increase_month['new_time'] = mktime(0, 0, 0, (int)($_SESSION['software']['view_contacts']['start_month'] ?? '') + 1, 1, (int)($_SESSION['software']['view_contacts']['start_year'] ?? ''));
-    $increase_month['new_month'] = date('m', $increase_month['new_time']);
-    $increase_month['new_year'] = date('Y', $increase_month['new_time']);
-    $increase_month['start_month'] = $increase_month['new_month'];
-    $increase_month['start_day'] = '01';
-    $increase_month['start_year'] = $increase_month['new_year'];
-    $increase_month['stop_month'] = $increase_month['new_month'];
-    $increase_month['stop_day'] = date('t', $increase_month['new_time']);
-    $increase_month['stop_year'] = $increase_month['new_year'];
+    $increase_month = $month_steps['next'];
 
     $decrease_week['start_date_timestamp'] = mktime(0, 0, 0, (int)($_SESSION['software']['view_contacts']['start_month'] ?? ''), (int)($_SESSION['software']['view_contacts']['start_day'] ?? ''), (int)($_SESSION['software']['view_contacts']['start_year'] ?? ''));
     // if start date is a Sunday, use last Sunday (add 12:00:00 to prevent a bug that results in Saturday being returned)
@@ -255,12 +242,8 @@ if ($filter != 'all_duplicate_contacts') {
     $increase_day['stop_day'] = $increase_day['new_day'];
     $increase_day['stop_year'] = $increase_day['new_year'];
 
-    // Output start date range time
-    $output_date_range_time = h(get_month_name_from_number(($_SESSION['software']['view_contacts']['start_month'] ?? '')) . ' ' . ($_SESSION['software']['view_contacts']['start_day'] ?? '') . ', ' . ($_SESSION['software']['view_contacts']['start_year'] ?? ''));
-    $output_date_range_time .= ' - ';
-
-    // Output end date range time
-    $output_date_range_time .= h(get_month_name_from_number(($_SESSION['software']['view_contacts']['stop_month'] ?? '')) . ' ' . ($_SESSION['software']['view_contacts']['stop_day'] ?? '') . ', ' . ($_SESSION['software']['view_contacts']['stop_year'] ?? ''));
+    // The range on screen, in the site's date order.
+    $output_date_range_time = h(pg_list_period_heading($_SESSION['software']['view_contacts'] ?? array()));
 
 // else this is the all duplicate contacts filter so hide the date range
 } else {
@@ -505,7 +488,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     }
 
     // merge the contacts, then refresh the screen with a notice
-    $number_of_merged_contacts = merge_contacts($contacts_to_merge);
+    $number_of_merged_contacts = merge_contacts($contacts_to_merge, $number_of_refused_groups);
     
     $notice = '';
     
@@ -521,6 +504,13 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     // else output a notice informing the user that no contacts where merged.
     } else {
         $notice = lang('No contacts were merged. Contacts tied to User accounts cannot be merged.');
+    }
+    
+    // a group where more than one contact has an ERP account was left as it is
+    if ($number_of_refused_groups > 0) {
+        $notice .= ' ' . lang(array(
+            'string'=>'{var:1} group(s) of duplicate contacts were not merged: more than one contact of the group has a current account.',
+            'vars'=>pg_format_number($number_of_refused_groups, 0) ));
     }
     
     $liveform->add_notice($notice);
@@ -624,7 +614,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $output_contact_group_selection = '
         <div class="input-group input-group-sm w-auto'. $show_hide_contact_group_select .'">
             <label class="input-group-text material-icons" title="' . lang('Group') . '" for="contact_group">groups</label>
-            <select id="contact_group" name="contact_group" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . $output_contact_group_options . '</select>
+            <select id="contact_group" aria-label="' . h(lang('Group')) . '" name="contact_group" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . $output_contact_group_options . '</select>
         </div>';
         $output_advanced_filters_value = 'true';
         $output_advanced_filters_label = lang('Add Advanced Filters');
@@ -699,9 +689,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
 
             // Output select box.
             $output_opt_status = '
-                <select class="form-control" id="opt_in_status" name="opt_in_status"><option value="any"' . $opt_in_status_any_selected . '>' . lang('Any') . '</option><option value="opt_in"' . $opt_in_status_opt_in_selected . '>Opt-In</option><option value="opt_out"' . $opt_in_status_opt_out_selected . '>Opt-Out</option></select>';
+                <select class="form-control" id="opt_in_status" name="opt_in_status"><option value="any"' . $opt_in_status_any_selected . '>' . lang('Any') . '</option><option value="opt_in"' . $opt_in_status_opt_in_selected . '>' . lang('Opt-In') . '</option><option value="opt_out"' . $opt_in_status_opt_out_selected . '>' . lang('Opt-Out') . '</option></select>';
         } else {
-            $output_opt_status = 'Opt-In';
+            $output_opt_status = lang('Opt-In');
         }
 
         // If any of the Membership filters are not on.
@@ -1024,11 +1014,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     if ($filter != 'all_duplicate_contacts') {
         // if the user has selected to show contact groups, then prepare toggle to hide contact groups
         if (($_SESSION['software']['view_contacts']['show_contact_groups'] ?? '') == true) {
-            $output_contact_groups_toggle = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php?filter=' . h($filter) . '&show_contact_groups=false" title="Hide Contact Groups">' . lang('Hide Groups') . '</a>';
+            $output_contact_groups_toggle = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php?filter=' . h($filter) . '&show_contact_groups=false" title="' . h(lang('Hide Contact Groups')) . '">' . lang('Hide Groups') . '</a>';
         
         // else set the show groups toggle link's value and label
         } else {
-            $output_contact_groups_toggle = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php?filter=' . h($filter) . '&show_contact_groups=true" title="Show Contact Groups">' . lang('Show Groups') . '</a>';
+            $output_contact_groups_toggle = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php?filter=' . h($filter) . '&show_contact_groups=true" title="' . h(lang('Show Contact Groups')) . '">' . lang('Show Groups') . '</a>';
         }
     }
     
@@ -1122,7 +1112,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                                 <input type="hidden" name="filter" value="' . h($filter) . '">
                                 <div class="input-group input-group-sm w-auto">
                                     <label class="input-group-text material-icons" title="' . lang('Content that viewed') . '" for="filter">visibility</label>
-                                    <select id="filter" name="filter" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
+                                    <select id="filter" name="filter" aria-label="' . h(lang('Content that viewed')) . '" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
                                 </div>
                                 ' . $output_contact_group_selection . '
                             </form>

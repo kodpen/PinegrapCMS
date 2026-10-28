@@ -576,15 +576,10 @@ if (!$_POST) {
         $increase_year['stop_day'] = '31';
         $increase_year['stop_year'] = $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_year'] + 1;
 
-        $decrease_month['new_time'] = mktime(0, 0, 0, $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_month'] - 1, 1, $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_year']);
-        $decrease_month['new_month'] = date('m', $decrease_month['new_time']);
-        $decrease_month['new_year'] = date('Y', $decrease_month['new_time']);
-        $decrease_month['start_month'] = $decrease_month['new_month'];
-        $decrease_month['start_day'] = '01';
-        $decrease_month['start_year'] = $decrease_month['new_year'];
-        $decrease_month['stop_month'] = $decrease_month['new_month'];
-        $decrease_month['stop_day'] = date('t', $decrease_month['new_time']);
-        $decrease_month['stop_year'] = $decrease_month['new_year'];
+        // The arrows of the month unit step from the last month on screen
+        // (pg_list_period_month_steps()).
+        $month_steps = pg_list_period_month_steps($_SESSION['software']['statistics']['view_visitor_report'][$session_index]);
+        $decrease_month = $month_steps['previous'];
 
         $current_month['new_month'] = date('m');
         $current_month['new_year'] = date('Y');
@@ -595,15 +590,7 @@ if (!$_POST) {
         $current_month['stop_day'] = date('t');
         $current_month['stop_year'] = $current_month['new_year'];
 
-        $increase_month['new_time'] = mktime(0, 0, 0, $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_month'] + 1, 1, $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_year']);
-        $increase_month['new_month'] = date('m', $increase_month['new_time']);
-        $increase_month['new_year'] = date('Y', $increase_month['new_time']);
-        $increase_month['start_month'] = $increase_month['new_month'];
-        $increase_month['start_day'] = '01';
-        $increase_month['start_year'] = $increase_month['new_year'];
-        $increase_month['stop_month'] = $increase_month['new_month'];
-        $increase_month['stop_day'] = date('t', $increase_month['new_time']);
-        $increase_month['stop_year'] = $increase_month['new_year'];
+        $increase_month = $month_steps['next'];
 
         $decrease_week['start_date_timestamp'] = mktime(0, 0, 0, $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_month'], $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_day'], $_SESSION['software']['statistics']['view_visitor_report'][$session_index]['start_year']);
         $decrease_week['new_time_start'] = strtotime('last Sunday', $decrease_week['start_date_timestamp']);

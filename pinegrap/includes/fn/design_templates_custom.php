@@ -454,6 +454,46 @@ function pg_dtc_tokenize_form($settings, $ctx)
 }
 
 /**
+ * A form's stored BlogPosting author (custom_form_pages.schema_author) as a
+ * template form key: 'organization', or 'field:<field name>' for a field
+ * of the form ($names_by_id: field id => name), the name a template's
+ * Publish turns back into the new form's field id. '' for the contact, the
+ * default, and for a field the form no longer has.
+ *
+ * @param string|null $stored
+ * @param array       $names_by_id
+ * @return string
+ */
+function pg_dtc_schema_author_key($stored, $names_by_id)
+{
+    $choice = pg_blogposting_author_choice($stored);
+    if ($choice['source'] === 'organization') return 'organization';
+    if ($choice['source'] === 'field' && is_array($names_by_id) && isset($names_by_id[$choice['field_id']])) {
+        $name = trim((string)$names_by_id[$choice['field_id']]);
+        if ($name !== '') return 'field:' . $name;
+    }
+    return '';
+}
+
+/**
+ * The template form key of the BlogPosting author of the form on page
+ * $page_id (pg_dtc_schema_author_key()); '' before the 11.0.53 column.
+ */
+function pg_dtc_form_schema_author($page_id)
+{
+    if (!function_exists('pg_blogposting_author_setting_ready') || !pg_blogposting_author_setting_ready()) return '';
+    $page_id = (int)$page_id;
+    $stored = (string)db_value("SELECT schema_author FROM custom_form_pages WHERE page_id = '$page_id' LIMIT 1");
+    $choice = pg_blogposting_author_choice($stored);
+    $names = array();
+    if ($choice['source'] === 'field') {
+        $name = db_value("SELECT name FROM form_fields WHERE (id = '" . $choice['field_id'] . "') AND (page_id = '$page_id') LIMIT 1");
+        if ($name !== null && $name !== false) $names[$choice['field_id']] = (string)$name;
+    }
+    return pg_dtc_schema_author_key($stored, $names);
+}
+
+/**
  * The comment settings of a page (a row of pg_designer_load_pages()) in the
  * shape a template page carries them ('comments'), or null when the page
  * takes no comments. The keys are the ones pg_design_template_prepare()
@@ -698,7 +738,12 @@ function pg_design_template_from_style($style_id, $meta, $user)
     if (function_exists('pg_cf_load_page_form_settings')) {
         foreach ($pages as $i => $p) {
             $fs = pg_cf_load_page_form_settings((int)$p['page_id']);
-            if (is_array($fs) && !empty($fs['exists'])) $forms[$i] = $fs;
+            if (!is_array($fs) || empty($fs['exists'])) continue;
+            // The BlogPosting author is not an editor setting: it is read
+            // here and written by Publish (pg_cf_template_schema_author()).
+            $author = pg_dtc_form_schema_author((int)$p['page_id']);
+            if ($author !== '') $fs['schema_author'] = $author;
+            $forms[$i] = $fs;
         }
     }
 

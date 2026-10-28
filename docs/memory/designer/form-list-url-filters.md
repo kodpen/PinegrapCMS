@@ -23,7 +23,7 @@ description: form_list_view filters valued from the page address (author, tag ar
 ## What does the page head do?
 - Registry `pg_sw_url_filter_state()` (reset beside `pg_sw_item_missing(false)`): params, `inexact`, `empty`, title, `page_number`.
 - Several lists (archive + "most read" box): `empty` only if all found nothing; `inexact`, title only from lists with records; a configured `filter_title` beats a bare value.
-- Canonical: path + params sorted, RFC 3986 (`pg_sw_url_filter_query()`) + `page_number` > 1 (list applied a value, page as asked, unclamped, not searching); else bare. `query` dropped; `canonical_url` stays bare.
+- Canonical: path + params sorted, RFC 3986 (`pg_sw_url_filter_query()`) + `page_number` > 1 (as asked, not searching; [[widget-list-paging]]); else bare. `query` dropped; `canonical_url` stays bare.
 - Title and og:title: `filter_title` (`{value}` replaced; text without it follows the value; empty = value alone), via `pg_tr_text(…, 'seo')`, only when every value was "is equal to" and a record holds it byte for byte: `=` ignores case/accents under `utf8mb4_unicode_ci`, so list and feed run the `exact` twin (`CAST(… AS BINARY)`); no row = `inexact`. Dates kept stored (`31.12.2024` → `2024-12-31`).
 - Robots: `noindex, follow` when nothing matched or inexact (`pg_sw_url_filter_noindex()`); status 200.
 - Autodiscovery, feed (`/tag?tag=x&rss=true`) and channel link keep the params; channel title as page title.

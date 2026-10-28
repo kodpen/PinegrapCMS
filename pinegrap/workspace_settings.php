@@ -380,6 +380,12 @@ if ($_POST) {
             $anchor = '#ws-ai';
             break;
 
+        // Transcripts of voice messages (includes/workspace/voice.php).
+        case 'voice':
+            ws_voice_settings_post($viewer, $liveform);
+            $anchor = '#ws-voice';
+            break;
+
         // Other services' MCP servers under an alias
         // (includes/workspace/mcp.php).
         case 'mcp_save':
@@ -643,6 +649,8 @@ pg_page_shell([
             ' . ws_claude_settings_card($self_url, $viewer, $assistant_credentials) . '
 
             ' . (function_exists('ws_ai_settings_card') ? ws_ai_settings_card($self_url, $viewer) : '') . '
+
+            ' . ws_voice_settings_card($self_url, $viewer) . '
 
             ' . ws_mcp_settings_card($self_url, $viewer, $liveform) . '
         </div>

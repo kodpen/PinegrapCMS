@@ -418,6 +418,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $strutured_data = $row['strutured_data'];
     // Large image previews in search results (11.0.51); off before the upgrade.
     $max_image_preview_large = ((int) ($row['max_image_preview_large'] ?? 0) == 1);
+    // Redirect to the main host (11.0.52); off before the upgrade.
+    $main_host_redirect = ((int) ($row['main_host_redirect'] ?? 0) == 1);
     $advanced_visual_effects = $row['advanced_visual_effects'];
     $enable_parasut = $row['enable_parasut'] ?? 0;
     $parasut_tc_in_field = $row['parasut_tc_in_field'] ?? 'do not use';
@@ -1151,7 +1153,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
         }
 
-        $output_iyzipay_protected_currency_select = '<select class="form-control" name="iyzipay_protected_currency_code">' . $output_iyzipay_protected_currency_select_options . '</select>';
+        $output_iyzipay_protected_currency_select = '<select class="form-control" name="iyzipay_protected_currency_code" id="iyzipay_protected_currency_code">' . $output_iyzipay_protected_currency_select_options . '</select>';
 
     }
   

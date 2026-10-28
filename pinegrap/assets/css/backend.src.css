@@ -1607,11 +1607,14 @@ html[data-bs-theme="dark"] .accordion {
 :is(.check, .radio):checked[type="radio"] {
   --bs-form-check-bg-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='2' fill='%231a1c1e'/%3e%3c/svg%3e");
 }
-.switch:focus-within {
-  --bs-switch-indicator-bg: #64b5f6;
+/* v6's .switch::before reads only --bs-switch-indicator-bg: a checked thumb
+   takes the dark on-accent ink against the light blue track, and the blue
+   focus knob is kept for unchecked switches, where the track is not blue. */
+.switch:has(input:checked) {
+  --bs-switch-indicator-bg: var(--pg-on-accent);
 }
-.switch {
-  --bs-switch-checked-indicator-bg: #1a1c1e;
+.switch:focus-within:not(:has(input:checked)) {
+  --bs-switch-indicator-bg: var(--pg-primary);
 }
 .form-range {
   --bs-range-thumb-bg: var(--pg-primary);
@@ -4449,6 +4452,11 @@ input[readonly=true], input[readonly=true]:focus {
   max-width: calc(100% - 0.3rem) !important;
   z-index: auto;
   position: relative;
+  /* v6's unlayered .collapse overflow-y: clip cut off the arrow; a layered
+     !important beats it, and no transition keeps the content from spilling
+     out while the callout opens. */
+  overflow: visible !important;
+  transition: none !important;
 }
 .pg-settings-modal .collapse.popover{
   margin-top:.5rem;

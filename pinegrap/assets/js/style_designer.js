@@ -6523,7 +6523,7 @@ const StyleDesigner = (function () {
         // Band label — real DOM element (.sd-loop-band) appended in buildInnerElement,
         // so it can carry a Bootstrap Icon (bi-arrow-repeat) and a clear label.
         // The element is canvas-only (data-sd-band="1"), excluded from tree ops.
-        '.sd-loop-band { position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:6px; padding:4px 8px; font-size:.7rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:#fff; background:#6366f1; border-radius:4px 4px 0 0; pointer-events:none; user-select:none; }',
+        '.sd-loop-band { position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:6px; padding:4px 8px; font-size:.7rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:#fff; background:#6366f1; border-radius:4px 4px 0 0; pointer-events:none; user-select:none; white-space:nowrap; overflow:hidden; }',
         '.sd-wrap.sd-loop-single > .sd-loop-area { min-height:0; padding:0; border:0; outline:0; background:none; }',
         // Ghost records (_sdAppendGhosts): real records drawn after the card
         // being designed — untouchable, faintly hatched so they read as a
@@ -6544,7 +6544,10 @@ const StyleDesigner = (function () {
         '.sd-ghost-note { font-weight:400; text-transform:none; letter-spacing:0; opacity:.85; }',
         '.sd-wrap.sd-loop-single > .sd-loop-area > .sd-loop-band { display:none; }',
         '.sd-loop-band .bi { font-size:.85rem; line-height:1; }',
-        '.sd-loop-band .sd-loop-band-text { font-size:.65rem; }',
+        // One line whatever the width: a narrow loop area (a ticker, a sidebar
+        // list) used to wrap the band into four lines over its content.
+        '.sd-loop-band .sd-loop-band-text { font-size:.65rem; min-width:0; overflow:hidden; text-overflow:ellipsis; }',
+        '.sd-loop-band .sd-ghost-note { flex:none; white-space:nowrap; }',
         // Recipient loop band — uses a teal accent so designers can tell the
         // per-recipient template apart from a regular per-cart-item loop_area.
         '.sd-recipient-loop-band { background:#0d9488; }',
@@ -13798,6 +13801,9 @@ const StyleDesigner = (function () {
                     la.className += ' sd-list-area' + (laList.off ? ' sd-list-off' : '');
                     laBand.innerHTML = '<i class="bi bi-list-ul"></i><span class="sd-loop-band-text">' + esc(laList.text) + '</span>';
                 }
+                // The band keeps to one line and may be cut short: the full
+                // text stays readable in its tooltip.
+                laBand.title = laBand.textContent;
                 la.appendChild(laBand);
                 return la;
             case 'recipient_loop_area':
@@ -14518,6 +14524,7 @@ const StyleDesigner = (function () {
             note.className = 'sd-ghost-note';
             note.textContent = '· ' + _sdT('{var} real records after the card', rows.length);
             band.appendChild(note);
+            band.title = band.textContent;
         }
     }
 
@@ -24132,16 +24139,60 @@ const StyleDesigner = (function () {
         // ── Vertical resize (snap-to-collapse) ──
         var _BP_SNAP_THRESHOLD = 60;
         var _BP_EXPAND_DEFAULT = 200;
+        // One drag on a handle of this panel. The pointer is captured, so
+        // the moves and the release keep coming to the handle while the
+        // cursor is over the canvas iframe, whose document took them before
+        // (the drag froze, then jumped, and a release over the canvas never
+        // ended it). The iframe also stops taking the pointer for the
+        // drag's length, as the side panel handles do. `move` gets the
+        // latest event once per frame; every way a drag can end runs `end`
+        // once and puts the iframe and the handle back.
+        function _sdBpDrag(handle, e, bodyClass, move, end) {
+            var pid = e.pointerId;
+            var iframe = document.getElementById('sd-canvas-iframe');
+            var prevPe = iframe ? iframe.style.pointerEvents : '';
+            var last = null, raf = 0, done = false;
+            try { handle.setPointerCapture(pid); } catch (err) {}
+            if (iframe) iframe.style.pointerEvents = 'none';
+            document.body.classList.add(bodyClass);
+            handle.classList.add('active');
+            function frame() { raf = 0; if (last) move(last); }
+            function onMove(ev) {
+                if (ev.pointerId !== pid) return;
+                last = ev;
+                if (!raf) raf = requestAnimationFrame(frame);
+            }
+            function onEnd(ev) {
+                if (done || ev.pointerId !== pid) return;
+                done = true;
+                if (raf) { cancelAnimationFrame(raf); frame(); }
+                document.removeEventListener('pointermove', onMove);
+                document.removeEventListener('pointerup', onEnd);
+                document.removeEventListener('pointercancel', onEnd);
+                handle.removeEventListener('lostpointercapture', onEnd);
+                try { if (handle.hasPointerCapture(pid)) handle.releasePointerCapture(pid); } catch (err) {}
+                if (iframe) iframe.style.pointerEvents = prevPe;
+                document.body.classList.remove(bodyClass);
+                handle.classList.remove('active');
+                end();
+            }
+            // On the document: captured events bubble up from the handle,
+            // and without capture the document still sees the moves.
+            document.addEventListener('pointermove', onMove);
+            document.addEventListener('pointerup', onEnd);
+            document.addEventListener('pointercancel', onEnd);
+            handle.addEventListener('lostpointercapture', onEnd);
+        }
         var vResizeHandle = document.getElementById('sd-bp-vresize');
         if (vResizeHandle) {
-            vResizeHandle.addEventListener('mousedown', function (e) {
+            vResizeHandle.addEventListener('pointerdown', function (e) {
+                if (e.button !== 0) return;
                 e.preventDefault();
                 var startY = e.clientY;
                 var startH = p.classList.contains('collapsed') ? _BP_EXPAND_DEFAULT : p.offsetHeight;
                 p.classList.add('sd-resizing');
-                vResizeHandle.classList.add('active');
-                function onMove(e) {
-                    var delta = startY - e.clientY;
+                _sdBpDrag(vResizeHandle, e, 'sd-resizing-v', function (ev) {
+                    var delta = startY - ev.clientY;
                     var maxH = (window.innerHeight || document.documentElement.clientHeight) * 0.75;
                     var newH = Math.min(maxH, startH + delta);
                     if (newH < _BP_SNAP_THRESHOLD) {
@@ -24153,19 +24204,13 @@ const StyleDesigner = (function () {
                         colBtn.classList.remove('bi-chevron-up'); colBtn.classList.add('bi-chevron-down');
                         p.style.height = Math.max(80, newH) + 'px';
                     }
-                }
-                function onUp() {
+                }, function () {
                     p.classList.remove('sd-resizing');
-                    vResizeHandle.classList.remove('active');
-                    document.removeEventListener('mousemove', onMove);
-                    document.removeEventListener('mouseup', onUp);
                     if (p.classList.contains('collapsed')) {
                         colBtn.classList.remove('bi-chevron-down'); colBtn.classList.add('bi-chevron-up');
                     }
                     saveLayout();
-                }
-                document.addEventListener('mousemove', onMove);
-                document.addEventListener('mouseup', onUp);
+                });
             });
             // Double-click: toggle collapse
             vResizeHandle.addEventListener('dblclick', function() {
@@ -24191,24 +24236,16 @@ const StyleDesigner = (function () {
         function _bindColResize(handleId, varName, startSiblingFn) {
             var handle = document.getElementById(handleId);
             if (!gridEl || !handle) return;
-            handle.addEventListener('mousedown', function (e) {
+            handle.addEventListener('pointerdown', function (e) {
+                if (e.button !== 0) return;
                 e.preventDefault();
                 var startX = e.clientX;
                 var startW = startSiblingFn();
-                handle.classList.add('active');
-                function onMove(ev) {
+                _sdBpDrag(handle, e, 'sd-resizing', function (ev) {
                     var rect = gridEl.getBoundingClientRect();
                     var newW = Math.max(160, Math.min(rect.width - 320, startW + (ev.clientX - startX)));
                     gridEl.style.setProperty(varName, newW + 'px');
-                }
-                function onUp() {
-                    handle.classList.remove('active');
-                    document.removeEventListener('mousemove', onMove);
-                    document.removeEventListener('mouseup', onUp);
-                    saveLayout();
-                }
-                document.addEventListener('mousemove', onMove);
-                document.addEventListener('mouseup', onUp);
+                }, saveLayout);
             });
         }
         // Left handle resizes col 1 (HTML). Read its current pixel width
@@ -34819,6 +34856,10 @@ const StyleDesigner = (function () {
                 if (!(_srPerPage > 0)) _srPerPage = 20;
                 var _srNoResults = (typeof _cfg.empty_message === 'string') ? _cfg.empty_message : _sdT('No results found.');
                 if (!_catalogDetailPagesCache) _fetchCatalogDetailPages(function () { renderProperties(); });
+                // No page opens a product (none chosen, none on the site, none
+                // in this design): the search leaves products out.
+                var _srNoDetail = !(parseInt(_cfg.catalog_detail_page_id, 10) > 0) && Array.isArray(_catalogDetailPagesCache) && !_catalogDetailPagesCache.length
+                    && !((typeof _pages !== 'undefined' && _pages) ? _pages : []).some(function (p) { return _swTabHasWidget(p, ['catalog_item_view']); });
 
                 systemSection += sect('bi-search', _sdT('Search Results Settings'),
                     row(_sdT('Search scope'),
@@ -34852,7 +34893,8 @@ const StyleDesigner = (function () {
                                 _swPageOptions(_cfg.catalog_detail_page_id, _catalogDetailPagesCache,
                                     { none: _sdT('— Automatic —'), types: ['catalog_item_view'] }) +
                             '</select>' +
-                            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Automatic: the first page with a product detail widget, else the classic catalog detail page.')) + '</div>')
+                            '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Automatic: the first page with a product detail widget, else the classic catalog detail page.')) + '</div>' +
+                            (_srNoDetail ? '<div style="font-size:.66rem;color:#b45309;margin-top:3px"><span class="bi bi-exclamation-triangle me-1"></span>' + esc(_sdT('No product detail page exists yet: products stay out of the search results until the site has one.')) + '</div>' : ''))
                         : '')
                 );
             }
@@ -35391,6 +35433,20 @@ const StyleDesigner = (function () {
                             '</div>' +
                             '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
                                 esc(_sdT('Each field can then be given a kind (number, image, a reference to another form) in Form Field → Kind. The records stay this form\'s submissions.')) +
+                            '</div>'
+                        ) +
+                        // How the structured data of the record pages names
+                        // them (pg_record_schema_type() in includes/fn/seo.php);
+                        // None leaves the page's own JSON-LD as the only one.
+                        row(_sdT('Schema Type'),
+                            '<select class="form-control form-control-sm sd-cf-s" data-s="schema_type">' +
+                                ['BlogPosting', 'Article', 'NewsArticle', 'none'].map(function (t) {
+                                    return '<option value="' + t + '"' + ((_cfFS.schema_type || 'BlogPosting') === t ? ' selected' : '') + '>' +
+                                        esc(t === 'none' ? _sdT('None') : t) + '</option>';
+                                }).join('') +
+                            '</select>' +
+                            '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
+                                esc(_sdT('How the structured data of the record pages describes them. None leaves the page\'s own structured data as their only description.')) +
                             '</div>'
                         ) +
                         row(_sdT('Notification email'),
@@ -40307,6 +40363,7 @@ const StyleDesigner = (function () {
             ['__order_invoice_pdf_url', _sdT('Printable invoice URL')],
             ['__legal_preinfo_url',     _sdT('Pre-Information Form copy URL (kept with the order)')],
             ['__legal_contract_url',    _sdT('Distance Sales Contract copy URL (kept with the order)')],
+            ['__legal_kvkk_url',        _sdT('Personal Data Notice copy URL (kept with the order)')],
             ['__withdrawal_deadline',   _sdT('Last day of the right of withdrawal')],
             ['__withdrawal_text',       _sdT('The right of withdrawal line (last day, estimate or end)')]
         ]},
@@ -40420,7 +40477,9 @@ const StyleDesigner = (function () {
         // for the links beside the legal_preinfo / legal_contract boxes.
         { label: _sdT('Checkout documents'), tokens: [
             ['__legal_preinfo_url',               _sdT('Pre-Information Form page URL')],
-            ['__legal_contract_url',              _sdT('Distance Sales Contract page URL')]
+            ['__legal_contract_url',              _sdT('Distance Sales Contract page URL')],
+            ['__legal_kvkk_notice_url',           _sdT('Personal Data Notice page URL')],
+            ['__legal_kvkk_consent_html',         _sdT('Explicit consent sentence (KVKK)')]
         ]},
         // The recipient loop had no entry here at all, so every one of its
         // tokens had to be typed by hand through "Custom".
@@ -40512,7 +40571,8 @@ const StyleDesigner = (function () {
         { label: _sdT('Checkout approvals'), tokens: [
             ['agree_terms',     _sdT('Order terms accepted (checkbox)')],
             ['legal_preinfo',   _sdT('Pre-Information Form approved (checkbox)')],
-            ['legal_contract',  _sdT('Distance Sales Contract accepted (checkbox)')]
+            ['legal_contract',  _sdT('Distance Sales Contract accepted (checkbox)')],
+            ['legal_kvkk',      _sdT('Explicit consent given (KVKK checkbox, optional)')]
         ]},
         { label: _sdT('Other'), tokens: [
             ['custom_field_1',  _sdT('Custom field 1 (defined in express_order_pages)')],
@@ -41018,7 +41078,8 @@ const StyleDesigner = (function () {
     var SW_DEFAULT_TAILS = {
         order_view: [
             [['__return_form', '__returns', 'order.returns', 'order.return_deliveries'], function (cfg, tree) { return _sdPartOrderReturns(); }],
-            [['__legal_preinfo_url', '__legal_contract_url'], function (cfg, tree) { return _sdPartOrderLegal(tree); }]
+            [['__legal_preinfo_url', '__legal_contract_url', '__legal_kvkk_url'], function (cfg, tree) { return _sdPartOrderLegal(tree); }],
+            [['__legal_kvkk_url'], function (cfg, tree) { return _sdPartOrderLegalKvkk(tree); }]
         ]
     };
 
@@ -41603,16 +41664,20 @@ const StyleDesigner = (function () {
         ])];
     }
 
+    // One line of the legal documents card (pg_sw_part_order_legal_link()).
+    function _sdPartOrderLegalLink(label, token, flag) {
+        return _sdPartEl('li', '', label, { _bindings: { eo_visible_if: flag } }, [
+            _sdPartEl('a', '', label, { text: label, href: '#', target: '_blank', rel: 'noopener', _bindings: { href: token } })
+        ]);
+    }
+
     // The legal documents card (pg_sw_part_order_legal_documents()).
     function _sdPartOrderLegal(tree) {
-        var link = function (label, token, flag) {
-            return _sdPartEl('li', '', label, { _bindings: { eo_visible_if: flag } }, [
-                _sdPartEl('a', '', label, { text: label, href: '#', target: '_blank', rel: 'noopener', _bindings: { href: token } })
-            ]);
-        };
+        var link = _sdPartOrderLegalLink;
         var body = [_sdPartEl('ul', 'list-unstyled mb-0', _sdT('Links'), {}, [
             link(_sdT('Pre-Information Form'), '__legal_preinfo_url', 'has_legal_preinfo'),
-            link(_sdT('Distance Sales Contract'), '__legal_contract_url', 'has_legal_contract')
+            link(_sdT('Distance Sales Contract'), '__legal_contract_url', 'has_legal_contract'),
+            link(_sdT('Personal Data Notice'), '__legal_kvkk_url', 'has_legal_kvkk')
         ])];
         if (!_sdPartPlaced(tree, ['__withdrawal_deadline', '__withdrawal_text'])) {
             var line = function (name, text, flag) {
@@ -41625,6 +41690,17 @@ const StyleDesigner = (function () {
             );
         }
         return [_sdPartOrderCard('pg-ov-legal-documents', _sdT('Legal Documents'), 'has_legal_documents', _sdT('Legal Documents'), body)];
+    }
+
+    // The KVKK copy's card for a layout that links the documents but not the
+    // copy (pg_sw_part_order_legal_kvkk()).
+    function _sdPartOrderLegalKvkk(tree) {
+        if (!_sdPartPlaced(tree, ['__legal_preinfo_url', '__legal_contract_url'])) return [];
+        return [_sdPartOrderCard('pg-ov-legal-kvkk', _sdT('Personal Data Notice'), 'has_legal_kvkk', _sdT('Personal Data Notice'), [
+            _sdPartEl('ul', 'list-unstyled mb-0', _sdT('Links'), {}, [
+                _sdPartOrderLegalLink(_sdT('Personal Data Notice'), '__legal_kvkk_url', 'has_legal_kvkk')
+            ])
+        ])];
     }
 
     // One-time migration for trees saved before the "bind content, not layout"
@@ -41788,6 +41864,7 @@ const StyleDesigner = (function () {
             ['has_legal_documents',     _sdT('Legal documents are kept with the order')],
             ['has_legal_preinfo',       _sdT('The pre-information form is kept with the order')],
             ['has_legal_contract',      _sdT('The distance sales contract is kept with the order')],
+            ['has_legal_kvkk',          _sdT('The personal data notice copy is kept with the order')],
             ['has_withdrawal_deadline', _sdT('The last day of the right of withdrawal is known')],
             ['withdrawal_deadline_firm', _sdT('The withdrawal deadline is firm and still ahead')],
             ['withdrawal_deadline_estimated', _sdT('The withdrawal deadline is an estimate')],
@@ -41812,6 +41889,9 @@ const StyleDesigner = (function () {
             ['has_upsell',           _sdT('There are upsell offers')],
             ['has_terms',            _sdT('Terms are shown')],
             ['has_legal_documents',  _sdT('Checkout documents are switched on')],
+            ['has_legal_kvkk',       _sdT('A KVKK notice page or consent sentence is set')],
+            ['has_legal_kvkk_notice', _sdT('A KVKK notice page is set')],
+            ['has_legal_kvkk_consent', _sdT('A KVKK consent sentence is set')],
             ['tax_exempt_allowed',   _sdT('Tax exemption is allowed')],
             ['has_discount',         _sdT('There is a discount')],
             ['has_tax',              _sdT('There is tax')],
@@ -46051,8 +46131,8 @@ const StyleDesigner = (function () {
             row(_sdT('Content'),  '<textarea class="form-control form-control-sm" data-popover-prop="content" rows="2" placeholder="' + esc(_sdT('Popover content...')) + '">' + esc(contentVal) + '</textarea>') +
             row(_sdT('Placement'),
                 '<select class="form-control form-control-sm" data-popover-prop="placement">' +
-                ['top','bottom','start','end'].map(function (pl) {
-                    return '<option value="' + pl + '"' + (pl === placement ? ' selected' : '') + '>' + capFirst(pl) + '</option>';
+                [['top',_sdT('Top')],['bottom',_sdT('Bottom')],['start',_sdT('Start')],['end',_sdT('End')]].map(function (pl) {
+                    return '<option value="' + pl[0] + '"' + (pl[0] === placement ? ' selected' : '') + '>' + pl[1] + '</option>';
                 }).join('') +
                 '</select>'
             ) +
@@ -46557,7 +46637,7 @@ const StyleDesigner = (function () {
         // Image: Object Fit (class) + Object Position (inline style) shown manually at top
         if (ct === 'image') {
             var objPosOpts = [
-                ['',_sdT('Default')],['center',_sdT('Center')],['top','Top'],['bottom',_sdT('Bottom')],
+                ['',_sdT('Default')],['center',_sdT('Center')],['top',_sdT('Top')],['bottom',_sdT('Bottom')],
                 ['left',_sdT('Left')],['right',_sdT('Right')],['top left',_sdT('Top Left')],['top right',_sdT('Top Right')],
                 ['bottom left',_sdT('Bottom Left')],['bottom right',_sdT('Bottom Right')]
             ];
@@ -47105,17 +47185,43 @@ const StyleDesigner = (function () {
             (lbl ? '<span class="sd-sw-lbl">' + lbl + '</span>' : '') +
         '</label>';
     }
+    // The label of a selStyleGroup() option: the class without its family
+    // prefix ('text-opacity-25' → "25"), translated when every word of it
+    // is a size, a shape, a side or a number ('shadow-sm' → "Small",
+    // 'rounded-top-3' → "Top 3"); the bare `shadow` reads "Regular". A
+    // label with a word that has no translation keeps its class-derived
+    // form in full ('Decoration none'), never half of it.
+    function _sdStyleOptionLabel(cls) {
+        var words = {
+            'none': _sdT('None'), 'sm': _sdT('Small'), 'lg': _sdT('Large'),
+            'circle': _sdT('Circle'), 'pill': _sdT('Pill'),
+            'top': _sdT('Top'), 'end': _sdT('End'), 'bottom': _sdT('Bottom'), 'start': _sdT('Start')
+        };
+        var lbl = cls.replace(/^(text-opacity|bg-opacity|fst|fs|fw|lh|ff|border|text|object|ratio|overflow|position|w-|h-|shadow|rounded|opacity)-?/, '');
+        if (lbl === '') return _sdT('Regular');
+        var known = true;
+        var parts = lbl.split('-').map(function (w) {
+            if (Object.prototype.hasOwnProperty.call(words, w)) return words[w];
+            if (!/^\d+$/.test(w)) known = false;
+            return w;
+        });
+        return known ? parts.join(' ') : capFirst(lbl.replace(/-/g, ' '));
+    }
     function selStyleGroup(nodeProps, classes, placeholder) {
         var cls = nodeProps.cssClass || '';
         var found = '';
         var clsArr = cls.split(' ');
         classes.forEach(function(c) { if (c !== '' && clsArr.indexOf(c) !== -1) found = c; });
         var h = '<select class="form-control form-control-sm" data-stylegroup="' + classes.join(',') + '">';
-        h += '<option value="">' + (placeholder || 'Default') + '</option>';
+        // The callers name the placeholder as the bare 'Default' or 'None';
+        // one already passed through _sdT() is printed as given.
+        var ph = placeholder || 'Default';
+        if (ph === 'Default') ph = _sdT('Default');
+        else if (ph === 'None') ph = _sdT('None');
+        h += '<option value="">' + ph + '</option>';
         classes.forEach(function(c) {
             if (!c) return;
-            var lbl = c.replace(/^(fs|fw|lh|ff|border|text|object|ratio|overflow|position|w-|h-|shadow|rounded|opacity|bg-opacity|text-opacity)-?/, '').replace(/-/g, ' ');
-            h += '<option value="' + c + '"' + (c === found ? ' selected' : '') + '>' + capFirst(lbl) + '</option>';
+            h += '<option value="' + c + '"' + (c === found ? ' selected' : '') + '>' + _sdStyleOptionLabel(c) + '</option>';
         });
         return h + '</select>';
     }
@@ -47485,7 +47591,7 @@ const StyleDesigner = (function () {
             return 'bg-' + (bgVisualMap[color] || color);
         }
 
-        var currentLabel = currentColor ? titleCase(currentColor) : 'None';
+        var currentLabel = currentColor ? titleCase(currentColor) : esc(_sdT('None'));
 
         var h = '<div class="sd-cp">';
         // Hidden <select> — plumbs into all existing data-stylegroup handlers (change, mark, reset).
@@ -47512,7 +47618,7 @@ const StyleDesigner = (function () {
         groups.forEach(function(g, i) {
             var items = g.filter(function(c) { return c; });
             if (!items.length) return;
-            h += '<div class="sd-cp-grp-lbl">' + (labels[i] || 'Other') + '</div>';
+            h += '<div class="sd-cp-grp-lbl">' + (labels[i] || esc(_sdT('Other'))) + '</div>';
             items.forEach(function(c) {
                 var val = prefix + c;
                 h += '<button type="button" class="sd-cp-option' + (val === current ? ' sd-cp-opt-active' : '') + '" data-val="' + val + '" role="option">';
@@ -48033,7 +48139,7 @@ const StyleDesigner = (function () {
             return '<button type="button" class="sd-bcp-angle-btn' + (Number(_grad.angle) === ap[0] ? ' active' : '') + '" data-bcp-angle="' + ap[0] + '" title="' + ap[0] + 'deg">' + ap[1] + '</button>';
         }).join('');
 
-        var _posOpts = [['center',_sdT('Center')],['top','Top'],['bottom',_sdT('Bottom')],['left',_sdT('Left')],['right',_sdT('Right')],['top left',_sdT('Top Left')],['top right',_sdT('Top Right')],['bottom left',_sdT('Btm Left')],['bottom right',_sdT('Btm Right')]];
+        var _posOpts = [['center',_sdT('Center')],['top',_sdT('Top')],['bottom',_sdT('Bottom')],['left',_sdT('Left')],['right',_sdT('Right')],['top left',_sdT('Top Left')],['top right',_sdT('Top Right')],['bottom left',_sdT('Btm Left')],['bottom right',_sdT('Btm Right')]];
 
         var _popupHtml =
             '<div class="sd-bcp-popup" id="sd-bcp-popup">' +
@@ -48107,7 +48213,7 @@ const StyleDesigner = (function () {
 
         var _bgColorRow =
             '<div class="sd-prop-row" id="sd-bcp-row">' +
-                '<label class="sd-prop-label">' + esc(_sdT('Bg Color')) + '</label>' +
+                '<label class="sd-prop-label">' + esc(_sdT('Custom Background Color')) + '</label>' +
                 '<div class="sd-prop-control">' +
                     '<div class="sd-bcp-wrap">' +
                         '<div class="sd-bcp-trigger-wrap">' +
@@ -48138,7 +48244,7 @@ const StyleDesigner = (function () {
             row(_sdT('Bg Size'),   '<select class="form-control form-control-sm" data-bg-prop="background-size">' +
                 [['',_sdT('Default')],['cover', _sdT('Cover (background)')],['contain',_sdT('Contain')],['auto',_sdT('Auto')],['100% 100%',_sdT('Stretch')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgSize===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>') +
             row(_sdT('Bg Pos'),    '<select class="form-control form-control-sm" data-bg-prop="background-position">' +
-                [['',_sdT('Default')],['center',_sdT('Center')],['top','Top'],['bottom',_sdT('Bottom')],['left',_sdT('Left')],['right',_sdT('Right')],['top left',_sdT('Top Left')],['top right',_sdT('Top Right')],['bottom left',_sdT('Btm Left')],['bottom right',_sdT('Btm Right')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgPos===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>') +
+                [['',_sdT('Default')],['center',_sdT('Center')],['top',_sdT('Top')],['bottom',_sdT('Bottom')],['left',_sdT('Left')],['right',_sdT('Right')],['top left',_sdT('Top Left')],['top right',_sdT('Top Right')],['bottom left',_sdT('Btm Left')],['bottom right',_sdT('Btm Right')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgPos===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>') +
             row(_sdT('Bg Repeat'), '<select class="form-control form-control-sm" data-bg-prop="background-repeat">' +
                 [['',_sdT('Default')],['no-repeat',_sdT('No Repeat')],['repeat',_sdT('Repeat')],['repeat-x',_sdT('Repeat X')],['repeat-y',_sdT('Repeat Y')]].map(function(o){ return '<option value="' + o[0] + '"' + (_bgRep===o[0]?' selected':'') + '>' + o[1] + '</option>'; }).join('') + '</select>') +
             row(_sdT('Bg Attach'), '<select class="form-control form-control-sm" data-bg-prop="background-attachment">' +
@@ -48159,10 +48265,10 @@ const StyleDesigner = (function () {
             '</div>';
 
         var colorsHtml = as(_sdT('Colors'),
-            row(_sdT('Text Col'),     colorSelectGroup('text-', tColors)) +
+            row(_sdT('Text Color'),   colorSelectGroup('text-', tColors)) +
             row(_sdT('Text Opacity'), selStyleGroup(n.props, ['text-opacity-25','text-opacity-50','text-opacity-75','text-opacity-100'], 'Default')) +
             '<div class="sd-sp-divider"></div>' +
-            row(_sdT('Bg Col'),       colorSelectGroup('bg-', bColors)) +
+            row(_sdT('Background Color'), colorSelectGroup('bg-', bColors)) +
             row(_sdT('Bg Opacity'),   selStyleGroup(n.props, ['bg-opacity-10','bg-opacity-25','bg-opacity-50','bg-opacity-75','bg-opacity-100'], 'Default')) +
             row(_sdT('Gradient'),     swAttr('data-util-toggle="bg-gradient"', (' ' + cls + ' ').indexOf(' bg-gradient ') !== -1)) +
             '<div class="sd-sp-divider"></div>' +
@@ -48178,7 +48284,7 @@ const StyleDesigner = (function () {
         var _ttTitle     = p.tooltipTitle || '';
         var tooltipHtml = as(_sdT('Tooltip'),
             row(_sdT('Tooltip'),   sw('tooltipEnabled', _ttEnabled)) +
-            row(_sdT('Placement'), sel('tooltipPlacement', [['top','Top'],['bottom',_sdT('Bottom')],['start',_sdT('Start')],['end',_sdT('End')]], _ttPlacement)) +
+            row(_sdT('Placement'), sel('tooltipPlacement', [['top',_sdT('Top')],['bottom',_sdT('Bottom')],['start',_sdT('Start')],['end',_sdT('End')]], _ttPlacement)) +
             row(_sdT('Text'),      '<input type="text" class="form-control form-control-sm" data-prop="tooltipTitle" value="' + esc(_ttTitle) + '" placeholder="' + esc(_sdT('Tooltip text...')) + '">')
         );
 
@@ -58169,6 +58275,40 @@ const StyleDesigner = (function () {
                     { attrs: [{ name: 'for', value: field }] })
             ]);
         }
+        // KVKK lines — see _eo_default_designer_tree's $kvkk_block: the
+        // notice link and the optional consent box, each under its own flag;
+        // the pg-legal-kvkk class keeps the server from adding a second set.
+        function kvkkBlock() {
+            var around = _eoSentenceAround(_sdT('How your personal data is processed is explained in {var:1}'));
+            var notice = [];
+            if (around[0]) notice.push(sem('span', '', around[0]));
+            notice.push(sem('a', '', _sdT('the Personal Data Notice'), {
+                attrs: [
+                    { name: 'href',   value: '#' },
+                    { name: 'target', value: '_blank' },
+                    { name: 'rel',    value: 'noopener' }
+                ],
+                bindings: { href: '__legal_kvkk_notice_url' }
+            }));
+            if (around[1]) notice.push(sem('span', '', around[1]));
+            return sem('div', 'pg-legal-kvkk mb-2', [
+                sem('p', 'pg-legal-kvkk-notice small mb-2', notice,
+                    { bindings: { eo_visible_if: 'has_legal_kvkk_notice' } }),
+                sem('div', 'form-check mb-2', [
+                    sem('input', 'form-check-input', null, {
+                        attrs: [
+                            { name: 'type',  value: 'checkbox' },
+                            { name: 'value', value: '1' }
+                        ],
+                        bindings: { eo_field: 'legal_kvkk' }
+                    }),
+                    sem('label', 'form-check-label small', _sdT('I consent to the processing of my personal data'), {
+                        attrs: [{ name: 'for', value: 'legal_kvkk' }],
+                        bindings: { text: '__legal_kvkk_consent_html' }
+                    })
+                ], { bindings: { eo_visible_if: 'has_legal_kvkk_consent' } })
+            ], { bindings: { eo_visible_if: 'has_legal_kvkk' } });
+        }
         function textarea(eoField, rows, placeholder) {
             return sem('textarea', 'form-control', null, {
                 attrs: [
@@ -58560,6 +58700,8 @@ const StyleDesigner = (function () {
                                     legalRow('preinfo',  _sdT('I have read and approve {var:1}'), _sdT('the Pre-Information Form')),
                                     legalRow('contract', _sdT('I have read and accept {var:1}'),  _sdT('the Distance Sales Contract'))
                                 ], { bindings: { eo_visible_if: 'has_legal_documents' } }),
+                                // KVKK notice link and optional consent box.
+                                kvkkBlock(),
                                 // ── TERMS CHECKBOX (real form-check) ─────────
                                 // Real checkbox + label + modal trigger link.
                                 // The modal itself is a real Bootstrap modal
@@ -60464,7 +60606,7 @@ const StyleDesigner = (function () {
                                                 _attrs: [{ name: 'rel', value: 'noopener' }],
                                                 _bindings: { href: '__legal_preinfo_url' } })
                                         ]),
-                                        createNode('semantic', { tag: 'div',
+                                        createNode('semantic', { tag: 'div', cssClass: 'mb-1',
                                             customName: _sdT('Distance Sales Contract'),
                                             _bindings: { eo_visible_if: 'has_legal_contract' } }, [
                                             createNode('content', { contentType: 'link',
@@ -60472,6 +60614,15 @@ const StyleDesigner = (function () {
                                                 customName: _sdT('Distance Sales Contract Link'),
                                                 _attrs: [{ name: 'rel', value: 'noopener' }],
                                                 _bindings: { href: '__legal_contract_url' } })
+                                        ]),
+                                        createNode('semantic', { tag: 'div',
+                                            customName: _sdT('Personal Data Notice'),
+                                            _bindings: { eo_visible_if: 'has_legal_kvkk' } }, [
+                                            createNode('content', { contentType: 'link',
+                                                text: _sdT('Personal Data Notice'), href: '#', target: '_blank',
+                                                customName: _sdT('Personal Data Notice Link'),
+                                                _attrs: [{ name: 'rel', value: 'noopener' }],
+                                                _bindings: { href: '__legal_kvkk_url' } })
                                         ]),
                                         // Last day of the right of withdrawal: 14 days
                                         // from the last delivery. One sentence per
@@ -66654,9 +66805,14 @@ const StyleDesigner = (function () {
         if (count) count.textContent = _pages.length > 1 ? String(_pages.length) : '';
         var hidden = list.scrollWidth <= list.clientWidth + 1 && !list.querySelector('.sd-tab-folded');
         if (wrap.hidden !== hidden) {
-            if (hidden && pgUI.menu.isOpen(wrap.querySelector('[data-bs-toggle="dropdown"]'))) return;
+            if (hidden && pgUI.menu.isOpen(_pgTabsAllToggle())) return;
             wrap.hidden = hidden;
         }
+    }
+    // The button that opens the list: a Bootstrap 6 menu toggle.
+    function _pgTabsAllToggle() {
+        var wrap = document.getElementById('sd-tabs-all');
+        return wrap ? wrap.querySelector('[data-bs-toggle="menu"]') : null;
     }
     function _pgTabsAllFill() {
         var box = document.getElementById('sd-tabs-all-list');
@@ -66668,17 +66824,38 @@ const StyleDesigner = (function () {
             if (q && name.toLocaleLowerCase().indexOf(q) === -1) return;
             var locked = (p.access === 'locked');
             var gid = (p.tabGroup && _pgTabGroups[p.tabGroup]) ? p.tabGroup : '';
-            html += '<button type="button" class="dropdown-item sd-tabs-all-item' + (p.key === _activeKey ? ' active' : '') + '"' +
-                    ' data-key="' + esc(p.key) + '"' + (locked ? ' disabled' : '') + '>' +
+            html += '<button type="button" class="menu-item sd-tabs-all-item' + (p.key === _activeKey ? ' active' : '') + '"' +
+                    ' data-key="' + esc(p.key) + '"' + (p.key === _activeKey ? ' aria-current="page"' : '') + (locked ? ' disabled' : '') + '>' +
                     // A page in a group carries the group's colour.
                     '<span class="sd-tabs-all-dot' + (gid ? ' sd-tab-color-dot' : '') + '"' + (gid ? ' data-color="' + esc(_pgTabGroups[gid].color) + '"' : '') + ' aria-hidden="true"></span>' +
                     '<span class="sd-tabs-all-name">' + esc(name) + '</span>' +
                     (_pgPageDirty(p) ? '<span class="sd-tabs-all-dirty" title="' + esc(_sdT('Unsaved Changes')) + '">●</span>' : '') +
-                    ((_pgDraftsReady() && p.page_draft) ? '<span class="sd-tab-draft-badge">' + esc(_sdT('Draft')) + '</span>' : '') +
-                    (locked ? '<span class="bi bi-lock-fill"></span>' : '') +
+                    ((_pgDraftsReady() && p.page_draft) ? '<span class="sd-tab-draft-badge sd-tabs-all-badge">' + esc(_sdT('Draft')) + '</span>' : '') +
+                    (locked ? '<span class="bi bi-lock-fill" aria-hidden="true"></span>' : '') +
                     '</button>';
         });
-        box.innerHTML = html || '<div class="sd-tabs-all-empty">' + esc(_sdT('No page matches.')) + '</div>';
+        box.innerHTML = html || '<div class="menu-text sd-tabs-all-empty">' + esc(_sdT('No page matches.')) + '</div>';
+    }
+    // The page menu of a row, the one a tab of the strip opens: the list
+    // closes first (it is a v6 menu, below the page menu's layer, and
+    // would stay open under it), the row's page becomes the active one,
+    // and the menu opens at the cursor or under the row. A locked row
+    // opens nothing, as its click does.
+    function _pgTabsAllPageMenu(it, at) {
+        it = it && it.closest ? it.closest('.sd-tabs-all-item') : null;
+        if (!it || it.disabled || !it.dataset.key) return false;
+        var key = it.dataset.key;
+        var r = it.getBoundingClientRect();
+        var btn = _pgTabsAllToggle();
+        if (btn) pgUI.menu.hide(btn);
+        if (key !== _activeKey) _pgTabsSwitch(key);
+        _pgTabsOpenMenu(null, key, at || { x: r.left + 12, y: r.bottom });
+        // Opened from the keyboard: the focus goes into the page menu.
+        if (!at && window._pgTabMenuEl) {
+            var first = window._pgTabMenuEl.querySelector('[data-act]:not([disabled])');
+            if (first) first.focus();
+        }
+        return true;
     }
 
     function _pgTabsBind() {
@@ -66709,9 +66886,48 @@ const StyleDesigner = (function () {
             all.addEventListener('click', function (e) {
                 var it = e.target.closest('.sd-tabs-all-item');
                 if (!it || it.disabled) return;
-                var btn = all.querySelector('[data-bs-toggle="dropdown"]');
+                var btn = _pgTabsAllToggle();
                 if (btn) pgUI.menu.hide(btn);
                 if (it.dataset.key !== _activeKey) _pgTabsSwitch(it.dataset.key);
+            });
+            // Right-click on a row: the page menu, as on a tab of the strip.
+            // The keys below also make some browsers send a contextmenu
+            // event of their own; the menu they opened stays where it is.
+            var keyMenuAt = 0;
+            all.addEventListener('contextmenu', function (e) {
+                if (!e.target.closest('.sd-tabs-all-item')) return;
+                e.preventDefault();
+                if (Date.now() - keyMenuAt < 800) return;
+                // A contextmenu event from the keyboard has no cursor.
+                _pgTabsAllPageMenu(e.target, (e.clientX || e.clientY) ? { x: e.clientX, y: e.clientY } : null);
+            });
+            // Keyboard: the arrows walk the rows (Bootstrap's menu walks only
+            // items that are direct children of .menu; these sit in the
+            // scrolling list), ArrowDown leaves the search box for the first
+            // row, and the context-menu key or Shift+F10 opens the page menu.
+            all.addEventListener('keydown', function (e) {
+                var it = e.target.closest('.sd-tabs-all-item');
+                var fromFilter = (filter && e.target === filter);
+                if (it && (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey))) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (_pgTabsAllPageMenu(it)) keyMenuAt = Date.now();
+                    return;
+                }
+                if (!it && !fromFilter) return;
+                if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End') return;
+                if (fromFilter && e.key !== 'ArrowDown') return;
+                var rows = Array.prototype.slice.call(all.querySelectorAll('.sd-tabs-all-item:not([disabled])'));
+                if (!rows.length) return;
+                var i = rows.indexOf(it);
+                var next = e.key === 'Home' ? rows[0]
+                         : e.key === 'End' ? rows[rows.length - 1]
+                         : e.key === 'ArrowDown' ? rows[Math.min(rows.length - 1, i + 1)]
+                         : (i <= 0 ? null : rows[i - 1]);
+                e.preventDefault();
+                e.stopPropagation();
+                if (next) next.focus();
+                else if (filter) filter.focus();
             });
             window.addEventListener('resize', function () { _pgTabsAllSync(); });
         }

@@ -1201,12 +1201,38 @@ function pg_list_edit_table($url, $columns)
  */
 function pg_list_edit_cell($columns, $field, $id, $value)
 {
-    if (!isset($columns[$field]) || ((int) $id <= 0)) {
-        return '';
+    $output = '';
+
+    foreach (pg_list_edit_cell_attributes($columns, $field, $id, $value) as $name => $attribute) {
+        $output .= ' ' . $name . '="' . h($attribute) . '"';
     }
 
-    return ' data-pg-edit="' . h((string) $field) . '" data-pg-edit-id="' . (int) $id . '"'
-        . ' data-pg-edit-value="' . h((string) $value) . '" tabindex="0"';
+    return $output;
+}
+
+/**
+ * The attributes pg_list_edit_cell() writes, as name => value, not escaped:
+ * for a row built as cells (pg_list_cell()) that a list paged on the server
+ * sends as data.
+ *
+ * @param array  $columns the screen's editable columns
+ * @param string $field
+ * @param int    $id      the record
+ * @param mixed  $value   the stored value the input opens with
+ * @return array empty when the column is not editable
+ */
+function pg_list_edit_cell_attributes($columns, $field, $id, $value)
+{
+    if (!isset($columns[$field]) || ((int) $id <= 0)) {
+        return array();
+    }
+
+    return array(
+        'data-pg-edit' => (string) $field,
+        'data-pg-edit-id' => (string) (int) $id,
+        'data-pg-edit-value' => (string) $value,
+        'tabindex' => '0',
+    );
 }
 
 /**
