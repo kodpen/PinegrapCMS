@@ -3153,7 +3153,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	}</style>
 	<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body pg-print-none">
 	  	<ul class="navbar-nav me-auto">
-			<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
+			<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . h(lang('Cancel')) . '" aria-label="' . h(lang('Cancel')) . '"><span class=" material-icons">arrow_back</span></button></li>
 	  	</ul>
 	  	<ul class="navbar-nav ms-auto">
 			<li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
@@ -4974,7 +4974,7 @@ else {
 			get_header() . '
 			<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body pg-print-none">
 				  <ul class="navbar-nav me-auto">
-					<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
+					<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . h(lang('Cancel')) . '" aria-label="' . h(lang('Cancel')) . '"><span class=" material-icons">arrow_back</span></button></li>
 				  </ul>
 				  <ul class="navbar-nav ms-auto">	
 					<li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
@@ -6543,7 +6543,7 @@ http://' . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/';
 			get_header() . '
 		<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body pg-print-none">
 			  <ul class="navbar-nav me-auto">
-				<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . lang('Cancel') . '"   aria-label="Close"><span class=" material-icons">arrow_back</span></button></li>
+				<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . h(lang('Cancel')) . '" aria-label="' . h(lang('Cancel')) . '"><span class=" material-icons">arrow_back</span></button></li>
 			  </ul>
 		</nav>';
 
