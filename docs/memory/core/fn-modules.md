@@ -16,6 +16,7 @@ description: Generated from the module field of the memory files: each includes/
 - `comments`: [[comment-replies]], [[comment-thread-rules]], [[comment-thread-verify]], [[comments-moderation-counters]], [[comments-widget-pages]], [[designed-page-comment-names]]
 - `config_text`: [[config-table-no-varchar]]
 - `consent`: [[fn-module-errors-mail-backup-consent]]
+- `contact_list`: [[server-paged-lists]]
 - `contacts`: [[panel-avatar]], [[panel-avatar-sites]]
 - `designer_fx`: [[designer-interactions]]
 - `designer_vocab`: [[designer-bootstrap-vocabulary]]

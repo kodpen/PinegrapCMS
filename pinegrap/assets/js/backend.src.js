@@ -2438,9 +2438,13 @@ function pgListServerOptions(options, $table) {
         }
     };
 
-    // Hints and menus of the rows that just arrived.
+    // Hints, menus and lazy pictures of the rows that just arrived.
     $table.on('draw.dt', function () {
         pgInitInjected($table.find('tbody'));
+
+        if ($.fn.Lazy) {
+            $table.find('img.lazy:not(.delayed)').Lazy();
+        }
     });
 }
 
