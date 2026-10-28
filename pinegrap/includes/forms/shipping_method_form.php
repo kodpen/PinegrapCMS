@@ -74,7 +74,10 @@ function pg_shipping_method_form_new_values()
         'status' => true,
         'protected' => false,
         'excluded_transit_dates' => '',
-        'start_time' => date('n/j/Y') . ' 12:00 AM',
+        // Today in the site's date order, like the end time: month-first text
+        // read day-first is day 10 of month 27 (no date) or, on days 1-12, a
+        // date months away that hides the method until then.
+        'start_time' => date(get_date_format_code() . '/Y') . ' 12:00 AM',
         'end_time' => (DATE_FORMAT == 'month_day') ? '12/31/2099 11:59 PM' : '31/12/2099 11:59 PM',
     );
 
@@ -93,6 +96,25 @@ function pg_shipping_method_form_new_values()
     }
 
     return $values;
+}
+
+/**
+ * A stored start or end time as the form shows it: empty for a zero date,
+ * what a lenient SQL mode kept for an invalid value and what
+ * prepare_form_data_for_output() printed as 0/0/0000 12:00 AM.
+ *
+ * @param string|null $stored  The DATETIME column value
+ * @return string
+ */
+function pg_shipping_method_form_date_time_value($stored)
+{
+    $stored = (string) $stored;
+
+    if ($stored === '' || strpos($stored, '0000-00-00') === 0) {
+        return '';
+    }
+
+    return (string) prepare_form_data_for_output($stored, 'date and time');
 }
 
 /**
@@ -133,8 +155,8 @@ function pg_shipping_method_form_row_values($row, $excluded_transit_dates)
         'status' => ($row['status'] == 'enabled'),
         'protected' => (bool) $row['protected'],
         'excluded_transit_dates' => (string) $excluded_transit_dates,
-        'start_time' => prepare_form_data_for_output($row['start_time'], 'date and time'),
-        'end_time' => prepare_form_data_for_output($row['end_time'], 'date and time'),
+        'start_time' => pg_shipping_method_form_date_time_value($row['start_time']),
+        'end_time' => pg_shipping_method_form_date_time_value($row['end_time']),
     );
 
     // A variable base rate without a subtotal is shown blank.
@@ -319,14 +341,72 @@ function pg_shipping_method_excluded_dates($text)
 }
 
 /**
+ * The stored value of a posted start or end time: 'Y-m-d H:i' from a date
+ * in the site's order and a 12- or 24-hour time, as the date and time field
+ * posts them, or null when the text is not that. The date is checked before
+ * prepare_form_data_for_input() splits it: read day-first, month-first text
+ * such as 10/27/2026 is day 10 of month 27, which a strict SQL mode refuses
+ * and a lenient one stores as 0000-00-00; an ISO date would be split the
+ * same way and is refused too.
+ *
+ * @param mixed $text  The posted value
+ * @return string|null
+ */
+function pg_shipping_method_form_date_time_column($text)
+{
+    if (!is_scalar($text)) {
+        return null;
+    }
+
+    $parts = preg_split('/\s+/', trim((string) $text), 2);
+
+    if (count($parts) != 2 || !preg_match('/^\d{1,2}[-,\/]\d{1,2}[-,\/]\d{4}$/', $parts[0]) || !validate_date($parts[0]) || !validate_time($parts[1])) {
+        return null;
+    }
+
+    $stored = (string) prepare_form_data_for_input($parts[0] . ' ' . $parts[1], 'date and time');
+
+    return preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $stored) ? $stored : null;
+}
+
+/**
+ * What keeps a post from being saved: field name => message for the error
+ * screen. The start and end times must be a date and time in the site's
+ * order (pg_shipping_method_form_date_time_column()); a blank one is no
+ * DATETIME either.
+ *
+ * @param array $post  The posted form
+ * @return array
+ */
+function pg_shipping_method_form_errors($post)
+{
+    $errors = array();
+
+    foreach (array('start_time' => lang('Start Time'), 'end_time' => lang('End Time')) as $field => $label) {
+        if (pg_shipping_method_form_date_time_column($post[$field] ?? '') === null) {
+            $errors[$field] = lang(array('string' => 'Please enter a valid date &amp; time for {var:1}', 'vars' => $label));
+        }
+    }
+
+    return $errors;
+}
+
+/**
  * The column values a post is saved with, in table order (the user and the
- * timestamp aside).
+ * timestamp aside). A post that cannot be saved ends on the error screen
+ * here, before the screen's query.
  *
  * @param array $post  The posted form
  * @return array  Column name => string value
  */
 function pg_shipping_method_form_columns($post)
 {
+    $errors = pg_shipping_method_form_errors($post);
+
+    if ($errors) {
+        output_error(implode('. ', $errors) . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
     $text = function ($name) use ($post) {
         $value = $post[$name] ?? '';
         return is_scalar($value) ? (string) $value : '';
@@ -352,8 +432,8 @@ function pg_shipping_method_form_columns($post)
         // A blank number cleans to '' whatever the store's country.
         'carrier_vkn' => ($text('carrier_vkn') === '') ? '' : (string) pg_carrier_number_clean($text('carrier_vkn')),
         'status' => ($text('status') == 1) ? 'enabled' : 'disabled',
-        'start_time' => (string) prepare_form_data_for_input($text('start_time'), 'date and time'),
-        'end_time' => (string) prepare_form_data_for_input($text('end_time'), 'date and time'),
+        'start_time' => (string) pg_shipping_method_form_date_time_column($text('start_time')),
+        'end_time' => (string) pg_shipping_method_form_date_time_column($text('end_time')),
         'service' => $service,
         'realtime_rate' => is_scalar($realtime_rate) ? (string) $realtime_rate : '0',
         'base_rate' => (string) pg_shipping_method_amount_cents($post['base_rate'] ?? ''),
@@ -417,6 +497,19 @@ function pg_shipping_method_save_links($shipping_method_id, $post)
 }
 
 /**
+ * The help text under a time field: the hour format the site's time format
+ * setting names, h:mm AM/PM for twelve_hours and HH:mm otherwise, as
+ * get_relative_time() reads that setting.
+ *
+ * @param string $time_format  TIME_FORMAT
+ * @return string
+ */
+function pg_shipping_method_form_time_help($time_format)
+{
+    return ($time_format == 'twelve_hours') ? lang('h:mm AM/PM') : lang('HH:mm');
+}
+
+/**
  * The four field cards of the form, wrapped in their row.
  *
  * @param array  $values        pg_shipping_method_form_new_values() or
@@ -435,6 +528,8 @@ function pg_shipping_method_form_cards($values, $zone_options)
     $value = function ($name) use ($values) {
         return h((string) $values[$name]);
     };
+
+    $time_help = pg_shipping_method_form_time_help(TIME_FORMAT);
 
     $day_labels = array(
         'mon' => lang('Monday'),
@@ -529,7 +624,7 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                                                 <div class="col-12">
                                                                     <label for="' . $field . '_cutoff_time" class="form-label">' . lang('Cut-off time') . '</label>
                                                                     <input type="text" name="' . $field . '_cutoff_time" id="' . $field . '_cutoff_time" size="8" maxlength="8" value="' . $value($field . '_cutoff_time') . '"  class="form-control" data-pg-time/>
-                                                                    <div class="form-text text-end">h:mm AM/PM</div>
+                                                                    <div class="form-text text-end">' . $time_help . '</div>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -650,7 +745,7 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                         <div class="col-12 md:col-6 lg:col-4 my-1">
                                             <label for="end_of_day" class="form-label">' . lang('End of Day Time') . '</label>
                                             <input value="' . $value('end_of_day') . '" type="text" name="end_of_day" id="end_of_day" class="form-control" maxlength="8" data-pg-time/>
-                                            <div class="form-text text-end" >' . lang('h:mm AM/PM') . '</div>
+                                            <div class="form-text text-end">' . $time_help . '</div>
                                         </div>
                                         <div class="col-12 my-3">
                                             <h5 class="fg-secondary">' . lang('Handling on') . '</h5>
@@ -720,11 +815,11 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                             <div class="row">
                                                 <div class="col-12 md:col">
                                                     <label for="start_time" class="form-label">' . lang('Start Time') . '</label>
-                                                    <input value="' . $value('start_time') . '" type="text" name="start_time" id="start_time" class="form-control" maxlength="10" autocomplete="off" data-pg-datetime/>
+                                                    <input value="' . $value('start_time') . '" type="text" name="start_time" id="start_time" class="form-control" autocomplete="off" data-pg-datetime/>
                                                 </div>
                                                 <div class="col-12 md:col">
                                                     <label for="end_time" class="form-label">' . lang('End Time') . '</label>
-                                                    <input value="' . $value('end_time') . '" type="text" name="end_time" id="end_time" class="form-control " maxlength="10" autocomplete="off" data-pg-datetime/>
+                                                    <input value="' . $value('end_time') . '" type="text" name="end_time" id="end_time" class="form-control" autocomplete="off" data-pg-datetime/>
                                                 </div>
                                             </div>
                                         </div>
