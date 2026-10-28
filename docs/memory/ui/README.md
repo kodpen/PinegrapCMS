@@ -121,7 +121,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-avatar.md: The panel Avatar (pg_avatar_markup()): letters on eight theme tones, grey square for a nameless login, presence dot, no empty src; initials and tone on person briefs
 - panel-cloudflare-email-obfuscation.md: Panel body wrapped in <!--email_off--> so Cloudflare Email Obfuscation does not show staff "[email protected]"; which functions, what stays protected, the Cloudflare-side rule
 - panel-code-fields.md: Code fields on panel screens: pg_code_editor_attach(), loading through pgCodeEditorUse(), the settings dialog, releasing editors, the rich text source mode, the colour scheme
-- panel-content-contrast.md: Panel text and icon contrast (#2530): off and secondary states on --pg-fg-2 not opacity, palette tones pulled toward the text colour, dashboard card icons at 3:1, what is still open
+- panel-content-contrast.md: Panel and visual editor text and icon contrast (#2530): secondary states on a solid colour not opacity, tones pulled toward the text colour, the editor's --sd-* mixes
 - panel-css-tokens.md: The panel's --pg-* CSS token layer (Bootstrap 6 step B3): names rules read, the alias block on :root and [data-bs-theme], color-mix() instead of -rgb, what is converted
 - panel-field-title-override.md: A labelled panel field carries no title: Bootstrap 6 copies a popover title into aria-label, replacing the label as its name; what replaces the title, the scan test, what is left
 - panel-focus-ring.md: The panel's focus ring on Bootstrap 6's focus-ring tokens (step B9k): the --pg-focus-ring-* tokens, why the colour is not an alias, what was checked, which ring sizes wait for B10

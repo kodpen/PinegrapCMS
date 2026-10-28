@@ -4715,8 +4715,7 @@ const StyleDesigner = (function () {
     var SD_LEGACY_REGIONS = { menu: 1, menu_sequence: 1, ad: 1, tag_cloud: 1, mobile_switch: 1, pdf: 1,
                               common: 1, designer: 1, dynamic: 1 };
     function _sdLegacyBadge() {
-        return '<span class="sd-legacy-badge" style="margin-left:auto;padding:0 5px;border-radius:3px;font-size:.62rem;' +
-               'line-height:1.5;background:rgba(108,117,125,.15);color:#6c757d;white-space:nowrap">' + esc(_sdT('Legacy')) + '</span>';
+        return '<span class="sd-legacy-badge">' + esc(_sdT('Legacy')) + '</span>';
     }
 
     var regionIcons = {
@@ -25707,7 +25706,7 @@ const StyleDesigner = (function () {
                 // Editable prop-bound row — small link icon indicates it mirrors a prop
                 builtinAttrsHtml +=
                     '<div class="sd-attr-row sd-attr-row-prop" data-propkey="' + esc(attr.propKey) + '">' +
-                        '<span class="sd-attr-name-lbl"><i class="bi bi-link-45deg" style="font-size:.65rem;color:var(--sd-accent);opacity:.7;margin-right:2px"></i>' + esc(attr.name) + '</span>' +
+                        '<span class="sd-attr-name-lbl"><i class="bi bi-link-45deg" style="font-size:.65rem;color:var(--sd-accent);margin-right:2px"></i>' + esc(attr.name) + '</span>' +
                         '<span class="sd-attr-sep">:</span>' +
                         '<input type="text" class="sd-attr-val sd-attr-prop-val" data-propkey="' + esc(attr.propKey) + '" value="' + esc(attr.value) + '" placeholder="' + esc(attr.name) + '">' +
                         '<span class="sd-attr-del-ph"></span>' +
@@ -25716,7 +25715,7 @@ const StyleDesigner = (function () {
                 // Read-only locked row — edit via Properties panel
                 builtinAttrsHtml +=
                     '<div class="sd-attr-row sd-attr-row-sys">' +
-                        '<span class="sd-attr-name-lbl"><i class="bi bi-lock-fill" style="font-size:.6rem;color:var(--sd-accent);opacity:.7;margin-right:3px"></i>' + esc(attr.name) + '</span>' +
+                        '<span class="sd-attr-name-lbl"><i class="bi bi-lock-fill" style="font-size:.6rem;color:var(--sd-accent);margin-right:3px"></i>' + esc(attr.name) + '</span>' +
                         '<span class="sd-attr-sep">:</span>' +
                         '<span class="sd-attr-sys-val">' + esc(attr.value) + '</span>' +
                         '<span class="sd-attr-del-ph"></span>' +
@@ -25770,7 +25769,7 @@ const StyleDesigner = (function () {
                 }
                 dynHtml +=
                     '<div class="sd-attr-row sd-attr-row-sys" data-idx="' + i + '">' +
-                        '<span class="sd-attr-name-lbl"><i class="bi bi-lock-fill" style="font-size:.6rem;color:var(--sd-accent);opacity:.7;margin-right:3px"></i>' + esc(attr.name || '') + '</span>' +
+                        '<span class="sd-attr-name-lbl"><i class="bi bi-lock-fill" style="font-size:.6rem;color:var(--sd-accent);margin-right:3px"></i>' + esc(attr.name || '') + '</span>' +
                         '<span class="sd-attr-sep">:</span>' +
                         '<span class="sd-attr-sys-val">' + esc(displayVal) + '</span>' +
                         '<span class="sd-attr-del-ph"></span>' +
@@ -26888,7 +26887,7 @@ const StyleDesigner = (function () {
         bodyLi.style.cursor = 'pointer';
         bodyLi.innerHTML =
             '<span class="sd-tree-chev-placeholder"></span>' +
-            '<span class="bi bi-lock-fill" style="font-size:.6rem;color:var(--sd-accent);opacity:.6;margin-right:3px"></span>' +
+            '<span class="bi bi-lock-fill" style="font-size:.6rem;color:var(--sd-accent);margin-right:3px"></span>' +
             '<span class="bi bi-code-slash" style="font-size:.65rem;margin-right:.3rem;opacity:.5"></span>' +
             '<span style="color:#79c0ff;font-weight:600">&lt;body&gt;</span>';
         bodyLi.addEventListener('click', function (e) {
@@ -51058,7 +51057,7 @@ const StyleDesigner = (function () {
         if (!selectedNode) {
             var bc0 = document.getElementById('sd-statusbar-breadcrumb');
             if (!bc0) { bc0 = document.createElement('div'); bc0.id = 'sd-statusbar-breadcrumb'; bc0.className = 'sd-breadcrumb'; bar.prepend(bc0); }
-            bc0.innerHTML = '<span style="opacity:.4">' + esc(_sdT('No selection')) + '</span>';
+            bc0.innerHTML = '<span class="sd-breadcrumb-empty">' + esc(_sdT('No selection')) + '</span>';
             _ensureSizeBadge().style.display = 'none';
             return;
         }
