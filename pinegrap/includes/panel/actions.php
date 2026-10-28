@@ -171,6 +171,9 @@ function pg_panel_actions()
         // only asks for the session.
         'get_form' => array('file' => 'content.php', 'handler' => 'pg_panel_get_form', 'exempt' => false, 'any_role' => true, 'token' => false, 'write' => false),
         'get_forms' => array('file' => 'content.php', 'handler' => 'pg_panel_get_forms', 'exempt' => false, 'any_role' => true, 'token' => false, 'write' => false),
+        'user_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_user_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
+        'submitted_form_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_submitted_form_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
+        'contact_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_contact_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'get_page' => array('file' => 'content.php', 'handler' => 'pg_panel_get_page', 'exempt' => false, 'token' => false, 'write' => false),
         'get_pages' => array('file' => 'content.php', 'handler' => 'pg_panel_get_pages', 'exempt' => false, 'token' => false, 'write' => false),
         'test' => array('file' => 'content.php', 'handler' => 'pg_panel_test', 'exempt' => false, 'token' => false, 'write' => false),
@@ -299,7 +302,7 @@ function pg_panel_actions()
         'ws_channel_decisions', 'ws_channel_files', 'ws_channel_tasks',
         'ws_search', 'ws_palette', 'ws_channel_board', 'ws_ref_search',
         'ws_record_refs', 'ws_record_fields', 'ws_record_fields_save',
-        'ws_record_create',
+        'ws_record_create', 'ws_bulk_create_propose',
         'ws_task_get', 'ws_task_check', 'ws_task_save',
         'ws_task_status', 'ws_task_move', 'ws_tasks', 'ws_board',
         'ws_conflicts', 'ws_calendar', 'ws_event_save', 'ws_event_get',
@@ -331,6 +334,7 @@ function pg_panel_actions()
         'ws_flow_run_start', 'ws_flow_runs_list', 'ws_flow_run_get', 'ws_flow_run_cancel',
         'ws_flow_step_mend', 'ws_flow_box_try', 'ws_flow_template_setup',
         'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove',
+        'ws_flow_from_draft',
         'ws_channel_customer', 'ws_channel_customer_history',
         'ws_channel_customer_followup',
     ) as $ws_action) {

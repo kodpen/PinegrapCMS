@@ -1012,8 +1012,8 @@ echo
 #explorer_app { --pg-tile: 136px; --pg-tile-thumb: 84px; --pg-tile-icon: 3rem; }
 #explorer_grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--pg-tile), 1fr)); gap: .45rem; }
 .explorer-item { cursor: default; }
-#explorer_grid .item-card { position: relative; border-radius: .8rem; padding: .55rem .4rem .5rem; text-align: center; transition: background .12s ease, box-shadow .12s ease, transform .12s ease; }
-#explorer_grid .item-card:hover { background: var(--pg-bg-2); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,.08); }
+#explorer_grid .item-card { position: relative; border-radius: .8rem; padding: .55rem .4rem .5rem; text-align: center; --pg-lift-shadow: 0 4px 14px color-mix(in srgb, #000 8%, transparent); --pg-lift-duration: .12s; --pg-lift-also: background .12s ease; }
+#explorer_grid .item-card:hover { background: var(--pg-bg-2); }
 .explorer-item.selected .item-card { background: var(--pg-primary-bg-subtle) !important; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--pg-primary) 55%, transparent); }
 tr.explorer-item.selected > td { background: var(--pg-primary-bg-subtle) !important; }
 .explorer-item.cut-ghost { opacity: .45; }
@@ -1442,7 +1442,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
              and a toolbar with four transfer buttons on it would be mostly
              greyed out wherever you stood. -->
         <div class="pg-menu-wrap" id="explorer_transfer_wrap">
-            <button type="button" id="transfer_menu_button" class="btn btn-sm btn-ghost no-popover" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" title="<?php echo lang('Import / Export'); ?>"><span class="bi bi-arrow-down-up"></span></button>
+            <button type="button" id="transfer_menu_button" class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" title="<?php echo lang('Import / Export'); ?>"><span class="bi bi-arrow-down-up"></span></button>
             <ul class="menu shadow" style="border-radius:.75rem;">
                 <li id="import_zip_item"><button type="button" class="menu-item" id="import_zip_button"><span class="bi bi-file-earmark-zip me-3"></span><?php echo lang('Import ZIP File'); ?></button></li>
                 <li id="import_design_zip_item"><button type="button" class="menu-item" id="import_design_zip_button"><span class="bi bi-magic me-3"></span><?php echo lang('Import ZIP for the Visual Page Editor'); ?></button></li>
@@ -1452,12 +1452,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 <li id="export_products_xlsx_item"><button type="button" class="menu-item" data-export-scope="all" data-export-format="xlsx"><span class="bi bi-file-earmark-excel me-3"></span><?php echo lang('Export Products'); ?> (Excel)</button></li>
             </ul>
         </div>
-        <button type="button" id="up_button" class="btn btn-sm btn-ghost no-popover" title="<?php echo lang('Up'); ?>"><span class="bi bi-arrow-90deg-up"></span></button>
+        <button type="button" id="up_button" class="btn btn-sm btn-text theme-secondary no-popover" title="<?php echo lang('Up'); ?>"><span class="bi bi-arrow-90deg-up"></span></button>
         <div id="explorer_breadcrumb" class="pg-toolbar-grow"></div>
-        <div class="input-group input-group-sm rounded-pill pg-toolbar-search" id="explorer_search_wrap">
-            <span class="input-group-text rounded-start-pill bi bi-search border-end-0"></span>
-            <input type="search" id="filter_input" class="form-control rounded-end-pill border-start-0" placeholder="<?php echo lang('Search'); ?>" />
-        </div>
+        <label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search" id="explorer_search_wrap">
+            <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+            <input type="search" id="filter_input" class="form-ghost" placeholder="<?php echo lang('Search'); ?>" aria-label="<?php echo lang('Search'); ?>" />
+        </label>
         <!-- Narrowing by what things are, rather than by what they are called.
              The search box answers "where is the file I can name"; this answers
              "which of these still needs work" -- the pictures nobody optimised,
@@ -1465,7 +1465,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
              sitemap. Every test runs on the listing that is already on screen,
              so it costs a redraw and no request. -->
         <div class="pg-menu-wrap" id="explorer_filter_wrap">
-            <button type="button" id="explorer_filter_button" class="btn btn-sm btn-ghost no-popover position-relative" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" title="<?php echo lang('Filters'); ?>"><span class="bi bi-sliders"></span><span id="explorer_filter_count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill theme-primary d-none" style="font-size:.6rem;"></span></button>
+            <button type="button" id="explorer_filter_button" class="btn btn-sm btn-text theme-secondary no-popover position-relative" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" title="<?php echo lang('Filters'); ?>"><span class="bi bi-sliders"></span><span id="explorer_filter_count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill theme-primary d-none" style="font-size:.6rem;"></span></button>
             <!-- Aligned to the button's left edge rather than its right: the
                  toolbar wraps on a narrow screen and this button can end up
                  near the left, where a right-aligned menu hangs off the side
@@ -1476,7 +1476,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
              select. Only on that view: Pictures is a view of its own, and a
              folder is not something to narrow by type. -->
         <div class="pg-menu-wrap d-none" id="file_scope_wrap">
-            <button type="button" id="file_scope_button" class="btn btn-sm btn-ghost no-popover pg-menu-caret text-nowrap" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false"><span class="bi bi-funnel me-1"></span><span id="file_scope_label"></span></button>
+            <button type="button" id="file_scope_button" class="btn btn-sm btn-text theme-secondary no-popover pg-menu-caret text-nowrap" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false"><span class="bi bi-funnel me-1"></span><span id="file_scope_label"></span></button>
             <ul class="menu shadow" id="file_scope_menu" style="border-radius:.75rem;">
                 <li><button type="button" class="menu-item" data-scope=""><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('All files'); ?></button></li>
                 <li><h6 class="menu-header"><?php echo lang('By type'); ?></h6></li>
@@ -1493,12 +1493,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             </ul>
         </div>
         <div class="btn-group btn-group-sm" id="explorer_view_group" role="group">
-            <button type="button" id="view_grid_button" class="btn btn-ghost no-popover" title="<?php echo lang('Grid view'); ?>"><span class="bi bi-grid-3x3-gap"></span></button>
-            <button type="button" id="view_list_button" class="btn btn-ghost no-popover" title="<?php echo lang('List view'); ?>"><span class="bi bi-list-ul"></span></button>
+            <button type="button" id="view_grid_button" class="btn btn-text theme-secondary no-popover" title="<?php echo lang('Grid view'); ?>"><span class="bi bi-grid-3x3-gap"></span></button>
+            <button type="button" id="view_list_button" class="btn btn-text theme-secondary no-popover" title="<?php echo lang('List view'); ?>"><span class="bi bi-list-ul"></span></button>
         </div>
-        <button type="button" id="recycle_bin_button" class="btn btn-sm btn-ghost no-popover position-relative d-none" title="<?php echo lang('Recycle Bin'); ?>"><span class="bi bi-trash3"></span><span id="recycle_bin_count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill theme-danger d-none" style="font-size:.6rem;"></span></button>
+        <button type="button" id="recycle_bin_button" class="btn btn-sm btn-text theme-secondary no-popover position-relative d-none" title="<?php echo lang('Recycle Bin'); ?>"><span class="bi bi-trash3"></span><span id="recycle_bin_count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill theme-danger d-none" style="font-size:.6rem;"></span></button>
         <div class="pg-menu-wrap" id="explorer_more_wrap">
-            <button type="button" id="explorer_more_button" class="btn btn-sm btn-ghost no-popover" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-display="static" aria-expanded="false"><span class="bi bi-three-dots-vertical"></span></button>
+            <button type="button" id="explorer_more_button" class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-display="static" aria-expanded="false"><span class="bi bi-three-dots-vertical"></span></button>
             <ul class="menu pg-menu-end shadow" style="border-radius:.75rem;">
                 <li class="d-none lg:d-block"><button type="button" class="menu-item" id="tree_toggle_button"><span class="bi bi-check2 me-3 opacity-0" data-role="check"></span><?php echo lang('Folder tree'); ?></button></li>
                 <li class="d-none lg:d-block"><button type="button" class="menu-item" id="preview_toggle_button"><span class="bi bi-check2 me-3 opacity-0" data-role="check"></span><?php echo lang('Preview panel'); ?></button></li>
@@ -1982,10 +1982,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             </div>
             <div class="dialog-body pt-0">
                 <div id="transfer_summary" class="form-text mt-0 mb-3"></div>
-                <div class="input-group input-group-sm rounded-pill mb-3">
-                    <span class="input-group-text rounded-start-pill bi bi-search border-end-0"></span>
-                    <input type="search" id="transfer_filter" class="form-control rounded-end-pill border-start-0" placeholder="<?php echo lang('Filter'); ?>" autocomplete="off" />
-                </div>
+                <label class="form-control form-control-sm form-adorn rounded-pill mb-3">
+                    <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="search" id="transfer_filter" class="form-ghost" placeholder="<?php echo lang('Filter'); ?>" aria-label="<?php echo lang('Filter'); ?>" autocomplete="off" />
+                </label>
                 <div id="transfer_targets" class="list-group list-group-flush" style="max-height: 46vh; overflow-y: auto;"></div>
                 <div id="transfer_note" class="form-text"></div>
             </div>
@@ -2007,10 +2007,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             </div>
             <div class="dialog-body pt-0">
                 <div class="form-text mt-0 mb-3"><?php echo lang('The channel gets a copy of this file; the original stays where it is.'); ?></div>
-                <div class="input-group input-group-sm rounded-pill mb-3">
-                    <span class="input-group-text rounded-start-pill bi bi-search border-end-0"></span>
-                    <input type="search" id="ws_send_filter" class="form-control rounded-end-pill border-start-0" placeholder="<?php echo lang('Filter'); ?>" aria-label="<?php echo lang('Filter'); ?>" autocomplete="off" />
-                </div>
+                <label class="form-control form-control-sm form-adorn rounded-pill mb-3">
+                    <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="search" id="ws_send_filter" class="form-ghost" placeholder="<?php echo lang('Filter'); ?>" aria-label="<?php echo lang('Filter'); ?>" autocomplete="off" />
+                </label>
                 <div id="ws_send_channels" class="list-group list-group-flush mb-5" style="max-height: 36vh; overflow-y: auto;"></div>
                 <label for="ws_send_body" class="form-label small"><?php echo lang('Add a message (optional)'); ?></label>
                 <textarea id="ws_send_body" class="form-control" rows="2" maxlength="4000"></textarea>
@@ -2033,7 +2033,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         <span class="ql-name" id="quicklook_name"></span>
         <span class="ql-meta" id="quicklook_meta"></span>
         <span class="ms-auto d-flex align-items-center gap-1" id="quicklook_tools"></span>
-        <button type="button" class="btn btn-sm btn-ghost no-popover" id="quicklook_close" title="<?php echo lang('Close'); ?>"><i class="bi bi-x-lg"></i></button>
+        <button type="button" class="btn btn-sm btn-text theme-secondary no-popover" id="quicklook_close" title="<?php echo lang('Close'); ?>"><i class="bi bi-x-lg"></i></button>
     </div>
     <div class="ql-stage" id="quicklook_stage">
         <button type="button" class="ql-nav ql-prev" id="quicklook_prev" title="<?php echo lang('Previous'); ?>"><i class="bi bi-chevron-left"></i></button>
@@ -4467,7 +4467,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 esc(def.label()) + '<i class="bi bi-x ms-1"></i></button>';
         });
 
-        chips += '<button type="button" class="btn btn-sm btn-ghost no-popover ms-auto" data-filter-clear="1">' + esc(L.clear_filters) + '</button>';
+        chips += '<button type="button" class="btn btn-sm btn-text theme-secondary no-popover ms-auto" data-filter-clear="1">' + esc(L.clear_filters) + '</button>';
 
         bar.innerHTML = chips;
         bar.classList.remove('d-none');
@@ -4932,7 +4932,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             state.ordered.forEach(function (item, index) {
                 var classes = itemClasses(item);
                 html += '<div class="explorer-item' + classes + (catalogSubName(item) !== '' ? ' has-subname' : '') + '" draggable="true" data-kind="' + item.kind + '" data-id="' + item.id + '" data-index="' + index + '">' +
-                    '<div class="item-card" title="' + esc(item.name + (catalogSubName(item) !== '' ? ' — ' + catalogSubName(item) : '')) + '">' +
+                    '<div class="item-card hover-lift" title="' + esc(item.name + (catalogSubName(item) !== '' ? ' — ' + catalogSubName(item) : '')) + '">' +
                     '<span class="sel-dot" data-role="sel"><span class="bi bi-check-lg"></span></span>' +
                     stockDotHtml(item) +
                     seoChipHtml(item) +
@@ -5666,13 +5666,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             : '';
 
         var html = '<span class="fg-primary text-nowrap">' + esc(fmt(L.items_selected, [selected.length])) + '</span>' +
-            '<button type="button" class="btn btn-sm btn-ghost no-popover py-0 px-1" data-role="clear-selection" title="' + esc(L.clear_selection) + '"><i class="bi bi-x-lg"></i></button>' +
+            '<button type="button" class="btn btn-sm btn-text theme-secondary no-popover py-0 px-1" data-role="clear-selection" title="' + esc(L.clear_selection) + '"><i class="bi bi-x-lg"></i></button>' +
             clipboardNote +
             progressHtml() +
             '<span class="selection-actions ms-auto">';
 
         primary.forEach(function (entry) {
-            html += '<button type="button" class="btn btn-sm btn-ghost no-popover text-nowrap" data-selection-action="' + esc(entry.action) + '"' +
+            html += '<button type="button" class="btn btn-sm btn-text theme-secondary no-popover text-nowrap" data-selection-action="' + esc(entry.action) + '"' +
                 (entry.off ? ' disabled' : '') + ' title="' + esc(entry.label) + '">' +
                 '<i class="bi ' + entry.icon + '"></i><span class="selection-action-label ms-1">' + esc(entry.label) + '</span></button>';
         });
@@ -5680,7 +5680,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (overflow.length > 0) {
 
             html += '<span class="pg-menu-wrap">' +
-                '<button type="button" class="btn btn-sm btn-ghost no-popover" data-bs-toggle="menu" data-bs-placement="top-end" data-bs-display="static" aria-expanded="false" aria-label="' + esc(L.more_actions) + '"><i class="bi bi-three-dots-vertical"></i></button>' +
+                '<button type="button" class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="menu" data-bs-placement="top-end" data-bs-display="static" aria-expanded="false" aria-label="' + esc(L.more_actions) + '"><i class="bi bi-three-dots-vertical"></i></button>' +
                 '<ul class="menu pg-menu-end shadow" style="border-radius:.75rem;">';
 
             overflow.forEach(function (entry) {
@@ -5782,6 +5782,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         var counts = fmt(L.counts_label, [state.items.folders.length, state.items.pages.length, state.items.files.length]);
+        var listed = state.items.folders.length + state.items.pages.length + state.items.files.length;
+
+        // A search or a filter shows part of the folder: say how much.
+        if (state.ordered.length < listed) {
+            counts = fmt(L.filters_showing, [state.ordered.length, listed]);
+        }
+
         var selected = selectedItems();
         var selectedInfo = selected.length > 0 ? (selected.length + ' ' + L.items + ' ' + L.selected) : '';
         var clipboardInfo = '';
@@ -6386,31 +6393,31 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var tools = '';
 
         if (((item.kind === 'file') || (item.kind === 'page')) && !item.erp) {
-            tools += '<button type="button" class="btn btn-sm btn-ghost no-popover" data-ql="copy" title="' + esc(L.copy_address) + '"><i class="bi bi-link-45deg"></i></button>';
+            tools += '<button type="button" class="btn btn-sm btn-text theme-secondary no-popover" data-ql="copy" title="' + esc(L.copy_address) + '"><i class="bi bi-link-45deg"></i></button>';
         }
 
         if ((item.kind === 'file') && item.can_edit) {
-            tools += '<button type="button" class="btn btn-sm btn-ghost no-popover" data-ql="edit" title="' + esc(L.edit) + '"><i class="bi bi-pencil-square"></i></button>';
-            tools += '<a class="btn btn-sm btn-ghost no-popover" href="' + esc(item.url) + '" download title="' + esc(L.download) + '"><i class="bi bi-download"></i></a>';
+            tools += '<button type="button" class="btn btn-sm btn-text theme-secondary no-popover" data-ql="edit" title="' + esc(L.edit) + '"><i class="bi bi-pencil-square"></i></button>';
+            tools += '<a class="btn btn-sm btn-text theme-secondary no-popover" href="' + esc(item.url) + '" download title="' + esc(L.download) + '"><i class="bi bi-download"></i></a>';
         }
 
         if ((item.kind === 'product') || (item.kind === 'group')) {
-            tools += '<a class="btn btn-sm btn-ghost no-popover" href="' + esc(item.edit_url) + '&send_to=' + encodeURIComponent(currentSendTo()) + '" title="' + esc(L.edit) + '"><i class="bi bi-pencil-square"></i></a>';
+            tools += '<a class="btn btn-sm btn-text theme-secondary no-popover" href="' + esc(item.edit_url) + '&send_to=' + encodeURIComponent(currentSendTo()) + '" title="' + esc(L.edit) + '"><i class="bi bi-pencil-square"></i></a>';
         }
 
         // An ERP document has no public address to copy; what is worth having
         // at hand is the file itself and the screen it belongs to.
         if (item.erp) {
             if (item.download_url) {
-                tools += '<a class="btn btn-sm btn-ghost no-popover" href="' + esc(item.download_url) + '" download="' + esc(item.name || '') + '" title="' + esc(L.download) + '"><i class="bi bi-download"></i></a>';
+                tools += '<a class="btn btn-sm btn-text theme-secondary no-popover" href="' + esc(item.download_url) + '" download="' + esc(item.name || '') + '" title="' + esc(L.download) + '"><i class="bi bi-download"></i></a>';
             }
             if (item.edit_url) {
-                tools += '<a class="btn btn-sm btn-ghost no-popover" href="' + esc(item.edit_url) + '" title="' + esc(erpGotoLabel(item)) + '"><i class="bi ' + erpGotoIcon(item) + '"></i></a>';
+                tools += '<a class="btn btn-sm btn-text theme-secondary no-popover" href="' + esc(item.edit_url) + '" title="' + esc(erpGotoLabel(item)) + '"><i class="bi ' + erpGotoIcon(item) + '"></i></a>';
             }
         }
 
         if (item.url) {
-            tools += '<a class="btn btn-sm btn-ghost no-popover" href="' + esc(item.url) + '" target="_blank" rel="noopener" title="' + esc(L.open_in_new_tab) + '"><i class="bi bi-box-arrow-up-right"></i></a>';
+            tools += '<a class="btn btn-sm btn-text theme-secondary no-popover" href="' + esc(item.url) + '" target="_blank" rel="noopener" title="' + esc(L.open_in_new_tab) + '"><i class="bi bi-box-arrow-up-right"></i></a>';
         }
 
         document.getElementById('quicklook_tools').innerHTML = tools;
@@ -14502,6 +14509,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         renderContent();
         applySelectionClasses();
         renderStatusbar();
+
+        // An item the search hides leaves the selection strip; it leaves the
+        // preview too, instead of standing there beside results it is not in.
+        var searchSelected = selectedItems();
+        renderPreview(searchSelected.length === 1 ? searchSelected[0] : null);
     });
 
     // The selection strip is redrawn on every selection change, so its buttons

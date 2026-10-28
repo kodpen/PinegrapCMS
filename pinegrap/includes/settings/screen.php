@@ -86,7 +86,7 @@ if (!$_POST) {
         foreach ($pg_settings_category['sections'] as $pg_settings_section_id => $pg_settings_section_label) {
 
             $pg_settings_chips .=
-                '<a class="pg-chip" href="#' . h($pg_settings_section_id) . '" data-pgset="' . h($pg_settings_section_id) . '">'
+                '<a class="chip" href="#' . h($pg_settings_section_id) . '" data-pgset="' . h($pg_settings_section_id) . '">'
                 . h($pg_settings_section_label) . '</a>';
         }
     }
@@ -120,14 +120,14 @@ if (!$_POST) {
     foreach (array(array($pg_settings_prev, 'bi-chevron-left', lang('Previous')), array($pg_settings_next, 'bi-chevron-right', lang('Next'))) as $pg_settings_step) {
 
         if ($pg_settings_step[0] === '') {
-            $pg_settings_step_links .= '<button type="button" class="btn btn-sm btn-ghost" disabled="disabled"><i class="bi ' . $pg_settings_step[1] . '" aria-hidden="true"></i></button>';
+            $pg_settings_step_links .= '<button type="button" class="btn btn-sm btn-text theme-secondary" disabled="disabled"><i class="bi ' . $pg_settings_step[1] . '" aria-hidden="true"></i></button>';
             continue;
         }
 
         $pg_settings_step_category = pg_settings_category($pg_settings_step[0]);
 
         $pg_settings_step_links .=
-            '<a class="btn btn-sm btn-ghost no-popover" data-bs-toggle="tooltip"'
+            '<a class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="tooltip"'
             . ' title="' . h($pg_settings_step_category['label']) . '"'
             . ' href="' . h(pg_settings_url($pg_settings_step[0])) . '">'
             . '<i class="bi ' . $pg_settings_step[1] . '" aria-hidden="true"></i></a>';
@@ -200,10 +200,10 @@ if (!$_POST) {
                     'suffix' => ((count($pg_settings_category['sections']) == 1) ? '' : 's'),
                 ))) . '</span>
                 <div class="pg-toolbar-grow pg-chips">' . $pg_settings_chips . '</div>
-                <div class="input-group input-group-sm rounded-pill pg-toolbar-search">
-                    <span class="input-group-text bg-transparent border-end-0 rounded-start-pill"><i class="bi bi-search" aria-hidden="true"></i></span>
-                    <input type="search" id="pg_settings_filter" class="form-control border-start-0 rounded-end-pill" placeholder="' . h(lang('Search in this page')) . '" autocomplete="pg-no-autofill" />
-                </div>
+                <label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
+                    <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="search" id="pg_settings_filter" class="form-ghost" placeholder="' . h(lang('Search in this page')) . '" aria-label="' . h(lang('Search in this page')) . '" autocomplete="pg-no-autofill" />
+                </label>
                 <div class="btn-group btn-group-sm">' . $pg_settings_step_links . '</div>
             </div>
 

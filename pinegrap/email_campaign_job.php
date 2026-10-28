@@ -123,11 +123,11 @@ function email_campaign_job_prepare($email_recipient)
             salutation,
             suffix
          FROM contacts
-         WHERE id = " . (int) $email_recipient['contact_id'];
+         WHERE id = ?";
     $row = null;
     // Manually entered recipients are stored with contact_id 0 and have no contact row.
     if ((int) $email_recipient['contact_id'] > 0) {
-        $result = mysqli_query(db::$con, $query);
+        $result = db_q($query, array((int) $email_recipient['contact_id']));
         $row = mysqli_fetch_assoc($result);
     }
     if (!$row) {
@@ -436,11 +436,11 @@ if (!pg_email_retry_ready()) {
             FROM email_recipients
             LEFT JOIN email_campaigns on email_recipients.email_campaign_id = email_campaigns.id
             WHERE
-               (email_recipients.id = '" . $email_recipient['id'] . "')
+               (email_recipients.id = ?)
                AND (email_recipients.complete = '0')
                AND (email_campaigns.status = 'ready')
                AND (email_campaigns.start_time <= NOW())";
-        $result = mysqli_query(db::$con, $query);
+        $result = db_q($query, array((string) $email_recipient['id']));
 
         // if data for recipient was found, continue with sending e-mail to recipient
         if (mysqli_num_rows($result) > 0) {
@@ -468,9 +468,9 @@ if (!pg_email_retry_ready()) {
                 "UPDATE email_recipients
                 SET
                     complete = '1',
-                    reference_code = '" . $prepared['reference_code'] . "'
-                WHERE id = '" . $email_recipient['id'] . "'";
-            $result = mysqli_query(db::$con, $query);
+                    reference_code = ?
+                WHERE id = ?";
+            $result = db_q($query, array((string) $prepared['reference_code'], (string) $email_recipient['id']));
 
             $count++;
         }
@@ -681,15 +681,15 @@ if (!pg_email_retry_ready()) {
 foreach ($email_campaigns as $email_campaign_id) {
     // check to see if there are any incomplete e-mail recipients for this e-mail campaign,
     // so we know if we need to update status of e-mail campaign
-    $query = "SELECT COUNT(*) FROM email_recipients WHERE (complete = '0') AND (email_campaign_id = '" . $email_campaign_id . "')";
-    $result = mysqli_query(db::$con, $query);
+    $query = "SELECT COUNT(*) FROM email_recipients WHERE (complete = '0') AND (email_campaign_id = ?)";
+    $result = db_q($query, array((string) $email_campaign_id));
     $row = mysqli_fetch_row($result);
     
     // if all e-mail campaign recipients are complete, update e-mail campaign status
     if ($row[0] == 0) {
         // update e-mail campaign status
-        $query = "UPDATE email_campaigns SET status = 'complete' WHERE id = '" . $email_campaign_id . "'";
-        $result = mysqli_query(db::$con, $query);
+        $query = "UPDATE email_campaigns SET status = 'complete' WHERE id = ?";
+        $result = db_q($query, array((string) $email_campaign_id));
 
         // Get info about this email campaign in order to determine if we need to create auto campaigns based on this campaign being sent.
         $email_campaign = db_item(

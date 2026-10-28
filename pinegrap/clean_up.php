@@ -204,8 +204,25 @@ $file_list = array(
 // when it is missing, but not as the same file. pg_purge_caches() leaves it
 // alone for the same reason; the bookkeeping file beside it really is a cache
 // and goes. A live endpoint must never be listed for deletion, here or above.
+//
+// The rest of the list is data nothing writes again:
+// - erp_packages: the accountant packs; the link sent to the accountant reads
+//   the ZIP from there (erp_accountant_directory()).
+// - csp_reports.json: the only record of the Content Security Policy reports
+//   in the firewall log.
+// - php_errors.log: the site's PHP error log, a diagnostic record.
+// - shield_pending.log: bans the request guard recorded before the database
+//   was reachable, waiting to be written (waf_shield_pending_line()).
+// - waf_ban_notice.log: ban notices queued for the next mail run
+//   (waf_ban_notice_queue()).
+// - ai_write_usage.json: today's AI writing counter; deleting it resets the
+//   daily limit.
 $temp_directory = 'data/temp';
-$temp_keep = array('.', '..', '.htaccess', 'hash_reference.json');
+$temp_keep = array(
+    '.', '..', '.htaccess', 'hash_reference.json',
+    'erp_packages', 'csp_reports.json', 'php_errors.log',
+    'shield_pending.log', 'waf_ban_notice.log', 'ai_write_usage.json',
+);
 
 if (is_dir($temp_directory)) {
 

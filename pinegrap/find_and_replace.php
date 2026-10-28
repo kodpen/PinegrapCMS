@@ -50,6 +50,9 @@ $all_table_defs = [
         // JOIN with the page table → the frontend URL comes from page_name
         'extra_select' => ['page.page_name AS pregion_page_name'],
         'extra_join'   => 'LEFT JOIN page ON pregion.pregion_page = page.page_id',
+        // A page whose content moved into its designer tree no longer reads
+        // its rows.
+        'base_where'   => pg_page_region_read_sql(),
         'columns'      => ['pregion_content'],
         // The page's frontend URL — edited from the page itself
         'edit_url'     => '{pregion_page_name}',
@@ -63,7 +66,9 @@ $all_table_defs = [
         'name_column'  => 'cregion_name',
         'extra_select' => [],
         'extra_join'   => '',
-        'base_where'   => "cregion_designer_type = 'no'",
+        // A region made a shared component draws the component; its row
+        // is no longer read.
+        'base_where'   => "cregion_designer_type = 'no' AND " . pg_common_region_not_converted_sql(),
         'columns'      => ['cregion_content'],
         'edit_url'     => 'edit_common_region.php?id={cregion_id}',
         'url_raw'      => false,
@@ -270,8 +275,10 @@ if (!$_POST) {
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">
+                                            <label for="find" class="visually-hidden">' . lang('Find') . '</label>
                                             ' . $liveform->output_field([
                                                 'type'  => 'textarea',
+                                                'id'    => 'find',
                                                 'name'  => 'find',
                                                 'rows'  => '10',
                                                 'class' => 'form-control font-monospace',
@@ -312,8 +319,10 @@ if (!$_POST) {
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">
+                                            <label for="replace" class="visually-hidden">' . lang('Replace') . '</label>
                                             ' . $liveform->output_field([
                                                 'type'  => 'textarea',
+                                                'id'    => 'replace',
                                                 'name'  => 'replace',
                                                 'rows'  => '10',
                                                 'class' => 'form-control font-monospace',

@@ -23,7 +23,7 @@ description: Catalog listing and search results paging (W12c, #1968): own page p
 
 ## What is left?
 - The page links as a designable list: done in W12d (#1984) ([[widget-lists-paging]]).
-- Search groups (digit grouping of search's `__result_count`) waits for the owner ([[form-list-result-count]]).
+- Search's `__result_count` is grouped in the page's language like the form list's ([[form-list-result-count]], W12).
 
 ## How is it tested?
 - `tests/widget_list_paging_test.php`: `test_catalog_listing_paging_wiring`, `test_search_results_paging_wiring`, `test_catalog_and_search_paging_editor` (source order and wiring, panels, palettes, flag lists). No database or browser run.

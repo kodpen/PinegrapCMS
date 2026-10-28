@@ -29,6 +29,7 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM short_links WHERE id = '"
 }
 
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/short_link_form.php');
 $liveform = new liveform('edit_short_link');
 
 // Get short link data that we will use later.
@@ -49,8 +50,8 @@ $query =
         page.page_type
     FROM short_links
     LEFT JOIN page ON short_links.page_id = page.page_id
-    WHERE short_links.id = '" . escape($_REQUEST['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE short_links.id = ?";
+$result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
 $short_link = mysqli_fetch_assoc($result);
 
 // If the short link does not exist, then output error.
@@ -133,67 +134,6 @@ if (!$_POST) {
     // visit or to print.
     $short_link_is_pattern = pg_short_link_is_pattern($short_link['name']);
 
-    // How it answers (2026.11.0, 11.0.12), as on the add screen.
-    $output_redirect_code = '';
-
-    if (pg_short_link_redirects_ready()) {
-        $output_redirect_code = '
-                                                <div class="col-12 md:col-8 lg:col-6 my-3" id="redirect_code_row">
-                                                    <label for="redirect_code" class="form-label">' . lang('How it answers') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'redirect_code', 'id'=>'redirect_code', 'class'=>'form-control', 'options'=>pg_short_link_answer_options())) . '
-                                                    <div class="form-text">' . lang('A redirect sends visitors to the destination\'s own address and keeps their query string: 301 for the old address of a page that moved, 302 for a while.') . '</div>
-                                                </div>';
-    }
-
-
-    $destination_type_options = array(
-        '-' . lang(array('string'=>'Select {var:1}','vars'=>lang('destination type'))) . '-' => '',
-        lang('Page') => 'page',
-        lang('Product Group') => 'product_group',
-        lang('Product') => 'product',
-        lang('URL') => 'url',
-        lang('File') => 'file');
-
-    // Hide certain fields until we know which should be shown.
-    $output_page_id_row_style = ' style="display: none"';
-    $output_catalog_page_id_row_style = ' style="display: none"';
-    $output_or_row_style = ' style="display: none"';
-    $output_catalog_detail_page_id_row_style = ' style="display: none"';
-    $output_product_group_id_row_style = ' style="display: none"';
-    $output_product_id_row_style = ' style="display: none"';
-    $output_url_row_style = ' style="display: none"';
-    $output_tracking_code_row_style = ' style="display: none"';
-    $output_file_row_style = ' style="display: none"';
-
-    switch ($liveform->get_field_value('destination_type')) {
-        case 'page':
-            $output_page_id_row_style = '';
-            $output_tracking_code_row_style = '';
-            break;
-        
-        case 'product_group':
-            $output_catalog_page_id_row_style = '';
-            $output_or_row_style = '';
-            $output_catalog_detail_page_id_row_style = '';
-            $output_product_group_id_row_style = '';
-            $output_tracking_code_row_style = '';
-            break;
-
-        case 'product':
-            $output_catalog_detail_page_id_row_style = '';
-            $output_product_id_row_style = '';
-            $output_tracking_code_row_style = '';
-            break;
-
-        case 'url':
-            $output_url_row_style = '';
-            break;
-
-        case 'file':
-            $output_file_row_style = '';
-            break;
-    }
-
     // The saved address as a QR code, to print or put on a poster. It leaves
     // the request, so it is built on the configured host (HOSTNAME_SETTING),
     // not on the Host header. A name may hold letters outside ASCII, so it is
@@ -252,109 +192,14 @@ if (!$_POST) {
                 <form name="form" action="edit_short_link.php" method="post">
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$_GET['id'])) . '
-                    <div class="row">
-                        <div class="col-12 md:col-4 lg:col-3 xl:col-2">
-                            <div class="card my-7 position-sticky" style="top:56px;">
-                                <label for="type" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Destination Type') . '
-                                </label>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12">
-                                            ' . $liveform->output_field(array('type'=>'select', 'id'=>'destination_type', 'class'=>'form-control collapse-if-selected', 'name'=>'destination_type', 'options'=>$destination_type_options, 'onchange'=>'change_short_link_destination_type(this.options[this.selectedIndex].value)', 'data-bs-target'=>'#options_row', 'required'=>'required')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                            <script>
-                                                $(document).ready(function() {
-                                                    change_short_link_destination_type($("select#destination_type option:selected").val());
-                                                });
-                                            </script>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 md:col-8 lg:col-9 xl:col-10">
-                            <div class="row">
-                                <div class="col-12">
-                                    <div class="card my-7 position-sticky" style="top:56px;">
-                                        <label for="name" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                        ' . lang('Main Informations') . '
-                                        </label>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-12 md:col-8 lg:col-6 my-3">
-                                                    <label for="name" class="form-label">' . lang('Name') . '</label>
-                                                    <div class="input-group ">
-                                                        <label for="name" class="input-group-text material-icons" title="' . lang('This option determines the url address of the short link.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Short Link Name') . '}">public</label>
-                                                        ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>pg_short_link_url_max(), 'placeholder'=>lang('Short Link Name'), 'required'=>'required')) . '
-                                                        <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                                    </div>
-                                                    <div class="form-text">' . pg_short_link_name_rule_text() . '</div>
-                                                    <div class="form-text">' . lang('An old address can be pasted as it is: only its path is kept. A name with a * is tried only where no page answers, and it always redirects.') . '</div>
-                                                </div>
-                                                ' . $output_redirect_code . '
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                ' . $output_short_link_qr_card . '
-                                <div class="col-12 collapse" id="options_row">
-                                    <div class="card my-7">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                            ' . lang('Function Options') . '
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-12 md:col-6 lg:col-4 my-3" id="page_id_row"' . $output_page_id_row_style . '>
-                                                    <label for="page_id" class="form-label">' . lang('Page') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'page_id', 'id'=>'page_id', 'class'=>'form-control', 'options'=>get_page_options('', '', 'edit', FALSE, $short_link['page_id']))) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                                </div>
-                                                <div class="col-12 md:col-6 lg:col-5 my-3" id="catalog_page_id_row"' . $output_catalog_page_id_row_style . '>
-                                                    <label for="catalog_page_id" class="form-label">' . lang('Catalog Page') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_page_id', 'id'=>'catalog_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'catalog', 'edit', FALSE, $short_link['page_id']), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_detail_page_id\').selectedIndex = 0}' )) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                                </div>
-                                                <div class="col-12 lg:col-2 my-3 lg:text-center" id="or_row"' . $output_or_row_style . '>
-                                                -' . lang('or') . '-
-                                                </div>
-                                                <div class="col-12 md:col-6 lg:col-5 my-3" id="catalog_detail_page_id_row"' . $output_catalog_detail_page_id_row_style . '>
-                                                    <label for="catalog_detail_page_id" class="form-label">' . lang('Catalog Detail Page') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_detail_page_id', 'id'=>'catalog_detail_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'catalog detail', 'edit', FALSE, $short_link['page_id']), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_page_id\').selectedIndex = 0}' )) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                                </div>
-                                                <div class="col-12 md:col-6 lg:col-5 my-3" id="product_group_id_row"' . $output_product_group_id_row_style . '>
-                                                    <label for="product_group_id" class="form-label">' . lang('Product Group') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_group_id', 'id'=>'product_group_id', 'class'=>'form-control', 'options'=>get_product_group_options($product_group_id = 0, $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = TRUE, $format = 'array', $include_blank_option = TRUE, TRUE, FALSE, $liveform->get_field_value('product_group_id')))) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                                </div>
-                                                <div class="col-12 md:col-6 lg:col-7 my-3" id="product_id_row"' . $output_product_id_row_style . '>
-                                                    <label for="product_id" class="form-label">' . lang('Product') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-control', 'options'=>get_product_options(true, $liveform->get_field_value('product_id')))) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                                </div>
-                                                <div class="col-12 md:col-8 lg:col-6 my-3" id="url_row"' . $output_url_row_style . '>
-                                                    <label for="url" class="form-label">' . lang('Destination URL') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'text', 'name'=>'url', 'id'=>'url', 'class'=>'form-control', 'maxlength'=>pg_short_link_url_max(), 'placeholder' => lang('Enter URL that visitor should be redirected to'))) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                                    <div class="form-text">' . lang('With a * in the name, $1 to $9 put here what each * matched, after the host name.') . '</div>
-                                                </div>
-                                                <div class="col-12 md:col-6 lg:col my-3" id="tracking_code_row"' . $output_tracking_code_row_style . '>
-                                                    <label for="tracking_code" class="form-label">' . lang('Tracking Code') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'text', 'name'=>'tracking_code', 'id'=>'tracking_code', 'class'=>'form-control', 'maxlength'=>'100')) . '
-                                                </div>
-                                                <div class="col-12 md:col-6 lg:col-4 my-3" id="file_row"' . $output_file_row_style . '>
-                                                     <label for="file" class="form-label">' . lang('File') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'file', 'id'=>'file', 'class'=>'form-control', 'options'=>get_file_options($design=true, $short_link['file_id']))) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    ' . pg_short_link_form_cards($liveform, array(
+                        'extra_rows' => pg_short_link_form_redirect_code_row($liveform),
+                        'after_main' => $output_short_link_qr_card,
+                        'keep' => array(
+                            'page_id' => $short_link['page_id'],
+                            'product_group_id' => $liveform->get_field_value('product_group_id'),
+                            'product_id' => $liveform->get_field_value('product_id'),
+                            'file_id' => $short_link['file_id']))) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -406,8 +251,8 @@ if (!$_POST) {
 
             $delete_notice = lang('The short link was moved to the Recycle Bin.');
         } else {
-            $query = "DELETE FROM short_links WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM short_links WHERE id = ?";
+            $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
 
             log_activity( lang(array('string'=>'short link ({var:1}) was deleted','vars'=>$short_link['name'])), $_SESSION['sessionusername']);
 
@@ -423,250 +268,15 @@ if (!$_POST) {
 
     // Otherwise the user selected to save the short link, so save it.
     } else {
-        $liveform->validate_required_field('name', lang('Name is required.'));
+        $name = pg_short_link_form_validate_name($liveform, $liveform->get_field_value('id'));
 
-        // An old address pasted whole keeps only its path; spaces become
-        // underscores (pg_short_link_name_from_address()).
-        $name = pg_short_link_name_from_address($liveform->get_field_value('name'));
+        // The page, group, product or file the link already points at may
+        // stay while it is in the Recycle Bin (its lists keep it, marked).
+        $page_id = pg_short_link_form_validate_destination($liveform, $short_link);
 
-        // Update name in liveform.
-        $liveform->assign_field_value('name', $name);
-
-        // If there is not already an error for the name field and the name breaks the rule, then add error.
-        if ($liveform->check_field_error('name') == FALSE) {
-            $name_problem = pg_short_link_name_problem($name);
-
-            if ($name_problem !== '') {
-                $liveform->mark_error('name', h($name_problem));
-            }
-        }
-
-        // If there is not already an error for the name field,
-        // and the name is already in use, then add error.
-        if (
-            ($liveform->check_field_error('name') == false)
-            && (check_name_availability(array('name' => $name, 'ignore_item_id' => $liveform->get_field_value('id'), 'ignore_item_type' => 'short_link')) == false)
-        ) {
-            $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
-        }
-
-        $liveform->validate_required_field('destination_type', lang('Destination Type is required.'));
-
-        // If there is not already an error for the destination type and the destination type is invalid, then add error.
-        if (
-            ($liveform->check_field_error('destination_type') == FALSE)
-            &&
-            (
-                ($liveform->get_field_value('destination_type') != 'page')
-                && ($liveform->get_field_value('destination_type') != 'product_group')
-                && ($liveform->get_field_value('destination_type') != 'product')
-                && ($liveform->get_field_value('destination_type') != 'url')
-                && ($liveform->get_field_value('destination_type') != 'file')
-            )
-        ) {
-            $liveform->mark_error('destination_type', lang('The destination type is not valid.'));
-        }
-
-        // If there is not already an error for the destination type, then validate other fields.
-        if ($liveform->check_field_error('destination_type') == FALSE) {
-            // Validate other fields differently based on the destination type.
-            switch ($liveform->get_field_value('destination_type')) {
-                case 'page':
-                    $liveform->validate_required_field('page_id', lang('Page is required.'));
-                    break;
-
-                case 'product_group':
-                    // If neither a catalog page or a catalog detail page was selected, then add error.
-                    if (
-                        ($liveform->get_field_value('catalog_page_id') == '')
-                        && ($liveform->get_field_value('catalog_detail_page_id') == '')
-                    ) {
-                        $liveform->mark_error('catalog_page_id', lang('Catalog Page or Catalog Detail Page is required.'));
-                        $liveform->mark_error('catalog_detail_page_id', '');
-                    }
-
-                    // If both a catalog page and a catalog detail page were selected, then add error.
-                    if (
-                        ($liveform->get_field_value('catalog_page_id') != '')
-                        && ($liveform->get_field_value('catalog_detail_page_id') != '')
-                    ) {
-                        $liveform->mark_error('catalog_page_id', lang('Please select either a Catalog Page or a Catalog Detail Page, not both.'));
-                        $liveform->mark_error('catalog_detail_page_id', '');
-                    }
-
-                    $liveform->validate_required_field('product_group_id', lang('Product Group is required.'));
-
-                    // If there is not already an error for the product group, then check if product group exists.
-                    if ($liveform->check_field_error('product_group_id') == FALSE) {
-                        $query = "SELECT COUNT(*) FROM product_groups WHERE id = '" . escape($liveform->get_field_value('product_group_id')) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                        $row = mysqli_fetch_row($result);
-
-                        // If the selected product group does not exist, then add error.
-                        if ($row[0] == 0) {
-                            $liveform->mark_error('product_group_id', lang('The product group does not exist.'));
-                        }
-                    }
-
-                    // The group the link already points at may stay while it is in the
-                    // Recycle Bin (the list keeps it, marked); a form drawn before
-                    // another group was deleted can still post that one.
-                    if (
-                        ($liveform->check_field_error('product_group_id') == FALSE)
-                        && ((int) $liveform->get_field_value('product_group_id') !== (int) $short_link['product_group_id'])
-                        && pg_catalog_group_binned($liveform->get_field_value('product_group_id'))
-                    ) {
-                        $liveform->mark_error('product_group_id', lang('The product group is in the Recycle Bin. Restore it in the Catalog Manager or choose another product group.'));
-                    }
-                
-                    break;
-                
-                case 'product':
-                    $liveform->validate_required_field('catalog_detail_page_id', lang('Catalog Detail Page is required.'));
-                    $liveform->validate_required_field('product_id', lang('Product is required.'));
-
-                    // If there is not already an error for the product, then check if product exists.
-                    if ($liveform->check_field_error('product_id') == FALSE) {
-                        $query = "SELECT COUNT(*) FROM products WHERE id = '" . escape($liveform->get_field_value('product_id')) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                        $row = mysqli_fetch_row($result);
-
-                        // If the selected product does not exist, then add error.
-                        if ($row[0] == 0) {
-                            $liveform->mark_error('product_id', lang('The product does not exist.'));
-                        }
-                    }
-
-                    // Same for the product.
-                    if (
-                        ($liveform->check_field_error('product_id') == FALSE)
-                        && ((int) $liveform->get_field_value('product_id') !== (int) $short_link['product_id'])
-                        && pg_catalog_product_binned($liveform->get_field_value('product_id'))
-                    ) {
-                        $liveform->mark_error('product_id', lang('The product is in the Recycle Bin. Restore it in the Catalog Manager or choose another product.'));
-                    }
-
-                    break;
-
-                case 'url':
-                    $liveform->validate_required_field('url', lang('Destination URL is required.'));
-
-                    // If there is not already an error for the url field
-                    // and the url contains white-space, then output error.
-                    // We have to do this to prevent outputting invalid code to the rewrite file
-                    // which would cause all URL's at the site to stop working.
-                    if (
-                        ($liveform->check_field_error('url') == false)
-                        && (preg_match('/\s/', $liveform->get_field_value('url')) == 1)
-                    ) {
-                        $liveform->mark_error('url', lang('Sorry, you may not enter a space in the URL.'));
-                    }
-
-                    // The column holds this many characters; a longer address
-                    // would be cut short in silence.
-                    if (
-                        ($liveform->check_field_error('url') == false)
-                        && (mb_strlen($liveform->get_field_value('url'), 'UTF-8') > pg_short_link_url_max())
-                    ) {
-                        $liveform->mark_error('url', lang(array('string' => 'The address can be at most {var:1} characters long.', 'vars' => array(pg_short_link_url_max()))));
-                    }
-
-                    break;
-
-                case 'file':
-                    $liveform->validate_required_field('file', lang('Destination URL is required.'));
-
-                    // The file the link already points at may stay while it is in
-                    // the Recycle Bin (the list keeps it, marked); a form drawn
-                    // before another file was deleted can still post that one.
-                    if (
-                        ($liveform->check_field_error('file') == FALSE)
-                        && ((int) $liveform->get_field_value('file') !== (int) $short_link['file_id'])
-                        && pg_recycle_file_binned($liveform->get_field_value('file'))
-                    ) {
-                        $liveform->mark_error('file', lang('The file is in the Recycle Bin. Restore it in the File Manager or choose another file.'));
-                    }
-
-                    break;
-            }
-        }
-
-        $page_id = 0;
-
-        // If this is a certain destination type then check selected page in different ways.
-        if (
-            ($liveform->get_field_value('destination_type') == 'page')
-            || ($liveform->get_field_value('destination_type') == 'product_group')
-            || ($liveform->get_field_value('destination_type') == 'product')
-        ) {
-            // If there is not already an error, then prepare values that we will need below.
-            if ($liveform->check_form_errors() == FALSE) {
-                switch ($liveform->get_field_value('destination_type')) {
-                    case 'page':
-                        $page_field_name = 'page_id';
-                        break;
-
-                    case 'product_group':
-                        // If a catalog page was selected, then remember that.
-                        if ($liveform->get_field_value('catalog_page_id') != '') {
-                            $page_field_name = 'catalog_page_id';
-
-                        // Otherwise a catalog detail page was selected, so remember that.
-                        } else {
-                            $page_field_name = 'catalog_detail_page_id';
-                        }
-                    
-                        break;
-                    
-                    case 'product':
-                        $page_field_name = 'catalog_detail_page_id';
-                        break;
-                }
-
-                $page_id = $liveform->get_field_value($page_field_name);
-            }
-
-            // If there is not already an error, then check if page exists.
-            if ($liveform->check_form_errors() == FALSE) {
-                $query = "SELECT COUNT(*) FROM page WHERE page_id = '" . escape($page_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-                $row = mysqli_fetch_row($result);
-
-                // If the selected page does not exist, then add error.
-                if ($row[0] == 0) {
-                    $liveform->mark_error($page_field_name, lang('The page does not exist.'));
-                }
-            }
-
-            // The page the link already points at may stay while it is in the
-            // Recycle Bin, as the file does above.
-            if (
-                ($liveform->check_form_errors() == FALSE)
-                && ((int) $page_id !== (int) $short_link['page_id'])
-                && pg_recycle_page_binned($page_id)
-            ) {
-                $liveform->mark_error($page_field_name, lang('The page is in the Recycle Bin. Restore it in the File Manager or choose another page.'));
-            }
-        }
-        
         // How it answers, checked with the name and the destination it goes
         // with, the way the add screen checks it.
-        $short_link_answer = array('columns' => array(), 'problem' => null);
-
-        if ($liveform->check_form_errors() == FALSE) {
-            $short_link_answer = pg_short_link_redirect_columns(
-                array(
-                    'id' => (int) $short_link['id'],
-                    'name' => $name,
-                    'destination_type' => $liveform->get_field_value('destination_type'),
-                    'url' => ($liveform->get_field_value('destination_type') == 'url') ? $liveform->get_field_value('url') : ''),
-                pg_short_link_redirects_ready() ? (int) $liveform->get_field_value('redirect_code') : null,
-                isset($short_link['redirect_code']) ? (int) $short_link['redirect_code'] : 0);
-
-            if ($short_link_answer['problem'] !== null) {
-                $liveform->mark_error($short_link_answer['problem']['field'], h($short_link_answer['problem']['message']));
-            }
-        }
+        $short_link_answer = pg_short_link_form_answer($liveform, $short_link['id'], $name, isset($short_link['redirect_code']) ? (int) $short_link['redirect_code'] : 0);
 
         // If there is an error, forward user back to previous screen.
         if ($liveform->check_form_errors() == TRUE) {
@@ -675,51 +285,43 @@ if (!$_POST) {
         }
 
         $short_link_sql_answer = '';
+        $short_link_answer_values = array();
 
         foreach ($short_link_answer['columns'] as $answer_column => $answer_value) {
-            $short_link_sql_answer .= $answer_column . " = '" . (int) $answer_value . "',
+            $short_link_sql_answer .= $answer_column . " = ?,
                 ";
+            $short_link_answer_values[] = (string) (int) $answer_value;
         }
 
-        $product_group_id = '';
-        $product_id = '';
-        $url = '';
-        $file_id = '';
-        // Prepare the SQL differently based on the destination type.
-        switch ($liveform->get_field_value('destination_type')) {
-            case 'product_group':
-                $product_group_id = $liveform->get_field_value('product_group_id');
-                break;
-            
-            case 'product':
-                $product_id = $liveform->get_field_value('product_id');
-                break;
+        // Only the destination's own column holds its target; the others
+        // are cleared.
+        $destination = array('product_group_id' => '', 'product_id' => '', 'url' => '', 'file_id' => '');
+        $destination_column = pg_short_link_form_destination_column($liveform->get_field_value('destination_type'));
 
-            case 'url':
-                $url = $liveform->get_field_value('url');
-                break;
-
-            case 'file':
-                $file_id = $liveform->get_field_value('file');
-            break;
+        if ($destination_column !== null) {
+            $destination[$destination_column[0]] = $liveform->get_field_value($destination_column[1]);
         }
 
         // Update short link.
         $query =
             "UPDATE short_links
             SET
-                name = '" . escape($name) . "',
-                destination_type = '" . escape($liveform->get_field_value('destination_type')) . "',
-                page_id = '" . escape($page_id) . "',
-                product_group_id = '" . escape($product_group_id) . "',
-                product_id = '" . escape($product_id) . "',
-                url = '" . escape($url) . "',
-                tracking_code = '" . escape($liveform->get_field_value('tracking_code')) . "',
-                file_id = '" . escape($file_id) . "',
-                " . $short_link_sql_answer . "last_modified_user_id = '" . USER_ID . "',
+                name = ?,
+                destination_type = ?,
+                page_id = ?,
+                product_group_id = ?,
+                product_id = ?,
+                url = ?,
+                tracking_code = ?,
+                file_id = ?,
+                " . $short_link_sql_answer . "last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE id = ?";
+        $result = db_q($query, array_merge(
+            array((string) $name, (string) $liveform->get_field_value('destination_type'), (string) $page_id, (string) $destination['product_group_id'], (string) $destination['product_id'], (string) $destination['url'], (string) $liveform->get_field_value('tracking_code'), (string) $destination['file_id']),
+            $short_link_answer_values,
+            array((string) USER_ID, (string) $liveform->get_field_value('id'))
+        )) or output_error('Query failed.');
         
 
         log_activity(lang(array('string'=>'short link ({var:1}) was modified','vars'=>$name)), $_SESSION['sessionusername']);

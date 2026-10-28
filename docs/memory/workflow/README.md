@@ -8,7 +8,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 
 <!-- key-rules:start -->
 - Read the decisions list before writing any audit finding or proposing a cleanup: a listed place is not a finding, and an entry you doubt is asked about, never changed (`decisions-made.md`).
-- Work in the working mode: claim a task with a draft PR and never an issue, one open PR per session, no stacked branches, light checks, no review chains (`working-mode.md`, `session-checks.md`). When CI is green put the `ready` label on, wait subscribed, never merge `development` into the PR after that, and take the plan's next step once it is merged (`session-lifecycle.md`). Only the merging session merges, in merge trains landed by one fast-forward push (`merge-train.md`, `merge-train-landing.md`); a coordinator per account starts the workers and carries the owner's questions (`coordinator.md`).
+- Work in the working mode: claim a task with a draft PR and never an issue (issues only for decision questions, labelled `architect`: `architect.md`), one open PR per session, no stacked branches, light checks, no review chains (`working-mode.md`, `session-checks.md`). When CI is green put the `ready` label on, wait subscribed, never merge `development` into the PR after that, and take the plan's next step once it is merged (`session-lifecycle.md`). Only the merging session merges, in merge trains landed by one fast-forward push (`merge-train.md`, `merge-train-landing.md`); a coordinator per account starts the workers (`coordinator.md`); the architect session decides every question together with the owner and records it (`architect.md`).
 - Owner decisions are about the product's behaviour and carry their reason (`decisions-made.md`); a working rule is never written as the owner's decision (`CLAUDE.md`, Fixed rules 6).
 - Never edit `changelog.txt` (name the `[NEW]` line or `[SCHEME]` item in the PR body), add translation keys only with `php tools/tr_add.php` (sorted shards in `includes/local/tr/`, never edited by hand), and only append to the open migration file and `init.php`; merge `origin/development` once before the PR goes up (`working-mode.md`, `git-branches-and-shared-files.md`).
 - Keep PHP 7.1 working: raising the minimum is the owner's call, and a library may never raise it as a side effect (`project-overview.md`).
@@ -19,19 +19,21 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 
 ## Files
 
+- architect.md: Decision questions (2026-10-27): an issue labelled architect; the architect session analyses it, decides it with the owner (label erdal), records it, brings it to the PR, never decides alone
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt edit; warn above 1,000 product lines
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
 - coordinator-todo-list.md: Coordinator's to-do list (2026-10-27): one item per worker PR in the list shown in its own window, added when the draft is on GitHub, struck through once the PR is merged
-- coordinator.md: Coordinator session (pilot, 2026-10-26): one per account, keeps its cloud workers on free plan steps, looks at them every 10 minutes, carries owner questions, writes no code, merges nothing
+- coordinator.md: Coordinator session (pilot, 2026-10-26): one per account, keeps its cloud workers on free plan steps, looks at them every 10 minutes, writes no code, merges nothing; questions go to the architect
 - decisions-made-access.md: Decisions list, access part: public pi.php/si.php and test_secure_mode.php, guest order linking, backup, dashboard and role 3 gates, secrets shown on screen, the TLS escape flag, escape_url().
 - decisions-made-data.md: Decisions list, data part: starter dumps, orders.notes, tracking_company, secret_key*, order_items.tax, tracking_code, fixing a released migration, MySQL 5.7, ERP schema approval.
 - decisions-made-files.md: Decisions list, files part: a submitted-form file whose record no view shows stays refused in a public folder too (no fallback to the folder's permission).
+- decisions-made-marketplace.md: Decisions list, marketplace part: n11 orders of products shipped from the n11 warehouse are not imported.
 - decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS.
 - decisions-made-panel.md: Part of the decisions list: the control panel's Bootstrap 6 breakpoints (own media queries on 1024/1280, xxl to 2xl), kept as they are on purpose
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
-- decisions-made-waf.md: Decisions list, firewall part: the auto-ban thresholds stay, a concurrent refusal is no offence, a rate ban stays off the x4 ladder.
-- decisions-made-widgets.md: Decisions list, system widget part: conditions and required controls, translated compared text, old blocks equal in look not bytes (W16), layout gallery sources (W5), entity values allow-list (W8).
-- decisions-made-workspace.md: Decisions list, workspace part: how the channel commands read what is typed (a typed @username in /task), and whose rights a flow's change box writes with.
+- decisions-made-waf.md: Decisions list, firewall part: thresholds stay, a concurrent refusal is no offence, a rate ban stays off the ladder, the global limit counts before the session, no address-lock release action.
+- decisions-made-widgets.md: Decisions list, system widget part: conditions and required controls, translated compared text, old blocks equal in look (W16), gallery sources (W5), entity values (W8), the 2026-10-27 answers.
+- decisions-made-workspace.md: Decisions list, workspace part: how the channel commands read what is typed (a typed @username in /task), whose rights a flow's change box writes with, bulk product card size and events.
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, the PR footer (pointer), editing shared files without conflicts, API vs ERP files
 - install-check-filter.md: When install-check.yml runs its six-database matrix (#1985): the changes job, the paths it reads, always on merge trains and pushes, why plain git, a skipped job blocks nothing
@@ -52,4 +54,4 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - unit-test-database-exit.md: A unit test statement that reaches db() ends the whole tools/test.php run with exit code 0 through output_error(); make it throw with pg_error_throws(true), or keep the tested part free of queries
 - unit-test-runner.md: tools/test.php: what it loads, which errors fail a test, other PHP versions, code behind a database probe, PHP in its own process (Windows quoting, peak memory), JavaScript under Node
 - workflow-lint-and-dependabot.md: The actionlint job (pinned, SHA-256, shellcheck, what its data lacks) and Dependabot for github-actions (read from main, PRs to development, one per major bump)
-- working-mode.md: Working rules (2026-10-25) for every session: why they exist, one open PR, no stacked branches, no issues, PR size, queue limit, the changelog through the PR body, docs-only PRs outside the train
+- working-mode.md: Working rules (2026-10-25) for every session: why, one open PR, no stacked branches, issues only for decisions, PR size, queue limit, changelog through the PR body, docs-only PRs alone

@@ -109,3 +109,20 @@ function pg_order_status_move_refusal($from, $to)
         'vars'   => $vars,
     ));
 }
+
+/**
+ * The SET clause that moves an order's last-change stamp
+ * (orders.last_modified_timestamp) to now, for the UPDATE that changes it:
+ * the external API's GET /orders?modified_since= and the ShipWorks feed find
+ * an order again by this stamp, so every writer that changes what
+ * GET /orders/{id} shows carries it (the cancellation, its refund outcome,
+ * the restore, a status or notes write, the refund mark, an export). Set in
+ * the same statement, never as a second UPDATE, so a change is never seen
+ * without its stamp.
+ *
+ * @return string
+ */
+function pg_order_touch_sql()
+{
+    return 'last_modified_timestamp = UNIX_TIMESTAMP()';
+}

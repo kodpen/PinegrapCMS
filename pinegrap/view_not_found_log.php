@@ -64,8 +64,8 @@ $shell = array(
 // The short link list and this one, as one view switcher.
 $view_switcher =
     '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">
-        <a class="btn btn-ghost" href="view_short_links.php">' . h(lang('Short Links')) . '</a>
-        <a class="btn btn-ghost active" href="view_not_found_log.php" aria-current="page">' . h(lang('404 Log')) . '</a>
+        <a class="btn btn-text theme-secondary" href="view_short_links.php">' . h(lang('Short Links')) . '</a>
+        <a class="btn btn-text theme-secondary active" href="view_not_found_log.php" aria-current="page">' . h(lang('404 Log')) . '</a>
     </div>';
 
 if (!$ready) {
@@ -230,16 +230,18 @@ echo pg_page_shell($shell) . '
             ' . $liveform->output_notices() . '
             <nav id="button_bar" class="pg-toolbar my-3" aria-label="' . h(lang('Button Bar')) . '">
                 <div class="pg-toolbar-grow"></div>
-                <form method="get" action="view_not_found_log.php" class="input-group input-group-sm rounded-pill pg-toolbar-search disable_shortcut" role="search">
+                <form method="get" action="view_not_found_log.php" class="pg-toolbar-search disable_shortcut" role="search">
                     ' . (($who !== '') ? '<input type="hidden" name="who" value="' . h($who) . '">' : '') . '
-                    <label class="input-group-text" for="pg_404_search"><i class="bi bi-search" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Search')) . '</span></label>
-                    <input type="search" class="form-control" id="pg_404_search" name="q" value="' . h($search) . '" maxlength="' . (int) PG_NOT_FOUND_LOG_PATH_MAX . '" placeholder="' . h(lang('Search addresses')) . '">
+                    <label class="form-control form-control-sm form-adorn rounded-pill">
+                        <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                        <input type="search" class="form-ghost" id="pg_404_search" name="q" value="' . h($search) . '" maxlength="' . (int) PG_NOT_FOUND_LOG_PATH_MAX . '" placeholder="' . h(lang('Search addresses')) . '" aria-label="' . h(lang('Search')) . '">
+                    </label>
                 </form>
                 ' . pg_filter_select('who', $who_options, $who, array('keep' => array('q'), 'label' => lang('Who asked'), 'icon' => 'person', 'action' => 'view_not_found_log.php')) . '
                 ' . pg_list_sort_menu('view_not_found_log.php', $sort_columns, $sort_levels, $sort_default, $kept) . '
                 ' . $view_switcher . '
                 <div class="pg-menu-wrap">
-                    <button type="button" class="btn btn-sm btn-ghost" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                    <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
                     <ul class="menu pg-menu-end">
                         <li><button type="button" class="menu-item pg-link-body-emphasis no-submit pg-404-clear"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . h(lang('Clear Log')) . '</button></li>
                     </ul>

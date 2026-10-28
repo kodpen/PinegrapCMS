@@ -58,7 +58,10 @@
  *
  * The reference price of a product is worked out from those rows by
  * pg_price_history_reference(), over the rows pg_price_history_window_sql()
- * reads for a page of products in one statement.
+ * reads for a page of products in one statement. The storefront asks for a
+ * page at once through pg_price_reference_page(): the catalog widgets'
+ * __reference_price / __reference_label tokens and the legacy catalog page
+ * (pg_price_reference_catalog_items()).
  *
  * Once a day the general job trims the history to thirteen months
  * (pg_price_history_trim_run()): older rows go, except, in each product and
@@ -561,7 +564,7 @@ function pg_price_history_forget($product_id)
         return;
     }
 
-    if (!@mysqli_query(db::$con, "DELETE FROM product_price_history WHERE product_id = '" . $product_id . "'")) {
+    if (!db_q("DELETE FROM product_price_history WHERE product_id = ?", array((string) $product_id))) {
         pg_price_history_log_failure('removing the history of a deleted product');
     }
 }
@@ -769,12 +772,12 @@ function pg_price_history_offer_pass_run($seconds)
         $result['state'] = 'more';
 
         while (microtime(true) < $deadline) {
-            $products = @mysqli_query(db::$con,
+            $products = db_q(
                 "SELECT id, price
                 FROM products
-                WHERE id > '" . (int) $state['after_id'] . "'
+                WHERE id > ?
                 ORDER BY id
-                LIMIT " . PG_PRICE_HISTORY_CHUNK);
+                LIMIT ?", array((string) (int) $state['after_id'], (int) PG_PRICE_HISTORY_CHUNK));
 
             if (!$products) {
                 pg_price_history_log_failure('reading the prices for the offer pass');
@@ -1294,6 +1297,56 @@ function pg_price_history_reference_rules()
 }
 
 /**
+ * The rule a shop uses when none is stored: the 30-day lowest, which the
+ * Turkish price label regulation and the EU Omnibus rule both ask for.
+ */
+define('PG_PRICE_REFERENCE_RULE_DEFAULT', 'lowest_30d');
+
+/**
+ * A stored or posted rule as one of the known rules: anything else (NULL,
+ * empty, a rule a later version dropped) reads as the default.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function pg_price_reference_rule_from_input($value)
+{
+    $value = is_string($value) ? trim($value) : '';
+
+    return array_key_exists($value, pg_price_history_reference_rules()) ? $value : PG_PRICE_REFERENCE_RULE_DEFAULT;
+}
+
+/**
+ * True when config.ecommerce_reference_price_rule is in the database
+ * (2026.11.0, 11.0.49).
+ *
+ * @return bool
+ */
+function pg_price_reference_rule_ready()
+{
+    return pg_schema_has('config', 'ecommerce_reference_price_rule');
+}
+
+/**
+ * The shop's reference price rule (Settings › Ecommerce › Reference Price),
+ * read once per request; the default before the upgrade has run.
+ *
+ * @return string a key of pg_price_history_reference_rules()
+ */
+function pg_price_reference_rule()
+{
+    static $rule = null;
+
+    if ($rule === null) {
+        $rule = pg_price_reference_rule_from_input(
+            pg_price_reference_rule_ready() ? db_value("SELECT ecommerce_reference_price_rule FROM config") : null
+        );
+    }
+
+    return $rule;
+}
+
+/**
  * The moment a rule's window begins, or null for a rule that reads no
  * history (manual) or is not one.
  *
@@ -1504,4 +1557,273 @@ function pg_price_history_reference($rows, $current, $rule, $window_end, $compar
 function pg_price_history_row_before($a, $b)
 {
     return ($a['time'] < $b['time']) || (($a['time'] === $b['time']) && ($a['id'] < $b['id']));
+}
+
+/**
+ * Where the window of a lowest_* rule ends for a product, from its history
+ * rows up to now: where the current reduced price began while one runs,
+ * else now.
+ *
+ * The Turkish price label regulation and EU Omnibus art. 6a both name the
+ * lowest price of the period before the reduction. A window ending now holds
+ * the reduced price itself, so the advertised price would be its own
+ * reference. The current price runs from the newest row at or before now
+ * (changed_at, then id); it is a reduction when the row before it holds a
+ * higher price, and then the window ends at that newest row's changed_at.
+ *
+ * @param array $rows the product's history rows (id, changed_at, price), any order
+ * @param int   $now  unix time
+ * @return int unix time
+ */
+function pg_price_history_reference_window_end($rows, $now)
+{
+    $now = (int) $now;
+    $newest = null;
+    $before = null;
+
+    foreach ((array) $rows as $row) {
+        if (!is_array($row) || !isset($row['price'], $row['changed_at']) || !is_numeric($row['changed_at'])) {
+            continue;
+        }
+
+        $price = pg_price_history_minor_units($row['price']);
+
+        if (($price === null) || ((int) $row['changed_at'] > $now)) {
+            continue;
+        }
+
+        $row = array(
+            'time' => (int) $row['changed_at'],
+            'id' => isset($row['id']) ? (int) $row['id'] : 0,
+            'price' => $price,
+        );
+
+        if (($newest === null) || pg_price_history_row_before($newest, $row)) {
+            $before = $newest;
+            $newest = $row;
+        } elseif (($before === null) || pg_price_history_row_before($before, $row)) {
+            $before = $row;
+        }
+    }
+
+    if (($newest !== null) && ($before !== null) && ($newest['price'] < $before['price'])) {
+        return $newest['time'];
+    }
+
+    return $now;
+}
+
+/**
+ * The query for the oldest moment, among one page of products, at which the
+ * current price began: the earliest of each product's newest changed_at at
+ * or before now. A window that may end there starts the rule's days before
+ * it, so the one window query of the page reads from that point.
+ *
+ * @param int[]  $ids
+ * @param string $channel
+ * @param int    $now
+ * @return string '' when there is no product id or the channel is not one
+ */
+function pg_price_history_page_since_sql($ids, $channel, $now)
+{
+    $channel = pg_price_history_channel($channel);
+    $ids = pg_price_history_ids($ids);
+
+    if (($channel === null) || !$ids) {
+        return '';
+    }
+
+    return "SELECT MIN(latest.changed_at)
+        FROM (
+            SELECT MAX(changed_at) AS changed_at
+            FROM product_price_history
+            WHERE
+                (product_id IN (" . implode(',', $ids) . "))
+                AND (channel = '" . $channel . "')
+                AND (changed_at <= '" . (int) $now . "')
+            GROUP BY product_id
+        ) AS latest";
+}
+
+/**
+ * The reference price of each product of one page, for the shop's rule:
+ * product id => pg_price_history_reference() result, only for products with
+ * something to show.
+ *
+ * Under a lowest_* rule only a product shown at a reduced price gets one:
+ * the rules ask for the price before the discount where a discount is
+ * advertised, and a reference beside a regular price says nothing. Under
+ * manual a product gets its compare-at price when above the price shown.
+ *
+ * Two statements at most per page, never one per product: the moment the
+ * oldest current price began, then the window rows of every product, which
+ * are grouped by product here.
+ *
+ * @param array    $items product id => array('price' => minor units shown, 'reduced' => bool)
+ * @param int|null $now   unix time; null for the request's time
+ * @return array
+ */
+function pg_price_reference_page($items, $now = null)
+{
+    $now = ($now === null) ? time() : (int) $now;
+    $rule = pg_price_reference_rule();
+    $out = array();
+
+    if (!is_array($items) || !$items) {
+        return $out;
+    }
+
+    if ($rule === 'manual') {
+        if (!pg_compare_at_price_ready()) {
+            return $out;
+        }
+
+        $ids = pg_price_history_ids(array_keys($items));
+
+        if (!$ids) {
+            return $out;
+        }
+
+        $rows = db_items("SELECT id, compare_at_price FROM products WHERE id IN (" . implode(',', $ids) . ") AND compare_at_price IS NOT NULL");
+
+        foreach ((array) $rows as $row) {
+            $id = (int) $row['id'];
+            $reference = pg_price_history_reference(array(), $items[$id]['price'], $rule, $now, $row['compare_at_price']);
+
+            if ($reference['kind'] !== 'none') {
+                $out[$id] = $reference;
+            }
+        }
+
+        return $out;
+    }
+
+    $reduced = array();
+
+    foreach ($items as $id => $item) {
+        if (!empty($item['reduced'])) {
+            $reduced[] = $id;
+        }
+    }
+
+    $reduced = pg_price_history_ids($reduced);
+
+    if (!$reduced || !pg_price_history_ready()) {
+        return $out;
+    }
+
+    $days = pg_price_history_reference_rules();
+    $since = db_value(pg_price_history_page_since_sql($reduced, 'web', $now));
+    $start = min(is_numeric($since) ? (int) $since : $now, $now) - $days[$rule] * 86400;
+    $by_product = array();
+
+    foreach ((array) db_items(pg_price_history_window_sql($reduced, 'web', $start, $now + 1)) as $row) {
+        $by_product[(int) $row['product_id']][] = $row;
+    }
+
+    foreach ($reduced as $id) {
+        $rows = isset($by_product[$id]) ? $by_product[$id] : array();
+        $end = pg_price_history_reference_window_end($rows, $now);
+        $reference = pg_price_history_reference($rows, $items[$id]['price'], $rule, $end);
+
+        if ($reference['kind'] !== 'none') {
+            $out[$id] = $reference;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The words shown before a reference price, by its kind.
+ *
+ * @param array|null $reference a pg_price_history_reference() result
+ * @return string '' when there is nothing to show
+ */
+function pg_price_reference_label($reference)
+{
+    if (!is_array($reference) || !isset($reference['kind']) || !isset($reference['price'])) {
+        return '';
+    }
+
+    switch ($reference['kind']) {
+        case 'lowest':
+            return lang(array('string' => 'Lowest price of the last {var:1} days', 'vars' => array((int) $reference['days'])));
+        case 'current':
+            return lang('Current price');
+        case 'manual':
+            return lang('Regular price');
+    }
+
+    return '';
+}
+
+/**
+ * The catalog widget tokens of a reference price: __reference_price (the
+ * amount with the visitor's currency) and __reference_label, both empty when
+ * there is nothing to show, so a bound element collapses.
+ *
+ * @param array|null $reference a pg_price_history_reference() result
+ * @param string     $symbol    the currency symbol the card prints
+ * @return array
+ */
+function pg_price_reference_tokens($reference, $symbol)
+{
+    $label = pg_price_reference_label($reference);
+
+    if ($label === '') {
+        return array('__reference_price' => '', '__reference_label' => '');
+    }
+
+    return array(
+        '__reference_price' => pg_visitor_money($reference['price'] / 100, $symbol),
+        '__reference_label' => $label,
+    );
+}
+
+/**
+ * The reference price line the legacy catalog page prints under a product's
+ * price, or '' when there is nothing to show.
+ *
+ * @param array|null $reference a pg_price_history_reference() result
+ * @return string HTML
+ */
+function pg_price_reference_html($reference)
+{
+    $label = pg_price_reference_label($reference);
+
+    if ($label === '') {
+        return '';
+    }
+
+    return '<div class="reference_price"><span class="reference_price_label">' . h($label) . ':</span> '
+        . '<span class="reference_price_amount">' . prepare_price_for_output($reference['price'], false, '', 'html') . '</span></div>';
+}
+
+/**
+ * The reference prices of the products in a legacy catalog item list
+ * (get_catalog.php): product id => pg_price_history_reference() result. Product
+ * groups and donations have none.
+ *
+ * @param array $items                     catalog items (type, id, price, selection_type)
+ * @param array $discounted_product_prices get_discounted_product_prices()
+ * @return array
+ */
+function pg_price_reference_catalog_items($items, $discounted_product_prices)
+{
+    $page = array();
+
+    foreach ((array) $items as $item) {
+        if (!is_array($item) || !isset($item['type'], $item['id'], $item['price']) || ($item['type'] !== 'product')
+            || (isset($item['selection_type']) && ($item['selection_type'] === 'donation'))) {
+            continue;
+        }
+
+        $id = (int) $item['id'];
+        $price = (int) round((float) $item['price']);
+        $shown = isset($discounted_product_prices[$id]) ? (int) round((float) $discounted_product_prices[$id]) : $price;
+        $page[$id] = array('price' => $shown, 'reduced' => $shown < $price);
+    }
+
+    return pg_price_reference_page($page);
 }

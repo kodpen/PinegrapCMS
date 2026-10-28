@@ -27,6 +27,6 @@ description: custom_form.php protections other than the limits - order of the ch
 - Staff skip the CAPTCHA, the form limits, the sensitive rate limit and the concurrency ceiling. Signed-in members do not: auto-registration signs in anyone who types an address.
 
 ## What is still open?
-- The global limit, the api.php limit and the signature scan still exempt any session (`waf_user_is_authenticated()`), so an auto-registered member skips the signature scan. Moving them to staff-only is not planned yet.
+- The global limit and the signature scan still exempt any session (`waf_user_is_authenticated()`), so an auto-registered member skips the signature scan; the `api.php` limit exempts staff only (#2108). The global limit's exemption is seen only on directly requested scripts: a routed page or file is counted at the router stage, before the session (`waf-architecture-and-phases.md`). Moving the two to staff-only is not planned yet.
 
 Related: docs/memory/waf/waf-login-captcha.md, docs/memory/designer/custom-form-options-and-rules.md

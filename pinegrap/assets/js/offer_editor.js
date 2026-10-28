@@ -151,7 +151,7 @@
             '<div class="row g-3 align-items-center">' +
             '<div class="col-12 md:col-auto d-flex align-items-center gap-3">' + icon(type.icon) + '<span class="fw-medium">' + esc(type.label) + '</span></div>' +
             columns +
-            '<div class="col-auto ms-auto"><button type="button" class="btn btn-sm btn-ghost" data-on="' + removeAction + '" data-index="' + index + '" title="' + esc(removeTitle) + '">' + icon('bi-x-lg') + '</button></div>' +
+            '<div class="col-auto ms-auto"><button type="button" class="btn btn-sm btn-text theme-secondary" data-on="' + removeAction + '" data-index="' + index + '" title="' + esc(removeTitle) + '">' + icon('bi-x-lg') + '</button></div>' +
             '<div class="col-12 small fg-emphasis-danger' + (err ? '' : ' d-none') + '" data-error>' + esc(err) + '</div>' +
             '</div></div>';
     }
@@ -258,7 +258,7 @@
             var cols = '';
             if (c.type === 'subtotal') {
                 cols = '<div class="col-7 sm:col-5 md:col-3 xl:col-2">' +
-                    '<div class="input-group input-group-sm"><input type="text" class="form-control text-end" inputmode="decimal" value="' + esc(centsToInput(c.amount)) + '" placeholder="0.00" data-on="cond-amount" data-index="' + i + '"><span class="input-group-text">' + esc(C.currency) + '</span></div>' +
+                    '<label class="form-control form-control-sm form-adorn form-adorn-end"><span class="form-adorn-text" aria-hidden="true">' + esc(C.currency) + '</span><input type="text" class="form-ghost text-end" inputmode="decimal" value="' + esc(centsToInput(c.amount)) + '" placeholder="0.00" data-on="cond-amount" data-index="' + i + '"></label>' +
                     '</div>';
             } else if (c.type === 'products') {
                 var tags = c.product_ids.map(function (id) {
@@ -444,13 +444,13 @@
                 '<div class="row g-3 align-items-center">' +
                 '<div class="col-auto fg-secondary small">' + esc(L.tierFrom) + '</div>' +
                 '<div class="col-6 sm:col-4 md:col-3 xl:col-2">' +
-                '<div class="input-group input-group-sm"><input type="text" class="form-control text-end" inputmode="decimal" value="' + esc(centsToInput(t.min)) + '" placeholder="0.00" data-on="tier-min" data-index="' + i + '" data-tier="' + k + '"><span class="input-group-text">' + esc(C.currency) + '</span></div>' +
+                '<label class="form-control form-control-sm form-adorn form-adorn-end"><span class="form-adorn-text" aria-hidden="true">' + esc(C.currency) + '</span><input type="text" class="form-ghost text-end" inputmode="decimal" value="' + esc(centsToInput(t.min)) + '" placeholder="0.00" aria-label="' + esc(L.tierMinLabel) + '" data-on="tier-min" data-index="' + i + '" data-tier="' + k + '"></label>' +
                 '</div>' +
                 '<div class="col-auto fg-secondary small">→</div>' +
                 '<div class="col-4 sm:col-3 md:col-2 xl:col-1">' +
-                '<div class="input-group input-group-sm"><input type="text" class="form-control text-end" inputmode="numeric" value="' + esc(t.percent || '') + '" data-on="tier-percent" data-index="' + i + '" data-tier="' + k + '"><span class="input-group-text">%</span></div>' +
+                '<label class="form-control form-control-sm form-adorn form-adorn-end"><span class="form-adorn-text" aria-hidden="true">%</span><input type="text" class="form-ghost text-end" inputmode="numeric" value="' + esc(t.percent || '') + '" aria-label="' + esc(L.tierPercentLabel) + '" data-on="tier-percent" data-index="' + i + '" data-tier="' + k + '"></label>' +
                 '</div>' +
-                '<div class="col-auto"><button type="button" class="btn btn-sm btn-ghost" data-on="tier-remove" data-index="' + i + '" data-tier="' + k + '" title="' + esc(L.remove) + '">' + icon('bi-x-lg') + '</button></div>' +
+                '<div class="col-auto"><button type="button" class="btn btn-sm btn-text theme-secondary" data-on="tier-remove" data-index="' + i + '" data-tier="' + k + '" title="' + esc(L.remove) + '">' + icon('bi-x-lg') + '</button></div>' +
                 '</div></div>';
         });
         h += '<div class="col-12"><button type="button" class="btn btn-sm btn-outline theme-secondary" data-on="tier-add" data-index="' + i + '">' + icon('bi-plus-lg') + ' ' + esc(L.addTier) + '</button>' +
@@ -589,8 +589,11 @@
     function step(sel, done, todo) {
         var el = $(sel);
         if (!el) { return; }
-        el.classList.toggle('pg-step-done', !!done && !todo);
-        el.classList.toggle('pg-step-todo', !!todo);
+        // Bootstrap's stepper colours only .active items, so every step stays
+        // active and its theme class carries the state.
+        el.classList.toggle('theme-success', !!done && !todo);
+        el.classList.toggle('theme-danger', !!todo);
+        el.classList.toggle('theme-secondary', !done && !todo);
     }
     function renderOptions() {
         $('#pg-if-period-open').classList.toggle('active', S.offer.period === 'open');

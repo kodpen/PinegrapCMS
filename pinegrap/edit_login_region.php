@@ -43,8 +43,8 @@ if (!$_POST) {
             logged_in_header,
             logged_in_footer
         FROM login_regions
-        WHERE id = '" . escape($_REQUEST['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     // If the login region does not exist, then output error.
@@ -160,8 +160,8 @@ if (!$_POST) {
     // if login region was selected for deletion
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // delete login region
-        $query = "DELETE FROM login_regions WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM login_regions WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('login region'), $_POST['name']) )), $_SESSION['sessionusername']);
         
         $liveform->remove_form();
@@ -188,9 +188,9 @@ if (!$_POST) {
         $query =
             "SELECT id
             FROM login_regions
-            WHERE (name = '" . escape($liveform->get_field_value('name')) . "')
-            AND (id != '" . escape($_POST['id'] ?? '') . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            WHERE (name = ?)
+            AND (id != ?)";
+        $result = db_q($query, array((string) ($liveform->get_field_value('name')), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // if name is already in use, prepare error and forward user back to login region screen
         if (mysqli_num_rows($result) > 0) {
@@ -204,16 +204,16 @@ if (!$_POST) {
         // update region
         $query = 
             "UPDATE login_regions SET
-                name = '" . escape($liveform->get_field_value('name')) . "',
-                not_logged_in_header = '" . escape($liveform->get_field_value('not_logged_in_header')) . "',
-                login_form = '" . escape($liveform->get_field_value('login_form')) . "',
-                not_logged_in_footer = '" . escape($liveform->get_field_value('not_logged_in_footer')) . "',
-                logged_in_header = '" . escape($liveform->get_field_value('logged_in_header')) . "',
-                logged_in_footer = '" . escape($liveform->get_field_value('logged_in_footer')) . "',
-                last_modified_user_id = '" . $user['id'] . "',
+                name = ?,
+                not_logged_in_header = ?,
+                login_form = ?,
+                not_logged_in_footer = ?,
+                logged_in_header = ?,
+                logged_in_footer = ?,
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+            WHERE id = ?";
+        $result = db_q($query, array((string) ($liveform->get_field_value('name')), (string) ($liveform->get_field_value('not_logged_in_header')), (string) ($liveform->get_field_value('login_form')), (string) ($liveform->get_field_value('not_logged_in_footer')), (string) ($liveform->get_field_value('logged_in_header')), (string) ($liveform->get_field_value('logged_in_footer')), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed');
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('login region'), $_POST['name']) )), $_SESSION['sessionusername']);
      

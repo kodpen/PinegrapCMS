@@ -26,7 +26,7 @@ if (!defined('PG_INIT_LOADED')) {
             <div class="pg-toolbar-grow"></div>
             <?= $output_workspace_button ?? '' ?>
             <div class="pg-menu-wrap ms-auto">
-                <button type="button" class="btn btn-sm btn-ghost" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="<?=lang('More')?>"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="<?=lang('More')?>"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
                 <ul class="menu pg-menu-end">
                     <?php // Only meaningful once the offer has an id; the script reveals them after the first save. ?>
                     <li data-saved-only<?php if ($is_new): ?> class="d-none"<?php endif ?>><a class="menu-item pg-link-body-emphasis" href="#" data-on="duplicate"><i class="bi bi-copy me-3" aria-hidden="true"></i><?=lang('Duplicate')?></a></li>
@@ -92,12 +92,11 @@ if (!defined('PG_INIT_LOADED')) {
             </div>
         </div>
 
-        <div id="pg-if-steps" class="my-12">
+        <ol id="pg-if-steps" class="stepper pg-stepper-cards my-12">
 
             <!-- 1 · Offer -->
-            <div class="pg-step" id="pg-if-step-offer">
-                <div class="pg-step-rail"><span class="pg-step-node">1</span></div>
-                <div class="card mb-12">
+            <li class="stepper-item active theme-secondary" id="pg-if-step-offer">
+                <div class="card theme-reset mb-12">
                     <div class="card-header d-flex flex-wrap align-items-center gap-3">
                         <span class="h5 text-uppercase fg-primary fw-bold mb-0"><?=lang('Offer')?></span>
                         <span class="fg-secondary small"><?=lang('What does the customer see?')?></span>
@@ -149,7 +148,7 @@ if (!defined('PG_INIT_LOADED')) {
                                         <button type="button" class="btn btn-sm btn-outline theme-danger" data-on="keycodes-delete"><i class="bi bi-trash" aria-hidden="true"></i> <?=lang('Delete all codes')?></button>
                                     </div>
                                     <div class="col-auto">
-                                        <a class="btn btn-sm btn-ghost" href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/view_key_codes.php"><?=lang('Manage key codes')?></a>
+                                        <a class="btn btn-sm btn-text theme-secondary" href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/view_key_codes.php"><?=lang('Manage key codes')?></a>
                                     </div>
                                     <div class="col-12 xl:col small fg-secondary"><?=lang('single-use or per-customer aliases of this code')?></div>
                                     <div class="col-12 d-none" id="pg-if-keycodes-new">
@@ -161,12 +160,11 @@ if (!defined('PG_INIT_LOADED')) {
                         </div>
                     </div>
                 </div>
-            </div>
+            </li>
 
             <!-- 2 · If -->
-            <div class="pg-step" id="pg-if-step-conditions">
-                <div class="pg-step-rail"><span class="pg-step-node">2</span></div>
-                <div class="card mb-12">
+            <li class="stepper-item active theme-secondary" id="pg-if-step-conditions">
+                <div class="card theme-reset mb-12">
                     <div class="card-header d-flex flex-wrap align-items-center gap-3">
                         <span class="h5 text-uppercase fg-primary fw-bold mb-0"><?=lang('If')?></span>
                         <span class="fg-secondary small"><?=lang('the cart meets these conditions')?><span class="d-none" id="pg-if-conditions-all"> · <?=lang('all of them')?></span></span>
@@ -177,12 +175,11 @@ if (!defined('PG_INIT_LOADED')) {
                     </div>
                     <div class="list-group list-group-flush" id="pg-if-conditions"></div>
                 </div>
-            </div>
+            </li>
 
             <!-- 3 · Then -->
-            <div class="pg-step" id="pg-if-step-actions">
-                <div class="pg-step-rail"><span class="pg-step-node">3</span></div>
-                <div class="card mb-12">
+            <li class="stepper-item active theme-secondary" id="pg-if-step-actions">
+                <div class="card theme-reset mb-12">
                     <div class="card-header d-flex flex-wrap align-items-center gap-3">
                         <span class="h5 text-uppercase fg-primary fw-bold mb-0"><?=lang('Then')?></span>
                         <span class="fg-secondary small"><?=lang('these results apply')?> · <?=lang('all of them')?></span>
@@ -193,12 +190,11 @@ if (!defined('PG_INIT_LOADED')) {
                     </div>
                     <div class="list-group list-group-flush" id="pg-if-actions"></div>
                 </div>
-            </div>
+            </li>
 
             <!-- 4 · Options -->
-            <div class="pg-step" id="pg-if-step-options">
-                <div class="pg-step-rail"><span class="pg-step-node">4</span></div>
-                <div class="card mb-12">
+            <li class="stepper-item active theme-secondary" id="pg-if-step-options">
+                <div class="card theme-reset mb-12">
                     <div class="card-header p-0">
                         <button type="button" class="btn btn-link text-decoration-none pg-link-body-emphasis d-flex flex-wrap align-items-center gap-3 w-100 text-start px-5 py-3" data-bs-toggle="collapse" data-bs-target="#pg-if-options" aria-expanded="false" aria-controls="pg-if-options">
                             <span class="h5 text-uppercase fg-primary fw-bold mb-0"><?=lang('Options')?></span>
@@ -245,7 +241,7 @@ if (!defined('PG_INIT_LOADED')) {
                                         </div>
                                         <div class="col-12 sm:col-6 xl:col-4">
                                             <label class="form-label" for="pg-if-upsell-subtotal"><?=lang('Show when the subtotal is within')?> <span class="fg-secondary small">· <?=lang('of the required subtotal')?></span></label>
-                                            <div class="input-group input-group-sm"><input type="text" class="form-control text-end" id="pg-if-upsell-subtotal" inputmode="decimal" data-on="upsell-subtotal"><span class="input-group-text"><?=h(_pg_offer_currency())?></span></div>
+                                            <label class="form-control form-control-sm form-adorn form-adorn-end"><span class="form-adorn-text" aria-hidden="true"><?=h(_pg_offer_currency())?></span><input type="text" class="form-ghost text-end" id="pg-if-upsell-subtotal" inputmode="decimal" data-on="upsell-subtotal"></label>
                                         </div>
                                         <div class="col-12 sm:col-6 xl:col-4" id="pg-if-upsell-quantity-wrap">
                                             <label class="form-label" for="pg-if-upsell-quantity"><?=lang('Show when the quantity is within')?> <span class="fg-secondary small">· <?=lang('of the required quantity')?></span></label>
@@ -296,9 +292,9 @@ if (!defined('PG_INIT_LOADED')) {
                         </div>
                     </div>
                 </div>
-            </div>
+            </li>
 
-        </div>
+        </ol>
 
         <?php // Same sticky footer the other edit screens use, so Save is where the operator expects it. ?>
         <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="<?=lang('Save')?>">

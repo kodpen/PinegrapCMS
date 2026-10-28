@@ -20,9 +20,8 @@
  * Google product taxonomy: search.
  *
  * The taxonomy is ~5,595 categories. Sending it to the browser would be roughly
- * 785 KB of markup and 5,595 DOM nodes that select2 then copies into its own
- * results list and rescans on every keystroke, so the list stays here and only
- * matches travel.
+ * 785 KB of markup and 5,595 DOM nodes for a combobox that shows a handful of
+ * matches, so the list stays here and only matches travel.
  *
  * The list is a file shipped with the software, so there is nothing to download
  * and no state to change here: this endpoint only reads.

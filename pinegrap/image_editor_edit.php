@@ -55,8 +55,8 @@ if (!$_POST)
         design,
         type
     FROM files
-    WHERE name = '" . escape($file_name) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE name = ?";
+    $result = db_q($query, array((string) $file_name)) or output_error('Query failed.');
 
     // if the file does not exist (or no file name was given), then output
     // error before its details are read
@@ -137,7 +137,7 @@ if (!$_POST)
                     </ul>
                 </li>
                 <li class="nav-item">
-                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="javascript: history.go(-1)" aria-label="Close">
+                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="javascript: history.go(-1)" aria-label="' . h(lang('Close')) . '">
                         <span class="bi bi-x-lg"></span>
                     </button>
                 </li>
@@ -355,7 +355,7 @@ if (!$_POST)
         <dialog class="dialog" id="confirm_modal" data-bs-backdrop="static" data-bs-keyboard="false">
                     <div class="dialog-header">
                         <h5 class="dialog-title" id="exampleModalLabel">' . lang('Save Option') . '</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
                     <div class="dialog-body" style="font-size:smaller;">
                         <h5>' . lang('Keep Original And Save') . '</h5>
@@ -416,8 +416,8 @@ else
                         design,
                         type
                     FROM files 
-                    WHERE id = '" . escape($file_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    WHERE id = ?";
+    $result = db_q($query, array((string) $file_id)) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $file_name = $row['name'];
     $original_file_name = $row['name'];
@@ -448,8 +448,8 @@ else
         {
             case 'ad':
                 // get this ad's name and ad region id
-                $query = "SELECT name, ad_region_id FROM ads WHERE id = '" . escape($object_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT name, ad_region_id FROM ads WHERE id = ?";
+                $result = db_q($query, array((string) $object_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $name = $row['name'];
                 $ad_region_id = $row['ad_region_id'];
@@ -472,8 +472,8 @@ else
                     $query = "SELECT page.page_folder as pregion_folder_id
                                     FROM pregion
                                     LEFT JOIN page ON pregion.pregion_page = page.page_id
-                                    WHERE pregion.pregion_id = '" . escape($object_id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    WHERE pregion.pregion_id = ?";
+                    $result = db_q($query, array((string) $object_id)) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
                     $pregion_folder_id = $row['pregion_folder_id'];
 
@@ -491,8 +491,8 @@ else
                 // get the folder id from the page that this system region header is on
                 $query = "SELECT page_folder as system_region_header_folder_id
                                 FROM page
-                                WHERE page_id = '" . escape($object_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                WHERE page_id = ?";
+                $result = db_q($query, array((string) $object_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $system_region_header_folder_id = $row['system_region_header_folder_id'];
 
@@ -509,8 +509,8 @@ else
                 // get the folder id from the page that this system region footer is on
                 $query = "SELECT page_folder as system_region_footer_folder_id
                                 FROM page
-                                WHERE page_id = '" . escape($object_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                WHERE page_id = ?";
+                $result = db_q($query, array((string) $object_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $system_region_footer_folder_id = $row['system_region_footer_folder_id'];
 
@@ -559,8 +559,8 @@ else
                 $query = "SELECT page.page_folder as form_field_folder_id
                                 FROM form_fields
                                 LEFT JOIN page ON form_fields.page_id = page.page_id
-                                WHERE form_fields.id = '" . escape($object_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                WHERE form_fields.id = ?";
+                $result = db_q($query, array((string) $object_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $form_field_folder_id = $row['form_field_folder_id'];
 
@@ -609,12 +609,12 @@ else
         // update image in database
         $query = "UPDATE files 
                     SET 
-                        size = '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $file_name)) . "',
+                        size = ?,
                         optimized = '0',
                         timestamp = UNIX_TIMESTAMP(), 
-                        user = '" . $user['id'] . "' 
-                  WHERE id = '" . escape($file_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        user = ? 
+                  WHERE id = ?";
+        $result = db_q($query, array((string) filesize(FILE_DIRECTORY_PATH . '/' . $file_name), (string) $user['id'], (string) $file_id)) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'file ({var:1}) was modified via Image Editor','vars'=>$file_name)), $_SESSION['sessionusername']);
 
@@ -681,15 +681,15 @@ else
                         optimized,
                         timestamp) 
                   VALUES (
-                        '" . escape($file_name) . "',
-                        '" . escape($folder_id) . "',
-                        '" . escape($file_extension) . "',
-                        '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $file_name)) . "',
-                        '" . $user['id'] . "',
+                        ?,
+                        ?,
+                        ?,
+                        ?,
+                        ?,
                         '0',
                         '0',
                         UNIX_TIMESTAMP())";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $file_name, (string) $folder_id, (string) $file_extension, (string) filesize(FILE_DIRECTORY_PATH . '/' . $file_name), (string) $user['id'])) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'file ({var:1}) was created via Image Editor','vars'=>$file_name)), $_SESSION['sessionusername']);
     }
@@ -710,44 +710,50 @@ else
     {
         case 'ad':
             // get content
-            $query = "SELECT content FROM ads WHERE id = '" . escape($object_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT content FROM ads WHERE id = ?";
+            $result = db_q($query, array((string) $object_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $content = $row['content'];
 
             $content = update_image_in_content($content, $original_file_name, $file_name);
 
             // update content in database
-            $query = "UPDATE ads SET content = '" . escape($content) . "' WHERE id = '" . escape($object_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "UPDATE ads SET content = ? WHERE id = ?";
+            $result = db_q($query, array((string) $content, (string) $object_id)) or output_error('Query failed.');
         break;
 
         case 'calendar_event':
             // get content
-            $query = "SELECT full_description FROM calendar_events WHERE id = '" . escape($object_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT full_description FROM calendar_events WHERE id = ?";
+            $result = db_q($query, array((string) $object_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $content = $row['full_description'];
 
             $content = update_image_in_content($content, $original_file_name, $file_name);
 
             // update content in database
-            $query = "UPDATE calendar_events SET full_description = '" . escape($content) . "' WHERE id = '" . escape($object_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "UPDATE calendar_events SET full_description = ? WHERE id = ?";
+            $result = db_q($query, array((string) $content, (string) $object_id)) or output_error('Query failed.');
         break;
 
         case 'cregion':
+            // A region made a shared component draws the component; its row
+            // is no longer read, so the picture is not written into it.
+            if (in_array((int) $object_id, pg_common_region_converted_ids(), true)) {
+                break;
+            }
+
             // get content
-            $query = "SELECT cregion_content as content FROM cregion WHERE cregion_id = '" . escape($object_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT cregion_content as content FROM cregion WHERE cregion_id = ?";
+            $result = db_q($query, array((string) $object_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $content = $row['content'];
 
             $content = update_image_in_content($content, $original_file_name, $file_name);
 
             // update content in database
-            $query = "UPDATE cregion SET cregion_content = '" . escape($content) . "' WHERE cregion_id = '" . escape($object_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "UPDATE cregion SET cregion_content = ? WHERE cregion_id = ?";
+            $result = db_q($query, array((string) $content, (string) $object_id)) or output_error('Query failed.');
         break;
 
         case 'pregion':
@@ -756,46 +762,46 @@ else
             if ($object_id)
             {
                 // get content
-                $query = "SELECT pregion_content as content FROM pregion WHERE pregion_id = '" . escape($object_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT pregion_content as content FROM pregion WHERE pregion_id = ?";
+                $result = db_q($query, array((string) $object_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $content = $row['content'];
 
                 $content = update_image_in_content($content, $original_file_name, $file_name);
 
                 // update content in database
-                $query = "UPDATE pregion SET pregion_content = '" . escape($content) . "' WHERE pregion_id = '" . escape($object_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "UPDATE pregion SET pregion_content = ? WHERE pregion_id = ?";
+                $result = db_q($query, array((string) $content, (string) $object_id)) or output_error('Query failed.');
             }
 
         break;
 
         case 'system_region_header':
             // get content
-            $query = "SELECT system_region_header as content FROM page WHERE page_id = '" . escape($object_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT system_region_header as content FROM page WHERE page_id = ?";
+            $result = db_q($query, array((string) $object_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $content = $row['content'];
 
             $content = update_image_in_content($content, $original_file_name, $file_name);
 
             // update content in database
-            $query = "UPDATE page SET system_region_header = '" . escape($content) . "' WHERE page_id = '" . escape($object_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "UPDATE page SET system_region_header = ? WHERE page_id = ?";
+            $result = db_q($query, array((string) $content, (string) $object_id)) or output_error('Query failed.');
         break;
 
         case 'system_region_footer':
             // get content
-            $query = "SELECT system_region_footer as content FROM page WHERE page_id = '" . escape($object_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT system_region_footer as content FROM page WHERE page_id = ?";
+            $result = db_q($query, array((string) $object_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $content = $row['content'];
 
             $content = update_image_in_content($content, $original_file_name, $file_name);
 
             // update content in database
-            $query = "UPDATE page SET system_region_footer = '" . escape($content) . "' WHERE page_id = '" . escape($object_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "UPDATE page SET system_region_footer = ? WHERE page_id = ?";
+            $result = db_q($query, array((string) $content, (string) $object_id)) or output_error('Query failed.');
         break;
 
         case 'product':
@@ -824,8 +830,8 @@ else
                 case 'details':
                     $sql_column = 'details';
 
-                    $query = "SELECT details FROM $sql_table WHERE id = '" . escape($object_id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $query = "SELECT details FROM $sql_table WHERE id = ?";
+                    $result = db_q($query, array((string) $object_id)) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
                     $content = update_image_in_content($row['details'], $original_file_name, $file_name);
                 break;
@@ -833,30 +839,30 @@ else
                 default:
                     $sql_column = 'full_description';
 
-                    $query = "SELECT full_description FROM $sql_table WHERE id = '" . escape($object_id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $query = "SELECT full_description FROM $sql_table WHERE id = ?";
+                    $result = db_q($query, array((string) $object_id)) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
                     $content = update_image_in_content($row['full_description'], $original_file_name, $file_name);
                 break;
             }
 
             // update content in database
-            $query = "UPDATE $sql_table SET $sql_column = '" . escape($content) . "' WHERE id = '" . escape($object_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "UPDATE $sql_table SET $sql_column = ? WHERE id = ?";
+            $result = db_q($query, array((string) $content, (string) $object_id)) or output_error('Query failed.');
         break;
 
         case 'form_field':
             // get content
-            $query = "SELECT information FROM form_fields WHERE id = '" . escape($object_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT information FROM form_fields WHERE id = ?";
+            $result = db_q($query, array((string) $object_id)) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $content = $row['information'];
 
             $content = update_image_in_content($content, $original_file_name, $file_name);
 
             // update content in database
-            $query = "UPDATE form_fields SET information = '" . escape($content) . "' WHERE id = '" . escape($object_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "UPDATE form_fields SET information = ? WHERE id = ?";
+            $result = db_q($query, array((string) $content, (string) $object_id)) or output_error('Query failed.');
         break;
     }
 

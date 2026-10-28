@@ -181,12 +181,6 @@ function getPreferredThemeColor() {
 $(document).ready(function () {
 
 
-    //check if it's toolbar
-    if ($("body").hasClass('toolbar')) {
-        //convert color-scheme light for transparent bg. it fix some bug
-        $("html").attr('style', 'color-scheme:light;');
-    }
-
     //update backdrop height.
     update_menu_backdrop_height();
 
@@ -601,11 +595,28 @@ $(document).ready(function () {
         });
     });
     //classic popover
+    // An empty data-bs-title or data-bs-content (a title a script fills in
+    // later) reads as null in Bootstrap, whose type check then throws; an
+    // empty string given here wins over the attribute. One element that still
+    // fails must not stop the rest of this ready block (the main menu below).
     $('[data-bs-toggle="popover"]:not([ data-bs-custom-class="contextmenu"])').each(function () {
-        pgUI.popover.get(this, {
+        var popoverOptions = {
             placement: 'auto',
             html: true
-        });
+        };
+        if (this.getAttribute('data-bs-title') === '') {
+            popoverOptions.title = '';
+        }
+        if (this.getAttribute('data-bs-content') === '') {
+            popoverOptions.content = '';
+        }
+        try {
+            pgUI.popover.get(this, popoverOptions);
+        } catch (error) {
+            if (window.console) {
+                console.error(error);
+            }
+        }
     });
 
 
@@ -1340,15 +1351,9 @@ $(document).ready(function () {
 
 
 
-    var output_system_language_name;
-    switch (software_system_language) {
-        case "tr":
-            output_system_language_name = "Turkish";
-            break;
-        default:
-            //default is english so we use default.
-            output_system_language_name = "English";
-    }
+    // Panel languages with a file in assets/lib/DataTables/i18n/.
+    var DATATABLES_LANGUAGES = { tr: true };
+
 
 
     /*
@@ -1404,9 +1409,15 @@ $(document).ready(function () {
     }
 
     var options = {};
-    options["language"] = {
-        url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/tr.json"
-    };
+    // The panel language's DataTables 2 texts from the local copy; English
+    // is DataTables' own. The CDN's 1.13.6 Turkish file was loaded for every
+    // language, lacked the 2.x keys ("All", pagination names) and held the
+    // table back until a third party answered.
+    if (DATATABLES_LANGUAGES[software_system_language]) {
+        options["language"] = {
+            url: path + software_directory + "/assets/lib/DataTables/i18n/" + software_system_language + ".json"
+        };
+    }
 
     options["stateSave"] = false;
     options["serverside"] = false;
@@ -1467,7 +1478,12 @@ $(document).ready(function () {
             }
         });
         $("table.dataTable #select_all").prop("checked", false);
-        datatable.columns.adjust().draw();
+        datatable.columns.adjust();
+
+        // A list paged on the server would ask for the same page again.
+        if (!options.serverSide) {
+            datatable.draw();
+        }
         $('table.dataTable tbody tr td.dataTables_empty').parent('tr').addClass('unselectable');
     };
 
@@ -1533,6 +1549,11 @@ $(document).ready(function () {
             options["info"] = true;
         }
 
+        // A list that names a panel action is paged on the server.
+        if ($('table.chart[data-pg-list-action]').length === 1) {
+            pgListServerOptions(options, $('table.chart[data-pg-list-action]'));
+        }
+
         var datatable = $("table.chart").DataTable(options);
         datatable.buttons().container().appendTo($(".chart-buttons"));
         $(window).on("resize", function () {
@@ -1595,6 +1616,7 @@ $(document).ready(function () {
     // again over a pane that arrives later; see pgInitInjected().
     pgBindTitlePopovers(document);
     pgSyncCollapseSwitchers(document);
+    pgBindRanges(document);
 
     $(document).on("change", "select.collapse-if-selected", function () {
         var target = $(this).attr("data-bs-target");
@@ -2358,6 +2380,78 @@ function edit_chart_content(action, name) {
     if (result == true) {
         document.form.submit();
     }
+}
+
+/**
+ * DataTables options for a list paged on the server (includes/fn/list_paging.php).
+ * The table names its panel action in data-pg-list-action and what the action
+ * needs besides the page (the filter) in data-pg-list-params. Each draw asks
+ * the action for one page with the page window and the search box; a row
+ * comes back as its cells' content, with the cells' classes in DT_RowData.
+ * Sorting stays the headings' links, so DataTables sends no order.
+ */
+function pgListServerOptions(options, $table) {
+    var params = {};
+
+    try {
+        params = JSON.parse($table.attr('data-pg-list-params') || '{}') || {};
+    } catch (e) {
+        params = {};
+    }
+
+    options.serverSide = true;
+    options.searchDelay = 400;
+
+    options.ajax = function (request, callback) {
+        var body = $.extend({}, params, {
+            action: $table.attr('data-pg-list-action'),
+            token: software_token,
+            draw: request.draw,
+            start: request.start,
+            length: request.length,
+            search: (request.search && request.search.value) || ''
+        });
+
+        $.ajax({
+            contentType: 'application/json',
+            url: 'api.php',
+            type: 'POST',
+            dataType: 'json',
+            data: JSON.stringify(body)
+        }).done(function (response) {
+            if (response && (response.status === 'success')) {
+                callback(response);
+            } else {
+                pgListServerFailed(callback, request.draw, $table, response && response.message);
+            }
+        }).fail(function (xhr) {
+            pgListServerFailed(callback, request.draw, $table, xhr.responseJSON && xhr.responseJSON.message);
+        });
+    };
+
+    // The cells' classes; cells holds hidden columns' cells too.
+    options.createdRow = function (row, data, index, cells) {
+        var classes = (data && data.DT_RowData && data.DT_RowData.pgCells) || [];
+
+        for (var i = 0; (i < classes.length) && cells && (i < cells.length); i++) {
+            cells[i].className = classes[i];
+        }
+    };
+
+    // Hints, menus and lazy pictures of the rows that just arrived.
+    $table.on('draw.dt', function () {
+        pgInitInjected($table.find('tbody'));
+
+        if ($.fn.Lazy) {
+            $table.find('img.lazy:not(.delayed)').Lazy();
+        }
+    });
+}
+
+// An empty page with the reason in the table's empty row.
+function pgListServerFailed(callback, draw, $table, message) {
+    callback({ draw: draw, recordsTotal: 0, recordsFiltered: 0, data: [] });
+    $table.find('tbody td.dt-empty').text(message || lang('Query failed.'));
 }
 
 function chart_checkbox_state_change() {
@@ -3481,148 +3575,6 @@ function show_draw_lines() {
     $('body').toggleClass('show-draw-lines');
 }
 
-//::::::::::::::::::input.tagin::::::::::::::::::
-function tagin(el, option = {}) {
-    const classElement = 'tagin'
-    const classWrapper = 'tagin-wrapper'
-    const classTag = 'tagin-tag'
-    const classRemove = 'tagin-tag-remove '
-    const classInput = 'tagin-input'
-    const classInputHidden = 'tagin-input-hidden'
-    const defaultSeparator = ','
-    const defaultDuplicate = 'false'
-    const defaultTransform = input => input
-    const defaultPlaceholder = ''
-    const separator = el.dataset.separator || option.separator || defaultSeparator
-    const duplicate = el.dataset.duplicate || option.duplicate || defaultDuplicate
-    const transform = eval(el.dataset.transform) || option.transform || defaultTransform
-    const placeholder = el.dataset.placeholder || option.placeholder || defaultPlaceholder
-
-    // A tag's text is data (a tracking number from the API or a marketplace,
-    // a class name), so it is escaped before it becomes markup; getTags()
-    // reads it back with textContent, unescaped.
-    const escapeTag = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
-    const templateTag = value => `<span class="${classTag}"><span class="${classTag}_text">${escapeTag(value)}</span><span class="${classRemove}"></span></span>`
-
-    const getValue = () => el.value
-    const getValues = () => getValue().split(separator)
-
-        // Create
-        ;
-    (function () {
-        const className = classWrapper + ' ' + el.className.replace(classElement, '').trim()
-        const tags = getValue().trim() === '' ? '' : getValues().map(templateTag).join('')
-        const template = `<div class="${className}">${tags}<input type="text" class="${classInput}" placeholder="${placeholder}"></div>`
-        el.insertAdjacentHTML('afterend', template) // insert template after element
-    })()
-
-    const wrapper = el.nextElementSibling
-    const input = wrapper.getElementsByClassName(classInput)[0]
-    const getTags = () => [...wrapper.getElementsByClassName(classTag)].map(tag => tag.textContent)
-    const getTag = () => getTags().join(separator)
-
-    const updateValue = () => {
-        el.value = getTag();
-        el.dispatchEvent(new Event('change'))
-    }
-
-    // Focus to input
-    wrapper.addEventListener('click', () => input.focus())
-
-    // Toggle focus class
-    input.addEventListener('focus', () => wrapper.classList.add('focus'))
-    input.addEventListener('blur', () => wrapper.classList.remove('focus'))
-
-    // Remove by click
-    document.addEventListener('click', e => {
-        if (e.target.closest('.' + classRemove)) {
-            e.target.closest('.' + classRemove).parentNode.remove()
-            updateValue()
-        }
-    })
-
-    //Stop Enter key submit form, and let addTag if tagin focused
-    input.addEventListener('keydown', e => {
-        if (e.keyCode == 13) {
-            addTag(true)
-            autowidth()
-            e.preventDefault();
-            return false;
-        }
-    });
-    // Remove with backspace
-    input.addEventListener('keydown', e => {
-        if (input.value === '' && e.keyCode === 8 && wrapper.getElementsByClassName(classTag).length) {
-            wrapper.querySelector('.' + classTag + ':last-of-type').remove()
-            updateValue()
-        }
-    })
-
-    // Adding tag
-    input.addEventListener('input', () => {
-        addTag()
-        autowidth()
-    })
-    input.addEventListener('blur', () => {
-        addTag(true)
-        autowidth()
-    })
-    autowidth()
-
-    function autowidth() {
-        const fakeEl = document.createElement('div')
-        fakeEl.classList.add(classInput, classInputHidden)
-        const string = input.value || input.getAttribute('placeholder') || ''
-        fakeEl.innerHTML = string.replace(/ /g, '&nbsp;')
-        document.body.appendChild(fakeEl)
-        input.style.setProperty('width', Math.ceil(window.getComputedStyle(fakeEl).width.replace('px', '')) + 1 + 'px')
-        fakeEl.remove()
-    }
-
-    function addTag(force = false) {
-        const value = transform(input.value.trim())
-        if (value === '') {
-            input.value = ''
-        }
-        if (input.value.includes(separator) || (force && input.value != '')) {
-            value.split(separator).filter(i => i != '').forEach(val => {
-                if (getTags().includes(val) && duplicate === 'false') {
-                    alertExist(val)
-                } else {
-                    input.insertAdjacentHTML('beforebegin', templateTag(val))
-                    updateValue()
-                }
-            })
-            input.value = ''
-            input.removeAttribute('style')
-        }
-    }
-
-    function alertExist(value) {
-        for (const el of wrapper.getElementsByClassName(classTag)) {
-            if (el.textContent === value) {
-                el.style.transform = 'scale(1.09)'
-                setTimeout(() => {
-                    el.removeAttribute('style')
-                }, 150)
-            }
-        }
-    }
-
-    function updateTag() {
-        if (getValue() !== getTag()) {
-            [...wrapper.getElementsByClassName(classTag)].map(tag => tag.remove())
-            getValue().trim() !== '' && input.insertAdjacentHTML('beforebegin', getValues().map(templateTag).join(''))
-        }
-    }
-
-    function escapeRegex(value) {
-        return value.replace(/[\-\[\]{}()*+?.,\\\^$|#\s]/g, '\\$&')
-    }
-    el.addEventListener('change', () => updateTag())
-}
-
-
 function prepare_content_for_html(content) {
     var chars = new Array('&', '\u00e0', '\u00e1', '\u00e2', '\u00e3', '\u00e4', '\u00e5', '\u00e6', '\u00e7', '\u00e8', '\u00e9', '\u00ea', '\u00eb', '\u00ec', '\u00ed', '\u00ee', '\u00ef', '\u00f0', '\u00f1', '\u00f2', '\u00f3', '\u00f4', '\u00f5', '\u00f6', '\u00f8', '\u00f9', '\u00fa', '\u00fb', '\u00fc', '\u00fd', '\u00fe', '\u00ff', '\u00c0', '\u00c1', '\u00c2', '\u00c3', '\u00c4', '\u00c5', '\u00c6', '\u00c7', '\u00c8', '\u00c9', '\u00ca', '\u00cb', '\u00cc', '\u00cd', '\u00ce', '\u00cf', '\u00d0', '\u00d1', '\u00d2', '\u00d3', '\u00d4', '\u00d5', '\u00d6', '\u00d8', '\u00d9', '\u00da', '\u00db', '\u00dc', '\u00dd', '\u00de', '\u20ac', '\u0022', '\u00df', '\u003c', '\u003e', '\u00a2', '\u00a3', '\u00a4', '\u00a5', '\u00a6', '\u00a7', '\u00a8', '\u00a9', '\u00aa', '\u00ab', '\u00ac', '\u00ad', '\u00ae', '\u00af', '\u00b0', '\u00b1', '\u00b2', '\u00b3', '\u00b4', '\u00b5', '\u00b6', '\u00b7', '\u00b8', '\u00b9', '\u00ba', '\u00bb', '\u00bc', '\u00bd', '\u00be');
 
@@ -3677,7 +3629,7 @@ function init_product_groups(properties) {
                 </div>\
             </div>');
 
-        // select2 reads its placeholder from the data attribute.
+        // The combobox reads its placeholder from the data attribute.
         var select = $('.group_' + id + ' .product_group').attr('data-placeholder', '-' + label['Select Group'] + '-')[0];
 
         if (window.pgCombobox) {
@@ -6184,641 +6136,6 @@ function delete_shipping_cutoff(tr) {
 }
 
 
-// initialize function for preparing layout cells
-function initialize_style_designer() {
-    var selected_area = '';
-    var selected_row_index = '';
-    var selected_cell_index = '';
-
-    // initialize function for deselecting a cell that should no longer be selected
-    function deselect_cell(area, row_index, cell_index) {
-        // add disable styling to add column before button
-        $('#' + area + '_add_column_before').addClass('disabled');
-
-        // remove onclick event for add column before button
-        $('#' + area + '_add_column_before').unbind('click');
-
-        // add disable styling to add column after button
-        $('#' + area + '_add_column_after').addClass('disabled');
-
-        // remove onclick event for add column after button
-        $('#' + area + '_add_column_after').unbind('click');
-
-        // add disable styling to edit cell properties button
-        $('#' + area + '_edit_cell_properties').addClass('disabled');
-
-        // remove onclick event for edit cell properties button
-        $('#' + area + '_edit_cell_properties').unbind('click');
-
-        // remove selected styling from cell
-        $('#' + area + '_row_' + row_index + '_cell_' + cell_index).removeClass('selected');
-
-        // clear values for selected variables
-        selected_area = '';
-        selected_row_index = '';
-        selected_cell_index = '';
-    }
-
-    function select_cell(area, row_index, cell_index) {
-        // if there is a selected cell, then deselect it
-        if (selected_cell_index !== '') {
-            deselect_cell(selected_area, selected_row_index, selected_cell_index);
-        }
-
-        // remove disable styling from add column before button
-        $('#' + area + '_add_column_before').removeClass('disabled');
-
-        // add onclick event for add column before button
-        $('#' + area + '_add_column_before').bind('click', { area: area }, function (event) {
-            var area = event.data.area;
-
-            // set the new cell index
-            var new_cell_index = selected_cell_index;
-
-            // prepare the cell that will be added to a row
-            var cell = {
-                'region_type': '',
-                'region_name': ''
-            };
-
-            // add the cell to the array
-            areas[area]['rows'][selected_row_index]['cells'].splice(new_cell_index, 0, cell);
-
-            // update the area so that the correct cells will be displayed for this area
-            update_area(area);
-
-            // select the cell that we just added
-            select_cell(area, selected_row_index, new_cell_index);
-        });
-
-        // remove disable styling from add column after button
-        $('#' + area + '_add_column_after').removeClass('disabled');
-
-        // add onclick event for add column after button
-        $('#' + area + '_add_column_after').bind('click', { area: area }, function (event) {
-            var area = event.data.area;
-
-            // set the new cell index to one more than the selected cell index
-            var new_cell_index = selected_cell_index + 1;
-
-            // prepare the cell that will be added to a row
-            var cell = {
-                'region_type': '',
-                'region_name': ''
-            };
-
-            // add the cell to the array
-            areas[area]['rows'][selected_row_index]['cells'].splice(new_cell_index, 0, cell);
-
-            // update the area so that the correct cells will be displayed for this area
-            update_area(area);
-
-            // select the cell that we just added
-            select_cell(area, selected_row_index, new_cell_index);
-        });
-
-        // remove disable styling from edit cell properties button
-        $('#' + area + '_edit_cell_properties').removeClass('disabled');
-
-        // add onclick event for edit cell properties button
-        $('#' + area + '_edit_cell_properties').click(function () {
-            $('#edit_cell_properties').dialog('open');
-        });
-
-        // update the selected variables so they store information for this cell
-        selected_area = area;
-        selected_row_index = row_index;
-        selected_cell_index = cell_index;
-
-        // add selected class to cell
-        $('#' + area + '_row_' + row_index + '_cell_' + cell_index).addClass('selected');
-    }
-
-    // initialize function that will be responsible for updating the label that appears inside a cell
-    function update_cell_label(area, row_index, cell_index) {
-        var region_type = areas[area]['rows'][row_index]['cells'][cell_index]['region_type'];
-        var region_name = prepare_content_for_html(areas[area]['rows'][row_index]['cells'][cell_index]['region_name']);
-        var page_region_number = areas[area]['rows'][row_index]['cells'][cell_index]['page_region_number'];
-
-        var row = row_index + 1;
-        var col = cell_index + 1;
-
-        var cell_label = '';
-
-        // prepare cell label
-        switch (region_type) {
-            case '':
-                cell_label = '&nbsp;<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .c' + col + '</span>';
-                break;
-
-            case 'ad':
-                cell_label = lang('Ad Region') + ': ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .ad_' + region_name + ' .c' + col + '</span>';
-                break;
-
-            case 'cart':
-                cell_label = 'Cart Region<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .cart .c' + col + '</span>';
-                break;
-
-            case 'common':
-                cell_label = lang('Common Region') + ': ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .cregion_' + region_name + ' .c' + col + '</span>';
-                break;
-
-            case 'designer':
-                cell_label = lang('Designer Region') + ': ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .cregion_' + region_name + ' .c' + col + '</span>';
-                break;
-
-            case 'dynamic':
-                cell_label = lang('Dynamic Region') + ': ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .dregion_' + region_name + ' .c' + col + '</span>';
-                break;
-
-            case 'login':
-                cell_label = lang('Login Region') + ': ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .login_' + region_name + ' .c' + col + '</span>';
-                break;
-
-            case 'menu':
-                cell_label = lang('Menu Region') + ': ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .menu_' + region_name + ' .c' + col + '</span>';
-                break;
-
-            case 'menu_sequence':
-                cell_label = lang('Menu Sequence Region') + ': ' + region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .menu_sequence_' + region_name + ' .c' + col + '</span>';
-                break;
-
-            case 'mobile_switch':
-                cell_label = 'Mobile Switch<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .mobile_switch .c' + col + '</span>';
-                break;
-
-            case 'page':
-                cell_label = 'Page Region #' + page_region_number + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .pregion .c' + col + '</span>';
-                break;
-
-            case 'pdf':
-                cell_label = 'PDF Region <sup>beta</sup><br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + ' .pdf .c' + col + '</span>';
-                break;
-
-            case 'system':
-                var region_name_for_label = '';
-                var region_name_for_label_css = '';
-
-                // if there is a region name, then output it next to the label
-                if (region_name != '') {
-                    region_name_for_label = region_name;
-                    region_name_for_label_css = ' .system_' + region_name;
-
-                    // else just output the basic label
-                } else {
-                    region_name_for_label = 'Use Page';
-                    region_name_for_label_css = ' .system'
-                }
-
-                cell_label = lang('System Region') + ': ' + region_name_for_label + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + region_name_for_label_css + ' .c' + col + '</span>';
-                break;
-
-            case 'tag_cloud':
-                var output_region_name = '';
-                var output_region_name_css = '';
-
-                // if there is a region name for this tag cloud, then prepare to output it
-                if (region_name != '') {
-                    output_region_name = ': ' + region_name;
-                    output_region_name_css = ' .tcloud_' + region_name;
-                } else {
-                    output_region_name_css = ' .tcloud';
-                }
-
-                cell_label = 'Tag Cloud Region' + output_region_name + '<br /><span class="theme_fold_css" style="padding: 0"> .r' + row + 'c' + col + output_region_name_css + ' .c' + col + '</span>';
-                break;
-        }
-
-        // update the label
-        $('#' + area + '_row_' + row_index + '_cell_' + cell_index + ' .cell_label')[0].innerHTML = cell_label;
-    }
-
-    // Create function that will be used to update all of the page region numbers
-    // anytime an event happens that affects the sequence of numbers (e.g. page region cell added)
-    function update_page_region_numbers() {
-        var page_region_number = 0;
-
-        // Loop through the areas.
-        for (var area in areas) {
-            // Loop through the rows.
-            for (var row_index = 0; row_index < areas[area]['rows'].length; row_index++) {
-                // Loop through the cells.
-                for (var cell_index = 0; cell_index < areas[area]['rows'][row_index]['cells'].length; cell_index++) {
-                    // If this cell is a page region, then update number
-                    if (areas[area]['rows'][row_index]['cells'][cell_index]['region_type'] == 'page') {
-                        // increment page region number for this page region
-                        page_region_number += 1;
-
-                        areas[area]['rows'][row_index]['cells'][cell_index]['page_region_number'] = page_region_number;
-
-                        // update page region number in cell label
-                        update_cell_label(area, row_index, cell_index);
-                    }
-                }
-            }
-        }
-    }
-
-    // initialize function that will be responsible for looking at the array for an area in order to output cells
-    function update_area(area) {
-        // remove all cells from the cells container, because we are going to recreate cells
-        $('#' + area + ' .cells').empty();
-
-        // loop through rows in this area in order to add cells
-        for (var row_index = 0; row_index < areas[area]['rows'].length; row_index++) {
-            var number_of_cells = areas[area]['rows'][row_index]['cells'].length;
-            var total_margin = (number_of_cells - 1) * 12;
-            var total_border = number_of_cells * 2;
-            var total_padding = number_of_cells * 24;
-
-            // get the width for the cells based on how many cells are in this row
-            var width = ($('#' + area + ' .cells').width() - total_margin - total_border - total_padding) / number_of_cells;
-
-            // round down the width to the nearest whole number and subtract some in order to prevent problems with cells not fitting in one row
-            width = Math.floor(width) - 5;
-
-            // loop through cells in this row
-            for (var cell_index = 0; cell_index < areas[area]['rows'][row_index]['cells'].length; cell_index++) {
-                // add a div for the cell
-                $('#' + area + ' .cells').append('\
-                    <div id ="' + area + '_row_' + row_index + '_cell_' + cell_index + '" class="cell">\
-                        <div class="cell_label"></div>\
-                        <div class="cell_remove">X</div>\
-                        <div class="clear"></div>\
-                    </div>');
-
-                // update the label that appears inside the cell
-                update_cell_label(area, row_index, cell_index);
-
-                // if the cell is selected, then add a class to the container
-                if ((area === selected_area) && (row_index === selected_row_index) && (cell_index === selected_cell_index)) {
-                    $('#' + area + '_row_' + row_index + '_cell_' + cell_index).addClass('selected');
-                }
-
-                // if this cell is the last cell in the row, then add last class, so that extra margin on the right is not added
-                if (cell_index == (areas[area]['rows'][row_index]['cells'].length - 1)) {
-                    $('#' + area + '_row_' + row_index + '_cell_' + cell_index).addClass('last');
-                }
-
-                // set the width for the cell
-                $('#' + area + '_row_' + row_index + '_cell_' + cell_index).width(width);
-
-                // add click event so that cell can be selected when clicked
-                $('#' + area + '_row_' + row_index + '_cell_' + cell_index).bind('click', { area: area, row_index: row_index, cell_index: cell_index }, function (event) {
-                    var area = event.data.area;
-                    var row_index = event.data.row_index;
-                    var cell_index = event.data.cell_index;
-
-                    // if this cell is already selected, then open edit cell properties modal dialog
-                    if ((area === selected_area) && (row_index === selected_row_index) && (cell_index === selected_cell_index)) {
-                        $('#edit_cell_properties').dialog('open');
-
-                        // else this cell is not already selected, so select it
-                    } else {
-                        select_cell(area, row_index, cell_index);
-                    }
-                });
-
-                // add click event to the remove button, so that the cell can be removed
-                $('#' + area + '_row_' + row_index + '_cell_' + cell_index + ' .cell_remove').bind('click', { area: area, row_index: row_index, cell_index: cell_index }, function (event) {
-                    var area = event.data.area;
-                    var row_index = event.data.row_index;
-                    var cell_index = event.data.cell_index;
-
-                    // store the region type before we remove it, so we know further below if it was a page region
-                    var region_type = areas[area]['rows'][row_index]['cells'][cell_index]['region_type'];
-
-                    // if this cell is selected, then deselect cell
-                    if ((area === selected_area) && (row_index === selected_row_index) && (cell_index === selected_cell_index)) {
-                        deselect_cell(area, row_index, cell_index);
-                    }
-
-                    // if there is only one cell in the row, then remove the whole row
-                    if (areas[area]['rows'][row_index]['cells'].length == 1) {
-                        areas[area]['rows'].splice(row_index, 1);
-
-                        // else there is more than one cell in the row, so just remove the cell
-                    } else {
-                        areas[area]['rows'][row_index]['cells'].splice(cell_index, 1);
-                    }
-
-                    update_area(area);
-
-                    // if the cell that was removed was a page region, then update page region numbers
-                    if (region_type == 'page') {
-                        update_page_region_numbers();
-                    }
-                });
-            }
-
-            // add clear div
-            $('#' + area + ' .cells').append('<div class="clear"></div>');
-        }
-    }
-
-    // loop through the areas, in order to prepare them
-    for (var area in areas) {
-        // add event listener to add row before button
-        $('#' + area + '_add_row_before').bind('click', { area: area }, function (event) {
-            var area = event.data.area;
-
-            // if there is a selected cell in this area, then prepare to add the row and cell above the selected cell
-            if (area == selected_area) {
-                var new_row_index = selected_row_index;
-
-                // else there is not a selected cell in this area, so prepare to add the cell to the top of the area
-            } else {
-                var new_row_index = 0;
-            }
-
-            // prepare the row and cell that will be added to the array
-            var row = {
-                'cells': [
-                    {
-                        'region_type': '',
-                        'region_name': ''
-                    }
-                ]
-            };
-
-            // add the row and cell to the array
-            areas[area]['rows'].splice(new_row_index, 0, row);
-
-            // update the area so that the correct cells will be displayed for this area
-            update_area(area);
-
-            // select the cell that we just added
-            select_cell(area, new_row_index, 0);
-        });
-
-        // add event listener to add row after button
-        $('#' + area + '_add_row_after').bind('click', { area: area }, function (event) {
-            var area = event.data.area;
-
-            // if there is a selected cell in this area, then prepare to add the row and cell below the selected cell
-            if (area == selected_area) {
-                var new_row_index = selected_row_index + 1;
-
-                // else there is not a selected cell in this area, so prepare to add the cell to the bottom of the area
-            } else {
-                var new_row_index = areas[area]['rows'].length;
-            }
-
-            // prepare the row and cell that will be added to the array
-            var row = {
-                'cells': [
-                    {
-                        'region_type': '',
-                        'region_name': ''
-                    }
-                ]
-            };
-
-            // add the row and cell to the array
-            areas[area]['rows'].splice(new_row_index, 0, row);
-
-            // update the area so that the correct cells will be displayed for this area
-            update_area(area);
-
-            // select the cell that we just added
-            select_cell(area, new_row_index, 0);
-        });
-
-        update_area(area);
-    }
-
-    // initialize function that will be responsible for showing or hiding region name field based on what region type is selected
-    function show_or_hide_region_type() {
-        var region_type = document.getElementById('region_type').options[document.getElementById('region_type').selectedIndex].value;
-
-        // if the selected region type supports a region name, then update the region name pick list with options and show pick list
-        if (
-            (region_type == 'ad')
-            || (region_type == 'common')
-            || (region_type == 'designer')
-            || (region_type == 'dynamic')
-            || (region_type == 'login')
-            || (region_type == 'menu')
-            || (region_type == 'menu_sequence')
-            || (region_type == 'tag_cloud')
-            || (region_type == 'system')
-        ) {
-            // remove existing options from region name pick list
-            document.getElementById('region_name').length = 0;
-
-            // initialize variable for storing region names
-            var region_names = [];
-
-            // initialize the picklist's first option to be blank
-            var picklist_first_option = '';
-
-            // get the region names in different ways for different region types
-            switch (region_type) {
-                case 'ad':
-                    region_names = ad_regions;
-                    break;
-
-                case 'common':
-                    region_names = common_regions;
-                    break;
-
-                case 'designer':
-                    region_names = designer_regions;
-                    break;
-
-                case 'dynamic':
-                    region_names = dynamic_regions;
-                    break;
-
-                case 'login':
-                    region_names = login_regions;
-                    break;
-
-                case 'menu':
-                    region_names = menu_regions;
-                    break;
-
-                case 'menu_sequence':
-                    region_names = menu_sequence_regions;
-                    break;
-
-                case 'tag_cloud':
-                    region_names = tag_cloud_regions;
-                    break;
-
-                case 'system':
-                    region_names = system_region_pages;
-
-                    // set the picklists first option for the picklist
-                    picklist_first_option = '-' + lang('Use Page') + '-';
-                    break;
-            }
-
-            // initialize variable for storing options that will be added to the region name pick list
-            document.getElementById('region_name').options.add(new Option(picklist_first_option, ''));
-
-            // loop through all region names in order to prepare options for pick list
-            for (var i = 0; i < region_names.length; i++) {
-                document.getElementById('region_name').options.add(new Option(region_names[i], region_names[i]));
-            }
-
-            // update the region name pick list so that the correct option is selected based on the selected region name
-            $("#region_name").val(areas[selected_area]['rows'][selected_row_index]['cells'][selected_cell_index]['region_name']);
-
-            // show the region name row
-            document.getElementById('region_name_row').style.display = '';
-
-            // else the selected region type does not require a region name, so hide region name row
-        } else {
-            document.getElementById('region_name_row').style.display = 'none';
-        }
-    }
-
-    // initialize edit cell properties modal dialog
-    $('#edit_cell_properties').dialog({
-        autoOpen: false,
-        modal: true,
-        width: 500,
-        height: 200,
-        title: lang('Edit Cell Properties'),
-        dialogClass: 'standard',
-        open: function () {
-            // if there is no region for the selected cell, then default the region type to page
-            if (areas[selected_area]['rows'][selected_row_index]['cells'][selected_cell_index]['region_type'] == '') {
-                $("#region_type").val('page');
-
-                // else there is a region for the selected cell, so update the region type pick list so that the correct option is selected based on the selected cell
-            } else {
-                $("#region_type").val(areas[selected_area]['rows'][selected_row_index]['cells'][selected_cell_index]['region_type']);
-            }
-
-            show_or_hide_region_type();
-        }
-    });
-
-    // add on change event to region type pick list
-    $('#region_type').change(function () {
-        show_or_hide_region_type();
-    });
-
-    // add click event to update cell properties button
-    $('#update_cell_properties').click(function () {
-        // prepare to update region type and name
-        var region_type = '';
-        var region_name = '';
-
-        region_type = document.getElementById('region_type').options[document.getElementById('region_type').selectedIndex].value;
-
-        // If the region type supports a region name, and there was at least one name for the user to select,
-        // then get the name that was selected.
-        if (
-            (
-                (region_type == 'ad')
-                || (region_type == 'common')
-                || (region_type == 'designer')
-                || (region_type == 'dynamic')
-                || (region_type == 'login')
-                || (region_type == 'menu')
-                || (region_type == 'menu_sequence')
-                || (region_type == 'tag_cloud')
-                || (region_type == 'system')
-            )
-            && (document.getElementById('region_name').options.length > 0)
-        ) {
-            region_name = document.getElementById('region_name').options[document.getElementById('region_name').selectedIndex].value;
-        }
-
-        // if the region type requires a region name and a region name was not selected, then alert the user
-        if (
-            (
-                (region_type == 'ad')
-                || (region_type == 'common')
-                || (region_type == 'designer')
-                || (region_type == 'dynamic')
-                || (region_type == 'login')
-                || (region_type == 'menu')
-                || (region_type == 'menu_sequence')
-            )
-            && (region_name == '')
-        ) {
-            alert(lang('Please select a region name.'));
-            return false;
-        }
-
-        // store original region type so further below we know if we need to update page region numbers
-        var original_region_type = areas[selected_area]['rows'][selected_row_index]['cells'][selected_cell_index]['region_type'];
-
-        // update cell's properties in array
-        areas[selected_area]['rows'][selected_row_index]['cells'][selected_cell_index]['region_type'] = region_type;
-        areas[selected_area]['rows'][selected_row_index]['cells'][selected_cell_index]['region_name'] = region_name;
-
-        // if this cell was not a page region before and now it is, then update page region numbers
-        if (
-            (original_region_type != 'page')
-            && (region_type == 'page')
-        ) {
-            update_page_region_numbers();
-
-            // else if this cell was a page region before and now it is not,
-            // then update cell label and page region numbers
-        } else if (
-            (original_region_type == 'page')
-            && (region_type != 'page')
-        ) {
-            update_cell_label(selected_area, selected_row_index, selected_cell_index);
-
-            update_page_region_numbers();
-
-            // else this cell was not a page region before and it still is not one,
-            // so just update cell label
-        } else {
-            update_cell_label(selected_area, selected_row_index, selected_cell_index);
-        }
-
-        // close the edit cell properties modal dialog
-        $('#edit_cell_properties').dialog('close');
-    });
-
-    // add click event to cancel cell properties button
-    $('#cancel_cell_properties').click(function () {
-        // close the edit cell properties modal dialog
-        $('#edit_cell_properties').dialog('close');
-    });
-
-    // add submit event for when the form is submitted
-    $('#style_designer_form').submit(function () {
-        // assume that a "Use Page" system region does not exist until we find out otherwise
-        var use_page_system_region_exists = false;
-
-        // loop through the areas in order to determine if there is a "Use Page" system region
-        area_loop: for (var area in areas) {
-            // loop through the rows
-            for (var row_index = 0; row_index < areas[area]['rows'].length; row_index++) {
-                // loop through the cells
-                for (var cell_index = 0; cell_index < areas[area]['rows'][row_index]['cells'].length; cell_index++) {
-                    // if this cell has a "Use Page" system region, then remember that and break out of loops
-                    if (
-                        (areas[area]['rows'][row_index]['cells'][cell_index]['region_type'] == 'system')
-                        && (areas[area]['rows'][row_index]['cells'][cell_index]['region_name'] == '')
-                    ) {
-                        use_page_system_region_exists = true;
-                        break area_loop;
-                    }
-                }
-            }
-        }
-
-        // if a system region does not exist, then alert the user
-        if (use_page_system_region_exists == false) {
-            alert(lang('Please add one "Use Page" system region before continuing.'));
-            return false;
-        }
-
-        document.getElementById('areas').value = JSON.stringify(areas);
-        return true;
-    });
-}
-
 function generateIndexNowKey() {
     try {
         // Prefer a real UUID when the browser supports it.
@@ -8376,12 +7693,17 @@ function bindPageRenameRedirect(ids) {
                 const scrollWrap = document.createElement('div');
                 scrollWrap.style.cssText = 'margin-top:6px;';
                 scrollWrap.innerHTML = `<label style="font-size:12px">${pgLang('Scroll X')}</label>`;
+                const range = document.createElement('div');
+                range.className = 'form-range pg-range-bubble';
                 const slider = document.createElement('input');
-                slider.type = 'range'; slider.min = -200; slider.max = 200; slider.value = el.scrollX || 0;
-                slider.style.width = '100%';
+                slider.type = 'range'; slider.className = 'form-range-input';
+                slider.min = -200; slider.max = 200; slider.value = el.scrollX || 0;
+                slider.setAttribute('aria-label', pgLang('Scroll X'));
                 slider.addEventListener('input', () => { el.scrollX = +slider.value; this.render(); this._fireChange(); });
-                scrollWrap.appendChild(slider);
+                range.appendChild(slider);
+                scrollWrap.appendChild(range);
                 props.appendChild(scrollWrap);
+                pgUI.range.bubble(range);
 
                 if (el.field === 'custom') {
                     props.appendChild(this._fieldRow(pgLang('Text'), 'text', el.text || '', v => { el.text = v; this.render(); this._fireChange(); }));
@@ -9914,7 +9236,7 @@ function initSettingsHubRecent() {
         // Built with the DOM rather than innerHTML: the label came out of
         // storage, and storage is not a place this page can vouch for.
         var chip = document.createElement('a');
-        chip.className = 'pg-chip';
+        chip.className = 'chip';
         chip.href = item.url;
         chip.textContent = item.label;
         box.appendChild(chip);
@@ -10068,6 +9390,15 @@ function pgSyncCollapseSwitchers(scope) {
 /**
  * Everything a freshly injected piece of the panel still needs.
  */
+// Bootstrap 6 Ranges marked data-pg-range, with the value bubble; the
+// attribute's value is the unit after the number ("%").
+function pgBindRanges(scope) {
+    $(scope).find('.form-range[data-pg-range]').each(function () {
+        var unit = this.getAttribute('data-pg-range') || '';
+        pgUI.range.bubble(this, function (value) { return value + unit; });
+    });
+}
+
 function pgInitInjected(scope) {
 
     var $scope = $(scope);
@@ -10078,6 +9409,7 @@ function pgInitInjected(scope) {
 
     pgBindTitlePopovers($scope);
     pgSyncCollapseSwitchers($scope);
+    pgBindRanges($scope);
 
     if ($.fn.inputmask) {
         $scope.find('.input-mask-key-code').inputmask({
@@ -10088,7 +9420,6 @@ function pgInitInjected(scope) {
         });
     }
 
-    // Chips, combobox, date and time fields marked with a data-pg-* hook.
     // Chips, combobox, date and time fields marked with a data-pg-* hook; a
     // card whose library arrives with its markup prints pg_fields_script().
     if (window.pgFields) {

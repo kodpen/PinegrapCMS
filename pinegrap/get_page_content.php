@@ -518,6 +518,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // (widgets_comments.php); the classic comments block below leaves them
     // alone.
     $pg_cw_pages = array();
+    // The record the page opens, published by its widget (page_facts.php).
+    $pg_pr_prev = pg_page_record_begin();
     if (strpos($content, '<!--pg-system-widget:') !== false) {
         // The drawn page's id wins over a dynamic property of that name: a
         // widget whose data is the page's own (its comment thread) reads it
@@ -536,6 +538,16 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         if (is_array($pg_cw_prev)) $pg_cw_pages = pg_comments_widget_pages($pg_cw_prev);
         if (is_array($pg_sw_prev_ctx)) pg_sw_render_context($pg_sw_prev_ctx);
     }
+
+    // ── Page conditions ─────────────────────────────────────────────────────────
+    // Elements shown by a fact of the visit (signed in, cart) or by the
+    // page's record stand between
+    // markers in the stored body and in shared components; decided here, once
+    // every shared component and widget is drawn (page_facts.php).
+    if (strpos($content, '<!--pg-pf:') !== false) {
+        $content = pg_page_facts_apply($content, $email);
+    }
+    pg_page_record_end($pg_pr_prev);
 
     // ── Custom PHP marker expansion ─────────────────────────────────────────────
     // Visual-designer `custom_php` content nodes are emitted as `<!--pg-custom-php:BASE64-->`
@@ -5305,6 +5317,17 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // first common region of an edit-mode view.
     $common_regions_user_can_edit = null;
 
+    // A common region made a shared component is drawn by that component
+    // (pg_common_region_component()): its row's content is no longer read
+    // and it has no inline editor, content people edit it in the designer.
+    $common_region_ids = array();
+    foreach ($cregion_rows as $row) {
+        if (($row !== null) && ($row['cregion_designer_type'] == 'no')) {
+            $common_region_ids[] = (int) $row['cregion_id'];
+        }
+    }
+    $common_region_components = $common_region_ids ? pg_common_region_components($common_region_ids) : array();
+
     foreach ($regions[0] as $region) {
         $row = $cregion_rows[strip_tags($region)];
 
@@ -5320,6 +5343,28 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
         // If this is a common region (not a designer region), then continue to replace it.
         if ($cregion_designer_type == 'no') {
+            if (!empty($common_region_components[(int) $cregion_id])) {
+                $component_id = $common_region_components[(int) $cregion_id];
+                $component_html = pg_common_region_component_html($component_id, $mode, $email);
+
+                // In edit mode the people who may edit the component get a
+                // link that opens it on its own in the designer.
+                if ($mode == 'edit') {
+                    require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
+                }
+
+                if (($mode == 'edit') && pg_designer_component_editable($user, $component_id)) {
+                    $component_html =
+                        '<div class="edit_mode" style="position: relative; outline: 1px dashed #c2185b;">
+                            <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_system_style.php?component=' . (int) $component_id . '&send_to=' . h(urlencode(get_request_uri())) . '" class="software_pinegrap_inline_edit_button design" title="' . lang('Common Region') . ': ' . h($cregion_name) . '">' . $edit_label . '</a>
+                            ' . $component_html . '
+                        </div>';
+                }
+
+                $content = str_replace($region, $component_html, $content);
+                continue;
+            }
+
             if (($mode == 'edit') && ($user['role'] >= 3) && ($common_regions_user_can_edit === null)) {
                 $common_regions_user_can_edit = get_items_user_can_edit('common_regions', $user['id']);
             }

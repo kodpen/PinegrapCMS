@@ -38,7 +38,9 @@ if (function_exists('pg_cron_ran')) {
     pg_cron_ran('return_reminder_job');
 }
 
-if (php_sapi_name() === 'cli') {
+// The summary is for a person running the script by hand; under the general
+// job's dispatcher printed text goes to the site log (pg_cron_dispatch_output()).
+if ((php_sapi_name() === 'cli') && !defined('PG_CRON_DISPATCH')) {
     print 'return refund reminders: ' . (int) $result['due'] . ' due, ' . (int) $result['overdue'] . ' overdue' . "\n";
 } elseif (!pg_cron_is_background_run()) {
     // Started by hand from the panel: back to the returns waiting for money.

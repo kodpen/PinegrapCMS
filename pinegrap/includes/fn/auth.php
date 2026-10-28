@@ -1103,11 +1103,28 @@ function pg_account_security_section()
     $rows_html = '';
     $count = 0;
     $pin_column = pg_auth_tokens_have_pin();
-    $result = mysqli_query(db::$con,
+
+    // The passkey a session was opened with is named on its row, with a form
+    // that removes it, which signs out every session it opened.
+    $passkey_column = function_exists('pg_auth_tokens_have_passkey') && pg_auth_tokens_have_passkey();
+    $passkey_names = array();
+    $passkey_proofs = null;
+
+    if ($passkey_column) {
+        foreach (pg_passkeys_of_user($user_id) as $passkey) {
+            $passkey_names[(int) $passkey['id']] = ($passkey['name'] !== '') ? $passkey['name'] : lang('Passkey');
+        }
+
+        if (empty($_SESSION['software']['logged_in_as_different_user'])) {
+            $passkey_proofs = pg_passkey_reauth_fields($algo, pg_mfa_table_exists() && pg_mfa_enabled($user_id));
+        }
+    }
+
+    $result = db_q(
         "SELECT selector, user_agent, ip_address, created_at, last_used_at, expires_at"
-         . ($pin_column ? ", pinned" : "") . "
-         FROM auth_tokens WHERE user_id = '" . $user_id . "'
-         ORDER BY (last_used_at = 0) ASC, last_used_at DESC, created_at DESC");
+         . ($pin_column ? ", pinned" : "") . ($passkey_column ? ", passkey_id" : "") . "
+         FROM auth_tokens WHERE user_id = ?
+         ORDER BY (last_used_at = 0) ASC, last_used_at DESC, created_at DESC", array((string) $user_id));
     if ($result) {
         while ($r = mysqli_fetch_assoc($result)) {
             $count++;
@@ -1125,9 +1142,26 @@ function pg_account_security_section()
             $device_title = (($device_title !== '') ? ($device_title . "\n") : '')
                 . lang('First seen') . ': ' . date('Y-m-d H:i', (int) $r['created_at']);
 
+            $passkey_id = $passkey_column ? (int) $r['passkey_id'] : 0;
+            $passkey_html = '';
+
+            if (isset($passkey_names[$passkey_id])) {
+                $passkey_html = '<div style="margin-top:.25em">' . h(lang(array(
+                    'string' => 'Signed in with the passkey {var:1}',
+                    'vars'   => $passkey_names[$passkey_id]))) . '</div>';
+
+                if ($passkey_proofs !== null) {
+                    $passkey_html .= '<details style="margin-top:.25em"><summary style="cursor:pointer">' . h(lang('Sign out and remove the passkey')) . '</summary>'
+                        . pg_passkey_remove_form($passkey_id, $passkey_proofs, $action_url, $token,
+                            'pg_session_passkey_' . $count . '_', lang('Sign out and remove the passkey'))
+                        . '</details>';
+                }
+            }
+
             $rows_html .=
-                '<tr><td style="padding:.4em .6em" title="' . h($device_title) . '">' . h(pg_user_agent_label($r['user_agent']))
+                '<tr><td style="padding:.4em .6em"><span title="' . h($device_title) . '">' . h(pg_user_agent_label($r['user_agent'])) . '</span>'
                 . ($is_current ? ' <span class="badge bg-success fw-light">' . h(lang('This device')) . '</span>' : '')
+                . $passkey_html
                 . '</td><td style="padding:.4em .6em">' . h((string) $r['ip_address'])
                 . '</td><td style="padding:.4em .6em">' . $last
                 . '</td><td style="padding:.4em .6em;text-align:right">'
@@ -1222,10 +1256,10 @@ function pg_device_limit_revoke_oldest($user_id, $keep)
     $pin_column = pg_auth_tokens_have_pin();
 
     $selectors = array();
-    $result = mysqli_query(db::$con,
+    $result = db_q(
         "SELECT selector" . ($pin_column ? ", pinned" : "") . " FROM auth_tokens
-         WHERE user_id = '" . $user_id . "' AND expires_at > '" . time() . "'
-         ORDER BY GREATEST(last_used_at, created_at) DESC, created_at DESC");
+         WHERE user_id = ? AND expires_at > ?
+         ORDER BY GREATEST(last_used_at, created_at) DESC, created_at DESC", array((string) $user_id, (string) time()));
     if ($result) {
         $index = 0;
         while ($r = mysqli_fetch_assoc($result)) {
@@ -1439,6 +1473,17 @@ function pg_login_set_device_cookie($user_id, $remember)
     }
 
     $auth_cookie = pg_auth_token_create($user_id, $lifetime);
+
+    // A sign-in with a passkey names it on its token, so the account page
+    // shows it and removing the passkey ends this session.
+    if (function_exists('pg_passkey_signin_marked') && isset($_SESSION['software'])) {
+        $passkey_id = pg_passkey_signin_marked($_SESSION['software']['signin_passkey'], $user_id, time());
+
+        if (($passkey_id > 0) && pg_auth_tokens_have_passkey()) {
+            db("UPDATE auth_tokens SET passkey_id = '" . $passkey_id . "'
+                WHERE selector = '" . escape(strtok($auth_cookie, ':')) . "'");
+        }
+    }
 
     if (version_compare(PHP_VERSION, '5.2.0', '>=') == TRUE) {
         setcookie('software[auth]', $auth_cookie, $cookie_expiry, '/', '', $secure, true);
@@ -1974,8 +2019,8 @@ function pg_session_signed_in()
 // The username can either be a username or email address for a user.
 function validate_username($username)
 {
-    $query = "SELECT user_id FROM user WHERE (user_username = '" . escape($username) . "') OR (user_email = '" . escape($username) . "')";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed'));
+    $query = "SELECT user_id FROM user WHERE (user_username = ?) OR (user_email = ?)";
+    $result = db_q($query, array((string) $username, (string) $username)) or output_error(lang('Query failed'));
     if (mysqli_num_rows($result) > 0) {
         return true;
     } else {
@@ -1999,8 +2044,8 @@ function validate_user()
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/index.php?send_to=' . urlencode(get_request_uri()));
         exit();
     }
-    $query = "SELECT * FROM user WHERE user_id = '" . (int) $_SESSION['sessionuserid'] . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed'));
+    $query = "SELECT * FROM user WHERE user_id = ?";
+    $result = db_q($query, array((string) (int) $_SESSION['sessionuserid'])) or output_error(lang('Query failed'));
     $row = mysqli_fetch_array($result);
     $num_rows = mysqli_num_rows($result);
     // The account was deleted out from under a live session: clear it and send
@@ -2237,8 +2282,8 @@ function validate_contact_access($user, $contact_id)
 
             FROM contacts_contact_groups_xref
 
-            WHERE contact_id = '" . escape($contact_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE contact_id = ?";
+        $result = db_q($query, array((string) $contact_id)) or output_error(lang('Query failed.'));
         $contact_groups = array();
         // loop through all contact groups in order to add them to array
         while ($row = mysqli_fetch_assoc($result)) {
@@ -2267,8 +2312,8 @@ function validate_contacts_access($user, $only_return = false)
 
             FROM users_contact_groups_xref
 
-            WHERE user_id = '" . escape($user['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE user_id = ?";
+        $result = db_q($query, array((string) $user['id'])) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_row($result);
         // if user has access to at least one contact group, return true
         if ($row[0] > 0) {
@@ -2304,10 +2349,10 @@ function validate_contact_group_access($user, $contact_group_id)
 
             WHERE
 
-                (user_id = '" . escape($user['id']) . "')
+                (user_id = ?)
 
-                AND (contact_group_id = '" . escape($contact_group_id) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                AND (contact_group_id = ?)";
+        $result = db_q($query, array((string) $user['id'], (string) $contact_group_id)) or output_error(lang('Query failed.'));
         // if user has access to contact group, return true
         if (mysqli_num_rows($result) > 0) {
             return true;
@@ -2433,8 +2478,8 @@ function validate_calendars_access($user, $only_return = false)
 
             FROM users_calendars_xref
 
-            WHERE user_id = '" . escape($user['id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE user_id = ?";
+        $result = db_q($query, array((string) $user['id'])) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_row($result);
         // if user has access to at least one calendar, return true
         if ($row[0] > 0) {
@@ -2470,10 +2515,10 @@ function validate_calendar_access($calendar_id)
 
             WHERE
 
-                (user_id = '" . USER_ID . "')
+                (user_id = ?)
 
-                AND (calendar_id = '" . escape($calendar_id) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                AND (calendar_id = ?)";
+        $result = db_q($query, array((string) USER_ID, (string) $calendar_id)) or output_error(lang('Query failed.'));
         // if user has access to calendar, return true
         if (mysqli_num_rows($result) > 0) {
             return true;
@@ -2495,8 +2540,8 @@ function validate_calendar_event_access($calendar_event_id)
 
             FROM calendar_events_calendars_xref
 
-            WHERE calendar_event_id = '" . escape($calendar_event_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            WHERE calendar_event_id = ?";
+        $result = db_q($query, array((string) $calendar_event_id)) or output_error(lang('Query failed.'));
         $selected_calendars = array();
         // loop through all selected calendars in order to build array
         while ($row = mysqli_fetch_assoc($result)) {
@@ -2547,10 +2592,10 @@ function get_folders_that_user_has_access_to($user_id)
 
         WHERE
 
-            (aclfolder_user = '" . escape($user_id) . "')
+            (aclfolder_user = ?)
 
             AND (aclfolder_rights = '2')";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
     while ($row = mysqli_fetch_assoc($result)) {
         $folders_with_access_set[] = $row['folder_id'];
     }
@@ -2801,11 +2846,11 @@ function select_style($style = '', $default_label = 'Default (inherit)')
     // the page screen) would send those pages to the visual editor with no
     // layout of their own. The one currently stored is kept in the list so
     // an existing choice is not silently dropped on save.
-    $result = mysqli_query(db::$con,
+    $result = db_q(
         "SELECT style_id, style_name FROM style
          WHERE style_layout != 'one_column_mobile'
-           AND (style_layout != 'visual_designer' OR style_id = '" . escape((string)$style) . "')
-         ORDER BY style_name") or output_error(lang('Query failed'));
+           AND (style_layout != 'visual_designer' OR style_id = ?)
+         ORDER BY style_name", array((string) $style)) or output_error(lang('Query failed'));
     while ($row = mysqli_fetch_assoc($result)) {
         // find if style is selected
         if ($row['style_id'] == $style) {
@@ -3018,7 +3063,7 @@ function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders 
 // find if there is an entry for the user in the access control list to edit any folder
 function no_acl_check($user_id)
 {
-    $result = mysqli_query(db::$con, "SELECT aclfolder_user FROM aclfolder WHERE aclfolder_user = '" . escape($user_id) . "' AND aclfolder_rights = '2'") or output_error(lang('Query failed'));
+    $result = db_q("SELECT aclfolder_user FROM aclfolder WHERE aclfolder_user = ? AND aclfolder_rights = '2'", array((string) $user_id)) or output_error(lang('Query failed'));
     if (mysqli_num_rows($result)) {
         return true;
     } else {
@@ -3048,6 +3093,46 @@ function validate_password_strength($password)
     // if we have gotten here, then the password is strong so return true
     return true;
 }
+// The Bootstrap 6 Strength meter for the password field with the id
+// $input_id, scored by assets/js/pg_password_strength.js (load it with
+// pg_password_strength_script()). $strict is "Require Strong Password"
+// (STRONG_PASSWORD): on, the meter reads strong only for a password
+// validate_password_strength() accepts; off, Bootstrap's default scoring only
+// advises. Panel chrome only: sites run Bootstrap 5.3.8, which has no
+// Strength. No data-bs-strength in the markup: Bootstrap's data API would
+// start its own scoring on the element; the script sets it as levels change.
+function pg_password_strength_meter($input_id, $strict)
+{
+    $messages = array(
+        'weak' => lang('Weak'),
+        'fair' => lang('Fair'),
+        'good' => lang('Good'),
+        'strong' => lang('Strong'),
+    );
+
+    return '<div class="strength" data-pg-strength'
+        . ' data-pg-strength-input="' . h('#' . $input_id) . '"'
+        . ' data-pg-strength-strict="' . ($strict ? '1' : '0') . '"'
+        . ' data-pg-strength-messages="' . h(json_encode($messages)) . '">'
+        . str_repeat('<div class="strength-segment"></div>', 4)
+        . '</div>'
+        . '<span class="strength-text" role="status" aria-live="polite"></span>';
+}
+
+// The script behind pg_password_strength_meter(), once per page.
+function pg_password_strength_script()
+{
+    static $printed = false;
+
+    if ($printed) {
+        return '';
+    }
+
+    $printed = true;
+
+    return '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_password_strength.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_password_strength.js') . '" defer></script>';
+}
+
 function get_strong_password_requirements()
 {
     return '
@@ -5234,11 +5319,9 @@ function initialize_developer_security()
     // Ensure database connection and session user are available
     if (defined('DB_CONNECTED') && isset($_SESSION['sessionusername'])) {
 
-        $SUser = mysqli_real_escape_string(db::$con, $_SESSION['sessionusername']);
-
         // Fetch developer PIN hash from database
-        $query = "SELECT user_devpasspin FROM user WHERE user_username = '" . $SUser . "'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "SELECT user_devpasspin FROM user WHERE user_username = ?";
+        $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_assoc($result);
         $devpasspin = $row['user_devpasspin'];
 

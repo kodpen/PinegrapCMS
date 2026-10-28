@@ -45,8 +45,8 @@ $query =
         backorder,
         shippable
     FROM products
-    WHERE id = '" . escape($liveform->get_field_value('product_id')) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed');
+    WHERE id = ?";
+$result = db_q($query, array((string) $liveform->get_field_value('product_id'))) or output_error('Query failed');
 
 // If a product could not be found, then output error.
 if (mysqli_num_rows($result) == 0) {
@@ -237,8 +237,8 @@ if ($next_url_raw !== '') {
 // destination wins without needing a catalog_detail_pages row.
 $next_page_id = (int)$liveform->get_field_value('next_page_id');
 if ($next_page_id <= 0) {
-    $query = "SELECT next_page_id FROM catalog_detail_pages WHERE page_id = '" . escape($liveform->get_field_value('page_id')) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT next_page_id FROM catalog_detail_pages WHERE page_id = ?";
+    $result = db_q($query, array((string) $liveform->get_field_value('page_id'))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $next_page_id = is_array($row) ? $row['next_page_id'] : 0;
 }

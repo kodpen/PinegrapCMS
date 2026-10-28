@@ -25,9 +25,9 @@ description: Plan (owner request 2026-10-27, draft being refined): the Flows can
 - Run view: each box lists the threads it received with their values and the filled field, the template on request.
 
 ## Which steps? (after D1-D4 of workspace-flows-data-passing.md)
-- T1 threads drawn from references (read only), the toggle, dimming.
+- T1 threads drawn from references (read only), the toggle, dimming. Done (PR #2515, `workspace/workspace-flows-thread-drawing.md`).
 
-- T2 drag from an output dot to a field chip; the fork by double-click and its equivalents.
+- T2 drag from an output dot to a field chip; the fork by double-click and its equivalents. Done (PR #2540, `workspace/workspace-flows-thread-drawing.md`).
 
 - T3 the constants box, then the derived value box with its allowlist.
 

@@ -34,8 +34,8 @@ if ($user['role'] == 3) {
     $query =
         "SELECT created_user_id
         FROM email_campaigns
-        WHERE id = '" . escape($_REQUEST['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $created_user_id = $row['created_user_id'];
     
@@ -73,8 +73,8 @@ if (!$_POST) {
         LEFT JOIN email_campaign_profiles ON email_campaigns.email_campaign_profile_id = email_campaign_profiles.id
         LEFT JOIN orders ON email_campaigns.order_id = orders.id
         LEFT JOIN user ON user.user_id = email_campaigns.created_user_id
-        WHERE email_campaigns.id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE email_campaigns.id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $type = $row['type'];
@@ -252,14 +252,14 @@ if (!$_POST) {
     }
     
     // get total number of recipients
-    $query = "SELECT COUNT(*) FROM email_recipients WHERE email_campaign_id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT COUNT(*) FROM email_recipients WHERE email_campaign_id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     $number_of_email_recipients = $row[0];
     
     // get total number of complete recipients
-    $query = "SELECT COUNT(*) FROM email_recipients WHERE (email_campaign_id = '" . escape($_GET['id']) . "') AND (complete = '1')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT COUNT(*) FROM email_recipients WHERE (email_campaign_id = ?) AND (complete = '1')";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     $number_of_completed_email_recipients = $row[0];
     
@@ -319,9 +319,9 @@ if (!$_POST) {
                     contact_groups_email_campaigns_xref.type
                 FROM contact_groups_email_campaigns_xref
                 LEFT JOIN contact_groups ON contact_groups_email_campaigns_xref.contact_group_id = contact_groups.id
-                WHERE contact_groups_email_campaigns_xref.email_campaign_id = '" . escape($_GET['id']) . "'
+                WHERE contact_groups_email_campaigns_xref.email_campaign_id = ?
                 ORDER BY contact_groups.name ASC";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
             
             $output_included_contact_groups = '';
             $output_excluded_contact_groups = '';
@@ -360,8 +360,8 @@ if (!$_POST) {
             }
             
             // get entered e-mail address
-            $query = "SELECT email_address FROM email_recipients WHERE (email_campaign_id = '" . escape($_GET['id']) . "') AND (contact_id = '0')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT email_address FROM email_recipients WHERE (email_campaign_id = ?) AND (contact_id = '0')";
+            $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
             
             // if an entered e-mail address was found, then prepare to output it
             if (mysqli_num_rows($result) > 0) {
@@ -470,7 +470,6 @@ if (!$_POST) {
         )
     ) . '
 <main id="content" class="container-fluid">
-    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
             <div class="row">
             <div class="col-12">
                 <div class="row mb-3  flex-wrap">
@@ -584,8 +583,8 @@ if (!$_POST) {
             subject,
             format
         FROM email_campaigns
-        WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE id = ?";
+    $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $type = $row['type'];

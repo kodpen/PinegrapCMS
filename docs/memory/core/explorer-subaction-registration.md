@@ -4,7 +4,7 @@ description: Adding an explorer_* sub-action: it must be registered in the file_
 ---
 
 ## Where must a new `explorer_*` sub-action be written?
-- In two places. A `case` in the `pg_explorer_handle()` switch (`view_folder_and_files_f.php`) is NOT enough: the `file_explorer` handler (`includes/panel/explorer.php`) matches sub-types against an EXPLICIT allowlist (`case 'explorer_list': case 'explorer_tree': ...`). A type missing there never reaches `pg_explorer_handle()`.
+- In two places. A `case` in the `pg_explorer_handle()` switch (`view_folder_and_files_f.php`) is NOT enough: the `file_explorer` handler (`includes/panel/explorer.php`) matches sub-types against an EXPLICIT allowlist (`case 'explorer_list': case 'explorer_tree': ...`). A type missing there never reaches `pg_explorer_handle()`. The case's body is a handler in `includes/explorer/handle_*.php` (`explorer-handler-files.md`).
 
 ## What is the symptom?
 - The request returns `{"status":"error","request":"<type>","message":"Unknown type."}` (the switch's `default`, since 2026.4.8).

@@ -258,3 +258,32 @@ function test_dashboard_workspace_cards_need_the_module()
 
 	pg_assert_same(null, pg_dashboard_workspace_rights(array('id' => 1, 'role' => 0)), 'no rights');
 }
+
+// A site log row names its user; a job's row (no user or UNKNOWN, no address)
+// reads as a scheduled job, an unknown visitor with an address as unknown.
+function test_dashboard_log_actor()
+{
+	pg_assert_same('admin', pg_dashboard_log_actor('admin', '10.0.0.1'));
+	pg_assert_same(lang('Scheduled job'), pg_dashboard_log_actor('UNKNOWN', ''));
+	pg_assert_same(lang('Scheduled job'), pg_dashboard_log_actor('', ''));
+	pg_assert_same(lang('Unknown'), pg_dashboard_log_actor('', '203.0.113.5'));
+}
+
+// The address label appears only with an address, never as a bare "· IP".
+function test_dashboard_log_meta_drops_empty_address()
+{
+	pg_assert_same('a &lt;b&gt; c', pg_dashboard_log_meta("a <b>\n c", ''));
+	pg_assert_same('done &middot; ' . h(lang(array('string' => 'IP {var:1}', 'vars' => array('::1')))), pg_dashboard_log_meta('done', '::1'));
+}
+
+// An open-ended offer has no days left to count; a dated one counts whole
+// days and never goes below zero.
+function test_dashboard_offer_days_left()
+{
+	require_once(PG_FUNCTIONS_DIR . '/edit_offer_f.php');
+
+	pg_assert_same(null, _pg_offer_days_left('2099-12-31', '2026-10-27'));
+	pg_assert_same(3, _pg_offer_days_left('2026-10-30', '2026-10-27'));
+	pg_assert_same(0, _pg_offer_days_left('2026-10-27', '2026-10-27'));
+	pg_assert_same(0, _pg_offer_days_left('2026-10-20', '2026-10-27'));
+}

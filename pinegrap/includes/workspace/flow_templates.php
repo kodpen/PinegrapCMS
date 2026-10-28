@@ -91,12 +91,22 @@ function ws_flow_templates($fill)
         return in_array($key, $metrics, true);
     };
 
+    // The scheduler reads a start date as a day of the site's calendar, so
+    // the days are counted on the date alone, in UTC: in PHP's default
+    // timezone "next monday" is a local midnight, which east of UTC is
+    // still the Sunday before in UTC.
+    $utc = new DateTimeZone('UTC');
     $today = (string) ($fill['today'] ?? '');
-    $day = (preg_match('/^\d{4}-\d{2}-\d{2}$/', $today) === 1) ? strtotime($today . ' 12:00:00 UTC') : time();
-    $tomorrow = gmdate('Y-m-d', $day + 86400);
-    $monday = gmdate('Y-m-d', strtotime('next monday', $day));
-    $first_of_month = gmdate('Y-m-01', strtotime('first day of next month', $day));
-    $today = gmdate('Y-m-d', $day);
+    $day = (preg_match('/^\d{4}-\d{2}-\d{2}$/', $today) === 1) ? date_create_immutable($today . ' 12:00:00', $utc) : false;
+
+    if (!$day) {
+        $day = date_create_immutable(date('Y-m-d') . ' 12:00:00', $utc);
+    }
+
+    $tomorrow = $day->modify('+1 day')->format('Y-m-d');
+    $monday = $day->modify('next monday')->format('Y-m-d');
+    $first_of_month = $day->modify('first day of next month')->format('Y-m-d');
+    $today = $day->format('Y-m-d');
 
     // A box's sentence: a follow-up's {{result}} is what the box it follows
     // said, which a flow reads from that box.
@@ -660,4 +670,125 @@ function ws_flow_template_setup($viewer, $flow, $data)
     $out['publish_error'] = $out['published'] ? '' : (string) $published['error'];
 
     return $out;
+}
+
+/**
+ * A scheduled action as a flow graph its boxes run the same way (pure): the
+ * "when" as the start box (at → schedule, event, join, trigger → started by
+ * hand), each condition a condition box on the yes arrow, the step its step
+ * box (task → task_open, trigger → start_action), each follow-up a box on
+ * the arrow of its outcome (skipped: the no arrow of every condition). A
+ * follow-up on failed that starts the action itself again ($self_id) is the
+ * step box's own retry, as many times as the chain's depth allows. A
+ * follow-up's {{result}} reads the step box's sentence. What a flow keeps
+ * otherwise is told in left, in sentences: a follow-up on skipped without a
+ * condition, and the follow-ups of an approval on done, which a flow runs
+ * once the request is approved rather than once it is asked. Boxes are laid
+ * out as the templates are (ws_flow_template_build()).
+ *
+ * @param array    $data    name, rules, action, follow as the form reads them
+ *                          (ws_scheduled_form_data(), a draft's data)
+ * @param string[] $money   the counts in money (ws_scheduled_money_metrics()):
+ *                          their condition is kept in minor units, the box
+ *                          takes the number as written
+ * @param int      $self_id the action's own id, 0 for a draft
+ * @return array name, graph (ws_flow_graph_normalize()), left (sentences)
+ */
+function ws_flow_graph_from_scheduled($data, $money = array(), $self_id = 0)
+{
+    $data = is_array($data) ? $data : array();
+    $rules = array_values(array_filter((array) ($data['rules'] ?? array()), 'is_array'));
+    $rules = function_exists('ws_scheduled_rules_as_sent') ? ws_scheduled_rules_as_sent($rules, $money) : $rules;
+    $boxes = array();
+    $edges = array();
+    $left = array();
+    $start = array('kind' => 'manual', 'config' => array('subject' => ''));
+    $conditions = array();
+
+    foreach ($rules as $rule) {
+        $type = (string) ($rule['type'] ?? '');
+        unset($rule['type'], $rule['label']);
+
+        if (($type === 'at') && ($start['kind'] === 'manual')) {
+            $start = array('kind' => 'schedule', 'config' => $rule);
+        } elseif (in_array($type, array('event', 'join'), true) && ($start['kind'] === 'manual')) {
+            $start = array('kind' => $type, 'config' => $rule);
+        } elseif (in_array($type, ws_flow_condition_types(), true)) {
+            $conditions[] = array('kind' => 'condition', 'config' => array('rule' => array('type' => $type) + $rule));
+        }
+    }
+
+    // A box's settings as the action keeps them: its type gives the box,
+    // addresses kept as a list become the one text the box takes.
+    $box = function ($action) {
+        $action = is_array($action) ? $action : array();
+        $type = (string) ($action['type'] ?? '');
+        $kinds = array('task' => 'task_open', 'trigger' => 'start_action');
+        unset($action['type'], $action['label'], $action['page_label']);
+
+        if (isset($action['to']) && is_array($action['to'])) {
+            $action['to'] = implode(', ', $action['to']);
+        }
+
+        return array('kind' => $kinds[$type] ?? $type, 'config' => $action);
+    };
+
+    $boxes['start'] = $start;
+    $from = array('start', 'next');
+
+    foreach ($conditions as $i => $condition) {
+        $id = 'if' . ($i + 1);
+        $boxes[$id] = $condition;
+        $edges[] = array($from[0], $id, $from[1]);
+        $from = array($id, 'yes');
+    }
+
+    $step = $box($data['action'] ?? array());
+    $boxes['step'] = $step;
+    $edges[] = array($from[0], 'step', $from[1]);
+    $n = 0;
+
+    foreach ((array) ($data['follow'] ?? array()) as $item) {
+        $on = (string) ($item['on'] ?? '');
+        $do = is_array($item['do'] ?? null) ? $item['do'] : array();
+
+        if (($on === 'failed') && ($self_id > 0) && (($do['type'] ?? '') === 'trigger') && ((int) ($do['target_id'] ?? 0) === (int) $self_id)) {
+            $boxes['step']['config']['retry'] = WS_FLOW_RETRY_MAX;
+            $boxes['step']['config']['retry_after'] = max(1, (int) ($do['delay'] ?? 1));
+            continue;
+        }
+
+        if (($on === 'skipped') && empty($conditions)) {
+            $left[] = lang('A follow-up on skipped was left out: the action has no condition that could skip it.');
+            continue;
+        }
+
+        $id = 'then' . (++$n);
+        $boxes[$id] = $box($do);
+
+        foreach ($boxes[$id]['config'] as $key => $value) {
+            if (is_string($value)) {
+                $boxes[$id]['config'][$key] = str_replace('{{result}}', '{{node.step.text}}', $value);
+            }
+        }
+
+        if ($on === 'skipped') {
+            foreach (array_keys($conditions) as $i) {
+                $edges[] = array('if' . ($i + 1), $id, 'no');
+            }
+
+            continue;
+        }
+
+        if (($on === 'done') && ($step['kind'] === 'approval')) {
+            $left[] = lang('A follow-up of the approval now runs once the request is approved, not once it is asked.');
+            $on = 'approved';
+        }
+
+        $edges[] = array('step', $id, in_array($on, array('done', 'failed', 'always', 'approved'), true) ? $on : 'always');
+    }
+
+    $built = ws_flow_template_build(array('key' => '', 'category' => '', 'title' => '', 'help' => '', 'icon' => '', 'boxes' => $boxes, 'edges' => $edges));
+
+    return array('name' => (string) ($data['name'] ?? ''), 'graph' => $built['graph'], 'left' => $left);
 }

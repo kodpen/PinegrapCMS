@@ -4,9 +4,10 @@ description: The canvas state preview of value conditions (W19, #1904): band chi
 ---
 
 ## What does the canvas draw for a value condition?
-- One state at a time (`_sdCondCanvasState`, editor only, one for every widget). A widget whose tree holds a `show_if` gets chips on its band (`_sdCondCanvasStates(tree)`, `_sdStateChips()`): its sample values, every value empty, every element. Without a condition no chips, and every element is drawn.
+- One state at a time (`_sdCondCanvasState`, editor only, one for every widget). A tree with a `show_if` or a pg-hide-if-empty ([[widget-hide-if-empty]]) gets chips on its band (`_sdCondCanvasStates(tree)`, `_sdStateChips()`): its sample values, every value empty, every element. Without a condition no chips, and every element is drawn.
+- It opens on the first state ("Completed" in the order view; owner, 2026-10-27); `_pgTabsSwitch()` resets it per page.
 - A code token's values are states of their own, in place of the sample values (`_sdCondCodeStates()`): `__order_status_stage` gives the six stages, so the order view's status badges draw one at a time. `__step_kind` is a list row's and stays the row sample's (`created`).
-- A node its condition fails in the state takes `sd-state-off` (hidden), as the comments and login states hide; its chip "Only when: …" stays on every drawn node.
+- A node its condition fails in the state takes `sd-state-off` (hidden), as the comments and login states do; its chip "Only when: …" stays on every drawn node.
 
 ## Which value does a token read?
 - `_sdCondCanvasValue(token, node, state)`: empty in the empty state; a code token its state's value (the first one in another state); a flag of `_SD_FLAG_TOKENS` `'1'` (the sample previews flags empty); else `_displayValueForBinding('text', …)` read as text (`_sdCondText()`), so a comment sample or a list row sample reads its own value.
@@ -27,5 +28,3 @@ description: The canvas state preview of value conditions (W19, #1904): band chi
 ## Which main loops get sample rows? (#1928)
 - The widget's first loop without a source (`_sdFirstLoopArea()`), two rows of the card's values, in a kind that repeats it and has neither server ghosts (`_SD_GHOST_TYPES`, [[designer-widget-ghosts-and-edit-chips]]) nor sample comments: the cart, the order view's items, an account's order list. None in a single-record kind (`_sdLoopIsSingle()`, the rule that also hides the loop's band), inside a sample row or sample comment.
 
-## What does the owner still answer?
-- The default state: the sample (as the page looks) or "All elements" (as before). Built as the sample.

@@ -2534,6 +2534,25 @@ function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0, $f
             continue;
         }
 
+        // A flow an application proposes (flow_draft.php): a draft the
+        // person opens as a new flow of their own and publishes there. A
+        // task's drawer has no canvas to open it on.
+        if (($type === 'flow') && $for_proposal && function_exists('ws_flow_draft_proposal_row')) {
+            if ((int) $task_id > 0) {
+                return $refuse(lang('A flow is proposed in a channel, not on a task.'));
+            }
+
+            $drafted = ws_flow_draft_proposal_row($asker_id, $change, $channel_id);
+
+            if (!$drafted['ok']) {
+                return $refuse($drafted['error']);
+            }
+
+            $out['rows'][] = $drafted['row'];
+
+            continue;
+        }
+
         if (!isset($types[$type])) {
             return $refuse(lang(array('string' => 'type is one of {var:1}.', 'vars' => implode(', ', array_keys($types)))));
         }
@@ -3104,7 +3123,11 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
         // it is opened in its form and saved there.
         $scheduled = ($type === 'scheduled') && function_exists('ws_scheduled_draft_change_entry');
 
-        if (!isset($types[$type]) && !$mcp && !$scheduled) {
+        // Nor is a flow an application proposed (flow_draft.php): it is
+        // opened as a new flow and published there.
+        $flow = ($type === 'flow') && function_exists('ws_flow_draft_change_entry');
+
+        if (!isset($types[$type]) && !$mcp && !$scheduled && !$flow) {
             continue;
         }
 
@@ -3125,6 +3148,11 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
 
         if ($scheduled) {
             $out[(int) $row[$by]][] = ws_scheduled_draft_change_entry($viewer, $row, $people, !empty($can_post[$place]), $proposer);
+            continue;
+        }
+
+        if ($flow) {
+            $out[(int) $row[$by]][] = ws_flow_draft_change_entry($viewer, $row, $people, !empty($can_post[$place]), $proposer);
             continue;
         }
 
@@ -3149,7 +3177,7 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
                 'type'         => $type,
                 'type_label'   => $types[$type]['label'],
                 'action'       => 'bulk',
-                'action_label' => lang('Bulk change'),
+                'action_label' => (is_array($spec) && (($spec['action'] ?? '') === 'create')) ? lang('New records in bulk') : lang('Bulk change'),
                 'record_html'  => '',
                 'record_label' => $sees ? $bulk['summary'] : '',
                 'fields'       => $items,
@@ -3160,6 +3188,7 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
                 'bulk'         => array(
                     'total'    => $bulk['total'],
                     'delete'   => is_array($spec) && (($spec['action'] ?? '') === 'delete'),
+                    'create'   => is_array($spec) && (($spec['action'] ?? '') === 'create'),
                     'progress' => $bulk['progress'],
                     'mine'     => $asker,
                 ),
@@ -3426,6 +3455,12 @@ function ws_change_apply_check($viewer, $change_id)
     // from its form, where everything it does is checked again.
     if ($type === 'scheduled') {
         return $fail(lang('A drafted scheduled action is saved from its form: open it there and save it.'));
+    }
+
+    // A flow an application proposed (flow_draft.php) is opened as a new
+    // flow and published there, where it is checked again.
+    if ($type === 'flow') {
+        return $fail(lang('A proposed flow is opened as a new flow and published there.'));
     }
 
     // A call of an MCP server's tool that writes (mcp_ask.php): it runs with
@@ -4476,7 +4511,7 @@ function ws_change_write_order($viewer, $action, $record, $values)
         } else {
             // Only while the order still has the status it was read with: a
             // cancellation that came in between is not written over by hand.
-            db("UPDATE orders SET status = '" . e($status) . "' WHERE id = '" . (int) $record['id'] . "' AND status = '" . e($record['status']) . "' LIMIT 1");
+            db("UPDATE orders SET status = '" . e($status) . "', " . pg_order_touch_sql() . " WHERE id = '" . (int) $record['id'] . "' AND status = '" . e($record['status']) . "' LIMIT 1");
 
             if (mysqli_affected_rows(db::$con) < 1) {
                 return array('ok' => false, 'error' => lang('The record changed meanwhile, so nothing was written.'), 'id' => 0);
@@ -4500,7 +4535,7 @@ function ws_change_write_order($viewer, $action, $record, $values)
     }
 
     if (!empty($set)) {
-        db("UPDATE orders SET " . implode(', ', $set) . ", last_modified_timestamp = UNIX_TIMESTAMP() WHERE id = '" . (int) $record['id'] . "' LIMIT 1");
+        db("UPDATE orders SET " . implode(', ', $set) . ", " . pg_order_touch_sql() . " WHERE id = '" . (int) $record['id'] . "' LIMIT 1");
     }
 
     // Through the order screen's own save: new numbers are announced to

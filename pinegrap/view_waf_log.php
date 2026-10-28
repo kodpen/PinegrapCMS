@@ -63,10 +63,10 @@ if (isset($_POST['submit_release'])) {
     $release_ip = isset($_POST['release_ip']) ? trim((string) $_POST['release_ip']) : '';
 
     if ($release_ip !== '' && waf_table_has_column('banned_ip_addresses', 'source')) {
-        mysqli_query(
-            db::$con,
+        db_q(
             "DELETE FROM banned_ip_addresses
-             WHERE ip_address = '" . escape($release_ip) . "' AND source = 'auto'"
+             WHERE ip_address = ? AND source = 'auto'",
+            array((string) $release_ip)
         ) or output_error(lang('Query failed.'));
 
         // The pre-database mirror is rewritten at most every five minutes on
@@ -109,13 +109,13 @@ if (isset($_POST['submit_allow'])) {
         && function_exists('waf_is_ip') && waf_is_ip($allow_ip)
         && waf_table_has_column('banned_ip_addresses', 'list_type')
     ) {
-        mysqli_query(
-            db::$con,
+        db_q(
             "INSERT INTO banned_ip_addresses
                 (ip_address, list_type, source, created_at)
              VALUES
-                ('" . escape($allow_ip) . "', 'allow', 'manual', " . time() . ")
-             ON DUPLICATE KEY UPDATE created_at = VALUES(created_at)"
+                (?, 'allow', 'manual', ?)
+             ON DUPLICATE KEY UPDATE created_at = VALUES(created_at)",
+            array((string) $allow_ip, (int) time())
         ) or output_error(lang('Query failed.'));
 
         $auto_result = mysqli_query(
@@ -127,10 +127,10 @@ if (isset($_POST['submit_allow'])) {
         if ($auto_result) {
             foreach (mysqli_fetch_items($auto_result) as $auto_row) {
                 if (waf_ip_matches($allow_ip, $auto_row['ip_address'])) {
-                    mysqli_query(
-                        db::$con,
+                    db_q(
                         "DELETE FROM banned_ip_addresses
-                         WHERE ip_address = '" . escape($auto_row['ip_address']) . "' AND source = 'auto'"
+                         WHERE ip_address = ? AND source = 'auto'",
+                        array((string) $auto_row['ip_address'])
                     );
 
                     waf_offence_clear($auto_row['ip_address']);
@@ -199,7 +199,8 @@ $range_options = array(
 );
 
 // Each filter is one value; one sent as an array (?range[]=x) counts as not
-// given: it ended in an error page.
+// given: it ended in an error page. PHP turns the numeric keys above into
+// integers, so the period select compares (string) $value with $range.
 $range = (isset($_GET['range']) && is_string($_GET['range']) && isset($range_options[$_GET['range']])) ? $_GET['range'] : '7';
 $start_timestamp = time() - ((int) $range * 86400);
 
@@ -287,19 +288,19 @@ $suspects      = array();
 $suspect_count = 0;
 $flagged       = array();
 
-$flag_result = mysqli_query(
-    db::$con,
+$flag_result = db_q(
     "SELECT ip_address,
             SUM(hit_count) AS hits,
             MAX(last_seen) AS last_seen,
             MAX(CASE WHEN user_id > 0 THEN 1 ELSE 0 END) AS signed_in,
             GROUP_CONCAT(DISTINCT rule_id ORDER BY rule_id SEPARATOR ', ') AS rules
      FROM waf_log
-     WHERE log_timestamp >= " . (int) $start_timestamp . "
+     WHERE log_timestamp >= ?
        AND action IN ('block', 'rate', 'would-block', 'would-rate')
      GROUP BY ip_address
      ORDER BY hits DESC
-     LIMIT 300"
+     LIMIT 300",
+    array((int) $start_timestamp)
 );
 
 if ($flag_result) {
@@ -443,13 +444,13 @@ if ($mode === 'off') {
 $auto_bans = array();
 
 if (waf_table_has_column('banned_ip_addresses', 'source')) {
-    $ban_result = mysqli_query(
-        db::$con,
+    $ban_result = db_q(
         "SELECT ip_address, note, expires_at, hit_count
          FROM banned_ip_addresses
-         WHERE source = 'auto' AND (expires_at = 0 OR expires_at > " . time() . ")
+         WHERE source = 'auto' AND (expires_at = 0 OR expires_at > ?)
          ORDER BY expires_at DESC
-         LIMIT 100"
+         LIMIT 100",
+        array((int) time())
     );
 
     if ($ban_result) {
@@ -506,7 +507,7 @@ echo '<form method="get" action="view_waf_log.php" class="row g-3 align-items-en
         <select name="range" id="range" class="form-control">';
 
 foreach ($range_options as $value => $label) {
-    echo '<option value="' . h($value) . '"' . ($range === $value ? ' selected="selected"' : '') . '>' . h($label) . '</option>';
+    echo '<option value="' . h($value) . '"' . ($range === (string) $value ? ' selected="selected"' : '') . '>' . h($label) . '</option>';
 }
 
 echo '</select>

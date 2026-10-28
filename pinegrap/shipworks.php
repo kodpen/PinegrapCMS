@@ -401,7 +401,7 @@ switch ($_REQUEST['action']) {
 
                 // If the status of this order is complete, then update the status to be exported.
                 if ($order['status'] == 'complete') {
-                    db("UPDATE orders SET status = 'exported' WHERE id = '" . $order['id'] . "'");
+                    db("UPDATE orders SET status = 'exported', " . pg_order_touch_sql() . " WHERE id = '" . $order['id'] . "'");
                 }
             }
         }

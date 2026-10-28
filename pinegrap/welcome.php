@@ -746,7 +746,7 @@ foreach ($widget_order as $widget_id) {
     $output_widgets .=
         '<div class="pg-widget' . ($widget['wide'] ? ' pg-widget-wide' : '') . '">'
         . '<div widget-id="' . (int) $widget_id . '" class="card widget">'
-        . '<div class="card-header border-0 bg-reset position-relative">'
+        . '<div class="card-header pg-widget-handle border-0 bg-reset position-relative">'
         . (($widget['icon'] != '') ? '<i class="bi ' . $widget['icon'] . ' me-3"></i>' : '')
         . $widget['title']
         . $widget['action']
@@ -827,24 +827,27 @@ if ($user['role'] < 2) {
         });
     }
 
+    // SortableJS (assets/lib/sortablejs/): a card is picked up by its header
+    // after a 300 ms hold, so a click on a header button stays a click.
     $(function() {
-        $("#widgets").sortable({
-            connectWith: "#widgets",
-            cancel: ".no-sortable",
-            placeholder: "pg-widget",
-            handle: ".card .card-header",
-            containment: "parent",
+
+        var widgets = document.getElementById("widgets");
+
+        if (!widgets || typeof Sortable === "undefined") {
+            return;
+        }
+
+        Sortable.create(widgets, {
+            draggable: ".pg-widget",
+            handle: ".pg-widget-handle",
+            filter: ".no-sortable",
+            preventOnFilter: false,
             delay: 300,
-            revert: "100",
-            cursorAt: { left: 50 },
-            animation: 0,
-            forcePlaceholderSize: false,
-            forceHelperSize: true,
-            swapThreshold: 1,
-            tolerance: "pointer",
-            zIndex: 9999,
-            cursor: "move",
-            update: function() {
+            animation: 100,
+            ghostClass: "pg-widget-ghost",
+            forceFallback: true,
+            fallbackClass: "pg-widget-drag",
+            onUpdate: function() {
 
                 var visible = [];
 
@@ -901,7 +904,15 @@ pg_page_shell(
 $output_header_includes .
 '<meta http-equiv="Refresh" content="3600"> <!--Refresh page every (3600 sec = 60 min) to stop error invalid token. Will be measured later. -->
 <script src="assets/lib/chartjs/chart.umd.min.js"></script>
-    <div class="pg-clockbar">
+<script src="assets/lib/sortablejs/Sortable.min.js"></script>
+<style>
+    /* Widget drag (SortableJS): the header is the grip, the card left behind
+       is an empty slot and the copy under the pointer stays fully opaque. */
+    .card.widget .pg-widget-handle { cursor: grab; }
+    .pg-widget-ghost { opacity: 0; }
+    .pg-widget-drag { opacity: 1 !important; cursor: move; }
+</style>
+    <section class="card pg-clockbar" aria-label="' . h(lang('Welcome')) . '">
         <div class="pg-brief" id="pg_brief">
             <!-- One mark, not two. The hour already had an icon in front of the
                  greeting; moving it into the chip makes it the speaker rather
@@ -937,7 +948,7 @@ $output_header_includes .
             </span>
             ' . $brief['next'] . '
         </div>
-    </div>
+    </section>
     <div class="row">
         <div class="col-12">
             <div class="row">

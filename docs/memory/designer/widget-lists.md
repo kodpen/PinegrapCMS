@@ -41,4 +41,4 @@ module: widgets_lists
 - `pg_record_file_tree_binds()`: a files list naming the field, or none for an upload not office use only (`$listed`, carried in the facts to `pg_record_file_view_grants()`). As with a condition, the list's limit is not read. Tests: `record_files_test.php`.
 
 ## What is not covered yet?
-- Editor: [[widget-lists-editor]]. Row values in links, attrs: [[page-link-list-rows]], [[widget-attr-bindings]]. [[widget-lists-calendar]], [[widget-lists-paging]]. No condition on a loop_area. `eo_visible_if` flags inside a list are not resolved.
+- Editor: [[widget-lists-editor]]. Row values in links, attrs: [[page-link-list-rows]], [[widget-attr-bindings]]. [[widget-lists-calendar]], [[widget-lists-paging]]. No condition on a loop_area. A row flag in a list: [[widget-list-flags]].

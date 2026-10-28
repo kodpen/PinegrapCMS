@@ -4,7 +4,7 @@ description: Tag Cloud widget (tag_cloud_region): the classic <tcloud> region in
 ---
 
 ## What is it?
-- Kind `tag_cloud_region` (`includes/fn/widgets_tag_cloud.php`; not `tag_cloud`, the region node's type), label "Tag Cloud". `cfg.search_page_name` names a search results page as `<tcloud>name</tcloud>` does; a new widget takes the site's first one (`regionData.tag_cloud_regions`). R6 of [[legacy-retirement-prerequisites]].
+- Kind `tag_cloud_region` (`includes/fn/widgets_tag_cloud.php`; not `tag_cloud`, the region node's type), label "Tag Cloud". `cfg.search_page_name` names a search results page as `<tcloud>name</tcloud>` does; a new widget takes the site's first one (`regionData.tag_cloud_regions`). See [[classic-regions-in-designer]].
 - The keywords stay on the products and pages (`tag_cloud_keywords`, `tag_cloud_keywords_xref`); read on every request. No Messages block, no edit chip (no one screen edits a cloud).
 
 ## Which keywords, in which order?

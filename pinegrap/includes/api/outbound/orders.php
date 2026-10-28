@@ -149,25 +149,23 @@ function mp_import_order($account, $package) {
 
 	}
 
-	// Written through mysqli_query() rather than db(): here a duplicate key is
+	// Written through db_q() rather than db(): here a duplicate key is
 	// not a failure but the answer, and db() ends the process on any failed
 	// statement, so the lost race could never have been reported. The unique
 	// key on (account_id, remote_package_id) refuses the second writer with
 	// error 1062; anything else is a real failure and is returned as one.
-	$claimed = @mysqli_query(db::$con, "INSERT INTO marketplace_order_map
+	$claimed = db_q("INSERT INTO marketplace_order_map
 		(account_id, order_id, remote_order_id, remote_package_id, remote_status, status,
 		 lines_json, remote_timestamp, imported_timestamp, updated_timestamp)
-		VALUES (
-			'" . e($account_id) . "',
-			0,
-			'" . e(mb_substr((string)$package['remote_order_id'], 0, 64)) . "',
-			'" . e($package_id) . "',
-			'" . e(mb_substr((string)$package['remote_status'], 0, 40)) . "',
-			'importing',
-			'" . e(json_encode($package['lines'])) . "',
-			'" . e((int)$package['placed_at']) . "',
-			UNIX_TIMESTAMP(),
-			UNIX_TIMESTAMP())");
+		VALUES (?, 0, ?, ?, ?, 'importing', ?, ?, UNIX_TIMESTAMP(), UNIX_TIMESTAMP())",
+		array(
+			(string)$account_id,
+			(string)mb_substr((string)$package['remote_order_id'], 0, 64),
+			(string)$package_id,
+			(string)mb_substr((string)$package['remote_status'], 0, 40),
+			(string)json_encode($package['lines']),
+			(string)(int)$package['placed_at'],
+		));
 
 	if ($claimed === false) {
 

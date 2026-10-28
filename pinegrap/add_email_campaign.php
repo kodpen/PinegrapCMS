@@ -33,8 +33,8 @@ if (!$_POST) {
         $output_format_plain_text_checked = '';
         $output_format_html_checked = ' checked="checked"';
 
-        $query = "SELECT page_name, page_folder FROM page WHERE page_id = '" . escape($_GET['page_id']) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT page_name, page_folder FROM page WHERE page_id = ?";
+        $result = db_q($query, array((string) $_GET['page_id'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         // A page that no longer exists (stale link, hand-typed URL) leaves
         // these empty, as before, without the PHP notices.
@@ -203,7 +203,6 @@ if (!$_POST) {
         )
     ) . '
 <main id="content" class="container-fluid">
-    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
             <div class="row">
             <div class="col-12">
                 
@@ -376,8 +375,8 @@ if (!$_POST) {
         }
 
         // get folder id for selected page in order to check if user has access to view content in folder
-        $query = "SELECT page_folder FROM page WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "SELECT page_folder FROM page WHERE page_id = ?";
+        $result = db_q($query, array((string) ($_POST['page_id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $folder_id = $row['page_folder'];
         
@@ -416,8 +415,8 @@ if (!$_POST) {
                 $query =
                     "SELECT email_subscription
                     FROM contact_groups
-                    WHERE id = '" . escape($contact_group_id) . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    WHERE id = ?";
+                $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $email_subscription = $row['email_subscription'];
                 
@@ -433,14 +432,14 @@ if (!$_POST) {
                         LEFT JOIN contacts ON contacts_contact_groups_xref.contact_id = contacts.id
                         LEFT JOIN opt_in ON (contacts_contact_groups_xref.contact_id = opt_in.contact_id) AND (contacts_contact_groups_xref.contact_group_id = opt_in.contact_group_id)
                         WHERE
-                            (contacts_contact_groups_xref.contact_group_id = '" . escape($contact_group_id) . "')
+                            (contacts_contact_groups_xref.contact_group_id = ?)
                             AND (contacts.opt_in = 1)
                             AND (
                                 (opt_in.opt_in = 1)
                                 OR (opt_in.opt_in IS NULL)
                             )
                             AND (contacts.email_address != '')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
                     
                 // else this is not a subscription contact group
                 } else {
@@ -452,10 +451,10 @@ if (!$_POST) {
                         FROM contacts_contact_groups_xref
                         LEFT JOIN contacts ON contacts_contact_groups_xref.contact_id = contacts.id
                         WHERE
-                            (contacts_contact_groups_xref.contact_group_id = '" . escape($contact_group_id) . "')
+                            (contacts_contact_groups_xref.contact_group_id = ?)
                             AND (contacts.opt_in = 1)
                             AND (contacts.email_address != '')";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
                 }
                 
                 // loop through all contact e-mail addresses
@@ -492,9 +491,9 @@ if (!$_POST) {
                     FROM contacts_contact_groups_xref
                     LEFT JOIN contacts ON contacts_contact_groups_xref.contact_id = contacts.id
                     WHERE
-                        (contacts_contact_groups_xref.contact_group_id = '" . escape($contact_group_id) . "')
+                        (contacts_contact_groups_xref.contact_group_id = ?)
                         AND (contacts.email_address != '')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
                 
                 // loop through all contact e-mail addresses
                 while ($row = mysqli_fetch_assoc($result)) {
@@ -521,21 +520,21 @@ if (!$_POST) {
                 // determine if entered e-mail address is already in use by a contact
                 $query = "SELECT id
                          FROM contacts
-                         WHERE email_address = '" . escape($_POST['entered_email_address'] ?? '') . "'";
-                $result_contacts = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                         WHERE email_address = ?";
+                $result_contacts = db_q($query, array((string) ($_POST['entered_email_address'] ?? ''))) or output_error('Query failed.');
 
                 // determine if entered e-mail address is already in use by a user
                 $query = "SELECT user_id
                          FROM user
-                         WHERE user_email = '" . escape($_POST['entered_email_address'] ?? '') . "'";
-                $result_users = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                         WHERE user_email = ?";
+                $result_users = db_q($query, array((string) ($_POST['entered_email_address'] ?? ''))) or output_error('Query failed.');
 
                 // if entered e-mail address is not in use by a contact or a user, create contact for entered e-mail address
                 if ((mysqli_num_rows($result_contacts) == 0) && (mysqli_num_rows($result_users) == 0)) {
                     $query = "INSERT INTO contacts
                              (email_address, user, timestamp)
-                             VALUES ('" . escape($_POST['entered_email_address'] ?? '') . "', '" . $user['id'] . "', UNIX_TIMESTAMP())";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                             VALUES (?, ?, UNIX_TIMESTAMP())";
+                    $result = db_q($query, array((string) ($_POST['entered_email_address'] ?? ''), (string) $user['id'])) or output_error('Query failed.');
                 }
             }
 
@@ -704,20 +703,20 @@ if (!$_POST) {
             last_modified_user_id,
             last_modified_timestamp)
         VALUES (
-            '" . escape($_POST['from_name'] ?? '') . "',
-            '" . escape($_POST['from_email_address'] ?? '') . "',
-            '" . escape($_POST['reply_email_address'] ?? '') . "',
-            '" . escape($_POST['subject'] ?? '') . "',
-            '" . escape($_POST['format'] ?? '') . "',
-            '" . escape($body) . "',
-            '" . escape($_POST['page_id'] ?? '') . "',
-            '" . escape(prepare_form_data_for_input($_POST['start_time'], 'date and time')) . "',
-            '" . e($_POST['purpose'] ?? '') . "',
-            '" . $user['id'] . "',
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
             UNIX_TIMESTAMP(),
-            '" . $user['id'] . "',
+            ?,
             UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array((string) ($_POST['from_name'] ?? ''), (string) ($_POST['from_email_address'] ?? ''), (string) ($_POST['reply_email_address'] ?? ''), (string) ($_POST['subject'] ?? ''), (string) ($_POST['format'] ?? ''), (string) $body, (string) ($_POST['page_id'] ?? ''), (string) prepare_form_data_for_input($_POST['start_time'], 'date and time'), (string) ($_POST['purpose'] ?? ''), (string) $user['id'], (string) $user['id'])) or output_error('Query failed.');
     
     $email_campaign_id = mysqli_insert_id(db::$con);
     
@@ -736,10 +735,10 @@ if (!$_POST) {
                 email_address,
                 contact_id)
             VALUES (
-                '$email_campaign_id',
-                '" . escape($email_address) . "',
-                '" . $contact_id . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                ?,
+                ?,
+                ?)";
+        $result = db_q($query, array((string) $email_campaign_id, (string) $email_address, (string) $contact_id)) or output_error('Query failed.');
     }
     
     // loop through included contact groups in order to store contacts groups that were included in this e-mail campaign
@@ -750,10 +749,10 @@ if (!$_POST) {
                 email_campaign_id,
                 type)
             VALUES (
-                '" . escape($contact_group_id) . "',
-                '$email_campaign_id',
+                ?,
+                ?,
                 'included')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $contact_group_id, (string) $email_campaign_id)) or output_error('Query failed.');
     }
     
     // loop through excluded contact groups in order to store contacts groups that were excluded in this e-mail campaign
@@ -764,10 +763,10 @@ if (!$_POST) {
                 email_campaign_id,
                 type)
             VALUES (
-                '" . escape($contact_group_id) . "',
-                '$email_campaign_id',
+                ?,
+                ?,
                 'excluded')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $result = db_q($query, array((string) $contact_group_id, (string) $email_campaign_id)) or output_error('Query failed.');
     }
 
     $log_page = '';

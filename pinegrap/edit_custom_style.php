@@ -44,8 +44,8 @@ if (!$_POST) {
            user.user_username
        FROM style
        LEFT JOIN user ON style.style_user = user.user_id
-       WHERE style_id = '" . escape($_REQUEST['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+       WHERE style_id = ?";
+    $result = db_q($query, array((string) $_REQUEST['id'])) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_array($result);
 
     // The id comes from the request and can point at a style that was
@@ -147,9 +147,9 @@ if (!$_POST) {
             COUNT(folder_id)
         FROM folder
         WHERE
-            (folder_style = '" . $style_id . "')
-            OR (mobile_style_id = '" . $style_id . "')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            (folder_style = ?)
+            OR (mobile_style_id = ?)";
+    $result = db_q($query, array((string) $style_id, (string) $style_id)) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     $folders_using_style = $row[0];
     
@@ -159,9 +159,9 @@ if (!$_POST) {
             COUNT(page_id)
         FROM page
         WHERE
-            (page_style = '" . $style_id . "')
-            OR (mobile_style_id = '" . $style_id . "')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            (page_style = ?)
+            OR (mobile_style_id = ?)";
+    $result = db_q($query, array((string) $style_id, (string) $style_id)) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     $pages_using_style = $row[0];
 
@@ -291,9 +291,9 @@ else
                 COUNT(folder_id)
             FROM folder
             WHERE
-                (folder_style = '" . escape($_POST['id'] ?? '') . "')
-                OR (mobile_style_id = '" . escape($_POST['id'] ?? '') . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (folder_style = ?)
+                OR (mobile_style_id = ?)";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         $folders_using_style = $row[0];
         
@@ -303,9 +303,9 @@ else
                 COUNT(page_id)
             FROM page
             WHERE
-                (page_style = '" . escape($_POST['id'] ?? '') . "')
-                OR (mobile_style_id = '" . escape($_POST['id'] ?? '') . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                (page_style = ?)
+                OR (mobile_style_id = ?)";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         $pages_using_style = $row[0];
 
@@ -330,7 +330,7 @@ else
                 $notice = lang('The style was moved to the Recycle Bin.');
 
             } else {
-                $result=mysqli_query(db::$con, "DELETE FROM style WHERE style_id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
+                $result=db_q("DELETE FROM style WHERE style_id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
 
                 db("DELETE FROM preview_styles WHERE style_id = '" . escape($_POST['id'] ?? '') . "'");
 

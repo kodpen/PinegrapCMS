@@ -947,7 +947,7 @@
             '<div class="pg-sale-ig pg-sale-ig-sm form-control">'
             + '<span class="pg-sale-ig-icon" aria-hidden="true"><i class="bi bi-person"></i></span>'
             + '<input type="text" id="pg_sale_cust_q" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="pg_sale_cust_results" aria-autocomplete="list" aria-labelledby="pg_sale_customer_label" placeholder="' + esc(t.customerPlaceholder) + '">'
-            + '<button type="button" class="btn btn-sm btn-ghost no-submit" data-sale-cust="cancel" aria-label="' + esc(t.cancel) + '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>'
+            + '<button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-sale-cust="cancel" aria-label="' + esc(t.cancel) + '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>'
             + '</div>'
             + '<div class="pg-sale-results" id="pg_sale_cust_results" role="listbox" hidden></div>';
 

@@ -297,7 +297,7 @@ foreach ($commissions as $commission) {
     }
 
     //default
-    $output_status_classes = 'bg-secondary fg-black fw-light';
+    $output_status_classes = 'bg-secondary fg-white fw-light';
 
     if($commission['status'] == 'pending'){
         $output_status_classes = 'bg-warning fg-black fw-light';
@@ -348,9 +348,9 @@ $query =
     LEFT JOIN orders ON commissions.order_id = orders.id
     WHERE
         (commissions.status = 'pending')
-        AND (commissions.created_timestamp >= '" . $start_timestamp . "')
-        AND (commissions.created_timestamp <= '" . $stop_timestamp . "')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        AND (commissions.created_timestamp >= ?)
+        AND (commissions.created_timestamp <= ?)";
+$result = db_q($query, array((string) $start_timestamp, (string) $stop_timestamp)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 $pending_total = $row['pending_total'];
 
@@ -362,9 +362,9 @@ $query =
     LEFT JOIN orders ON commissions.order_id = orders.id
     WHERE
         (commissions.status = 'payable')
-        AND (commissions.created_timestamp >= '" . $start_timestamp . "')
-        AND (commissions.created_timestamp <= '" . $stop_timestamp . "')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        AND (commissions.created_timestamp >= ?)
+        AND (commissions.created_timestamp <= ?)";
+$result = db_q($query, array((string) $start_timestamp, (string) $stop_timestamp)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 $payable_total = $row['payable_total'];
 
@@ -376,9 +376,9 @@ $query =
     LEFT JOIN orders ON commissions.order_id = orders.id
     WHERE
         (commissions.status = 'ineligible')
-        AND (commissions.created_timestamp >= '" . $start_timestamp . "')
-        AND (commissions.created_timestamp <= '" . $stop_timestamp . "')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        AND (commissions.created_timestamp >= ?)
+        AND (commissions.created_timestamp <= ?)";
+$result = db_q($query, array((string) $start_timestamp, (string) $stop_timestamp)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 $ineligible_total = $row['ineligible_total'];
 
@@ -390,9 +390,9 @@ $query =
     LEFT JOIN orders ON commissions.order_id = orders.id
     WHERE
         (commissions.status = 'paid')
-        AND (commissions.created_timestamp >= '" . $start_timestamp . "')
-        AND (commissions.created_timestamp <= '" . $stop_timestamp . "')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        AND (commissions.created_timestamp >= ?)
+        AND (commissions.created_timestamp <= ?)";
+$result = db_q($query, array((string) $start_timestamp, (string) $stop_timestamp)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 $paid_total = $row['paid_total'];
 
@@ -469,7 +469,7 @@ pg_page_shell([
                     <nav id="button_bar" class="navigation " aria-label="Button Bar">
                         <div class="pg-toolbar-grow"></div>
                         ' . pg_list_sort_menu('view_commissions.php', $sort_columns, $sort_levels, $sort_default) . '
-                        <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_commissions.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
+                        <a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_commissions.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                     </nav>
                 </div>
             </div>
@@ -503,7 +503,7 @@ pg_page_shell([
                             <div class="row">
                                 <div class="col-12 text-center">
                                     <h5>' . lang('Pending Total') . '</h5>
-                                    <p class="fw-bolder fg-black">' . pg_format_money($pending_total / 100, BASE_CURRENCY_SYMBOL) . '</p>
+                                    <p class="fw-bolder fg-body">' . pg_format_money($pending_total / 100, BASE_CURRENCY_SYMBOL) . '</p>
                                     <hr/>
                                 </div>
                                 <div class="col-12 text-center">

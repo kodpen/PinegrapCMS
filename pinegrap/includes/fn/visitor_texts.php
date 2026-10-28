@@ -116,13 +116,13 @@ function pg_visitor_text_id($kind, $text)
         return 0;
     }
 
-    $hash = "UNHEX('" . md5($text) . "')";
+    $hash = md5($text);
 
     $find = "SELECT text_id, (last_used < UNIX_TIMESTAMP() - " . PG_VISITOR_TEXT_REFRESH_SECONDS . ") AS stale
         FROM visitor_texts
-        WHERE (kind = " . $kind . ") AND (text_hash = " . $hash . ")";
+        WHERE (kind = ?) AND (text_hash = UNHEX(?))";
 
-    $found = @mysqli_query(db::$con, $find);
+    $found = db_q($find, array($kind, $hash));
 
     if (!$found) {
         return false;
@@ -138,7 +138,7 @@ function pg_visitor_text_id($kind, $text)
             return $id;
         }
 
-        if (@mysqli_query(db::$con, "UPDATE visitor_texts SET last_used = UNIX_TIMESTAMP() WHERE text_id = " . $id)
+        if (db_q("UPDATE visitor_texts SET last_used = UNIX_TIMESTAMP() WHERE text_id = ?", array($id))
             && (mysqli_affected_rows(db::$con) > 0)) {
             return $id;
         }
@@ -146,9 +146,9 @@ function pg_visitor_text_id($kind, $text)
 
     // INSERT IGNORE, as another visit may be adding the same value at this
     // moment: the one that loses finds the winner's row below.
-    $added = @mysqli_query(db::$con,
+    $added = db_q(
         "INSERT IGNORE INTO visitor_texts (kind, text_hash, text_value, last_used)
-        VALUES (" . $kind . ", " . $hash . ", '" . escape($text) . "', UNIX_TIMESTAMP())");
+        VALUES (?, UNHEX(?), ?, UNIX_TIMESTAMP())", array($kind, $hash, (string) $text));
 
     if (!$added) {
         return false;
@@ -160,7 +160,7 @@ function pg_visitor_text_id($kind, $text)
         return $id;
     }
 
-    $found = @mysqli_query(db::$con, $find);
+    $found = db_q($find, array($kind, $hash));
     $row = $found ? mysqli_fetch_assoc($found) : null;
 
     return is_array($row) ? (int) $row['text_id'] : false;

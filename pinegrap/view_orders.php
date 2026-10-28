@@ -542,7 +542,7 @@ if(defined('ENABLE_PARASUT') && ENABLE_PARASUT != 0){
     '<dialog id="xlsl_setup_modal" class="dialog">
                 <div class="dialog-header">
                     <h5 class="dialog-title">' . lang('Options & Confirmation') . '</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                 </div>
                 <div class="dialog-body">
                     <div class="row">
@@ -556,10 +556,9 @@ if(defined('ENABLE_PARASUT') && ENABLE_PARASUT != 0){
                         </div>
                         <div class="col-12 my-1">
                             <label class="form-label" for="tax_rate_for_parasut">' . lang('Products Tax Rate') . '</label>
-                            <div class="input-group w-auto">
-                                <input type="number" id="tax_rate_for_parasut" name="tax_rate_for_parasut" class="form-control text-end pe-5" value="20" placeholder="18" />
-                                <div class="input-group-text"> %</div>
-                            </div>
+                            <label class="form-control form-adorn form-adorn-end w-auto">
+                                <span class="form-adorn-text" aria-hidden="true">%</span><input type="number" id="tax_rate_for_parasut" name="tax_rate_for_parasut" class="form-ghost text-end" value="20" placeholder="18" />
+                            </label>
                             <div class="form-text text-end">' . lang('Each product is processed at its tax-deducted price and tax rates are processed in a separate column.') . '</div>
                         </div>
                     </div>
@@ -872,7 +871,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
         // If the status of this order is complete, then update the status to be exported.
         if ($order['status'] == 'complete') {
-            db("UPDATE orders SET status = 'exported' WHERE id = '" . $order['id'] . "'");
+            db("UPDATE orders SET status = 'exported', " . pg_order_touch_sql() . " WHERE id = '" . $order['id'] . "'");
 
             // Only the status changed, so the line is written from what the
             // export read rather than reading thousands of rows again. An
@@ -1917,8 +1916,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 '"' . $order_item['notes'] . '"' . "\n";
 
             // get maximum quantity number, so we can determine how many product forms there are for this order item
-            $query = "SELECT MAX(quantity_number) as number_of_forms FROM form_data WHERE order_item_id = '" . $order_item['id'] . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT MAX(quantity_number) as number_of_forms FROM form_data WHERE order_item_id = ?";
+            $result = db_q($query, array((string) $order_item['id'])) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
             $number_of_forms = $row['number_of_forms'];
 
@@ -1938,11 +1937,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                             count(*) as number_of_values
                         FROM form_data
                         WHERE
-                            (order_item_id = '" . $order_item['id'] . "')
-                            AND (quantity_number = '$quantity_number')
+                            (order_item_id = ?)
+                            AND (quantity_number = ?)
                         GROUP BY form_field_id
                         ORDER BY id";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $result = db_q($query, array((string) $order_item['id'], (string) $quantity_number)) or output_error('Query failed.');
 
                     $form_data_items = array();
 
@@ -1985,11 +1984,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                 "SELECT data
                                 FROM form_data
                                 WHERE
-                                    (order_item_id = '" . $order_item['id'] . "')
-                                    AND (quantity_number = '$quantity_number')
-                                    AND (form_field_id = '" . $form_data_item['form_field_id'] . "')
+                                    (order_item_id = ?)
+                                    AND (quantity_number = ?)
+                                    AND (form_field_id = ?)
                                 ORDER BY id";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $result = db_q($query, array((string) $order_item['id'], (string) $quantity_number, (string) $form_data_item['form_field_id'])) or output_error('Query failed.');
 
                             while ($row = mysqli_fetch_assoc($result)) {
                                 // if data is not empty, then add comma and space
@@ -2154,8 +2153,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     '"' . $order_item['notes'] . '"' . "\n";
 
                 // get maximum quantity number, so we can determine how many product forms there are for this order item
-                $query = "SELECT MAX(quantity_number) as number_of_forms FROM form_data WHERE order_item_id = '" . $order_item['id'] . "'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "SELECT MAX(quantity_number) as number_of_forms FROM form_data WHERE order_item_id = ?";
+                $result = db_q($query, array((string) $order_item['id'])) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $number_of_forms = $row['number_of_forms'];
 
@@ -2175,11 +2174,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                 count(*) as number_of_values
                             FROM form_data
                             WHERE
-                                (order_item_id = '" . $order_item['id'] . "')
-                                AND (quantity_number = '$quantity_number')
+                                (order_item_id = ?)
+                                AND (quantity_number = ?)
                             GROUP BY form_field_id
                             ORDER BY id";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $result = db_q($query, array((string) $order_item['id'], (string) $quantity_number)) or output_error('Query failed.');
 
                         $form_data_items = array();
 
@@ -2222,11 +2221,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                     "SELECT data
                                     FROM form_data
                                     WHERE
-                                        (order_item_id = '" . $order_item['id'] . "')
-                                        AND (quantity_number = '$quantity_number')
-                                        AND (form_field_id = '" . $form_data_item['form_field_id'] . "')
+                                        (order_item_id = ?)
+                                        AND (quantity_number = ?)
+                                        AND (form_field_id = ?)
                                     ORDER BY id";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                $result = db_q($query, array((string) $order_item['id'], (string) $quantity_number, (string) $form_data_item['form_field_id'])) or output_error('Query failed.');
 
                                 while ($row = mysqli_fetch_assoc($result)) {
                                     // if data is not empty, then add comma and space
@@ -2259,7 +2258,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
         // If the status of this order is complete, then update the status to be exported.
         if ($order['status'] == 'complete') {
-            db("UPDATE orders SET status = 'exported' WHERE id = '" . $order['id'] . "'");
+            db("UPDATE orders SET status = 'exported', " . pg_order_touch_sql() . " WHERE id = '" . $order['id'] . "'");
 
             // Only the status changed, so the line is written from what the
             // export read rather than reading thousands of rows again. An
@@ -2468,8 +2467,17 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
              ORDER BY $order_by";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
-    $filter_totals = 0;
+    $order_rows = array();
     while ($row = mysqli_fetch_assoc($result)) {
+        $order_rows[] = $row;
+    }
+
+    // An incomplete order has no total yet: the cell shows its cart instead
+    // (includes/fn/order_list.php), one query for the whole page.
+    $cart_totals = pg_order_list_cart_totals($order_rows);
+
+    $filter_totals = 0;
+    foreach ($order_rows as $row) {
         $id = $row['id'];
         $billing_first_name = $row['billing_first_name'];
         $billing_last_name = $row['billing_last_name'];
@@ -2602,7 +2610,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 <td class="align-middle"' . $output_status_edit . '>' . $output_status . '</td>
                 <td class="align-middle">' . $output_order_type . '</td>
                 <td class="align-middle">' . $order_number . '</td>
-                <td class="align-middle text-end">' . prepare_amount($total) . '</td>
+                <td class="align-middle text-end">' . pg_order_list_amount_html($status, $row['total'], $cart_totals[(int) $id] ?? null) . '</td>
                 <td class="align-middle">' . h($username) . '</td>
                 <td class="align-middle">' . h($tracking_code) . '</td>
                 <td class="align-middle">' . h($member_id) . '</td>
@@ -2970,7 +2978,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             $output_payment_mode = 'merchant';
 		}
         
-		$output_gateway_buttons = '<button type="button" class="btn btn-sm btn-solid theme-secondary m-1" title="' . ECOMMERCE_PAYMENT_GATEWAY . '" onclick="window.open(\'https://' . $output_payment_mode . '.iyzipay.com/dashboard\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\');"><span class="material-icons me-3">account_balance</span>' . lang(array('string'=>'View Orders') ) . '</button>';
+		// The payment provider's own merchant panel, in a tab of its own.
+		$output_gateway_buttons = '<a class="btn btn-sm btn-text theme-secondary" href="https://' . $output_payment_mode . '.iyzipay.com/dashboard" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => '{var:1} panel', 'vars' => ECOMMERCE_PAYMENT_GATEWAY))) . '</a>';
 	}
 
 
@@ -3135,7 +3144,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     <div class="col-6 lg:col-3">
                         <div class="card h-100 shadow-sm border-0">
                             <div class="card-body p-5 pb-3">
-                                <div class="d-flex align-items-center gap-3 small fg-secondary mb-1"><i class="bi ' . $icon . '" aria-hidden="true"></i><span class="text-truncate">' . $label . '</span></div>
+                                <div class="d-flex align-items-start gap-3 small fg-secondary mb-1"><i class="bi ' . $icon . '" aria-hidden="true"></i><span>' . $label . '</span></div>
                                 <div class="h5 mb-1 text-nowrap' . $value_class . '">' . $value . '</div>
                                 ' . (($canvas !== '') ? '<div class="pg-orders-spark"><canvas id="' . $canvas . '" aria-hidden="true"></canvas></div>' : '') . '
                             </div>
@@ -3195,16 +3204,21 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_order.php"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang(array('string' => 'Add {var:1}', 'vars' => array(lang('Order')))) . '</a>
                     <form id="search" action="view_orders.php" class="disable_shortcut" method="get">
                         ' . get_token_field() . '
-                        <button type="submit" name="submit_data" value="Export Orders (multiple files)" title="' . lang('Multiple files') . '" class="btn btn-sm btn-ghost"><i class="bi bi-file-earmark-zip me-1" aria-hidden="true"></i>' . lang(array('string'=>'Export') ) . '</button>
-                        <button type="submit" name="submit_data" value="Export Orders (single file)" title="' . lang('Single file') . '" class="btn btn-sm btn-ghost"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang(array('string'=>'Export') ) . '</button>
+                        <div class="pg-menu-wrap d-inline-block">
+                            <button type="button" class="btn btn-sm btn-text theme-secondary no-popover pg-menu-caret" data-bs-toggle="menu" aria-expanded="false"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang('Export') . '</button>
+                            <ul class="menu shadow">
+                                <li><button type="submit" name="submit_data" value="Export Orders (single file)" class="menu-item"><i class="bi bi-file-earmark-arrow-down me-3" aria-hidden="true"></i>' . lang('Single file') . '</button></li>
+                                <li><button type="submit" name="submit_data" value="Export Orders (multiple files)" class="menu-item"><i class="bi bi-file-earmark-zip me-3" aria-hidden="true"></i>' . lang('One file per order') . '</button></li>
+                            </ul>
+                        </div>
                         ' . $output_gateway_buttons . '
                     </form>
-                    <a class="btn btn-sm btn-ghost" href="import_shipments.php"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . lang('Import Tracking Numbers') . '</a>
+                    <a class="btn btn-sm btn-text theme-secondary" href="import_shipments.php"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . lang('Import Tracking Numbers') . '</a>
                     <div class="pg-toolbar-grow"></div>
                     ' . pg_list_sort_menu('view_orders.php', $sort_columns, $sort_levels, $sort_default) . '
                     ' . pg_filter_select('status', $status_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['status'] ?? ''), array('label' => lang('Status'), 'action' => 'view_orders.php', 'id' => 'status')) . '
                     ' . pg_filter_select('type', $type_filter_options, (string) ($_SESSION['software']['ecommerce']['view_orders']['type'] ?? ''), array('label' => lang('Order Type'), 'action' => 'view_orders.php', 'id' => 'type')) . '
-                    <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
+                    <a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                     ' . $output_period_navigator . '
                 </nav>
                 ' . $output_order_stats . '

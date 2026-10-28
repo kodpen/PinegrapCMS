@@ -419,6 +419,25 @@ function _pg_theme_contrast($a, $b)
     return (max($la, $lb) + 0.05) / (min($la, $lb) + 0.05);
 }
 
+/**
+ * Text colour for a label drawn on a user-chosen background: white when it
+ * reads at 4.5:1 there, else near-black. An unreadable value gets white, the
+ * colour such labels had before.
+ *
+ * @param string $hex Background colour, #rgb or #rrggbb.
+ * @return string
+ */
+function pg_readable_ink_on($hex)
+{
+    $rgb = _pg_theme_rgb($hex);
+
+    if ($rgb === null) {
+        return '#fff';
+    }
+
+    return (_pg_theme_contrast($rgb, array(255, 255, 255)) >= 4.5) ? '#fff' : '#18181b';
+}
+
 // $c moved toward white (or black) until it reads at $ratio on $bg.
 function _pg_theme_readable($c, $bg, $ratio, $toward_white)
 {

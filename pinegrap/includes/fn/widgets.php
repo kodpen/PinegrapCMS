@@ -81,6 +81,10 @@ function pg_sw_type_labels()
         'shipping_method'     => lang('Shipping Method'),
         'billing_information' => lang('Billing Information'),
         'order_preview'       => lang('Order Preview'),
+        'order_form'          => lang('Order Form'),
+        'folder_view'         => lang('Folder View'),
+        'photo_gallery'       => lang('Photo Gallery'),
+        'affiliate_sign_up_form' => lang('Affiliate Sign Up Form'),
         'menu_region'         => lang('Menu'),
         'menu_sequence_region' => lang('Menu Sequence'),
         'ad_region'           => lang('Ad Region'),
@@ -587,7 +591,11 @@ function pg_sw_default_date_format($type)
 // With $mark (the finish pass's cut point, widgets_finish.php) only the
 // elements that hold $mark are judged, and one that goes leaves $mark in
 // its place, so the element around it is judged in turn.
-function pg_sw_hide_empty_fields($html, $mark = null)
+// With $wait (a product page whose variant picker redraws the values bound
+// to data-pg-bind), an empty element holding such a value stays, marked
+// hidden and data-pg-empty-wait, for the picker to show when it fills it;
+// an element already so marked is left as it is.
+function pg_sw_hide_empty_fields($html, $mark = null, $wait = false)
 {
     if (!is_string($html) || strpos($html, 'pg-hide-if-empty') === false) return $html;
     $mark = ($mark === null) ? '' : (string)$mark;
@@ -603,8 +611,13 @@ function pg_sw_hide_empty_fields($html, $mark = null)
         $start = $opens[$i][0][1];
         $tag   = strtolower($opens[$i][1][0]);
 
+        if (strpos($open, ' data-pg-empty-wait') !== false) continue;
+
         if (pg_sw_is_void_tag($tag)) {
-            if ($mark === '' && !pg_sw_has_content($open)) $html = substr($html, 0, $start) . substr($html, $start + strlen($open));
+            if ($mark !== '' || pg_sw_has_content($open)) continue;
+            $html = ($wait && strpos($open, 'data-pg-bind=') !== false)
+                ? substr($html, 0, $start) . pg_sw_empty_wait_tag($open) . substr($html, $start + strlen($open))
+                : substr($html, 0, $start) . substr($html, $start + strlen($open));
             continue;
         }
 
@@ -613,10 +626,22 @@ function pg_sw_hide_empty_fields($html, $mark = null)
         $inner = substr($html, $start + strlen($open), $close[0] - $start - strlen($open));
         if ($mark !== '' && strpos($inner, $mark) === false) continue;
         if (pg_sw_has_content(pg_sw_field_value($inner))) continue;
+        if ($wait && strpos($open . $inner, 'data-pg-bind=') !== false) {
+            $html = substr($html, 0, $start) . pg_sw_empty_wait_tag($open) . substr($html, $start + strlen($open));
+            continue;
+        }
         $html = substr($html, 0, $start) . $mark . substr($html, $close[1]);
     }
 
     return $html;
+}
+
+// An opening tag marked as an empty element waiting for a variant to fill
+// it: hidden, and data-pg-empty-wait for the variant picker to find it.
+function pg_sw_empty_wait_tag($open)
+{
+    $end = (substr($open, -2) === '/>') ? -2 : -1;
+    return rtrim(substr($open, 0, $end)) . ' hidden data-pg-empty-wait' . substr($open, $end);
 }
 
 // The elements that have no closing tag.
@@ -753,6 +778,7 @@ function pg_sw_uniquify_row_ids($html, $widget_id, $row_id)
         '/data-bs-target="#([^"]+)"/'     => 'data-bs-target="#$1',
         '/aria-controls="([^"]+)"/'       => 'aria-controls="$1',
         '/aria-labelledby="([^"]+)"/'     => 'aria-labelledby="$1',
+        '/aria-describedby="([^"]+)"/'    => 'aria-describedby="$1',
         '/href="#([^"]+)"/'               => 'href="#$1',
         '/data-bs-parent="#([^"]+)"/'     => 'data-bs-parent="#$1',
     );
@@ -788,10 +814,6 @@ function pg_sw_raw_token_keys()
         '__group_tree_inner_html',
         '__attribute_filters_html',
         '__attribute_filters_inner_html',
-        '__active_filters_html',
-        '__active_filters_inner_html',
-        '__filter_chips',
-        '__filter_chips_inner_html',
         '__filters_button',
         '__filters_offcanvas',
         '__filters_offcanvas_inner_html',
@@ -809,6 +831,10 @@ function pg_sw_raw_token_keys()
         '__return_customer_note_html',
         '__return_decision_note_html',
         '__return_actions_html',
+        // Cart: a payment schedule's frequency choices, the value selected.
+        '__schedule_period_options_html',
+        // Order view: a return request's reasons (the return form part).
+        '__return_reason_options_html',
         // Ad Region widget: the ad's own markup.
         '__ad_content_html',
         '__ad_caption_html',
@@ -3396,6 +3422,8 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             '__new_account_set_password_url' => '',
             '__edit_url'             => '',
         ) + pg_sw_entity_values('form_record', null);
+        // No record: the page's record is not found (page_facts.php).
+        pg_page_record_publish('form_record', null);
     } else {
         // Pull all form_data rows for the matched submission. Same JOIN shape
         // as form_list_view's batch fetcher (single `form_id`) — file-upload
@@ -3466,9 +3494,12 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
         // The record's allow-listed values (widgets_entity_fields.php): the
         // quiz score of a quiz form. This view shows one record to whoever
         // may open it; the list view offers none of them.
-        $extra += array_map('h', pg_sw_entity_values('form_record', $form_row + array(
+        $_fiv_entity = pg_sw_entity_values('form_record', $form_row + array(
             'quiz' => (int)db_value("SELECT quiz FROM custom_form_pages WHERE page_id = '" . $custom_form_page_id . "' LIMIT 1"),
-        )));
+        ));
+        $extra += array_map('h', $_fiv_entity);
+        // The record is the page's record (page_facts.php).
+        pg_page_record_publish('form_record', $_fiv_entity);
 
         // Optional label tokens: {field}__label beside the value, when toggled on.
         if ($show_field_labels && is_array($data_rows)) {
@@ -5123,17 +5154,20 @@ function pg_sw_pagination_html($page_param, $current_page, $total_pages, $fragme
 // cuts each span. (_eo_apply_visibility_bindings() drops the node from the
 // tree instead, which needs the flags before the render.) With $only, a
 // flag not in that list is left unmarked, so its node is always drawn.
-function _pg_sw_mark_visibility(&$tree, $only = null)
+// A flag naming a value of the list row it stands in ($row) is the row's
+// (pg_sw_list_flag_alias()), never marked.
+function _pg_sw_mark_visibility(&$tree, $only = null, $row = array())
 {
     static $seq = 0;
     if (!is_array($tree) || empty($tree['children']) || !is_array($tree['children'])) return;
+    if (pg_sw_list_is_sourced($tree)) $row += pg_sw_list_row_flags($tree['props']['source']);
     $out = array();
     foreach ($tree['children'] as $child) {
         if (!is_array($child)) { $out[] = $child; continue; }
-        _pg_sw_mark_visibility($child, $only);
+        _pg_sw_mark_visibility($child, $only, $row);
         $flag = isset($child['props']['_bindings']['eo_visible_if'])
             ? preg_replace('/[^a-z0-9_]/', '', (string)$child['props']['_bindings']['eo_visible_if']) : '';
-        if ($flag === '' || (is_array($only) && !in_array($flag, $only, true))) { $out[] = $child; continue; }
+        if ($flag === '' || isset($row[$flag]) || (is_array($only) && !in_array($flag, $only, true))) { $out[] = $child; continue; }
         $n = ++$seq;
         $out[] = array('type' => 'content', 'props' => array('contentType' => 'custom_html', 'html' => '<!--pg-vis:' . $flag . ':' . $n . '-->'), 'children' => array());
         $out[] = $child;
@@ -6034,7 +6068,8 @@ function pg_sw_search_index_save_item($item, $timestamp)
 // Render a 'search_results' system widget: the site search for ?query=,
 // one loop row per result, paginated.
 //
-// Static tokens: ^^__search_query^^, ^^__result_count^^, ^^__results_heading^^
+// Static tokens: ^^__search_query^^, ^^__result_count^^ (grouped in the page's
+//   language like the heading's number: 1.284 / 1,284), ^^__results_heading^^
 //   (the sentence the legacy page prints: found N / none found / enter a
 //   search), ^^__empty_message^^ (when a search found nothing), ^^__page_count^^.
 // Row tokens: ^^__result_title^^, ^^__result_url^^, ^^__result_full_url^^,
@@ -6170,7 +6205,7 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
 
     $static_values = pg_sw_escape_token_values(array(
         '__search_query'    => $query,
-        '__result_count'    => (string)$total,
+        '__result_count'    => pg_format_number($total, 0),
         '__results_heading' => $heading,
         '__page_count'      => (string)$total_pages,
         '__empty_message'   => ($query !== '' && $total === 0) ? $empty_message : '',
@@ -6484,8 +6519,9 @@ function pg_sw_item_summary($html, $max = 140)
 //     binds neither link gets a card listing them after the widget.
 //     __withdrawal_deadline    last day of the right of withdrawal (14 days
 //                              from the last delivery; date text)
-//     visibility flags: has_withdrawal_deadline, withdrawal_deadline_estimated,
-//     withdrawal_ended. None in the receipt e-mail; the card after the widget
+//     visibility flags: has_withdrawal_deadline, withdrawal_deadline_firm,
+//     withdrawal_deadline_estimated, withdrawal_ended (the last three never
+//     two at once). None in the receipt e-mail; the card after the widget
 //     carries the line when the layout does not bind the token.
 //
 //   Invoice print:
@@ -7217,7 +7253,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // widget's messages node (liveform 'order_receipt').
     $_ov_returns      = ($is_owner && empty($sw_ctx['email'])) ? pg_return_customer_view($order_id, $fmt_gc_date) : null;
     $_ov_return_form  = '';
-    $_ov_return_rows  = array('order.returns' => array(), 'order.return_lines' => array());
+    $_ov_return_rows  = array('order.returns' => array(), 'order.return_lines' => array(),
+                              'order.return_deliveries' => array(), 'order.return_delivery_lines' => array());
     if (is_array($_ov_returns) && ($_ov_returns['has_returns'] || $_ov_returns['can_request'])) {
         $_ov_return_cfg = array(
             'action'   => (defined('PATH') ? PATH : '/') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : 'software') . '/order_return.php',
@@ -7226,7 +7263,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'order_id' => (int)$order['id'],
         );
         $_ov_return_form  = $_ov_returns['can_request'] ? pg_return_form_html($_ov_returns['deliveries'], $_ov_return_cfg) : '';
-        $_ov_return_rows  = pg_sw_list_order_return_rows($_ov_returns['returns'], $_ov_return_cfg);
+        $_ov_return_rows  = pg_sw_list_order_return_rows($_ov_returns['returns'], $_ov_return_cfg)
+                          + pg_sw_list_order_return_form_rows($_ov_returns['can_request'] ? $_ov_returns['deliveries'] : array());
     }
     $_ov_has_returns = !empty($_ov_return_rows['order.returns']);
     // A layout made before returns existed places neither token: it is
@@ -7258,6 +7296,10 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         'has_surcharge'            => (int)$order['surcharge'] > 0,
         // Cancellation gates
         'can_cancel'               => $_ov_can_cancel,
+        // The cancel form's refund warning: paid through a payment
+        // provider, so the money comes back by hand.
+        'cancel_needs_refund'      => (int)$order['total'] > 0 && (string)$order['payment_method'] !== ''
+                                      && (string)$order['payment_method'] !== 'Offline Payment',
         'is_cancelled'             => $_ov_already_cancelled,
         // Flash-style notice from cancel_order.php redirect
         'cancel_flash_success'     => $_ov_cancel_flash === '1',
@@ -7284,15 +7326,30 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         'has_legal_documents'      => implode('', $legal_urls) !== '',
         'has_legal_preinfo'        => $legal_urls['preinfo'] !== '',
         'has_legal_contract'       => $legal_urls['contract'] !== '',
-        // Right of withdrawal: the line while a deadline is known, its note
-        // while the deadline is estimated, and once the deadline has passed.
+        // Right of withdrawal: the line while a deadline is known; then one
+        // of three: the deadline is firm and ahead, estimated, or passed.
         'has_withdrawal_deadline'       => $withdrawal_date !== '',
+        'withdrawal_deadline_firm'      => $withdrawal_date !== '' && !$withdrawal['estimated'] && $withdrawal['open'],
         'withdrawal_deadline_estimated' => $withdrawal_date !== '' && $withdrawal['estimated'] && $withdrawal['open'],
         'withdrawal_ended'              => $withdrawal_date !== '' && !$withdrawal['open'],
     );
     if (function_exists('_eo_apply_visibility_bindings')) {
         _eo_apply_visibility_bindings($tree_decoded, $_ov_vis_ctx);
     }
+
+    // The cancel and return request forms' parts (widgets_parts_forms.php):
+    // their address, hidden fields and controls' names are the system's.
+    $_ov_form_ctx = array(
+        'token'    => function_exists('get_token_field') ? get_token_field() : '',
+        'order_id' => (int)$order['id'],
+        'send_to'  => isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : (defined('PATH') ? PATH : '/'),
+    );
+    $_ov_sw_path = (defined('PATH') ? PATH : '/') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : 'software');
+    pg_sw_order_cancel_wire($tree_decoded, $_ov_form_ctx + array('action' => $_ov_sw_path . '/cancel_order.php'));
+    pg_sw_order_return_form_wire($tree_decoded, array_merge($_ov_form_ctx, array(
+        'action'  => $_ov_sw_path . '/order_return.php',
+        'send_to' => isset($_SERVER['REQUEST_URI']) ? (string)$_SERVER['REQUEST_URI'] : '',
+    )));
 
     // ── Now split + render with the visibility-filtered tree ──────────
     $split = _split_widget_tree($tree_decoded);
@@ -8550,7 +8607,10 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
             $times['__event_updated_date'] = array('type' => 'date and time', 'data' => date('Y-m-d H:i:s', (int)$entity_row['last_modified_timestamp']));
         }
     }
-    $values += pg_sw_entity_values('calendar_event', $entity_row, array('date_format' => pg_sw_default_date_format('date')));
+    $_cev_entity = pg_sw_entity_values('calendar_event', $entity_row, array('date_format' => pg_sw_default_date_format('date')));
+    $values += $_cev_entity;
+    // The event is the page's record (page_facts.php).
+    pg_page_record_publish('calendar_event', $shown ? $_cev_entity : null);
 
     pg_cf_apply_section_bindings($tree, array('reserve_form' => $reserve_form));
     // Visibility bindings (eo_visible_if): the event's own blocks give way to

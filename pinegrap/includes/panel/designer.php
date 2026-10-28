@@ -1268,6 +1268,24 @@ function pg_panel_designer($request, $action)
             ));
             break;
 
+        // A page's own regions as blocks of its tree, one per page region
+        // node the editor counts on it (pg_page_region_blocks()). Placing
+        // them changes the page's structure: the designer's right, as the
+        // other region conversions ask. Nothing is written here; the page's
+        // Save does.
+        case 'page_regions_import':
+            $pr_page = isset($request['page_id']) ? (int)$request['page_id'] : 0;
+            if ((int)$user['role'] > 1) {
+                respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+            }
+            if ($pr_page <= 0 || !db_value("SELECT page_id FROM page WHERE page_id = '$pr_page' LIMIT 1")) {
+                respond(array('status' => 'error', 'message' => lang('Record not found.')));
+            }
+            require_once(PG_FUNCTIONS_DIR . '/includes/designer_region_import.php');
+            $pr = pg_page_region_blocks($pr_page, isset($request['count']) ? (int)$request['count'] : 0);
+            respond(array('status' => 'success', 'blocks' => $pr['blocks'], 'warnings' => $pr['warnings']));
+            break;
+
         // A page the user may not know is drawn as an unsaved one: a
         // comments widget then shows no thread of it. The comment settings
         // are the page's as the editor holds them, saved or not, on a page
@@ -1925,6 +1943,39 @@ function pg_panel_layout_code($request, $action)
     // the tab is.
     if ($sub === 'regenerate') {
         respond(array('status' => 'success', 'content' => (string) pg_layout_generated((int) $page_id)));
+    }
+
+    // A custom form page's layout as the elements of a custom_form widget
+    // (includes/fn/layout_convert.php); nothing is written, the editor
+    // places the widget beside the region.
+    if ($sub === 'convert') {
+        if ($page['type'] !== 'custom form') {
+            respond(array('status' => 'error', 'message' => lang('Only a custom form layout can be converted.')));
+        }
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/layout_convert.php');
+
+        $layout = pg_layout_read($page_id);
+        $result = pg_layout_form_convert(
+            $layout ? (string) $layout['content'] : '',
+            pg_cf_load_page_fields((int) $page_id),
+            array(
+                'page_id' => (int) $page_id,
+                'submit_label' => (string) db_value("SELECT submit_button_label FROM custom_form_pages WHERE page_id = '" . (int) $page_id . "'"),
+                'generated' => (string) generate_form_layout_content(array('page_id' => (int) $page_id)),
+            )
+        );
+
+        if (!$result['ok']) {
+            respond(array('status' => 'error', 'message' => lang('The layout could not be read.')));
+        }
+
+        respond(array(
+            'status' => 'success',
+            'tree' => $result['tree'],
+            'dropped' => $result['dropped'],
+            'missing' => count($result['missing']),
+        ));
     }
 
     if ($sub === 'save') {

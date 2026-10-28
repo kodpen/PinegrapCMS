@@ -306,7 +306,7 @@ function pg_mail_job_alive()
 // Write a message to the queue. Returns the row id, or 0 when it could not be
 // written - the caller then sends the message itself.
 //
-// mysqli_query() rather than db(): db() ends the request on a failed query,
+// db_q() rather than db(): db() ends the request on a failed query,
 // and a request that only wanted to send an e-mail must not die because the
 // queue refused a row.
 function pg_mail_enqueue(array $properties)
@@ -327,16 +327,15 @@ function pg_mail_enqueue(array $properties)
 
     $subject = isset($properties['subject']) ? (string) $properties['subject'] : '';
 
-    $result = mysqli_query(db::$con,
+    $result = db_q(
         "INSERT INTO mail_outbox (created_at, send_after, status, mail_type, recipient, subject, properties)
-        VALUES (
-            UNIX_TIMESTAMP(),
-            0,
-            'queued',
-            '" . e(pg_mail_clip($type, 16)) . "',
-            '" . e(pg_mail_clip((string) $recipient, 255)) . "',
-            '" . e(pg_mail_clip($subject, 255)) . "',
-            '" . e($json) . "')");
+        VALUES (UNIX_TIMESTAMP(), 0, 'queued', ?, ?, ?, ?)",
+        array(
+            (string) pg_mail_clip($type, 16),
+            (string) pg_mail_clip((string) $recipient, 255),
+            (string) pg_mail_clip($subject, 255),
+            (string) $json,
+        ));
 
     if ($result === false) {
         return 0;

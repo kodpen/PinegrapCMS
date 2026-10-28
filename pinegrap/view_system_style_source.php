@@ -140,11 +140,15 @@ if (!$_POST) {
     $query =
         "UPDATE style
         SET
-            style_head = '" . escape($liveform->get_field_value('head')) . "',
-            style_user = '" . $user['id'] . "',
+            style_head = ?,
+            style_user = ?,
             style_timestamp = UNIX_TIMESTAMP()
-        WHERE style_id = '" . (int) $liveform->get_field_value('id') . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE style_id = ?";
+    $result = db_q($query, array(
+        (string) $liveform->get_field_value('head'),
+        (string) $user['id'],
+        (string) (int) $liveform->get_field_value('id'),
+    )) or output_error('Query failed.');
 
     log_activity(lang(array('string' => 'additional head content for style ({var:1}) was modified', 'vars' => array($name))), $_SESSION['sessionusername']);
 

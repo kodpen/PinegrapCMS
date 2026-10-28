@@ -39,8 +39,8 @@ $query =
         page_name,
         page_folder as folder_id
     FROM page
-    WHERE page_id = '" . escape($page_id) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE page_id = ?";
+$result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 $page_name = $row['page_name'];
@@ -63,8 +63,8 @@ if ($action == 'allow') {
 
 // if this is just for a page, not an item, then just update the setting for the page
 if ($item_id == 0) {
-    $query = "UPDATE page SET comments_allow_new_comments = '$allow_new_comments' WHERE page_id = '" . escape($page_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "UPDATE page SET comments_allow_new_comments = ? WHERE page_id = ?";
+    $result = db_q($query, array((string) $allow_new_comments, (string) $page_id)) or output_error('Query failed.');
     
 // else this is for an item, so add setting for item
 } else {
@@ -72,10 +72,10 @@ if ($item_id == 0) {
     $query = 
         "DELETE FROM allow_new_comments_for_items
         WHERE
-            (page_id = '" . escape($page_id) . "')
-            AND (item_id = '" . escape($item_id) . "')
-            AND (item_type = '" . escape($item_type) . "')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            (page_id = ?)
+            AND (item_id = ?)
+            AND (item_type = ?)";
+    $result = db_q($query, array((string) $page_id, (string) $item_id, (string) $item_type)) or output_error('Query failed.');
 
     // add record in database in order to store whether new comments are allowed or not for this item and page
     $query = 
@@ -85,11 +85,11 @@ if ($item_id == 0) {
             item_type,
             allow_new_comments)
          VALUES (
-            '" . escape($page_id) . "',
-            '" . escape($item_id) . "',
-            '" . escape($item_type) . "',
-            '" . $allow_new_comments . "')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            ?,
+            ?,
+            ?,
+            ?)";
+    $result = db_q($query, array((string) $page_id, (string) $item_id, (string) $item_type, (string) $allow_new_comments)) or output_error('Query failed.');
 }
     
 // remove form so that we get fresh values when we take the visitor back to the previous page

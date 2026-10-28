@@ -57,9 +57,16 @@ function pg_sw_default_part_tokens()
             array('__item_form_data_html', 'pg_sw_part_order_item_form'),
             array('__item_gift_card_html', 'pg_sw_part_order_item_gift_card'),
             array('__returns', 'pg_sw_part_order_returns_list'),
+            array('__cancel_form', 'pg_sw_part_order_cancel_form'),
+            array('__return_form', 'pg_sw_part_order_return_form'),
+            array('__return_actions_html', 'pg_sw_part_order_return_moves'),
         ),
         'comments' => array(
             array('__comment_stars_html', 'pg_sw_part_comment_stars'),
+        ),
+        'shopping_cart' => array(
+            array('__item_gift_card_html', 'pg_sw_part_cart_item_gift_card'),
+            array('__item_recurring_schedule_html', 'pg_sw_part_cart_item_schedule'),
         ),
         // A section binding and a content type are read as the tokens
         // 'section:<name>' and 'content:<type>' (pg_sw_part_token_of()).
@@ -68,6 +75,12 @@ function pg_sw_default_part_tokens()
             array('__breadcrumb_inner_html', 'pg_sw_part_catalog_crumbs'),
             array('section:breadcrumb', 'pg_sw_part_catalog_crumbs'),
             array('content:breadcrumb', 'pg_sw_part_catalog_breadcrumb_listing'),
+            array('__filter_chips', 'pg_sw_part_catalog_filter_chips'),
+            array('__filter_chips_inner_html', 'pg_sw_part_catalog_filter_chips_inner'),
+            array('section:filter_chips', 'pg_sw_part_catalog_filter_chips_inner'),
+            array('__active_filters_html', 'pg_sw_part_catalog_active_filters'),
+            array('__active_filters_inner_html', 'pg_sw_part_catalog_active_filters'),
+            array('section:active_filters', 'pg_sw_part_catalog_active_filters'),
         ),
         'catalog_item_view' => array(
             array('__breadcrumb_html', 'pg_sw_part_catalog_breadcrumb_item'),
@@ -116,7 +129,7 @@ function pg_sw_default_tail_parts()
 {
     return array(
         'order_view' => array(
-            array(array('__return_form', '__returns', 'order.returns'), 'pg_sw_part_order_returns'),
+            array(array('__return_form', '__returns', 'order.returns', 'order.return_deliveries'), 'pg_sw_part_order_returns'),
             array(array('__legal_preinfo_url', '__legal_contract_url'), 'pg_sw_part_order_legal_documents'),
         ),
     );
@@ -135,6 +148,10 @@ function pg_sw_default_loop_tail_parts()
         'order_view' => array(
             array(array('__item_form_data_html', 'order.item_forms'), 'pg_sw_part_order_item_form'),
             array(array('__item_gift_card_html', 'order.item_gift_cards'), 'pg_sw_part_order_item_gift_card'),
+        ),
+        'shopping_cart' => array(
+            array(array('__item_gift_card_html', 'cart.item_gift_cards'), 'pg_sw_part_cart_item_gift_card'),
+            array(array('__item_recurring_schedule_html', 'cart.item_schedule'), 'pg_sw_part_cart_item_schedule'),
         ),
         'catalog_item_view' => array(
             array(array('__cross_sell_html', 'product.related'), 'pg_sw_part_catalog_cross_sell', 'tree'),
@@ -547,6 +564,291 @@ function pg_sw_part_order_item_gift_card($cfg = array())
     )));
 }
 
+// The cart's gift card controls: binding value => array(the column the
+// cart saves, the list token of its value, its type, whether it is
+// required, its maxlength). The recipient's address is required: checkout
+// refuses a gift card without it.
+function pg_sw_cart_gift_card_control_specs()
+{
+    return array(
+        'gift_card_email'         => array('recipient_email_address', '__gift_card_email', 'email', true, 0),
+        'gift_card_from_name'     => array('from_name', '__gift_card_from_name', 'text', false, 100),
+        'gift_card_message'       => array('message', '__gift_card_message', 'textarea', false, 500),
+        'gift_card_delivery_date' => array('delivery_date', '__gift_card_delivery_date', 'date', false, 0),
+    );
+}
+
+function pg_sw_cart_gift_card_control_spec($value)
+{
+    $specs = pg_sw_cart_gift_card_control_specs();
+    return (is_string($value) && isset($specs[$value])) ? $specs[$value] : null;
+}
+
+// Makes the control $node bound to a gift card field send it: its id and
+// name the cart's (order_item_<id>_quantity_number_<n>_gift_card_<column>,
+// from the list row's ^^__gift_card_field^^), its value the one the
+// visitor gave, its type, required and maxlength the field's, in the cart
+// form $form_id. Its other attributes, classes and text stay the design's.
+// A node that is no input or text area is left.
+function pg_sw_cart_gift_card_control(&$node, $form_id)
+{
+    $b    = isset($node['props']['_bindings']) && is_array($node['props']['_bindings']) ? $node['props']['_bindings'] : array();
+    $spec = pg_sw_cart_gift_card_control_spec(isset($b['value']) ? $b['value'] : '');
+    $tag  = isset($node['props']['tag']) ? strtolower((string)$node['props']['tag']) : '';
+    if ($spec === null || !isset($node['type']) || $node['type'] !== 'semantic' || ($tag !== 'input' && $tag !== 'textarea')) return;
+    $name    = '^^__gift_card_field^^' . $spec[0];
+    $managed = array('type' => 1, 'name' => 1, 'value' => 1, 'form' => 1, 'required' => 1, 'maxlength' => 1, 'id' => 1);
+    $kept    = array();
+    foreach ((isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array() as $a) {
+        if (is_array($a) && isset($a['name']) && !isset($managed[strtolower((string)$a['name'])])) $kept[] = $a;
+    }
+    if ($tag === 'input') {
+        $kept[] = array('name' => 'type', 'value' => ($spec[2] === 'textarea') ? 'text' : $spec[2]);
+        $kept[] = array('name' => 'value', 'value' => '^^' . $spec[1] . '^^');
+    } else {
+        $node['props']['text'] = '^^' . $spec[1] . '^^';
+        $node['children'] = array();
+    }
+    $kept[] = array('name' => 'name', 'value' => $name);
+    if ($form_id !== '') $kept[] = array('name' => 'form', 'value' => $form_id);
+    if ($spec[3]) $kept[] = array('name' => 'required', 'value' => '');
+    if ($spec[4] > 0) $kept[] = array('name' => 'maxlength', 'value' => (string)$spec[4]);
+    $node['props']['_attrs'] = $kept;
+    $node['props']['id']     = $name;
+}
+
+// Gives each label among $node's children that names no control the id of
+// the gift card or schedule control beside it, so a click on the words focuses it.
+function pg_sw_cart_gift_card_label_for(&$node)
+{
+    if (empty($node['children']) || !is_array($node['children'])) return;
+    $id = '';
+    foreach ($node['children'] as $c) {
+        $b = (is_array($c) && isset($c['props']['_bindings']) && is_array($c['props']['_bindings'])) ? $c['props']['_bindings'] : array();
+        if (isset($b['value']) && (pg_sw_cart_gift_card_control_spec($b['value']) !== null || pg_sw_cart_schedule_control_spec($b['value']) !== null)
+            && !empty($c['props']['id'])) {
+            $id = (string)$c['props']['id'];
+            break;
+        }
+    }
+    if ($id === '') return;
+    foreach ($node['children'] as &$c) {
+        if (!is_array($c) || !isset($c['props']['tag']) || strtolower((string)$c['props']['tag']) !== 'label') continue;
+        $attrs = (isset($c['props']['_attrs']) && is_array($c['props']['_attrs'])) ? $c['props']['_attrs'] : array();
+        foreach ($attrs as $a) {
+            if (is_array($a) && isset($a['name']) && strtolower((string)$a['name']) === 'for') continue 2;
+        }
+        $attrs[] = array('name' => 'for', 'value' => $id);
+        $c['props']['_attrs'] = $attrs;
+    }
+    unset($c);
+}
+
+// Whether a node under $node is bound to the gift card control $value.
+function pg_sw_cart_gift_card_has_control($node, $value)
+{
+    if (!is_array($node)) return false;
+    if (isset($node['props']['_bindings']['value']) && $node['props']['_bindings']['value'] === $value) return true;
+    foreach ((isset($node['children']) && is_array($node['children'])) ? $node['children'] : array() as $c) {
+        if (pg_sw_cart_gift_card_has_control($c, $value)) return true;
+    }
+    return false;
+}
+
+// A card ($loop, the cart.item_gift_cards list) whose required controls
+// were deleted gets each back, as the part draws it, at the end of its
+// first element (the card's box), else of the list.
+function pg_sw_cart_gift_card_restore(&$loop)
+{
+    foreach (pg_sw_cart_gift_card_control_specs() as $value => $spec) {
+        if (!$spec[3] || pg_sw_cart_gift_card_has_control($loop, $value)) continue;
+        if (!isset($loop['children']) || !is_array($loop['children'])) $loop['children'] = array();
+        $field = pg_sw_part_cart_gift_card_field($value);
+        if (isset($loop['children'][0]) && is_array($loop['children'][0]) && isset($loop['children'][0]['type']) && $loop['children'][0]['type'] === 'semantic') {
+            if (!isset($loop['children'][0]['children']) || !is_array($loop['children'][0]['children'])) $loop['children'][0]['children'] = array();
+            $loop['children'][0]['children'][] = $field;
+        } else {
+            $loop['children'][] = $field;
+        }
+    }
+}
+
+// One gift card field as the cart drew it: its label (a star when it is
+// required), the control bound to $value, a help line for the delivery
+// date. The box carries the field's column for page scripts.
+function pg_sw_part_cart_gift_card_field($value)
+{
+    $spec   = pg_sw_cart_gift_card_control_spec($value);
+    $labels = array('gift_card_email' => lang('Recipient Email'), 'gift_card_from_name' => lang('From Name'),
+                    'gift_card_message' => lang('Message'), 'gift_card_delivery_date' => lang('Delivery Date'));
+    $label  = isset($labels[$value]) ? $labels[$value] : '';
+    $words  = array(pg_sw_part_el('span', '', 'Text', array('text' => $label)));
+    if ($spec[3]) $words[] = pg_sw_part_el('span', 'text-danger', 'Required mark', array('text' => '*'));
+    $control = ($spec[2] === 'textarea')
+        ? pg_sw_part_el('textarea', 'form-control', $label, array('_bindings' => array('value' => $value), '_attrs' => array(array('name' => 'rows', 'value' => '3'))))
+        : pg_sw_part_el('input', 'form-control', $label, array('_bindings' => array('value' => $value)));
+    $children = array(pg_sw_part_el('label', 'form-label', 'Label', array(), $words), $control);
+    if ($value === 'gift_card_delivery_date') {
+        $children[] = pg_sw_part_el('div', 'form-text', 'Help', array('text' => lang('Leave blank to send immediately.')));
+    }
+    return pg_sw_part_el('div', 'mb-3 pg-cart-gc-field', $label,
+        array('_attrs' => array(array('name' => 'data-pg-gc-field', 'value' => $spec[0]))), $children);
+}
+
+// The gift cards of a cart line, each a box of controls (the
+// cart.item_gift_cards list): its heading "Gift card" and its number when
+// the line holds more than one, then recipient e-mail, from name, message
+// and delivery date. The box around them carries the line's id and goes
+// on a line that is no gift card (pg-hide-if-empty).
+function pg_sw_part_cart_item_gift_card($cfg = array())
+{
+    $fields = array();
+    foreach (array_keys(pg_sw_cart_gift_card_control_specs()) as $value) $fields[] = pg_sw_part_cart_gift_card_field($value);
+    return array(pg_sw_part_el('div', 'pg-cart-gift-cards pg-hide-if-empty', 'Gift Card Details',
+        array('_attrs' => array(array('name' => 'data-pg-cart-gc-item', 'value' => '{{__item_id}}'))), array(
+        array('type' => 'loop_area', 'props' => array('source' => 'cart.item_gift_cards'), 'children' => array(
+            pg_sw_part_el('fieldset', 'pg-cart-gc-set border rounded p-3 mb-3', 'Gift card',
+                array('_attrs' => array(array('name' => 'data-pg-gc-set', 'value' => '{{__gift_card_number}}'))),
+                array_merge(array(pg_sw_part_order_item_legend(array(), array('text' => lang('Gift card')), '__gift_card_number', '__gift_card_count')), $fields)),
+        )),
+    )));
+}
+
+// The cart's payment schedule controls: binding value => array(the name
+// the cart reads without the item id, the list token of its value, its
+// kind). Whether the number of payments is required, its range and whether
+// the start date is asked are the gateway's (pg_cart_schedule_rules()).
+function pg_sw_cart_schedule_control_specs()
+{
+    return array(
+        'schedule_period'   => array('recurring_payment_period_', '__schedule_period', 'select'),
+        'schedule_payments' => array('recurring_number_of_payments_', '__schedule_payments', 'number'),
+        'schedule_start'    => array('recurring_start_date_', '__schedule_start', 'date'),
+    );
+}
+
+function pg_sw_cart_schedule_control_spec($value)
+{
+    $specs = pg_sw_cart_schedule_control_specs();
+    return (is_string($value) && isset($specs[$value])) ? $specs[$value] : null;
+}
+
+// Whether the schedule control $value is required under $rules
+// (pg_cart_schedule_rules()): the frequency always, the number of payments
+// when the gateway needs one, the start date when it is asked.
+function pg_sw_cart_schedule_required($value, $rules)
+{
+    if ($value === 'schedule_period') return true;
+    if ($value === 'schedule_payments') return !empty($rules['payments_required']);
+    if ($value === 'schedule_start') return !empty($rules['show_start']);
+    return false;
+}
+
+// Makes the control $node bound to a schedule field send it: its id and
+// name the cart's (recurring_payment_period_<item id> …, from the list
+// row's ^^__schedule_item^^), its value (a select: the frequency's choices,
+// the row's selected), and the gateway's rules from $rules: required, the
+// number's range, the start date's earliest day, in the cart form $form_id.
+// A start date the gateway does not ask is disabled, so it never sends. The
+// error class follows the design's classes; its other attributes, classes
+// and the label's words stay the design's. A node of another tag is left.
+function pg_sw_cart_schedule_control(&$node, $form_id, $rules)
+{
+    $b     = isset($node['props']['_bindings']) && is_array($node['props']['_bindings']) ? $node['props']['_bindings'] : array();
+    $value = isset($b['value']) ? $b['value'] : '';
+    $spec  = pg_sw_cart_schedule_control_spec($value);
+    $tag   = isset($node['props']['tag']) ? strtolower((string)$node['props']['tag']) : '';
+    if ($spec === null || !isset($node['type']) || $node['type'] !== 'semantic') return;
+    if ($spec[2] === 'select' ? $tag !== 'select' : $tag !== 'input') return;
+    $name    = $spec[0] . '^^__schedule_item^^';
+    $managed = array('type' => 1, 'name' => 1, 'value' => 1, 'form' => 1, 'required' => 1, 'min' => 1, 'max' => 1,
+                     'step' => 1, 'id' => 1, 'disabled' => 1);
+    $kept    = array();
+    foreach ((isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array() as $a) {
+        if (is_array($a) && isset($a['name']) && !isset($managed[strtolower((string)$a['name'])])) $kept[] = $a;
+    }
+    if ($spec[2] === 'select') {
+        $node['props']['text'] = '^^__schedule_period_options_html^^';
+        $node['children'] = array();
+    } else {
+        $kept[] = array('name' => 'type', 'value' => $spec[2]);
+        $kept[] = array('name' => 'value', 'value' => '^^' . $spec[1] . '^^');
+    }
+    $kept[] = array('name' => 'name', 'value' => $name);
+    if ($form_id !== '') $kept[] = array('name' => 'form', 'value' => $form_id);
+    if ($spec[2] === 'number') {
+        $kept[] = array('name' => 'min', 'value' => (string)(int)$rules['payments_min']);
+        if ((int)$rules['payments_max'] > 0) $kept[] = array('name' => 'max', 'value' => (string)(int)$rules['payments_max']);
+        $kept[] = array('name' => 'step', 'value' => '1');
+    } elseif ($spec[2] === 'date') {
+        $kept[] = array('name' => 'min', 'value' => date('Y-m-d'));
+        if (empty($rules['show_start'])) $kept[] = array('name' => 'disabled', 'value' => '');
+    }
+    if (pg_sw_cart_schedule_required($value, $rules)) $kept[] = array('name' => 'required', 'value' => '');
+    $node['props']['_attrs']   = $kept;
+    $node['props']['id']       = $name;
+    $node['props']['cssClass'] = trim((isset($node['props']['cssClass']) ? (string)$node['props']['cssClass'] : '') . ' ^^' . $spec[1] . '_invalid^^');
+}
+
+// A schedule ($loop, the cart.item_schedule list) whose controls required
+// under $rules were deleted gets each back, as the part draws it, at the
+// end of its first element (the schedule's box), else of the list.
+function pg_sw_cart_schedule_restore(&$loop, $rules)
+{
+    foreach (array_keys(pg_sw_cart_schedule_control_specs()) as $value) {
+        if (!pg_sw_cart_schedule_required($value, $rules) || pg_sw_cart_gift_card_has_control($loop, $value)) continue;
+        if (!isset($loop['children']) || !is_array($loop['children'])) $loop['children'] = array();
+        $field = pg_sw_part_cart_schedule_field($value);
+        if (isset($loop['children'][0]) && is_array($loop['children'][0]) && isset($loop['children'][0]['type']) && $loop['children'][0]['type'] === 'semantic') {
+            if (!isset($loop['children'][0]['children']) || !is_array($loop['children'][0]['children'])) $loop['children'][0]['children'] = array();
+            $loop['children'][0]['children'][] = $field;
+        } else {
+            $loop['children'][] = $field;
+        }
+    }
+}
+
+// One schedule field as the cart drew it: its label (a star when it is
+// required: the frequency and the start date always, the number of payments
+// when the gateway needs one), the control bound to $value, the accepted
+// number of payments below it. The start date's box shows only where the
+// gateway asks for one.
+function pg_sw_part_cart_schedule_field($value)
+{
+    $labels = array('schedule_period' => lang('Frequency'), 'schedule_payments' => lang('Number of Payments'),
+                    'schedule_start' => lang('Start Date'));
+    $label  = isset($labels[$value]) ? $labels[$value] : '';
+    $star   = ($value === 'schedule_payments') ? pg_sw_part_when('__schedule_payments_required', 'not_empty') : array();
+    $words  = array(pg_sw_part_el('span', '', 'Text', array('text' => $label)),
+                    pg_sw_part_el('span', 'text-danger', 'Required mark', array_merge(array('text' => '*'), $star)));
+    $control = ($value === 'schedule_period')
+        ? pg_sw_part_el('select', 'form-select', $label, array('_bindings' => array('value' => $value)))
+        : pg_sw_part_el('input', 'form-control', $label, array('_bindings' => array('value' => $value)));
+    $children = array(pg_sw_part_el('label', 'form-label', 'Label', array(), $words), $control);
+    if ($value === 'schedule_payments') {
+        $help = pg_sw_part_when('__schedule_payments_help', 'not_empty');
+        $help['_bindings']['text'] = '__schedule_payments_help';
+        $children[] = pg_sw_part_el('div', 'form-text', 'Help', $help);
+    }
+    return pg_sw_part_el('div', 'mb-3 pg-cart-recurring-field', $label,
+        ($value === 'schedule_start') ? pg_sw_part_when('__schedule_start_shown', 'not_empty') : array(), $children);
+}
+
+// The payment schedule of a cart line whose product lets the customer set
+// it (the cart.item_schedule list, one row): a box headed "Payment
+// Schedule" holding frequency, number of payments and start date. A line
+// with a fixed schedule has no row, so nothing is drawn.
+function pg_sw_part_cart_item_schedule($cfg = array())
+{
+    $fields = array();
+    foreach (array_keys(pg_sw_cart_schedule_control_specs()) as $value) $fields[] = pg_sw_part_cart_schedule_field($value);
+    return array(array('type' => 'loop_area', 'props' => array('source' => 'cart.item_schedule'), 'children' => array(
+        pg_sw_part_el('fieldset', 'pg-cart-recurring-set border rounded p-3 mb-3', 'Payment Schedule',
+            array('_attrs' => array(array('name' => 'data-pg-recurring-item', 'value' => '{{__schedule_item}}'))),
+            array_merge(array(pg_sw_part_el('legend', 'float-none w-auto px-2 fs-6 fw-semibold', 'Heading', array('text' => lang('Payment Schedule')))), $fields)),
+    )));
+}
+
 // A card added after the order view: the shell the returns and legal
 // documents cards had, a card with a small heading, shown by $flag.
 function pg_sw_part_order_card($class, $name, $flag, $heading, $body)
@@ -562,13 +864,13 @@ function pg_sw_part_order_card($class, $name, $flag, $heading, $body)
 }
 
 // The returns card: the order's return requests (the returns list part)
-// and the request form, still built by returns.php (__return_form), shown
-// while either has something and the setting is on (show_returns_card).
+// and the request forms (the return form part), shown while either has
+// something and the setting is on (show_returns_card).
 function pg_sw_part_order_returns($cfg = array(), $tree = array())
 {
     return array(pg_sw_part_order_card('pg-ov-returns-block', 'Returns', 'show_returns_card', lang('Returns'), array(
         pg_sw_part_el('div', '', 'Return requests', array(), pg_sw_part_order_returns_list($cfg)),
-        pg_sw_part_el('div', '', 'Return request form', array('_bindings' => array('text' => '__return_form'))),
+        pg_sw_part_el('div', '', 'Return request form', array(), pg_sw_part_order_return_form($cfg)),
     )));
 }
 
@@ -586,7 +888,7 @@ function pg_sw_return_badge_classes()
 // and a status badge per status; its products (order.return_lines); the
 // reason, the notes; how to send the goods back once approved, the code
 // after it; the tracking number, the refund date; then the customer's
-// moves, forms built by returns.php (__return_actions_html). Shown when
+// moves (pg_sw_part_order_return_moves()). Shown when
 // the order has returns (has_returns).
 function pg_sw_part_order_returns_list($cfg = array())
 {
@@ -629,15 +931,15 @@ function pg_sw_part_order_returns_list($cfg = array())
                 )),
                 $detail(lang('Tracking number'), '__return_tracking_number', ''),
                 $detail(lang('Refund due by'), '__return_refund_deadline', ''),
-                pg_sw_part_el('div', '', 'The customer\'s moves', pg_sw_part_value('__return_actions_html', '')),
+                pg_sw_part_el('div', '', 'The customer\'s moves', array(), pg_sw_part_order_return_moves($cfg)),
             )),
         )),
     )));
 }
 
 // The legal documents card: a link to each copy kept with the order, in a
-// new window, and the last day of the right of withdrawal under them unless
-// the layout shows that day itself.
+// new window, and the last day of the right of withdrawal under them (as a
+// sentence: firm, estimated or ended) unless the layout shows that day itself.
 function pg_sw_part_order_legal_documents($cfg = array(), $tree = array())
 {
     $types = pg_legal_document_types();
@@ -654,15 +956,22 @@ function pg_sw_part_order_legal_documents($cfg = array(), $tree = array())
         $link('contract', '__legal_contract_url', 'has_legal_contract'),
     )));
     if (!pg_sw_placed($tree, array('__withdrawal_deadline', '__withdrawal_text'))) {
-        $body[] = pg_sw_part_el('p', 'small text-muted mt-2 mb-0', 'Right of Withdrawal', array(
-            'text' => '', '_bindings' => array('text' => '__withdrawal_text', 'eo_visible_if' => 'has_withdrawal_deadline'),
-        ));
+        // One sentence per state, the day where the language puts it: the
+        // words pg_legal_withdrawal_text() writes, each under its own flag.
+        $line = function ($name, $text, $flag) {
+            return pg_sw_part_sentence('p', 'small text-muted mt-2 mb-0', $name, $text, '__withdrawal_deadline', array('_bindings' => array('eo_visible_if' => $flag)));
+        };
+        $body[] = $line('Right of Withdrawal', lang('Last day of the right of withdrawal: {var:1}'), 'withdrawal_deadline_firm');
+        $body[] = $line('Estimated Right of Withdrawal', lang('Last day of the right of withdrawal: {var:1} (estimated; the 14 days run from delivery).'), 'withdrawal_deadline_estimated');
+        $body[] = $line('Ended Right of Withdrawal', lang('The right of withdrawal ended on {var:1}.'), 'withdrawal_ended');
     }
     return array(pg_sw_part_order_card('pg-ov-legal-documents', 'Legal Documents', 'has_legal_documents', lang('Legal Documents'), $body));
 }
 
 // A comment's stars: five drawings in a span said once as "Rated N out of
-// 5" (__comment_rating_label), the first N filled (__comment_rating gte
+// 5", one translatable sentence with the rating where the language puts it
+// (the label's own words, __comment_rating in place of {var:1}), the first
+// N filled (__comment_rating gte
 // the star's place), the rest empty. Drawn only for a rating; the colour
 // comes from the design (text-warning in the starters). The look that
 // keeps the drawings side by side is in pg_carousel_layout.css.
@@ -676,7 +985,7 @@ function pg_sw_part_comment_stars($cfg = array())
     return array(pg_sw_part_el('span', 'pg-comment-stars', 'Stars', array_merge(
         array('_attrs' => array(
             array('name' => 'role', 'value' => 'img'),
-            array('name' => 'aria-label', 'value' => '{{__comment_rating_label}}'),
+            array('name' => 'aria-label', 'value' => lang(array('string' => 'Rated {var:1} out of 5', 'vars' => '{{__comment_rating}}'))),
         )),
         pg_sw_part_when('__comment_rating', 'not_empty')
     ), $stars));
@@ -742,6 +1051,50 @@ function pg_sw_part_catalog_breadcrumb_listing($cfg = array())
 function pg_sw_part_catalog_breadcrumb_item($cfg = array())
 {
     return pg_sw_part_catalog_breadcrumb('pg-civ-breadcrumb mb-3');
+}
+
+// The attribute filters a catalog listing applies, as it drew them: a box
+// (pg-sw-attr-active-filters) drawn when there are any
+// (__has_active_attr_filters), one badge per filter (catalog.active_filters)
+// linking to the listing without it, its words and a cross after them. The
+// badges' weight, the cross's size and the box's flex row (no gap from the
+// white space between the badges) are in pg_carousel_layout.css.
+function pg_sw_part_catalog_active_filters($cfg = array())
+{
+    return array(pg_sw_part_el('div', 'pg-sw-attr-active-filters mb-3', 'Active attribute filters', pg_sw_part_when('__has_active_attr_filters', 'eq', '1'), array(
+        array('type' => 'loop_area', 'props' => array('source' => 'catalog.active_filters'), 'children' => array(
+            pg_sw_part_el('a', 'badge text-bg-secondary text-decoration-none me-2 mb-1 d-inline-flex align-items-center', 'Filter chip', array(
+                'href' => '#', 'text' => '', 'textPosition' => 'start',
+                '_bindings' => array('text' => '__filter_chip_label', 'href' => '__filter_chip_url'),
+            ), array(
+                pg_sw_part_el('span', 'bi bi-x-lg ms-2', 'Remove icon'),
+            )),
+        )),
+    )));
+}
+
+// What the listing's filter chip strip held: the active attribute filters,
+// then, while any filter is active (__has_active_filters), the button that
+// clears them all, pushed to the row's end.
+function pg_sw_part_catalog_filter_chips_inner($cfg = array())
+{
+    return array_merge(pg_sw_part_catalog_active_filters($cfg), array(
+        pg_sw_part_el('span', 'ms-auto', 'Clear Filters', pg_sw_part_when('__has_active_filters', 'eq', '1'), array(
+            pg_sw_part_el('a', 'btn btn-sm btn-outline-danger', 'Clear Filters button', array(
+                'href' => '#', 'text' => lang('Clear Filters'), '_bindings' => array('href' => '__clear_filters_url'),
+            ), array(
+                pg_sw_part_el('i', 'bi bi-x-circle me-1', 'Icon'),
+            )),
+        )),
+    ));
+}
+
+// The filter chip strip (pg-sw-filter-chips), a flex row drawn while any
+// filter is active.
+function pg_sw_part_catalog_filter_chips($cfg = array())
+{
+    return array(pg_sw_part_el('div', 'pg-sw-filter-chips d-flex align-items-center gap-2 flex-wrap py-2', 'Filter Chips',
+        pg_sw_part_when('__has_active_filters', 'eq', '1'), pg_sw_part_catalog_filter_chips_inner($cfg)));
 }
 
 // The products bought together with the one a catalog detail view shows,

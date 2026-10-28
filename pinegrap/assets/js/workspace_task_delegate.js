@@ -55,9 +55,10 @@
         return node;
     }
 
-    function face(h, src, className) {
-        var img = h.avatar({ avatar: src }, '');
-        img.className = className;
+    // who: a delegate or an assistant ({avatar, initials, tone, name}).
+    function face(h, who, className) {
+        var img = h.avatar(who || {}, '');
+        img.classList.add(className);
         return img;
     }
 
@@ -167,7 +168,7 @@
         }
 
         if (change.can_dismiss) {
-            var dismiss = h.button('btn btn-sm btn-ghost', h.t('change_dismiss'), 'bi-x-lg');
+            var dismiss = h.button('btn btn-sm btn-text theme-secondary', h.t('change_dismiss'), 'bi-x-lg');
 
             dismiss.addEventListener('click', function () {
                 decide('ws_ai_change_dismiss');
@@ -379,7 +380,7 @@
             var main = h.el('div', 'ws-task-note-main');
             var meta = h.el('div', 'ws-task-note-meta');
 
-            row.appendChild(face(h, item.assistant.avatar, 'ws-task-note-avatar'));
+            row.appendChild(face(h, item.assistant, 'ws-task-note-avatar'));
 
             meta.appendChild(h.el('b', '', item.assistant.name));
 
@@ -543,7 +544,7 @@
             head.appendChild(h.el('span', 'fw-semibold ws-grow', h.t('dg_title')));
 
             if (state.can_stop) {
-                var stop = h.button('btn btn-sm btn-ghost py-0', h.t('dg_stop'), 'bi-stop-circle');
+                var stop = h.button('btn btn-sm btn-text theme-secondary py-0', h.t('dg_stop'), 'bi-stop-circle');
                 stop.addEventListener('click', function () {
                     h.ask(h.t('dg_stop_confirm'), h.t('dg_stop'), true).then(function (yes) {
                         if (yes) {
@@ -558,7 +559,7 @@
 
             if (state.delegate) {
                 var badge = h.el('div', 'ws-task-delegate-with');
-                badge.appendChild(face(h, state.delegate.avatar, 'ws-task-delegate-face'));
+                badge.appendChild(face(h, state.delegate, 'ws-task-delegate-face'));
 
                 var who = h.el('div', 'ws-grow');
                 who.appendChild(h.el('div', 'fw-semibold', h.t('dg_with', state.delegate.name)));
@@ -566,7 +567,7 @@
                 badge.appendChild(who);
 
                 if (state.can_take) {
-                    var back = h.button('btn btn-sm btn-ghost', h.t('dg_take_back'), 'bi-arrow-return-left');
+                    var back = h.button('btn btn-sm btn-text theme-secondary', h.t('dg_take_back'), 'bi-arrow-return-left');
                     back.addEventListener('click', function () {
                         h.ask(h.t('dg_take_confirm'), h.t('dg_take_back'), true).then(function (yes) {
                             if (yes) {

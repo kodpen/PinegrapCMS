@@ -277,7 +277,11 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
             <script>
                 var software_editor_version = "' . $page_editor_version . '";
                 CKEDITOR.config.language = "' . lang(array('info' => '')) . '";
-                CKEDITOR.config.disableAutoInline = true;
+                // A property of CKEDITOR itself, read when the page is ready:
+                // without it every contenteditable element, such as a code
+                // editor .cm-content, became an inline editor that asked
+                // for the missing config.js.
+                CKEDITOR.disableAutoInline = true;
                 CKEDITOR.config.toolbarCanCollapse = true;
                 
 

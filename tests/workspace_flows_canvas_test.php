@@ -156,8 +156,55 @@ function test_workspace_flows_canvas_brief_is_typed()
 	$flow = array('id' => '12', 'name' => 'Onboarding', 'status' => 'live', 'access' => 'run', 'owner_id' => '4', 'channel_id' => '9', 'draft_rev' => '3', 'version_id' => '30');
 	$brief = ws_flow_brief(array('id' => 7), $flow, 2);
 
-	pg_assert_same(array('id' => 12, 'name' => 'Onboarding', 'status' => 'live', 'access' => 'run', 'mine' => false, 'channel_id' => 9, 'draft_rev' => 3, 'version' => 2), $brief);
+	pg_assert_same(array('id' => 12, 'name' => 'Onboarding', 'status' => 'live', 'access' => 'run', 'mine' => false, 'channel_id' => 9, 'draft_rev' => 3, 'version' => 2, 'start' => ''), $brief);
 	pg_assert_true(ws_flow_brief(array('id' => 4), $flow, 0)['mine'], 'the owner\'s own');
+
+	foreach (array('time', 'manual', 'event', 'join') as $start) {
+		pg_assert_same($start, ws_flow_brief(array('id' => 7), $flow, 2, $start)['start'], 'start ' . $start);
+	}
+}
+
+// A flow opened on the screen says how it starts, so the list keeps the kind
+// after a save: the draft of a flow never published, by its start box.
+function test_workspace_flows_canvas_detail_carries_the_start_kind()
+{
+	foreach (array('schedule' => 'time', 'manual' => 'manual', 'event' => 'event', 'join' => 'join') as $kind => $start) {
+		$draft = array('v' => 1, 'nodes' => array(
+			array('id' => 'start_1', 'kind' => $kind, 'x' => 0, 'y' => 0),
+			array('id' => 'end_1', 'kind' => 'end', 'x' => 288, 'y' => 0),
+		), 'edges' => array(array('from' => 'start_1', 'to' => 'end_1')));
+		$flow = array('id' => '12', 'name' => 'Onboarding', 'status' => 'draft', 'access' => 'view', 'owner_id' => '4', 'channel_id' => '9',
+			'draft_rev' => '3', 'version_id' => '0', 'draft' => json_encode($draft));
+
+		pg_assert_same($start, ws_flow_detail(array('id' => 7), $flow)['start'], 'detail start of a ' . $kind . ' box');
+	}
+
+	$flow['draft'] = json_encode(array('v' => 1, 'nodes' => array(), 'edges' => array()));
+	pg_assert_same('', ws_flow_detail(array('id' => 7), $flow)['start'], 'no start box: empty');
+}
+
+// The list action hands each flow its start kind, and the screen keeps it
+// in a saved flow's entry and narrows the list by it with a select.
+function test_workspace_flows_canvas_list_filters_by_start_kind()
+{
+	$actions = file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	$list = substr($actions, strpos($actions, "case 'ws_flow_list':"), 800);
+
+	pg_assert_contains('ws_flows_start_kinds($rows)', $list, 'the list reads each flow\'s start');
+
+	$script = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$entry = substr($script, strpos($script, 'function listEntry(flow)'), 400);
+	$draw = substr($script, strpos($script, 'function drawList()'), 3000);
+	$filter = substr($script, strpos($script, 'function startFilter()'), 1500);
+
+	pg_assert_contains('start: flow.start', $entry, 'a saved flow keeps its start kind');
+	pg_assert_contains('startFilter()', $draw, 'the list draws the filter');
+	pg_assert_contains('flow.start === state.startFilter', $draw, 'the list is narrowed by the chosen start');
+	pg_assert_contains("el('select', 'form-control form-control-sm')", $filter, 'the filter is a Bootstrap select');
+
+	foreach (array('time', 'manual', 'event', 'join') as $start) {
+		pg_assert_contains("['" . $start . "', 'fl_", $filter, 'a choice for ' . $start);
+	}
 }
 
 // A save always names the draft it was made on: without draft_rev,
@@ -823,4 +870,319 @@ JS
 	pg_assert_same(array('fl_cond_threshold', '5', 'number'), array($result['threshold']['label'], $result['threshold']['shown'], $result['threshold']['type']), 'and asks for it');
 	pg_assert_same(3, $result['threshold']['kept'], 'what is typed is kept');
 	pg_assert_same(0, $result['channel'], 'a count of a channel\'s tasks starts at every channel');
+}
+
+// "Add value" offers what started the run and the boxes before the box, in
+// arrow order, each with the fields the server lets {{node.*}} and
+// {{trigger.*}} read: a web check's by its mode, a report's counts by the
+// counts it sends, an event's by the event. A box after the reader, the box
+// itself and a start that gives nothing are not offered. A box that may not
+// have run is marked as the reference check warns about it
+// (ws_flow_sure_before()): a condition's branch, not the boxes every way in
+// passes. Before, the builder typed {{node.<id>.<field>}} with ids the
+// canvas never shows.
+function test_workspace_flows_canvas_value_picker_offers_the_boxes_before()
+{
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups'),
+		<<<'JS'
+var KINDS = {
+    event: { into: false, out: ['next'] },
+    manual: { into: false, out: ['next'] },
+    web_check: { name: 'Check a web address', into: true, out: ['done', 'failed'] },
+    condition: { name: 'Condition', into: true, out: ['yes', 'no'] },
+    report: { name: 'Report', into: true, out: ['done', 'failed'] },
+    post: { name: 'Post', into: true, out: ['done', 'failed'] },
+    email: { name: 'Email', into: true, out: ['done', 'failed'] }
+};
+var FL = {
+    outputs: { web_check: [{ key: 'status_code', label: 'Status code', mode: 'status' }, { key: 'days_left', label: 'Days left', mode: 'ssl' }], report: [{ key: 'message_id', label: 'Message' }], post: [{ key: 'message_id', label: 'Message' }], condition: [], email: [{ key: 'sent', label: 'Sent' }] },
+    trigger_outputs: { kinds: { event: [{ key: 'event', label: 'What happened' }, { key: 'record_id', label: 'Record' }], manual: [] }, events: { 'order.created': [{ key: 'order_number', label: 'Order number' }, { key: 'record_id', label: 'Again' }] } },
+    steps: { metrics: [{ key: 'tasks_open', label: 'Open tasks' }] }
+};
+function box(id, kind, config, y) { return { id: id, kind: kind, label: '', config: config || {}, x: 0, y: y }; }
+function groups(id) {
+    return valueGroups(nodeById(id)).map(function (group) {
+        return group.node.id + (group.skipped ? ' skipped' : '') + ': ' + group.values.map(function (value) { return value.token.slice(2, -2) + '=' + value.label; }).join(', ');
+    });
+}
+state = { graph: { nodes: [
+    box('event_1', 'event', { event: 'order.created' }, 0),
+    box('web_check_1', 'web_check', { mode: 'ssl' }, 1),
+    box('report_1', 'report', { metrics: [{ key: 'tasks_open', param: 4 }, { key: 'Bad-key', param: 0 }] }, 2),
+    box('condition_1', 'condition', {}, 3),
+    box('post_1', 'post', {}, 4),
+    box('email_1', 'email', {}, 5)
+], edges: [
+    { from: 'event_1', to: 'web_check_1', on: 'next' },
+    { from: 'web_check_1', to: 'report_1', on: 'done' },
+    { from: 'report_1', to: 'condition_1', on: 'done' },
+    { from: 'condition_1', to: 'post_1', on: 'yes' },
+    { from: 'post_1', to: 'email_1', on: 'done' },
+    { from: 'condition_1', to: 'email_1', on: 'no' }
+] } };
+var out = { email: groups('email_1'), web: groups('web_check_1') };
+state.graph.nodes[0] = box('manual_1', 'manual', {}, 0);
+state.graph.edges[0].from = 'manual_1';
+out.manual = groups('web_check_1');
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'event_1: trigger.event=What happened, trigger.record_id=Record, trigger.order_number=Order number',
+		'web_check_1: node.web_check_1.text=fl_values_text, node.web_check_1.outcome=fl_values_outcome, node.web_check_1.status=fl_values_status, node.web_check_1.days_left=Days left',
+		'report_1: node.report_1.text=fl_values_text, node.report_1.outcome=fl_values_outcome, node.report_1.status=fl_values_status, node.report_1.message_id=Message, node.report_1.tasks_open_4=Open tasks',
+		'condition_1: node.condition_1.text=fl_values_text, node.condition_1.outcome=fl_values_outcome, node.condition_1.status=fl_values_status',
+		'post_1 skipped: node.post_1.text=fl_values_text, node.post_1.outcome=fl_values_outcome, node.post_1.status=fl_values_status, node.post_1.message_id=Message',
+	), $result['email'], 'the start, then every box before in arrow order; a branch marked');
+	pg_assert_same(array('event_1: trigger.event=What happened, trigger.record_id=Record, trigger.order_number=Order number'), $result['web'], 'the first box after the start reads only the start');
+	pg_assert_same(array(), $result['manual'], 'a start that gives nothing is not offered');
+}
+
+// A condition on a value (data-passing D7) offers the values "Add value"
+// does, a branch that may be skipped marked; a number's comparisons include
+// more and less, a text's "contains"; choosing a text value after "is more
+// than" goes back to "is". The box reads the value's name.
+function test_workspace_flows_canvas_condition_value_rule()
+{
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups', 'valueSources', 'valueNames',
+			'field', 'textInput', 'changeInput', 'conditionValue', 'conditionCompare', 'conditionValueRule', 'conditionMeta'),
+		<<<'JS'
+var uid = 0;
+var DAYS = {};
+var VALUE_OPS = { number: ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'empty', 'not_empty'], text: ['eq', 'neq', 'contains', 'empty', 'not_empty'] };
+var KINDS = {
+    manual: { into: false, out: ['next'] },
+    web_check: { name: 'Check a web address', into: true, out: ['done', 'failed'] },
+    condition: { name: 'Condition', into: true, out: ['yes', 'no'] },
+    post: { name: 'Post', into: true, out: ['done', 'failed'] }
+};
+var FL = {
+    outputs: { web_check: [{ key: 'status_code', type: 'number', label: 'Status code', mode: 'status' }], post: [{ key: 'message_id', type: 'number', label: 'Message' }], condition: [] },
+    trigger_outputs: { kinds: { manual: [] }, events: {} },
+    steps: { operators: { eq: 'is', neq: 'is not', gt: 'is more than', gte: 'is at least', lt: 'is less than', lte: 'is at most', contains: 'contains', empty: 'is empty', not_empty: 'is not empty' } }
+};
+K.select = function (options, value) {
+    var node = new FakeNode('select');
+    options.forEach(function (option) {
+        var item = new FakeNode('option', '', option[1]);
+        item.value = String(option[0]);
+        node.appendChild(item);
+    });
+    node.value = String(value);
+    return node;
+};
+var redrawn = 0;
+function refreshNode() {}
+function drawSettings() { redrawn++; }
+function box(id, kind, y) { return { id: id, kind: kind, label: '', config: {}, x: 0, y: y }; }
+state = { edit: true, graph: { nodes: [box('manual_1', 'manual', 0), box('web_check_1', 'web_check', 1), box('post_1', 'post', 2), box('condition_1', 'condition', 3), box('condition_2', 'condition', 4)], edges: [
+    { from: 'manual_1', to: 'web_check_1', on: 'next' },
+    { from: 'web_check_1', to: 'post_1', on: 'done' },
+    { from: 'web_check_1', to: 'condition_1', on: 'failed' },
+    { from: 'post_1', to: 'condition_1', on: 'done' }
+] } };
+function controls(box) { return box.children.map(function (wrap) { return wrap.children[1]; }); }
+function options(select) { return select.children.map(function (item) { return item.value + '=' + item.textContent; }); }
+var rule = { type: 'value', ref: '{{node.web_check_1.status_code}}', op: 'gt', value: '' };
+var node = nodeById('condition_1');
+node.config.rule = rule;
+var form = new FakeNode('div');
+conditionValueRule(form, node, rule);
+var out = { values: options(controls(form)[0]), ops: options(controls(form)[1]).map(function (item) { return item.split('=')[0]; }), meta: conditionMeta(rule, node) };
+var pick = controls(form)[0];
+pick.value = '{{node.web_check_1.text}}';
+pick.listeners.change.forEach(function (fn) { fn(); });
+out.after = { ref: rule.ref, op: rule.op, redrawn: redrawn };
+form = new FakeNode('div');
+conditionValueRule(form, node, rule);
+out.textOps = options(controls(form)[1]).map(function (item) { return item.split('=')[0]; });
+form = new FakeNode('div');
+conditionValueRule(form, nodeById('condition_2'), { type: 'value', ref: '', op: 'eq', value: '' });
+out.alone = options(controls(form)[0]).length;
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'=fl_cond_value_ref_pick',
+		'{{node.web_check_1.text}}=Check a web address › fl_values_text',
+		'{{node.web_check_1.outcome}}=Check a web address › fl_values_outcome',
+		'{{node.web_check_1.status}}=Check a web address › fl_values_status',
+		'{{node.web_check_1.status_code}}=Check a web address › Status code',
+		'{{node.post_1.text}}=Post › fl_values_text (fl_values_skipped)',
+		'{{node.post_1.outcome}}=Post › fl_values_outcome (fl_values_skipped)',
+		'{{node.post_1.status}}=Post › fl_values_status (fl_values_skipped)',
+		'{{node.post_1.message_id}}=Post › Message (fl_values_skipped)',
+	), $result['values'], 'the boxes before, a branch marked');
+	pg_assert_same(array('eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'empty', 'not_empty'), $result['ops'], 'a number\'s comparisons');
+	pg_assert_same('Check a web address › Status code', $result['meta'], 'the box reads the value\'s name');
+	pg_assert_same(array('ref' => '{{node.web_check_1.text}}', 'op' => 'eq', 'redrawn' => 1), $result['after'], 'a text after "is more than" goes back to "is"');
+	pg_assert_same(array('eq', 'neq', 'contains', 'empty', 'not_empty'), $result['textOps'], 'a text\'s comparisons');
+	pg_assert_same(1, $result['alone'], 'a box with nothing before offers no value');
+}
+
+// The data threads drawn on the canvas are read from the references the
+// fields hold (Flows T1): one per value and field, from the box that gives
+// it (a start box for what started the run), typed and toned by type in
+// turn; a value no box before gives has no source, one from a branch that
+// may be skipped is marked; a value written twice in a field is one thread,
+// in two fields two. A condition on a value reads its one value.
+function test_workspace_flows_canvas_data_threads_come_from_the_fields()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+	$constants = '';
+
+	foreach (array('VALUE_TOKEN', 'VALUE_FIELDS', 'THREAD_TONES') as $name) {
+		pg_assert_true((bool) preg_match('/^( *)var ' . $name . ' = (?:[^\n]*;\n|\{\n.*?\n\1\};\n)/ms', $source, $found), 'workspace_flow.js has ' . $name);
+		$constants .= $found[0];
+	}
+
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups', 'valueSources',
+			'fieldTexts', 'dataThreads'),
+		$constants . <<<'JS'
+var KINDS = {
+    event: { name: 'Event', into: false, out: ['next'] },
+    web_check: { name: 'Check a web address', into: true, out: ['done', 'failed'] },
+    condition: { name: 'Condition', into: true, out: ['yes', 'no'] },
+    post: { name: 'Post', into: true, out: ['done', 'failed'] },
+    email: { name: 'Email', into: true, out: ['done', 'failed'] }
+};
+var FL = {
+    outputs: { web_check: [{ key: 'status_code', type: 'number', label: 'Status code', mode: 'status' }], post: [{ key: 'message_id', type: 'number', label: 'Message' }], condition: [], email: [] },
+    trigger_outputs: { kinds: { event: [{ key: 'event', label: 'What happened' }] }, events: { 'order.created': [{ key: 'order_number', type: 'text', label: 'Order number' }] } },
+    steps: {}
+};
+function box(id, kind, config, y) { return { id: id, kind: kind, label: '', config: config || {}, x: 0, y: y }; }
+state = { graph: { nodes: [
+    box('event_1', 'event', { event: 'order.created' }, 0),
+    box('web_check_1', 'web_check', { mode: 'status' }, 1),
+    box('condition_1', 'condition', { rule: { type: 'value', ref: '{{node.web_check_1.status_code}}' } }, 2),
+    box('post_1', 'post', { body: 'Code {{node.web_check_1.status_code}} {{node.web_check_1.status_code}}, {{node.web_check_1.text}}, {{node.gone_1.text}}' }, 3),
+    box('email_1', 'email', { subject: 'Order {{trigger.order_number}}', body: '{{node.post_1.message_id}} {{node.web_check_1.status_code}}' }, 4)
+], edges: [
+    { from: 'event_1', to: 'web_check_1', on: 'next' },
+    { from: 'web_check_1', to: 'condition_1', on: 'done' },
+    { from: 'condition_1', to: 'post_1', on: 'yes' },
+    { from: 'condition_1', to: 'email_1', on: 'no' },
+    { from: 'post_1', to: 'email_1', on: 'done' }
+] } };
+console.log(JSON.stringify(dataThreads().map(function (thread) {
+    return [thread.from, thread.to, thread.field, thread.fieldLabel, thread.label, thread.type + '-' + thread.tone, thread.skipped ? 'skipped' : ''].join(' | ');
+})));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'web_check_1 | condition_1 | rule | fl_cond_value_ref | Check a web address › Status code | number-0 | ',
+		'web_check_1 | post_1 | body | fl_post_body | Check a web address › Status code | number-1 | ',
+		'web_check_1 | post_1 | body | fl_post_body | Check a web address › fl_values_text | text-0 | ',
+		' | post_1 | body | fl_post_body | node.gone_1.text | text-1 | ',
+		'event_1 | email_1 | subject | fl_email_subject | Event › Order number | text-2 | ',
+		'post_1 | email_1 | body | fl_email_body | Post › Message | number-2 | skipped',
+		'web_check_1 | email_1 | body | fl_email_body | Check a web address › Status code | number-0 | ',
+	), $result, 'one thread per value and field, from the box that gives it');
+}
+
+// A thread drawn from a value (Flows T2) may go into the fields of the boxes
+// that may read it, never a field already holding it, never an address
+// (VALUE_FIELDS has none), a condition's only while it compares nothing; a
+// start's value may go into any box. Dropped, the token goes at the end of
+// the field after a space; a condition compares it, its comparison back to
+// "is" when a number's "more than" does not fit a text; a value that does
+// not fit the field's maximum is refused.
+function test_workspace_flows_canvas_thread_binds_into_the_fields_after()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+	$constants = '';
+
+	foreach (array('VALUE_FIELDS', 'VALUE_OPS') as $name) {
+		pg_assert_true((bool) preg_match('/^( *)var ' . $name . ' = (?:[^\n]*;\n|\{\n.*?\n\1\};\n)/ms', $source, $found), 'workspace_flow.js has ' . $name);
+		$constants .= $found[0];
+	}
+
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups', 'valueSources',
+			'openFields', 'bindTargets', 'bindValue'),
+		$constants . <<<'JS'
+var KINDS = {
+    event: { name: 'Event', into: false, out: ['next'] },
+    web_check: { name: 'Check', into: true, out: ['done', 'failed'] },
+    condition: { name: 'Condition', into: true, out: ['yes', 'no'] },
+    post: { name: 'Post', into: true, out: ['done', 'failed'] },
+    email: { name: 'Email', into: true, out: ['done', 'failed'] }
+};
+var FL = {
+    outputs: { web_check: [{ key: 'status_code', type: 'number', label: 'Status code', mode: 'status' }], post: [{ key: 'message_id', type: 'number', label: 'Message' }], condition: [], email: [] },
+    trigger_outputs: { kinds: { event: [{ key: 'event', type: 'text', label: 'What happened' }] }, events: {} },
+    steps: {}
+};
+var toasts = [];
+K.toast = function (text) { toasts.push(text); };
+var refreshed = [];
+function refreshNode(node) { refreshed.push(node.id); }
+function drawSettings() {}
+function box(id, kind, config, y) { return { id: id, kind: kind, label: '', config: config || {}, x: 0, y: y }; }
+state = { graph: { nodes: [
+    box('event_1', 'event', {}, 0),
+    box('web_check_1', 'web_check', { mode: 'status', url: 'https://example.com' }, 1),
+    box('condition_1', 'condition', { rule: { type: 'value', ref: '', op: 'gt' } }, 2),
+    box('post_1', 'post', { body: 'Code {{node.web_check_1.status_code}}' }, 3),
+    box('email_1', 'email', { to: 'a@example.com', subject: 'Hi', body: '' }, 4)
+], edges: [
+    { from: 'event_1', to: 'web_check_1', on: 'next' },
+    { from: 'web_check_1', to: 'condition_1', on: 'done' },
+    { from: 'condition_1', to: 'post_1', on: 'yes' },
+    { from: 'post_1', to: 'email_1', on: 'done' }
+] } };
+var where = function (from, token) { return bindTargets(from, token).map(function (item) { return item.node.id + '.' + item.key; }); };
+var out = {
+    status: where('web_check_1', '{{node.web_check_1.status_code}}'),
+    text: where('web_check_1', '{{node.web_check_1.text}}'),
+    trigger: where('event_1', '{{trigger.event}}'),
+    message: where('post_1', '{{node.post_1.message_id}}'),
+    later: where('email_1', '{{node.email_1.text}}')
+};
+out.subject = bindValue('web_check_1', '{{node.web_check_1.text}}', 'email_1', 'subject');
+out.body = bindValue('web_check_1', '{{node.web_check_1.text}}', 'email_1', 'body');
+out.rule = bindValue('web_check_1', '{{node.web_check_1.text}}', 'condition_1', 'rule');
+out.twice = bindValue('web_check_1', '{{node.web_check_1.text}}', 'email_1', 'body');
+out.address = bindValue('web_check_1', '{{node.web_check_1.text}}', 'email_1', 'to');
+nodeById('email_1').config.subject = new Array(240).join('x');
+out.full = bindValue('event_1', '{{trigger.event}}', 'email_1', 'subject');
+out.config = { subject: nodeById('email_1').config.subject.length, body: nodeById('email_1').config.body, rule: nodeById('condition_1').config.rule };
+out.refreshed = refreshed;
+out.toasts = toasts;
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('condition_1.rule', 'email_1.subject', 'email_1.body'), $result['status'], 'a value goes into the fields of the boxes after it, not one holding it');
+	pg_assert_same(array('condition_1.rule', 'post_1.body', 'email_1.subject', 'email_1.body'), $result['text'], 'another value of the box may go into the same field');
+	pg_assert_same(array('condition_1.rule', 'post_1.body', 'email_1.subject', 'email_1.body'), $result['trigger'], 'what started the run may go into any box');
+	pg_assert_same(array('email_1.subject', 'email_1.body'), $result['message'], 'not into a box before it');
+	pg_assert_same(array(), $result['later'], 'the last box gives to nobody');
+	pg_assert_same(array(true, true, true, false, false, false), array($result['subject'], $result['body'], $result['rule'], $result['twice'], $result['address'], $result['full']), 'bound, refused twice, into an address and over the maximum');
+	pg_assert_same(array('subject' => 239, 'body' => '{{node.web_check_1.text}}', 'rule' => array('type' => 'value', 'ref' => '{{node.web_check_1.text}}', 'op' => 'eq')), $result['config'], 'at the end after a space; a condition compares it as text');
+	pg_assert_same(array('email_1', 'email_1', 'condition_1'), $result['refreshed'], 'each bound box is redrawn');
+	pg_assert_same(array('fl_thread_full'), $result['toasts'], 'a full field says so');
 }

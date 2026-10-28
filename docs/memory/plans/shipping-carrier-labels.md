@@ -1,6 +1,6 @@
 ---
 name: shipping-carrier-labels
-description: Plan (approved 2026-10-19, not started, after shipping-management): carrier APIs for label/barcode creation, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct
+description: Plan (approved 2026-10-19, step 1 done): carrier APIs for label/barcode creation, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct
 ---
 
 ## Why?
@@ -16,7 +16,7 @@ description: Plan (approved 2026-10-19, not started, after shipping-management):
 - Marketplace orders: Trendyol common label (`createCommonLabel`, ZPL for TEX/Aras) is handled inside the marketplace connector, not here.
 
 ## What remains?
-1. Driver interface, settings card (credentials encrypted), connection test (S).
+1. Driver interface, settings card (credentials encrypted), connection test (S). Done in PR #2378 (`commerce/carrier-label-drivers.md`).
 2. Aggregator driver: create, label download, cancel, track (M).
 3. Panel actions single + bulk, label storage under `data/shipping_labels/` with retention (M).
 4. Status polling job in the dispatcher, write-back through the single path (S).
@@ -27,4 +27,4 @@ description: Plan (approved 2026-10-19, not started, after shipping-management):
 - Thermal printer output: PDF A6 always, ZPL only where the carrier supplies it.
 
 ## Where to start?
-- Wait for `shipping-management.md` step 3; then step 1 here with the aggregator's sandbox credentials.
+- Step 2: once the owner names the aggregator, add `includes/shipping/<key>.php` to `pg_label_builtin_drivers()` and test it with its sandbox credentials; decide where step 3 keeps the reference, label and barcode.

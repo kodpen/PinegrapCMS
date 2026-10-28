@@ -30,8 +30,8 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM states WHERE id = '" . $i
 
 if (!$_POST) {
     // get state data
-    $query = "SELECT * FROM states WHERE id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT * FROM states WHERE id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     $name = h($row['name']);
@@ -105,33 +105,33 @@ if (!$_POST) {
     // if state was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // delete state
-        $query = "DELETE FROM states WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM states WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete state references in zones_states_xref
-        $query = "DELETE FROM zones_states_xref WHERE state_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM zones_states_xref WHERE state_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete state references in tax_zones_states_xref
-        $query = "DELETE FROM tax_zones_states_xref WHERE state_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM tax_zones_states_xref WHERE state_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         // delete verified shipping addresses for this state
-        $query = "DELETE FROM verified_shipping_addresses WHERE state_id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM verified_shipping_addresses WHERE state_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('state'), $_POST['name']) )), $_SESSION['sessionusername']);
 
     // else state was not selected for delete
     } else {
         // update state
         $query = "UPDATE states SET
-                    name = '" . escape($_POST['name'] ?? '') . "',
-                    code = '" . escape($_POST['code'] ?? '') . "',
-                    country_id = '" . escape($_POST['country_id'] ?? '') . "',
-                    user = '" . $user['id'] . "',
+                    name = ?,
+                    code = ?,
+                    country_id = ?,
+                    user = ?,
                     timestamp = UNIX_TIMESTAMP()
-                WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) ($_POST['code'] ?? ''), (string) ($_POST['country_id'] ?? ''), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('state'), $_POST['name']) )), $_SESSION['sessionusername']);
 
     }

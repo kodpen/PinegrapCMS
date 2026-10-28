@@ -45,8 +45,6 @@
                 list.forEach(function (person) {
                     var row = el('div', 'ws-ack-person');
                     var face = h.avatar(person, '1.6rem');
-
-                    face.style.borderRadius = '50%';
                     row.appendChild(face);
                     row.appendChild(el('span', 'flex-grow-1', person.name));
 
@@ -174,7 +172,7 @@
             return null;
         }
 
-        var ask = h.button('btn btn-sm btn-ghost py-0', '', 'bi-eye', h.t('ack_request'));
+        var ask = h.button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-eye', h.t('ack_request'));
 
         ask.addEventListener('click', function () {
             request({ id: pin.id }, true, view, h, redraw);

@@ -56,9 +56,9 @@ if ($_POST['contacts']) {
                             "SELECT contact_id
                             FROM contacts_contact_groups_xref
                             WHERE
-                                (contact_id = '" . escape($contact_id) . "')
-                                AND (contact_group_id = '" . escape($contact_group_id) . "')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                (contact_id = ?)
+                                AND (contact_group_id = ?)";
+                        $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
                         
                         // if contact is not already in contact group, then add contact to contact group
                         if (mysqli_num_rows($result) == 0) {
@@ -67,9 +67,9 @@ if ($_POST['contacts']) {
                                     contact_id,
                                     contact_group_id)
                                 VALUES (
-                                    '" . escape($contact_id) . "',
-                                    '" . escape($contact_group_id) . "')";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    ?,
+                                    ?)";
+                            $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
 
                             $moved[(int) $contact_group_id]['added'][] = (int) $contact_id;
                         }
@@ -81,9 +81,9 @@ if ($_POST['contacts']) {
                         $query =
                             "DELETE FROM contacts_contact_groups_xref
                             WHERE
-                                (contact_id = '" . escape($contact_id) . "')
-                                AND (contact_group_id = '" . escape($contact_group_id) . "')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                (contact_id = ?)
+                                AND (contact_group_id = ?)";
+                        $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
 
                         if (mysqli_affected_rows(db::$con) > 0) {
                             $moved[(int) $contact_group_id]['removed'][] = (int) $contact_id;
@@ -121,8 +121,8 @@ if ($_POST['contacts']) {
 
                     $query =    "UPDATE contacts ".
                                 "SET opt_in = 1 ".
-                                "WHERE id = '" . escape($contact_id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                "WHERE id = ?";
+                    $result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
 
                     $number_of_contacts++;
                 }
@@ -151,8 +151,8 @@ if ($_POST['contacts']) {
 
                     $query =    "UPDATE contacts ".
                                 "SET opt_in = 0 ".
-                                "WHERE id = '" . escape($contact_id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                "WHERE id = ?";
+                    $result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
 
                     $number_of_contacts++;
                 }
@@ -180,16 +180,16 @@ if ($_POST['contacts']) {
                     $audit_before += pg_audit_fetch_many('contacts', array($contact_id));
 
                     // delete contact
-                    $query = "DELETE FROM contacts WHERE id = '" . escape($contact_id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $query = "DELETE FROM contacts WHERE id = ?";
+                    $result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
                     
                     // delete contact references in contacts_contact_groups_xref
-                    $query = "DELETE FROM contacts_contact_groups_xref WHERE contact_id = '" . escape($contact_id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $query = "DELETE FROM contacts_contact_groups_xref WHERE contact_id = ?";
+                    $result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
                     
                     // delete contact references in opt_in
-                    $query = "DELETE FROM opt_in WHERE contact_id = '" . escape($contact_id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $query = "DELETE FROM opt_in WHERE contact_id = ?";
+                    $result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
 
                     $number_of_contacts++;
                 }

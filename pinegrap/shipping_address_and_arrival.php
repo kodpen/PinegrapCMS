@@ -34,8 +34,8 @@ $query =
         first_name,
         address_verified
     FROM ship_tos
-    WHERE id = '" . escape((isset($_POST['ship_to_id']) && is_string($_POST['ship_to_id'])) ? $_POST['ship_to_id'] : '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE id = ?";
+$result = db_q($query, array((string) ((isset($_POST['ship_to_id']) && is_string($_POST['ship_to_id'])) ? $_POST['ship_to_id'] : ''))) or output_error('Query failed.');
 
 // if ship to is not found, output error
 if (mysqli_num_rows($result) == 0) {
@@ -64,9 +64,9 @@ $query =
     LEFT JOIN shipping_address_and_arrival_pages ON page.page_id = shipping_address_and_arrival_pages.page_id
     LEFT JOIN page AS next_page ON shipping_address_and_arrival_pages.next_page_id = next_page.page_id
     WHERE
-        (page.page_id = '" . escape((isset($_POST['page_id']) && is_string($_POST['page_id'])) ? $_POST['page_id'] : '') . "')
+        (page.page_id = ?)
         AND ((page.page_type = 'shipping address and arrival') OR (shipping_address_and_arrival_pages.page_id IS NOT NULL))";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = db_q($query, array((string) ((isset($_POST['page_id']) && is_string($_POST['page_id'])) ? $_POST['page_id'] : ''))) or output_error('Query failed.');
 
 // if a shipping address & arrival page was not found for the id that was passed, then output error
 if (mysqli_num_rows($result) == 0) {
@@ -163,8 +163,8 @@ if (isset($_POST['arrival_date']) && is_string($_POST['arrival_date'])) {
             code,
             custom,
             custom_maximum_arrival_date
-        FROM arrival_dates WHERE id = '" . escape($liveform->get_field_value('arrival_date')) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        FROM arrival_dates WHERE id = ?";
+    $result = db_q($query, array((string) ($liveform->get_field_value('arrival_date')))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $arrival_date_name = $row['name'];
     $arrival_date = $row['arrival_date'];
@@ -253,8 +253,8 @@ if (isset($_POST['arrival_date']) && is_string($_POST['arrival_date'])) {
                 // see if this zone is allowed for this shipping method
                 $query = "SELECT shipping_method_id
                          FROM shipping_methods_zones_xref
-                         WHERE (shipping_method_id = $shipping_method_id) AND (zone_id = '$zone_id')";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                         WHERE (shipping_method_id = ?) AND (zone_id = ?)";
+                $result = db_q($query, array((int) $shipping_method_id, (string) $zone_id)) or output_error('Query failed.');
 
                 // if this zone is allowed for this shipping method, remember that
                 if (mysqli_num_rows($result) > 0) {
@@ -386,9 +386,9 @@ if (isset($_POST['arrival_date']) && is_string($_POST['arrival_date'])) {
                 FROM shipping_cutoffs
                 LEFT JOIN arrival_dates ON shipping_cutoffs.arrival_date_id = arrival_dates.id
                 WHERE
-                    (arrival_dates.arrival_date = '" . escape($arrival_date) . "')
-                    AND (shipping_cutoffs.shipping_method_id = '$shipping_method_id')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    (arrival_dates.arrival_date = ?)
+                    AND (shipping_cutoffs.shipping_method_id = ?)";
+            $result = db_q($query, array((string) $arrival_date, (string) $shipping_method_id)) or output_error('Query failed.');
             
             // if there is a shipping cut-off, then determine if this shipping method is valid by looking at the cut-off date & time
             if (mysqli_num_rows($result) > 0) {
@@ -443,32 +443,32 @@ $address_verified = verify_address(array(
 
 // update ship to
 $query = "UPDATE ship_tos SET
-            salutation = '" . escape($liveform->get_field_value('salutation')) . "',
-            first_name = '" . escape($liveform->get_field_value('first_name')) . "',
-            last_name = '" . escape($liveform->get_field_value('last_name')) . "',
-            company = '" . escape($liveform->get_field_value('company')) . "',
-            address_1 = '" . escape($liveform->get_field_value('address_1')) . "',
-            address_2 = '" . escape($liveform->get_field_value('address_2')) . "',
-            city = '" . escape($liveform->get_field_value('city')) . "',
-            state = '" . escape($liveform->get_field_value('state')) . "',
-            zip_code = '" . escape($liveform->get_field_value('zip_code')) . "',
-            country = '" . escape($liveform->get_field_value('country')) . "',
-            address_type = '" . escape($liveform->get_field_value('address_type')) . "',
-            address_verified = '" . escape($address_verified) . "',
-            phone_number = '" . escape($liveform->get_field_value('phone_number')) . "',
-            arrival_date_id = '" . escape($liveform->get_field_value('arrival_date')) . "',
-            arrival_date_code = '" . escape($arrival_date_code) . "',
-            arrival_date = '" . escape($arrival_date) . "',
+            salutation = ?,
+            first_name = ?,
+            last_name = ?,
+            company = ?,
+            address_1 = ?,
+            address_2 = ?,
+            city = ?,
+            state = ?,
+            zip_code = ?,
+            country = ?,
+            address_type = ?,
+            address_verified = ?,
+            phone_number = ?,
+            arrival_date_id = ?,
+            arrival_date_code = ?,
+            arrival_date = ?,
             complete = '0'
-         WHERE id = '" . escape($_POST['ship_to_id'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+         WHERE id = ?";
+$result = db_q($query, array((string) ($liveform->get_field_value('salutation')), (string) ($liveform->get_field_value('first_name')), (string) ($liveform->get_field_value('last_name')), (string) ($liveform->get_field_value('company')), (string) ($liveform->get_field_value('address_1')), (string) ($liveform->get_field_value('address_2')), (string) ($liveform->get_field_value('city')), (string) ($liveform->get_field_value('state')), (string) ($liveform->get_field_value('zip_code')), (string) ($liveform->get_field_value('country')), (string) ($liveform->get_field_value('address_type')), (string) $address_verified, (string) ($liveform->get_field_value('phone_number')), (string) ($liveform->get_field_value('arrival_date')), (string) $arrival_date_code, (string) $arrival_date, (string) ($_POST['ship_to_id'] ?? ''))) or output_error('Query failed.');
 
 // If the user is logged in and not ghosting, then update address book.
 if (USER_LOGGED_IN and !$ghost) {
 
     // find recipient in address book
-    $query = "SELECT id FROM address_book WHERE user = '" . e(USER_ID) . "' AND ship_to_name = '" . e($ship_to_name) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT id FROM address_book WHERE user = ? AND ship_to_name = ?";
+    $result = db_q($query, array((string) USER_ID, (string) $ship_to_name)) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     // $row is null when the recipient is not in the address book yet.
@@ -517,21 +517,21 @@ if (USER_LOGGED_IN and !$ghost) {
                     address_type,
                     phone_number)
                  VALUES (
-                    '" . e(USER_ID) . "',
-                    '" . escape($ship_to_name) . "',
-                    '" . escape($liveform->get_field_value('salutation')) . "',
-                    '" . escape($liveform->get_field_value('first_name')) . "',
-                    '" . escape($liveform->get_field_value('last_name')) . "',
-                    '" . escape($liveform->get_field_value('company')) . "',
-                    '" . escape($liveform->get_field_value('address_1')) . "',
-                    '" . escape($liveform->get_field_value('address_2')) . "',
-                    '" . escape($liveform->get_field_value('city')) . "',
-                    '" . escape($liveform->get_field_value('state')) . "',
-                    '" . escape($liveform->get_field_value('zip_code')) . "',
-                    '" . escape($liveform->get_field_value('country')) . "',
-                    '" . escape($liveform->get_field_value('address_type')) . "',
-                    '" . escape($liveform->get_field_value('phone_number')) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?)";
+        $result = db_q($query, array((string) USER_ID, (string) $ship_to_name, (string) ($liveform->get_field_value('salutation')), (string) ($liveform->get_field_value('first_name')), (string) ($liveform->get_field_value('last_name')), (string) ($liveform->get_field_value('company')), (string) ($liveform->get_field_value('address_1')), (string) ($liveform->get_field_value('address_2')), (string) ($liveform->get_field_value('city')), (string) ($liveform->get_field_value('state')), (string) ($liveform->get_field_value('zip_code')), (string) ($liveform->get_field_value('country')), (string) ($liveform->get_field_value('address_type')), (string) ($liveform->get_field_value('phone_number')))) or output_error('Query failed.');
     }
 }
 
@@ -542,19 +542,19 @@ if ($liveform->check_form_errors() == false) {
         $query =
             "UPDATE orders
             SET
-                billing_salutation = '" . escape($liveform->get_field_value('salutation')) . "',
-                billing_first_name = '" . escape($first_name_with_case_preserved) . "',
-                billing_last_name = '" . escape($last_name_with_case_preserved) . "',
-                billing_company = '" . escape($company_with_case_preserved) . "',
-                billing_address_1 = '" . escape($liveform->get_field_value('address_1')) . "',
-                billing_address_2 = '" . escape($liveform->get_field_value('address_2')) . "',
-                billing_city = '" . escape($liveform->get_field_value('city')) . "',
-                billing_state = '" . escape($liveform->get_field_value('state')) . "',
-                billing_zip_code = '" . escape($liveform->get_field_value('zip_code')) . "',
-                billing_country = '" . escape($liveform->get_field_value('country')) . "',
-                billing_phone_number = '" . escape($liveform->get_field_value('phone_number')) . "'
-             WHERE id = '" . escape(($_SESSION['ecommerce']['order_id'] ?? '')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                billing_salutation = ?,
+                billing_first_name = ?,
+                billing_last_name = ?,
+                billing_company = ?,
+                billing_address_1 = ?,
+                billing_address_2 = ?,
+                billing_city = ?,
+                billing_state = ?,
+                billing_zip_code = ?,
+                billing_country = ?,
+                billing_phone_number = ?
+             WHERE id = ?";
+        $result = db_q($query, array((string) ($liveform->get_field_value('salutation')), (string) $first_name_with_case_preserved, (string) $last_name_with_case_preserved, (string) $company_with_case_preserved, (string) ($liveform->get_field_value('address_1')), (string) ($liveform->get_field_value('address_2')), (string) ($liveform->get_field_value('city')), (string) ($liveform->get_field_value('state')), (string) ($liveform->get_field_value('zip_code')), (string) ($liveform->get_field_value('country')), (string) ($liveform->get_field_value('phone_number')), (string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
     }
     
     // remove liveform because software does not need it anymore

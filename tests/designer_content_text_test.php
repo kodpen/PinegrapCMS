@@ -71,7 +71,7 @@ function designer_content_text_test_run($script)
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
 	$functions = '';
 
-	foreach (array('_sdCanEditNode', '_sdIsTextNode', '_sdCodeLockOf', '_sdCodeTextKind') as $name) {
+	foreach (array('_sdCanEditNode', '_sdIsTextNode', '_sdCodeLockOf', '_sdCodeTextKind', '_sdIsSentence') as $name) {
 		$found = designer_content_text_test_function($source, $name);
 		pg_assert_true($found !== '', $name . ' is in the designer');
 		$functions .= $found . "\n";

@@ -66,8 +66,8 @@ $query =
     LEFT JOIN files ON comments.file_id = files.id
     LEFT JOIN page ON page.page_id = comments.page_id
     LEFT JOIN user ON comments.created_user_id = user.user_id
-    WHERE comments.id = '" . escape($_REQUEST['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE comments.id = ?";
+$result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
 // A stale or deleted comment id gives null here, and every read below -- plus
@@ -386,7 +386,6 @@ if (!$_POST) {
                                                 </div>
                                             </div>
                                         </div>
-                                        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
                                         ' . get_date_time_picker_format() . pg_fields_script() . '
                                         <script>init_edit_comment_publish()</script>
                                         <div class="col-12 my-5">
@@ -436,14 +435,14 @@ if (!$_POST) {
         // if there is a file attachment, then check if we should delete it
         if ($file_name != '') {
             // check if the file attachment is used by another comment (multiple comments can share the same file attachment when pages are duplicated)
-            $query = "SELECT id FROM comments WHERE (file_id = '$file_id') AND (id != '" . escape($liveform->get_field_value('id')) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT id FROM comments WHERE (file_id = ?) AND (id != ?)";
+            $result = db_q($query, array((string) $file_id, (string) ($liveform->get_field_value('id')))) or output_error('Query failed.');
             
             // if the file attachment is not used by another comment, then delete the file
             if (mysqli_num_rows($result) == 0) {
                 // delete file from database
-                $query = "DELETE FROM files WHERE id = '$file_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "DELETE FROM files WHERE id = ?";
+                $result = db_q($query, array((string) $file_id)) or output_error('Query failed.');
                 
                 // delete file on file system
                 @unlink(FILE_DIRECTORY_PATH . '/' . $file_name);
@@ -454,12 +453,12 @@ if (!$_POST) {
         }
         
         // delete comment
-        $query = "DELETE FROM comments WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM comments WHERE id = ?";
+        $result = db_q($query, array((string) ($liveform->get_field_value('id')))) or output_error('Query failed.');
         
         // also delete notification created for this comment.
-        $query = "DELETE FROM notifications WHERE comment_id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM notifications WHERE comment_id = ?";
+        $result = db_q($query, array((string) ($liveform->get_field_value('id')))) or output_error('Query failed.');
 
         // A form record's comment count and newest comment, read by the form
         // lists (includes/fn/comments.php).
@@ -509,14 +508,14 @@ if (!$_POST) {
             $sql_file_id = "file_id = '0',";
             
             // check if the file attachment is used by another comment (multiple comments can share the same file attachment when pages are duplicated)
-            $query = "SELECT id FROM comments WHERE (file_id = '$file_id') AND (id != '" . escape($liveform->get_field_value('id')) . "')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "SELECT id FROM comments WHERE (file_id = ?) AND (id != ?)";
+            $result = db_q($query, array((string) $file_id, (string) ($liveform->get_field_value('id')))) or output_error('Query failed.');
             
             // if the file attachment is not used by another comment, then delete the file
             if (mysqli_num_rows($result) == 0) {
                 // delete file from database
-                $query = "DELETE FROM files WHERE id = '$file_id'";
-                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                $query = "DELETE FROM files WHERE id = ?";
+                $result = db_q($query, array((string) $file_id)) or output_error('Query failed.');
                 
                 // delete file on file system
                 @unlink(FILE_DIRECTORY_PATH . '/' . $file_name);

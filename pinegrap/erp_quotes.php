@@ -103,11 +103,13 @@ pg_page_shell([
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 ' . ((!$readonly && erp_quotes_ready()) ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_quote.php' . (($account_id > 0) ? '?account_id=' . $account_id : '') . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('New quote') . '</a>' : '') . '
                 <div class="pg-toolbar-grow"></div>
-                <form method="get" action="erp_quotes.php" class="input-group input-group-sm rounded-pill pg-toolbar-search disable_shortcut" role="search">
+                <form method="get" action="erp_quotes.php" class="pg-toolbar-search disable_shortcut" role="search">
                     ' . (($state !== '') ? '<input type="hidden" name="state" value="' . h($state) . '" />' : '') . '
                     ' . (($account_id > 0) ? '<input type="hidden" name="account_id" value="' . $account_id . '" />' : '') . '
-                    <span class="input-group-text bg-transparent border-end-0 rounded-start-pill"><i class="bi bi-search" aria-hidden="true"></i></span>
-                    <input type="search" class="form-control border-start-0 rounded-end-pill" name="search" value="' . h($search) . '" placeholder="' . h(lang('Number or account')) . '" aria-label="' . h(lang('Search')) . '" autocomplete="off" />
+                    <label class="form-control form-control-sm form-adorn rounded-pill">
+                        <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                        <input type="search" class="form-ghost" name="search" value="' . h($search) . '" placeholder="' . h(lang('Number or account')) . '" aria-label="' . h(lang('Search')) . '" autocomplete="off" />
+                    </label>
                 </form>
                 ' . $output_filters . '
             </nav>

@@ -56,8 +56,8 @@ $query =
         created_user_id,
         created_timestamp
     FROM email_campaigns
-    WHERE id = '" . escape($_GET['id']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE id = ?";
+$result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 
 $row = mysqli_fetch_assoc($result);
 
@@ -98,11 +98,11 @@ $query =
         contact_id
      FROM email_recipients
      WHERE
-        (email_campaign_id = '" . escape($_GET['id']) . "')
+        (email_campaign_id = ?)
         AND (complete = '0')
      ORDER BY id
      LIMIT 10";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 
 // if there is at least one e-mail recipient left
 if (mysqli_num_rows($result) > 0) {
@@ -173,11 +173,11 @@ if (mysqli_num_rows($result) > 0) {
                 salutation,
                 suffix
              FROM contacts
-             WHERE id = " . (int) $email_recipient['contact_id'];
+             WHERE id = ?";
         $row = null;
         // Manually entered recipients are stored with contact_id 0 and have no contact row.
         if ((int) $email_recipient['contact_id'] > 0) {
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q($query, array((int) $email_recipient['contact_id'])) or output_error('Query failed.');
             $row = mysqli_fetch_assoc($result);
         }
         if (!$row) {
@@ -396,20 +396,20 @@ if (mysqli_num_rows($result) > 0) {
             "UPDATE email_recipients
             SET
                 complete = '1',
-                reference_code = '" . $email_recipient['reference_code'] . "'
-            WHERE id = '" . $email_recipient['id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                reference_code = ?
+            WHERE id = ?";
+        $result = db_q($query, array((string) $email_recipient['reference_code'], (string) $email_recipient['id'])) or output_error('Query failed.');
     }
     
     // get total number of recipients
-    $query = "SELECT COUNT(*) FROM email_recipients WHERE email_campaign_id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT COUNT(*) FROM email_recipients WHERE email_campaign_id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     $number_of_email_recipients = $row[0];
     
     // get total number of incomplete recipients
-    $query = "SELECT COUNT(*) FROM email_recipients WHERE (email_campaign_id = '" . escape($_GET['id']) . "') AND (complete = '0')";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT COUNT(*) FROM email_recipients WHERE (email_campaign_id = ?) AND (complete = '0')";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     $number_of_remaining_email_recipients = $row[0];
 
@@ -433,7 +433,7 @@ if (mysqli_num_rows($result) > 0) {
                     </ul>
                 </li>
                 <li class="nav-item">
-                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.close()" aria-label="Close">
+                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.close()" aria-label="' . h(lang('Close')) . '">
                         <span class="bi bi-x-lg"></span>
                     </button>
                 </li>
@@ -480,12 +480,12 @@ if (mysqli_num_rows($result) > 0) {
 // else there is not at least one e-mail recipient left, so e-mail campaign is complete
 } else {
     // update e-mail campaign status
-    $query = "UPDATE email_campaigns SET status = 'complete' WHERE id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "UPDATE email_campaigns SET status = 'complete' WHERE id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     
     // get total number of recipients
-    $query = "SELECT COUNT(*) FROM email_recipients WHERE email_campaign_id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT COUNT(*) FROM email_recipients WHERE email_campaign_id = ?";
+    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     $number_of_email_recipients = $row[0];
 
@@ -525,7 +525,7 @@ if (mysqli_num_rows($result) > 0) {
                     </ul>
                 </li>
                 <li class="nav-item">
-                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.opener.location.reload(true); window.close();" aria-label="Close">
+                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.opener.location.reload(true); window.close();" aria-label="' . h(lang('Close')) . '">
                         <span class="bi bi-x-lg"></span>
                     </button>
                 </li>

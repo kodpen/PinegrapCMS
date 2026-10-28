@@ -11,7 +11,7 @@ description: form_list_view ^^__result_count^^ (records matched, capped at max_r
 
 ## Why this name, and does search print it the same way?
 - One value has one name (`token-dictionary.md`); search_results already calls its number of results `__result_count`.
-- The format differs: search_results prints plain digits ("1284", `(string)$total`), the list groups them like the classic list and the record counters. Whether search groups too is an open owner question; search is unchanged.
+- The format is the same: search_results groups its number in the page's language too (`pg_format_number($total, 0)`, as its heading does; owner, 2026-10-27, W12). Before, it printed plain digits ("1284").
 
 ## Which flags does a list set?
 - `has_records` (count > 0) and `no_records` (count = 0), in the surround and in the rows (a row always has `has_records` on). The list marks only its own flags (`_pg_sw_mark_visibility()` list).

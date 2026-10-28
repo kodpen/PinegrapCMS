@@ -81,7 +81,7 @@ if (!$_POST) {
                     </ul>
                 </li>
                 <li class="nav-item">
-                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.close()" aria-label="Close">
+                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.close()" aria-label="' . h(lang('Close')) . '">
                         <span class="bi bi-x-lg"></span>
                     </button>
                 </li>
@@ -197,8 +197,8 @@ if (!$_POST) {
                             page_search_keywords,
                             page_type
                         FROM page
-                        WHERE page_id = '" . escape($page_id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        WHERE page_id = ?";
+                    $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
                     $original_page_search = $row['page_search'];
                     $original_search_keywords = $row['page_search_keywords'];
@@ -210,11 +210,11 @@ if (!$_POST) {
                         if ($_POST['move_to_folder']) {
                             $query = "UPDATE page
                                      SET
-                                        page_folder = '" . escape($_POST['move_to_folder'] ?? '') . "',
+                                        page_folder = ?,
                                         page_timestamp = UNIX_TIMESTAMP(),
-                                        page_user = '" . $user['id'] . "'
-                                     WHERE page_id = '" . escape($page_id) . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                        page_user = ?
+                                     WHERE page_id = ?";
+                            $result = db_q($query, array((string) ($_POST['move_to_folder'] ?? ''), (string) $user['id'], (string) $page_id)) or output_error('Query failed.');
                         }
                         
                         // if a page style was selected to be applied to the page(s), then apply the style
@@ -255,11 +255,11 @@ if (!$_POST) {
                             } else {
                                 $query = "UPDATE page
                                          SET
-                                            page_style = '" . escape($_POST['edit_page_style'] ?? '') . "',
+                                            page_style = ?,
                                             page_timestamp = UNIX_TIMESTAMP(),
-                                            page_user = '" . $user['id'] . "'
-                                         WHERE page_id = '" . escape($page_id) . "'";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                            page_user = ?
+                                         WHERE page_id = ?";
+                                $result = db_q($query, array((string) ($_POST['edit_page_style'] ?? ''), (string) $user['id'], (string) $page_id)) or output_error('Query failed.');
                             }
                         }
 
@@ -301,11 +301,11 @@ if (!$_POST) {
                             } else {
                                 $query = "UPDATE page
                                          SET
-                                            mobile_style_id = '" . escape($_POST['edit_mobile_style_id'] ?? '') . "',
+                                            mobile_style_id = ?,
                                             page_timestamp = UNIX_TIMESTAMP(),
-                                            page_user = '" . $user['id'] . "'
-                                         WHERE page_id = '" . escape($page_id) . "'";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                            page_user = ?
+                                         WHERE page_id = ?";
+                                $result = db_q($query, array((string) ($_POST['edit_mobile_style_id'] ?? ''), (string) $user['id'], (string) $page_id)) or output_error('Query failed.');
                             }
                         }
                         
@@ -313,11 +313,11 @@ if (!$_POST) {
                         if ($_POST['edit_site_search'] != '') {
                             $query = "UPDATE page
                                      SET
-                                        page_search = '" . escape($_POST['edit_site_search'] ?? '') . "',
+                                        page_search = ?,
                                         page_timestamp = UNIX_TIMESTAMP(),
-                                        page_user = '" . $user['id'] . "'
-                                     WHERE page_id = '" . escape($page_id) . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                        page_user = ?
+                                     WHERE page_id = ?";
+                            $result = db_q($query, array((string) ($_POST['edit_site_search'] ?? ''), (string) $user['id'], (string) $page_id)) or output_error('Query failed.');
                             
                             // if the site search was off and it is now being turned on, then call the function that updates the tag cloud table to add the keywords
                             if (($original_page_search != 1) && ($_POST['edit_site_search'] == 1)) {
@@ -354,11 +354,11 @@ if (!$_POST) {
                             $query =
                                 "UPDATE page
                                 SET
-                                    sitemap = '" . escape($_POST['edit_sitemap'] ?? '') . "',
+                                    sitemap = ?,
                                     page_timestamp = UNIX_TIMESTAMP(),
-                                    page_user = '" . $user['id'] . "'
-                                WHERE page_id = '" . escape($page_id) . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    page_user = ?
+                                WHERE page_id = ?";
+                            $result = db_q($query, array((string) ($_POST['edit_sitemap'] ?? ''), (string) $user['id'], (string) $page_id)) or output_error('Query failed.');
                         }
 
                         pg_audit_record('update', 'page', $page_id, $audit_before);
@@ -378,8 +378,8 @@ if (!$_POST) {
                     // if a folder was selected to move the page(s) to, then output message for log
                     if ($_POST['move_to_folder']) {
                         // get folder name for log
-                        $query = "SELECT folder_name FROM folder WHERE folder_id = '" . escape($_POST['move_to_folder'] ?? '') . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "SELECT folder_name FROM folder WHERE folder_id = ?";
+                        $result = db_q($query, array((string) ($_POST['move_to_folder'] ?? ''))) or output_error('Query failed.');
                         $row = mysqli_fetch_assoc($result);
                         
                         // output message for log
@@ -410,8 +410,8 @@ if (!$_POST) {
                         
                         // else get style name for log
                         } else {
-                            $query = "SELECT style_name FROM style WHERE style_id = '" . escape($_POST['edit_page_style'] ?? '') . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $query = "SELECT style_name FROM style WHERE style_id = ?";
+                            $result = db_q($query, array((string) ($_POST['edit_page_style'] ?? ''))) or output_error('Query failed.');
                             $row = mysqli_fetch_assoc($result);
                             $style = $row['style_name'];
                         }
@@ -457,8 +457,8 @@ if (!$_POST) {
                         
                         // else get mobile style name for log
                         } else {
-                            $query = "SELECT style_name FROM style WHERE style_id = '" . escape($_POST['edit_mobile_style_id'] ?? '') . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $query = "SELECT style_name FROM style WHERE style_id = ?";
+                            $result = db_q($query, array((string) ($_POST['edit_mobile_style_id'] ?? ''))) or output_error('Query failed.');
                             $row = mysqli_fetch_assoc($result);
                             $mobile_style = $row['style_name'];
                         }
@@ -559,8 +559,8 @@ if (!$_POST) {
                             page_search,
                             page_search_keywords
                         FROM page
-                        WHERE page_id = '" . escape($page_id) . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        WHERE page_id = ?";
+                    $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
 
                     $page_id = $row['page_id'];
@@ -602,8 +602,8 @@ if (!$_POST) {
                     // if this page is a custom form, we need to check if there are submitted forms for this page,
                     // because software will not allow this page to be deleted if there are submitted forms for this page
                     if ($page_type == 'custom form') {
-                        $query = "SELECT id FROM forms WHERE page_id = '" . escape($page_id) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "SELECT id FROM forms WHERE page_id = ?";
+                        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 
                         // if there are submitted forms for this page, remember that
                         if (mysqli_num_rows($result) > 0) {
@@ -618,8 +618,8 @@ if (!$_POST) {
                     
                     // if user has access to this page and there are no submitted forms, then delete page
                     if (($access_granted == true) && ($submitted_forms == false)) {
-                        $query = "DELETE FROM page WHERE page_id = '" . escape($page_id) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "DELETE FROM page WHERE page_id = ?";
+                        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 
                         pg_audit_record('delete', 'page', $page_id, $audit_before);
 
@@ -648,48 +648,48 @@ if (!$_POST) {
                         }
                         
                         // delete regions
-                        $query = "DELETE FROM pregion WHERE pregion_page = '" . escape($page_id) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "DELETE FROM pregion WHERE pregion_page = ?";
+                        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
                         
                         // delete form fields for page
-                        $query = "DELETE FROM form_fields WHERE page_id = '" . escape($page_id) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "DELETE FROM form_fields WHERE page_id = ?";
+                        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
                         
                         // delete form field options for page
-                        $query = "DELETE FROM form_field_options WHERE page_id = '" . escape($page_id) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "DELETE FROM form_field_options WHERE page_id = ?";
+                        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 
                         // Delete target options for page.
                         db("DELETE FROM target_options WHERE page_id = '" . escape($page_id) . "'");
                         
                         // if this page is a form list view, delete filters and form_view_directories_form_list_views_xref records
                         if ($page_type == 'form list view') {
-                            $query = "DELETE FROM form_list_view_filters WHERE page_id = '" . escape($page_id) . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $query = "DELETE FROM form_list_view_filters WHERE page_id = ?";
+                            $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 
-                            $query = "DELETE FROM form_list_view_browse_fields WHERE page_id = '" . escape($page_id) . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $query = "DELETE FROM form_list_view_browse_fields WHERE page_id = ?";
+                            $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
                             
-                            $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_list_view_page_id = '" . escape($page_id) . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_list_view_page_id = ?";
+                            $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
                         }
                         
                         // if this page is a form view directory, delete form_view_directories_form_list_views_xref records
                         if ($page_type == 'form view directory') {
-                            $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_view_directory_page_id = '" . escape($page_id) . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $query = "DELETE FROM form_view_directories_form_list_views_xref WHERE form_view_directory_page_id = ?";
+                            $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
                         }
                         
                         // delete views for this page that the form view directory feature uses
                         pg_sfv_delete_views('page_id', $page_id);
                         
                         // delete calendar_views_calendars_xref records
-                        $query = "DELETE FROM calendar_views_calendars_xref WHERE page_id = '" . escape($page_id) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "DELETE FROM calendar_views_calendars_xref WHERE page_id = ?";
+                        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
                         
                         // delete calendar_event_views_calendars_xref records
-                        $query = "DELETE FROM calendar_event_views_calendars_xref WHERE page_id = '" . escape($page_id) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "DELETE FROM calendar_event_views_calendars_xref WHERE page_id = ?";
+                        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
                         
                         // if page type has a table for properties, delete page type record of properties
                         if (check_for_page_type_properties($page_type) == true) {
@@ -708,9 +708,9 @@ if (!$_POST) {
                             FROM comments
                             LEFT JOIN files ON comments.file_id = files.id
                             WHERE
-                                (comments.page_id = '" . escape($page_id) . "')
+                                (comments.page_id = ?)
                                 AND (files.id IS NOT NULL)";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
                         
                         $attachments = array();
                         
@@ -722,14 +722,14 @@ if (!$_POST) {
                         // loop through the attachments so they can be deleted
                         foreach ($attachments as $attachment) {
                             // check if the file attachment is used by another comment (multiple comments can share the same file attachment when pages are duplicated)
-                            $query = "SELECT id FROM comments WHERE (file_id = '" . $attachment['id'] . "') AND (id != '" . $attachment['comment_id'] . "')";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            $query = "SELECT id FROM comments WHERE (file_id = ?) AND (id != ?)";
+                            $result = db_q($query, array((string) $attachment['id'], (string) $attachment['comment_id'])) or output_error('Query failed.');
                             
                             // if the file attachment is not used by another comment, then delete the file
                             if (mysqli_num_rows($result) == 0) {
                                 // delete file from database
-                                $query = "DELETE FROM files WHERE id = '" . $attachment['id'] . "'";
-                                $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                $query = "DELETE FROM files WHERE id = ?";
+                                $result = db_q($query, array((string) $attachment['id'])) or output_error('Query failed.');
                                 
                                 // delete file on file system
                                 @unlink(FILE_DIRECTORY_PATH . '/' . $attachment['name']);
@@ -740,20 +740,20 @@ if (!$_POST) {
                         }
                         
                         // delete comments for page
-                        $query = "DELETE FROM comments WHERE page_id = '" . escape($page_id) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "DELETE FROM comments WHERE page_id = ?";
+                        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
                         
                         // delete submitted_form_info for page
-                        $query = "DELETE FROM submitted_form_info WHERE page_id = '" . escape($page_id) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "DELETE FROM submitted_form_info WHERE page_id = ?";
+                        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 
                         // delete allow new comments data for page
-                        $query = "DELETE FROM allow_new_comments_for_items WHERE page_id = '" . escape($page_id) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "DELETE FROM allow_new_comments_for_items WHERE page_id = ?";
+                        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
                         
                         // delete watchers for this page
-                        $query = "DELETE FROM watchers WHERE page_id = '" . escape($page_id) . "'";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                        $query = "DELETE FROM watchers WHERE page_id = ?";
+                        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 
                         // Check if this page has short links, in order to determine if we need to delete them and update rewrite file.
                         $query =
@@ -761,8 +761,8 @@ if (!$_POST) {
                             FROM short_links
                             WHERE
                                 (destination_type = 'page')
-                                AND (page_id = '" . escape($page_id) . "')";
-                        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                AND (page_id = ?)";
+                        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
                         $row = mysqli_fetch_row($result);
 
                         // If a short link exists, then delete short links for this page
@@ -772,8 +772,8 @@ if (!$_POST) {
                                 "DELETE FROM short_links
                                 WHERE
                                     (destination_type = 'page')
-                                    AND (page_id = '" . escape($page_id) . "')";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                                    AND (page_id = ?)";
+                            $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
                         }
 
                         db("DELETE FROM preview_styles WHERE page_id = '" . escape($page_id) . "'");

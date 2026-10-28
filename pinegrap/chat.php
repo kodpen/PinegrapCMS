@@ -642,6 +642,18 @@ function pg_chat_avatar_src($image, $image_file_id, $image_file_name, $first_nam
     return PATH . SOFTWARE_DIRECTORY . '/assets/images/person1.png';
 }
 
+// What a chat person's picture is: their own (photo), the letters of their
+// name (contact), or the letters of a login without a name (user), the kinds
+// ws_avatar_kind() gives.
+function pg_chat_avatar_kind($image, $image_file_id, $image_file_name, $first_name, $last_name)
+{
+    if ((((int) $image_file_id > 0) && ($image_file_name != '')) || ($image != '')) {
+        return 'photo';
+    }
+
+    return ((trim((string) $first_name) !== '') || (trim((string) $last_name) !== '')) ? 'contact' : 'user';
+}
+
 function pg_chat_display_name($first_name, $last_name, $username)
 {
     $name = trim($first_name . ' ' . $last_name);
@@ -695,6 +707,9 @@ function pg_chat_user_brief($row)
         'role' => (int) $row['role'],
         'role_label' => pg_chat_role_label($row['role']),
         'avatar' => pg_chat_avatar_src($image, $image_file_id, $image_file_name, $first_name, $last_name, $row['username'], $row['id']),
+        'avatar_kind' => pg_chat_avatar_kind($image, $image_file_id, $image_file_name, $first_name, $last_name),
+        'initials' => pg_initials($first_name, $last_name, $row['username']),
+        'tone' => pg_avatar_tone(pg_initials($first_name, $last_name, $row['username']), $row['id']),
         'presence' => pg_chat_presence(isset($row['online_timestamp']) ? $row['online_timestamp'] : 0),
         // "Last seen" for away/offline users (empty for online); the exact
         // timestamp feeds the hover tooltip.
@@ -1334,6 +1349,9 @@ function pg_chat_conversation_list()
                     $row['peer_username'],
                     $row['peer_id']
                 ),
+                'avatar_kind' => pg_chat_avatar_kind(isset($row['image']) ? $row['image'] : '', isset($row['image_file_id']) ? $row['image_file_id'] : 0, isset($row['image_file_name']) ? $row['image_file_name'] : '', $first_name, $last_name),
+                'initials' => pg_initials($first_name, $last_name, $row['peer_username']),
+                'tone' => pg_avatar_tone(pg_initials($first_name, $last_name, $row['peer_username']), $row['peer_id']),
                 'presence' => pg_chat_presence($row['peer_online_timestamp']),
                 'last_seen' => pg_chat_last_seen_label($row['peer_online_timestamp']),
                 'last_seen_exact' => pg_chat_last_seen_exact($row['peer_online_timestamp']),
@@ -1747,29 +1765,28 @@ function pg_chat_render_backend_launcher()
     $output = '
         <div id="pg-chat-root" class="pg-print-none"></div>
         <style>
-            #pg-chat-root .pg-chat-launcher { position: fixed; right: 24px; bottom: 24px; z-index: 1080; width: 58px; height: 58px; border-radius: 50%; border: 0; color: #fff; background: linear-gradient(135deg, var(--bs-primary, #0d6efd), #6f42c1); box-shadow: 0 8px 24px rgba(13,110,253,.35); font-size: 22px; transition: transform .15s ease, box-shadow .15s ease; }
-            #pg-chat-root .pg-chat-launcher:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 12px 28px rgba(13,110,253,.45); }
-            #pg-chat-root .pg-chat-launcher:focus-visible { outline: 2px solid rgba(13,110,253,.5); outline-offset: 2px; }
-            #pg-chat-root .pg-chat-badge { box-sizing: border-box; position: absolute; top: -4px; right: -4px; min-width: 22px; height: 22px; border-radius: 999px; background: #dc3545; color: #fff; font-size: 11px; line-height: 1; padding: 0 5px; display: none; align-items: center; justify-content: center; border: 2px solid var(--bs-body-bg, #fff); }
-            #pg-chat-root .pg-chat-panel { position: fixed; right: 24px; bottom: 96px; z-index: 1080; width: 372px; max-width: calc(100vw - 32px); height: 544px; max-height: calc(100vh - 128px); display: none; flex-direction: column; overflow: hidden; border: 0; border-radius: 18px; box-shadow: 0 18px 48px rgba(0,0,0,.35); --bs-card-inner-border-radius: calc(var(--bs-border-radius-lg) - (var(--bs-border-width))); }
+            #pg-chat-root .pg-chat-launcher { position: fixed; right: 24px; bottom: 24px; z-index: 1080; width: 58px; height: 58px; border-radius: 50%; border: 0; color: #fff; background: linear-gradient(135deg, var(--pg-primary), #6f42c1); box-shadow: 0 8px 24px color-mix(in srgb, var(--pg-primary) 35%, transparent); font-size: 22px; transition: transform .15s ease, box-shadow .15s ease; }
+            #pg-chat-root .pg-chat-launcher:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 12px 28px color-mix(in srgb, var(--pg-primary) 45%, transparent); }
+            #pg-chat-root .pg-chat-launcher:focus-visible { outline: 2px solid color-mix(in srgb, var(--pg-primary) 50%, transparent); outline-offset: 2px; }
+            #pg-chat-root .pg-chat-badge { box-sizing: border-box; position: absolute; top: -4px; right: -4px; min-width: 22px; height: 22px; border-radius: 999px; background: #dc3545; color: #fff; font-size: 11px; line-height: 1; padding: 0 5px; display: none; align-items: center; justify-content: center; border: 2px solid var(--pg-bg-body); }
+            #pg-chat-root .pg-chat-panel { position: fixed; right: 24px; bottom: 96px; z-index: 1080; width: 372px; max-width: calc(100vw - 32px); height: 544px; max-height: calc(100vh - 128px); display: none; flex-direction: column; overflow: hidden; border: 0; border-radius: 18px; box-shadow: 0 18px 48px rgba(0,0,0,.35); --bs-card-inner-border-radius: 18px; }
             #pg-chat-root .pg-chat-panel.pg-chat-open { display: flex; animation: pgChatPop .18s ease-out; }
             @keyframes pgChatPop { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
             #pg-chat-root .pg-chat-tabs { gap: 4px; }
-            #pg-chat-root .pg-chat-tabs .nav-link { border: 0; border-radius: 9px; color: var(--bs-secondary-color, #6c757d); font-size: 12.5px; font-weight: 600; padding: 4px 10px; }
-            #pg-chat-root .pg-chat-tabs .nav-link.active { color: var(--bs-primary, #0d6efd); background: rgba(13,110,253,.15); }
+            #pg-chat-root .pg-chat-tabs .nav-link { border: 0; border-radius: 9px; color: var(--pg-fg-2); font-size: 12.5px; font-weight: 600; padding: 4px 10px; }
+            #pg-chat-root .pg-chat-tabs .nav-link.active { color: var(--pg-primary); background: color-mix(in srgb, var(--pg-primary) 15%, transparent); }
             #pg-chat-root .pg-chat-body { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
-            #pg-chat-root .pg-chat-row { display: flex; align-items: center; gap: 10px; border-radius: 12px; margin: 4px 8px; padding: 8px 10px; cursor: pointer; background: var(--bs-body-bg, #fff); transition: background .12s ease; }
-            #pg-chat-root .pg-chat-row:hover { background: var(--bs-secondary-bg, #e9ecef); }
+            #pg-chat-root .pg-chat-row { display: flex; align-items: center; gap: 10px; border-radius: 12px; margin: 4px 8px; padding: 8px 10px; cursor: pointer; background: var(--pg-bg-body); transition: background .12s ease; }
+            #pg-chat-root .pg-chat-row:hover { background: var(--pg-bg-2); }
             #pg-chat-root .pg-chat-row-main { flex: 1 1 auto; min-width: 0; }
             #pg-chat-root .pg-chat-row-name { font-size: 13px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             #pg-chat-root .pg-chat-row-unread .pg-chat-row-name { font-weight: 600; }
-            #pg-chat-root .pg-chat-row-sub { font-size: 11.5px; line-height: 1.35; color: var(--bs-secondary-color, #6c757d); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            #pg-chat-root .pg-chat-row-sub { font-size: 11.5px; line-height: 1.35; color: var(--pg-fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             #pg-chat-root .pg-chat-row-side { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
-            #pg-chat-root .pg-chat-row-time { font-size: 10.5px; color: var(--bs-secondary-color, #6c757d); white-space: nowrap; }
+            #pg-chat-root .pg-chat-row-time { font-size: 10.5px; color: var(--pg-fg-2); white-space: nowrap; }
             #pg-chat-root .pg-chat-row-dot { width: 9px; height: 9px; border-radius: 50%; background: #dc3545; }
-            #pg-chat-root .pg-chat-letter { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--bs-secondary-bg, #e9ecef); color: var(--bs-secondary-color, #6c757d); font-size: 14px; font-weight: 700; }
-            #pg-chat-root .pg-chat-chip { flex-shrink: 0; font-size: 9.5px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: var(--bs-secondary-color, #6c757d); border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 5px; padding: 0 4px; line-height: 15px; }
-            #pg-chat-root .pg-chat-avatar { width: 34px; height: 34px; object-fit: cover; }
+            #pg-chat-root .pg-chat-face { --bs-avatar-size: 34px; flex-shrink: 0; }
+            #pg-chat-root .pg-chat-chip { flex-shrink: 0; font-size: 9.5px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: var(--pg-fg-2); border: 1px solid var(--pg-border-color); border-radius: 5px; padding: 0 4px; line-height: 15px; }
             #pg-chat-root .pg-chat-ai-avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; background: linear-gradient(135deg, #20c997, #0dcaf0); font-size: 16px; }
             #pg-chat-root .pg-chat-ai-frame { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
             #pg-chat-root .pg-chat-ai-frame chat-page-snippet { display: block; height: 100%; }
@@ -1778,32 +1795,32 @@ function pg_chat_render_backend_launcher()
             #pg-chat-root .pg-chat-dot-away { background: #f59e0b; }
             #pg-chat-root .pg-chat-dot-offline { background: #a1a1a1; }
             #pg-chat-root .pg-chat-bubble { max-width: 80%; white-space: pre-wrap; overflow-wrap: break-word; border-radius: 16px; padding: 7px 11px; font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
-            #pg-chat-root .pg-chat-bubble-me { background: linear-gradient(135deg, var(--bs-primary, #0d6efd), #6f42c1); color: #fff; border-bottom-right-radius: 5px; }
+            #pg-chat-root .pg-chat-bubble-me { background: linear-gradient(135deg, var(--pg-primary), #6f42c1); color: #fff; border-bottom-right-radius: 5px; }
             #pg-chat-root .pg-chat-tick { display: inline-block; margin-left: 7px; font-size: 11px; line-height: 1; color: rgba(255,255,255,.65); letter-spacing: -2px; white-space: nowrap; vertical-align: baseline; }
             #pg-chat-root .pg-chat-tick-seen { color: #9ff3ff; }
-            #pg-chat-root .pg-chat-bubble-peer { background: var(--bs-secondary-bg, #e9ecef); color: var(--bs-body-color, #212529); border-bottom-left-radius: 5px; }
-            #pg-chat-root .pg-chat-bubble-system { background: transparent; color: var(--bs-secondary-color, #6c757d); font-size: 12px; text-align: center; max-width: 100%; box-shadow: none; }
+            #pg-chat-root .pg-chat-bubble-peer { background: var(--pg-bg-2); color: var(--pg-fg-body); border-bottom-left-radius: 5px; }
+            #pg-chat-root .pg-chat-bubble-system { background: transparent; color: var(--pg-fg-2); font-size: 12px; text-align: center; max-width: 100%; box-shadow: none; }
             /* Composer: one framed box holding the text area with the tool
                row underneath it - attach, emoji and microphone on the left,
                the round send button on the right. The same shape the site
                widget draws, so the two windows read as one feature. */
-            #pg-chat-root .pg-chat-composer { border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 14px; background: var(--bs-body-bg, #fff); padding: 7px 8px 6px; transition: border-color .15s ease; }
-            #pg-chat-root .pg-chat-composer textarea { display: block; width: 100%; resize: none; border: 0; outline: 0; background: transparent; color: var(--bs-body-color, #212529); font-size: 13px; line-height: 1.45; height: auto; min-height: 25px; max-height: 96px; padding: 1px 4px 5px; overflow-y: hidden; }
+            #pg-chat-root .pg-chat-composer { border: 1px solid var(--pg-border-color); border-radius: 14px; background: var(--pg-bg-body); padding: 7px 8px 6px; transition: border-color .15s ease; }
+            #pg-chat-root .pg-chat-composer textarea { display: block; width: 100%; resize: none; border: 0; outline: 0; background: transparent; color: var(--pg-fg-body); font-size: 13px; line-height: 1.45; height: auto; min-height: 25px; max-height: 96px; padding: 1px 4px 5px; overflow-y: hidden; }
             /* The panel window keeps its own scrollbars: an unstyled one is
                the native Windows control, arrow buttons and all, and it sat
                inside the composer the moment the field grew. */
             #pg-chat-root .pg-chat-panel ::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }
             #pg-chat-root .pg-chat-panel ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
             #pg-chat-root .pg-chat-panel ::-webkit-scrollbar-track { background: transparent; border: 0; box-shadow: none; }
-            #pg-chat-root .pg-chat-panel ::-webkit-scrollbar-thumb { background: var(--bs-border-color, #dee2e6); border: 0; border-radius: 4px; }
+            #pg-chat-root .pg-chat-panel ::-webkit-scrollbar-thumb { background: var(--pg-border-color); border: 0; border-radius: 4px; }
             #pg-chat-root .pg-chat-panel { scrollbar-width: thin; }
             #pg-chat-root .pg-chat-tools { display: flex; align-items: center; gap: 1px; }
-            #pg-chat-root .pg-chat-tool { flex-shrink: 0; width: 30px; height: 30px; border: 0; background: transparent; color: var(--bs-secondary-color, #6c757d); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-            #pg-chat-root .pg-chat-tool:hover { background: var(--bs-secondary-bg, #e9ecef); color: var(--bs-body-color, #212529); }
-            #pg-chat-root .pg-chat-tool.pg-chat-tool-on { color: var(--bs-primary, #0d6efd); background: var(--bs-secondary-bg, #e9ecef); }
+            #pg-chat-root .pg-chat-tool { flex-shrink: 0; width: 30px; height: 30px; border: 0; background: transparent; color: var(--pg-fg-2); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+            #pg-chat-root .pg-chat-tool:hover { background: var(--pg-bg-2); color: var(--pg-fg-body); }
+            #pg-chat-root .pg-chat-tool.pg-chat-tool-on { color: var(--pg-primary); background: var(--pg-bg-2); }
             #pg-chat-root .pg-chat-tools-grow { flex: 1 1 auto; }
-            #pg-chat-root .pg-chat-send { flex-shrink: 0; width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--bs-primary, #0d6efd); color: #fff; display: flex; align-items: center; justify-content: center; }
-            #pg-chat-root .pg-chat-send:disabled { background: var(--bs-secondary-bg, #e9ecef); color: var(--bs-secondary-color, #6c757d); }
+            #pg-chat-root .pg-chat-send { flex-shrink: 0; width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--pg-primary); color: #fff; display: flex; align-items: center; justify-content: center; }
+            #pg-chat-root .pg-chat-send:disabled { background: var(--pg-bg-2); color: var(--pg-fg-2); }
             /* Recording replaces the tool row, so the microphone cannot be
                armed twice and the only two things on offer are stop and
                discard. */
@@ -1816,14 +1833,14 @@ function pg_chat_render_backend_launcher()
             @keyframes pgChatPulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
             /* Emoji palette: no external font or library, just the
                characters the browser already draws. */
-            #pg-chat-root .pg-chat-emoji { display: none; border-top: 1px solid var(--bs-border-color, #dee2e6); padding: 6px 8px 8px; }
+            #pg-chat-root .pg-chat-emoji { display: none; border-top: 1px solid var(--pg-border-color); padding: 6px 8px 8px; }
             #pg-chat-root .pg-chat-emoji.pg-chat-emoji-on { display: block; }
             #pg-chat-root .pg-chat-emoji-tabs { display: flex; gap: 1px; margin-bottom: 5px; overflow-x: auto; }
             #pg-chat-root .pg-chat-emoji-tab { flex-shrink: 0; border: 0; background: transparent; font-size: 15px; line-height: 1; padding: 5px 7px; border-radius: 8px; opacity: .55; }
-            #pg-chat-root .pg-chat-emoji-tab.pg-chat-tool-on { opacity: 1; background: var(--bs-secondary-bg, #e9ecef); }
+            #pg-chat-root .pg-chat-emoji-tab.pg-chat-tool-on { opacity: 1; background: var(--pg-bg-2); }
             #pg-chat-root .pg-chat-emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 1px; height: 138px; overflow-y: auto; overscroll-behavior: contain; }
             #pg-chat-root .pg-chat-emoji-grid button { border: 0; background: transparent; font-size: 19px; line-height: 1; padding: 4px 0; border-radius: 8px; }
-            #pg-chat-root .pg-chat-emoji-grid button:hover { background: var(--bs-secondary-bg, #e9ecef); }
+            #pg-chat-root .pg-chat-emoji-grid button:hover { background: var(--pg-bg-2); }
             #pg-chat-root .pg-chat-bubble audio { display: block; width: 210px; max-width: 100%; height: 34px; margin-top: 3px; }
             #pg-chat-root .pg-chat-file { display: inline-flex; align-items: center; gap: 7px; color: inherit; text-decoration: none; }
             #pg-chat-root .pg-chat-file:hover .pg-chat-file-name { text-decoration: underline; }

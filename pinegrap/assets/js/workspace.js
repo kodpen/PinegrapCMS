@@ -345,7 +345,7 @@
             document.body.appendChild(toastRoot);
         }
 
-        var box = el('div', 'toast align-items-center border-0 show text-bg-' + (kind || 'dark'));
+        var box = el('div', 'toast align-items-center border-0 text-bg-' + (kind || 'dark'));
         box.setAttribute('role', 'status');
 
         var row = el('div', 'd-flex');
@@ -361,12 +361,23 @@
         row.appendChild(text);
 
         var close = button('btn-close fg-white me-3 m-auto', '', '', t('close'));
-        close.addEventListener('click', function () { box.remove(); });
+        close.setAttribute('data-bs-dismiss', 'toast');
         row.appendChild(close);
         box.appendChild(row);
         toastRoot.appendChild(box);
 
-        setTimeout(function () { box.remove(); }, 5000);
+        // Bootstrap's Toast: hides after five seconds, pauses while hovered
+        // or focused, and the close button dismisses it.
+        var instance = window.pgUI ? pgUI.toast.get(box, { delay: 5000 }) : null;
+
+        if (instance) {
+            pgUI.toast.on(box, 'hidden', function () { box.remove(); });
+            instance.show();
+        } else {
+            box.classList.add('show');
+            close.addEventListener('click', function () { box.remove(); });
+            setTimeout(function () { box.remove(); }, 5000);
+        }
     }
 
     function fail(error) {
@@ -398,7 +409,7 @@
                 dialog.id = 'ws-ask';
                 dialog.tabIndex = -1;
                 dialog.innerHTML = '<div class="dialog-body"><p class="mb-3" data-ws-ask-text></p><div data-ws-ask-details></div></div>'
-                    + '<div class="dialog-footer"><button type="button" class="btn btn-sm btn-ghost" data-bs-dismiss="dialog" data-ws-ask-cancel></button>'
+                    + '<div class="dialog-footer"><button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-dismiss="dialog" data-ws-ask-cancel></button>'
                     + '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-ws-ask-ok></button></div>';
                 document.body.appendChild(dialog);
 
@@ -518,6 +529,21 @@
     // What a message says as it reads on the screen: its lines, list items and
     // table rows each on a line of their own. innerText follows the layout,
     // so the markup is laid out off screen for a moment.
+    // White or near-black, whichever reads at 4.5:1 on a #rrggbb background;
+    // white for anything else (pg_readable_ink_on() in PHP).
+    function readableInk(hex) {
+        var m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex || '').trim());
+        if (!m) {
+            return '#fff';
+        }
+        var lum = 0, weights = [0.2126, 0.7152, 0.0722];
+        for (var i = 0; i < 3; i++) {
+            var c = parseInt(m[i + 1], 16) / 255;
+            lum += weights[i] * (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+        }
+        return (1.05 / (lum + 0.05) >= 4.5) ? '#fff' : '#18181b';
+    }
+
     function readableText(markup) {
         var box = el('div');
 
@@ -743,8 +769,8 @@
             previewModal.id = 'ws-preview';
             previewModal.tabIndex = -1;
             previewModal.innerHTML = '<div class="dialog-header py-3"><h5 class="dialog-title text-truncate"></h5>'
-                + '<a class="btn btn-sm btn-ghost ms-auto" data-ws-open target="_blank" rel="noopener"></a>'
-                + '<a class="btn btn-sm btn-ghost" data-ws-download></a>'
+                + '<a class="btn btn-sm btn-text theme-secondary ms-auto" data-ws-open target="_blank" rel="noopener"></a>'
+                + '<a class="btn btn-sm btn-text theme-secondary" data-ws-download></a>'
                 + '<button type="button" class="btn-close ms-1" data-bs-dismiss="dialog"></button></div>'
                 + '<div class="dialog-body p-0"></div><div class="dialog-footer py-3 d-none"></div>';
             document.body.appendChild(previewModal);
@@ -2351,24 +2377,78 @@
         return null;
     }
 
-    function avatar(personData, size) {
-        var img = el('img');
-        img.src = (personData && personData.avatar) ? personData.avatar : '';
-        img.alt = '';
-        img.loading = 'lazy';
+    // The eight tones a person's letters are drawn on, in the order
+    // pg_avatar_theme_class() gives them (includes/fn/contacts.php).
+    var AVATAR_THEMES = ['theme-primary', 'theme-info', 'theme-warning', 'theme-accent', 'theme-danger', 'theme-secondary', 'theme-success', 'theme-inverse'];
+
+    function avatarInitials(name) {
+        // A handle (@wiki) is drawn by its name, not by its sign.
+        var words = String(name || '').replace(/^[@#]+/, '').trim().split(/\s+/).filter(Boolean);
+
+        if (!words.length) {
+            return '?';
+        }
+
+        return (words[0].charAt(0) + ((words.length > 1) ? words[words.length - 1].charAt(0) : '')).toLocaleUpperCase();
+    }
+
+    // A person as a Bootstrap 6 Avatar, the twin of pg_avatar_markup(): the
+    // photo when there is one, else the letters on the person's tone; a login
+    // without a name is a grey rounded square. A picture of letters
+    // (data:image/svg+xml) is drawn as letters, so no <img> goes out without
+    // a real address. presence adds the online / away / offline dot.
+    function avatar(personData, size, presence) {
+        var data = personData || {};
+        var src = data.avatar ? String(data.avatar) : '';
+        var kind = data.avatar_kind || '';
+        var face = el('span', 'avatar');
+
+        if (src && (src.indexOf('data:image/svg+xml') !== 0) && (kind !== 'contact') && (kind !== 'user')) {
+            var img = el('img', 'avatar-img');
+            img.src = src;
+            img.alt = '';
+            img.loading = 'lazy';
+            face.appendChild(img);
+        } else {
+            if (kind === 'user') {
+                face.classList.add('avatar-subtle', 'theme-secondary', 'pg-avatar-user');
+            } else {
+                face.classList.add(AVATAR_THEMES[((parseInt(data.tone, 10) || 0) % 8 + 8) % 8]);
+            }
+
+            face.textContent = data.initials ? String(data.initials) : avatarInitials(data.name);
+        }
 
         if (size) {
-            img.style.width = size;
-            img.style.height = size;
+            face.style.setProperty('--bs-avatar-size', size);
         }
 
-        // A login without a name has a square of letters, not a circle
-        // (includes/workspace/people.php).
-        if (personData && personData.avatar_kind === 'user') {
-            img.style.borderRadius = '28%';
+        if (presence && (['online', 'away', 'offline'].indexOf(data.presence) !== -1)) {
+            face.appendChild(el('span', 'avatar-status status-' + data.presence));
         }
 
-        return img;
+        face.setAttribute('aria-hidden', 'true');
+
+        return face;
+    }
+
+    // Overlapping faces in an .avatar-stack. The stack is row-reverse (the
+    // last child sits leftmost and on top), so the faces go in backwards
+    // and the first person still reads first.
+    function avatarStack(className, people, max) {
+        var stack = el('span', 'avatar-stack ws-avatars' + (className ? ' ' + className : ''));
+
+        (people || []).slice(0, max || 4).reverse().forEach(function (person) {
+            var face = avatar(person);
+
+            if (person && person.name) {
+                face.title = person.name;
+            }
+
+            stack.appendChild(face);
+        });
+
+        return stack;
     }
 
     function params() {
@@ -3253,7 +3333,7 @@
     function partHelpers() {
         return {
             api: api, ask: ask, toast: toast, fail: fail, t: t, el: el, icon: icon, button: button,
-            clear: clear, select: select, avatar: avatar, nextId: nextId, debounce: debounce,
+            clear: clear, select: select, avatar: avatar, avatarStack: avatarStack, nextId: nextId, debounce: debounce,
             mcpConnect: mcpConnect,
             boot: function () { return BOOT; },
             openTask: function (taskId, onSaved) { taskDrawer.open(taskId, null, onSaved || taskDrawer.onSaved); }
@@ -3335,14 +3415,14 @@
                             return;
                         }
 
-                        var move = button('btn btn-sm ' + (status === 'done' ? 'btn-outline theme-success' : 'btn-ghost'), BOOT.statuses[status]);
+                        var move = button('btn btn-sm ' + (status === 'done' ? 'btn-outline theme-success' : 'btn-text theme-secondary'), BOOT.statuses[status]);
                         move.addEventListener('click', function () { self.setStatus(status); });
                         quick.appendChild(move);
                     });
 
                     body.appendChild(quick);
                 } else if (editable) {
-                    var reopen = button('btn btn-sm btn-ghost mb-5', t('reopen'), 'bi-arrow-counterclockwise');
+                    var reopen = button('btn btn-sm btn-text theme-secondary mb-5', t('reopen'), 'bi-arrow-counterclockwise');
                     reopen.addEventListener('click', function () { self.setStatus('todo'); });
                     body.appendChild(reopen);
                 }
@@ -3606,7 +3686,7 @@
             save.disabled = !editable;
             save.addEventListener('click', function () { self.save(false); });
 
-            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             cancel.setAttribute('data-bs-dismiss', 'drawer');
 
             footer.appendChild(cancel);
@@ -3983,7 +4063,7 @@
             var text = el('div', 'ws-msg-body');
 
             row.setAttribute('data-ws-note', note.id);
-            face.className = 'ws-task-note-avatar';
+            face.classList.add('ws-task-note-avatar');
             row.appendChild(face);
 
             meta.appendChild(el('b', '', note.sender ? note.sender.name : ''));
@@ -3997,7 +4077,7 @@
                 var tools = el('span', 'ws-task-note-tools');
 
                 if (note.can_edit) {
-                    var edit = button('btn btn-sm btn-ghost py-0 px-1', '', 'bi-pencil', t('edit'));
+                    var edit = button('btn btn-sm btn-text theme-secondary py-0 px-1', '', 'bi-pencil', t('edit'));
                     edit.addEventListener('click', function () {
                         main.replaceChild(self.noteComposer(note), text);
                         tools.remove();
@@ -4006,7 +4086,7 @@
                 }
 
                 if (note.can_delete) {
-                    var remove = button('btn btn-sm btn-ghost py-0 px-1 ws-tool-danger', '', 'bi-trash', t('delete'));
+                    var remove = button('btn btn-sm btn-text theme-secondary py-0 px-1 ws-tool-danger', '', 'bi-trash', t('delete'));
                     remove.addEventListener('click', function () {
                         ask(t('delete_note_confirm'), t('delete'), true).then(function (yes) {
                             if (!yes) {
@@ -4096,11 +4176,11 @@
             }
 
             if (!rich) {
-                var mention = button('btn btn-sm btn-ghost', '', 'bi-at', t('mention'));
+                var mention = button('btn btn-sm btn-text theme-secondary', '', 'bi-at', t('mention'));
                 mention.addEventListener('click', function () { field.insertTrigger('@'); });
                 actions.appendChild(mention);
 
-                var tag = button('btn btn-sm btn-ghost', '', 'bi-hash', t('tag_record'));
+                var tag = button('btn btn-sm btn-text theme-secondary', '', 'bi-hash', t('tag_record'));
                 tag.addEventListener('click', function () { field.insertTrigger('#'); });
                 actions.appendChild(tag);
 
@@ -4458,7 +4538,7 @@
                 row.appendChild(info);
 
                 if (data.can_clear) {
-                    var rename = button('btn btn-sm btn-ghost', '', 'bi-pencil', t('era_rename'));
+                    var rename = button('btn btn-sm btn-text theme-secondary', '', 'bi-pencil', t('era_rename'));
                     rename.addEventListener('click', function () {
                         var input = el('input', 'form-control form-control-sm');
                         input.maxLength = 160;
@@ -4756,7 +4836,7 @@
         }
 
         var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', channel ? t('save') : t('create_channel'), 'bi-check2');
-        var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'drawer');
         footer.appendChild(cancel);
         footer.appendChild(save);
@@ -4980,7 +5060,7 @@
         }
 
         var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('guest_create'), 'bi-door-open');
-        var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'drawer');
         footer.appendChild(cancel);
         footer.appendChild(save);
@@ -5068,7 +5148,7 @@
         body.appendChild(link);
 
         var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('share_create'), 'bi-link-45deg');
-        var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'drawer');
         footer.appendChild(cancel);
         footer.appendChild(save);
@@ -5116,7 +5196,7 @@
 
         footer.classList.remove('d-none');
 
-        var all = button('btn btn-sm btn-ghost', t('mark_all_read'), 'bi-check2-all');
+        var all = button('btn btn-sm btn-text theme-secondary', t('mark_all_read'), 'bi-check2-all');
         all.addEventListener('click', function () {
             api('ws_inbox_read', { ids: 'all' }).then(function () {
                 hideOffcanvas(node);
@@ -5205,7 +5285,7 @@
     // their parts look like the rest of it.
     function featureHelpers() {
         return {
-            api: api, t: t, el: el, icon: icon, button: button, avatar: avatar, clear: clear,
+            api: api, t: t, el: el, icon: icon, button: button, avatar: avatar, avatarStack: avatarStack, clear: clear,
             offcanvas: offcanvas, showOffcanvas: showOffcanvas, hideOffcanvas: hideOffcanvas,
             formRow: formRow, select: select, nextId: nextId, ask: ask, fail: fail, toast: toast,
             richField: richField, peoplePicker: peoplePicker, homeCard: homeCard, touchScreen: touchScreen,
@@ -5377,7 +5457,7 @@
             // The workspace's own tour (includes/workspace/tour.php), played
             // again from here.
             if (window.PgTour && window.PG_TOUR && window.PG_TOUR.key) {
-                var tour = button('btn btn-sm btn-ghost rounded-pill', '', 'bi-signpost-split', t('tour_start'));
+                var tour = button('btn btn-sm btn-text theme-secondary rounded-pill', '', 'bi-signpost-split', t('tour_start'));
 
                 tour.setAttribute('data-ws-tour', '1');
                 tour.addEventListener('click', function () {
@@ -5397,7 +5477,7 @@
 
             // The search box of the whole workspace (workspace_palette.js).
             if (window.PGWsPalette) {
-                var find = button('btn btn-sm btn-ghost rounded-pill', '', 'bi-search', t('pal_shortcut'));
+                var find = button('btn btn-sm btn-text theme-secondary rounded-pill', '', 'bi-search', t('pal_shortcut'));
 
                 find.setAttribute('data-ws-palette', '1');
                 head.appendChild(find);
@@ -5677,7 +5757,7 @@
                 head.setAttribute('data-ws-group', group.id);
 
                 if (manage) {
-                    var more = button('btn btn-sm btn-ghost ws-group-more', '', 'bi-three-dots', t('more'));
+                    var more = button('btn btn-sm btn-text theme-secondary ws-group-more', '', 'bi-three-dots', t('more'));
                     more.addEventListener('click', function (event) {
                         event.stopPropagation();
                         var rect = more.getBoundingClientRect();
@@ -5907,7 +5987,7 @@
                 bar.appendChild(pinAck);
             }
 
-            var close = button('btn btn-sm btn-ghost py-0', '', 'bi-x-lg', t('pin_close'));
+            var close = button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', t('pin_close'));
             close.addEventListener('click', function () {
                 if (self.channel.joined) {
                     api('ws_pin_hide', { channel_id: self.channel.id }).catch(function () {});
@@ -6065,7 +6145,7 @@
                 bar.appendChild(note);
             }
 
-            var done = button('btn btn-sm btn-ghost ms-auto', t('sel_cancel'), 'bi-x-lg');
+            var done = button('btn btn-sm btn-text theme-secondary ms-auto', t('sel_cancel'), 'bi-x-lg');
             done.addEventListener('click', function () { self.endSelect(); });
             bar.appendChild(done);
 
@@ -6168,7 +6248,7 @@
                 body.appendChild(el('div', 'alert theme-warning small py-3', t('fwd_private')));
             }
 
-            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             var send = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sel_forward'), 'bi-forward');
 
             cancel.setAttribute('data-bs-dismiss', 'drawer');
@@ -6232,7 +6312,7 @@
                 slot.appendChild(el('div', 'small fg-danger', error.message));
             });
 
-            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sel_to_note'), 'bi-journal-plus');
 
             cancel.setAttribute('data-bs-dismiss', 'drawer');
@@ -6530,7 +6610,7 @@
             body.appendChild(formRow(t('grp_parent'), parent, t('grp_levels', CFG.groups.depth)));
 
             var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('save'), 'bi-check2');
-            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             cancel.setAttribute('data-bs-dismiss', 'drawer');
             footer.appendChild(cancel);
             footer.appendChild(save);
@@ -6620,7 +6700,7 @@
 
                     row.appendChild(text);
 
-                    var take = button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('grp_access_take'));
+                    var take = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('grp_access_take'));
                     take.addEventListener('click', function () {
                         ask(t('grp_access_take_confirm', data.path, person.name), t('grp_access_take'), true).then(function (yes) {
                             if (yes) {
@@ -7049,7 +7129,7 @@
                         return;
                     }
 
-                    var openButton = button('btn btn-sm ' + (channel.opened ? 'btn-ghost' : 'btn-outline theme-warning'), channel.opened ? t('open') : t('open_for_audit'), 'bi-eye');
+                    var openButton = button('btn btn-sm ' + (channel.opened ? 'btn-text theme-secondary' : 'btn-outline theme-warning'), channel.opened ? t('open') : t('open_for_audit'), 'bi-eye');
                     openButton.addEventListener('click', function () {
                         var go = function () {
                             hideOffcanvas(node);
@@ -7551,9 +7631,7 @@
                 });
             }
 
-            var faces = el('span', 'ws-avatars ws-thread-faces');
-            (thread.people || []).slice(0, 4).forEach(function (person) { faces.appendChild(avatar(person)); });
-            bar.appendChild(faces);
+            bar.appendChild(avatarStack('ws-thread-faces', thread.people, 4));
 
             var text = el('span', 'ws-thread-bar-text');
             text.appendChild(el('b', '', t('th_bar', thread.title)));
@@ -7809,7 +7887,7 @@
                 row.appendChild(el('div', 'small fg-secondary', guest.label + (guest.seen ? ' · ' + t('guest_seen', guest.seen) : '')));
 
                 var tools = el('div', 'd-flex flex-wrap gap-1 mt-1');
-                var relink = button('btn btn-sm btn-ghost', t('guest_relink'), 'bi-link-45deg');
+                var relink = button('btn btn-sm btn-text theme-secondary', t('guest_relink'), 'bi-link-45deg');
                 relink.addEventListener('click', function () {
                     var fields = guestLinkFields(info.durations);
 
@@ -7830,7 +7908,7 @@
                 tools.appendChild(relink);
 
                 if (guest.open) {
-                    var end = button('btn btn-sm btn-ghost fg-danger', t('share_end'), 'bi-x-circle');
+                    var end = button('btn btn-sm btn-text theme-secondary fg-danger', t('share_end'), 'bi-x-circle');
                     end.addEventListener('click', function () {
                         hideOffcanvas(node);
                         ask(t('share_end_confirm', guest.name), t('share_end'), true).then(function (yes) {
@@ -7939,7 +8017,9 @@
             }
 
             if (channel.department) {
-                topic.appendChild(el('span', 'badge me-1', channel.department.name)).style.background = channel.department.color;
+                var departmentBadge = topic.appendChild(el('span', 'badge me-1', channel.department.name));
+                departmentBadge.style.background = channel.department.color;
+                departmentBadge.style.color = readableInk(channel.department.color);
             }
 
             topic.appendChild(document.createTextNode(channel.topic || ''));
@@ -7947,16 +8027,13 @@
             head.appendChild(title);
 
             var actions = el('div', 'ws-head-actions');
-            var faces = button('btn btn-sm btn-ghost d-inline-flex align-items-center gap-1', '', '', t('members'));
-            var stack = el('span', 'ws-avatars');
-
-            channel.members.slice(0, 4).forEach(function (member) { stack.appendChild(avatar(member)); });
-            faces.appendChild(stack);
+            var faces = button('btn btn-sm btn-text theme-secondary d-inline-flex align-items-center gap-1', '', '', t('members'));
+            faces.appendChild(avatarStack('', channel.members, 4));
             faces.appendChild(el('span', 'small', channel.members.length));
             faces.addEventListener('click', function () { self.showMembers(); });
             actions.appendChild(faces);
 
-            var addTask = button('btn btn-sm btn-ghost', '', 'bi-check2-square', t('new_task'));
+            var addTask = button('btn btn-sm btn-text theme-secondary', '', 'bi-check2-square', t('new_task'));
             addTask.addEventListener('click', function () {
                 var about = channel.customer ? channel.customer.customer : null;
                 var refs = about
@@ -8150,7 +8227,7 @@
             var self = this;
             var channel = self.channel;
             var wrap = el('div', 'pg-menu-wrap');
-            var toggle = button('btn btn-sm btn-ghost', '', 'bi-three-dots-vertical', t('more'));
+            var toggle = button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots-vertical', t('more'));
             toggle.setAttribute('data-bs-toggle', 'menu');
             toggle.setAttribute('data-bs-placement', 'bottom-end');
             wrap.appendChild(toggle);
@@ -8183,6 +8260,11 @@
             // only when the customer is or is tied to such an account.
             if (channel.sales_quote_url) {
                 item(t('sales_quote_new'), 'bi-file-earmark-plus', function () { window.location.href = channel.sales_quote_url; });
+                divider();
+            }
+
+            if (channel.bulk_products && !channel.archived) {
+                item(t('bulk_make_products'), 'bi-box-seam', function () { self.bulkMakeProducts({}); });
                 divider();
             }
 
@@ -8322,8 +8404,6 @@
             if (BOOT.claude && channel.claude && channel.claude.available) {
                 var claudeRow = el('div', 'd-flex align-items-center gap-3 py-3 border-bottom');
                 var claudeFace = avatar({ avatar: BOOT.claude.avatar }, '2rem');
-
-                claudeFace.style.borderRadius = '50%';
                 claudeRow.appendChild(claudeFace);
 
                 var claudeText = el('div', 'flex-grow-1');
@@ -8336,8 +8416,6 @@
             if (BOOT.ai && channel.ai && channel.ai.available) {
                 var aiRow = el('div', 'd-flex align-items-center gap-3 py-3 border-bottom');
                 var aiFace = avatar({ avatar: BOOT.ai.avatar }, '2rem');
-
-                aiFace.style.borderRadius = '50%';
                 aiRow.appendChild(aiFace);
 
                 var aiText = el('div', 'flex-grow-1');
@@ -8350,8 +8428,7 @@
             channel.members.forEach(function (member) {
                 var row = el('div', 'd-flex align-items-center gap-3 py-3 border-bottom');
                 onContext(row, function () { return personMenu(member); });
-                var memberFace = avatar(member, '2rem');
-                memberFace.style.borderRadius = '50%';
+                var memberFace = avatar(member, '2rem', true);
                 row.appendChild(personLink(memberFace, member));
                 var text = el('div', 'flex-grow-1');
                 text.appendChild(personLink(el('div', 'fw-semibold', member.name), member));
@@ -8360,7 +8437,7 @@
                 row.appendChild(el('span', 'badge rounded-pill ' + (member.presence === 'online' ? 'theme-success' : 'theme-secondary'), t('presence_' + member.presence)));
 
                 if (channel.can_manage && member.id !== channel.owner_id && member.id !== BOOT.me.id) {
-                    var remove = button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('remove'));
+                    var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('remove'));
                     remove.addEventListener('click', function () {
                         api('ws_channel_member_remove', { channel_id: channel.id, user_id: member.id }).then(function () {
                             hideOffcanvas(node);
@@ -8410,7 +8487,7 @@
             var pane = clear(self.pane);
 
             if (self.hasMore) {
-                var older = button('btn btn-sm btn-ghost d-block mx-auto mb-3', t('older_messages'), 'bi-arrow-up');
+                var older = button('btn btn-sm btn-text theme-secondary d-block mx-auto mb-3', t('older_messages'), 'bi-arrow-up');
                 older.addEventListener('click', function () { self.loadOlder(older); });
                 pane.appendChild(older);
             }
@@ -8724,6 +8801,17 @@
                         self.fileVersions(message, versions);
                     });
                     fileBox.appendChild(versions);
+                }
+
+                // A CSV or spreadsheet of the channel made into product
+                // drafts, for whoever may make products here.
+                if (self.channel && self.channel.bulk_products && /\.(csv|xlsx|xlsm|xls|ods)$/i.test(message.file.name || '')) {
+                    var makeProducts = button('ws-file-versions', t('bulk_make_products'), 'bi-box-seam');
+                    makeProducts.addEventListener('click', function (event) {
+                        event.stopPropagation();
+                        self.bulkMakeProducts({ message_id: message.id });
+                    });
+                    fileBox.appendChild(makeProducts);
                 }
 
                 main.appendChild(fileBox);
@@ -9305,12 +9393,12 @@
                 bar.appendChild(el('span', 'ws-grow text-truncate', file.name));
 
                 if (kind === 'video') {
-                    var large = button('btn btn-sm btn-ghost py-0', '', 'bi-arrows-fullscreen', t('preview'));
+                    var large = button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-arrows-fullscreen', t('preview'));
                     large.addEventListener('click', function () { previewFile(file); });
                     bar.appendChild(large);
                 }
 
-                var save = el('a', 'btn btn-sm btn-ghost py-0');
+                var save = el('a', 'btn btn-sm btn-text theme-secondary py-0');
                 save.href = file.url;
                 save.setAttribute('download', file.name);
                 save.title = t('download');
@@ -9345,7 +9433,7 @@
                 card.appendChild(read);
             }
 
-            var get = el('a', 'btn btn-sm btn-ghost');
+            var get = el('a', 'btn btn-sm btn-text theme-secondary');
             get.href = file.url;
             get.setAttribute('download', file.name);
             get.title = t('download');
@@ -9563,7 +9651,7 @@
 
                 footer.appendChild(el('div', 'ws-grow small fg-secondary', data.can_replace ? t('file_text_mine_help') : (data.can_send ? t('file_text_copy_help') : t('file_text_readonly'))));
 
-                var close = button('btn btn-sm btn-ghost', t('close'));
+                var close = button('btn btn-sm btn-text theme-secondary', t('close'));
                 close.setAttribute('data-bs-dismiss', 'dialog');
                 footer.appendChild(close);
 
@@ -9976,6 +10064,40 @@
             });
         },
 
+        // Product drafts as one bulk card (bulk_sources.php): from a file of
+        // the channel, or from a list pasted into the question window. The
+        // card waits under a message of the person's own until they apply it.
+        bulkMakeProducts: function (source) {
+            var self = this;
+            var channel = self.channel;
+            var text = null;
+            var asked = Promise.resolve(true);
+
+            if (!source.message_id) {
+                text = el('textarea', 'form-control form-control-sm');
+                text.rows = 8;
+                text.placeholder = t('bulk_make_placeholder');
+                text.setAttribute('aria-label', t('bulk_make_products'));
+                asked = ask(t('bulk_make_intro'), t('bulk_make_go'), false, text);
+                window.setTimeout(function () { text.focus(); }, 200);
+            }
+
+            asked.then(function (yes) {
+                if (!yes || (text && !text.value.trim())) {
+                    return;
+                }
+
+                api('ws_bulk_create_propose', {
+                    channel_id: channel.id,
+                    message_id: source.message_id || 0,
+                    text: text ? text.value : ''
+                }).then(function (data) {
+                    toast(t('bulk_make_done', data.count) + ((data.ignored && data.ignored.length) ? ' ' + t('bulk_make_ignored', data.ignored.join(', ')) : ''), 'success');
+                    self.sync(true);
+                }).catch(fail);
+            });
+        },
+
         // Record changes an answer proposes: what each field holds and would
         // hold. Only the person who asked applies them, with their own rights.
         // A bulk change being applied: the next slice, one at a time, until
@@ -10150,7 +10272,7 @@
                     meter.appendChild(fill);
                     card.appendChild(meter);
                     card.appendChild(el('div', 'ws-draft-meta', (change.status === 'applying' ? t('bulk_running') + ' ' + t('bulk_progress', progress.done + progress.skipped + progress.failed, progress.total) + ' · ' : '')
-                        + t('bulk_result', progress.done, progress.skipped, progress.failed)));
+                        + t(change.bulk.create ? 'bulk_create_result' : 'bulk_result', progress.done, progress.skipped, progress.failed)));
 
                     (progress.errors || []).forEach(function (error) {
                         card.appendChild(el('div', 'small fg-emphasis-danger', error));
@@ -10175,7 +10297,7 @@
                     var apply = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('change_apply'), 'bi-check2');
 
                     apply.addEventListener('click', function () {
-                        var question = change.bulk ? t(change.bulk.delete ? 'bulk_delete_warning' : 'bulk_warning', change.bulk.total) : change.warning;
+                        var question = change.bulk ? t(change.bulk.delete ? 'bulk_delete_warning' : (change.bulk.create ? 'bulk_create_warning' : 'bulk_warning'), change.bulk.total) : change.warning;
                         var go = question ? ask(question, t('change_apply'), true) : Promise.resolve(true);
 
                         go.then(function (yes) {
@@ -10202,18 +10324,41 @@
                     actions.appendChild(apply);
                 }
 
-                // A drafted scheduled action opens in its form, filled in, for
-                // the one who asked; saved there, the card says so.
+                // A drafted scheduled action opens as a new flow of the one
+                // who asked, on the Flows canvas; what the flow keeps
+                // otherwise is told before it opens.
                 if (change.draft) {
-                    var open = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sa_draft_open'), 'bi-alarm');
+                    var open = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sa_draft_open'), 'bi-diagram-3');
 
                     open.addEventListener('click', function () {
-                        scheduledForm({ channel_id: change.draft.channel_id }, null, function () { self.sync(); }, {
-                            key: 'sentence',
-                            sentence: change.draft.sentence,
-                            data: JSON.parse(JSON.stringify(change.draft.data)),
-                            notes: change.draft.notes || [],
-                            change_id: change.id
+                        open.disabled = true;
+
+                        api('ws_flow_from_draft', { change_id: change.id }).then(function (result) {
+                            var go = function () {
+                                window.location.href = CFG.urls.flows + '?flow=' + result.flow_id;
+                            };
+
+                            if (!result.left || !result.left.length) {
+                                go();
+                                return;
+                            }
+
+                            var list = el('ul', 'mb-0');
+
+                            result.left.forEach(function (line) {
+                                list.appendChild(el('li', '', line));
+                            });
+
+                            ask(t('sa_draft_flow_left'), t('sa_draft_flow_see'), false, list).then(function (yes) {
+                                if (yes) {
+                                    go();
+                                } else {
+                                    self.sync();
+                                }
+                            });
+                        }).catch(function (error) {
+                            open.disabled = false;
+                            fail(error);
                         });
                     });
 
@@ -10223,7 +10368,7 @@
                 var dismiss = null;
 
                 if (change.can_dismiss) {
-                    dismiss = button('btn btn-sm btn-ghost', t('change_dismiss'), 'bi-x-lg');
+                    dismiss = button('btn btn-sm btn-text theme-secondary', t('change_dismiss'), 'bi-x-lg');
 
                     dismiss.addEventListener('click', function () {
                         dismiss.disabled = true;
@@ -10282,9 +10427,13 @@
                     account.appendChild(off);
                     card.appendChild(account);
                 } else if (change.status === 'applied') {
-                    var done = el('div', 'ws-draft-done', t(change.action === 'draft' ? 'sa_draft_saved' : 'change_applied', change.decided_by, change.decided) + ' ');
+                    var done = el('div', 'ws-draft-done', t(change.action === 'draft' ? (change.flow_id ? 'sa_draft_flowed' : 'sa_draft_saved') : 'change_applied', change.decided_by, change.decided) + ' ');
 
-                    if (change.decision_id) {
+                    if (change.flow_id) {
+                        var flow = el('a', '', t('sa_draft_flow_see'));
+                        flow.href = CFG.urls.flows + '?flow=' + change.flow_id;
+                        done.appendChild(flow);
+                    } else if (change.decision_id) {
                         var see = el('a', '', t(change.action === 'draft' ? 'sa_draft_see' : 'change_see_decision'));
                         see.href = '#';
                         see.addEventListener('click', function (event) {
@@ -10345,7 +10494,7 @@
                 var actions = el('div', 'ws-draft-actions');
 
                 if (proposal.can_open && proposal.edit_url) {
-                    var preview = el('a', 'btn btn-sm btn-ghost', '');
+                    var preview = el('a', 'btn btn-sm btn-text theme-secondary', '');
                     preview.href = proposal.edit_url;
                     preview.target = '_blank';
                     preview.rel = 'noopener';
@@ -10356,7 +10505,7 @@
 
                 var buttons = [];
                 var act = function (label, iconName, name, question, done) {
-                    var b = button(name === 'apply' ? 'btn btn-sm btn-solid theme-primary rounded-pill px-5' : 'btn btn-sm btn-ghost', label, iconName);
+                    var b = button(name === 'apply' ? 'btn btn-sm btn-solid theme-primary rounded-pill px-5' : 'btn btn-sm btn-text theme-secondary', label, iconName);
 
                     b.addEventListener('click', function () {
                         var go = question ? ask(question, label, name !== 'dismiss') : Promise.resolve(true);
@@ -10460,7 +10609,7 @@
                 if (draft.can_decide) {
                     var actions = el('div', 'ws-draft-actions');
                     var accept = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('claude_draft_open'), 'bi-plus-lg');
-                    var dismiss = button('btn btn-sm btn-ghost', t('claude_draft_dismiss'), 'bi-x-lg');
+                    var dismiss = button('btn btn-sm btn-text theme-secondary', t('claude_draft_dismiss'), 'bi-x-lg');
 
                     accept.addEventListener('click', function () {
                         accept.disabled = dismiss.disabled = true;
@@ -10626,11 +10775,7 @@
                 row.appendChild(el('span', 'ws-poll-label', option.label));
 
                 if (option.voters && option.voters.length) {
-                    var faces = el('span', 'ws-avatars ws-avatars-sm');
-
-                    option.voters.slice(0, 4).forEach(function (voter) {
-                        faces.appendChild(avatar(voter));
-                    });
+                    var faces = avatarStack('ws-avatars-sm', option.voters, 4);
 
                     row.title = option.voters.map(function (voter) { return voter.name; }).join(', ');
                     row.appendChild(faces);
@@ -10646,13 +10791,13 @@
             foot.appendChild(el('span', 'ws-grow', t('poll_voters', poll.voters)));
 
             if (poll.voted && poll.can_vote) {
-                var undo = button('btn btn-sm btn-ghost', t('poll_withdraw'), 'bi-arrow-counterclockwise');
+                var undo = button('btn btn-sm btn-text theme-secondary', t('poll_withdraw'), 'bi-arrow-counterclockwise');
                 undo.addEventListener('click', function () { self.vote(message, []); });
                 foot.appendChild(undo);
             }
 
             if (poll.result_id) {
-                var result = button('btn btn-sm btn-ghost', t('poll_result'), 'bi-patch-check');
+                var result = button('btn btn-sm btn-text theme-secondary', t('poll_result'), 'bi-patch-check');
                 result.addEventListener('click', function () { self.jumpTo(poll.result_id); });
                 foot.appendChild(result);
             }
@@ -10735,7 +10880,7 @@
 
             var optionsWrap = el('div');
             var optionsBox = el('div', 'ws-poll-form-options');
-            var addOption = button('btn btn-sm btn-ghost', t('poll_add_option'), 'bi-plus-lg');
+            var addOption = button('btn btn-sm btn-text theme-secondary', t('poll_add_option'), 'bi-plus-lg');
 
             function renumber() {
                 Array.prototype.forEach.call(optionsBox.children, function (line, index) {
@@ -10877,7 +11022,7 @@
             outcome.appendChild(document.createTextNode(t('poll_result_help')));
             body.appendChild(outcome);
 
-            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             cancel.setAttribute('data-bs-dismiss', 'drawer');
             footer.appendChild(cancel);
 
@@ -12311,7 +12456,7 @@
                 waiting.appendChild(icon('bi-clock'));
                 waiting.appendChild(el('span', '', t('sm_editing') + ' · ' + t('sm_at', self.editingScheduled.when)));
 
-                var stop = button('btn btn-sm btn-ghost py-0', '', 'bi-x-lg', t('cancel'));
+                var stop = button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', t('cancel'));
                 stop.addEventListener('click', function () { self.cancelCompose(); });
                 waiting.appendChild(stop);
                 bar.appendChild(waiting);
@@ -12331,7 +12476,7 @@
             } else if (!self.editing && self.reply.sender && self.reply.sender.mcp) {
                 row.appendChild(el('span', 'fg-secondary ms-1', t('mcp_reply_hint', self.reply.sender.mcp)));
             }
-            var cancel = button('btn btn-sm btn-ghost py-0', '', 'bi-x-lg', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-x-lg', t('cancel'));
             cancel.addEventListener('click', function () { self.cancelCompose(); });
             row.appendChild(cancel);
             bar.appendChild(row);
@@ -12535,7 +12680,7 @@
                 if (result.command && result.command.type === 'ephemeral') {
                     var box = el('div', 'ws-ephemeral');
                     setHtml(box, result.command.html);
-                    var close = button('btn btn-sm btn-ghost float-end py-0', '', 'bi-x-lg', t('close'));
+                    var close = button('btn btn-sm btn-text theme-secondary float-end py-0', '', 'bi-x-lg', t('close'));
                     close.addEventListener('click', function () { box.remove(); });
                     box.insertBefore(close, box.firstChild);
                     self.pane.appendChild(box);
@@ -12666,7 +12811,7 @@
                 actions.appendChild(force);
             }
 
-            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             cancel.addEventListener('click', function () {
                 self.pending = null;
                 clear(self.previewBox);
@@ -12726,7 +12871,7 @@
             });
             actions.appendChild(save);
 
-            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             cancel.addEventListener('click', function () {
                 self.pending = null;
                 clear(self.previewBox);
@@ -12817,7 +12962,7 @@
             });
             actions.appendChild(all);
 
-            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             cancel.addEventListener('click', function () {
                 self.pending = null;
                 clear(self.previewBox);
@@ -12849,7 +12994,7 @@
             });
 
             box.appendChild(list);
-            var close = button('btn btn-sm btn-ghost float-end py-0', '', 'bi-x-lg', t('close'));
+            var close = button('btn btn-sm btn-text theme-secondary float-end py-0', '', 'bi-x-lg', t('close'));
             close.addEventListener('click', function () { box.remove(); });
             box.insertBefore(close, box.firstChild);
             this.pane.appendChild(box);
@@ -13450,7 +13595,7 @@
 
                 (BOOT.people || []).forEach(function (member) {
                     if ((markup.indexOf('<@user:' + member.id + '>') === -1) && (fits(member.name) || fits(member.username))) {
-                        people.push({ label: member.name, meta: member.title, avatar: member.avatar, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
+                        people.push({ label: member.name, meta: member.title, avatar: member.avatar, face: member, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
                     }
                 });
 
@@ -13744,7 +13889,7 @@
                 var mcpAliases = function () {
                     (BOOT.mcp || []).forEach(function (server) {
                         if (!needle || server.alias.indexOf(needle) === 0 || server.name.toLocaleLowerCase().indexOf(needle) !== -1) {
-                            items.push({ label: '@' + server.alias, meta: (server.name ? server.name + ' · ' : '') + t(server.agent ? 'mcp_meta_agent' : 'mcp_meta'), avatar: server.avatar || '', icon: server.icon || 'bi-plug', insert: '@' + server.alias + ' ' });
+                            items.push({ label: '@' + server.alias, meta: (server.name ? server.name + ' · ' : '') + t(server.agent ? 'mcp_meta_agent' : 'mcp_meta'), avatar: server.avatar || '', face: { avatar: server.avatar || '', initials: server.initials, tone: server.tone, name: server.alias }, icon: server.icon || 'bi-plug', insert: '@' + server.alias + ' ' });
                         }
                     });
                 };
@@ -13799,7 +13944,7 @@
 
                 BOOT.people.forEach(function (member) {
                     if (!needle || member.name.toLocaleLowerCase().indexOf(needle) !== -1 || member.username.toLocaleLowerCase().indexOf(needle) !== -1) {
-                        items.push({ label: member.name, meta: member.title, avatar: member.avatar, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
+                        items.push({ label: member.name, meta: member.title, avatar: member.avatar, face: member, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
                     }
                 });
 
@@ -13838,7 +13983,7 @@
 
                 BOOT.people.forEach(function (member) {
                     if ((people.length < 5) && (!wanted || member.name.toLocaleLowerCase().indexOf(wanted) !== -1 || member.username.toLocaleLowerCase().indexOf(wanted) !== -1)) {
-                        people.push({ label: member.name, meta: t('notes_person'), avatar: member.avatar, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
+                        people.push({ label: member.name, meta: t('notes_person'), avatar: member.avatar, face: member, token: '<@user:' + member.id + '>', shown: shownLabel('@', member.name) });
                     }
                 });
             }
@@ -13939,10 +14084,7 @@
                 if (item.glyph) {
                     row.appendChild(el('span', 'ws-picker-emoji', item.glyph));
                 } else if (item.avatar) {
-                    var img = el('img');
-                    img.src = item.avatar;
-                    img.alt = '';
-                    row.appendChild(img);
+                    row.appendChild(avatar(item.face || { avatar: item.avatar, name: item.label }));
                 } else {
                     row.appendChild(badgedIcon(item.icon || 'bi-dot', item.badge || ''));
                 }
@@ -14178,7 +14320,7 @@
 
                 data.messages.forEach(function (message) {
                     var node = self.messageNode(message, null);
-                    var jump = button('btn btn-sm btn-ghost', t('show_in_conversation'), 'bi-arrow-right-short');
+                    var jump = button('btn btn-sm btn-text theme-secondary', t('show_in_conversation'), 'bi-arrow-right-short');
                     jump.addEventListener('click', function () { self.open(self.channel.id, message.id); });
                     node.querySelector('.ws-msg-meta').appendChild(jump);
                     pane.appendChild(node);
@@ -14323,7 +14465,7 @@
                         row.appendChild(el('small', 'fg-secondary ws-grow', (message.sender ? message.sender.name + ' · ' : '') + message.time));
 
                         if (message.file.kind === 'pdf' || message.file.kind === 'audio' || message.file.office) {
-                            var look = button('btn btn-sm btn-ghost', '', message.file.kind === 'audio' ? 'bi-play-circle' : 'bi-eye', t('preview'));
+                            var look = button('btn btn-sm btn-text theme-secondary', '', message.file.kind === 'audio' ? 'bi-play-circle' : 'bi-eye', t('preview'));
                             look.addEventListener('click', function () {
                                 if (message.file.kind === 'pdf' || message.file.office) {
                                     previewFile(message.file, function (result) { self.fileEdited(result); });
@@ -14339,7 +14481,7 @@
                             row.appendChild(look);
                         }
 
-                        var jump = button('btn btn-sm btn-ghost', '', 'bi-chat-left-text', t('show_in_conversation'));
+                        var jump = button('btn btn-sm btn-text theme-secondary', '', 'bi-chat-left-text', t('show_in_conversation'));
                         jump.addEventListener('click', function () { self.open(self.channel.id, message.id); });
                         row.appendChild(jump);
 
@@ -14358,6 +14500,7 @@
             var bar = el('div', 'pg-toolbar mb-3');
             var status = select([['open', t('open_tasks')], ['closed', t('closed_tasks')], ['all', t('all_tasks')]], self.taskStatus || 'open');
             status.classList.add('w-auto');
+            status.setAttribute('aria-label', t('task_status_filter'));
             status.addEventListener('change', function () {
                 self.taskStatus = status.value;
                 self.drawCenter();
@@ -14435,7 +14578,7 @@
                             toast(t('summary_saved'), 'success');
                         }).catch(fail);
                     });
-                    var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+                    var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
                     cancel.addEventListener('click', function () { self.drawCenter(); });
                     actions.appendChild(save);
                     actions.appendChild(cancel);
@@ -15089,17 +15232,14 @@
             head.appendChild(title);
 
             var actions = el('div', 'ws-head-actions');
-            var faces = button('btn btn-sm btn-ghost d-inline-flex align-items-center gap-1', '', '', t('th_people'));
-            var stack = el('span', 'ws-avatars');
-
-            (channel.members || []).slice(0, 4).forEach(function (member) { stack.appendChild(avatar(member)); });
-            faces.appendChild(stack);
+            var faces = button('btn btn-sm btn-text theme-secondary d-inline-flex align-items-center gap-1', '', '', t('th_people'));
+            faces.appendChild(avatarStack('', channel.members, 4));
             faces.appendChild(el('span', 'small', (channel.members || []).length));
             faces.addEventListener('click', function () { self.showPeople(); });
             actions.appendChild(faces);
             actions.appendChild(self.threadMenu());
 
-            var shut = button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('th_close_panel'));
+            var shut = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('th_close_panel'));
             shut.addEventListener('click', function () { self.close(); });
             actions.appendChild(shut);
             head.appendChild(actions);
@@ -15175,7 +15315,7 @@
             var self = this;
             var channel = self.channel;
             var thread = channel.thread || {};
-            var more = button('btn btn-sm btn-ghost', '', 'bi-three-dots-vertical', t('more'));
+            var more = button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots-vertical', t('more'));
 
             more.addEventListener('click', function (event) {
                 var place = more.getBoundingClientRect();
@@ -15257,8 +15397,6 @@
             (channel.members || []).forEach(function (member) {
                 var row = el('div', 'd-flex align-items-center gap-3 py-3 border-bottom');
                 var face = avatar(member, '2rem');
-
-                face.style.borderRadius = '50%';
                 row.appendChild(face);
                 row.appendChild(el('div', 'flex-grow-1 fw-semibold', member.name));
                 body.appendChild(row);
@@ -15620,7 +15758,7 @@
     function saConditionRow(rule, onRemove) {
         var row = el('div', 'ws-sa-condition');
         var config = CFG.scheduled || {};
-        var removeButton = button('btn btn-sm btn-ghost ws-sa-remove', '', 'bi-x-lg', t('delete'));
+        var removeButton = button('btn btn-sm btn-text theme-secondary ws-sa-remove', '', 'bi-x-lg', t('delete'));
 
         removeButton.addEventListener('click', function () {
             row.remove();
@@ -16246,7 +16384,7 @@
             var verbBox = el('div');
             var verb = null;
             var fieldsBox = el('div', 'ws-sa-fields');
-            var addField = button('btn btn-sm btn-ghost', t('sa_add_field'), 'bi-plus-lg');
+            var addField = button('btn btn-sm btn-text theme-secondary', t('sa_add_field'), 'bi-plus-lg');
             var rows = [];
 
             function info() {
@@ -16259,7 +16397,7 @@
                 var which = select(fields.map(function (key) { return [key, info().fields[key].label]; }), name || fields[0]);
                 var slot = el('div', 'flex-grow-1');
                 var input = null;
-                var remove = button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('delete'));
+                var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('delete'));
                 var entry = { row: row };
 
                 function draw() {
@@ -16395,7 +16533,7 @@
         var row = el('div', 'ws-sa-follow');
         var head = el('div', 'ws-sa-follow-head');
         var on = select(Object.keys(config.outcomes || {}).map(function (key) { return [key, config.outcomes[key]]; }), (item && item.on) || 'done');
-        var removeButton = button('btn btn-sm btn-ghost ws-sa-remove', '', 'bi-x-lg', t('delete'));
+        var removeButton = button('btn btn-sm btn-text theme-secondary ws-sa-remove', '', 'bi-x-lg', t('delete'));
         var editor = saActionEditor(item ? item.do : null, false, selfId, { join: !!(state && state.join) });
 
         row.editor = editor;
@@ -16832,7 +16970,7 @@
             }
         });
 
-        var addRule = button('btn btn-sm btn-ghost', t('sa_add_rule'), 'bi-plus-lg');
+        var addRule = button('btn btn-sm btn-text theme-secondary', t('sa_add_rule'), 'bi-plus-lg');
         addRule.addEventListener('click', function (event) {
             var box = addRule.getBoundingClientRect();
             var add = function (rule) { return function () { conditions.appendChild(saConditionRow(rule)); preview(); }; };
@@ -16862,7 +17000,7 @@
 
         if (config.chains) {
             var after = step(4, 'bi-signpost-split', t('sa_follow'), t('sa_follow_help'));
-            var addFollow = button('btn btn-sm btn-ghost', t('sa_add_follow'), 'bi-plus-lg');
+            var addFollow = button('btn btn-sm btn-text theme-secondary', t('sa_add_follow'), 'bi-plus-lg');
             var countFollow = function () {
                 addFollow.hidden = (follows.children.length >= (config.max_follow || 5));
                 actionEditors = [actionEditor].concat(Array.prototype.map.call(follows.children, function (row) { return row.editor; }).filter(Boolean));
@@ -17045,7 +17183,7 @@
 
         // ── saving ──
 
-        var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'drawer');
         footer.appendChild(cancel);
 
@@ -17153,14 +17291,17 @@
 
     // Every scheduled action, for staff, by state: the scheduled screen's
     // list and the Scheduled actions section of Flows (workspace_flow.js,
-    // through PGWsKit). New goes into bar; the list is read again while it
-    // is still on the page.
-    function scheduledList(body, bar) {
-        var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sa_new_long'), 'bi-plus-lg');
-        add.addEventListener('click', function () {
-            scheduledForm({}, null, function () { load(); });
-        });
-        bar.appendChild(add);
+    // through PGWsKit). New goes into bar, unless options.add is false: in
+    // Flows a new rule is a flow, started from New flow. The list is read
+    // again while it is still on the page.
+    function scheduledList(body, bar, options) {
+        if (!options || (options.add !== false)) {
+            var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sa_new_long'), 'bi-plus-lg');
+            add.addEventListener('click', function () {
+                scheduledForm({}, null, function () { load(); });
+            });
+            bar.appendChild(add);
+        }
 
         var filters = el('div', 'ws-sa-filters');
         var list = el('div', 'ws-sa-list');
@@ -17305,7 +17446,7 @@
         };
 
         if (item.can_edit) {
-            var edit = button('btn btn-sm btn-ghost', t('edit'), 'bi-pencil');
+            var edit = button('btn btn-sm btn-text theme-secondary', t('edit'), 'bi-pencil');
             edit.addEventListener('click', function () {
                 scheduledForm(null, item, function (fresh) { refresh({ item: fresh }); });
             });
@@ -17313,7 +17454,7 @@
         }
 
         if (item.status === 'active' || item.status === 'paused') {
-            var pause = button('btn btn-sm btn-ghost', item.status === 'active' ? t('sa_pause') : t('sa_resume'), item.status === 'active' ? 'bi-pause' : 'bi-play');
+            var pause = button('btn btn-sm btn-text theme-secondary', item.status === 'active' ? t('sa_pause') : t('sa_resume'), item.status === 'active' ? 'bi-pause' : 'bi-play');
             pause.addEventListener('click', function () {
                 api('ws_scheduled_status', { id: item.id, status: item.status === 'active' ? 'paused' : 'active' }).then(refresh).catch(fail);
             });
@@ -17321,7 +17462,7 @@
         }
 
         if (item.can_edit) {
-            var run = button('btn btn-sm btn-ghost', t('sa_run_now'), 'bi-lightning');
+            var run = button('btn btn-sm btn-text theme-secondary', t('sa_run_now'), 'bi-lightning');
             run.addEventListener('click', function () {
                 ask(t('sa_run_now_confirm'), t('sa_run_now')).then(function (yes) {
                     if (yes) {
@@ -17337,7 +17478,7 @@
         }
 
         // A copy to start a new one from.
-        var copy = button('btn btn-sm btn-ghost', t('sa_duplicate'), 'bi-copy');
+        var copy = button('btn btn-sm btn-text theme-secondary', t('sa_duplicate'), 'bi-copy');
         copy.addEventListener('click', function () {
             var data = JSON.parse(JSON.stringify(item.data || {}));
 
@@ -17349,14 +17490,14 @@
         // The action drawn read-only on the flow canvas: in the Scheduled
         // actions section of Flows, where workspace_flow.js is loaded.
         if ((CFG.mode === 'flows') && window.PGWsFlow && window.PGWsFlow.showAction) {
-            var canvas = button('btn btn-sm btn-ghost', t('sa_show_canvas'), 'bi-diagram-3');
+            var canvas = button('btn btn-sm btn-text theme-secondary', t('sa_show_canvas'), 'bi-diagram-3');
             canvas.addEventListener('click', function () {
                 scheduledGraph(item.id);
             });
             tools.appendChild(canvas);
         }
 
-        var history = button('btn btn-sm btn-ghost', t('sa_history'), 'bi-clock-history');
+        var history = button('btn btn-sm btn-text theme-secondary', t('sa_history'), 'bi-clock-history');
         var historyBox = el('div', 'ws-sa-history');
         historyBox.hidden = true;
         history.addEventListener('click', function () {
@@ -17385,7 +17526,7 @@
         tools.appendChild(history);
 
         if (item.status === 'active' || item.status === 'paused' || item.status === 'failed') {
-            var cancelButton = button('btn btn-sm btn-ghost fg-danger', t('sa_cancel'), 'bi-x-circle');
+            var cancelButton = button('btn btn-sm btn-text theme-secondary fg-danger', t('sa_cancel'), 'bi-x-circle');
             cancelButton.addEventListener('click', function () {
                 ask(t('sa_cancel_confirm'), t('sa_cancel'), true).then(function (yes) {
                     if (yes) {
@@ -17531,7 +17672,7 @@
         }
 
         var tools = el('div', 'ws-sm-tools');
-        var sendNow = button('btn btn-sm btn-ghost', t('sm_send_now'), 'bi-send');
+        var sendNow = button('btn btn-sm btn-text theme-secondary', t('sm_send_now'), 'bi-send');
         sendNow.addEventListener('click', function () {
             sendNow.disabled = true;
             api('ws_scheduled_message_send', { id: item.id }).then(function () {
@@ -17544,7 +17685,7 @@
         });
         tools.appendChild(sendNow);
 
-        var move = button('btn btn-sm btn-ghost', t('sm_reschedule'), 'bi-calendar-event');
+        var move = button('btn btn-sm btn-text theme-secondary', t('sm_reschedule'), 'bi-calendar-event');
         move.addEventListener('click', function () {
             smAskWhen(item.date, item.time).then(function (when) {
                 if (!when) {
@@ -17560,12 +17701,12 @@
         tools.appendChild(move);
 
         if (onEdit) {
-            var edit = button('btn btn-sm btn-ghost', t('sm_edit_text'), 'bi-pencil');
+            var edit = button('btn btn-sm btn-text theme-secondary', t('sm_edit_text'), 'bi-pencil');
             edit.addEventListener('click', function () { onEdit(item); });
             tools.appendChild(edit);
         }
 
-        var remove = button('btn btn-sm btn-ghost fg-danger', t('sm_delete'), 'bi-trash');
+        var remove = button('btn btn-sm btn-text theme-secondary fg-danger', t('sm_delete'), 'bi-trash');
         remove.addEventListener('click', function () {
             ask(t('sm_delete_confirm'), t('sm_delete'), true).then(function (yes) {
                 if (!yes) {
@@ -17680,18 +17821,10 @@
                 row.appendChild(el('span', 'badge theme-danger', BOOT.priorities[task.priority]));
             }
 
-            var faces = el('span', 'ws-avatars');
-
-            task.assignees.slice(0, 4).forEach(function (member) {
-                var img = avatar(member);
-                img.title = member.name;
-                faces.appendChild(img);
-            });
-
-            row.appendChild(faces);
+            row.appendChild(avatarStack('', task.assignees, 4));
 
             if (task.can_edit && task.open) {
-                var done = button('btn btn-sm btn-ghost', '', 'bi-check2-circle', t('mark_done'));
+                var done = button('btn btn-sm btn-text theme-secondary', '', 'bi-check2-circle', t('mark_done'));
                 done.addEventListener('click', function (event) {
                     event.stopPropagation();
                     api('ws_task_status', { task_id: task.id, status: 'done' }).then(function () {
@@ -17786,7 +17919,7 @@
         }
 
         scopeList.forEach(function (scope) {
-            var item = button('btn btn-ghost' + (state.scope === scope[0] ? ' active' : ''), scope[1]);
+            var item = button('btn btn-text theme-secondary' + (state.scope === scope[0] ? ' active' : ''), scope[1]);
             item.addEventListener('click', function () {
                 state.scope = scope[0];
                 Array.prototype.forEach.call(scopes.children, function (child) { child.classList.remove('active'); });
@@ -17800,6 +17933,7 @@
 
         var status = select([['open', t('open_tasks')], ['closed', t('closed_tasks')], ['all', t('all_tasks')]], state.status);
         status.classList.add('w-auto');
+        status.setAttribute('aria-label', t('task_status_filter'));
         status.addEventListener('change', function () {
             state.status = status.value;
             load();
@@ -17847,8 +17981,12 @@
         var grow = el('div', 'pg-toolbar-grow');
         bar.appendChild(grow);
 
-        var searchGroup = el('div', 'input-group input-group-sm rounded-pill pg-toolbar-search');
-        var search = el('input', 'form-control');
+        var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
+        var searchIcon = el('span', 'form-adorn-text');
+        searchIcon.setAttribute('aria-hidden', 'true');
+        searchIcon.appendChild(icon('bi-search'));
+        searchGroup.appendChild(searchIcon);
+        var search = el('input', 'form-ghost');
         search.type = 'search';
         search.placeholder = t('search_tasks');
         search.setAttribute('aria-label', search.placeholder);
@@ -17921,14 +18059,14 @@
         addEvent.addEventListener('click', function () { eventForm(null, {}, load); });
         bar.appendChild(addEvent);
 
-        var addTask = button('btn btn-sm btn-ghost', t('new_task'), 'bi-check2-square');
+        var addTask = button('btn btn-sm btn-text theme-secondary', t('new_task'), 'bi-check2-square');
         addTask.addEventListener('click', function () { taskDrawer.open(0, {}, load); });
         bar.appendChild(addTask);
 
         var nav = el('div', 'btn-group btn-group-sm');
-        var prev = button('btn btn-ghost', '', 'bi-chevron-left', t('previous'));
-        var today = button('btn btn-ghost', t('today'));
-        var next = button('btn btn-ghost', '', 'bi-chevron-right', t('next'));
+        var prev = button('btn btn-text theme-secondary', '', 'bi-chevron-left', t('previous'));
+        var today = button('btn btn-text theme-secondary', t('today'));
+        var next = button('btn btn-text theme-secondary', '', 'bi-chevron-right', t('next'));
 
         function shift(days) {
             var date = new Date(state.from + 'T12:00:00');
@@ -17955,7 +18093,7 @@
         var span = el('div', 'btn-group btn-group-sm');
 
         [[7, t('one_week')], [14, t('two_weeks')]].forEach(function (option) {
-            var item = button('btn btn-ghost' + (state.days === option[0] ? ' active' : ''), option[1]);
+            var item = button('btn btn-text theme-secondary' + (state.days === option[0] ? ' active' : ''), option[1]);
             item.addEventListener('click', function () {
                 state.days = option[0];
                 Array.prototype.forEach.call(span.children, function (child) { child.classList.remove('active'); });
@@ -18369,9 +18507,9 @@
         // ── toolbar ──
 
         var nav = el('div', 'btn-group btn-group-sm');
-        var prev = button('btn btn-ghost', '', 'bi-chevron-left', t('previous_month'));
-        var now = button('btn btn-ghost', t('this_month'));
-        var next = button('btn btn-ghost', '', 'bi-chevron-right', t('next_month'));
+        var prev = button('btn btn-text theme-secondary', '', 'bi-chevron-left', t('previous_month'));
+        var now = button('btn btn-text theme-secondary', t('this_month'));
+        var next = button('btn btn-text theme-secondary', '', 'bi-chevron-right', t('next_month'));
 
         prev.addEventListener('click', function () { if (data) { state.month = data.prev; load(); } });
         next.addEventListener('click', function () { if (data) { state.month = data.next; load(); } });
@@ -18408,6 +18546,7 @@
 
         var statusFilter = select([['all', t('all_tasks')], ['open', t('open_tasks')], ['closed', t('closed_tasks')]], 'all');
         statusFilter.classList.add('w-auto');
+        statusFilter.setAttribute('aria-label', t('task_status_filter'));
         statusFilter.addEventListener('change', function () {
             state.status = statusFilter.value;
             draw();
@@ -18420,7 +18559,7 @@
         shows.setAttribute('role', 'group');
 
         [['tasks', t('tasks'), 'bi-check2-square'], ['talk', t('conversations'), 'bi-chat-dots'], ['events', t('plan_items'), 'bi-calendar-event']].forEach(function (option) {
-            var toggle = button('btn btn-ghost active', option[1], option[2]);
+            var toggle = button('btn btn-text theme-secondary active', option[1], option[2]);
             toggle.setAttribute('aria-pressed', 'true');
             toggle.addEventListener('click', function () {
                 state.show[option[0]] = !state.show[option[0]];
@@ -18479,17 +18618,7 @@
                 chip.appendChild(task.upcoming ? icon('bi-arrow-repeat') : el('span', 'ws-status-dot ws-s-' + task.status));
                 chip.appendChild(el('span', 'ws-cal-task-title', task.title));
 
-                var faces = el('span', 'ws-avatars ws-avatars-sm');
-
-                (task.people || []).slice(0, 3).forEach(function (id) {
-                    var member = person(id);
-
-                    if (member) {
-                        faces.appendChild(avatar(member));
-                    }
-                });
-
-                chip.appendChild(faces);
+                chip.appendChild(avatarStack('ws-avatars-sm', (task.people || []).map(person).filter(Boolean), 3));
             }
 
             chip.title = task.upcoming
@@ -18726,7 +18855,7 @@
             node.querySelector('.drawer-title').textContent = day.label;
             footer.classList.remove('d-none');
 
-            var addEvent = button('btn btn-sm btn-ghost', t('add_plan_item'), 'bi-calendar-plus');
+            var addEvent = button('btn btn-sm btn-text theme-secondary', t('add_plan_item'), 'bi-calendar-plus');
             addEvent.addEventListener('click', function () {
                 hideOffcanvas(node);
                 eventForm(null, { start: day.date, people: forWhom() }, load);
@@ -18915,7 +19044,7 @@
             peopleHead.appendChild(el('h3', 'ws-side-card-title ws-grow mb-0', t('people_this_month')));
 
             if (state.person_id) {
-                var all = button('btn btn-sm btn-ghost py-0', t('everyone'), 'bi-x');
+                var all = button('btn btn-sm btn-text theme-secondary py-0', t('everyone'), 'bi-x');
                 all.addEventListener('click', function () {
                     state.person_id = 0;
                     load();
@@ -19238,7 +19367,7 @@
             footer.appendChild(remove);
         }
 
-        var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'drawer');
         footer.appendChild(cancel);
 
@@ -19480,7 +19609,7 @@
         var section = el('div', 'ws-record-section ws-qe');
         var head = el('div', 'd-flex align-items-center justify-content-between');
         var title = el('div', 'ws-record-title mb-0', t('qe_title'));
-        var toggle = button('btn btn-sm btn-ghost', open ? t('close') : t('qe_edit'), open ? 'bi-chevron-up' : 'bi-pencil-square');
+        var toggle = button('btn btn-sm btn-text theme-secondary', open ? t('close') : t('qe_edit'), open ? 'bi-chevron-up' : 'bi-pencil-square');
         var form = el('div', 'ws-qe-form mt-3' + (open ? '' : ' d-none'));
         var fields = data.fields.slice();
         var short = data.short || [];
@@ -19563,7 +19692,7 @@
         form.appendChild(shortBox);
 
         if (moreBox.childNodes.length) {
-            var more = button('btn btn-sm btn-ghost mb-3', short.length ? t('qe_more') : t('qe_fewer'), 'bi-chevron-down');
+            var more = button('btn btn-sm btn-text theme-secondary mb-3', short.length ? t('qe_more') : t('qe_fewer'), 'bi-chevron-down');
 
             if (!short.length) {
                 moreBox.classList.remove('d-none');
@@ -19774,7 +19903,7 @@
         section.appendChild(shortBox);
 
         if (moreBox.childNodes.length) {
-            var more = button('btn btn-sm btn-ghost mb-3', t('qe_more'), 'bi-chevron-down');
+            var more = button('btn btn-sm btn-text theme-secondary mb-3', t('qe_more'), 'bi-chevron-down');
 
             more.addEventListener('click', function () {
                 var showing = moreBox.classList.contains('d-none');
@@ -19952,7 +20081,7 @@
 
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
-        var notesToggle = button('btn btn-sm btn-ghost' + (state.notes ? ' active' : ''), t('tl_notes'), 'bi-sticky');
+        var notesToggle = button('btn btn-sm btn-text theme-secondary' + (state.notes ? ' active' : ''), t('tl_notes'), 'bi-sticky');
         notesToggle.setAttribute('aria-pressed', state.notes ? 'true' : 'false');
         notesToggle.addEventListener('click', function () {
             state.notes = !state.notes;
@@ -19962,8 +20091,12 @@
         });
         bar.appendChild(notesToggle);
 
-        var searchGroup = el('div', 'input-group input-group-sm rounded-pill pg-toolbar-search');
-        var search = el('input', 'form-control');
+        var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
+        var searchIcon = el('span', 'form-adorn-text');
+        searchIcon.setAttribute('aria-hidden', 'true');
+        searchIcon.appendChild(icon('bi-search'));
+        searchGroup.appendChild(searchIcon);
+        var search = el('input', 'form-ghost');
         search.type = 'search';
         search.value = state.search;
         search.placeholder = t('tl_search');
@@ -20284,7 +20417,7 @@
                 foot.appendChild(el('span', '', t('edited')));
             }
 
-            var jump = el('a', 'btn btn-sm btn-ghost ms-auto');
+            var jump = el('a', 'btn btn-sm btn-text theme-secondary ms-auto');
             jump.href = item.url;
             jump.appendChild(icon('bi-arrow-right-short', 'me-1'));
             jump.appendChild(document.createTextNode(t('show_in_conversation')));
@@ -20522,7 +20655,7 @@
 
         // My Notes pinned to the panel menu, right under the workspace: the
         // person's own choice, shown once the list says it can be made.
-        var menuPin = button('btn btn-sm btn-ghost d-none ws-nb-menu-pin', '', 'bi-pin-angle');
+        var menuPin = button('btn btn-sm btn-text theme-secondary d-none ws-nb-menu-pin', '', 'bi-pin-angle');
         var menuPinned = false;
 
         function drawMenuPin() {
@@ -20609,7 +20742,7 @@
 
         // Every note as a zip that opens as a vault in Obsidian and the like.
         if (CFG.urls.notes_export) {
-            var exportAll = button('btn btn-sm btn-ghost', t('notes_export_all'), 'bi-file-earmark-zip');
+            var exportAll = button('btn btn-sm btn-text theme-secondary', t('notes_export_all'), 'bi-file-earmark-zip');
             exportAll.addEventListener('click', function () { window.location.href = CFG.urls.notes_export + '?all=1'; });
             bar.appendChild(exportAll);
         }
@@ -20617,15 +20750,19 @@
         // Notes from another app: Markdown and text files, or a zip of them
         // (workspace_notes_import.php).
         if (CFG.urls.notes_import && CFG.notes_import) {
-            var importNotes = button('btn btn-sm btn-ghost', t('notes_import'), 'bi-box-arrow-in-down');
+            var importNotes = button('btn btn-sm btn-text theme-secondary', t('notes_import'), 'bi-box-arrow-in-down');
             importNotes.addEventListener('click', function () { save().then(openImport); });
             bar.appendChild(importNotes);
         }
 
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
-        var searchGroup = el('div', 'input-group input-group-sm rounded-pill pg-toolbar-search');
-        var searchInput = el('input', 'form-control');
+        var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
+        var searchIcon = el('span', 'form-adorn-text');
+        searchIcon.setAttribute('aria-hidden', 'true');
+        searchIcon.appendChild(icon('bi-search'));
+        searchGroup.appendChild(searchIcon);
+        var searchInput = el('input', 'form-ghost');
         searchInput.type = 'search';
         searchInput.placeholder = t('notes_search');
         searchInput.setAttribute('aria-label', searchInput.placeholder);
@@ -21176,7 +21313,7 @@
 
             clear(headNode);
 
-            var back = button('btn btn-sm btn-ghost lg:d-none', '', 'bi-arrow-left', t('notes_back'));
+            var back = button('btn btn-sm btn-text theme-secondary lg:d-none', '', 'bi-arrow-left', t('notes_back'));
             back.addEventListener('click', function () {
                 save();
                 current = null;
@@ -21209,7 +21346,7 @@
             setStatus(dirty ? 'unsaved' : (current.id && editable() ? 'saved' : ''));
 
             if (current.access === 'owner' || !current.id) {
-                var share = button('btn btn-sm btn-ghost', t('notes_share'), 'bi-send');
+                var share = button('btn btn-sm btn-text theme-secondary', t('notes_share'), 'bi-send');
                 share.disabled = !current.id;
                 share.addEventListener('click', function (event) {
                     var box = share.getBoundingClientRect();
@@ -21229,7 +21366,7 @@
             // action items): its own button to bring them into a channel.
             if (CFG.meetings && current.id && editable() && /<#plan:\d+>/.test(current.body || '')
                 && ((current.body || '').indexOf('::: ' + t('meeting_decisions')) !== -1 || (current.body || '').indexOf('::: ' + t('meeting_actions')) !== -1)) {
-                var transfer = button('btn btn-sm btn-ghost', t('meeting_transfer'), 'bi-box-arrow-in-right');
+                var transfer = button('btn btn-sm btn-text theme-secondary', t('meeting_transfer'), 'bi-box-arrow-in-right');
                 transfer.addEventListener('click', function () { meetingTransfer(current); });
                 headNode.appendChild(transfer);
             }
@@ -21237,12 +21374,12 @@
             // What the note held before: kept on the server, put back as a
             // step the person can undo.
             if (current.id && current.versions) {
-                var versions = button('btn btn-sm btn-ghost', '', 'bi-clock-history', t('notes_versions'));
+                var versions = button('btn btn-sm btn-text theme-secondary', '', 'bi-clock-history', t('notes_versions'));
                 versions.addEventListener('click', function () { showVersions(current); });
                 headNode.appendChild(versions);
             }
 
-            var more = button('btn btn-sm btn-ghost', '', 'bi-three-dots', t('more'));
+            var more = button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots', t('more'));
             more.disabled = !current.id;
             more.addEventListener('click', function (event) {
                 var box = more.getBoundingClientRect();
@@ -21338,7 +21475,7 @@
 
             view.appendChild(el('div', 'small fg-secondary', t('notes_version_pick')));
 
-            var close = button('btn btn-sm btn-ghost', t('close'));
+            var close = button('btn btn-sm btn-text theme-secondary', t('close'));
             close.setAttribute('data-bs-dismiss', 'dialog');
             footer.appendChild(close);
 
@@ -21557,7 +21694,7 @@
             }
 
             function closeButton(label) {
-                var close = button('btn btn-sm btn-ghost', label || t('cancel'));
+                var close = button('btn btn-sm btn-text theme-secondary', label || t('cancel'));
                 close.setAttribute('data-bs-dismiss', 'dialog');
                 return close;
             }
@@ -21966,7 +22103,7 @@
                 var bytes = el('span');
                 var bar = progressBar({ percent: 0 });
                 var fill = bar.firstChild;
-                var stop = button('btn btn-sm btn-ghost', t('notes_import_cancel_upload'));
+                var stop = button('btn btn-sm btn-text theme-secondary', t('notes_import_cancel_upload'));
 
                 // The step is announced, not every percent.
                 label.setAttribute('role', 'status');
@@ -22824,7 +22961,7 @@
                 }
 
                 if (share.share_id) {
-                    var remove = button('btn btn-sm btn-ghost ws-tool-danger', '', 'bi-x-lg', t('notes_unshare'));
+                    var remove = button('btn btn-sm btn-text theme-secondary ws-tool-danger', '', 'bi-x-lg', t('notes_unshare'));
                     remove.addEventListener('click', function () {
                         api('ws_note_unshare', { note_id: note.id, share_id: share.share_id }).then(function () {
                             row.remove();
@@ -22917,7 +23054,7 @@
 
             footer.classList.remove('d-none');
 
-            var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
             cancel.setAttribute('data-bs-dismiss', 'drawer');
             footer.appendChild(cancel);
 
@@ -23122,6 +23259,7 @@
             button: button,
             select: select,
             avatar: avatar,
+            avatarStack: avatarStack,
             peoplePicker: peoplePicker,
             api: api,
             toast: toast,

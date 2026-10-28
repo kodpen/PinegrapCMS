@@ -378,7 +378,7 @@ function test_product_stock_checkout_reads_the_stock_before_the_decrement()
 {
 	$block = product_stock_events_test_block(product_stock_events_test_source('submit_order.php'), '$stock_left = array();', "'checkout');");
 	$select = strpos($block, "SELECT inventory, inventory_quantity FROM products WHERE id = '");
-	$decrement = strpos($block, "UPDATE products SET inventory_quantity = (inventory_quantity - '");
+	$decrement = strpos($block, "UPDATE products SET inventory_quantity = (inventory_quantity - ?)");
 
 	pg_assert_true($block !== '', 'the checkout stock block is found');
 	pg_assert_true($select !== false, 'the stock is read again in the loop');

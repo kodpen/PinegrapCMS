@@ -193,11 +193,11 @@ $self_url = PATH . SOFTWARE_DIRECTORY . '/view_sessions.php' . (($filter_user_id
 
 // Live session count per account, for the connected-accounts table below.
 $session_counts = array();
-$counts_result = mysqli_query(db::$con,
+$counts_result = db_q(
     "SELECT user_id, COUNT(*) AS live
     FROM auth_tokens
-    WHERE expires_at > '" . time() . "'
-    GROUP BY user_id");
+    WHERE expires_at > ?
+    GROUP BY user_id", array((string) time()));
 if ($counts_result) {
     while ($count_row = mysqli_fetch_assoc($counts_result)) {
         $session_counts[(int) $count_row['user_id']] = (int) $count_row['live'];

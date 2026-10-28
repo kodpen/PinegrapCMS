@@ -257,6 +257,29 @@ function pg_panel_shared_component($request, $action)
                           'created' => $sc_made['created'], 'warnings' => $sc_warn));
             break;
 
+        // ── FROM COMMON REGION (designer) ────────────────────────────────
+        // A common region as a shared component opened to content editors,
+        // the users granted the region granted it. Unlike a designer
+        // region, the component replaces the region everywhere: its classic
+        // tag draws the component from then on. One made earlier is given
+        // back.
+        case 'from_common_region':
+            require_once(PG_FUNCTIONS_DIR . '/includes/designer_region_import.php');
+            if (!pg_shared_component_content_ready()) {
+                respond(array('status' => 'error', 'message' => lang('Please run the software upgrade to open shared components to content editors.')));
+            }
+            $sc_region = isset($request['name']) && is_string($request['name']) ? $request['name'] : '';
+            $sc_rid = ($sc_region !== '') ? (int)db_value("SELECT cregion_id FROM cregion
+                WHERE cregion_name = '" . e($sc_region) . "' AND cregion_designer_type = 'no' ORDER BY cregion_id LIMIT 1") : 0;
+            $sc_warn = array();
+            $sc_made = ($sc_rid > 0) ? pg_common_region_component($sc_rid, $user, $sc_warn) : null;
+            if (!is_array($sc_made)) {
+                respond(array('status' => 'error', 'message' => lang('Record not found.')));
+            }
+            respond(array('status' => 'success', 'id' => $sc_made['id'], 'name' => $sc_made['name'],
+                          'created' => $sc_made['created'], 'warnings' => $sc_warn));
+            break;
+
         // ── SET CONTENT EDITABLE (designer) ──────────────────────────────
         // Opens a component to content editors or closes it again. Closing
         // keeps the users granted it, so opening it later needs no new grants.
@@ -816,20 +839,6 @@ function _sc_flag_binned_pages($rows)
     }
     unset($row);
     return $rows;
-}
-
-// Returns a name that does not yet exist in shared_components.
-// If $desired is already taken, appends " [1]", " [2]", ... until a free slot is found.
-function _sc_unique_name($desired)
-{
-    $base = $desired;
-    $name = $base;
-    $i    = 1;
-    while (db_value("SELECT COUNT(*) FROM shared_components WHERE name = '" . e($name) . "'") > 0) {
-        $name = $base . ' [' . $i . ']';
-        $i++;
-    }
-    return $name;
 }
 
 // What each component row says about the content level: its flag

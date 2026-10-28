@@ -661,8 +661,8 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
             if (!$user) {
                 // If this event has not already been processed, then get calendars that this event is assigned to.
                 if (isset($calendar_events_calendars[$event['id']]) == false) {
-                    $query = "SELECT calendar_id FROM calendar_events_calendars_xref WHERE calendar_event_id = '" . $event['id'] . "'";
-                    $result = mysqli_query(db::$con, $query);
+                    $query = "SELECT calendar_id FROM calendar_events_calendars_xref WHERE calendar_event_id = ?";
+                    $result = db_q($query, array((string) $event['id']));
                     $calendar_events_calendars[$event['id']] = array();
                     while ($row = mysqli_fetch_assoc($result)) {
                         $calendar_events_calendars[$event['id']][] = $row['calendar_id'];
@@ -943,25 +943,32 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                 } else {
                     $output_monthly_calendar_class = ' class="software_monthly_calendar"';
                 }
+                // The dashboard card is too narrow for full day names, which
+                // it cut to "Cu…" for both Friday and Saturday: it gets the
+                // short ones, with the full name for screen readers.
+                $output_day_headings = '';
+
+                $day_names = array(
+                    array(lang('Sunday'), lang('Sun')),
+                    array(lang('Monday'), lang('Mon')),
+                    array(lang('Tuesday'), lang('Tue')),
+                    array(lang('Wednesday'), lang('Wed')),
+                    array(lang('Thursday'), lang('Thu')),
+                    array(lang('Friday'), lang('Fri')),
+                    array(lang('Saturday'), lang('Sat')),
+                );
+
+                foreach ($day_names as $day_name) {
+                    $output_day_headings .= ($output_minimal_calendar == true)
+                        ? '<th><abbr class="text-decoration-none" title="' . h($day_name[0]) . '">' . h($day_name[1]) . '</abbr></th>'
+                        : '<th>' . h($day_name[0]) . '</th>';
+                }
+
                 $output_calendar = '<div class="monthly">
 
                         <table' . $output_monthly_calendar_class . '>
 
-                        <tr class="heading">
-
-                            <th>' . lang('Sunday') . '</th>
-
-                            <th>' . lang('Monday') . '</th>
-
-                            <th>' . lang('Tuesday') . '</th>
-
-                            <th>' . lang('Wednesday') . '</th>
-
-                            <th>' . lang('Thursday') . '</th>
-
-                            <th>' . lang('Friday') . '</th>
-
-                            <th>' . lang('Saturday') . '</th>
+                        <tr class="heading">' . $output_day_headings . '
 
                         </tr>
 
@@ -1498,8 +1505,8 @@ function get_calendar_event($event_id, $recurrence_number)
 
         LEFT JOIN products ON calendar_events.product_id = products.id
 
-        WHERE calendar_events.id = '" . escape($event_id) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        WHERE calendar_events.id = ?";
+    $result = db_q($query, array((string) $event_id)) or output_error(lang('Query failed.'));
     // if calendar event could not be found, then return false
     if (mysqli_num_rows($result) == 0) {
         return false;
@@ -1561,10 +1568,10 @@ function get_calendar_event($event_id, $recurrence_number)
 
             WHERE
 
-                (calendar_event_id = '" . escape($event_id) . "')
+                (calendar_event_id = ?)
 
-                AND (recurrence_number = '" . escape($sql_recurrence_number) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+                AND (recurrence_number = ?)";
+        $result = db_q($query, array((string) $event_id, (string) $sql_recurrence_number)) or output_error(lang('Query failed.'));
         // if a remaining spots record was found then use it to populate the remaining spots
         if (mysqli_num_rows($result) > 0) {
             $row = mysqli_fetch_assoc($result);
@@ -1583,10 +1590,10 @@ function get_calendar_event($event_id, $recurrence_number)
 
         LEFT JOIN calendar_event_locations ON calendar_events_calendar_event_locations_xref.calendar_event_location_id = calendar_event_locations.id
 
-        WHERE calendar_event_id = '" . escape($event_id) . "'
+        WHERE calendar_event_id = ?
 
         ORDER BY calendar_event_locations.name";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $event_id)) or output_error(lang('Query failed.'));
     $calendar_locations = "";
     // Add each location to the main location list that will be output to the front end soon
     while ($row = mysqli_fetch_assoc($result)) {

@@ -4558,6 +4558,121 @@ function pg_sw_page_item($page_id, $page_name, $home = false)
 }
 
 /**
+ * The counts of the SEO summary on the Pages screen (view_pages.php), each
+ * under the condition of the list filter it links to. $rows are the pages
+ * that list shows (archived ones already left out), each with sitemap,
+ * page_search, seo_flags, seo_checked_at and `public` (its folder's access
+ * type is public). The site map counts read public pages only, as their
+ * lists and sitemap.xml do; the others read every page.
+ *
+ * @param array $rows
+ * @return array<string, int>
+ */
+function pg_seo_pages_summary($rows)
+{
+    $summary = array(
+        'in_sitemap'             => 0,
+        'sitemap_no_title'       => 0,
+        'sitemap_no_description' => 0,
+        'in_search'              => 0,
+        'search_weak_keywords'   => 0,
+        'not_calculated'         => 0,
+        'no_h1'                  => 0,
+        'img_no_alt'             => 0,
+    );
+
+    foreach ((array) $rows as $row) {
+        $flags = (int) ($row['seo_flags'] ?? 0);
+
+        if (((int) ($row['sitemap'] ?? 0) == 1) && !empty($row['public'])) {
+            $summary['in_sitemap']++;
+
+            // Bit 1 marks a missing title, bit 32 a missing description.
+            if ($flags & 1) {
+                $summary['sitemap_no_title']++;
+            }
+
+            if ($flags & 32) {
+                $summary['sitemap_no_description']++;
+            }
+        }
+
+        if ((int) ($row['page_search'] ?? 0) == 1) {
+            $summary['in_search']++;
+
+            // Bits 512 and 1024 mark missing and thin keywords.
+            if ($flags & 1536) {
+                $summary['search_weak_keywords']++;
+            }
+        }
+
+        if ((int) ($row['seo_checked_at'] ?? 0) == 0) {
+            $summary['not_calculated']++;
+        }
+
+        if ($flags & 131072) {
+            $summary['no_h1']++;
+        }
+
+        if ($flags & 524288) {
+            $summary['img_no_alt']++;
+        }
+    }
+
+    return $summary;
+}
+
+/**
+ * The page types sitemap.xml lists (get_sitemap_info()). Every other type is
+ * an action, an account or checkout step, an error answer or a page that
+ * shows one item only through its address, and is never listed bare.
+ *
+ * @return string[]
+ */
+function pg_sitemap_page_types()
+{
+    return array(
+        'standard',
+        'folder view',
+        'photo gallery',
+        'custom form',
+        'form list view',
+        'form view directory',
+        'calendar view',
+        'catalog',
+        'express order',
+        'order form',
+        'shopping cart',
+        'search results',
+    );
+}
+
+/**
+ * The system widgets that make a page built in the visual editor one of the
+ * page types sitemap.xml leaves out, so that page is not listed either: the
+ * widget standing in for each such legacy type ($page_type_widgets, from
+ * pg_sw_page_type_widgets()), the error page, and the detail widgets that
+ * show a record or a product only through the address (the records and
+ * products themselves are listed under their own addresses).
+ *
+ * @param array $page_type_widgets legacy page type => widget type
+ * @return string[]
+ */
+function pg_sitemap_unlisted_widget_types($page_type_widgets)
+{
+    $listed = pg_sitemap_page_types();
+    $types = array('error_page', 'form_item_view', 'catalog_item_view');
+
+    foreach ((array) $page_type_widgets as $page_type => $widget_type) {
+        if (!in_array((string) $page_type, $listed, true)) {
+            $types[] = (string) $widget_type;
+        }
+    }
+
+    return array_values(array_unique($types));
+}
+
+/**
  * sitemap.xml with the stylesheet a browser draws it with: an xml-stylesheet
  * instruction right after the XML declaration. A browser shows the XML tree
  * of a sitemap only while no element in it is an XHTML one; the hreflang

@@ -128,6 +128,7 @@ function pg_designer_screen_render($ctx)
             'page_draft'            => (int)(isset($p['page_draft']) ? $p['page_draft'] : 0),
             'page_title'            => (string)$p['page_title'],
             'page_meta_description' => (string)$p['page_meta_description'],
+            'ai_fields'             => isset($p['ai_fields']) && is_array($p['ai_fields']) ? $p['ai_fields'] : array(),
             'page_search'           => (int)$p['page_search'],
             'page_search_keywords'  => (string)$p['page_search_keywords'],
             'page_sitemap'          => (int)$p['page_sitemap'],
@@ -168,6 +169,9 @@ function pg_designer_screen_render($ctx)
             'formSettings'          => function_exists('pg_cf_load_page_form_settings')
                                            ? pg_cf_load_page_form_settings((int)$p['page_id']) : array(),
             'access'                => $page_access,
+            // A page of a classic style just opened (?classic=1): its tree is
+            // not saved yet, so the tab starts unsaved and Save writes it.
+            'converted'             => !empty($p['converted']) ? 1 : 0,
         );
     }
     if (empty($js_pages)) {
@@ -219,6 +223,23 @@ function pg_designer_screen_render($ctx)
         );
         $active = 0;
     }
+    // One shared component opened on its own (edit_system_style.php
+    // ?component=): its one tab places the component and is never saved as
+    // a page; Save writes the component (designer_access.php,
+    // pg_designer_component_entry()).
+    $sd_component = (isset($ctx['component']) && is_array($ctx['component'])) ? $ctx['component'] : null;
+    if ($sd_component) {
+        $js_pages = array(array_merge($js_pages[0], array(
+            'key'        => 'c' . (int)$sd_component['id'],
+            'page_name'  => (string)$sd_component['name'],
+            'page_draft' => 0,
+            'tree'       => array('type' => 'root', 'props' => new stdClass(), 'children' => array(
+                array('type' => 'shared_ref', 'props' => array('sharedId' => (int)$sd_component['id'], 'sharedName' => (string)$sd_component['name']), 'children' => array()),
+            )),
+            'access'     => 'edit',
+        )));
+        $active = 0;
+    }
     $active_key = 'p' . $active;
     $found_active = false;
     foreach ($js_pages as $jp) { if ($jp['key'] === $active_key) { $found_active = true; break; } }
@@ -248,6 +269,8 @@ function pg_designer_screen_render($ctx)
         'styleName'     => (string)$style['name'],
         'activeKey'     => $active_key,
         'pages'         => $js_pages,
+        // A shared component opened on its own: Save writes only it.
+        'componentOnly' => $sd_component ? array('id' => (int)$sd_component['id'], 'name' => (string)$sd_component['name']) : null,
         'canSetHome'    => ((int)$user['role'] < 3),
         'noindexReady'  => (pg_page_noindex_ready() == TRUE),
         'apiUrl'        => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php',
@@ -270,6 +293,9 @@ function pg_designer_screen_render($ctx)
         // the same. Read only on a hosted site, which ignores the file.
         'layoutCode'    => ((int)$user['role'] <= 1),
         'layoutPages'   => $layout_pages,
+        // Of those, the custom form pages, whose layout converts into a
+        // custom_form widget placed beside the region (layout_code convert).
+        'layoutFormPages' => pg_layout_form_page_ids($layout_pages),
         'layoutReadOnly' => pg_hosted(),
         // ?layout=1 (the toolbar's Ctrl+G button, pg_layout_tab_param()):
         // the page whose layout tab opens once the editor is up, or 0.
@@ -424,6 +450,7 @@ function pg_designer_screen_render($ctx)
         <main id="content" style="padding:0; max-width:100%;">
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
+            ' . $liveform->get_warnings() . '
             <!-- disable_shortcut: the editor answers Ctrl+S itself, with what its
                  main button says on the page on screen (style_designer.js). -->
             <form id="style_designer_form" name="style_designer_form" class="disable_shortcut" action="' . $form_action . '" method="post" style="height:100%;">
@@ -477,7 +504,7 @@ function pg_designer_screen_render($ctx)
                          the header link and the browser back button all go through
                          the unsaved-changes guard. -->
                     <div class="sd-toolbar sd-toolbar-tabs">
-                        <div class="sd-toolbar-group sd-toolbar-pages">
+                        <div class="sd-toolbar-group sd-toolbar-pages"' . ($sd_component ? ' hidden' : '') . '>
                             <div class="pg-menu-wrap sd-tabs-add">
                                 <button type="button" class="sd-tabs-add-btn" data-bs-toggle="menu" aria-expanded="false" title="' . lang('Add Page') . '">
                                     <span class="bi bi-plus-lg"></span><span class="sd-tabs-add-txt">' . lang('Add Page') . '</span>
@@ -515,8 +542,8 @@ function pg_designer_screen_render($ctx)
                             <!-- The main action puts every page of the design on the
                                  site, so it says so. The label drops to the icon on
                                  narrow screens; the title still names it. -->
-                            <button type="button" id="sd-ajax-save" name="submit_save" value="Save" class="sd-icon-btn sd-icon-btn-primary sd-publish-btn" title="' . lang('Publish') . '"><span class="bi bi-rocket-takeoff" aria-hidden="true"></span><span class="sd-publish-txt">' . lang('Publish') . '</span></button>
-                            ' . (($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready()) ? '<!-- A draft page has two actions: the main button saves it
+                            <button type="button" id="sd-ajax-save" name="submit_save" value="Save" class="sd-icon-btn sd-icon-btn-primary sd-publish-btn" title="' . ($sd_component ? lang('Save') : lang('Publish')) . '"><span class="bi ' . ($sd_component ? 'bi-floppy' : 'bi-rocket-takeoff') . '" aria-hidden="true"></span><span class="sd-publish-txt">' . ($sd_component ? lang('Save') : lang('Publish')) . '</span></button>
+                            ' . (($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready() && !$sd_component) ? '<!-- A draft page has two actions: the main button saves it
                                  (it stays a draft), this one puts it on the
                                  site. Hidden while the page on screen is on
                                  the site. -->
@@ -1162,7 +1189,7 @@ function pg_designer_home_design_card($d, $pages, $ctx)
     $name = h($d['style_name']);
     $attrs = ' data-style-id="' . $id . '" data-name="' . $name . '" data-pages="' . $count . '" data-home="' . ($home ? '1' : '0') . '"'
            . ' data-folders="' . (int)$ctx['folders'] . '" data-edit-url="' . h($edit_url) . '" data-add-url="' . h($add_url) . '" data-view-url="' . h($view_url) . '"';
-    $more = '<button type="button" class="btn btn-sm btn-ghost sdh-more no-popover" data-bs-toggle="tooltip" title="' . h(lang('More actions')) . '" aria-label="' . h(lang('More actions')) . '" aria-haspopup="menu" aria-expanded="false"><i class="bi bi-three-dots" aria-hidden="true"></i></button>';
+    $more = '<button type="button" class="btn btn-sm btn-text theme-secondary sdh-more no-popover" data-bs-toggle="tooltip" title="' . h(lang('More actions')) . '" aria-label="' . h(lang('More actions')) . '" aria-haspopup="menu" aria-expanded="false"><i class="bi bi-three-dots" aria-hidden="true"></i></button>';
     // The picture opens the editor too; the name link is the one announced.
     $picture = '<a class="sdh-browser" href="' . h($edit_url) . '" tabindex="-1" aria-hidden="true">'
              .     '<span class="sdh-browser-bar"><i></i><i></i><i></i><span class="sdh-browser-url">' . h($address) . '</span></span>'
@@ -1201,13 +1228,13 @@ function pg_designer_home_design_card($d, $pages, $ctx)
     // menu, where it is not one stray click away.
     $buttons = '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="' . h($edit_url) . '"><i class="bi bi-pencil-square me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</a>';
     if (!empty($ctx['can_change'])) {
-        $buttons .= '<a class="btn btn-sm btn-ghost" href="' . h($add_url) . '"><i class="bi bi-file-earmark-plus me-1" aria-hidden="true"></i>' . h(lang('Add Page')) . '</a>';
+        $buttons .= '<a class="btn btn-sm btn-text theme-secondary" href="' . h($add_url) . '"><i class="bi bi-file-earmark-plus me-1" aria-hidden="true"></i>' . h(lang('Add Page')) . '</a>';
     }
     if ($view_url !== '') {
-        $buttons .= '<a class="btn btn-sm btn-ghost" href="' . h($view_url) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang('View on site')) . '</a>';
+        $buttons .= '<a class="btn btn-sm btn-text theme-secondary" href="' . h($view_url) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang('View on site')) . '</a>';
     }
     if (!empty($ctx['can_draft'])) {
-        $buttons .= '<button type="button" class="btn btn-sm btn-ghost' . ((int)$d['draft_count'] > 0 ? '' : ' d-none') . '" data-act="on"><i class="bi bi-cloud-check me-1" aria-hidden="true"></i>' . h(lang('Put on the site')) . '</button>';
+        $buttons .= '<button type="button" class="btn btn-sm btn-text theme-secondary' . ((int)$d['draft_count'] > 0 ? '' : ' d-none') . '" data-act="on"><i class="bi bi-cloud-check me-1" aria-hidden="true"></i>' . h(lang('Put on the site')) . '</button>';
     }
 
     $pages_html = $pages
@@ -1409,10 +1436,10 @@ function pg_designer_start_screen($ctx)
     if ($designs) {
         // A name to look for once there are more designs than fit a glance.
         $search = (count($designs) > 6)
-            ? '<div class="input-group input-group-sm">
-                    <span class="input-group-text rounded-start-pill"><i class="bi bi-search" aria-hidden="true"></i></span>
-                    <input type="search" class="form-control rounded-end-pill" id="sdh-filter" placeholder="' . h(lang('Find a design')) . '" aria-label="' . h(lang('Find a design')) . '" autocomplete="off">
-               </div>'
+            ? '<label class="form-control form-control-sm form-adorn rounded-pill">
+                    <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="search" class="form-ghost" id="sdh-filter" placeholder="' . h(lang('Find a design')) . '" aria-label="' . h(lang('Find a design')) . '" autocomplete="off">
+               </label>'
             : '';
         $list =
             '<section class="sdh-section" aria-labelledby="sdh-designs-title">
@@ -1549,6 +1576,9 @@ function pg_designer_components_card($user)
         } elseif (strpos($category, 'cregion:') === 0) {
             // Made from a classic designer region (pg_designer_region_component()).
             $source_cell = h(lang('Designer Region'));
+        } elseif (strpos($category, 'common_region:') === 0) {
+            // Made from a common region (pg_common_region_component()).
+            $source_cell = h(lang('Common Region'));
         } else {
             $source_cell = '<span class="fg-secondary">—</span>';
         }
@@ -1832,7 +1862,7 @@ function pg_designer_template_modal($templates, $from_pages)
         $custom = isset($s['builtin']) && !$s['builtin'];
         $custom_badge = $custom ? '<span class="badge theme-secondary fw-normal text-nowrap">' . lang('Made from a design') . '</span>' : '';
         $delete_btn = $custom
-            ? '<button type="button" class="btn btn-sm btn-ghost sd-tpl-delete no-popover" data-template="' . h($s['id']) . '" data-name="' . h($s['name']) . '" data-bs-toggle="tooltip" title="' . h(lang('Delete template')) . '" aria-label="' . h(lang('Delete template')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>'
+            ? '<button type="button" class="btn btn-sm btn-text theme-secondary sd-tpl-delete no-popover" data-template="' . h($s['id']) . '" data-name="' . h($s['name']) . '" data-bs-toggle="tooltip" title="' . h(lang('Delete template')) . '" aria-label="' . h(lang('Delete template')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>'
             : '';
         $use_href = 'add_system_style.php?start=template&template=' . rawurlencode($s['id']) . $extra;
         $cards .=
@@ -2080,6 +2110,11 @@ function pg_designer_settings_modal($ctx)
     );
     $ai_title_button = pg_ai_write_button($user, $ai_page + array('target' => 'seo_title', 'field' => 'pg_page_title'));
     $ai_description_button = pg_ai_write_button($user, $ai_page + array('target' => 'seo_description', 'field' => 'pg_page_meta_description'));
+    // The mark of a text written with AI (page.ai_fields), drawn hidden and
+    // shown by the editor for the open page; it saves with the page.
+    $ai_marks_ready = pg_ai_fields_ready('page');
+    $ai_title_marker = $ai_marks_ready ? pg_ai_fields_marker('page_title', 'pg_page_title', false) : '';
+    $ai_description_marker = $ai_marks_ready ? pg_ai_fields_marker('page_meta_description', 'pg_page_meta_description', false) : '';
 
     $rail = function ($pane, $icon, $label, $scope, $active, $hidden = false) use ($design_hidden) {
         return '<button class="nav-link text-start' . ($active ? ' active' : '') . ($scope === 'design' ? $design_hidden : '') . ($hidden ? ' d-none' : '') . '" id="tab-' . $pane . '-btn"
@@ -2284,12 +2319,12 @@ function pg_designer_settings_modal($ctx)
                 lang('The title in the browser tab and in search results; 30 to 60 characters read best. Left empty, the title of the site is used.'),
                 '<input type="text" name="page_title" id="pg_page_title" class="form-control form-control-sm sd-page-field" data-page-key="page_title" maxlength="255">
                 <div id="seo_c_pg_page_title"></div>',
-                array('for' => 'pg_page_title', 'wide' => true, 'action' => $ai_title_button)) . '
+                array('for' => 'pg_page_title', 'wide' => true, 'action' => $ai_title_button, 'marker' => $ai_title_marker)) . '
             ' . pg_designer_setting(lang('Meta Description'),
                 lang('The summary under the title in search results and in shared links; 150 to 160 characters read best. Left empty, the description of the site is used.'),
                 '<textarea name="page_meta_description" id="pg_page_meta_description" class="form-control form-control-sm sd-page-field" data-page-key="page_meta_description" rows="3" maxlength="255"></textarea>
                 <div id="seo_c_pg_page_meta_description"></div>',
-                array('for' => 'pg_page_meta_description', 'wide' => true, 'action' => $ai_description_button)) . '
+                array('for' => 'pg_page_meta_description', 'wide' => true, 'action' => $ai_description_button, 'marker' => $ai_description_marker)) . '
             ' . pg_designer_setting(lang('Preview'),
                 lang('Roughly how a search engine lists the page. It may shorten the text or show a passage of the page instead; a page that shows one record (a product, a post) takes the title and description of the record.'),
                 '<div class="sd-serp" id="sd-serp" aria-hidden="true">
@@ -2413,7 +2448,7 @@ function pg_designer_settings_modal($ctx)
  * $name and $help are lang() text. $opts: 'for' (the control's id, makes
  * the name its label), 'wide', 'switch', 'id' (the row's), 'action' (a
  * button beside the name, such as pg_ai_write_button(); its panel opens
- * under the name).
+ * under the name), 'marker' (a mark after the name, pg_ai_fields_marker()).
  */
 function pg_designer_setting($name, $help, $control, $opts = array())
 {
@@ -2424,8 +2459,8 @@ function pg_designer_setting($name, $help, $control, $opts = array())
     $name = ($for !== '')
         ? '<label class="sd-set-name" for="' . h($for) . '">' . $name . '</label>'
         : '<div class="sd-set-name">' . $name . '</div>';
-    if (!empty($opts['action'])) {
-        $name = pg_ai_write_label_row($name, (string)$opts['action']);
+    if (!empty($opts['action']) || !empty($opts['marker'])) {
+        $name = pg_ai_write_label_row($name, (string)($opts['action'] ?? ''), (string)($opts['marker'] ?? ''));
     }
     return '<div class="' . $class . '"' . (isset($opts['id']) ? ' id="' . h($opts['id']) . '"' : '') . '>
                 <div class="sd-set-text">' . $name . ($help !== '' ? '<div class="sd-set-help">' . $help . '</div>' : '') . '</div>
@@ -2885,6 +2920,16 @@ function pg_designer_screen_post($ctx)
         $fail(array(lang('You do not have access to add a design.')));
     }
 
+    // A classic style opened in the editor (edit_system_style.php
+    // ?classic=1) becomes a visual design with this save
+    // (save_system_style()). Only a designer converts one; its page regions,
+    // system region and layout override stay as they were.
+    $converting = ($mode === 'edit' && $style_id > 0)
+        && ((string)db_value("SELECT style_layout FROM style WHERE style_id = '$style_id' LIMIT 1") !== 'visual_designer');
+    if ($converting && !$can_write_design) {
+        $fail(array(lang('Only a designer can open a classic style in the visual designer.')));
+    }
+
     $style_data = array(
         'style_id'                          => $style_id,
         'name'                              => $style_name,
@@ -2929,6 +2974,15 @@ function pg_designer_screen_post($ctx)
             $fail(array(lang('The design could not be saved. Please try again.')));
         }
         log_activity(lang(array('string' => ($mode === 'edit' ? 'style ({var:1}) was modified' : 'style ({var:1}) was added'), 'vars' => array($style_name))), $_SESSION['sessionusername']);
+        // An update never changes a design's framework; a converted style
+        // takes the one the editor opened it with (custom: the theme keeps
+        // its own Bootstrap and scripts).
+        if ($converting) {
+            if (pg_style_framework_ready()) {
+                db("UPDATE style SET style_framework = '" . e(pg_design_framework_key($style_data['framework'])) . "' WHERE style_id = '$style_id'");
+            }
+            log_activity(lang(array('string' => 'style ({var:1}) was made a visual design', 'vars' => array($style_name))), $_SESSION['sessionusername']);
+        }
     }
 
     // ── Design-wide body classes: fold them onto the pages, once ──────────

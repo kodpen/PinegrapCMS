@@ -65,7 +65,7 @@
             var row = el('div', 'ws-task-approvals-person ws-approval-' + who.decision);
             var face = h.avatar(who);
 
-            face.className = 'ws-approval-face';
+            face.classList.add('ws-approval-face');
             row.appendChild(face);
             row.appendChild(el('span', 'ws-approval-name', who.name));
 
@@ -85,7 +85,7 @@
             row.appendChild(badge);
 
             if (who.can_resend) {
-                var again = h.button('btn btn-sm btn-ghost py-0 px-1', '', 'bi-envelope', t('apv_guest_resend'));
+                var again = h.button('btn btn-sm btn-text theme-secondary py-0 px-1', '', 'bi-envelope', t('apv_guest_resend'));
 
                 again.addEventListener('click', function () {
                     again.disabled = true;
@@ -182,7 +182,7 @@
             box.appendChild(el('div', 'form-text mb-3', t('tap_help')));
 
             var buttons = el('div', 'd-flex gap-1 justify-content-end');
-            var cancel = h.button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = h.button('btn btn-sm btn-text theme-secondary', t('cancel'));
             var send = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('tap_send'), 'bi-send');
 
             cancel.addEventListener('click', function () {

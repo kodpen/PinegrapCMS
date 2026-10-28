@@ -538,7 +538,9 @@ if ($ops_alerts_ready) {
                             </div>
                             <div class="pg-f-xs">
                                 <label for="ops_alert_disk_percent" class="form-label">' . lang('Free disk space below %') . '</label>
-                                <input type="number" name="ops_alert_disk_percent" id="ops_alert_disk_percent" min="0" max="50" step="1" class="form-control" value="' . (int) $ops_alert_disk_percent . '" />
+                                <div class="form-range pg-range-bubble" data-pg-range="%">
+                                    <input type="range" name="ops_alert_disk_percent" id="ops_alert_disk_percent" min="0" max="50" step="1" class="form-range-input" value="' . (int) $ops_alert_disk_percent . '" />
+                                </div>
                             </div>
                             <div class="pg-f-xs">
                                 <label for="ops_alert_mail_failures" class="form-label">' . lang('Failed e-mails in a day') . '</label>
@@ -661,7 +663,7 @@ $pg_settings_modals[] = '
                 <dialog class="dialog dialog-xl" id="cron_jobs" aria-labelledby="cron_jobs">
                             <div class="dialog-header">
                                 <h5 class="dialog-title">' . lang('Cron Jobs') . ' (' . $output_os_family . ')</h5>
-                                <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+                                <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                             </div>
                             <div class="dialog-body ">
                                <div class="row gy-5">

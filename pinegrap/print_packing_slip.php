@@ -45,8 +45,8 @@ $query =
         shipping_methods.name AS shipping_method_name
     FROM ship_tos
     LEFT JOIN shipping_methods ON ship_tos.shipping_method_id = shipping_methods.id
-    WHERE ship_tos.id = '" . escape($_GET['ship_to_id'] ?? '') . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE ship_tos.id = ?";
+$result = db_q($query, array((string) ($_GET['ship_to_id'] ?? ''))) or output_error('Query failed.');
 
 // If the ship to does not exist, then output error.
 if (mysqli_num_rows($result) == 0) {
@@ -63,8 +63,8 @@ $query =
         order_number,
         order_date
     FROM orders
-    WHERE orders.id = '" . $ship_to['order_id'] . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    WHERE orders.id = ?";
+$result = db_q($query, array((string) $ship_to['order_id'])) or output_error('Query failed.');
 $order = mysqli_fetch_assoc($result);
 
 // The optional address lines below are only filled when there is something
@@ -170,9 +170,9 @@ $query =
         products.form_quantity_type
     FROM order_items
     LEFT JOIN products ON order_items.product_id = products.id
-    WHERE order_items.ship_to_id = '" . $ship_to['id'] . "'
+    WHERE order_items.ship_to_id = ?
     ORDER BY order_items.id ASC";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = db_q($query, array((string) $ship_to['id'])) or output_error('Query failed.');
 $order_items = mysqli_fetch_items($result);
 
 $output_order_item_rows = '';

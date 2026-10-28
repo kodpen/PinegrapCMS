@@ -135,6 +135,11 @@ function pg_dashboard_brief($user, $changelog_sections)
     // because that is true; it does not say sales are strong, because that is not.
     $greeting_now = time();
 
+    // "This week" is today and the six days before it from midnight, the
+    // window the E-Commerce Summary card counts as its last week, so a sentence
+    // and the card beside it never give two numbers for the same week.
+    $greeting_week_start = strtotime(date('Y-m-d', $greeting_now)) - (6 * 86400);
+
     $sig = array(
         'orders_today'    => null,
         'orders_before'   => null,
@@ -218,8 +223,7 @@ function pg_dashboard_brief($user, $changelog_sections)
         // both of its own bounds. Without the lower bound the "yesterday" figure
         // would quietly swallow the days behind it, and the basket count would
         // grow to a fortnight the moment the scan did.
-        $greeting_week_start = $greeting_now - 604800;
-        $greeting_prev_week_start = $greeting_now - 1209600;
+        $greeting_prev_week_start = $greeting_week_start - 604800;
 
         $greeting_orders = db_item(
             "SELECT
@@ -251,8 +255,8 @@ function pg_dashboard_brief($user, $changelog_sections)
 
         require_once PG_FUNCTIONS_DIR . '/includes/sales_map.php';
 
-        $greeting_map_week  = $greeting_now - 604800;
-        $greeting_map_month = $greeting_now - 2592000;
+        $greeting_map_week  = $greeting_week_start;
+        $greeting_map_month = $greeting_week_start - 1814400;
 
         $greeting_map_rows = db_items(
             "SELECT
@@ -327,7 +331,7 @@ function pg_dashboard_brief($user, $changelog_sections)
 
     if (($user['role'] < 3) || ($user['manage_contacts'] == true)) {
         $sig['new_contacts'] = (int) db_value(
-            "SELECT COUNT(*) FROM contacts WHERE timestamp >= " . (int) ($greeting_now - 604800));
+            "SELECT COUNT(*) FROM contacts WHERE timestamp >= " . (int) $greeting_week_start);
     }
 
     if ($user['role'] < 3) {
@@ -534,7 +538,7 @@ function pg_dashboard_brief($user, $changelog_sections)
                 SUM(CASE WHEN submitted_timestamp >= " . (int) ($greeting_now - 86400) . " THEN 1 ELSE 0 END) AS forms_today,
                 COUNT(*) AS forms_week
              FROM forms
-             WHERE complete = '1' AND submitted_timestamp >= " . (int) ($greeting_now - 604800));
+             WHERE complete = '1' AND submitted_timestamp >= " . (int) $greeting_week_start);
 
         $sig['forms_today'] = (int) ($greeting_forms['forms_today'] ?? 0);
         $sig['forms_week']  = (int) ($greeting_forms['forms_week'] ?? 0);
@@ -1709,7 +1713,7 @@ function pg_dashboard_brief($user, $changelog_sections)
             $greeting_strip_elapsed = max(0, time() - (int) $greeting_strip_ws['timer']['started_at']);
 
             $greeting_strip[] =
-                '<a class="pg-brief-ws-item is-live" href="workspace_tasks.php?task=' . (int) $greeting_strip_ws['timer']['task_id'] . '">'
+                '<a class="pg-brief-ws-item hover-lift is-live" href="workspace_tasks.php?task=' . (int) $greeting_strip_ws['timer']['task_id'] . '">'
                 . '<i class="bi bi-stopwatch" aria-hidden="true"></i>'
                 . '<span class="pg-brief-ws-label">' . h(lang('Timer running')) . '</span>'
                 . '<span class="pg-brief-ws-text">' . $greeting_strip_title($greeting_strip_ws['timer']['title']) . '</span>'
@@ -1720,7 +1724,7 @@ function pg_dashboard_brief($user, $changelog_sections)
 
         if ($greeting_strip_ws['new_task'] !== null) {
             $greeting_strip[] =
-                '<a class="pg-brief-ws-item is-new" href="workspace_tasks.php?task=' . (int) $greeting_strip_ws['new_task']['id'] . '">'
+                '<a class="pg-brief-ws-item hover-lift is-new" href="workspace_tasks.php?task=' . (int) $greeting_strip_ws['new_task']['id'] . '">'
                 . '<i class="bi bi-check2-square" aria-hidden="true"></i>'
                 . '<span class="pg-brief-ws-label">' . h(lang('New task')) . '</span>'
                 . '<span class="pg-brief-ws-text">' . $greeting_strip_title($greeting_strip_ws['new_task']['title']) . '</span>'
@@ -1730,7 +1734,7 @@ function pg_dashboard_brief($user, $changelog_sections)
         // Somebody asked for a yes or a no and is waiting on it.
         if (!empty($greeting_strip_ws['approvals'])) {
             $greeting_strip[] =
-                '<a class="pg-brief-ws-item is-new" href="' . h(($greeting_strip_ws['approval_url'] !== null) ? $greeting_strip_ws['approval_url'] : 'workspace.php') . '">'
+                '<a class="pg-brief-ws-item hover-lift is-new" href="' . h(($greeting_strip_ws['approval_url'] !== null) ? $greeting_strip_ws['approval_url'] : 'workspace.php') . '">'
                 . '<i class="bi bi-patch-question" aria-hidden="true"></i>'
                 . '<span class="pg-brief-ws-label">' . h(lang('Awaiting your approval')) . '</span>'
                 . '<span class="pg-brief-ws-text">' . h(pg_format_number($greeting_strip_ws['approvals'], 0)) . '</span>'
@@ -1742,7 +1746,7 @@ function pg_dashboard_brief($user, $changelog_sections)
             $greeting_strip_percent = (int) $greeting_strip_ws['doing']['progress']['percent'];
 
             $greeting_strip[] =
-                '<a class="pg-brief-ws-item" href="workspace_tasks.php?task=' . (int) $greeting_strip_ws['doing']['id'] . '">'
+                '<a class="pg-brief-ws-item hover-lift" href="workspace_tasks.php?task=' . (int) $greeting_strip_ws['doing']['id'] . '">'
                 . '<i class="bi bi-list-check" aria-hidden="true"></i>'
                 . '<span class="pg-brief-ws-label">' . h(lang('In progress')) . '</span>'
                 . '<span class="pg-brief-ws-text">' . $greeting_strip_title($greeting_strip_ws['doing']['title']) . '</span>'
@@ -1754,7 +1758,7 @@ function pg_dashboard_brief($user, $changelog_sections)
 
         if ($greeting_strip_ws['overdue'] > 0) {
             $greeting_strip[] =
-                '<a class="pg-brief-ws-item is-late" href="workspace_tasks.php">'
+                '<a class="pg-brief-ws-item hover-lift is-late" href="workspace_tasks.php">'
                 . '<i class="bi bi-alarm" aria-hidden="true"></i>'
                 . '<span class="pg-brief-ws-label">' . h(lang('Overdue')) . '</span>'
                 . '<span class="pg-brief-ws-text">' . h(pg_format_number($greeting_strip_ws['overdue'], 0)) . '</span>'
@@ -1763,7 +1767,7 @@ function pg_dashboard_brief($user, $changelog_sections)
 
         if ($greeting_strip_ws['mentions'] > 0) {
             $greeting_strip[] =
-                '<a class="pg-brief-ws-item is-new" href="' . h(($greeting_strip_ws['mention_url'] !== null) ? $greeting_strip_ws['mention_url'] : 'workspace.php') . '">'
+                '<a class="pg-brief-ws-item hover-lift is-new" href="' . h(($greeting_strip_ws['mention_url'] !== null) ? $greeting_strip_ws['mention_url'] : 'workspace.php') . '">'
                 . '<i class="bi bi-at" aria-hidden="true"></i>'
                 . '<span class="pg-brief-ws-label">' . h(lang('Mentions')) . '</span>'
                 . '<span class="pg-brief-ws-text">' . h(pg_format_number($greeting_strip_ws['mentions'], 0)) . '</span>'
@@ -1774,14 +1778,14 @@ function pg_dashboard_brief($user, $changelog_sections)
         // overdue count they say less than it does.
         if (($greeting_strip_ws['overdue'] === 0) && ($greeting_strip_ws['due_today'] > 0)) {
             $greeting_strip[] =
-                '<a class="pg-brief-ws-item" href="workspace_tasks.php">'
+                '<a class="pg-brief-ws-item hover-lift" href="workspace_tasks.php">'
                 . '<i class="bi bi-calendar-check" aria-hidden="true"></i>'
                 . '<span class="pg-brief-ws-label">' . h(lang('Due today')) . '</span>'
                 . '<span class="pg-brief-ws-text">' . h(pg_format_number($greeting_strip_ws['due_today'], 0)) . '</span>'
                 . '</a>';
         } elseif (($greeting_strip_ws['overdue'] === 0) && ($greeting_strip_ws['open'] > 0)) {
             $greeting_strip[] =
-                '<a class="pg-brief-ws-item" href="workspace_tasks.php">'
+                '<a class="pg-brief-ws-item hover-lift" href="workspace_tasks.php">'
                 . '<i class="bi bi-inbox" aria-hidden="true"></i>'
                 . '<span class="pg-brief-ws-label">' . h(lang('Open tasks')) . '</span>'
                 . '<span class="pg-brief-ws-text">' . h(pg_format_number($greeting_strip_ws['open'], 0)) . '</span>'
@@ -1884,7 +1888,7 @@ function pg_dashboard_brief_next($events, $now)
             ));
 
         $item =
-            '<a class="pg-next' . (($until['state'] === 'now') ? ' is-now' : '') . '" href="workspace_calendar.php"'
+            '<a class="pg-next hover-lift' . (($until['state'] === 'now') ? ' is-now' : '') . '" href="workspace_calendar.php"'
             . ' data-pg-starts="' . (int) $event['starts_at'] . '" data-pg-ends="' . (int) $event['ends_at'] . '"'
             . ' data-pg-all-day="' . ($all_day ? '1' : '0') . '" title="' . h($kind . ': ' . $event['title']) . '">'
             . '<i class="bi ' . ($visit ? 'bi-geo-alt' : 'bi-people') . '" aria-hidden="true"></i>'

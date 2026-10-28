@@ -2648,7 +2648,7 @@ function ws_ai_propose_change($row, &$state, $args)
  * @param array $row
  * @param array $state the conversation, by reference
  * @param array $args  type, action, scope, group_id, search, ids, only_empty, field,
- *                     operation, value, instruction, values, round, reason
+ *                     operation, value, instruction, values, round, rows, reason
  * @return array what the model is told
  */
 function ws_ai_propose_bulk($row, &$state, $args)
@@ -2660,10 +2660,15 @@ function ws_ai_propose_bulk($row, &$state, $args)
     $asker = ws_ai_viewer((int) $row['requested_by']);
     $bulk = array();
 
-    foreach (array('type', 'action', 'scope', 'group_id', 'search', 'ids', 'only_empty', 'field', 'operation', 'value', 'instruction', 'values', 'round') as $key) {
+    foreach (array('type', 'action', 'scope', 'group_id', 'search', 'ids', 'only_empty', 'field', 'operation', 'value', 'instruction', 'values', 'round', 'rows') as $key) {
         if (isset($args[$key]) && ($args[$key] !== '')) {
             $bulk[$key] = $args[$key];
         }
+    }
+
+    // New products come as a JSON list in a string, as values do.
+    if (isset($bulk['rows']) && is_string($bulk['rows'])) {
+        $bulk['rows'] = json_decode($bulk['rows'], true);
     }
 
     $bulk['type'] = strtolower(trim((string) ($bulk['type'] ?? '')));
@@ -2683,7 +2688,9 @@ function ws_ai_propose_bulk($row, &$state, $args)
     return array(
         'ok'      => true,
         'matched' => $checked['matched'],
-        'note'    => 'Proposed, not done: it reaches ' . $checked['matched'] . ' records and the person who asked applies it. Then call answer, saying what you propose and how many records it reaches.',
+        'note'    => ((($bulk['action'] ?? '') === 'create')
+            ? 'Proposed, not done: it makes ' . $checked['matched'] . ' new products, off sale unless a row sets enabled, when the person who asked applies it. Then call answer, saying what you propose and how many products it makes.'
+            : 'Proposed, not done: it reaches ' . $checked['matched'] . ' records and the person who asked applies it. Then call answer, saying what you propose and how many records it reaches.'),
     );
 }
 
@@ -3535,9 +3542,10 @@ function ws_ai_tools($row)
 
     if (!$note && !$task) {
         if (function_exists('ws_bulk_ready') && ws_bulk_ready()) {
-            $tools[] = $tool('propose_bulk_change', 'Propose one change for many records at once (every product, the products of a group, the pages whose meta description is empty...). The person who asked sees how many records it reaches and applies it.', array(
+            $tools[] = $tool('propose_bulk_change', 'Propose one change for many records at once (every product, the products of a group, the pages whose meta description is empty...), or many new products at once (action create with rows). The person who asked sees how many records it reaches and applies it.', array(
                 'type'        => array('type' => 'string', 'enum' => ws_bulk_types()),
-                'action'      => array('type' => 'string', 'enum' => array('update', 'delete')),
+                'action'      => array('type' => 'string', 'enum' => array('update', 'delete', 'create')),
+                'rows'        => array('type' => 'string', 'description' => 'create (type product): a JSON list of objects, one per new product, of the fields a new product takes (name, short_description, price in minor units...); at most ' . WS_BULK_CREATE_MAX . '.'),
                 'scope'       => array('type' => 'string', 'enum' => array('all', 'group', 'search', 'ids')),
                 'group_id'    => array('type' => 'integer', 'description' => 'For scope group: a product group id.'),
                 'search'      => array('type' => 'string', 'description' => 'For scope search: a word of the name.'),

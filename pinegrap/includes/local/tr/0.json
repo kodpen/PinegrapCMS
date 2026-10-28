@@ -1,4 +1,5 @@
 {
+    "0 for never; at most 7 more tries, 8 in all. The arrow on failed is taken once they are used.": "Hiç denememesi için 0; en fazla 7 yeniden deneme, toplam 8. Denemeler bitince başarısız okuna geçilir.",
     "0 for no limit.": "Sınır yoksa 0.",
     "0 for none": "Eklenmemesi için 0 yazınız",
     "0 items": "0 adet",
@@ -36,6 +37,7 @@
     "10 min": "10 dk",
     "10 minutes": "10 dakika",
     "10 to 2000 characters. The marketplace reviews the answer before the buyer sees it.": "10 ile 2000 karakter arası. Pazaryeri yanıtı alıcı görmeden önce inceler.",
+    "10% off your first order": "İlk siparişinize %10 indirim",
     "10+ years in user experience and interface design.": "Kullanıcı deneyimi ve arayüz tasarımında 10+ yıl.",
     "10,482.57": "10.482,57",
     "100 Example Avenue, Suite 400, Denver, CO 80202": "Örnek Caddesi No: 100, Kat 4, Denver, CO 80202",
@@ -85,6 +87,7 @@
     "3 Col": "3 Sütun",
     "3 Comments": "3 Yorum",
     "3 Instalments": "3 Taksit",
+    "3 Photos": "3 Fotoğraf",
     "3 days": "3 gün",
     "3 equal instalments at no extra cost": "Ek ücret olmadan 3 eşit taksit",
     "3 hours ago": "3 saat önce",

@@ -201,3 +201,14 @@ function test_contrast_check_reads_opacity_on_the_way()
 	pg_assert_contains('backdrop(m.parentElement, opts, cache)', $section, 'at it or above, over what lies under it');
 	pg_assert_contains('throughOpacity(fg, bg.color, text, groups)', $section, 'both in one place');
 }
+
+// A label on a user-chosen colour keeps white where it reads at 4.5:1 and
+// turns near-black where it does not (orange, light purple).
+function test_contrast_readable_ink_on()
+{
+	pg_assert_same('#fff', pg_readable_ink_on('#1d4ed8'), 'dark blue');
+	pg_assert_same('#18181b', pg_readable_ink_on('#f59e0b'), 'orange');
+	pg_assert_same('#18181b', pg_readable_ink_on('#c4b5fd'), 'light purple');
+	pg_assert_same('#18181b', pg_readable_ink_on('#fff'), 'three-digit white');
+	pg_assert_same('#fff', pg_readable_ink_on('var(--x)'), 'not a colour: as before');
+}
