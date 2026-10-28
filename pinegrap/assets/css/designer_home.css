@@ -112,7 +112,7 @@
 .sdh-start:focus-visible {
   outline: 0;
   border-color: var(--sdh-accent);
-  box-shadow: 0 0 0 .2rem var(--bs-focus-ring-color, rgba(13, 110, 253, .25));
+  box-shadow: 0 0 0 .2rem var(--pg-focus-ring-color);
 }
 
 .sdh-start[aria-disabled="true"] {
@@ -308,7 +308,7 @@
 
 .sdh-card:focus-visible {
   outline: 0;
-  box-shadow: 0 0 0 .2rem var(--bs-focus-ring-color, rgba(13, 110, 253, .25));
+  box-shadow: 0 0 0 .2rem var(--pg-focus-ring-color);
 }
 
 /* The card or the page the open menu speaks for. */
@@ -470,7 +470,7 @@ button.sdh-page:hover {
 
 .sdh-page:focus-visible {
   outline: 0;
-  box-shadow: 0 0 0 .2rem var(--bs-focus-ring-color, rgba(13, 110, 253, .25));
+  box-shadow: 0 0 0 .2rem var(--pg-focus-ring-color);
 }
 
 .sdh-page-name {
@@ -738,7 +738,7 @@ button.sdh-page:hover {
 }
 
 .btn-check:focus-visible + .sd-tpl-pal {
-  box-shadow: 0 0 0 3px var(--bs-focus-ring-color, rgba(13, 110, 253, .25)), 0 0 0 1px var(--pg-border-color);
+  box-shadow: 0 0 0 var(--pg-focus-ring-width) var(--pg-focus-ring-color), 0 0 0 1px var(--pg-border-color);
 }
 
 /* A template's details card: the name, then a few short lines. */

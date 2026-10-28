@@ -16,8 +16,9 @@ description: Own panel widgets replaced by Bootstrap 6 components with the same 
 - The translations filter's current chip carried `.active`, which `.pg-chip` never styled: it now shows as selected.
 
 ## What is left of B9k, and why does the rest wait?
-- `workspace_flow.js`'s 17 ghosts (the flows work converts them); the `.btn-ghost`, `.btn-ghost.active` rules and the chain's `:not(.btn-ghost)` stay until then, then go, and the test gains the file. Own tokens and focus ring next.
+- `workspace_flow.js`'s 17 ghosts (the flows work converts them); the `.btn-ghost`, `.btn-ghost.active` rules and the chain's `:not(.btn-ghost)` stay until then, then go, and the test gains the file.
 - Editor toast (`sdToast` in `style_designer.js`): a Toast swap fits, once no open PR holds `style_designer.js` (#1997 does).
+- Focus ring: on the tokens; ring sizes wait for B10 (`panel-focus-ring.md`).
 - Wait for B11, since no swap keeps the screen as it is:
   - Guest page toast (`workspace_guest.js`): the page loads Bootstrap's CSS but none of its JavaScript; a Toast would add the whole bundle for one notice.
   - `.ws-chip` to `.badge-subtle`: equal only by overriding every badge token (min-height, weight, line-height, gap, radius), and chips inside saved message HTML keep needing `.ws-chip`, so nothing is removed.

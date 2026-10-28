@@ -16,7 +16,7 @@ description: The panel's --pg-* CSS token layer (Bootstrap 6 step B3): names rul
 ## Why is the alias block on `:root, [data-bs-theme]`?
 - A `var()` in a custom property resolves where declared and is inherited resolved. Declared on `:root` only, a nested `data-bs-theme="dark"` subtree (pg_ai_write.js sets one) would keep the light values. Declaring the aliases on every `[data-bs-theme]` element resolves them again there.
 - A rule that sets a Bootstrap variable on a subtree (`.bg-software-navbar .border-end { --bs-border-color }`) does not reach the tokens: set the `--pg-*` token there instead.
-- `--bs-focus-ring-color` has no alias: Bootstrap's `.focus-ring-*` classes set it per element.
+- Focus ring: `--pg-focus-ring-*` (B9k, #2561), never an alias of `--bs-focus-ring-color` (`panel-focus-ring.md`).
 - An alias never names itself or a `--bs-*` variable the bridge fills from the same alias: that is a cycle and both turn invalid.
 
 ## Which stylesheets have the block?
@@ -30,4 +30,4 @@ description: The panel's --pg-* CSS token layer (Bootstrap 6 step B3): names rul
 - B3b (#1711): the neutral variables in backend.src.css (1,055 `var(--bs-*)` to 80, 38 of them in the token layer).
 - B3c (#1723): the other panel stylesheets and the panel files' inline styles.
 - B7b (#1841): `style_designer.css` and `page_designer.css`.
-- Left on `--bs-*` on purpose: component-scoped variables (`--bs-card-*`, `--bs-modal-*`, `--bs-gutter-x`, opacities, `--bs-dropdown-border-radius`), the form validation colours, the focus ring and the guest page's `--bs-dark`: the switch converts them with their components.
+- Left on `--bs-*` on purpose: component-scoped variables (`--bs-card-*`, `--bs-modal-*`, `--bs-gutter-x`, opacities, `--bs-dropdown-border-radius`), the form validation colours and the guest page's `--bs-dark`: the switch converts them with their components.

@@ -737,9 +737,6 @@ input.btn-check {
   --bs-form-valid-border-color: var(--pg-success);
   --bs-form-invalid-color: var(--pg-danger-ink);
   --bs-form-invalid-border-color: var(--pg-danger);
-  /* A pastel ring at Bootstrap's 0.25 alpha is close to invisible on white. */
-  --bs-focus-ring-color: rgba(var(--pg-primary-rgb), 0.35);
-  
 }
 
 :root,
@@ -956,11 +953,16 @@ input.btn-check {
    so a nested light or dark subtree must resolve the aliases again or it
    would carry the outer theme's colours. A rule that changes a Bootstrap
    variable on a subtree (the navbar's border colour below) does not reach
-   these tokens; set the --pg-* token there. The focus ring colour is left
-   out on purpose: Bootstrap's .focus-ring-* classes set it per element. */
+   these tokens; set the --pg-* token there. The focus ring colour is the
+   panel's own value, which the bridge hands to Bootstrap, never an alias of
+   --bs-focus-ring-color: an alias resolves on :root and would miss a value
+   set on one element. */
 :root,
 [data-bs-theme] {
   --pg-bg-body: var(--bs-bg-body);
+  /* A pastel ring at Bootstrap's 0.25 alpha is close to invisible on white. */
+  --pg-focus-ring-color: color-mix(in srgb, var(--pg-primary) 35%, transparent);
+  --pg-focus-ring-width: var(--bs-focus-ring-width);
   --pg-bg-1: var(--bs-bg-1);
   --pg-bg-2: var(--bs-bg-2);
   --pg-fg-body: var(--bs-fg-body);
@@ -1426,8 +1428,8 @@ input.btn-check {
   --bs-pagination-active-color: var(--pg-on-accent);
   --bs-pagination-active-bg: var(--pg-primary);
   --bs-pagination-active-border-color: var(--pg-primary);
-  --bs-pagination-focus-box-shadow: 0 0 0 var(--bs-focus-ring-width)
-    var(--bs-focus-ring-color);
+  --bs-pagination-focus-box-shadow: 0 0 0 var(--pg-focus-ring-width)
+    var(--pg-focus-ring-color);
 }
 .menu {
   --bs-menu-item-active-color: var(--pg-on-accent);
@@ -1444,8 +1446,8 @@ input.btn-check {
   --bs-progress-bar-bg: var(--pg-primary);
 }
 .btn-close {
-  --bs-btn-close-focus-shadow: 0 0 0 var(--bs-focus-ring-width)
-    var(--bs-focus-ring-color);
+  --bs-btn-close-focus-shadow: 0 0 0 var(--pg-focus-ring-width)
+    var(--pg-focus-ring-color);
 }
 /* The chevron is a stroked SVG, so the colour has to be inlined; it is the
    only place in this section where an accent value is written literally. */
@@ -1466,7 +1468,7 @@ html[data-bs-theme="dark"] .accordion {
 :is(.check, .radio):focus,
 .pg-chips:focus-within {
   border-color: var(--pg-primary);
-  box-shadow: 0 0 0 var(--bs-focus-ring-width) var(--bs-focus-ring-color);
+  box-shadow: 0 0 0 var(--pg-focus-ring-width) var(--pg-focus-ring-color);
 }
 :is(.check, .radio):checked,
 :is(.check, .radio)[type="checkbox"]:indeterminate {
@@ -7968,7 +7970,7 @@ textarea:focus-visible,
 .form-adorn:has(> .form-ghost:focus-visible) {
   outline: 2px solid var(--pg-primary-ink);
   outline-offset: 2px;
-  box-shadow: 0 0 0 0.2rem rgba(var(--pg-primary-rgb), 0.35);
+  box-shadow: 0 0 0 0.2rem var(--pg-focus-ring-color);
 }
 /* A form-adorn field wears the ring on its wrapper, the label drawn as the
    input; the borderless input inside it shows none of its own. */
@@ -9003,7 +9005,7 @@ button.no-popover:focus-visible {
 }
 .btn-check:focus-visible + .pg-role-card {
   outline: 0;
-  box-shadow: 0 0 0 0.25rem var(--bs-focus-ring-color);
+  box-shadow: 0 0 0 0.25rem var(--pg-focus-ring-color);
 }
 .btn-check:disabled + .pg-role-card {
   opacity: 0.6;
@@ -10238,7 +10240,7 @@ body.pg-side-panel-open .pg-chat-launcher {
 }
 .pg-sale-ig:focus-within {
   border-color: var(--pg-primary);
-  box-shadow: 0 0 0 var(--bs-focus-ring-width) var(--bs-focus-ring-color);
+  box-shadow: 0 0 0 var(--pg-focus-ring-width) var(--pg-focus-ring-color);
 }
 .pg-sale-ig input {
   flex: 1 1 auto;
@@ -20018,7 +20020,7 @@ html[data-bs-theme="dark"] .wsf-node-sa-follow { --wsf-kind: #c3a8ec; }
   --bs-border-color-translucent: light-dark(rgba(0, 0, 0, 0.175), rgba(255, 255, 255, 0.15));
   --bs-link-color: var(--pg-primary-ink);
   --bs-link-hover-color: var(--pg-primary-ink-hover);
-  --bs-focus-ring-color: color-mix(in srgb, var(--pg-primary) 35%, transparent);
+  --bs-focus-ring-color: var(--pg-focus-ring-color);
   --bs-btn-input-min-height: 0;
   --bs-btn-input-xs-min-height: 0;
   --bs-btn-input-sm-min-height: 0;
