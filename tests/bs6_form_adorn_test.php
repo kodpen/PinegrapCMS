@@ -68,6 +68,12 @@ function pg_test_form_adorn_cases()
 		array($root . 'erp_stock_minimums.php', 'name="search"', '', 'form-control-sm', 'bi bi-search'),
 		array($root . 'includes/forms/contact_form.php', 'id="affiliate_commission_rate" class', '<label for="affiliate_commission_rate" class="form-label"', 'form-adorn-end', '>%</span>'),
 		array($root . 'includes/settings/screen.php', 'id="pg_settings_filter"', '', 'form-control-sm', 'bi bi-search'),
+		array($root . 'view_orders.php', 'id="tax_rate_for_parasut"', '<label class="form-label" for="tax_rate_for_parasut"', 'form-adorn-end', '>%</span>'),
+		array($root . 'includes/local_sale.php', 'id="pg_sale_received"', 'for="pg_sale_received"', 'form-control-lg', 'BASE_CURRENCY_SYMBOL'),
+		array($root . 'includes/designer_screen.php', 'id="sdh-filter"', '', 'form-control-sm form-adorn rounded-pill', 'bi bi-search'),
+		// Offer tier fields: no <label for>, so each input names itself.
+		array($root . 'assets/js/offer_editor.js', 'data-on="tier-min"', '', 'form-control-sm form-adorn form-adorn-end', 'esc(C.currency)'),
+		array($root . 'assets/js/offer_editor.js', 'data-on="tier-percent"', '', 'form-control-sm form-adorn form-adorn-end', '>%</span>'),
 	);
 
 	// Settings cards: every single add-on field keeps its <label for> above the wrapper.
@@ -253,4 +259,26 @@ function test_bs6_form_adorn_settings_row_rules_name_the_wrapper()
 
 	// The add-on keeps the input-group add-on type, so a converted row stays 38px tall.
 	pg_assert_contains(".pg-set-card .form-adorn > .form-adorn-text {\n  font-size: var(--bs-btn-input-font-size);", $css);
+}
+
+function test_bs6_form_adorn_designer_home_search_width_on_the_wrapper()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+	$css = (string) file_get_contents($root . 'assets/css/designer_home.css');
+
+	// The search box width and its full-width narrow screen rule follow the wrapper.
+	pg_assert_false(strpos($css, '.sdh-head-tools .input-group') !== false, 'designer_home.css: a width rule still names .input-group');
+	pg_assert_same(2, substr_count($css, '.sdh-head-tools .form-adorn'), 'designer_home.css: both width rules name .form-adorn');
+}
+
+function test_bs6_form_adorn_offer_tier_fields_have_names()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+	$offer = (string) file_get_contents($root . 'edit_offer.php');
+	$js = (string) file_get_contents($root . 'assets/js/offer_editor.js');
+
+	foreach (array('tierMinLabel', 'tierPercentLabel') as $key) {
+		pg_assert_contains("'" . $key . "'", $offer, 'edit_offer.php: ' . $key);
+		pg_assert_contains('aria-label="\' + esc(L.' . $key . ')', $js, 'offer_editor.js: ' . $key);
+	}
 }
