@@ -1245,5 +1245,6 @@
     "row(s)": "satır",
     "rows is a list of objects of field => value, one for each new record.": "rows, her yeni kayıt için bir tane olmak üzere alan => değer nesnelerinden oluşan bir listedir.",
     "running": "çalışıyor",
-    "running, marathon": "koşu, maraton"
+    "running, marathon": "koşu, maraton",
+    "runs the flow “{var:1}”": "“{var:1}” akışını çalıştırır"
 }

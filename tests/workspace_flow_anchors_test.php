@@ -182,3 +182,35 @@ function test_workspace_flow_anchor_converted_runs()
 	pg_assert_contains("ws_flow_anchor_run_ended(\$run, 'cancelled');", ws_flow_anchors_test_source('ws_flow_runs_cancel_ids'));
 	pg_assert_contains("ws_flow_anchor_run_ended(\$run, 'failed');", ws_flow_anchors_test_source('ws_flow_runs_heal'));
 }
+
+// A converted action's run counts as skipped when one of its conditions
+// left on no, with that condition's sentence.
+function test_workspace_flow_anchor_skip_reason()
+{
+	$graph = array('nodes' => array(
+		array('id' => 'start', 'kind' => 'schedule'),
+		array('id' => 'if1', 'kind' => 'condition'),
+		array('id' => 'step', 'kind' => 'post'),
+	));
+	$step = function ($node, $outcome, $result = '') {
+		return array('node_id' => $node, 'status' => 'done', 'outcome' => $outcome, 'result' => $result);
+	};
+
+	pg_assert_same('', ws_flow_anchor_skip_reason($graph, array($step('start', 'next'), $step('if1', 'yes'), $step('step', 'done'))));
+	pg_assert_same('Not a working day.', ws_flow_anchor_skip_reason($graph, array($step('start', 'next'), $step('if1', 'no', ws_flow_result_pack('Not a working day.')))));
+	pg_assert_same('A condition did not hold.', ws_flow_anchor_skip_reason($graph, array($step('if1', 'no'))));
+	pg_assert_same('', ws_flow_anchor_skip_reason($graph, array($step('step', 'no'))), 'only a condition box skips');
+	pg_assert_same('', ws_flow_anchor_skip_reason(null, array($step('if1', 'no'))));
+}
+
+// Changed on its flow by any staff member: the form refuses it, the card
+// opens the flow, publishing is open to them.
+function test_workspace_flow_anchor_converted_edit_path()
+{
+	pg_assert_contains('ws_scheduled_anchor_converted($existing)', ws_flow_anchors_test_source('ws_scheduled_save_check'));
+	pg_assert_contains("\$out['flow'] = array('id' => (int) \$row['flow_id']", ws_flow_anchors_test_source('ws_scheduled_present'));
+	pg_assert_contains("'converted' => \$staff && ws_flow_converted(", ws_flow_anchors_test_source('ws_flow_access'));
+	pg_assert_contains('!ws_flow_share_manager($viewer, $flow) && !$converted', ws_flow_anchors_test_source('ws_flow_publish_check'));
+	pg_assert_contains("anchor = 'converted'", ws_flow_anchors_test_source('ws_flow_converted'));
+	pg_assert_contains("ws_flow_anchor_skip_reason(ws_flow_run_graph(\$run), ws_flow_run_steps(\$run['id']))", ws_flow_anchors_test_source('ws_flow_anchor_run_ended'));
+}
