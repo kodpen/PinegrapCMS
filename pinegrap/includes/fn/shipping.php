@@ -776,14 +776,14 @@ function pg_shipment_rows($ship_to_id)
  * the site's default and the number's shape, the way every screen has always
  * worked them out.
  *
- * @param  array  $row     a row of pg_shipment_rows()
- * @param  string $method  ship_tos.shipping_method_code
- * @param  string $default the site's default carrier (pg_shipping_default_carrier())
  * A row may hold a carrier the store does not know, kept as it was typed
  * (pg_shipment_carrier_value()): it is named, with no key and no link but the
  * row's own, and nothing is guessed in its place, since the guess would name
  * a carrier that never had the parcel.
  *
+ * @param  array  $row     a row of pg_shipment_rows()
+ * @param  string $method  ship_tos.shipping_method_code
+ * @param  string $default the site's default carrier (pg_shipping_default_carrier())
  * @return array number, carrier (key or ''), named (the row holds the carrier),
  *               carrier_name, url, status, warning (bool)
  */

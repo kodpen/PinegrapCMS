@@ -14,6 +14,9 @@ description: The parcels block of GET /orders/{id} shipments and of the order.sh
 - `order.delivered` (`pg_shipment_delivered()`): the address's parcels after they were stamped delivered.
 
 ## What does carrier do on POST /orders/{id}/shipment?
-- Still written into an empty `ship_tos.shipping_method_code` (any text, 50 chars). Since #2004 a carrier `pg_shipping_method_carrier()` recognises (key or name, any capitals) also goes on every number of the call: `pg_shipment_numbers_with_carrier()` turns the list into `number`/`carrier` entries, which `update_order()` hands to `pg_shipment_record()` as a chosen carrier. Free text sends plain numbers, so each row keeps its own carrier.
+- Still written into an empty `ship_tos.shipping_method_code` (any text, 50 chars). It also goes on every number of the call: `pg_shipment_numbers_with_carrier()` turns the list into `number`/`carrier` entries (`pg_shipment_carrier_value()`: the key of a carrier `pg_shipping_method_carrier()` recognises, #2004, else the text as sent, cut to 20 chars, #2715), which `update_order()` hands to `pg_shipment_record()` as a chosen carrier. No carrier sends plain numbers, so each row keeps its own.
 - A call without `tracking_numbers` changes no row's carrier.
-- Refusing an unknown carrier with 422 is step 7b of `plans/shipping-management.md`, waiting on the owner.
+
+## What does an unknown carrier do? (#2715, decision #2433)
+- Accepted, never 422: an integration naming its own courier must still ship. The parcel keeps the typed name; its `carrier` is null, `carrier_name` the name, `tracking_url` only the row's own (no guess from the method code or the default).
+- The answer of `POST /orders/{id}/shipment` is `OrderShipment` (`api_order_shipment_schema()`): the Order plus `carrier`, `carrier_name`, `warning` from `pg_shipment_api_carrier()` (known: key, name, null; unknown: null, typed name, warning; none sent: three nulls). A dry run's detail carries the same three.
