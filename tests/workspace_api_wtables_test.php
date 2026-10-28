@@ -5,8 +5,7 @@
  * Tests for workflow tables in the external API
  * (includes/workspace/api_wtables.php) that need no database: the routes,
  * which are MCP tools, that every write runs the store's check before the
- * rehearsal stops it, that sharing is the person's own, how a row is handed
- * out, and the body of a row's webhook event.
+ * rehearsal stops it, and how a row is handed out.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -73,10 +72,6 @@ function test_ws_api_wtables_routes()
 		'workspace.table_rows.move'           => array('POST', '/workspace/tables/{id}/rows/{row_id}/move', 'workspace:write'),
 		'workspace.table_rows.delete'         => array('DELETE', '/workspace/tables/{id}/rows/{row_id}', 'workspace:write'),
 		'workspace.table_rows.delete_post'    => array('POST', '/workspace/tables/{id}/rows/{row_id}/delete', 'workspace:write'),
-		'workspace.table_shares.list'         => array('GET', '/workspace/tables/{id}/shares', 'workspace:read'),
-		'workspace.table_shares.set'          => array('POST', '/workspace/tables/{id}/shares', 'workspace:write'),
-		'workspace.table_shares.delete'       => array('DELETE', '/workspace/tables/{id}/shares/{share_id}', 'workspace:write'),
-		'workspace.table_shares.delete_post'  => array('POST', '/workspace/tables/{id}/shares/{share_id}/delete', 'workspace:write'),
 	);
 
 	pg_assert_same(array_keys($expected), array_keys($routes), 'the routes, in order');
@@ -93,21 +88,19 @@ function test_ws_api_wtables_routes()
 		pg_assert_same(array('PATCH'), $routes[$id]['also_accepts'] ?? null, $id . ' takes PATCH too');
 	}
 
-	foreach (array('tables', 'table_columns', 'table_rows', 'table_shares') as $kind) {
+	foreach (array('tables', 'table_columns', 'table_rows') as $kind) {
 		pg_assert_same($routes['workspace.' . $kind . '.delete']['handler'], $routes['workspace.' . $kind . '.delete_post']['handler'], $kind . ': the POST twin is the same handler');
 	}
 }
 
 // Reading and writing tables, columns and rows are tools, as notes are;
-// deleting a table or a column cannot be undone, and sharing is the
-// person's own: those are no tools.
+// deleting a table or a column cannot be undone: those are no tools.
 function test_ws_api_wtables_mcp_tools()
 {
 	$routes = ws_api_wtables_test_routes();
 	$no_tools = array(
 		'workspace.tables.delete', 'workspace.tables.delete_post',
 		'workspace.table_columns.delete', 'workspace.table_columns.delete_post',
-		'workspace.table_shares.set', 'workspace.table_shares.delete', 'workspace.table_shares.delete_post',
 	);
 
 	foreach ($routes as $id => $route) {
@@ -135,8 +128,6 @@ function test_ws_api_wtables_writes_check_before_the_rehearsal()
 		'ws_api_wtable_rows_update'    => array('ws_wtable_row_update_check(', 'ws_wtable_row_update('),
 		'ws_api_wtable_rows_move'      => array('ws_wtable_row_move_check(', 'ws_wtable_row_move('),
 		'ws_api_wtable_rows_delete'    => array('ws_wtable_row_delete_check(', 'ws_wtable_row_delete('),
-		'ws_api_wtable_shares_set'     => array('ws_wtable_share_set_check(', 'ws_wtable_share_set('),
-		'ws_api_wtable_shares_delete'  => array('ws_wtable_share_remove_check(', 'ws_wtable_share_remove('),
 	);
 
 	foreach ($writes as $handler => $calls) {
@@ -151,28 +142,6 @@ function test_ws_api_wtables_writes_check_before_the_rehearsal()
 
 	// The column delete the screen and the API share has a check of its own.
 	pg_assert_contains('ws_wtable_column_delete_check(', ws_api_wtables_test_source('ws_wtable_column_delete'));
-}
-
-// Sharing widens who reads a table: from the person's team devices session
-// only, never for an assistant, and the Site Log line in the owner's name.
-function test_ws_api_wtables_shares_are_the_persons_own()
-{
-	foreach (array('ws_api_wtable_shares_set', 'ws_api_wtable_shares_delete') as $handler) {
-		$source = ws_api_wtables_test_source($handler);
-		$stop = strpos($source, 'api_dry_run_stop(');
-
-		pg_assert_true(strpos($source, 'ws_api_own_words_only(') < $stop, $handler . ' asks for the team devices session first');
-		pg_assert_true(strpos($source, 'if (ws_api_is_assistant())') < $stop, $handler . ' refuses an assistant first');
-		pg_assert_true(strpos($source, 'ws_api_as_owner(') > $stop, $handler . ' writes in the owner\'s name after the rehearsal');
-		pg_assert_contains('team devices session (POST /auth/login)', $source, $handler . ': the refusal names it');
-	}
-
-	foreach (array('ws_api_wtable_shares_list', 'ws_api_wtable_share_answer') as $name) {
-		pg_assert_contains('ws_api_wtable_shares_seen($viewer, $table)', ws_api_wtables_test_source($name), $name . ' lists what the application may see');
-	}
-
-	pg_assert_contains('ws_claude_channel_allowed(', ws_api_wtables_test_source('ws_api_wtable_shares_seen'));
-	pg_assert_contains('ws_claude_channel_allowed(', ws_api_wtables_test_source('ws_api_wtable_reachable'));
 }
 
 // A row is handed out with its cells as an object, an empty one too, so a
@@ -196,40 +165,14 @@ function test_ws_api_wtables_row_present()
 	$row['cells'] = array('12' => 1500, '14' => 'Paid');
 	pg_assert_same('{"12":1500,"14":"Paid"}', json_encode(ws_wtable_row_present($row)['cells']), 'by column id');
 	pg_assert_same(array_keys(ws_api_wtable_row_schema()), array_keys($out), 'the schema names every field');
-}
-
-// One event a change, matched by the first public channel the table is
-// shared in; the column ids written only on a change.
-function test_ws_api_wtables_row_event_body()
-{
-	$table = array('id' => '9', 'name' => 'Leads');
-	$body = ws_wtable_row_event_body($table, array('id' => 3, 'position' => 1), array('40', 12), '6');
-
-	pg_assert_same(40, $body['channel_id'], 'the first channel');
-	pg_assert_same(array(40, 12), $body['channel_ids']);
-	pg_assert_same(array('id' => 9, 'name' => 'Leads'), $body['table']);
-	pg_assert_same(6, $body['by']);
-	pg_assert_false(isset($body['changed']), 'no columns on an add');
-
-	$changed = ws_wtable_row_event_body($table, array('id' => 3), array(40), 6, array('12', '14'));
-
-	pg_assert_same(array(12, 14), $changed['changed']);
-
-	$events = ws_webhook_events();
-
-	foreach (array('created', 'updated', 'deleted') as $what) {
-		pg_assert_true(isset($events['workspace.wtable.row.' . $what]), 'workspace.wtable.row.' . $what . ' is in the catalogue');
-	}
-
-	// Announced only for a public channel's table, never from a private one.
-	pg_assert_contains("c.kind = 'public'", ws_api_wtables_test_source('ws_wtable_event_channels'));
+	pg_assert_contains('ws_claude_channel_allowed(', ws_api_wtables_test_source('ws_api_wtable_reachable'), 'Claude reads a channel\'s table where it may be asked');
 }
 
 function test_ws_api_wtables_objects_declared()
 {
 	$objects = ws_openapi_objects();
 
-	foreach (array('WorkspaceTable', 'WorkspaceTableColumn', 'WorkspaceTableRow', 'WorkspaceTableShare') as $name) {
+	foreach (array('WorkspaceTable', 'WorkspaceTableColumn', 'WorkspaceTableRow') as $name) {
 		pg_assert_true(isset($objects[$name]) && function_exists($objects[$name]), $name . ' is declared');
 	}
 }

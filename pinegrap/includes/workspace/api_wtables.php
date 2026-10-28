@@ -3,17 +3,15 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Workspace - workflow tables in the external API: the tables the owner of
- * the application reaches, their columns, rows and shares. The checks are
- * the store's own (includes/workspace/wtables.php, wtable_rows.php,
- * wtable_shares.php), so a dry run meets the refusals the real call meets.
+ * the application reaches, their columns and rows. The checks are the
+ * store's own (includes/workspace/wtables.php, wtable_rows.php), so a dry
+ * run meets the refusals the real call meets.
  *
  * Reading and writing tables, columns and rows are MCP tools, as notes are.
- * Deleting a table or a column cannot be undone, so neither is a tool.
- * Sharing widens who reads a table, so it is the person's own: from their
- * team devices session only, no MCP tool, and refused to the application an
- * assistant works through. The application Claude works through reads a
- * table that reaches the owner only through a channel just where Claude may
- * be asked, as it reads the channel itself.
+ * Deleting a table or a column cannot be undone, so neither is a tool. The
+ * application Claude works through reads a table that reaches the owner only
+ * through a channel just where Claude may be asked, as it reads the channel
+ * itself.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -293,70 +291,6 @@ function ws_wtable_api_routes()
             'description' => 'The same as DELETE /workspace/tables/{id}/rows/{row_id}, for clients and servers that cannot send DELETE.',
             'params'      => array($id, $row_id, array('name' => 'revision', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'The revision the row was read at.')),
         ),
-
-        // The shares of a table (wtable_shares.php). Sharing widens who reads
-        // a table, so the writes are the person's own: from their team devices
-        // session only, offered to no MCP client as tools, and refused to the
-        // application an assistant works through. Reading them stays a tool.
-        array(
-            'id'          => 'workspace.table_shares.list',
-            'method'      => 'GET',
-            'path'        => '/workspace/tables/{id}/shares',
-            'scope'       => 'workspace:read',
-            'handler'     => 'ws_api_wtable_shares_list',
-            'returns'     => array('list' => 'WorkspaceTableShare'),
-            'summary'     => 'Whom a workflow table is shared with',
-            'description' => 'The people and channels a table the owner reaches is shared with, oldest first. target_type is user (target_id a user id) or channel. effective_level is what the share gives now: a person who left the team gets \'\'. A channel the owner does not read is left out, but for the table\'s owner, who sees it without a name.',
-            'params'      => array($id),
-        ),
-
-        array(
-            'id'          => 'workspace.table_shares.set',
-            'method'      => 'POST',
-            'path'        => '/workspace/tables/{id}/shares',
-            'scope'       => 'workspace:write',
-            'handler'     => 'ws_api_wtable_shares_set',
-            'dry_run'     => true,
-            'mcp'         => false,
-            'returns'     => 'WorkspaceTableShare',
-            'status'      => array(201, 200),
-            'summary'     => 'Share a workflow table',
-            'description' => 'Shares a table of the owner\'s own with a colleague (view or edit) or a channel they read, public or private (view only), or changes the level of the share made before with the same one (200; a new share answers 201). Only the table\'s owner shares it, administrators included in the refusal (403). Sharing widens who reads the table, so only a team devices session (a Bearer token from POST /auth/login) may share; an application key and an OAuth connection are refused with 403 forbidden, and this is no MCP tool. A person newly shared with is told in their bell (inbox kind wtable_shared). A table shared in a public channel announces its rows\' changes (workspace.wtable.row.*). At most ' . WS_WTABLE_MAX_SHARES . ' shares a table: one more is refused with 409 too_many_shares.',
-            'params'      => array(
-                $id,
-                array('name' => 'target_type', 'in' => 'body', 'type' => 'enum', 'values' => array('user', 'channel'), 'required' => true, 'description' => 'user for a colleague, channel for a channel.'),
-                array('name' => 'target_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The user id, or the channel id.'),
-                array('name' => 'level', 'in' => 'body', 'type' => 'enum', 'values' => array('view', 'edit'), 'default' => 'view', 'description' => 'view or edit for a person; a channel is shared at view.'),
-            ),
-        ),
-
-        array(
-            'id'          => 'workspace.table_shares.delete',
-            'method'      => 'DELETE',
-            'path'        => '/workspace/tables/{id}/shares/{share_id}',
-            'scope'       => 'workspace:write',
-            'handler'     => 'ws_api_wtable_shares_delete',
-            'dry_run'     => true,
-            'mcp'         => false,
-            'returns'     => 'WorkspaceTableShare',
-            'summary'     => 'Take a share of a workflow table back',
-            'description' => 'Takes a share of a table of the owner\'s own back; the answer is the share as it was. Only the table\'s owner may (403 for anybody else); a share that is not there is a 404. From a team devices session only, as sharing is: an application key and an OAuth connection are refused with 403 forbidden, and this is no MCP tool. POST /workspace/tables/{id}/shares/{share_id}/delete does the same for servers that refuse DELETE.',
-            'params'      => array($id, $share_id),
-        ),
-
-        array(
-            'id'          => 'workspace.table_shares.delete_post',
-            'method'      => 'POST',
-            'path'        => '/workspace/tables/{id}/shares/{share_id}/delete',
-            'scope'       => 'workspace:write',
-            'handler'     => 'ws_api_wtable_shares_delete',
-            'dry_run'     => true,
-            'mcp'         => false,
-            'returns'     => 'WorkspaceTableShare',
-            'summary'     => 'Take a share of a workflow table back, addressed as a POST',
-            'description' => 'The same as DELETE /workspace/tables/{id}/shares/{share_id}, for clients and servers that cannot send DELETE.',
-            'params'      => array($id, $share_id),
-        ),
     );
 }
 
@@ -438,8 +372,7 @@ function ws_api_wtable_column_schema()
 }
 
 /**
- * A row as the API hands it out: as the webhook events carry it
- * (ws_wtable_row_present()).
+ * A row as the API hands it out (ws_wtable_row_present()).
  *
  * @param array $row ws_wtable_row_out()
  * @return array
@@ -462,43 +395,6 @@ function ws_api_wtable_row_schema()
         'created_at'     => 'string?',
         'updated_by'     => 'integer',
         'updated_at'     => 'string?',
-    );
-}
-
-/**
- * A share of a table: what it was given and what it gives now.
- *
- * @param array $share ws_wtable_shares_list() row
- * @return array
- */
-function ws_api_wtable_share_present($share)
-{
-    return array(
-        'id'              => (int) $share['id'],
-        'table_id'        => (int) $share['table_id'],
-        'target_type'     => (string) $share['target_type'],
-        'target_id'       => (int) $share['target_id'],
-        'level'           => (string) $share['level'],
-        'effective_level' => (string) ($share['gives'] ?? ''),
-        'name'            => (string) ($share['name'] ?? ''),
-        'created_by'      => (int) $share['created_by'],
-        'created_at'      => api_time($share['created_at']),
-    );
-}
-
-// What ws_api_wtable_share_present() returns.
-function ws_api_wtable_share_schema()
-{
-    return array(
-        'id'              => 'integer',
-        'table_id'        => 'integer',
-        'target_type'     => 'string',
-        'target_id'       => 'integer',
-        'level'           => 'string',
-        'effective_level' => 'string',
-        'name'            => 'string',
-        'created_by'      => 'integer',
-        'created_at'      => 'string?',
     );
 }
 
@@ -604,7 +500,6 @@ function ws_api_wtable_message($code)
         case 'too_many_tables':
         case 'too_many_columns':
         case 'too_many_rows':
-        case 'too_many_shares':
             return lang(array('string' => 'The limit is reached: {var:1}.', 'vars' => (string) $code));
     }
 
@@ -628,7 +523,7 @@ function ws_api_wtable_refused($result, $what)
             break;
 
         case 404:
-            api_fail_not_found(($code === 'share_not_found') ? lang('Table share') : $what);
+            api_fail_not_found($what);
             break;
 
         case 409:
@@ -1029,151 +924,6 @@ function ws_api_wtable_rows_delete($params)
 
     if (!$result['ok']) {
         ws_api_wtable_refused($result, lang('Table row'));
-    }
-
-    api_ok($before);
-}
-
-/* ---------------------------------------------------------------------------
-   Shares
-   --------------------------------------------------------------------------- */
-
-/**
- * The shares of a table as the application may see them
- * (ws_wtable_shares_list()): to the application Claude works through, a
- * share in a channel where Claude may not be asked is left out.
- *
- * @param array $viewer
- * @param array $table
- * @return array[]
- */
-function ws_api_wtable_shares_seen($viewer, $table)
-{
-    $rows = (array) ws_wtable_shares_list($viewer, $table);
-
-    if (!ws_api_is_claude()) {
-        return $rows;
-    }
-
-    return array_values(array_filter($rows, function ($share) {
-        if ((string) $share['target_type'] !== 'channel') {
-            return true;
-        }
-
-        $channel = ws_channel((int) $share['target_id']);
-
-        return $channel && ws_claude_channel_allowed($channel);
-    }));
-}
-
-/**
- * One share of a table as it is now, or a 404.
- *
- * @param array $viewer
- * @param array $table
- * @param int   $share_id
- * @return array
- */
-function ws_api_wtable_share_answer($viewer, $table, $share_id)
-{
-    foreach (ws_api_wtable_shares_seen($viewer, $table) as $share) {
-        if ((int) $share['id'] === (int) $share_id) {
-            return ws_api_wtable_share_present($share);
-        }
-    }
-
-    api_fail_not_found(lang('Table share'));
-}
-
-function ws_api_wtable_shares_list($params)
-{
-    $viewer = ws_api_viewer();
-    $table = ws_api_wtable_or_404($viewer, $params['id']);
-    $rows = array_map('ws_api_wtable_share_present', ws_api_wtable_shares_seen($viewer, $table));
-
-    api_ok_list($rows, count($rows));
-}
-
-// Sharing widens who reads a table: the person's own decision, from their
-// team devices session, never an application key or an OAuth connection. No
-// MCP tool, and the application an assistant works through is refused too.
-function ws_api_wtable_shares_set($params)
-{
-    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can share a table or take a share back; an application key or an OAuth connection cannot do it for them.'));
-
-    $viewer = ws_api_viewer();
-
-    if (ws_api_is_assistant()) {
-        api_fail(403, 'forbidden', lang('An assistant does not share a table; the person does.'));
-    }
-
-    $table = ws_api_wtable_or_404($viewer, $params['id']);
-    $data = array(
-        'target_type' => (string) ($params['target_type'] ?? ''),
-        'target_id'   => (int) ($params['target_id'] ?? 0),
-        'level'       => (string) ($params['level'] ?? 'view'),
-    );
-
-    // The checks ws_wtable_share_set() makes, made first so that a dry run
-    // meets the same refusals.
-    $checked = ws_wtable_share_set_check($viewer, $table, $data);
-
-    if (!$checked['ok']) {
-        ws_api_wtable_refused($checked, lang('Table'));
-    }
-
-    api_dry_run_stop(is_array($checked['existing']) ? 'updated' : 'created', 'workspace_table_share', array(
-        'table_id'    => (int) $table['id'],
-        'target_type' => $checked['target_type'],
-        'target_id'   => $checked['target_id'],
-        'level'       => $checked['level'],
-        'existing'    => is_array($checked['existing']) ? (int) $checked['existing']['id'] : null,
-    ));
-
-    $result = ws_api_as_owner(function () use ($viewer, $table, $data) {
-        return ws_wtable_share_set($viewer, $table, $data);
-    });
-
-    if (!$result['ok']) {
-        ws_api_wtable_refused($result, lang('Table'));
-    }
-
-    api_ok(ws_api_wtable_share_answer($viewer, $table, $result['share_id']), $result['created'] ? 201 : 200);
-}
-
-// Taking a share back is the owner's own decision as sharing is.
-function ws_api_wtable_shares_delete($params)
-{
-    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can share a table or take a share back; an application key or an OAuth connection cannot do it for them.'));
-
-    $viewer = ws_api_viewer();
-
-    if (ws_api_is_assistant()) {
-        api_fail(403, 'forbidden', lang('An assistant does not share a table; the person does.'));
-    }
-
-    $table = ws_api_wtable_or_404($viewer, $params['id']);
-    $checked = ws_wtable_share_remove_check($viewer, $table, (int) $params['share_id']);
-
-    if (!$checked['ok']) {
-        ws_api_wtable_refused($checked, lang('Table'));
-    }
-
-    $before = ws_api_wtable_share_answer($viewer, $table, (int) $checked['share']['id']);
-
-    api_dry_run_stop('deleted', 'workspace_table_share', array(
-        'id'          => (int) $checked['share']['id'],
-        'table_id'    => (int) $table['id'],
-        'target_type' => (string) $checked['share']['target_type'],
-        'target_id'   => (int) $checked['share']['target_id'],
-    ));
-
-    $result = ws_api_as_owner(function () use ($viewer, $table, $checked) {
-        return ws_wtable_share_remove($viewer, $table, (int) $checked['share']['id']);
-    });
-
-    if (!$result['ok']) {
-        ws_api_wtable_refused($result, lang('Table'));
     }
 
     api_ok($before);
