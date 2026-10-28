@@ -16,6 +16,7 @@ description: Panel text on the page background is fg-body, never fg-black (black
 - Theme badges carry their own dark ink; `fg-white` on a pastel `theme-*` fill read at 2-2.5:1 in both themes. Dropped from `view_recurring_commission_profiles.php` (whose amount badge also lacked its `</span>`) and `view_key_codes.php`; the × link of `offer_editor.js` tags is `fg-reset` (#2569).
 - `view_orders.php` tracking count was `bg-white opacity-75 fg-success` (light green on white in the dark theme); now `badge-subtle theme-success` (#2569).
 - `badge bg-black` has no ink of its own, so it was dark on black in the light theme: `view_waf_log.php` (Banned) and `view_parasut_inbox.php` (Deleted) add `fg-white` (#2569).
+- The users list access menu (`pg_user_list_names_cell()`) sits in a scrollX DataTable and opens with `data-bs-strategy="fixed"`, like `view_product_attributes.php`; it was clipped by `.dt-scroll-body` (#2585).
 
 ## What is left?
 - `view_order_report.php` (period badge) still carries `fg-black`; it was held by another PR at the time.

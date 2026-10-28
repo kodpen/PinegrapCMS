@@ -495,6 +495,8 @@ function ws_editor_js_strings()
         'insert_to_message'         => lang('Add to the message'),
         'item_done'                 => lang('Mark as done'),
         'item_placeholder'          => lang('What needs doing?'),
+        'keys_autoformat'           => lang('Format as you type'),
+        'keys_autoformat_help'      => lang('==words== becomes a highlight; "- ", "1. " or "> " at the start of a line becomes a list or a quote. Ctrl+Z gives back what you typed.'),
         'keys_close'                => lang('Close'),
         'keys_newline'              => lang('New line'),
         'keys_redo'                 => lang('Redo'),
