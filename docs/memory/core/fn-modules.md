@@ -31,6 +31,7 @@ description: Generated from the module field of the memory files: each includes/
 - `list_period`: [[list-period-navigator-and-clock]]
 - `mail_parse`: [[mail-parse]]
 - `mail_queue`: [[fn-module-errors-mail-backup-consent]]
+- `order_completion`: [[order-completion]]
 - `order_list`: [[orders-list-amount-column]]
 - `order_view`: [[order-view-screen-rows]]
 - `page_facts`: [[page-conditions]]
