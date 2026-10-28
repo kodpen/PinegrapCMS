@@ -5979,6 +5979,15 @@ function submit_order($type) {
     // the first one left, not from the stock read before the loop.
     $stock_left = array();
 
+    // The order's values a line's submitted form, comment and e-mailed page
+    // can name as variables (includes/fn/order_completion.php).
+    $order_variables = compact(
+        'billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company',
+        'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state',
+        'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number',
+        'billing_email_address', 'custom_field_1', 'custom_field_2', 'po_number',
+        'total', 'order_number', 'order_date');
+
     // loop through all ordered products in order to determine if things need to be done for each product
     foreach ($products as $product) {
         $product_id = $product['product_id'];
@@ -6026,90 +6035,15 @@ function submit_order($type) {
 
         // If this product creates/updates a submitted a form, adds a comment,
         // or emails a page, then prepare variable fields where variables can
-        // be replaced with dynamic data from the order.
+        // be replaced with dynamic data from the order, and the product form
+        // answers of each unit (includes/fn/order_completion.php).
         if (
             ($product['submit_form'])
             || ($product['add_comment'])
             || ($product['email_page'])
         ) {
-            $variable_fields = array();
-
-            $variable_fields[] = array('name' => 'billing_salutation', 'data' => $billing_salutation);
-            $variable_fields[] = array('name' => 'billing_first_name', 'data' => $billing_first_name);
-            $variable_fields[] = array('name' => 'billing_last_name', 'data' => $billing_last_name);
-            $variable_fields[] = array('name' => 'billing_company', 'data' => $billing_company);
-            $variable_fields[] = array('name' => 'billing_address_1', 'data' => $billing_address_1);
-            $variable_fields[] = array('name' => 'billing_address_2', 'data' => $billing_address_2);
-            $variable_fields[] = array('name' => 'billing_city', 'data' => $billing_city);
-            $variable_fields[] = array('name' => 'billing_state', 'data' => $billing_state);
-            $variable_fields[] = array('name' => 'billing_zip_code', 'data' => $billing_zip_code);
-            $variable_fields[] = array('name' => 'billing_country', 'data' => $billing_country);
-            $variable_fields[] = array('name' => 'billing_phone_number', 'data' => $billing_phone_number);
-            $variable_fields[] = array('name' => 'billing_fax_number', 'data' => $billing_fax_number);
-            $variable_fields[] = array('name' => 'billing_email_address', 'data' => $billing_email_address);
-            $variable_fields[] = array('name' => 'custom_field_1', 'data' => $custom_field_1);
-            $variable_fields[] = array('name' => 'custom_field_2', 'data' => $custom_field_2);
-            $variable_fields[] = array('name' => 'po_number', 'data' => $po_number);
-            $variable_fields[] = array('name' => 'total', 'data' => sprintf("%01.2lf", $total / 100));
-            $variable_fields[] = array('name' => 'order_number', 'data' => $order_number);
-            $variable_fields[] = array('name' => 'order_date_and_time', 'data' => date('Y-m-d H:i:s', $order_date), 'type' => 'date and time');
-            $variable_fields[] = array('name' => 'quantity', 'data' => $quantity);
-
-            // If just one quantity was ordered, then set plural suffix to blank.
-            if ($quantity == 1) {
-                $variable_fields[] = array('name' => 'quantity_plural_suffix', 'data' => '');
-                $variable_fields[] = array('name' => 'quantity_plural_suffix_es', 'data' => '');
-
-            // Otherwise more than one quantity was ordered, so set plural suffixes.
-            } else {
-                $variable_fields[] = array('name' => 'quantity_plural_suffix', 'data' => 's');
-                $variable_fields[] = array('name' => 'quantity_plural_suffix_es', 'data' => 'es');
-            }
-
-            // Get form data items for product form in order to add variable fields for them.
-            $product_form_data_items = db_items(
-                "SELECT
-                    quantity_number,
-                    form_field_id,
-                    data,
-                    name,
-                    type
-                FROM form_data
-                WHERE
-                    (order_item_id = '" . $product['order_item_id'] . "')
-                    AND (name != '')
-                ORDER BY id ASC");
-
-            $product_forms = array();
-
-            // Loop through form data items in order to prepare data for each one,
-            // because some fields might have multiple values/records (e.g. check box groups).
-            foreach ($product_form_data_items as $product_form_data_item) {
-                $quantity_number = $product_form_data_item['quantity_number'];
-
-                // If there is already a value for this field, then that means,
-                // this field has multiple values, so add comma and this additional value.
-                if (isset($product_forms[$quantity_number][$product_form_data_item['form_field_id']]) == true) {
-                    $product_forms[$quantity_number][$product_form_data_item['form_field_id']]['data'] .= ', ' . $product_form_data_item['data'];
-
-                // Otherwise, there is not already a value for this field, so add field to array.
-                } else {
-                    $product_forms[$quantity_number][$product_form_data_item['form_field_id']] = array();
-                    $product_forms[$quantity_number][$product_form_data_item['form_field_id']]['name'] = $product_form_data_item['name'];
-                    $product_forms[$quantity_number][$product_form_data_item['form_field_id']]['data'] = $product_form_data_item['data'];
-                    $product_forms[$quantity_number][$product_form_data_item['form_field_id']]['type'] = $product_form_data_item['type'];
-                }
-            }
-
-            $product_form_variable_fields = array();
-
-            // Loop through each product form to prepare variables.
-            foreach ($product_forms as $quantity_number => $product_form) {
-                // Loop through the product form fields, in order to add variable fields for them.
-                foreach ($product_form as $product_form_field) {
-                    $product_form_variable_fields[$quantity_number][] = array('name' => $product_form_field['name'], 'data' => $product_form_field['data'], 'type' => $product_form_field['type']);
-                }
-            }
+            $variable_fields = pg_order_line_variable_fields($order_variables, $quantity);
+            $product_form_variable_fields = pg_order_line_product_form_fields($product['order_item_id']);
         }
 
         // Create an array that will be used to keep track of whether a submitted form
@@ -6163,209 +6097,27 @@ function submit_order($type) {
                 // We use this in order to determine if we need to create a form.
                 $submitted_form_updated = false;
 
-                $product_form_quantity_number = 0;
+                // The unit's own product form, else the first unit's.
+                $product_form_quantity_number = pg_order_product_form_number($quantity_number, $product_form_variable_fields);
 
-                // If this is like the 2nd, 3rd or etc. form being submitted,
-                // and a product form exists for this quantity number,
-                // then remember that so that later we know we can replace variables for it.
-                if (
-                    ($quantity_number != 1)
-                    and isset($product_form_variable_fields[$quantity_number])
-                ) {
-                    $product_form_quantity_number = $quantity_number;
+                // Update the oldest submitted form that matches, when the
+                // product updates one (includes/fn/order_completion.php).
+                $submitted_form_id = pg_order_complete_line_form_update(
+                    $product,
+                    $variable_fields,
+                    $product_form_quantity_number ? $product_form_variable_fields[$product_form_quantity_number] : null,
+                    USER_ID,
+                    $pretty_urls);
 
-                // Otherwise if a product form exists for the first quantity,
-                // then remember that so that later we know we can replace variables for it.
-                } else if (isset($product_form_variable_fields[1])) {
-                    $product_form_quantity_number = 1;
-                }
+                if ($submitted_form_id) {
+                    // Remember that a submitted form was updated, so we know further below to not create a form.
+                    $submitted_form_updated = true;
 
-                // If submit form update is enabled, and the where field is set,
-                // then determine if we should update a submitted form.
-                if (
-                    ($product['submit_form_update'])
-                    && ($product['submit_form_update_where_field'])
-                ) {
-                    $where_field = $product['submit_form_update_where_field'];
-                    $where_value = $product['submit_form_update_where_value'];
-
-                    // If there is a where value, then replace mail-merge fields
-                    // in it so things like the product form reference code will be replaced
-                    // with the value that the customer entered.
-                    if ($where_value != '') {
-
-                        $where_value = replace_variables(array(
-                            'content' => $where_value,
-                            'fields' => $variable_fields,
-                            'format' => 'plain_text'));
-
-                        // If a product form was found, then replace variables for it.
-                        if ($product_form_quantity_number) {
-                            $where_value = replace_variables(array(
-                                'content' => $where_value,
-                                'fields' => $product_form_variable_fields[$product_form_quantity_number],
-                                'format' => 'plain_text'));
-                        }
-
-                    }
-
-                    // If the where field is the reference code field,
-                    // then prepare the where field for that system field.
-                    if ($where_field == 'reference_code') {
-                        $sql_where = "(reference_code = '" . e($where_value) . "')";
-
-                    // Otherwise the where field is a custom field,
-                    // so prepare the where field for that custom field.
-                    } else {
-                        // If the value is blank, then prepare extra null check along with blank check.
-                        if ($where_value == '') {
-                            $sql_where =
-                                "(
-                                    ((SELECT form_data.data FROM form_data WHERE (form_data.form_id = forms.id) AND (form_data.form_field_id = '" . e($where_field) . "') LIMIT 1) = '" . e($where_value) . "')
-                                    OR ((SELECT form_data.data FROM form_data WHERE (form_data.form_id = forms.id) AND (form_data.form_field_id = '" . e($where_field) . "') LIMIT 1) IS NULL)
-                                )";
-
-                        // Otherwise the value is not blank, so just do straight comparison.
-                        } else {
-                            $sql_where = "((SELECT form_data.data FROM form_data WHERE (form_data.form_id = forms.id) AND (form_data.form_field_id = '" . e($where_field) . "') LIMIT 1) = '" . e($where_value) . "')";
-                        }
-                    }
-
-                    // Multiple submitted forms might match, so we just get the oldest one,
-                    // so in case someone is using this feature with submitted form inventories,
-                    // we use the oldest submitted form in the inventory.
-                    $submitted_form_id = db_value(
-                        "SELECT id
-                        FROM forms
-                        WHERE
-                            (page_id = '" . $product['submit_form_custom_form_page_id'] . "')
-                            AND $sql_where
-                        ORDER BY submitted_timestamp
-                        LIMIT 1");
-
-                    // If a submitted form was found, then update it.
-                    if ($submitted_form_id) {
-                        // Remember that a submitted form was updated, so we know further below to not create a form.
-                        $submitted_form_updated = true;
-
-                        // Remember that a form was updated for this quantity number,
-                        // for use later when we add a comment.
-                        $forms[$quantity_number] = array(
-                            'id' => $submitted_form_id,
-                            'type' => 'updated');
-
-                        // Update last modified properties for submitted form.
-                        db(
-                            "UPDATE forms
-                            SET
-                                last_modified_user_id = '" . USER_ID . "',
-                                last_modified_timestamp = UNIX_TIMESTAMP()
-                            WHERE id = '$submitted_form_id'");
-
-                        // Get valid submit form fields for this product so we can determine
-                        // which fields need to be updated for submitted form.
-                        $submit_form_fields = db_items(
-                            "SELECT
-                                product_submit_form_fields.form_field_id,
-                                product_submit_form_fields.value,
-                                form_fields.name,
-                                form_fields.type,
-                                form_fields.wysiwyg
-                            FROM product_submit_form_fields
-                            LEFT JOIN form_fields ON product_submit_form_fields.form_field_id = form_fields.id
-                            WHERE
-                                (form_fields.id IS NOT NULL)
-                                AND (product_submit_form_fields.product_id = '$product_id')
-                                AND (product_submit_form_fields.action = 'update')
-                                AND (form_fields.type != 'information')
-                                AND (form_fields.type != 'file upload')");
-
-                        // Loop through the submit form fields, in order to update them.
-                        foreach ($submit_form_fields as $submit_form_field) {
-                            $value = '';
-
-                            // If the value for this field, is just the quantity
-                            // then this is a special type of field where we want to
-                            // always increment the quantity and not just replace the current quantity,
-                            // so get old quantity.
-                            if ($submit_form_field['value'] == '^^quantity^^') {
-                                $old_quantity = db_value(
-                                    "SELECT data
-                                    FROM form_data
-                                    WHERE
-                                        (form_id = '$submitted_form_id')
-                                        AND (form_field_id = '" . $submit_form_field['form_field_id'] . "')");
-
-                                // If the old quantity is numeric, then add the new quantity to it.
-                                if (is_numeric($old_quantity) == true) {
-                                    $value = $old_quantity + $quantity;
-                                }
-                            }
-
-                            // If the value has not already been determine above (for quantity fields),
-                            // then prepare value.
-                            if ($value == '') {
-
-                                $value = replace_variables(array(
-                                    'content' => $submit_form_field['value'],
-                                    'fields' => $variable_fields,
-                                    'format' => 'plain_text'));
-
-                                // If a product form was found, then replace variables for it.
-                                if ($product_form_quantity_number) {
-                                    $value = replace_variables(array(
-                                        'content' => $value,
-                                        'fields' => $product_form_variable_fields[$product_form_quantity_number],
-                                        'format' => 'plain_text'));
-                                }
-
-                            }
-
-                            // assume that the form data type is standard until we find out otherwise
-                            $form_data_type = 'standard';
-                            
-                            // if the form field's type is date, date and time, or time, then set form data type to the form field type
-                            if (
-                                ($submit_form_field['type'] == 'date')
-                                || ($submit_form_field['type'] == 'date and time')
-                                || ($submit_form_field['type'] == 'time')
-                            ) {
-                                $form_data_type = $submit_form_field['type'];
-                                
-                            // else if the form field is a wysiwyg text area, then set type to html.
-                            } elseif (($submit_form_field['type'] == 'text area') && ($submit_form_field['wysiwyg'] == 1)) {
-                                $form_data_type = 'html';
-                            }
-
-                            // Delete existing form_data record for this field, if one exists.
-                            db(
-                                "DELETE FROM form_data
-                                WHERE
-                                    (form_id = '$submitted_form_id')
-                                    AND (form_id != '0')
-                                    AND (form_field_id = '" . $submit_form_field['form_field_id'] . "')");
-
-                            // Insert form_data record for this field.
-                            db(
-                                "INSERT INTO form_data (
-                                    form_id,
-                                    form_field_id,
-                                    data,
-                                    name,
-                                    type)
-                                VALUES (
-                                    '$submitted_form_id',
-                                    '" . $submit_form_field['form_field_id'] . "',
-                                    '" . escape($value) . "',
-                                    '" . escape($submit_form_field['name']) . "',
-                                    '$form_data_type')");
-                        }
-
-                        // If pretty URLs are enabled, then update address name.
-                        if ($pretty_urls == true) {
-                            update_submitted_form_address_name($submitted_form_id);
-                        }
-                    }
+                    // Remember that a form was updated for this quantity number,
+                    // for use later when we add a comment.
+                    $forms[$quantity_number] = array(
+                        'id' => $submitted_form_id,
+                        'type' => 'updated');
                 }
 
                 // If submit form create is enabled, and a submitted form was not updated up above,
