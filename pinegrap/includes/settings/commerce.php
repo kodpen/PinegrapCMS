@@ -231,7 +231,7 @@ $pg_settings_cards[] = '
                                                                         ' . get_time_picker_format() . '
                                                                         <div class="pg-f-xs">
                                                                             <label for="ecommerce_end_of_day_time" class="form-label">' . lang('End of Day Time') . '</label>
-                                                                            <input type="text" name="ecommerce_end_of_day_time" id="ecommerce_end_of_day_time" class="form-control" data-pg-time value="' . prepare_form_data_for_output($ecommerce_end_of_day_time, 'time') . '" maxlength="8"/>' . pg_fields_script() . '
+                                                                            <input type="text" name="ecommerce_end_of_day_time" id="ecommerce_end_of_day_time" class="form-control" data-pg-time value="' . prepare_form_data_for_output($ecommerce_end_of_day_time, 'time') . '" maxlength="8"/>' . get_date_picker_format() . pg_fields_script() . '
                                                                             <div class="form-text">(' . h(pg_time_format_help()) . '), ' . lang('Current Site Time') . ': ' . h(date(pg_time_format_code())) . '</div>
                                                                         </div>
                                                                     </div>

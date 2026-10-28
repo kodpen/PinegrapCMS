@@ -299,9 +299,9 @@ function erp_waybill_form_cards($liveform, $options = array())
                 <div class="col-6 lg:col-2 my-3">
                     <label for="ship_time" class="form-label">' . lang('Shipment Time') . '</label>
                     ' . $liveform->output_field(array(
-                        'type' => 'text', 'id' => 'ship_time', 'name' => 'ship_time',
+                        'type' => 'text', 'id' => 'ship_time', 'data-pg-time' => 'hh:mm', 'name' => 'ship_time',
                         'class' => 'form-control', 'size' => '5', 'maxlength' => '5',
-                        'placeholder' => 'HH:MM', 'inputmode' => 'numeric', 'autocomplete' => 'off')) . '
+                        'autocomplete' => 'off')) . '
                 </div>
             </div>
         </div>
