@@ -120,38 +120,17 @@ if (!$pg_login_posted || !isset($_POST['email'])) {
             // wrong, so the counter cannot be avoided by reading the message.
             pg_login_record_failure($username);
 
-            // If email/username exists, password is incorrect, so tell visitor that
+            // The site log records which half was wrong; the visitor gets one
+            // message for both, so the screen does not tell which accounts exist.
             if (validate_username($username) == true) {
                 log_activity(lang(array('string'=>'access denied (password invalid) (email or username: {var:1})','vars'=>$username)), lang('UNKNOWN') );
-                    
-
-                $forgot_password_message = '';
-
-                if (FORGOT_PASSWORD_LINK == true) {
-                    $forgot_password_message = lang(' If you have forgotten your password, please click on the forgot password link below.');
-                }
-                
-                $liveform->mark_error('password', lang('The password you entered is incorrect. Please remember that passwords are case sensitive.') . $forgot_password_message);
-                $liveform->assign_field_value('email', $username);
-                $liveform->assign_field_value('password', '');
-                
-            // Otherwise email/username does not exist, so tell visitor that
             } else {
-                
                 log_activity(lang(array('string'=>'access denied (email or username invalid: {var:1})','vars'=>$username)), lang('UNKNOWN') );
-
-                // If there is an "@" in the email/username, then the visitor probably attempted to
-                // enter an email address, so customize message for that.
-                if (mb_strpos($username, '@') !== false) {
-                    $liveform->mark_error('email',
-                        lang('The email address you entered could not be found.') );
-
-                // Otherwise visitor probably tried to enter a username, so customize message.
-                } else {
-                    $liveform->mark_error('email',
-                        lang('The username you entered could not be found. You might try entering an email address instead.') );
-                }
             }
+
+            $liveform->mark_error('password', pg_login_refused_message(FORGOT_PASSWORD_LINK == true));
+            $liveform->assign_field_value('email', $username);
+            $liveform->assign_field_value('password', '');
         }
     }
     

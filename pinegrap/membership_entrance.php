@@ -101,24 +101,16 @@ if (!$_POST) {
                 // wrong, so the counter cannot be avoided by reading the message.
                 pg_login_record_failure($username);
 
-                // if username exists, password is incorrect, so output error about password being incorrect
+                // The site log records which half was wrong; the visitor gets one
+                // message for both, so the screen does not tell which accounts exist.
                 if (validate_username($username) == true) {
                     log_activity('access denied (password invalid) (email or username: ' . $username . ')', 'UNKNOWN');
-                    
-                    $forgot_password_message = '';
-                    
-                    if (FORGOT_PASSWORD_LINK == true) {
-                        $forgot_password_message = lang(' If you have forgotten your password, please click on the forgot password link below.');
-                    }
-                    
-                    $liveform->mark_error('p', lang('The password you entered is incorrect. Please remember that passwords are case sensitive.') . $forgot_password_message);
-                    $liveform->assign_field_value('p', '');
-                    
-                // else username does not exist, so output error about username not existing
                 } else {
                     log_activity('access denied (email or username invalid: ' . $username . ')', 'UNKNOWN');
-                    $liveform->mark_error('u', lang('The email address or username you entered could not be found. Please register if you have not already done so.'));
                 }
+
+                $liveform->mark_error('p', pg_login_refused_message(FORGOT_PASSWORD_LINK == true));
+                $liveform->assign_field_value('p', '');
             }
         }
         

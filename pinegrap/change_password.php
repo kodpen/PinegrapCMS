@@ -83,17 +83,16 @@ if ($pg_set_password_mode) {
         // was wrong, so the counter cannot be avoided by reading the message.
         pg_login_record_failure($pg_login_identifier);
 
-        // if email_address exists, password is incorrect, so output error about password being incorrect
+        // The site log records which half was wrong; the visitor gets one
+        // message for both, so the form does not tell which accounts exist.
         if (validate_username($liveform->get_field_value('email_address')) == true) {
             log_activity('access denied to change password (password invalid) (email or username: ' . $liveform->get_field_value('email_address') . ')', 'UNKNOWN');
-            $liveform->mark_error('current_password', lang('The current password you entered is incorrect. Please remember that passwords are case sensitive.'));
-            $liveform->assign_field_value('current_password', '');
-            
-        // else email_address does not exist, so output error about email_address not existing
         } else {
             log_activity('access denied to change password (email or username invalid: ' . $liveform->get_field_value('email_address') . ')', 'UNKNOWN');
-            $liveform->mark_error('email_address', lang('The email address or username you entered could not be found.'));
         }
+
+        $liveform->mark_error('current_password', pg_login_refused_message(false, true));
+        $liveform->assign_field_value('current_password', '');
 
     // The current password is right: forget this account's failures, as a
     // successful sign-in does.
