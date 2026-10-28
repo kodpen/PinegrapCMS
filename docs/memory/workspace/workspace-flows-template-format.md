@@ -26,9 +26,9 @@ description: Flow templates (G1 #2161, G3 flow-only, flow_templates.php): format
 - Manual subject is '' (`ws_flow_problems()` needs the database for record types; the tests use `ws_flow_graph_check()`). Tested in `test_workspace_flow_templates_flow_only_*`.
 
 ## Which wait, and why?
-- welcome (join) and the event ones of workspace_events.js: their texts read `{{newcomer}}`, `{{channel}}`, `{{record}}`, which a flow run does not fill yet (`workspace-flows-anchors.md`, Left).
+- welcome and the event ones: no longer wait (tokens filled since #2205); merge plan step R1.
 - forms, orders: their counts are "since the last run", which a flow's condition and text read as the last day.
-- chain: started by another action; a flow has no such start.
+- chain: started by another action; a flow has no such start. These three: #2753.
 
 ## How does the canvas use it?
 - "New flow" with templates opens `showGallery(null)` in place of the canvas: Empty canvas, then the cards by category; Use creates a flow named after the template with its graph.
