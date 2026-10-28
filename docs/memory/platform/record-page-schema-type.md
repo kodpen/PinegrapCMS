@@ -1,6 +1,6 @@
 ---
 name: record-page-schema-type
-description: A custom form chooses the schema.org type of its record pages (BlogPosting, Article, NewsArticle, none); where it is stored, read and set.
+description: A custom form chooses the schema.org type of its record pages (BlogPosting, Article, NewsArticle, none) and their author; where each is stored, read and set.
 module: seo
 ---
 
@@ -16,3 +16,8 @@ module: seo
 - Classic form settings: `pg_page_form_schema_type_row()` in `includes/forms/page_form.php`, under the Schema Author rows.
 - Visual designer: the custom form widget's "Schema Type" row (`style_designer.js`, `data-s="schema_type"` on the page's `formSettings`), loaded and saved by `pg_cf_load_page_form_settings()` / the page form save in `includes/fn/custom_form.php`.
 - Every reader and writer waits for the column (`pg_record_schema_type_setting_ready()`): files land before the upgrade runs. Test: `tests/record_schema_type_test.php`.
+
+## Where is the author choice set?
+- `custom_form_pages.schema_author` (rules: `structured-data-open-graph.md`). Classic form settings: `pg_page_form_schema_author_rows()` in `includes/forms/page_form.php`.
+- Visual designer: the custom form widget's "Schema Author" select under Schema Type (`data-s="schema_author"`): the contact, the site, or a field of the form (no file upload or information field). The editor holds a field by its name (`field:<name>`), since a field added in the same save has no id: `pg_cf_load_page_form_settings()` reads `field:<id>` as `field:<name>` (`pg_cf_editor_schema_author()`), and `pg_cf_reconcile_page_form()` writes it after the fields with `pg_cf_template_schema_author()`, never for a form only shown on the page (`read_only`). A field no longer on the form is the contact on both sides; a field renamed after the choice falls back to the contact until it is picked again.
+- Test: `tests/custom_form_schema_author_test.php` (both directions and the round trip).

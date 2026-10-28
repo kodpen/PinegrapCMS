@@ -3,9 +3,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for pg_cf_template_schema_author() (includes/fn/custom_form.php):
- * the BlogPosting author a design template's form names, written as the
- * custom_form_pages.schema_author value with a field name turned into the
- * id of the form's field.
+ * the BlogPosting author a design template's form or the designer's form
+ * settings name, written as the custom_form_pages.schema_author value with
+ * a field name turned into the id of the form's field; and
+ * pg_cf_editor_schema_author(), the stored value read back for the editor.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -43,4 +44,26 @@ function test_custom_form_schema_author_plain_choices()
 	pg_assert_same('contact', pg_cf_template_schema_author('field:14', array()));
 	pg_assert_same('contact', pg_cf_template_schema_author('someone', array()));
 	pg_assert_same('contact', pg_cf_template_schema_author(array('x'), array()));
+}
+
+// The stored value as the designer holds it: a field by its name, a field
+// the form no longer has as the contact, the others as they are.
+function test_custom_form_schema_author_for_editor()
+{
+	$names = function ($id) { return $id === 14 ? 'byline' : ''; };
+	pg_assert_same('field:byline', pg_cf_editor_schema_author('field:14', $names));
+	pg_assert_same('contact', pg_cf_editor_schema_author('field:15', $names), 'a deleted field');
+	pg_assert_same('organization', pg_cf_editor_schema_author('organization', $names));
+	pg_assert_same('contact', pg_cf_editor_schema_author('', $names), 'a row older than the choice');
+	pg_assert_same('contact', pg_cf_editor_schema_author('field:byline', $names), 'a name is never stored');
+}
+
+// Read for the editor and saved back unchanged, a choice stays the same.
+function test_custom_form_schema_author_round_trip()
+{
+	$names = function ($id) { return $id === 14 ? 'Byline' : ''; };
+	$ids = array('byline' => 14);
+	foreach (array('contact', 'organization', 'field:14') as $stored) {
+		pg_assert_same($stored, pg_cf_template_schema_author(pg_cf_editor_schema_author($stored, $names), $ids), $stored);
+	}
 }
