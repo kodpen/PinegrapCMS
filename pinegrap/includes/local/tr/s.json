@@ -867,6 +867,7 @@
     "Served until noon on weekdays and until 14:00 at the weekend.": "Hafta içi öğlene, hafta sonu 14:00'e kadar servis edilir.",
     "Server": "SUNUCU",
     "Server & Domain": "Sunucu ve Alan Adı",
+    "Server Default: {var:1}": "Sunucu Varsayılanı: {var:1}",
     "Server address": "Sunucu adresi",
     "Server blocks": "Sunucu blokları",
     "Server caches": "Önbellekler",

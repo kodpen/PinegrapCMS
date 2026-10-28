@@ -614,7 +614,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $output_contact_group_selection = '
         <div class="input-group input-group-sm w-auto'. $show_hide_contact_group_select .'">
             <label class="input-group-text material-icons" title="' . lang('Group') . '" for="contact_group">groups</label>
-            <select id="contact_group" aria-label="' . h(lang('Group')) . '" name="contact_group" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . $output_contact_group_options . '</select>
+            <select id="contact_group" aria-label="' . h(lang('Group')) . '" name="contact_group" class="form-control" title="' . lang('Group') . '" onchange="submit_form(\'search_form\')">' . $output_contact_group_options . '</select>
         </div>';
         $output_advanced_filters_value = 'true';
         $output_advanced_filters_label = lang('Add Advanced Filters');
@@ -780,7 +780,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                             <div class="card multiselect-checkbox-container rounded-0">
                                 <div class="card-header border-0 bg-reset">
                                     <div class="form-field">
-                                        <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox"></div>
+                                        <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" type="checkbox"></div>
                                         <label for="multiselect-checkbox-checker-0" class="">' . lang('Select All') . '</label>
                                     </div>
                                 </div>
