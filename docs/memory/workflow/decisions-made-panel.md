@@ -1,6 +1,6 @@
 ---
 name: decisions-made-panel
-description: Decisions list, panel part: Bootstrap 6 breakpoints (1024/1280, xxl to 2xl) kept on purpose; the one date-and-time picker (vanilla-calendar-pro); the main menu in category headings
+description: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose; the one date-and-time picker (vanilla-calendar-pro); the main menu in category headings; the front-end editor strip
 ---
 
 ## Why do the panel's own media queries break at 1024 and 1280 px?
@@ -16,3 +16,6 @@ description: Decisions list, panel part: Bootstrap 6 breakpoints (1024/1280, xxl
 
 ## How is the main menu grouped? (owner, 2026-10-28, #2811)
 - Categories as headings over the rows, never one row per category (Ecommerce stays five rows); a heading only over rows the person gets, also over a single one; Calendars and Forms stay in Content beside Pages and the File Manager; the File Manager row is the destination, the Files row is retired; the store rows lose "All" (`ui/main-menu-categories.md`). Not an empty-heading bug or a lost Files row.
+
+## Where does the front-end editing button box sit? (#2849, 2026-10-28)
+- Decided (architect): a vertical strip fixed to the right edge, vertically centred, buttons stacked, so it covers no theme's top-right controls (account menu, cart, language) or bottom-right buttons; the SEO ring, its panel and the inline save/cancel pair sit beside it. Under 768 px it starts collapsed to the arrow; otherwise the session-kept open/closed choice stays. `role="toolbar"`, labelled buttons, no data change (`ui/site-page-toolbar-theme.md`).
