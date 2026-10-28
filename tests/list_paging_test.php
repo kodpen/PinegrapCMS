@@ -96,6 +96,36 @@ function test_list_search_where_matches_labels()
 	pg_assert_same('(1 = 0)', $where['sql'], 'a word found nowhere finds nothing');
 }
 
+function test_list_search_where_column_term()
+{
+	$digits = array('expr' => 'products.price', 'term' => function ($term) {
+		return preg_match('/^[0-9.,]+$/', $term) ? preg_replace('/[^0-9]/', '', $term) : '';
+	});
+
+	$where = pg_list_search_where(array('1.234,50'), array('products.name', $digits));
+	pg_assert_same('(products.name LIKE ? OR products.price LIKE ?)', $where['sql']);
+	pg_assert_same(array('%1.234,50%', '%123450%'), $where['params']);
+
+	$where = pg_list_search_where(array('mug'), array('products.name', $digits));
+	pg_assert_same('(products.name LIKE ?)', $where['sql'], 'a word the column cannot hold skips it');
+	pg_assert_same(array('%mug%'), $where['params']);
+}
+
+function test_list_cell_attributes()
+{
+	$row = array('class' => '', 'cells' => array(
+		pg_list_cell('a'),
+		pg_list_cell('5', 'text-end', array('data-pg-edit' => 'price', 'data-pg-edit-value' => '5"', 'tabindex' => 0)),
+	));
+
+	pg_assert_same('<tr class=""><td class="align-middle">a</td><td class="text-end" data-pg-edit="price" data-pg-edit-value="5&quot;" tabindex="0">5</td></tr>', pg_list_row_html($row));
+
+	$data = pg_list_row_data($row);
+	pg_assert_same(array('1' => array('data-pg-edit' => 'price', 'data-pg-edit-value' => '5"', 'tabindex' => '0')), $data['DT_RowData']['pgAttrs']);
+	pg_assert_contains('"pgAttrs":{"1":{', json_encode($data), 'by column number');
+	pg_assert_false(isset(pg_list_row_data(array('class' => '', 'cells' => array(pg_list_cell('a'))))['DT_RowData']['pgAttrs']), 'no attributes, no pgAttrs');
+}
+
 function test_list_row_html_and_data()
 {
 	$row = array('class' => 'unselectable', 'cells' => array(
