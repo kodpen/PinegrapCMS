@@ -690,6 +690,10 @@
                             // The start never after the due date.
                             if ((input === due) && start.value && (start.value > target)) {
                                 start.value = target;
+
+                                if (window.pgFields && window.pgFields.refresh) {
+                                    window.pgFields.refresh(start);
+                                }
                             }
 
                             input.dispatchEvent(new Event('change', { bubbles: true }));

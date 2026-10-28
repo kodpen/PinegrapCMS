@@ -2920,6 +2920,14 @@ function pg_fields_script()
     }
 
     $printed = true;
+
+    return pg_fields_script_tags();
+}
+
+// The tags pg_fields_script() prints, on every call: the Workspace's lazy
+// record loader keeps them in a template without using up that one print.
+function pg_fields_script_tags()
+{
     $path = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY;
 
     return '<link rel="stylesheet" href="' . $path . '/assets/css/pg_datetime.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/css/pg_datetime.css') . '">'

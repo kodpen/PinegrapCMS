@@ -886,8 +886,17 @@ function ws_screen_assets($viewer, $mode, $extra = array())
     $output = $lightbox . '
 <script type="application/json" id="ws-config">' . $json . '</script>';
 
+    // The date-and-time control (assets/js/pg_fields.js) of the fields the
+    // script builds. A record's screen fetches it with the script, unless the
+    // screen has its own.
     if ($mode === 'record') {
-        return $output . ws_record_loader(pg_js_bundle_urls('assets/js/workspace.min.js'));
+        return $output . ws_record_loader(pg_js_bundle_urls('assets/js/workspace.min.js'), get_date_picker_format() . pg_fields_script_tags());
+    }
+
+    $fields = pg_fields_script();
+
+    if ($fields !== '') {
+        $output .= get_date_picker_format() . $fields;
     }
 
     // "Rewrite with AI" in the composer: the draft panel's script and words
@@ -925,14 +934,21 @@ function ws_screen_assets($viewer, $mode, $extra = array())
  * its own listener answers and this one stands aside. A file that fails to
  * load lets the next click try again.
  *
- * @param array $urls pg_js_bundle_urls() of the workspace script
+ * The date-and-time control's tags ($fields) wait in a template and go
+ * first when the screen has no control of its own (window.pgFields): each
+ * script is made again with its attributes, which carry the calendar's
+ * settings and labels, as a template's own scripts never run.
+ *
+ * @param array  $urls   pg_js_bundle_urls() of the workspace script
+ * @param string $fields get_date_picker_format() . pg_fields_script_tags()
  * @return string
  */
-function ws_record_loader($urls)
+function ws_record_loader($urls, $fields = '')
 {
     $files = json_encode(array_values($urls), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 
-    return '
+    return (($fields !== '') ? '
+<template id="ws-fields-assets">' . $fields . '</template>' : '') . '
 <script>
 (function () {
     var files = ' . $files . ';
@@ -954,16 +970,47 @@ function ws_record_loader($urls)
 
         loading = true;
 
+        var steps = [];
+        var held = document.getElementById("ws-fields-assets");
+
+        if (held && held.content && !window.pgFields) {
+            Array.prototype.forEach.call(held.content.children, function (node) { steps.push(node); });
+        }
+
+        files.forEach(function (src) { steps.push(src); });
+
         (function next(index) {
-            if (index >= files.length) {
+            if (index >= steps.length) {
                 return;
             }
 
-            var script = document.createElement("script");
-            script.src = files[index];
-            script.onload = function () { next(index + 1); };
-            script.onerror = function () { loading = false; };
-            document.head.appendChild(script);
+            var step = steps[index];
+            var node;
+
+            if (typeof step === "string") {
+                node = document.createElement("script");
+                node.src = step;
+            } else if (step.tagName === "SCRIPT") {
+                node = document.createElement("script");
+                Array.prototype.forEach.call(step.attributes, function (attr) {
+                    node.setAttribute(attr.name, attr.value);
+                });
+                node.text = step.text;
+            } else {
+                document.head.appendChild(document.importNode(step, true));
+                next(index + 1);
+                return;
+            }
+
+            if (!node.src) {
+                document.head.appendChild(node);
+                next(index + 1);
+                return;
+            }
+
+            node.onload = function () { next(index + 1); };
+            node.onerror = function () { loading = false; };
+            document.head.appendChild(node);
         })(0);
     });
 })();

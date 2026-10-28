@@ -63,6 +63,47 @@
         return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
     }
 
+    // A native date, time or datetime-local input on the panel's one
+    // date-and-time control (assets/js/pg_fields.js): the input stays the
+    // ISO store the posts read ('2026-10-26', '17:05', '2026-10-26T17:05');
+    // a box in the site's date order and clock is drawn after it once it is
+    // in the page (watchDateFields()).
+    var DATE_HOOKS = { date: 'data-pg-date', time: 'data-pg-time', 'datetime-local': 'data-pg-datetime' };
+
+    function pgDateField(input, type) {
+        input.type = type;
+        input.setAttribute(DATE_HOOKS[type], '');
+
+        return input;
+    }
+
+    // A value a script wrote into a drawn date field, shown without a change.
+    function dateShown(input) {
+        if (window.pgFields && window.pgFields.refresh) {
+            window.pgFields.refresh(input);
+        }
+    }
+
+    // The forms are built off the page and added to it later, in drawers,
+    // dialogs and panels: each hooked field is drawn when it arrives.
+    function watchDateFields() {
+        if (!window.pgFields || !window.MutationObserver || !document.body) {
+            return;
+        }
+
+        var hooked = Object.keys(DATE_HOOKS).map(function (type) { return '[' + DATE_HOOKS[type] + ']'; }).join(',');
+
+        new MutationObserver(function (records) {
+            records.forEach(function (record) {
+                Array.prototype.forEach.call(record.addedNodes, function (node) {
+                    if ((node.nodeType === 1) && (node.matches(hooked) || node.querySelector(hooked))) {
+                        window.pgFields.init(node);
+                    }
+                });
+            });
+        }).observe(document.body, { childList: true, subtree: true });
+    }
+
     function el(tag, className, text) {
         var node = document.createElement(tag);
 
@@ -2576,7 +2617,7 @@
         wrap.appendChild(head);
 
         var time = el('input', 'form-control form-control-sm');
-        time.type = 'time';
+        pgDateField(time, 'time');
         time.id = nextId('ws-task-time-');
         time.value = info.due_time || '';
 
@@ -3529,12 +3570,12 @@
             }
 
             f.start = el('input', 'form-control form-control-sm');
-            f.start.type = 'date';
+            pgDateField(f.start, 'date');
             f.start.id = nextId('ws-task-start-');
             f.start.value = task ? (task.start_date || '') : (defaults.start_date || '');
 
             f.due = el('input', 'form-control form-control-sm');
-            f.due.type = 'date';
+            pgDateField(f.due, 'date');
             f.due.id = nextId('ws-task-due-');
             f.due.value = task ? (task.due_date || '') : (defaults.due_date || '');
 
@@ -10607,10 +10648,10 @@
             var date = el('input', 'form-control form-control-sm');
             var time = el('input', 'form-control form-control-sm');
 
-            date.type = 'date';
+            pgDateField(date, 'date');
             date.id = nextId('ws-poll-date-');
             date.min = CFG.today;
-            time.type = 'time';
+            pgDateField(time, 'time');
             time.id = nextId('ws-poll-time-');
             time.value = '18:00';
 
@@ -15216,10 +15257,12 @@
             input.value = value || '';
         } else {
             input = el('input', 'form-control form-control-sm');
-            input.type = (meta.kind === 'date') ? 'date'
-                : ((meta.kind === 'datetime') ? 'datetime-local'
-                : ((meta.kind === 'int' || meta.kind === 'money' || meta.kind === 'decimal') ? 'number'
-                : ((meta.kind === 'email') ? 'email' : 'text')));
+            if (meta.kind === 'date' || meta.kind === 'datetime') {
+                pgDateField(input, (meta.kind === 'date') ? 'date' : 'datetime-local');
+            } else {
+                input.type = (meta.kind === 'int' || meta.kind === 'money' || meta.kind === 'decimal') ? 'number'
+                    : ((meta.kind === 'email') ? 'email' : 'text');
+            }
 
             if (meta.kind === 'money') {
                 input.step = '0.01';
@@ -15472,8 +15515,8 @@
             var to = el('input', 'form-control form-control-sm');
             var hourGrid = el('div', 'ws-sa-condition-grid');
 
-            from.type = 'time';
-            to.type = 'time';
+            pgDateField(from, 'time');
+            pgDateField(to, 'time');
             from.value = rule.from || '09:00';
             to.value = rule.to || '18:00';
             hourGrid.appendChild(saLabelled(t('sa_from'), from));
@@ -16604,11 +16647,11 @@
         var dateLabel = el('label', 'form-label small mb-1', t('sm_date'));
         var timeLabel = el('label', 'form-label small mb-1', t('sm_time'));
 
-        dateInput.type = 'date';
+        pgDateField(dateInput, 'date');
         dateInput.id = nextId('ws-sm-date-');
         dateInput.min = CFG.today;
         dateInput.value = date || addDays(CFG.today, 1);
-        timeInput.type = 'time';
+        pgDateField(timeInput, 'time');
         timeInput.id = nextId('ws-sm-time-');
         timeInput.value = time || '09:00';
         dateLabel.htmlFor = dateInput.id;
@@ -18214,13 +18257,13 @@
         }
 
         var start = el('input', 'form-control form-control-sm');
-        start.type = 'date';
+        pgDateField(start, 'date');
         start.id = nextId('ws-ev-start-');
         start.value = event ? event.start : (defaults.start || CFG.today);
         col(formRow(t('start_date'), start));
 
         var end = el('input', 'form-control form-control-sm');
-        end.type = 'date';
+        pgDateField(end, 'date');
         end.id = nextId('ws-ev-end-');
         end.value = event ? event.end : (defaults.start || CFG.today);
         col(formRow(t('end_date'), end));
@@ -18237,13 +18280,13 @@
         col(allDayWrap, 'col-12');
 
         var startTime = el('input', 'form-control form-control-sm');
-        startTime.type = 'time';
+        pgDateField(startTime, 'time');
         startTime.id = nextId('ws-ev-st-');
         startTime.value = event ? event.start_time : '09:00';
         var startTimeCell = col(formRow(t('start_time'), startTime));
 
         var endTime = el('input', 'form-control form-control-sm');
-        endTime.type = 'time';
+        pgDateField(endTime, 'time');
         endTime.id = nextId('ws-ev-et-');
         endTime.value = event ? event.end_time : '10:00';
         var endTimeCell = col(formRow(t('end_time'), endTime));
@@ -19060,7 +19103,7 @@
         var dates = el('div', 'd-flex gap-1');
         var dateField = function (key, label) {
             var input = el('input', 'form-control form-control-sm w-auto');
-            input.type = 'date';
+            pgDateField(input, 'date');
             input.value = state[key];
             input.title = label;
             input.setAttribute('aria-label', label);
@@ -19133,6 +19176,8 @@
             personSelect.value = '0';
             fromInput.value = '';
             toInput.value = '';
+            dateShown(fromInput);
+            dateShown(toInput);
             search.value = '';
 
             if (deptSelect) {
@@ -22403,6 +22448,7 @@
 
     function start() {
         shareKit();
+        watchDateFields();
 
         // Ctrl+K (⌘K) opens the workspace's own search box on its screens,
         // in place of the panel's search; it is taken before the panel's

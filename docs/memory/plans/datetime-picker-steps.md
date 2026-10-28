@@ -22,7 +22,7 @@ description: Panel steps P1-P11 of plans/datetime-picker.md: what each changes, 
 
 - P8 (S) done (#2832). `backend.src.js`/`.css`: the comment publish schedule focuses the box through `pgFields.focus()`, the shipping cut-off row escapes its value, the `.pg-datetime`/`.pg-time` rules are gone; P2's CSS stays in `pg_datetime.css` (every screen printing `pg_fields_script()` gets it, the designer included). Also the ERP overdue hour-of-day select (`erp_overdue_notify_hour`, options in `settings/prep.php` 705-708): labels from `date(pg_time_format_code())`, values unchanged. And `get_date_picker_format() . pg_fields_script()` beside "Add Filter" on `view_order_report.php` and `view_visitor_report.php` (held by #2807 at P4), so their filter boxes are drawn.
 
-- P9 (L) Workspace `workspace.js` fields, loader in `workspace/screen.php` including the lazy record loader (`ws_record_loader`, 927); posts stay ISO date + HH:MM (or `Y-m-d\TH:i` for saValueInput); rebuild bundle. After P3.
+- P9 (L) done (#2867). Workspace fields through `pgDateField()`, drawn by a watcher; the control on every workspace screen and in the lazy record loader (`workspace/workspace-date-fields.md`).
 
 - P10 (M) Workspace modules: approvals, customer, recurrence, task_time, task_approval; rebuild bundle. After P9.
 
