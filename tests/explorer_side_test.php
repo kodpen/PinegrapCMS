@@ -134,3 +134,31 @@ function test_explorer_side_handler_checks_and_reads_only()
 	pg_assert_contains('pg_explorer_child_folders($node, $user, $folders_that_user_has_access_to)', $source, 'folders only from the explorer\'s rule');
 	pg_assert_contains('pg_catalog_child_groups($node)', $source, 'live groups only');
 }
+
+function test_explorer_side_in_the_menu_rows_only_under_their_gates()
+{
+	$menu = pg_test_function_source('output_menu');
+
+	// Inside the File Manager row's gate ((role < 3) || no_acl_check()) and
+	// the Catalog Manager row's (ECOMMERCE, USER_MANAGE_ECOMMERCE).
+	$files = strpos($menu, "pg_menu_explorer_side('files'");
+	$catalog = strpos($menu, "pg_menu_explorer_side('catalog'");
+	pg_assert_true(($files !== false) && ($files > strpos($menu, "if ((\$user['role'] < 3) || (no_acl_check(\$user['id']) == true)) {")) && ($files < strpos($menu, '// PAGES')), 'the files tree in the File Manager row');
+	pg_assert_true(($catalog !== false) && ($catalog > strpos($menu, "\$menu_items[12]['id'] = 12;")) && ($catalog < strpos($menu, '// ECOMMERCE > Offers')), 'the catalog tree in the Catalog Manager row');
+	pg_assert_same(1, substr_count($menu, "pg_menu_explorer_side('files'"), 'once');
+	pg_assert_same(1, substr_count($menu, "pg_menu_explorer_side('catalog'"), 'once');
+
+	// No tree query with the page: the branches are asked for later.
+	foreach (array('pg_explorer_child_folders', 'pg_catalog_child_groups', 'explorer_side.php') as $call) {
+		pg_assert_false(strpos($menu . pg_test_function_source('pg_menu_explorer_side'), $call) !== false, 'the menu does not call ' . $call);
+	}
+
+	$side = pg_test_function_source('pg_menu_explorer_side');
+	pg_assert_contains("pg_explorer_side_quick(\$area, (int) \$user['role'], \$erp)", $side, 'the fixed entries under the screen\'s gates');
+	pg_assert_contains("\$erp = defined('ERP_ENABLED') && ERP_ENABLED && ((\$user['role'] < 3) || !empty(\$user['manage_erp']));", $side, 'the ERP section\'s own rule (view_folders.php)');
+	pg_assert_contains("'target'  => (\$toolbar == true) ? '_parent' : '',", $side, 'the toolbar frame opens them in the page');
+	pg_assert_contains('pg_menu_navigator(true);', $side, 'its own screen is a navigator');
+
+	$bundles = pg_js_bundles();
+	pg_assert_same(array('assets/js/explorer_side.js'), $bundles['assets/js/explorer_side.min.js'] ?? null, 'its bundle');
+}

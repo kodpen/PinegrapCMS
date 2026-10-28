@@ -154,9 +154,10 @@ function pg_explorer_side_screen($script, $toolbar = false)
  * an empty tree the script fills from the explorer_side action when the
  * panel first opens (assets/js/explorer_side.js).
  *
- * @param array $args area, api, quick (pg_explorer_side_quick()), inplace,
- *                    target ('_parent' in the toolbar frame), loading,
- *                    error, retry (translated)
+ * @param array $args area, api, base (the panel folder's address), quick
+ *                    (pg_explorer_side_quick()), inplace, target ('_parent'
+ *                    in the toolbar frame), and translated: loading, error,
+ *                    retry, expand, close (the labels of a branch's arrow)
  * @return string
  */
 function pg_explorer_side_markup($args)
@@ -187,6 +188,8 @@ function pg_explorer_side_markup($args)
         . ' data-explorer-side-loading="' . h($args['loading']) . '"'
         . ' data-explorer-side-error="' . h($args['error']) . '"'
         . ' data-explorer-side-retry="' . h($args['retry']) . '"'
+        . ' data-explorer-side-expand="' . h(isset($args['expand']) ? $args['expand'] : '') . '"'
+        . ' data-explorer-side-close="' . h(isset($args['close']) ? $args['close'] : '') . '"'
         . (($target !== '') ? ' data-explorer-side-target="' . h($args['target']) . '"' : '')
         . '>';
 

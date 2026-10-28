@@ -3153,13 +3153,12 @@ function output_menu($properties = false)
 
     if (($user['role'] < 3) || (no_acl_check($user['id']) == true)) {
         // FILE MANAGER. The row opens the explorer itself; its panel holds the
-        // explorer's views across every file and the ways to add to it. The
-        // files live in the file manager: the Files and Pictures entries open
-        // its views across every file, and the two actions under them open the
-        // same screen with the upload window, or a new file, already in hand
-        // (view_files.php, add_file.php and create_file.php are not linked
-        // from here). Slot 3, the Files row these came from, is retired and
-        // never reused.
+        // ways to add to it, then the explorer's tree (pg_menu_explorer_side()):
+        // its views across every file (Files, Pictures, Pages, ...) and the
+        // folders. The two actions open the explorer with the upload window,
+        // or a new file, already in hand (view_files.php, add_file.php and
+        // create_file.php are not linked from here). Slot 3, the Files row,
+        // is retired and never reused.
         $menu_items[1]['id'] = 1;
         $menu_items[1]['href'] = 'view_folders.php';
         $menu_items[1]['menu_icon'] = 'folders';
@@ -3168,11 +3167,9 @@ function output_menu($properties = false)
         $menu_items[1]['context'] = true;
         $menu_items[1]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-folder bi-me-2\'>' . lang('File Manager') . '</a>';
         $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_folder.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Folder'))) . '</a>';
-        $menu_items[1]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-        $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark bi-me-2\'>' . lang('Files') . '</a>';
-        $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=images\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-images bi-me-2\'>' . lang('Pictures') . '</a>';
         $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files&upload=1\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-upload bi-me-2\'>' . lang('Upload Files or Folders') . '</a>';
         $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files&create=file\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang('Create File') . '</a>';
+        $menu_items[1]['data-bs-content'] .= '<hr class=\'divider my-3\' />' . pg_menu_explorer_side('files', $user, $toolbar, $menu_tail);
         // PAGES
         $menu_items[2]['id'] = 2;
         $menu_items[2]['href'] = 'view_pages.php';
@@ -3443,6 +3440,8 @@ function output_menu($properties = false)
             // ECOMMERCE > > Featured and New
             $menu_items[12]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
             $menu_items[12]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_featured_and_new_items.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-star bi-me-2\'>' . lang('Edit Featured & New Items') . '</a>';
+            // ECOMMERCE > Product Groups > the tree (pg_menu_explorer_side())
+            $menu_items[12]['data-bs-content'] .= '<hr class=\'divider my-3\' />' . pg_menu_explorer_side('catalog', $user, $toolbar, $menu_tail);
 
             // ECOMMERCE > Offers
             $menu_items[14]['id'] = 14;
@@ -4292,6 +4291,51 @@ function output_menu($properties = false)
     return '<div class="pg-menu-main list-group list-group-flush" style="--bs-list-group-bg:transparent;">' . $output_all_menu_items . '</div>'
         . (($output_menu_panels !== '') ? '<div class="pg-menu-panels">' . $output_menu_panels . '</div>' : '')
         . $menu_tail;
+}
+
+/**
+ * The explorer's tree in an area's menu panel (includes/fn/explorer_side.php).
+ * Called inside the area's row, under its gate. On the area's own screen the
+ * box is empty, opens by itself and marks the screen a navigator
+ * (pg_menu_navigator()): the screen moves its tree into it. Anywhere else it
+ * holds the fixed entries as links and the script that fills the tree is
+ * added to what follows the menu, once.
+ *
+ * @param string $area      files or catalog
+ * @param array  $user      the row validate_user() returned
+ * @param bool   $toolbar   the menu is the front-end toolbar's
+ * @param string $menu_tail what output_menu() prints after the menu
+ * @return string
+ */
+function pg_menu_explorer_side($area, $user, $toolbar, &$menu_tail)
+{
+    static $script = false;
+
+    if (pg_explorer_side_screen($_SERVER['SCRIPT_NAME'] ?? '', $toolbar == true) === $area) {
+        pg_menu_navigator(true);
+
+        return pg_explorer_side_markup(array('area' => $area, 'inplace' => true));
+    }
+
+    if (!$script) {
+        $script = true;
+        $menu_tail .= pg_js_bundle_tags('assets/js/explorer_side.min.js');
+    }
+
+    $erp = defined('ERP_ENABLED') && ERP_ENABLED && (($user['role'] < 3) || !empty($user['manage_erp']));
+
+    return pg_explorer_side_markup(array(
+        'area'    => $area,
+        'api'     => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php',
+        'base'    => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/',
+        'target'  => ($toolbar == true) ? '_parent' : '',
+        'quick'   => pg_explorer_side_quick($area, (int) $user['role'], $erp),
+        'loading' => lang('Loading…'),
+        'error'   => lang('Something went wrong. Please try again.'),
+        'retry'   => lang('Try again'),
+        'expand'  => lang('Expand'),
+        'close'   => lang('Collapse'),
+    ));
 }
 
 /**
@@ -6448,6 +6492,8 @@ function pg_js_bundles()
         // The panel's own script, on every panel screen. Loaded without
         // defer: the inline scripts of the screens call it as they run.
         'assets/js/backend.min.js'                 => array('assets/js/backend.src.js'),
+        // The explorer's tree in the File Manager and Catalog Manager panels.
+        'assets/js/explorer_side.min.js'           => array('assets/js/explorer_side.js'),
     );
 }
 
