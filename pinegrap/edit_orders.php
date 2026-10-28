@@ -454,74 +454,10 @@ if (!empty($_POST['orders'])) {
             break;
         // if the user selected to remove card data for orders, then do that
         case 'remove_card_data':
-            // loop through all selected orders
+            // The number is masked to its last four digits and the security
+            // code emptied (pg_order_card_data_clear()).
             foreach ($_POST['orders'] as $order_id) {
-                // get credit card data for order
-                $query = 
-                    "SELECT
-                        card_number,
-                        card_verification_number
-                    FROM orders
-                    WHERE id = ?";
-                $result = db_q($query, array((string) $order_id)) or output_error('Query failed.');
-                $row = mysqli_fetch_assoc($result);
-                $card_number = $row['card_number'];
-                $card_verification_number = $row['card_verification_number'];
-                
-                // if there is a credit card number and the credit card number is not protected or there is a card verification number and it is not protected, then continue to remove credit card data
-                if (
-                    (($card_number != '') && (mb_substr($card_number, 0, 1) != '*'))
-                    || (($card_verification_number != '') && (mb_substr($card_verification_number, 0, 1) != '*'))
-                ) {
-                    // if the credit card number is not already protected, then protect card number
-                    if (mb_substr($card_number, 0, 1) != '*') {
-                        // if the credit card number is encrypted, then decrypt it and then protect it
-                        if (mb_strlen($card_number) > 16) {
-                            // if encryption is enabled, then decrypt the credit card number
-                            if (
-                                (defined('ENCRYPTION_KEY') == TRUE)
-                                && (extension_loaded('openssl') == TRUE)
-                            ) {
-                                $card_number = decrypt_credit_card_number($card_number, ENCRYPTION_KEY);
-                                
-                                // if the credit card number is not numeric, then there was a decryption error, so clear credit card number
-                                if (is_numeric($card_number) == FALSE) {
-                                    $card_number = '';
-                                    
-                                // else the decryption was successful, so protect credit card number
-                                } else {
-                                    $card_number = protect_credit_card_number($card_number);
-                                }
-                                
-                            // else encryption is disabled, so clear credit card number
-                            } else {
-                                $card_number = '';
-                            }
-                            
-                        // else the credit card number is not encrypted, so just protect it
-                        } else {
-                            $card_number = protect_credit_card_number($card_number);
-                        }
-                    }
-                    
-                    // if the card verification number is not already protected, then protect it
-                    if (mb_substr($card_verification_number, 0, 1) != '*') {
-                        $card_verification_number = protect_card_verification_number($card_verification_number);
-                    }
-                    
-                    $audit_before = pg_audit_fetch('orders', $order_id);
-
-                    // update credit card data for order
-                    $query =
-                        "UPDATE orders
-                        SET
-                            card_number = ?,
-                            card_verification_number = ?
-                        WHERE id = ?";
-                    $result = db_q($query, array((string) $card_number, (string) $card_verification_number, (string) $order_id)) or output_error('Query failed.');
-
-                    pg_audit_record('update', 'orders', $order_id, $audit_before);
-
+                if (pg_order_card_data_clear($order_id)) {
                     $number_of_orders++;
                 }
             }

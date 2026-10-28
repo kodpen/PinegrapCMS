@@ -1139,6 +1139,16 @@ function submit_order($type) {
                 
                 $liveform->validate_required_field('card_number', lang('Card Number is required.'));
 
+                // With no payment gateway the number is kept on the order for
+                // manual processing, and only ever encrypted: without the key
+                // or openssl the card is refused instead of stored in clear.
+                if (
+                    !$liveform->check_field_error('card_number')
+                    && (ECOMMERCE_PAYMENT_GATEWAY == '') && !credit_card_encryption_is_available()
+                ) {
+                    $liveform->mark_error('card_number', lang('Card payments cannot be accepted right now. Please choose another payment method.'));
+                }
+
                 // If there was a single expiration field (new way) then require that field.
                 if ($liveform->field_in_session('expiration')) {
 
@@ -3736,27 +3746,16 @@ function submit_order($type) {
     
     // if Credit/Debit Card payment method was selected, then prepare to update fields in order table for Credit/Debit Card
     if ($liveform->get_field_value('payment_method') == 'Credit/Debit Card') {
-        // if a transaction was processed through a payment gateway, then protect credit card number and card verification number
+        // A gateway took the payment: only the masked number is kept. Otherwise
+        // the number is kept encrypted for manual processing, cleared once the
+        // order is processed (pg_order_card_data_clear()), never in clear. The
+        // security code is never stored.
         if ($transaction_id != '') {
             $processed_card_number = protect_credit_card_number($card_number);
-            $card_verification_number = protect_card_verification_number($liveform->get_field_value('card_verification_number'));
-            
-        // else a transaction was not processed through a payment gateway, so determine what to do with the credit card number and card verification number
+        } elseif (credit_card_encryption_is_available()) {
+            $processed_card_number = encrypt_credit_card_number($card_number, ENCRYPTION_KEY);
         } else {
-            // if encryption is enabled then encrypt credit card number
-            if (
-                (defined('ENCRYPTION_KEY') == TRUE)
-                && (extension_loaded('openssl') == TRUE)
-            ) {
-                $processed_card_number = encrypt_credit_card_number($card_number, ENCRYPTION_KEY);
-                
-            // else encryption is not enabled so store credit card number in plain text
-            } else {
-                $processed_card_number = $card_number;
-            }
-            
-            // store card verification number
-            $card_verification_number = $liveform->get_field_value('card_verification_number');
+            $processed_card_number = '';
         }
         
         $card_values = array(
@@ -3765,7 +3764,7 @@ function submit_order($type) {
             'expiration_month' => $expiration_month,
             'expiration_year' => $expiration_year,
             'cardholder' => $liveform->get('cardholder') ?? '',
-            'card_verification_number' => $card_verification_number,
+            'card_verification_number' => '',
         );
     } else {
         $card_values = array();
