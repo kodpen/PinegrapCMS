@@ -678,6 +678,25 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('flow_id' => $result['flow_id'], 'left' => $result['left']));
 
+        // Add › Scheduled flow in a channel's composer, and Duplicate on a
+        // scheduled action's card: a new draft flow opened on the canvas
+        // (scheduled_convert.php).
+        case 'ws_flow_scheduled_new':
+            $result = ws_scheduled_flow_new($viewer, (int) ($request['channel_id'] ?? 0));
+
+            return $result['ok'] ? ws_action_ok(array('flow_id' => $result['flow_id'])) : ws_action_error($result['error']);
+
+        case 'ws_flow_scheduled_copy':
+            $scheduled = ws_can_schedule($viewer) ? ws_scheduled_action((int) ($request['id'] ?? 0)) : null;
+
+            if (!$scheduled) {
+                return ws_action_error(lang('That scheduled action could not be found.'));
+            }
+
+            $result = ws_scheduled_flow_copy($viewer, $scheduled);
+
+            return $result['ok'] ? ws_action_ok(array('flow_id' => $result['flow_id'], 'left' => $result['left'])) : ws_action_error($result['error']);
+
         case 'ws_flow_create':
         case 'ws_flow_save':
             $flow = null;

@@ -338,7 +338,7 @@ function pg_panel_actions()
         'ws_flow_run_start', 'ws_flow_runs_list', 'ws_flow_run_get', 'ws_flow_run_cancel',
         'ws_flow_step_mend', 'ws_flow_box_try', 'ws_flow_template_setup',
         'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove',
-        'ws_flow_from_draft',
+        'ws_flow_from_draft', 'ws_flow_scheduled_new', 'ws_flow_scheduled_copy',
         'ws_channel_customer', 'ws_channel_customer_history',
         'ws_channel_customer_followup',
     ) as $ws_action) {
