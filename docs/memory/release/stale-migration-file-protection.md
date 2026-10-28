@@ -10,7 +10,7 @@ description: Why a stale migration file survived a zip upload (0555 folders) and
 - A layer cross-checking the schema against the version list was tried and removed (hurts maintainability, needs a second list every version). The remaining protection is on the file-system side.
 
 ## What are the protection layers?
-- Write-permission scan: `pg_write_permission_scan()` (`includes/fn/system_status.php`): every folder of the software dir, every file outside `data/`; once per request, 10 min in the status cache.
+- Write-permission scan: `pg_write_permission_scan()` (`includes/fn/system_status.php`): every folder of the software dir, every file outside `data/`; once per request, 10 min in the status cache. The update and repair screens list folders only, so `pg_update_permissions_block()` asks `pg_write_permission_scan(false, false)`: folders only, no file asked (on Windows each file's `is_writable()` reads its ACL; Repair Software took 3.4 s to open on the IIS dev site, issue #2054). The walk itself is `pg_write_permission_walk($root, $files)` (`tests/write_permission_scan_test.php`).
 - `software_update.php` scans before download; lists closed folders, **Güncelle** disabled, admin gets the button "Dosya izinlerini ayarla" (`api.php` `write_permissions_repair`) -> repair -> page reloads -> normal flow.
 - System status card "Yazma İzinleri" (weight 12, `server`): red + path/mode list in the panel if a folder is closed, yellow if only a file is; the **Onar** button hits the same endpoint.
 - Repair `pg_write_permission_repair()`: folder 0777, file 0666 (two users apply updates: panel = web server, FTP/file manager = hosting account). `chmod` works only for the owner; entries owned by someone else are reported by name.
