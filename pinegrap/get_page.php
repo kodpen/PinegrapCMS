@@ -18,6 +18,19 @@
 
 include ('init.php');
 
+// A page asked for on another host name of the site (www or the bare name)
+// goes to the same address on the site's own host, when the site says so
+// (pg_main_host_redirect_url()). Only page renders reach this file; the panel,
+// the API, cron and file downloads keep answering on any host.
+if (MAIN_HOST_REDIRECT && !headers_sent()) {
+	$pg_main_host_url = pg_main_host_redirect_url(true, $_SERVER['REQUEST_METHOD'] ?? '', $_SERVER['HTTP_HOST'] ?? '', HOSTNAME_SETTING, REQUEST_URL, URL_SCHEME);
+
+	if ($pg_main_host_url !== '') {
+		header('Location: ' . $pg_main_host_url, true, 301);
+		exit();
+	}
+}
+
 // Maintenance mode (includes/fn/maintenance_mode.php): while it holds, a
 // visitor gets the maintenance screen with a 503 and Retry-After, before any
 // tracking or page lookup. Staff and the listed addresses see the site.
