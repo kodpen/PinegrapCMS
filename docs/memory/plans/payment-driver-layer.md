@@ -29,7 +29,7 @@ description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b, 4a, 4b, 4b2, 5 done; 4
 
 ## Open questions?
 - Sipay/Param after PayTR by demand; prefer a PSP that fronts the banks over per-bank vPOS.
-- Answered (#2438): the unreachable inline Iyzipay and Pay With Iyzico code goes, after a test pins both values to the driver branch.
+- Done (#2438, PR #2770): the unreachable inline Iyzipay and Pay With Iyzico code is gone (`commerce/payment-driver-iyzico.md`).
 - Answered (#2407): the driver's fields on the classic checkout and express order pages too: 6b, PR #2556.
 
 ## Where to start?

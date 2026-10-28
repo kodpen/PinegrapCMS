@@ -6,7 +6,7 @@
  * checkout helpers submit_order.php calls (includes/fn/payments.php).
  *
  * Each request the drivers send is compared with a reference request built
- * by the statements the gateway code has always used (submit_order.php's
+ * by the statements the gateway code used (submit_order.php's former
  * Iyzipay and Pay With Iyzico blocks, view_order.php's refund,
  * process_order_cancellation(), iyzipay_cancel_payment()), copied below as
  * legacy_*() builders. iyzico is replaced by a stand-in HTTP client that
