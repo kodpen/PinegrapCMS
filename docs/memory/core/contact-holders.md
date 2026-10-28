@@ -21,7 +21,10 @@ module: contacts
 - `tests/contact_holders_test.php`: every `contact_id` / `user_contact` column of the stock dumps and of every migration (`CREATE TABLE`, `install_add_column()`) is a holder and the other way round; typed holders name existing columns; the `find` holders equal the erasure's `contact_ids` tables. A new table with `contact_id` fails it until it is listed.
 - Not covered by the test: a typed column under another name (`record_id` with a new kind). Add it by hand.
 
-## What is still open?
-- The merge writes no audit line yet (`core/audit-trail-contacts.md` "not hooked"; plan workspace-crm-seams step 8).
+## What about the ERP mirror?
+- `mirror` (`erp_accounts`: `contacts.erp_account_id`, as `erp_account_link_contact()` keeps it): set on the contact that stays when the account moves to it. #2591 moved the account without it, so the survivor showed no account (fixed in #2620).
+
+## Which audit lines?
+- `core/audit-trail-contacts.md`: a delete line per merged contact, one `merge` line (#2620).
 
 Related: docs/memory/core/audit-trail-contacts.md, docs/memory/core/personal-data-erasure.md, docs/memory/plans/workspace-crm-seams.md

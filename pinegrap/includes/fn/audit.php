@@ -107,16 +107,94 @@ function pg_audit_as_job($on = null)
 }
 
 /**
- * Who is acting: an operator in the panel, an application through the API
- * (its owner and its name), or a scheduled job (also any work done while
- * pg_audit_as_job() is on).
+ * Record the lines that follow as a site visitor's: sign-up, the member's
+ * profile, checkout and the e-mail preferences page change a contact on the
+ * visitor's behalf. A member logged in on the site would otherwise be
+ * written as a panel operator, and a guest as a scheduled job.
  *
- * @return array  source (panel | api | job), user_id, username
+ * @param bool|null $on  true or false to switch, null to ask
+ * @return bool  the state before this call (the current one when asking)
+ */
+function pg_audit_as_site($on = null)
+{
+    static $as_site = false;
+
+    $was = $as_site;
+
+    if ($on !== null) {
+        $as_site = (bool) $on;
+    }
+
+    return $was;
+}
+
+/**
+ * pg_audit_record() as a site visitor (pg_audit_as_site()).
+ *
+ * @param string $action
+ * @param string $table
+ * @param int    $id
+ * @param array  $before  empty for a create
+ * @return bool  whether a line was written
+ */
+function pg_audit_site_record($action, $table, $id, array $before = array())
+{
+    $was = pg_audit_as_site(true);
+    $written = pg_audit_record($action, $table, $id, $before);
+    pg_audit_as_site($was);
+
+    return $written;
+}
+
+/**
+ * pg_audit_record_many() as a site visitor (pg_audit_as_site()).
+ *
+ * @param string $action
+ * @param string $table
+ * @param array  $before_rows  id => row
+ * @return int  lines written
+ */
+function pg_audit_site_record_many($action, $table, array $before_rows)
+{
+    $was = pg_audit_as_site(true);
+    $written = pg_audit_record_many($action, $table, $before_rows);
+    pg_audit_as_site($was);
+
+    return $written;
+}
+
+/**
+ * The sources a line can have.
+ *
+ * @return array
+ */
+function pg_audit_sources()
+{
+    return array('panel', 'api', 'job', 'site');
+}
+
+/**
+ * Who is acting: an operator in the panel, an application through the API
+ * (its owner and its name), a scheduled job (also any work done while
+ * pg_audit_as_job() is on), or a site visitor while pg_audit_as_site() is on
+ * (the member, nobody for a guest).
+ *
+ * @return array  source (panel | api | job | site), user_id, username
  */
 function pg_audit_actor()
 {
     if (pg_audit_as_job()) {
         return array('source' => 'job', 'user_id' => 0, 'username' => '');
+    }
+
+    if (pg_audit_as_site()) {
+        $member = (defined('USER_ID') && ((int) USER_ID > 0)) ? (int) USER_ID : 0;
+
+        return array(
+            'source'   => 'site',
+            'user_id'  => $member,
+            'username' => ($member > 0) && defined('USER_USERNAME') ? mb_substr((string) USER_USERNAME, 0, 100, 'UTF-8') : '',
+        );
     }
 
     if (defined('PG_API_ENTRY') && function_exists('api_current_app')) {
