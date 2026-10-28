@@ -528,7 +528,7 @@ function pg_signin_identity_badges($providers, $password_algo)
     foreach ($providers as $key) {
         $label = pg_signin_provider_label($key);
 
-        $html[] = '<span class="badge badge-subtle theme-secondary fg-black border fw-light" title="'
+        $html[] = '<span class="badge badge-subtle theme-secondary border fw-light" title="'
             . h(lang(array('string' => 'This account can sign in with {var:1}.', 'vars' => $label))) . '">' . h($label) . '</span>';
     }
 

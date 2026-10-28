@@ -122,7 +122,7 @@ if (!$_POST) {
         
         // if this is a system theme then output the edit theme button
         if ($row[0] > 0) {
-            $output_edit_theme_button = '<button type="button" class="btn my-1 btn-outline theme-secondary" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/theme_designer.php?id=' . urlencode($_GET['id']) . '&clear_theme_designer_session=true')) . '\'">' . lang('Edit Theme') . '</button>';
+            $output_edit_theme_button = '<button type="button" class="btn my-1 btn-outline theme-secondary" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_theme_file')) . '\'">' . lang('Edit Theme') . '</button>';
             $output_export_button = '<button type="button" class="btn my-1 btn-outline theme-secondary" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_file.php?id=' . urlencode($_GET['id']) . '&export=true')) . '\'">' . lang('Export') . '</button>';
             $output_download_file_button = '';
         } else {

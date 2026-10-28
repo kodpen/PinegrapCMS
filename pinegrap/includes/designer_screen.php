@@ -1436,10 +1436,10 @@ function pg_designer_start_screen($ctx)
     if ($designs) {
         // A name to look for once there are more designs than fit a glance.
         $search = (count($designs) > 6)
-            ? '<div class="input-group input-group-sm">
-                    <span class="input-group-text rounded-start-pill"><i class="bi bi-search" aria-hidden="true"></i></span>
-                    <input type="search" class="form-control rounded-end-pill" id="sdh-filter" placeholder="' . h(lang('Find a design')) . '" aria-label="' . h(lang('Find a design')) . '" autocomplete="off">
-               </div>'
+            ? '<label class="form-control form-control-sm form-adorn rounded-pill">
+                    <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="search" class="form-ghost" id="sdh-filter" placeholder="' . h(lang('Find a design')) . '" aria-label="' . h(lang('Find a design')) . '" autocomplete="off">
+               </label>'
             : '';
         $list =
             '<section class="sdh-section" aria-labelledby="sdh-designs-title">
@@ -2118,7 +2118,7 @@ function pg_designer_settings_modal($ctx)
 
     $rail = function ($pane, $icon, $label, $scope, $active, $hidden = false) use ($design_hidden) {
         return '<button class="nav-link text-start' . ($active ? ' active' : '') . ($scope === 'design' ? $design_hidden : '') . ($hidden ? ' d-none' : '') . '" id="tab-' . $pane . '-btn"
-                    data-bs-toggle="pill" data-bs-target="#tab-' . $pane . '" type="button" role="tab"
+                    data-bs-toggle="tab" data-bs-target="#tab-' . $pane . '" type="button" role="tab"
                     aria-controls="tab-' . $pane . '" aria-selected="' . ($active ? 'true' : 'false') . '" data-sd-settings-scope="' . $scope . '">
                     <span class="bi ' . $icon . '" aria-hidden="true"></span><span class="sd-settings-nav-txt">' . $label . '</span>
                 </button>';
@@ -2399,10 +2399,12 @@ function pg_designer_settings_modal($ctx)
                     <div class="dialog-body sd-settings-main">
 
                         <div class="sd-settings-nav">
-                            <!-- ONE tablist: Bootstrap deactivates the previous pill by looking
+                            <!-- ONE tablist: Bootstrap deactivates the previous tab by looking
                                  for the active sibling inside the same tablist, so two separate
-                                 navs would leave both panes showing. The group headings are plain
-                                 divs the pill logic ignores. -->
+                                 navs would leave both panes showing. The rail buttons are
+                                 data-bs-toggle="tab" (the Bootstrap 6 Tab listens to no "pill"),
+                                 drawn as pills by nav-pills. The group headings are plain
+                                 divs the tab logic ignores. -->
                             <nav class="nav nav-pills" id="settingsTabs" role="tablist">
                                 <div class="sd-settings-nav-title' . $design_hidden . '" data-sd-settings-scope="design">' . lang('Shared by all pages') . '</div>
                                 ' . $rail('style', 'bi-palette', lang('General'), 'design', $full) . '
@@ -2535,7 +2537,7 @@ function pg_designer_pick_page_modal()
         <dialog class="dialog dialog-scrollable" id="sdPickPageModal" style="background:#1e2127; color:#c9d1d9; border:1px solid #30363d;">
                     <div class="dialog-header" style="border-color:#30363d;">
                         <h5 class="dialog-title fs-md"><span class="bi bi-files me-3"></span>' . lang('Select Page') . '</h5>
-                        <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog"></button>
+                        <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
                     <div class="dialog-body p-0">
                         <div class="p-5 pb-3">
@@ -2562,7 +2564,7 @@ function pg_designer_import_modal()
         <dialog class="dialog" id="sdImportModal" style="background:#1e2127; color:#c9d1d9; border:1px solid #30363d;">
                     <div class="dialog-header" style="border-color:#30363d;">
                         <h5 class="dialog-title fs-md"><span class="bi bi-file-earmark-code me-3"></span>' . lang('Import HTML / ZIP') . '</h5>
-                        <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog"></button>
+                        <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
                     <div class="dialog-body">
                         <div class="mb-5">

@@ -21,8 +21,8 @@ description: Plan (1-19 and 3b done; 20 open, waits for the owner): comments as 
 - It needs: the thread key from the address as the classic block reads it (product or group id, event id and recurrence); `pg_comment_thread_verify()` already checks those ids (slice 2); the review rules of a product thread (verified purchase, store reply, rating recount `pg_review_comment_changed()`: `commerce/product-reviews-verified.md`, `product-review-store-reply.md`); tokens and flags for them, the canvas samples and the panel; the search index's per-event comments; then `pg_comments_widget_classic_thread()` hands those pages to the widget, and Make designable offers them.
 - Size: more than one PR; cut it into steps of about 1,000 product lines when the owner says go.
 
-## Open question for the owner
-- Build slice 20, or drop it and keep the classic block on product and event pages? If dropped: move the decisions above to designer/ (with that answer) and delete this plan.
+## What was decided for slice 20? (#2410)
+- Build it (M): the widget reads the item in the address on catalog detail and event pages, with a canvas state; product reviews become designable.
 
 ## Where to start?
-- Ask the owner the question above first. If it is a go: read [[comments-widget-hand-off]] and [[designable-comments-contract]], then write the steps of slice 20 into this file before the first draft PR.
+- Read [[comments-widget-hand-off]] and [[designable-comments-contract]], then write the steps of slice 20 into this file before the first draft PR.

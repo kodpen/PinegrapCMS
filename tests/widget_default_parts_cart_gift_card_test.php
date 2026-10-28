@@ -170,7 +170,7 @@ function test_widget_parts_cart_gift_card_matches_the_old_block()
 function test_widget_parts_cart_gift_card_controls_are_the_systems()
 {
 	$tree = json_decode(pg_sw_default_parts_apply(json_encode(_pcgc_tree()), 'shopping_cart'), true);
-	$set = &$tree['children'][0]['children'][1]['children'][0]['children'][0];
+	$set = &$tree['children'][0]['children'][2]['children'][0]['children'][0];
 	pg_assert_same('pg-cart-gc-set border rounded p-3 mb-3', $set['props']['cssClass']);
 	// The designer restyles the e-mail box, names it, and deletes the from
 	// name field.
@@ -189,7 +189,7 @@ function test_widget_parts_cart_gift_card_controls_are_the_systems()
 
 	// The required control deleted: it comes back in the card.
 	$tree = json_decode(pg_sw_default_parts_apply(json_encode(_pcgc_tree()), 'shopping_cart'), true);
-	unset($tree['children'][0]['children'][1]['children'][0]['children'][0]['children'][1]);
+	unset($tree['children'][0]['children'][2]['children'][0]['children'][0]['children'][1]);
 	$new = _pcgc_render($tree);
 	pg_assert_same(2, preg_match_all('/<input[^>]*type="email"[^>]*required/', $new), 'one required e-mail box per card');
 	pg_assert_same(2, substr_count($new, 'data-pg-gc-field="recipient_email_address"'));
@@ -198,8 +198,8 @@ function test_widget_parts_cart_gift_card_controls_are_the_systems()
 function test_widget_parts_cart_gift_card_placed_beats_pushed()
 {
 	$tree = json_decode(pg_sw_default_parts_apply(json_encode(_pcgc_tree()), 'shopping_cart'), true);
-	pg_assert_same(3, count($tree['children'][0]['children']), 'the row, then the part and the schedule\'s');
-	pg_assert_same('cart.item_gift_cards', $tree['children'][0]['children'][1]['children'][0]['props']['source']);
+	pg_assert_same(4, count($tree['children'][0]['children']), 'the row, the product form, then the part and the schedule\'s');
+	pg_assert_same('cart.item_gift_cards', $tree['children'][0]['children'][2]['children'][0]['props']['source']);
 	$json = json_encode($tree);
 	pg_assert_same($json, pg_sw_default_parts_apply($json, 'shopping_cart'), 'a tree with its part is left as it is');
 	$own = json_encode(_pcgc_tree(array(_pcgc_node('loop_area', array('source' => 'cart.item_gift_cards'), array(
@@ -230,7 +230,7 @@ function test_widget_parts_cart_gift_card_editor_twin()
 		. $cut("\n    var SW_CART_SCHEDULE_CONTROLS = {", "\n    };\n");
 	foreach (array('_sdDefaultParts', '_sdPartTokenOf', '_sdPartHost', '_sdPartEl', '_sdPartWhen', '_sdPartPlaced', '_sdPartItemLegend',
 		'_sdPartCartGiftCardField', '_sdPartCartItemGiftCard', '_sdPartCartScheduleField', '_sdPartCartItemSchedule',
-		'_sdMainLoop', '_sdDefaultLoopTails') as $fn) {
+		'_sdPartValue', '_sdPartCartFormControl', '_sdPartCartItemForm', '_sdMainLoop', '_sdDefaultLoopTails') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
 	}
 	$tree = _pcgc_tree(array(_pcgc_node('content', array('contentType' => 'paragraph', 'text' => '^^__item_gift_card_html^^'))));

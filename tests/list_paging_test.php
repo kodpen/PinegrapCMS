@@ -114,6 +114,15 @@ function test_list_row_html_and_data()
 	pg_assert_contains('"0":"<input', json_encode($data), 'an object DataTables reads by column number');
 }
 
+function test_list_row_id()
+{
+	$row = array('id' => '7"', 'class' => '', 'cells' => array(pg_list_cell('a')));
+
+	pg_assert_same('<tr id="7&quot;" class=""><td class="align-middle">a</td></tr>', pg_list_row_html($row));
+	pg_assert_same('7"', pg_list_row_data($row)['DT_RowId']);
+	pg_assert_false(isset(pg_list_row_data(array('class' => '', 'cells' => array()))['DT_RowId']), 'no id, no DT_RowId');
+}
+
 function test_list_rows_answer()
 {
 	$answer = pg_list_rows_answer('7', '120', 3, array(array('class' => '', 'cells' => array(pg_list_cell('a')))));

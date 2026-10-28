@@ -4,7 +4,7 @@ description: Awaiting-payment (bank transfer) orders: derived state predicate, p
 ---
 
 ## How is an awaiting-payment order identified? (migration 4.48)
-- Derived state, not a new enum value: `pg_order_awaiting_payment($order)` (`includes/fn/ecommerce.php`, under `_pg_order_status_stage`): `payment_method === 'Offline Payment' && (int)paid_at === 0 && status IN ('complete','exported')`. The order stays `complete`, so reports and `IN ('complete','exported')` queries work untouched.
+- Derived state, not a new enum value: `pg_order_awaiting_payment($order)` (`includes/fn/ecommerce.php`, under `_pg_order_status_stage`): `payment_method` is `'Offline Payment'` or one of `pg_order_pending_payment_methods()` (`'PayPal Checkout'`, a capture PayPal left pending: `commerce/payment-driver-paypal.md`) `&& (int)paid_at === 0 && status IN ('complete','exported')`. The `awaiting_transfer` list filter, the auto-cancel sweep and verified reviews stay Offline Payment only. The order stays `complete`, so reports and `IN ('complete','exported')` queries work untouched.
 - List filter `view_orders.php` `case 'awaiting_transfer'` builds the same predicate in SQL and is offered like `refund_pending` by probing the `paid_at` column (`$paid_at_column_exists`); the row gets a second "Ödeme bekleniyor" badge.
 - Status badge while waiting: text `Awaiting Payment` in the `pending` colour.
 - An order put on the customer's ERP account (`orders.erp_on_account = 1`, 10.60) is an `Offline Payment` with `paid_at = 0` too: `pg_order_awaiting_payment()` and the `awaiting_transfer` filter include it, the auto-cancel sweep skips it (`erp_on_account = 0`): docs/memory/erp/erp-credit-limit-and-on-account.md.

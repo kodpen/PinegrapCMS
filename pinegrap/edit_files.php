@@ -54,8 +54,8 @@ if (!$_POST) {
         $output_design_row =
             '<div class="col-12 col-xs-4 sm:col-4">
                 <div class="form-floating mt-1 mb-3">
+                    <label for="design" class="form-label">' . lang('Design') . '</label>
                     ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control', 'id'=>'design', 'options'=>$design_options)) . '
-                    <label for="folder" class="form-label">' . lang('Design') . '</label>
                 </div>
             </div>';
     }
@@ -135,8 +135,8 @@ if (!$_POST) {
         <div class="row">
             <div class="col-12 col-xs-8 sm:col-8 md:col-auto">
                 <div class="form-floating mt-1 mb-3">
-                    <select class="form-control" id="folder"><option value=""></option>' . select_folder() . '</select>
                     <label for="folder" class="form-label">' . lang('Folder') . '</label>
+                    <select class="form-control" id="folder"><option value=""></option>' . select_folder() . '</select>
                 </div>
             </div>
             ' . $output_design_row . '

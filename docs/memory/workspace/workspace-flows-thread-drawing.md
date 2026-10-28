@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-thread-drawing
-description: Data threads on the Flows canvas (T1, read only): read from the fields, field chips and value dots under a box, tones, dimming, the toggle, the outline lines
+description: Data threads on the Flows canvas (T1, T2): read from the fields, chips and dots under a box, tones, dimming, the toggle, the outline lines, drawing a thread into a field
 ---
 
 ## Where do the threads come from?
@@ -19,5 +19,12 @@ description: Data threads on the Flows canvas (T1, read only): read from the fie
 - "Data threads" (`threadsButton()`, toolbar, not in the outline view) hides them with `.wsf-threads-off` on the stage; kept per browser in localStorage `pg_wsf_threads`.
 - Outline: `drawReads()` lists under each box's heading "<field> reads <box › value>", a missing one with `fl_values_missing`, a skippable one "(Empty if skipped)".
 
+## How is a thread drawn into a field? (T2)
+- In a draft every drawn dot, and every value of the selected box (`boxValues()`, unused dashed), is `.wsf-data-live`. Dragging one (`drag.kind` `thread`), or two taps on it (the captured pointer sends no dblclick), or its menu's Fork (`K.onContext`: right-click, long press) sets `state.binding` and lights the fields it may go into (`.wsf-data-target`, `data-bind`); the next tap or the drop binds, anything else or Esc lets it go.
+- `bindTargets(from, token)`: the `openFields()` of every box `valueSources()` lets read it from that box, none already holding it; addresses and recipients are not in `VALUE_FIELDS`, so never lit. A condition's only while its value rule compares nothing.
+- `bindValue()` writes the token at the field's end after a space (the chip "Add value" draws), refuses it over the field's maximum (`fl_thread_full`); a condition's `rule.ref`, its op back to "is" when it does not fit the type.
+- Keyboard: V on a box, or the menu's "Pass to a field…": `askBind()`, a value and a field.
+- Test `test_workspace_flows_canvas_thread_binds_into_the_fields_after`.
+
 ## What is left?
-- Drag from a dot and the fork (T2), value boxes (T3), threads in the run view (T4); the red dashed thread of a deleted box.
+- Value boxes (T3), threads in the run view (T4); the red dashed thread of a deleted box.

@@ -38,6 +38,10 @@ function test_bs6_timepicker_addon_left_the_panel_screens()
 		'edit_user.php',
 		'edit_comment.php',
 		'import_users.php',
+		'add_calendar_event.php',
+		'edit_calendar_event.php',
+		'add_submitted_form.php',
+		'edit_submitted_form.php',
 	);
 
 	foreach ($files as $path) {

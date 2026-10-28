@@ -1,6 +1,6 @@
 ---
 name: incoming-email-plan
-description: Incoming e-mail into Workspace channels (not started): options IMAP / Cloudflare push / Kodpen broker, recommendation, slices G1–G9, the 11 owner questions
+description: Incoming e-mail into Workspace channels (starting, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
 ---
 
 ## What is it and where does it stand?
@@ -19,16 +19,8 @@ description: Incoming e-mail into Workspace channels (not started): options IMAP
 One PR each. G1 core (schema 10.85 if still free): tables, MIME parser, `ws_mail_ingest()`, channel card, `.eml` upload in settings to test without a transport. G2 IMAP client, box card, "Test connection", inline cron job, System status row. G3 reply by e-mail from the channel. G4 read and send through a connected Microsoft 365 (or Google) account, new purpose `mail_read`. G5 request status, assignee, first-response target, "E-postalar" tab, events, auto-reply. G6 routing rules (+tag or address → channel, line in the customer's channel). G7 external API and MCP. G8 `@ai` triage suggestion (needs an AI key). G9 push endpoint, only if B or C is chosen (replaces G2).
 - Order: G1 after answers 3 and 9; G2 after 1 (a) and 4; then G3, G6, G5 (if 10 a); G7 and G4 per answer 2; G8 on a site with an AI key.
 
-## Which questions wait for the owner? (recommended answer first)
-1. Transport: (a) IMAP, (b) Cloudflare per site, (c) Kodpen broker.
-2. Connected-account reading (G4): (a) yes for Microsoft 365 only, (b) also Google Workspace (needs the site's own Google app), (c) no, IMAP only.
-3. Where a conversation lives: (a) card in the box's channel, thread kept from the 30-day thread cleanup, (b) own private channel per conversation, (c) a guest room per sender.
-4. Boxes per site: (a) several, each with a channel, +tags route elsewhere, (b) one.
-5. Mail from a known customer: (a) the box's channel plus a line in the customer's channel, (b) straight into the customer's channel.
-6. Reply route: (a) from the box address via its SMTP or connected account, writer's name in the signature, (b) box address through the site SMTP.
-7. Assistants (`@ai`, Claude, MCP) e-mailing customers: (a) never, drafts only, (b) with a person's approval card.
-8. Automatic "request received" reply: (a) per box, off by default, editable, (b) none.
-9. Keep the original `.eml`: (a) 30 days, (b) while the conversation exists, (c) never.
-10. Status and first-response target (G5) in this plan: (a) yes, after G3, (b) no.
-11. Dev test box: (a) a dedicated box on kodpen.com or pinegrap.com, (b) the owner's Gmail with an app password.
+## What did the owner answer? (2026-10-27, #2444)
+- The plan starts. 1: IMAP (a). Reason: every installation runs under its own operators' responsibility, so the data-processor question does not concern Kodpen, and turning the feature on is the site administrators' call.
+- 2-11, each (a): connected-account reading for Microsoft 365 only (G4); a conversation is a card in the box's channel, its thread kept from the 30-day cleanup; several boxes per site, each with a channel, +tags routing elsewhere; a known customer's mail goes to the box's channel plus a line in the customer's channel; replies from the box address via its SMTP or connected account, the writer's name in the signature; assistants never e-mail customers, drafts only; an automatic "request received" reply per box, off by default, editable; the original `.eml` kept 30 days; status and first-response target (G5) after G3; a dedicated test box on kodpen.com or pinegrap.com.
 - Defaults: no licence; Workspace settings editors add boxes; support channel private.
+- G1, then G2, may be claimed.

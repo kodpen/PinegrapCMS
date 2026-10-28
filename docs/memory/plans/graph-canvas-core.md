@@ -26,11 +26,11 @@ description: Plan (2026-10-24, not started, answers open): a reusable box-and-ar
 3. CSS to `pgc-` with tokens.
 4. Only when a second user starts: size per node, lower minimum zoom, named ports inside a node (`{from, port, to}`, one arrow each), arrows into one frame spread out, non-box targets, stable arrow ids, a thumbnail hook, partial redraw, load without defer.
 
-## Open questions (recommendation)
-1. Name: `pg_graph_canvas` / `pgc-` or a `ws_` prefix → `pg_` (not only the Workspace).
-2. When: (a) right after #1555, before F4, (b) after F4, (c) when the designer plan starts → a: F4 and new boxes build on the adapter; the 1,700 moved lines conflict with open PRs on the file.
-3. Harness in the repo, run by hand → yes.
-4. Designer texts: `lang()` via `pg_graph_canvas_js_strings()`, or `_sdT()` in a new file → `lang()`: the scan reads style_designer.js only, and the core is the designer's first bundle.
+## Which questions are answered? (#2445)
+1. Name: `pg_graph_canvas` / `pgc-` (not only the Workspace).
+2. When: after the current flows wave (channels C-steps, data threads) lands and before designer-prototype-links slice 1; the 1,700 moved lines conflict with open PRs on the file.
+3. Harness in the repo, run by hand: yes.
+4. Designer texts: `lang()` via `pg_graph_canvas_js_strings()`; the scan reads style_designer.js only, and the core is the designer's first bundle.
 
 ## Where to start?
 - Slice 1 (#1551, #1555 are in); claim with a draft PR. Read workspace/workspace-flows-canvas.md.

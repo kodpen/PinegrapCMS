@@ -8,7 +8,8 @@
  * a run they start keeps, and, read from the source, that the anchor is
  * written as the flow is published, follows its pauses and deletion, starts
  * runs with one key per run of the anchor, and stays out of the lists of
- * scheduled actions and their reports.
+ * scheduled actions and their reports; a converted anchor stays in them,
+ * starts by hand and by a chain, and gets its flow run's end written back.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -113,10 +114,71 @@ function test_workspace_flow_anchor_wiring()
 	pg_assert_contains("'sched:' . (int) (\$fill['run_id'] ?? 0)", $start);
 	pg_assert_contains('ws_flow_start_refusal($open, $recent)', $start);
 	pg_assert_contains("AND status = 'live'", $start);
-	pg_assert_contains('ws_flow_anchor_start($viewer, $row, $fill)', ws_flow_anchors_test_source('ws_scheduled_execute'));
+	pg_assert_contains("ws_flow_anchor_start(\$viewer, \$row, \$fill + array('by_hand' => \$by_hand))", ws_flow_anchors_test_source('ws_scheduled_execute'));
 
-	pg_assert_contains("(int) (\$row['flow_id'] ?? 0) === 0", ws_flow_anchors_test_source('ws_scheduled_action'));
+	pg_assert_contains('!ws_scheduled_anchor_hidden($row)', ws_flow_anchors_test_source('ws_scheduled_action'));
 	pg_assert_contains('ws_scheduled_anchors_out()', ws_flow_anchors_test_source('ws_scheduled_list'));
 	pg_assert_contains('ws_scheduled_anchors_out()', ws_flow_anchors_test_source('ws_scheduled_targets'));
-	pg_assert_contains("(int) (\$row['flow_id'] ?? 0) > 0", ws_flow_anchors_test_source('ws_scheduled_report'));
+	pg_assert_contains('if (ws_scheduled_anchor_hidden($row)) {', ws_flow_anchors_test_source('ws_scheduled_report'));
+}
+
+// Hidden and converted anchors: the mark decides, a row read before the
+// mark existed is hidden when it has a flow.
+function test_workspace_flow_anchor_marks()
+{
+	pg_assert_true(ws_scheduled_anchor_hidden(array('flow_id' => 3, 'anchor' => 'hidden')));
+	pg_assert_false(ws_scheduled_anchor_hidden(array('flow_id' => 3, 'anchor' => 'converted')));
+	pg_assert_false(ws_scheduled_anchor_hidden(array('flow_id' => 0, 'anchor' => '')));
+	pg_assert_true(ws_scheduled_anchor_hidden(array('flow_id' => 3)));
+	pg_assert_false(ws_scheduled_anchor_hidden(array('flow_id' => 0)));
+
+	pg_assert_true(ws_scheduled_anchor_converted(array('flow_id' => 3, 'anchor' => 'converted')));
+	pg_assert_false(ws_scheduled_anchor_converted(array('flow_id' => 0, 'anchor' => 'converted')));
+	pg_assert_false(ws_scheduled_anchor_converted(array('flow_id' => 3, 'anchor' => 'hidden')));
+	pg_assert_false(ws_scheduled_anchor_converted(array('flow_id' => 3)));
+
+	// The filter reads the mark once the column is there, else the flow.
+	$filter = ws_flow_anchors_test_source('ws_scheduled_anchors_out');
+
+	pg_assert_contains("anchor <> 'hidden'", $filter);
+	pg_assert_contains('flow_id = 0', $filter);
+
+	// A new anchor is written hidden.
+	pg_assert_contains("\$follow['anchor'] = \"'hidden'\"", ws_flow_anchors_test_source('ws_flow_anchor_sync'));
+}
+
+// A converted action's run: its context names the action and its source,
+// a manual start box is started by hand or by a chain, the run's end is
+// written back as the action's outcome.
+function test_workspace_flow_anchor_converted_runs()
+{
+	$flow = array('channel_id' => 4, 'name' => 'Daily');
+	$trigger = array('id' => 'start', 'kind' => 'manual');
+	$row = array('id' => 21, 'flow_id' => 8, 'anchor' => 'converted');
+	$context = ws_flow_anchor_context($flow, $trigger, array('run_id' => 30, 'row' => $row, 'source' => 'Morning', 'source_result' => 'ok'));
+
+	pg_assert_same(21, $context['anchor_id']);
+	pg_assert_same('Morning', $context['source']);
+	pg_assert_same('ok', $context['source_result']);
+	pg_assert_false(isset(ws_flow_anchor_context($flow, $trigger, array('run_id' => 30, 'row' => array('id' => 21, 'flow_id' => 8, 'anchor' => 'hidden')))['anchor_id']));
+
+	pg_assert_same('Started by “Morning”.', ws_flow_anchor_start_said('manual', array('source' => 'Morning')));
+	pg_assert_same('Started by hand.', ws_flow_anchor_start_said('manual', array()));
+	pg_assert_same('Started by hand.', ws_flow_anchor_start_said('schedule', array('by_hand' => true)));
+	pg_assert_same('Started on its own: At a time.', ws_flow_anchor_start_said('schedule', array()));
+
+	pg_assert_same('done', ws_flow_anchor_run_status('done'));
+	pg_assert_same('failed', ws_flow_anchor_run_status('failed'));
+	pg_assert_same('skipped', ws_flow_anchor_run_status('cancelled'));
+	pg_assert_same('', ws_flow_anchor_run_status('running'));
+
+	pg_assert_contains("(\$converted && ((string) \$trigger['kind'] === 'manual'))", ws_flow_anchors_test_source('ws_flow_anchor_start'));
+
+	// Reported once the flow's run ends, by the request that ended it.
+	pg_assert_contains('!ws_scheduled_anchor_converted($row)', ws_flow_anchors_test_source('ws_scheduled_execute'));
+	pg_assert_contains('ws_scheduled_report($row, $status, $steps, ws_scheduled_run_news(', ws_flow_anchors_test_source('ws_flow_anchor_run_ended'));
+	pg_assert_contains('ws_flow_anchor_run_ended($run, $state);', ws_flow_anchors_test_source('ws_flow_run_refresh'));
+	pg_assert_contains("ws_flow_anchor_run_ended(\$run, 'cancelled');", ws_flow_anchors_test_source('ws_flow_run_cancel'));
+	pg_assert_contains("ws_flow_anchor_run_ended(\$run, 'cancelled');", ws_flow_anchors_test_source('ws_flow_runs_cancel_ids'));
+	pg_assert_contains("ws_flow_anchor_run_ended(\$run, 'failed');", ws_flow_anchors_test_source('ws_flow_runs_heal'));
 }
