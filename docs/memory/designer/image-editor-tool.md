@@ -24,6 +24,11 @@ description: Bindable image editor (Pintura): save endpoint contract, write rule
 - New file: the input's `change` handler writes the node; the toast says the design must be saved too.
 - The image does not wait for the design to be saved: a file is an on-disk object, and tying a photo edit to an unrelated Save button is a way to lose the edit.
 
+## How does the editor follow the dark panel?
+- Doka 7.2.2's `doka.css` is unlayered and declares its palette on `.doka-image-editor` as RGB triples (`--color-background:255,255,255`), deriving its `-NN` shades on the same element; it has no dark rule. A `@layer custom` rule cannot beat it.
+- An unlayered `[data-bs-theme="dark"] .doka-image-editor { --color-background: var(--pg-body-bg-rgb, 16, 17, 20); --color-foreground: 222, 226, 230; }` sits after the doka.css link in `image_editor_edit.php` and in the style text `image_editor_modal.js` injects (served as is, no build step). The fallback triple covers screens without backend.src.css.
+- The editor page's theme menu buttons carry `id="theme-light|dark|auto"`, which `showActiveTheme()` in `backend.src.js` marks by; no item is hard-coded active (#NNNN, `tests/image_editor_dark_theme_test.php`).
+
 ## How is the editor tested in a browser?
 - Pintura does not see a synthetic `button.click()`: `doka:process` never fires. A real pointer click is needed.
 

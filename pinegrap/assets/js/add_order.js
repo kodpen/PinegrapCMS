@@ -1153,7 +1153,7 @@
         var open = byId('erp_drawer_open');
         title.textContent = '';
         open.classList.add('d-none');
-        body.innerHTML = '<div class="d-flex justify-content-center py-12"><span class="spinner-border fg-secondary" role="status" aria-hidden="true"></span></div>';
+        body.innerHTML = '<div class="d-flex justify-content-center py-12"><span class="spinner-border fg-secondary" style="font-size:2rem" role="status" aria-hidden="true"></span></div>';
         pgUI.drawer.show(panel);
 
         fetch(cfg.drawerUrl + '?type=account&id=' + encodeURIComponent(button.getAttribute('data-sale-ledger')), {
@@ -1331,7 +1331,7 @@
         });
         pgUI.drawer.on(el.recent, 'show', function () {
             document.body.classList.add('pg-side-panel-open');
-            el.recentBody.innerHTML = '<div class="d-flex justify-content-center py-12"><span class="spinner-border fg-secondary" role="status" aria-hidden="true"></span></div>';
+            el.recentBody.innerHTML = '<div class="d-flex justify-content-center py-12"><span class="spinner-border fg-secondary" style="font-size:2rem" role="status" aria-hidden="true"></span></div>';
             getJson({ request: 'recent' }).then(function (data) {
                 el.recentBody.innerHTML = (data && data.html) ? data.html : '';
             }).catch(function () {

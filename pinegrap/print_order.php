@@ -228,7 +228,7 @@ $fax = '';
 if ($billing_fax_number) {
     $fax =
         '<div class="row" >
-            <span class="translateable col fg-secondary">Fax:</span>
+            <span class="translateable col fg-secondary">' . lang('Fax') . ':</span>
             <span class="col text-end">' . h($billing_fax_number) . '</span>
         </div>';
 }
@@ -854,7 +854,7 @@ if ($ship_to_exists == true) {
                                     </div>
                                     <div class="row">
                                         <span class="translateable col fg-secondary">' . lang('Address Type') . ':</span>
-                                        <span class="col text-end translateable">' . ucwords($ship_tos[$key]['address_type']) . '</span>
+                                        <span class="col text-end translateable">' . pg_order_view_address_type($ship_tos[$key]['address_type']) . '</span>
                                     </div>
                                     <div class="row">
                                         <span class="translateable col fg-secondary">' . lang('Address Verified') . ':</span>
@@ -1166,27 +1166,27 @@ if ($ship_to_exists == true) {
                                 <div style="padding: 0.7em">
                                     <table cellpadding="4" class="order_details table table-bordered w-auto">
                                         <tr>
-                                            <td>Code:</td>
+                                            <td>' . lang('Code') . ':</td>
                                             <td>' . $output_code . '</td>
                                         </tr>
                                         <tr>
-                                            <td>Amount:</td>
+                                            <td>' . lang('Amount') . ':</td>
                                             <td>' . prepare_amount($product_price) . '</td>
                                         </tr>
                                         <tr>
-                                            <td>Recipient Email:</td>
+                                            <td>' . lang('Recipient Email') . ':</td>
                                             <td>' . h($order_item_gift_card['recipient_email_address']) . '</td>
                                         </tr>
                                         <tr>
-                                            <td>From Name:</td>
+                                            <td>' . lang('From Name') . ':</td>
                                             <td>' . h($order_item_gift_card['from_name']) . '</td>
                                         </tr>
                                         <tr>
-                                            <td style="vertical-align: top">Message:</td>
+                                            <td style="vertical-align: top">' . lang('Message') . ':</td>
                                             <td>' . nl2br(h($order_item_gift_card['message'])) . '</td>
                                         </tr>
                                         <tr>
-                                            <td>Delivery Date:</td>
+                                            <td>' . lang('Delivery Date') . ':</td>
                                             <td>' . $output_delivery_date . '</td>
                                         </tr>
                                     </table>
@@ -1533,27 +1533,27 @@ if ($ship_to_exists == true) {
                             <div style="padding: 0.7em">
                                 <table cellpadding="4" class="order_details table table-bordered w-auto">
                                     <tr>
-                                        <td>Code:</td>
+                                        <td>' . lang('Code') . ':</td>
                                         <td>' . $output_code . '</td>
                                     </tr>
                                     <tr>
-                                        <td>Amount:</td>
+                                        <td>' . lang('Amount') . ':</td>
                                         <td>' . prepare_amount($product_price) . '</td>
                                     </tr>
                                     <tr>
-                                        <td>Recipient Email:</td>
+                                        <td>' . lang('Recipient Email') . ':</td>
                                         <td>' . h($order_item_gift_card['recipient_email_address']) . '</td>
                                     </tr>
                                     <tr>
-                                        <td>From Name:</td>
+                                        <td>' . lang('From Name') . ':</td>
                                         <td>' . h($order_item_gift_card['from_name']) . '</td>
                                     </tr>
                                     <tr>
-                                        <td style="vertical-align: top">Message:</td>
+                                        <td style="vertical-align: top">' . lang('Message') . ':</td>
                                         <td>' . nl2br(h($order_item_gift_card['message'])) . '</td>
                                     </tr>
                                     <tr>
-                                        <td>Delivery Date:</td>
+                                        <td>' . lang('Delivery Date') . ':</td>
                                         <td>' . $output_delivery_date . '</td>
                                     </tr>
                                 </table>
@@ -1763,8 +1763,19 @@ output_header_secure(
     array(
         'title'   => '#' . $order_number . ' - ' . lang('Order'),
         'heading' => lang('View Order'),
+        'icon'    => 'store',
     )
 ) . '
+<script>
+    // A print view stands for the paper: light whatever the stored panel
+    // theme. Set again on DOMContentLoaded, after backend.src.js (a
+    // synchronous head script) has applied the stored theme.
+    (function () {
+        var pgPrintLight = function () { document.documentElement.setAttribute("data-bs-theme", "light"); };
+        pgPrintLight();
+        document.addEventListener("DOMContentLoaded", pgPrintLight);
+    })();
+</script>
 <style>@layer custom {
 @media print { @page { size: A4 portrait; margin: 8mm 12mm; } }
 body {

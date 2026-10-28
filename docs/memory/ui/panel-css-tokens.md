@@ -15,16 +15,16 @@ description: The panel's --pg-* CSS token layer (Bootstrap 6 step B3): names rul
 - `color-mix(in srgb, var(--pg-primary) 12%, transparent)`, not `rgba(var(--bs-primary-rgb), .12)`: v6 has no `-rgb` triples. Mixing with `transparent` gives the same colour at that alpha. A variable alpha: `calc(var(--bs-bg-opacity) * 100%)`.
 
 ## Why is the alias block on `:root, [data-bs-theme]`?
-- A `var()` in a custom property resolves where declared and is inherited resolved. Declared on `:root` only, a nested `data-bs-theme="dark"` subtree (pg_ai_write.js sets one) would keep the light values. Declaring the aliases on every `[data-bs-theme]` element resolves them again there.
+- A `var()` in a custom property resolves where declared, inherited resolved. Declared on `:root` only, a nested `data-bs-theme="dark"` subtree (pg_ai_write.js sets one) would keep the light values. Declaring the aliases on every `[data-bs-theme]` element resolves them again there.
 - A rule that sets a Bootstrap variable on a subtree (`.bg-software-navbar .border-end { --bs-border-color }`) does not reach the tokens: set the `--pg-*` token there instead.
 - Focus ring: `--pg-focus-ring-*` (B9k, #2561), never an alias of `--bs-focus-ring-color` (`panel-focus-ring.md`).
 - An alias never names itself or a `--bs-*` variable the bridge fills from the same alias: that is a cycle and both turn invalid.
 
 ## Which stylesheets have the block?
 - `assets/css/backend.src.css` (after the dark palette block) for every screen that prints the panel head, inline `<style>` blocks included.
-- Pages that load Bootstrap without backend.src.css carry their own short block with only the names they read: `assets/css/workspace_guest.css` (guest page) and the inline styles of the prototype pages (`includes/fn/prototype.php`, `prototype_links.php`). A new name read there goes into that block too.
-- Outside this layer: site CSS and `design_themes.php` (its values go into site designs), JavaScript (step B2b), and shared files (`chat.php`, `toolbar.php`, `output.php`, `seo.php`), which are converted by hand per function.
-- Converted by hand: the panel chat window and `pg_chat_render_backend_launcher()` in `chat.php` (#2490), the SEO panel in `toolbar.php` (#2448), the page bar CSS of `pg_page_action_bar()` in `output.php`, printed only in `toolbar.php` (#2505). Their v5 reads had fallen back to light or inherited colours.
+- Pages that load Bootstrap without backend.src.css carry their own short block with only the names they read: `assets/css/workspace_guest.css` (guest page), `workspace_approval.css` (approval link page, #NNNN; both pinned by `standalone_css_tokens_test.php`) and the inline styles of the prototype pages (`includes/fn/prototype.php`, `prototype_links.php`). A new name read there goes into that block too.
+- Outside this layer: site CSS and `design_themes.php` (values go into site designs), JavaScript (step B2b), and shared files (`chat.php`, `toolbar.php`, `output.php`, `seo.php`), converted by hand per function.
+- Converted by hand: the panel chat window and `pg_chat_render_backend_launcher()` in `chat.php` (#2490), the SEO panel in `toolbar.php` (#2448), the page bar CSS of `pg_page_action_bar()` in `output.php`, printed only in `toolbar.php` (#2505). Their v5 reads fell back to light colours.
 
 ## What has been converted?
 - B3a (#1694): the token block, every v5 `-rgb` use in panel CSS and style blocks (130 to 21), the accent role variables.

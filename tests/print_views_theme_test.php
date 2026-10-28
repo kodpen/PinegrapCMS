@@ -57,8 +57,8 @@ function test_print_views_theme_order_labels_translated()
 		pg_assert_true(!preg_match('/>' . preg_quote($label, '/') . '</', $source), 'literal ' . $label);
 	}
 
-	pg_assert_contains("lang('Fax') . ':'", $source);
-	pg_assert_contains("lang('Recipient Email') . ':'", $source);
+	pg_assert_contains("' . lang('Fax') . ':</span>", $source);
+	pg_assert_contains("<td>' . lang('Recipient Email') . ':</td>", $source);
 	pg_assert_contains('pg_order_view_address_type($ship_tos[$key][\'address_type\'])', $source);
 	pg_assert_true(strpos($source, "ucwords(\$ship_tos[\$key]['address_type'])") === false, 'raw address type');
 }
