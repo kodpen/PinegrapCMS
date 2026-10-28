@@ -3635,13 +3635,6 @@ function edit_notification(notification_id, do_action) {
 };
 
 
-//::::::::::::::::::Filters::::::::::::::::::
-function clear_value(filter_number) {
-    // if an option was selected for dynamic value pick list, then clear value
-    if (document.getElementById('filter_' + filter_number + '_dynamic_value').options[document.getElementById('filter_' + filter_number + '_dynamic_value').selectedIndex].value != '') {
-        document.getElementById('filter_' + filter_number + '_value').value = '';
-    }
-}
 //::::::::::::::::::Submit Form::::::::::::::::::
 function submit_form(form_name) {
     document.getElementById(form_name).submit();
@@ -5055,9 +5048,19 @@ function create_filter(properties) {
 }
 
 function delete_filter(tr) {
+    // a date or time value box takes its control with it
+    var value_box = tr.querySelector('td[id$="_value_cell"] input');
+
+    if (value_box && window.pgFields) {
+        window.pgFields.destroy(value_box);
+    }
+
     tbody = tr.parentNode;
     tbody.removeChild(tr);
 }
+
+// The hook a filter's value box gets for a date or time field.
+var FILTER_VALUE_HOOKS = {'date': 'data-pg-date', 'date and time': 'data-pg-datetime', 'time': 'data-pg-time'};
 
 function update_value_cell(filter_number, value) {
     // if value is not defined, then set value to empty string
@@ -5095,13 +5098,27 @@ function update_value_cell(filter_number, value) {
 
                 value_cell_html += '</select>';
 
-                // else there are not value options for the field, so create HTML for value text box
+                // else there are not value options for the field, so create HTML for value text box,
+            // on the date-and-time control for a date or time field (the text the server reads stays the same)
             } else {
-                value_cell_html = '<input class="form-control" id="filter_' + filter_number + '_value" name="filter_' + filter_number + '_value" type="text" value="' + prepare_content_for_html(value) + '" maxlength="255" />';
+                var hook = FILTER_VALUE_HOOKS[field_options[i]['type']] || '';
+
+                value_cell_html = '<input class="form-control" id="filter_' + filter_number + '_value" name="filter_' + filter_number + '_value" type="text" value="' + prepare_content_for_html(value) + '" maxlength="255"' + (hook ? ' ' + hook : '') + ' />';
             }
 
-            // update value cell with HTML
-            document.getElementById('filter_' + filter_number + '_value_cell').innerHTML = value_cell_html;
+            // update value cell with HTML; the previous box's control goes first
+            var cell = document.getElementById('filter_' + filter_number + '_value_cell');
+            var old_value = document.getElementById('filter_' + filter_number + '_value');
+
+            if (old_value && window.pgFields) {
+                window.pgFields.destroy(old_value);
+            }
+
+            cell.innerHTML = value_cell_html;
+
+            if (window.pgFields) {
+                window.pgFields.init(cell);
+            }
 
             break;
         }
@@ -5221,9 +5238,41 @@ function update_dynamic_value_attribute(filter_number, dynamic_value_attribute) 
 function clear_value(filter_number) {
     // if an option was selected for dynamic value pick list, then clear value
     if (document.getElementById('filter_' + filter_number + '_dynamic_value').options[document.getElementById('filter_' + filter_number + '_dynamic_value').selectedIndex].value != '') {
-        document.getElementById('filter_' + filter_number + '_value').value = '';
+        pg_filter_value_clear(document.getElementById('filter_' + filter_number + '_value'));
     }
 }
+
+// Empties a filter's value box; a date or time box on the date-and-time
+// control is emptied through its wrapper, so the box it shows empties too.
+function pg_filter_value_clear(field) {
+    if (field.hasAttribute('data-pg-date') && window.pgDatePicker) {
+        window.pgDatePicker.set(field, '');
+    } else if ((field.hasAttribute('data-pg-datetime') || field.hasAttribute('data-pg-time')) && window.pgDateTimeField) {
+        window.pgDateTimeField.set(field, '');
+    } else {
+        field.value = '';
+    }
+}
+
+// A date picked in a box marked data-pg-add-to-chips="<id>" (the shipping
+// method's excluded dates) is added to those chips, once, and the box is
+// emptied for the next one.
+$(document).on('change', '[data-pg-add-to-chips]', function () {
+    var value = this.value.trim();
+    var chips = document.getElementById(this.getAttribute('data-pg-add-to-chips'));
+
+    if (!value || !chips || !window.pgChips || !window.pgDatePicker || !window.pgDatePicker.get(this)) {
+        return;
+    }
+
+    var list = window.pgChips.get(chips);
+
+    if (list.indexOf(value) === -1) {
+        window.pgChips.set(chips, list.concat(value));
+    }
+
+    window.pgDatePicker.set(this, '');
+});
 
 function init_shipping_method_service() {
     var service = $('#service');

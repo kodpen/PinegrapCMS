@@ -51,3 +51,48 @@ function test_panel_date_fields_form_preview_time_row()
 	pg_assert_contains("'id' => \$html_field_name", $row, 'the box is named by an id like the other date rows');
 	pg_assert_contains('pg_form_info_picker_format($picker_kinds)', $source, 'the options follow the rows');
 }
+
+function test_panel_date_fields_waybill_ship_time()
+{
+	$source = panel_date_fields_test_source('includes/erp/waybill_form.php');
+
+	pg_assert_contains("'type' => 'text', 'id' => 'ship_time', 'data-pg-time' => 'hh:mm', 'name' => 'ship_time'", $source, 'the shipment time keeps its HH:MM text on the control');
+	pg_assert_false(strpos($source, "'placeholder' => 'HH:MM'") !== false, 'the box shows the site clock, not a fixed hint');
+	pg_assert_contains('get_date_picker_format() . pg_fields_script()', $source, 'the screen prints the options with the script');
+}
+
+function test_panel_date_fields_excluded_dates_picked_into_chips()
+{
+	$source = panel_date_fields_test_source('includes/forms/shipping_method_form.php');
+
+	pg_assert_contains('id="excluded_transit_dates" class="form-control tagin min-height-tagin" data-pg-chips', $source, 'the chips stay the posted field');
+	pg_assert_contains('<input type="text" id="excluded_transit_date_pick" class="form-control mt-2" data-pg-date data-pg-add-to-chips="excluded_transit_dates" autocomplete="off" placeholder="\' . h(lang(\'Add Date\')) . \'" aria-label="\' . h(lang(\'Add Date\')) . \'"/>', $source, 'a calendar box beside them, not posted');
+
+	$js = panel_date_fields_test_source('assets/js/backend.src.js');
+	pg_assert_contains("\$(document).on('change', '[data-pg-add-to-chips]'", $js, 'a picked date is added to its chips');
+	pg_assert_contains('window.pgChips.set(chips, list.concat(value))', $js, 'through the chips wrapper');
+	pg_assert_contains('list.indexOf(value) === -1', $js, 'a date already in the list is not added twice');
+	pg_assert_contains("window.pgDatePicker.set(this, '')", $js, 'the box empties for the next date');
+}
+
+function test_panel_date_fields_commerce_settings_print_the_date_order()
+{
+	$source = panel_date_fields_test_source('includes/settings/commerce.php');
+
+	pg_assert_contains('get_date_picker_format() . pg_fields_script()', $source, 'the end-of-day time prints the options with the script');
+}
+
+function test_panel_date_fields_filter_value_box()
+{
+	$js = panel_date_fields_test_source('assets/js/backend.src.js');
+
+	pg_assert_contains("var FILTER_VALUE_HOOKS = {'date': 'data-pg-date', 'date and time': 'data-pg-datetime', 'time': 'data-pg-time'};", $js, 'each date or time field gets its hook');
+	pg_assert_contains("(hook ? ' ' + hook : '')", $js, 'printed on the value box');
+	pg_assert_contains('window.pgFields.destroy(old_value)', $js, 'the previous control is removed before the cell is redrawn');
+	pg_assert_contains('window.pgFields.init(cell)', $js, 'the new box is drawn');
+	pg_assert_contains('window.pgFields.destroy(value_box)', $js, 'a deleted row takes its control with it');
+	pg_assert_contains('function pg_filter_value_clear(field)', $js, 'a dynamic value empties the box through its wrapper');
+	pg_assert_same(1, substr_count($js, 'function clear_value(filter_number)'), 'one clear_value');
+
+	pg_assert_true(strpos(panel_date_fields_test_source('edit_form_list_view.php'), 'get_date_picker_format() . pg_fields_script()') !== false, 'the form list view prints the options with the script');
+}
