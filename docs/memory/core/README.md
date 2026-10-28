@@ -105,6 +105,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - social-sign-in-providers.md: Adding a sign-in provider: the 'signin' block of its provider file (order, scopes, pkce, return, claims, Apple's JWT secret), its switch, what is stored (no token), the old user_google_id column.
 - social-sign-in.md: Sign in with Google, Microsoft and Apple: the flow, how an account is matched, where the buttons come from, and the failure screen (no more "404" on a refused sign-in)
 - software-text-in-site-languages.md: Which language the software's own texts take on a site page in a language with no language file: English, except the cookie window (owner decision 2026-10-09), and how that exception is fed.
+- sortablejs-library.md: The vendored SortableJS (assets/lib/sortablejs/, 1.15.7, unmodified): why it replaced jQuery UI .sortable(), which screens load it, how to update it
 - translation-attribute-texts.md: Translating worded attributes (alt, title, placeholder, aria-label, aria-description, tooltips): one list, every path that extracts them, the pass that draws them
 - translation-rules.md: Every visible string uses lang() (designer: _sdT()), English source as the key; keys added only with tools/tr_add.php; exact keys, placeholders, duplicates, misleading keys, check_lang
 - translation-translatable-text.md: What pg_tr_translatable() counts as text to translate and what it leaves out as data (tokens, codes, Lorem ipsum, data: URIs, JSON, whole-value code); lone addresses stay

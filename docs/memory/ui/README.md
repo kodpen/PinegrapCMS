@@ -126,7 +126,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - shipping-method-shared-form.md: The shipping method create and edit screens share includes/forms/shipping_method_form.php
 - short-link-shared-form.md: The short link create and edit screens share includes/forms/short_link_form.php: what it holds, what stays in the screens
 - site-page-toolbar-theme.md: The editor toolbar over a site page (toolbar.php in #software_toolbar): why its root stays light and its body takes the theme under Bootstrap 6, the unreadable dark toolbar it fixed (PR #2448)
-- sortable-init-pitfall.md: jQuery UI .sortable() on a panel screen: backend.src.js now sets up only lists marked .pg-sortable; before, its ready handler rewrote the options of every sortable on the page.
+- sortable-init-pitfall.md: Drag-to-reorder in the panel: SortableJS set up per screen (welcome, product builder, menu tree), the jQuery UI .pg-sortable leftover, the global-sortable trap
 - step-rail.md: Numbered steps on panel screens: Bootstrap 6 .stepper (edit_offer cards, installer, ERP import), why every edit_offer item is .active, theme-reset on the cards, the workspace flow's own .pg-step rail
 - submitted-form-shared-form.md: The submitted form create and edit screens share includes/forms/submitted_form_form.php
 - translations-screen-noindex-reason.md: Translations screen: a page's search verdict in the page list, its own-noindex state, the "Why?" list of texts keeping it out (blocking filter) and "Keep as in the source and approve"
