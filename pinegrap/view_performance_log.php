@@ -507,16 +507,16 @@ echo '
                 <div class="col-12 md:col-6">
                     <form action="view_performance_log.php" method="get" class="row g-3 md:justify-content-end align-items-end">
                         <div class="col-12 sm:col">
-                            <label class="form-label small mb-0">' . lang('Search') . '</label>
-                            <input type="search" name="search" value="' . h($search) . '" class="form-control form-control-sm" placeholder="' . h(lang('Search by page...')) . '">
+                            <label for="perf_log_search" class="form-label small mb-0">' . lang('Search') . '</label>
+                            <input type="search" id="perf_log_search" name="search" value="' . h($search) . '" class="form-control form-control-sm" placeholder="' . h(lang('Search by page...')) . '">
                         </div>
                         <div class="col-auto">
-                            <label class="form-label small mb-0">' . lang('Time Range') . '</label>
-                            <select name="range" class="form-control form-control-sm" onchange="this.form.submit()">' . $range_select . '</select>
+                            <label for="perf_log_range" class="form-label small mb-0">' . lang('Time Range') . '</label>
+                            <select id="perf_log_range" name="range" class="form-control form-control-sm" onchange="this.form.submit()">' . $range_select . '</select>
                         </div>
                         <div class="col-auto">
-                            <label class="form-label small mb-0">' . lang('Area') . '</label>
-                            <select name="area" class="form-control form-control-sm" onchange="this.form.submit()">' . $area_select . '</select>
+                            <label for="perf_log_area" class="form-label small mb-0">' . lang('Area') . '</label>
+                            <select id="perf_log_area" name="area" class="form-control form-control-sm" onchange="this.form.submit()">' . $area_select . '</select>
                         </div>
                         <div class="col-auto">
                             <button type="submit" class="btn btn-sm btn-solid theme-primary" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search"></i></button>

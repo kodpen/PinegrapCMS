@@ -2881,7 +2881,7 @@ function pg_seo_render_group_row($label, $score, $weight)
             <span class="small fg-secondary" style="min-width:110px">' . h($label) . '</span>
             <div class="progress flex-grow-1" style="height:4px"><div class="progress-bar' . $bar_class . '" style="' . h($bar_style) . '"></div></div>
             <span class="small fw-semibold" style="min-width:28px;text-align:right">' . (int) $score . '</span>
-            <span class="small fg-secondary">%' . (int) $weight . '</span>
+            <span class="small fg-secondary">' . h(lang(array('string' => '{var:1}%', 'vars' => (int) $weight))) . '</span>
         </div>';
 }
 

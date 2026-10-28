@@ -404,7 +404,7 @@ print
             <div class="row mb-3  flex-wrap">
                 <div class="col-12 sm:col-12 md:col-6 xl:col-8 text-center md:text-start">
                     
-                    <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                         ' . (USER_MANAGE_ECOMMERCE ? '<a class="btn btn-sm btn-solid theme-primary m-1 " href="view_ship_date_adjustments.php"><span class="bi bi-wrench-adjustable-circle bi-me-2"></span>' . lang('Ship Date Adjustments') . '</a>' : '') . '
                     </nav>
                 </div>
@@ -421,10 +421,10 @@ print
                                         <option value="shipped"' . $status_shipped_selected . '>' . lang('Shipped') . '</option>
                                     </select>
                                 </div>
-                                <div class="btn-group btn-group-sm col-auto py-0 px-1 my-1">
-                                    <a class="btn py-0 px-1 border-start border-top border-bottom" href="view_shipping_report.php?start_date=' . $output_previous_start_date . '&end_date=' . $output_previous_end_date . '"><</a>
-                                    <span class="border  badge rounded-0 fw-light border-2">    ' . $output_date_range . '</span>
-                                    <a class="btn py-0 px-1 border-end border-top border-bottom" href="view_shipping_report.php?start_date=' . $output_next_start_date . '&end_date=' . $output_next_end_date . '">></a>
+                                <div class="d-inline-flex align-items-center gap-1 col-auto py-0 px-1 my-1" role="group" aria-label="' . h(lang('Period')) . '">
+                                    <a class="btn btn-sm btn-text theme-secondary" href="' . h('view_shipping_report.php?start_date=' . $output_previous_start_date . '&end_date=' . $output_previous_end_date) . '" title="' . h(lang('Previous')) . '" aria-label="' . h(lang('Previous')) . '"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
+                                    <span class="small fg-secondary text-nowrap">' . $output_date_range . '</span>
+                                    <a class="btn btn-sm btn-text theme-secondary" href="' . h('view_shipping_report.php?start_date=' . $output_next_start_date . '&end_date=' . $output_next_end_date) . '" title="' . h(lang('Next')) . '" aria-label="' . h(lang('Next')) . '"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
                                 </div>
                             </form>
                         </div>

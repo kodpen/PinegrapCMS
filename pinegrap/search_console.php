@@ -321,8 +321,11 @@ if (!$linked) {
 
 		$chart = array('labels' => array(), 'clicks' => array(), 'impressions' => array());
 
+		// Day labels follow the site's date order (month first or day first).
+		$day_label_format = (DATE_FORMAT == 'month_day') ? 'm/d' : 'd.m';
+
 		foreach ($daily as $day => $values) {
-			$chart['labels'][] = date('d.m', strtotime($day . ' 12:00:00'));
+			$chart['labels'][] = date($day_label_format, strtotime($day . ' 12:00:00'));
 			$chart['clicks'][] = $values['clicks'];
 			$chart['impressions'][] = $values['impressions'];
 		}

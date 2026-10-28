@@ -165,3 +165,13 @@ function test_panel_accessible_names_edit_contact_remove_picture()
 	pg_assert_true(strpos($source, 'title="remove"') === false, 'literal remove title');
 	pg_assert_same(2, substr_count($source, "aria-label=\"' . h(lang('Remove')) . '\""), 'edit_contact.php: both remove buttons');
 }
+
+function test_panel_accessible_names_performance_log_filters()
+{
+	$source = panel_accessible_names_source('view_performance_log.php');
+
+	foreach (array('perf_log_search' => 'name="search"', 'perf_log_range' => 'name="range"', 'perf_log_area' => 'name="area"') as $id => $field) {
+		pg_assert_contains('<label for="' . $id . '"', $source, 'performance log label points at ' . $id);
+		pg_assert_contains('id="' . $id . '" ' . $field, $source, 'performance log field ' . $id . ' has its id');
+	}
+}
