@@ -1243,6 +1243,7 @@
     "Nothing on this order can be returned: every item is already in a return or was not sent to an address.": "Bu siparişte iade edilebilecek bir şey yok: her ürün ya zaten bir iadede ya da bir adrese gönderilmedi.",
     "Nothing on your calendar this week.": "Bu hafta takviminde bir şey yok.",
     "Nothing owed": "Bekleyen iade yok",
+    "Nothing runs until you open the flow and publish it.": "Akışı açıp yayımlayana kadar hiçbir şey çalışmaz.",
     "Nothing sent yet": "Henüz gönderim yok",
     "Nothing sent yet. Your first article is one form away.": "Henüz bir şey göndermediniz. İlk haberiniz bir form uzaklıkta.",
     "Nothing sent yet. Your first guide is one form away.": "Henüz bir şey göndermediniz. İlk rehberiniz yalnızca bir form uzağınızda.",
