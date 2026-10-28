@@ -4,7 +4,7 @@ description: backend.src.css swept for fixed light fills and dark text after Boo
 ---
 
 ## What changed?
-- `.pg-table-light` (table heads of `find_and_replace.php`, `view_parasut_inbox.php`, `erp_expense_categories.php`) was v5's `.table-light` copied 1:1 by the codemod: black text and `#c6c7c8` lines in both themes. In the dark theme the panel's table rules paint the head cell near-black, so the head text was black on black. It reads `--pg-fg-emphasis` (text), `--pg-bg-1` (fill) and `light-dark(#c6c7c8, var(--pg-border-color))` (line) now.
+- `.pg-table-light` (table heads of `find_and_replace.php`, `view_parasut_inbox.php`, `erp_expense_categories.php`) (#2566) was v5's `.table-light` copied 1:1 by the codemod: black text and `#c6c7c8` lines in both themes. In the dark theme the panel's table rules paint the head cell near-black, so the head text was black on black. It reads `--pg-fg-emphasis` (text), `--pg-bg-1` (fill) and `light-dark(#c6c7c8, var(--pg-border-color))` (line) now.
 - Computed colours (Playwright, Bootstrap 6 dist + backend.src.css): light unchanged (fill 245,245,245, text 0,0,0, line 198,199,200); dark text 0,0,0 to 255,255,255, line 198,199,200 to 73,80,87.
 - `tests/dark_theme_css_test.php` pins the rule and that no rule reads a v5 neutral Bootstrap 6 dropped (`--bs-body-color`, `--bs-body-bg`, `--bs-secondary-color`, `--bs-tertiary-color`, `--bs-tertiary-bg`, `--bs-emphasis-color`).
 
