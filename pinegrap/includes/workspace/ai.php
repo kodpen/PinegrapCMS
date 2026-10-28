@@ -1602,7 +1602,7 @@ function ws_ai_response_problem($response)
  */
 function ws_ai_final($row, $state, $model)
 {
-    $proposed = !empty($state['proposals']['tasks']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['pages']) || !empty($state['proposals']['scheduled']);
+    $proposed = !empty($state['proposals']['tasks']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['pages']) || !empty($state['proposals']['scheduled']) || !empty($state['proposals']['flows']);
     $messages = $state['messages'];
 
     $messages[] = array('role' => 'user', 'content' => 'Write your final answer to the request now, as plain text in the language of the request, without calling any tool.'
@@ -1630,7 +1630,7 @@ function ws_ai_final($row, $state, $model)
 
     $text = ws_ai_strip_text_calls(ws_ai_text_answer(ws_ai_clean((string) ($response['json']['choices'][0]['message']['content'] ?? ''))));
 
-    if (($text === '') && !empty($state['proposals']) && (!empty($state['proposals']['pages']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']) || !empty($state['proposals']['scheduled']))) {
+    if (($text === '') && !empty($state['proposals']) && (!empty($state['proposals']['pages']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']) || !empty($state['proposals']['scheduled']) || !empty($state['proposals']['flows']))) {
         $text = ws_ai_proposed_line($state);
     }
 
@@ -1679,7 +1679,7 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
         $text = pg_design_ai_channel_words($text, !empty($state['proposals']['pages']));
     }
 
-    if (($text === '') && (!empty($state['proposals']['pages']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']) || !empty($state['proposals']['mcp_calls']) || !empty($state['proposals']['scheduled']))) {
+    if (($text === '') && (!empty($state['proposals']['pages']) || !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']) || !empty($state['proposals']['mcp_calls']) || !empty($state['proposals']['scheduled']) || !empty($state['proposals']['flows']))) {
         $text = ws_ai_proposed_line($state);
     }
 
@@ -1707,11 +1707,11 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
         // utility class outweighs: the page would not look as proposed.
         $result = array('ok' => false, 'error' => 'The page would not look as you mean yet. ' . implode(' ', $looks) . ' Fix it with the page tools, then call answer again with new words on what the proposal now does.');
         $state['css_nudged'] = 1;
-    } elseif (empty($state['proposals']['tasks']) && empty($state['proposals']['scheduled']) && empty($state['task_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && ((int) ($row['task_id'] ?? 0) === 0) && empty($state['design'])
+    } elseif (empty($state['proposals']['tasks']) && empty($state['proposals']['scheduled']) && empty($state['proposals']['flows']) && empty($state['task_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && ((int) ($row['task_id'] ?? 0) === 0) && empty($state['design'])
         && ws_ai_asks_for_task($state) && ($steps < WS_AI_MAX_STEPS - 2)) {
         $result = array('ok' => false, 'error' => 'The request asks for a task: call propose_task for it first, then call answer again.');
         $state['task_nudged'] = 1;
-    } elseif (empty($state['proposals']['changes']) && empty($state['proposals']['pages']) && empty($state['proposals']['scheduled']) && empty($state['done_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && empty($state['design'])
+    } elseif (empty($state['proposals']['changes']) && empty($state['proposals']['pages']) && empty($state['proposals']['scheduled']) && empty($state['proposals']['flows']) && empty($state['done_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && empty($state['design'])
         && ws_ai_claims_done($text) && ($steps < WS_AI_MAX_STEPS - 2)) {
         // An answer that says a record was changed, with no change
         // proposed: nothing was changed, and the words must not say so.
@@ -1747,7 +1747,7 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
  */
 function ws_ai_proposed_words($text, $state)
 {
-    $proposed = !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']) || !empty($state['proposals']['pages']) || !empty($state['proposals']['scheduled']);
+    $proposed = !empty($state['proposals']['changes']) || !empty($state['proposals']['tasks']) || !empty($state['proposals']['pages']) || !empty($state['proposals']['scheduled']) || !empty($state['proposals']['flows']);
 
     if (!$proposed || !ws_ai_claims_done($text)) {
         return $text;
@@ -1757,14 +1757,19 @@ function ws_ai_proposed_words($text, $state)
         return ws_ai_proposed_line($state);
     }
 
-    return rtrim((string) $text) . "\n\n" . (ws_ai_only_drafts($state)
-        ? lang('Nothing is scheduled until you open the draft in the form and save it.')
-        : lang('Nothing is changed until you press Apply under the proposal.'));
+    if (ws_ai_only_drafts($state)) {
+        return rtrim((string) $text) . "\n\n" . (empty($state['proposals']['scheduled'])
+            ? lang('Nothing runs until you open the flow and publish it.')
+            : lang('Nothing is scheduled until you open the draft in the form and save it.'));
+    }
+
+    return rtrim((string) $text) . "\n\n" . lang('Nothing is changed until you press Apply under the proposal.');
 }
 
 /**
- * Is all an answer proposes a scheduled action drafted from the request
- * (scheduled_draft.php)? That is saved from its form, not applied.
+ * Is all an answer proposes a draft: a scheduled action drafted from the
+ * request (scheduled_draft.php), saved from its form, or a flow
+ * (flow_draft.php), published on the canvas? Neither is applied.
  *
  * @param array $state
  * @return bool
@@ -1773,7 +1778,7 @@ function ws_ai_only_drafts($state)
 {
     $proposals = (array) ($state['proposals'] ?? array());
 
-    return !empty($proposals['scheduled'])
+    return (!empty($proposals['scheduled']) || !empty($proposals['flows']))
         && empty($proposals['tasks']) && empty($proposals['changes']) && empty($proposals['pages']) && empty($proposals['mcp_calls']);
 }
 
@@ -1786,9 +1791,13 @@ function ws_ai_only_drafts($state)
  */
 function ws_ai_proposed_line($state)
 {
-    return ws_ai_only_drafts($state)
-        ? lang('I drafted it below. Nothing is scheduled until you open it in the form and save it.')
-        : lang('I propose it below. Nothing is changed until you press Apply under it.');
+    if (ws_ai_only_drafts($state)) {
+        return empty($state['proposals']['scheduled'])
+            ? lang('I drafted the flow below. Nothing runs until you open it and publish it.')
+            : lang('I drafted it below. Nothing is scheduled until you open it in the form and save it.');
+    }
+
+    return lang('I propose it below. Nothing is changed until you press Apply under it.');
 }
 
 /**
@@ -1824,7 +1833,7 @@ function ws_ai_claims_done($text)
  */
 function ws_ai_tool_names()
 {
-    return array('answer', 'fail', 'read_channel', 'read_task', 'search_records', 'read_record', 'propose_task', 'propose_change', 'propose_bulk_change', 'propose_scheduled_action', 'add_task_note', 'read_page', 'page_set', 'page_replace', 'page_insert', 'page_remove', 'page_css', 'page_rewrite');
+    return array('answer', 'fail', 'read_channel', 'read_task', 'search_records', 'read_record', 'propose_task', 'propose_change', 'propose_bulk_change', 'propose_scheduled_action', 'propose_flow', 'read_flow', 'add_task_note', 'read_page', 'page_set', 'page_replace', 'page_insert', 'page_remove', 'page_css', 'page_rewrite');
 }
 
 /**
@@ -2284,7 +2293,8 @@ function ws_ai_drafts_input($tasks)
  * @param string $text
  * @param array  $proposals tasks (rows as the model sent them), changes
  *                          (ws_ai_propose_change() entries), scheduled
- *                          (drafts, ws_scheduled_draft_ai_step())
+ *                          (drafts, ws_scheduled_draft_ai_step()), flows
+ *                          (card rows, ws_flow_ai_propose())
  * @return array ok, error (what the model is told to fix)
  */
 function ws_ai_deliver($row, $text, $proposals)
@@ -2459,6 +2469,12 @@ function ws_ai_deliver($row, $text, $proposals)
     // their form and saved (scheduled_draft.php).
     if (!empty($proposals['scheduled']) && function_exists('ws_scheduled_draft_ai_store')) {
         ws_scheduled_draft_ai_store($row, (int) $sent['message_id'], $proposals['scheduled']);
+    }
+
+    // Flows drafted from the request, waiting to be opened on the canvas and
+    // published there (flow_draft.php).
+    if (!empty($proposals['flows'])) {
+        ws_changes_store($row, (int) $sent['message_id'], array_slice(array_values((array) $proposals['flows']), 0, WS_FLOW_AI_PER_ANSWER));
     }
 
     if (!empty($pages) && ws_design_ai()) {
@@ -3189,6 +3205,10 @@ function ws_ai_system_prompt($row, $asker, $readable)
             $lines[] = '- When the request asks for something to be done later on its own, again and again, or whenever something happens ("every Monday at 9...", "when a task moves to Waiting...", "remind the team tomorrow at 10"), it is a scheduled action, not a task: call propose_scheduled_action with the request as one complete sentence, once for each action (at most ' . WS_SCHEDULED_DRAFT_PER_ANSWER . '). It is drafted for you and waits under your answer; ' . $name . ' opens it in its form and saves it. Never write that it is scheduled or set up.';
         }
 
+        if (function_exists('ws_flow_ai_offered') && ws_flow_ai_offered($row, $asker)) {
+            $lines[] = '- When the request asks to build a flow, a process of several steps one after another, or an automation with conditions or approvals, call propose_flow with its boxes and arrows (at most ' . WS_FLOW_AI_PER_ANSWER . ' flows). To change a flow that exists, find it with read_flow first and send flow_id with changes. It waits under your answer as a draft; ' . $name . ' opens it on the Flows canvas and publishes it. Never write that it is set up or running.';
+        }
+
         if (ws_design_ai() && pg_design_ai_tools_allowed($row, $asker)) {
             $lines[] = '- A page of a visual design (a <#page:ID> tag) can be changed: read it with read_page, then change it with the page tools (read_page tells how). What you do is a proposal the person who asked previews and applies.';
         }
@@ -3526,6 +3546,16 @@ function ws_ai_tools($row)
                 'sentence' => array('type' => 'string', 'description' => 'What the scheduled action does, as one complete sentence in the language of the request: when it runs (a time and how often, or what happens) and what it does, with the channel, the people and the e-mail addresses the request names.'),
             ), array('sentence'));
         }
+
+        // A flow, drafted from the boxes the catalogue offers (flow_draft.php),
+        // waits under the answer to be opened on the canvas.
+        if (function_exists('ws_flow_ai_offered') && ws_flow_ai_offered($row, $asker)) {
+            $tools[] = ws_flow_ai_tool(ws_flow_kind_catalogue());
+            $tools[] = $tool('read_flow', 'Read a flow the person who asked reaches, with its boxes and arrows (id), or find flows by a word of their name (query).', array(
+                'id'    => array('type' => 'integer'),
+                'query' => array('type' => 'string'),
+            ), array());
+        }
     }
 
     // On a task as well: what it proposes waits on the task.
@@ -3738,6 +3768,12 @@ function ws_ai_tool_run($row, &$state, $name, $args)
             return (function_exists('ws_scheduled_draft_ai_offered') && ws_scheduled_draft_ai_offered($row, $asker))
                 ? ws_scheduled_draft_ai_propose($row, $state, $args)
                 : array('error' => 'A scheduled action cannot be drafted for this request.');
+
+        case 'propose_flow':
+            return function_exists('ws_flow_ai_propose') ? ws_flow_ai_propose($row, $state, $args) : array('error' => 'A flow cannot be drafted for this request.');
+
+        case 'read_flow':
+            return (function_exists('ws_flow_ai_offered') && ws_flow_ai_offered($row, $asker)) ? ws_flow_ai_read($asker, $args) : array('error' => 'Flows cannot be read here.');
 
         case 'add_task_note':
             if ($note || $task) {

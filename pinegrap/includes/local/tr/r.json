@@ -595,6 +595,7 @@
     "Removed the tables of the old site": "Eski sitenin tabloları kaldırıldı",
     "Removed {var:1} ({var:2}).": "{var:1} kaldırıldı ({var:2}).",
     "Removed: {var:1}": "Kaldırıldı: {var:1}",
+    "Removes": "Kaldırır",
     "Removing": "Kaldırılıyor",
     "Removing a language deletes its translations, its update history and its own glossary terms as well. Turn \"Served\" off instead to take it off the site for a while.": "Bir dili kaldırmak çevirilerini, güncelleme geçmişini ve yalnız ona ait sözlük terimlerini de siler. Dili bir süreliğine siteden çekmek için bunun yerine \"Yayında\" anahtarını kapatın.",
     "Removing a marketplace deletes its product matches and its queue. Your products are not touched, and nothing is removed from the marketplace itself.": "Pazaryerini kaldırmak ürün eşleştirmelerini ve kuyruğunu siler. Ürünlerinize dokunulmaz, pazaryerinden de bir şey silinmez.",
