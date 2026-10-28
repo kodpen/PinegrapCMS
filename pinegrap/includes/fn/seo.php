@@ -3070,9 +3070,8 @@ function pg_visitor_stats_range($start_date, $end_date)
  * (IS_BOT); without that mark (firewall off, allow-listed address, excluded
  * path) any user agent class other than human; and other Pinegrap
  * installations, which the firewall treats as ordinary clients so they are
- * never blocked (not through IS_BOT: that constant also exempts a request
- * from rate limiting, which a claimed user agent must not buy). Not cached:
- * called once per counted page.
+ * never blocked (waf_is_pinegrap_client(); the bot policy never marks them
+ * with IS_BOT). Not cached: called once per counted page.
  */
 function pg_request_is_automated()
 {
