@@ -10986,25 +10986,27 @@ body.workspace .card .table {
    no padding). The channel screen is one panel and fills it; the others keep
    their toolbar across the whole width and give what is under it the
    toolbar's own side padding, so the rounded cards do not meet the edge and
-   line up with the first button above them. The settings screen gives its
-   main area that padding itself, so its two columns keep their gutter. */
-body.workspace:not(.workspace_settings) #content.p-0 > .row,
-body.workspace:not(.workspace_settings) .ws-shell-main > .row {
+   line up with the first button above them. The settings, MCP connections
+   and channel template screens put their columns straight into
+   .ws-shell-main, with no #ws-root around them: they give the main area
+   that padding themselves, so their columns keep their gutter. */
+body.workspace:not(.workspace_settings, .workspace_mcp, .workspace_template) #content.p-0 > .row,
+body.workspace:not(.workspace_settings, .workspace_mcp, .workspace_template) .ws-shell-main > .row {
   --bs-gutter-x: 0;
 }
 body.workspace:not(.workspace_channels) #ws-root {
   padding: 0 .75rem .75rem;
 }
-body.workspace_settings .ws-shell-main {
+body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template) .ws-shell-main {
   padding: 0 .75rem .75rem;
 }
 body.workspace:not(.workspace_channels) #ws-root > .pg-toolbar,
-body.workspace_settings .ws-shell-main > #button_bar {
+body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template) .ws-shell-main > #button_bar {
   max-width: none;
   margin-left: -.75rem;
   margin-right: -.75rem;
 }
-body.workspace_settings .ws-shell-main > #button_bar {
+body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template) .ws-shell-main > #button_bar {
   padding: .5rem .75rem;
   border-bottom: 1px solid var(--pg-border-color-translucent);
 }
@@ -16406,6 +16408,18 @@ html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
   padding: .5rem 0;
   border-bottom: 1px solid var(--pg-border-color);
 }
+/* The MCP servers card carries two buttons beside its heading and up to
+   four beside each server's name; on a phone they wrap under it instead of
+   squeezing the name to nothing and pushing the last button off screen. */
+#ws-mcp > .card-header {
+  flex-wrap: wrap;
+}
+#ws-mcp > .card-body > .ws-dept-row {
+  flex-wrap: wrap;
+}
+#ws-mcp > .card-body > .ws-dept-row > .ws-grow {
+  flex-basis: 12rem;
+}
 .ws-dept-swatch {
   flex: 0 0 auto;
   width: .85rem;
@@ -16928,7 +16942,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-claude-shot .s-ring { fill: none; stroke: #f59f00; stroke-width: 2; }
 .ws-claude-status {
   position: sticky;
-  top: 1rem;
+  top: calc(var(--pg-navbar-h) + 1rem);
 }
 .ws-claude-recent-row {
   display: flex;
@@ -17096,7 +17110,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 }
 .ws-tl-side {
   position: sticky;
-  top: 1rem;
+  top: calc(var(--pg-navbar-h) + 1rem);
 }
 .ws-tl-side .list-group-item {
   font-size: .85rem;
