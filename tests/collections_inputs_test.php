@@ -8,7 +8,8 @@
  * a reference against the records of the form it points into
  * (pg_coll_reference_ok()), the attributes a control gets by kind
  * (pg_coll_input_attrs()) and the attributes and choices the site form's
- * controls are drawn with (pg_cf_apply_field_bindings()).
+ * controls are drawn with (pg_cf_apply_field_bindings(), a reference radio
+ * button or check box group by pg_cf_reference_choice_nodes()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -72,7 +73,7 @@ function test_collections_reference_ok()
 function test_collections_input_attrs()
 {
 	pg_assert_same(array('type' => 'number', 'step' => 'any', 'inputmode' => 'decimal'), pg_coll_input_attrs('number', 'text box'));
-	pg_assert_same(array('accept' => 'image/jpeg,image/png,image/gif,image/webp'), pg_coll_input_attrs('image', 'file upload'));
+	pg_assert_same(array('accept' => 'image/jpeg,image/png,image/gif,image/webp', 'data-pg-image-preview' => ''), pg_coll_input_attrs('image', 'file upload'));
 	pg_assert_same(array(), pg_coll_input_attrs('reference', 'text box'), 'a reference is drawn by its choices');
 	pg_assert_same(array(), pg_coll_input_attrs('number', 'text area'), 'a kind the type cannot have');
 	pg_assert_same(array(), pg_coll_input_attrs('', 'text box'));
@@ -157,4 +158,85 @@ function test_collections_reference_labels()
 		'a shared label gets each code'
 	);
 	pg_assert_same(array('c9' => 'c9'), pg_coll_reference_labels(array('c9' => 'c9')), 'a code shown as its own label stays as is');
+}
+
+function _collections_inputs_label($for, $text)
+{
+	$node = _collections_inputs_control('label', array('for' => $for));
+	$node['props']['text'] = $text;
+	return $node;
+}
+
+function test_collections_site_reference_radio_group()
+{
+	// The palette's group: a legend and one div.form-check per option.
+	$legend = array('type' => 'semantic', 'props' => array('tag' => 'legend', 'text' => 'Category'), 'children' => array());
+	$option = function ($id, $value, $text, $checked = false) {
+		$attrs = array('type' => 'radio', 'name' => 'category', 'value' => $value);
+		if ($checked) $attrs['checked'] = '';
+		$box = _collections_inputs_control('input', $attrs);
+		$box['props']['id'] = $id;
+		$wrap = _collections_inputs_control('div', array(), array($box, _collections_inputs_label($id, $text)));
+		$wrap['props']['cssClass'] = 'form-check';
+		return $wrap;
+	};
+	$tree = _collections_inputs_control('fieldset', array(), array($legend, $option('f_a', 'one', 'Option 1', true), $option('f_a_2', 'two', 'Option 2')));
+	$row = _collections_inputs_row(905, 'category', 'radio button', 'reference', array('abc123' => 'News', 'def456' => 'Sport', 'ghi789' => 'Life'));
+	pg_cf_apply_field_bindings($tree, array('category' => $row), null, 0, false, array());
+
+	pg_assert_same(4, count($tree['children']), 'the legend and one option per record');
+	pg_assert_same('legend', $tree['children'][0]['props']['tag']);
+	$ids = array();
+	foreach (array(1 => array('abc123', 'News'), 2 => array('def456', 'Sport'), 3 => array('ghi789', 'Life')) as $i => $want) {
+		list($box, $label) = $tree['children'][$i]['children'];
+		pg_assert_same('form-check', $tree['children'][$i]['props']['cssClass'], 'the wrapper is kept');
+		pg_assert_same($want[0], _collections_inputs_attr($box, 'value'));
+		pg_assert_same('905', _collections_inputs_attr($box, 'name'), 'named by the field id');
+		pg_assert_same(null, _collections_inputs_attr($box, 'checked'), 'the drawn default is not a record');
+		pg_assert_same($want[1], $label['props']['text']);
+		pg_assert_same($box['props']['id'], _collections_inputs_attr($label, 'for'), 'the label points at its own box');
+		$ids[$box['props']['id']] = true;
+	}
+	pg_assert_same(3, count($ids), 'every box has an id of its own');
+	pg_assert_true(isset($ids['f_a']), 'the first keeps the drawn id');
+}
+
+function test_collections_site_reference_check_boxes_bare()
+{
+	// Boxes straight in the fieldset, each with its label after it.
+	$box = _collections_inputs_control('input', array('type' => 'checkbox', 'name' => 'tags[]', 'value' => 'x'));
+	$hint = array('type' => 'semantic', 'props' => array('tag' => 'p', 'text' => 'Pick any'), 'children' => array());
+	$tree = _collections_inputs_control('fieldset', array(), array($box, _collections_inputs_label('', 'X'), $hint, $box, _collections_inputs_label('', 'Y')));
+	$row = _collections_inputs_row(906, 'tags', 'check box', 'reference', array('abc123' => 'News', 'def456' => 'Sport'));
+	$row['multiple'] = 1;
+	pg_cf_apply_field_bindings($tree, array('tags' => $row), null, 0, false, array());
+
+	pg_assert_same(5, count($tree['children']), 'two boxes with their labels, the hint kept');
+	pg_assert_same('abc123', _collections_inputs_attr($tree['children'][0], 'value'));
+	pg_assert_same('906[]', _collections_inputs_attr($tree['children'][0], 'name'), 'a group posts a list');
+	pg_assert_same('News', $tree['children'][1]['props']['text']);
+	pg_assert_same('def456', _collections_inputs_attr($tree['children'][2], 'value'));
+	pg_assert_same('cf_906_r1', $tree['children'][2]['props']['id']);
+	pg_assert_same('cf_906_r1', _collections_inputs_attr($tree['children'][3], 'for'));
+	pg_assert_same('Pick any', $tree['children'][4]['props']['text'], 'what is not an option stays, after the group');
+}
+
+function test_collections_site_reference_group_edges()
+{
+	$box = _collections_inputs_control('input', array('type' => 'radio', 'name' => 'category', 'value' => 'old'));
+
+	$tree = _collections_inputs_control('fieldset', array(), array($box, _collections_inputs_label('', 'Old')));
+	$row = _collections_inputs_row(907, 'category', 'radio button', 'reference', array());
+	pg_cf_apply_field_bindings($tree, array('category' => $row), null, 0, false, array());
+	pg_assert_same(array(), $tree['children'], 'no records: no drawn value the server would refuse');
+
+	$tree = _collections_inputs_control('fieldset', array(), array($box, _collections_inputs_label('', 'Old')));
+	$row = _collections_inputs_row(908, 'category', 'radio button', 'reference');
+	pg_cf_apply_field_bindings($tree, array('category' => $row), null, 0, false, array());
+	pg_assert_same('old', _collections_inputs_attr($tree['children'][0], 'value'), 'a reference whose form is gone keeps its drawn choices');
+
+	$tree = _collections_inputs_control('fieldset', array(), array($box, _collections_inputs_label('', 'Old')));
+	$row = _collections_inputs_row(909, 'category', 'radio button', '', array('abc123' => 'News'));
+	pg_cf_apply_field_bindings($tree, array('category' => $row), null, 0, false, array());
+	pg_assert_same('old', _collections_inputs_attr($tree['children'][0], 'value'), 'not a reference: the drawn choices stay');
 }
