@@ -34,7 +34,8 @@ function test_audit_list_link()
 
 function test_audit_list_sort()
 {
-	unset($_SESSION['software']['list_state']['view_audit_log']);
+	// No kept sort; $_SESSION may not exist yet when this test runs first.
+	$_SESSION['software']['list_state']['view_audit_log'] = array();
 	pg_assert_same('created_at desc, id desc', pg_audit_list_sort()['order_by'], 'newest first by default');
 
 	$_SESSION['software']['list_state']['view_audit_log'] = array('sort' => 'who', 'order' => 'asc');
