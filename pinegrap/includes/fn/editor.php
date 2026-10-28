@@ -990,8 +990,16 @@ function prepare_rich_text_editor_content_for_input($content, $path = null)
  * (`&#106;avascript:`) are judged on their decoded form. The filter runs both
  * when a value is stored and when a stored value is printed unescaped, so
  * records saved before it existed are covered as well.
+ *
+ * Two profiles share that allow-list. 'staff' (panel screens, the submitted
+ * form editor) keeps it as it is. 'visitor', the default and the profile for
+ * anything printed on the site, also removes what can restyle or cover the
+ * page or call out of it: the class attribute, every style property that is
+ * not plain text formatting, images outside the site, and it marks links as
+ * user content (rel="nofollow ugc noopener"). An unknown profile is treated
+ * as 'visitor'.
  */
-function pg_sanitize_rich_text($content)
+function pg_sanitize_rich_text($content, $profile = 'visitor')
 {
     $content = (string) $content;
 
@@ -1021,7 +1029,7 @@ function pg_sanitize_rich_text($content)
     }
 
     $wrapper = $body->firstChild;
-    _pg_sanitize_rich_text_children($body);
+    _pg_sanitize_rich_text_children($body, $profile !== 'staff');
 
     // A stray closing tag in the input ends the wrapper early and leaves the
     // rest as siblings of it; both parts are kept.
@@ -1045,8 +1053,9 @@ function pg_sanitize_rich_text($content)
 }
 
 // Walk one level of the tree for pg_sanitize_rich_text() and recurse into the
-// elements that stay.
-function _pg_sanitize_rich_text_children($parent)
+// elements that stay. $visitor applies the visitor profile on top of the
+// shared allow-list.
+function _pg_sanitize_rich_text_children($parent, $visitor = true)
 {
     // Elements whose content is code or a foreign document: removed with
     // everything inside them.
@@ -1107,12 +1116,19 @@ function _pg_sanitize_rich_text_children($parent)
         }
 
         if (!isset($allowed_tags[$tag])) {
-            _pg_sanitize_rich_text_children($child);
+            _pg_sanitize_rich_text_children($child, $visitor);
 
             while ($child->firstChild) {
                 $parent->insertBefore($child->firstChild, $child);
             }
 
+            $parent->removeChild($child);
+            continue;
+        }
+
+        // An outside image tells another server who read the text and when.
+        if ($visitor && ($tag == 'img')
+            && !_pg_rich_text_image_is_local($child->getAttribute('src'), defined('HOSTNAME_SETTING') ? HOSTNAME_SETTING : '')) {
             $parent->removeChild($child);
             continue;
         }
@@ -1128,7 +1144,16 @@ function _pg_sanitize_rich_text_children($parent)
             $value = (string) $attribute->value;
             $keep = false;
 
-            if (isset($allowed_attributes[$name])) {
+            if ($visitor && (($name == 'class') || (($name == 'rel') && ($tag == 'a')))) {
+                $keep = false;
+            } elseif ($visitor && ($name == 'style')) {
+                $value = _pg_rich_text_style_is_safe($value) ? _pg_rich_text_visitor_style($value) : '';
+                $keep = ($value !== '');
+
+                if ($keep) {
+                    $attribute->value = $value;
+                }
+            } elseif (isset($allowed_attributes[$name])) {
                 $keep = ($name != 'style') || _pg_rich_text_style_is_safe($value);
             } elseif (($name == 'href') && ($tag == 'a')) {
                 $keep = _pg_rich_text_url_is_safe($value);
@@ -1145,8 +1170,98 @@ function _pg_sanitize_rich_text_children($parent)
             }
         }
 
-        _pg_sanitize_rich_text_children($child);
+        if ($visitor && ($tag == 'a')) {
+            $child->setAttribute('rel', 'nofollow ugc noopener');
+        }
+
+        _pg_sanitize_rich_text_children($child, $visitor);
     }
+}
+
+// The style declarations a visitor's text keeps: text formatting and the
+// editor's indent. Position, z-index, display, sizes and the rest of layout
+// are dropped, and so are negative lengths and viewport units, which move
+// or stretch text over the rest of the page. Returns the declarations that
+// stay, or '' when none do.
+function _pg_rich_text_visitor_style($style)
+{
+    static $allowed_properties = array(
+        'color' => 1, 'background-color' => 1, 'font-family' => 1, 'font-size' => 1,
+        'font-style' => 1, 'font-weight' => 1, 'font-variant' => 1, 'text-align' => 1,
+        'text-decoration' => 1, 'text-decoration-line' => 1, 'text-decoration-color' => 1,
+        'text-decoration-style' => 1, 'text-transform' => 1, 'text-indent' => 1,
+        'line-height' => 1, 'vertical-align' => 1, 'margin-left' => 1, 'margin-right' => 1,
+        'padding-left' => 1, 'padding-right' => 1, 'list-style-type' => 1, 'direction' => 1,
+        'border' => 1, 'border-width' => 1, 'border-style' => 1, 'border-color' => 1,
+        'border-collapse' => 1,
+    );
+
+    $kept = array();
+
+    foreach (explode(';', preg_replace('/\/\*.*?\*\//s', '', (string) $style)) as $declaration) {
+        $colon = strpos($declaration, ':');
+
+        if ($colon === false) {
+            continue;
+        }
+
+        $property = strtolower(trim(substr($declaration, 0, $colon)));
+        $value = trim(substr($declaration, $colon + 1));
+
+        if (!isset($allowed_properties[$property])
+            || ($value === '')
+            || !preg_match('/^[a-z0-9#%.,\s\'"()-]+$/i', $value)
+            || preg_match('/(^|[\s(,])-[\d.]/', $value)
+            || preg_match('/\d(vw|vh|vmin|vmax)\b/i', $value)) {
+            continue;
+        }
+
+        $kept[] = $property . ':' . $value;
+    }
+
+    return implode('; ', $kept);
+}
+
+// Whether a visitor's image address stays on the site: a relative address,
+// the {path} placeholder, or http(s) on $host (HOSTNAME_SETTING, never the
+// request's Host header). A protocol-relative address, an address with user
+// information and every other scheme are outside.
+function _pg_rich_text_image_is_local($src, $host)
+{
+    $probe = html_entity_decode((string) $src, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $probe = strtolower(preg_replace('/[\x00-\x20\x7f]+/', '', $probe));
+
+    if ($probe === '') {
+        return false;
+    }
+
+    if (strpos($probe, '{path}') === 0) {
+        return true;
+    }
+
+    // Browsers read a backslash as a slash, so "/\host" is "//host".
+    if (preg_match('~^[/\\\\]{2}~', $probe)) {
+        return false;
+    }
+
+    $colon = strpos($probe, ':');
+
+    if (($colon === false) || (strcspn($probe, '/?#') < $colon)) {
+        return true;
+    }
+
+    if (!in_array(substr($probe, 0, $colon), array('http', 'https'), true)) {
+        return false;
+    }
+
+    $parts = parse_url($probe);
+    $host = strtolower(preg_replace('/:\d+$/', '', trim((string) $host)));
+
+    return ($host !== '')
+        && is_array($parts)
+        && !isset($parts['user'])
+        && isset($parts['host'])
+        && ($parts['host'] === $host);
 }
 
 // A link or image address may be relative, a {path} placeholder, or use one

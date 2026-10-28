@@ -300,12 +300,16 @@ if (!$_POST) {
                 }
             }
             
-            // if this field is a rich-text editor field, then prepare content for output before we set field data
+            // A rich-text field loads into the editor, which parses the value
+            // as HTML. Rows stored as 'standard' (answers saved before the
+            // field became rich text, API writes) were never filtered, so the
+            // value goes through the staff profile first.
             if (
                 ($field['type'] == 'text area')
                 && ($field['wysiwyg'] == 1)
+                && is_string($field['data'])
             ) {
-                $field['data'] = prepare_rich_text_editor_content_for_output($field['data']);
+                $field['data'] = prepare_rich_text_editor_content_for_output(pg_sanitize_rich_text($field['data'], 'staff'));
             }
             
             $liveform->assign_field_value($field['form_field_id'], prepare_form_data_for_output($field['data'], $field['type'], $prepare_for_html = false));
