@@ -145,3 +145,13 @@ function test_dark_theme_badges_keep_their_ink()
 	pg_assert_contains("'ban'         => array('bg-black fg-white', lang('Banned')),", dark_theme_leftovers_source('view_waf_log.php'));
 	pg_assert_contains("'deleted'      => ['bg-black fg-white',", dark_theme_leftovers_source('view_parasut_inbox.php'));
 }
+
+// The users list is a scrollX DataTable (.dt-scroll-body overflow:auto): a menu
+// placed absolutely inside it is clipped, so the access menu opens fixed.
+function test_dark_theme_user_list_access_menu_opens_fixed()
+{
+	pg_assert_contains(
+		'data-bs-auto-close="outside" data-bs-strategy="fixed" data-bs-toggle="menu"',
+		dark_theme_leftovers_source('includes/fn/user_list.php'),
+		'access menu toggle in the users list');
+}

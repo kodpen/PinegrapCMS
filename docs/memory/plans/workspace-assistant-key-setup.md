@@ -28,7 +28,7 @@ description: Plan (2026-10-23; steps 1 (#1462), 2 (#1523), 3 (#1726) done; answe
 3. Pinegrap AI: (a) no secret (cannot sign in), no reset, (b) a secret, a REST/MCP door nothing uses. Answer: a.
 4. A hand-linked key: (a) kept, reset offered (its other users stop too), Create only with no row linked, (b) replaced. Answer: a.
 Open: 5. Pinegrap AI: (a) measure first, (b) change limits → a; ai.pinegrap.com answered 502 on 2026-10-23/24.
-Open: 6. Application Access (roles 0-2) rotates and re-scopes every row, an administrator's too (Claude's key): a Manager then calls the API with the admin's rights as the cap. Refuse a row whose owner outranks the editor? Today only rows without a secret are refused.
+6. Application Access (roles 0-2) rotates and re-scopes every row, an administrator's too (Claude's key): a Manager then calls the API with the admin's rights as the cap. Decided (owner, 2026-10-28): refuse a row whose owner outranks the editor (Designer 1 above Manager 2); today only rows without a secret are refused.
 
 ## What could explain "Pinegrap AI worked inefficiently"? (open)
 - Not the key. Nobody picks the model (`ws_ai_model()`: the first GET /models lists); `WS_AI_MAX_STEPS` 8; past `WS_AI_BUDGET` 20 s the next call waits for an open screen or hourly job; timeout 55 s; `max_tokens` 3000; 20-30 context messages; `ws_ai_tools()`, `ws_ai_system_prompt()` size.
