@@ -17,7 +17,7 @@ description: pg_password_strength.js, the panel copy of validate_password_streng
 - The markup never carries `data-bs-strength` at load: Bootstrap's data API would start its own default scorer on the element at DOMContentLoaded. The text colour is `fg-danger`/`fg-warning`/`fg-info`/`fg-success`, the tones Bootstrap's script uses.
 
 ## Where does it show?
-- Panel chrome only (Bootstrap 6): `set_password.php`'s built-in form (`get_set_password()` with `page_id` 0, `$strength_meter` in `set_password_system.php`). A site page (5.3.8, no Strength) gets nothing; change password is drawn only on site pages, so it has no meter.
+- Panel chrome only (Bootstrap 6): `set_password.php`'s built-in form (`get_set_password()` with `page_id` 0: the meter under the password on its `pg_secure_card()` card; the system template's `$strength_meter` stays empty for a page). A site page (5.3.8, no Strength) gets nothing; change password is drawn only on site pages, so it has no meter.
 - The installer's administrator password (`install/index.php`, `admin_password`): `pg_password_strength_meter('admin_password', false)`, always advisory because `strong_password` is off in a new database. Its own `.pg-strength` CSS and scoring script were removed (#2274).
 
 ## What must stay the same as the PHP function?

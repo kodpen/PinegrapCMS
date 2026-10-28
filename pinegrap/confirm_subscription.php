@@ -73,10 +73,7 @@ switch ($pg_fs_state) {
         $pg_fs_message = lang('This link cannot be used. Open the whole link from the e-mail, or submit the form again.');
 }
 
-$pg_fs_content =
-    '<div style="max-width:520px;margin:2em auto;padding:1.5em;border:1px solid #dadce0;border-radius:8px;font-family:Roboto,Arial,sans-serif">'
-    . '<h2 style="margin-top:0">' . h(lang('Confirm your subscription')) . '</h2>'
-    . '<p>' . h($pg_fs_message) . '</p>';
+$pg_fs_content = '<p>' . h($pg_fs_message) . '</p>';
 
 // Confirming one group does not undo "unsubscribe from all" (pg_fs_confirm()),
 // so the address owner is told why the group's mail will not come yet.
@@ -86,16 +83,16 @@ if ((($pg_fs_state === 'confirmed') || ($pg_fs_state === 'member')) && pg_fs_glo
 
 if (($pg_fs_state === 'confirm') || ($pg_fs_state === 'failed')) {
     $pg_fs_content .=
-        '<form method="post" action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/confirm_subscription.php') . '" style="margin-top:1.25em">'
+        '<form method="post" action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/confirm_subscription.php') . '" class="mt-5">'
         . get_token_field()
         . '<input type="hidden" name="c" value="' . h((string) $pg_fs_link['c']) . '"/>'
         . '<input type="hidden" name="g" value="' . h((string) $pg_fs_link['g']) . '"/>'
         . '<input type="hidden" name="t" value="' . h((string) $pg_fs_link['t']) . '"/>'
         . '<input type="hidden" name="s" value="' . h($pg_fs_link['s']) . '"/>'
-        . '<button type="submit" class="software_input_submit_primary">' . h(lang('Confirm my subscription')) . '</button>'
+        . '<button type="submit" class="btn btn-solid theme-primary">' . h(lang('Confirm my subscription')) . '</button>'
         . '</form>';
 }
 
-$pg_fs_content .= '</div>';
-
-print output_header_secure(array('title' => lang('Confirm your subscription'))) . $pg_fs_content . output_footer_secure();
+print output_header_secure(array('title' => lang('Confirm your subscription')))
+    . pg_secure_card('bi-envelope-check', lang('Confirm your subscription'), $pg_fs_content)
+    . output_footer_secure();
