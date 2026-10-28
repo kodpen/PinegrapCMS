@@ -25,5 +25,5 @@ description: Voice message transcripts (V3a #2674): ws_voice, the settings card 
 - At most `WS_VOICE_MAX_SECONDS` (300, owner 5b), the recorder's own cap.
 
 ## What is not built yet?
-- Search and push hearing it, and a recording asking an assistant (V4b, V4c, plans/workspace-voice-messages.md); assistants and recaps: workspace-voice-assistants.md. The panel side: workspace-voice-recording.md, the job: workspace-voice-transcript-job.md.
+- Search and push hearing it: workspace-voice-assistants.md; a recording asking an assistant: workspace-voice-asks.md; answers read aloud: workspace-voice-read-aloud.md; a recording in a note (never transcribed): workspace-notes-voice.md. The panel side: workspace-voice-recording.md, the job: workspace-voice-transcript-job.md.
 - Never checked with a real service (no key in the sandbox).
