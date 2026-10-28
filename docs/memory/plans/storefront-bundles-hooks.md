@@ -19,7 +19,7 @@ description: Bundles design note, part 2: hook points checked in the code, steps
 2a. Done (#2691): counter sale through `pg_bundle_take_stock()`, combined demand in `check_inventory()`.
 2b. Done (#2707): marketplace import and restock, refusals in the inventory API, barcode, stock count, bulk edits, binning a component. Left: the list's quick edit of a bundle's stock (`pg_pb_quick_update()`, `product_builder.php`) — with 2c.
 2c. Checkout: the order completion's stock loop calls `pg_bundle_take_stock(..., 'checkout', $stock_left)` for a bundle line. After order-completion A2b (#2687) moves that loop out of `submit_order.php`.
-3. Done (#PR): component snapshot on invoice lines, component moves on post, return and cancel, profit report (the key was widened in step 1).
+3. Done (#2727): component snapshot on invoice lines, component moves on post, return and cancel, profit report (the key was widened in step 1).
 4. API fields, catalog tokens, list source, designer palette and flags.
 
 ## What did the owner answer? (2026-10-27, #2425)

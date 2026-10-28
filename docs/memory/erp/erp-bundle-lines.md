@@ -1,6 +1,6 @@
 ---
 name: erp-bundle-lines
-description: A product bundle on an ERP invoice (#PR): one line, the component snapshot in erp_invoice_item_components, one stock move per component on issue, return and cancel, the profit report.
+description: A product bundle on an ERP invoice (#2727): one line, the component snapshot in erp_invoice_item_components, one stock move per component on issue, return and cancel, the profit report.
 ---
 
 ## What does an invoice keep of a bundle line?
