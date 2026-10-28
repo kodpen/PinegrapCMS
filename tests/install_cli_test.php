@@ -112,7 +112,7 @@ function test_install_writes_the_site_path()
 {
 	$installer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/install/index.php');
 
-	pg_assert_contains('UPDATE config SET hostname = \'" . escape($_SERVER[\'HTTP_HOST\']) . "\', path = \'" . escape(PATH) . "\'', $installer, 'hostname and path in one update');
+	pg_assert_contains('db_q("UPDATE config SET hostname = ?, path = ?", array((string) $_SERVER[\'HTTP_HOST\'], (string) PATH))', $installer, 'hostname and path in one update');
 }
 
 // A data/config.php that names the database fills in the database variables that are not set;
