@@ -19195,6 +19195,20 @@ button.ws-ack-count:hover {
 html[data-bs-theme="dark"] .wsf-node-manual { --wsf-kind: #8fcf9b; }
 html[data-bs-theme="dark"] .wsf-node-task { --wsf-kind: #8fbde3; }
 html[data-bs-theme="dark"] .wsf-node-end { --wsf-kind: #b3ab9b; }
+/* A value box: no arrows, a dashed border in the value colour. */
+.wsf-node-constants { --wsf-kind: #a8468f; }
+html[data-bs-theme="dark"] .wsf-node-constants { --wsf-kind: #e58fd0; }
+.wsf-node.wsf-node-constants {
+  border-style: dashed;
+  border-left-style: solid;
+}
+.wsf-constant {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6.5rem minmax(0, 1.4fr) auto;
+  gap: var(--ws-space-1);
+  align-items: center;
+  margin-bottom: var(--ws-space-1);
+}
 .wsf-node {
   position: absolute;
   width: 208px;

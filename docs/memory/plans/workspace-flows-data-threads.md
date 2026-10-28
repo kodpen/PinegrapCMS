@@ -29,7 +29,7 @@ description: Plan (owner request 2026-10-27, draft being refined): the Flows can
 
 - T2 drag from an output dot to a field chip; the fork by double-click and its equivalents. Done (PR #2540, `workspace/workspace-flows-thread-drawing.md`).
 
-- T3 the constants box, then the derived value box with its allowlist.
+- T3 the constants box, then the derived value box with its allowlist. The constants box done (PR #2550, `workspace/workspace-flows-value-boxes.md`); next: the derived value box, a step of its own.
 
 - T4 the run view lists threads and values per box.
 

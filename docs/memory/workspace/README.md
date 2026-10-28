@@ -98,6 +98,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-template-setup.md: Placing a flow template (G2): motion schedule from ws_flow_template_motion(), drawn threads, reduced motion, the setup panel, ws_flow_template_setup action, answers checked on the server
 - workspace-flows-thread-drawing.md: Data threads on the Flows canvas (T1, T2): read from the fields, chips and dots under a box, tones, dimming, the toggle, the outline lines, drawing a thread into a field
 - workspace-flows-trigger-values.md: What a flow's step boxes read of what started the run (#2205, D5 #2341): {{trigger.<field>}} declared per start kind, event and record values, the newcomer, a post box in the channel joined (-1)
+- workspace-flows-value-boxes.md: Value boxes of a flow (T3, decision #2415 1a): the constants box's rows, no arrows and no run row, how its values are read, the check, the canvas form
 - workspace-flows-value-picker.md: "Add value" in a Flows box's side panel (data-passing D6): the text boxes with value chips, what the list offers, "empty if skipped", how a chip is kept and edited
 - workspace-flows-versions.md: A paused flow resumed on its live version, and a flow's published versions listed, read and brought back into the draft (flow_versions.php, API routes, no schema)
 - workspace-flows-wait-timeout.md: The timeout of a flow task box (F5d): hours to wait, the timeout outcome, counted from the claim, next look capped at the deadline, the task end first, why approvals have none

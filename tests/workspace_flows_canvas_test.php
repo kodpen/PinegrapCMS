@@ -1186,3 +1186,46 @@ JS
 	pg_assert_same(array('email_1', 'email_1', 'condition_1'), $result['refreshed'], 'each bound box is redrawn');
 	pg_assert_same(array('fl_thread_full'), $result['toasts'], 'a full field says so');
 }
+
+// A constants box (Flows T3) has no arrows: every box is offered its named
+// rows, typed, never "empty if skipped"; it is offered nothing itself and is
+// not taken for the start.
+function test_workspace_flows_canvas_constants_are_offered_to_every_box()
+{
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups'),
+		<<<'JS'
+var KINDS = {
+    manual: { name: 'Manual', into: false, out: ['next'] },
+    condition: { name: 'Condition', into: true, out: ['yes', 'no'] },
+    post: { name: 'Post', into: true, out: ['done', 'failed'] },
+    constants: { name: 'Constants', into: false, out: [], pure: true }
+};
+var FL = { outputs: { post: [], condition: [] }, trigger_outputs: { kinds: { manual: [] }, events: {} }, steps: {} };
+function box(id, kind, config, y) { return { id: id, kind: kind, label: '', config: config || {}, x: 0, y: y }; }
+state = { graph: { nodes: [
+    box('manual_1', 'manual', {}, 0),
+    box('condition_1', 'condition', {}, 1),
+    box('post_1', 'post', {}, 2),
+    box('constants_1', 'constants', { rows: [{ key: 'rate', type: 'number', value: '18' }, { key: '', type: 'text', value: 'x' }, { key: 'sign', type: 'text', value: 'Hi' }] }, 3)
+], edges: [
+    { from: 'manual_1', to: 'condition_1', on: 'next' },
+    { from: 'condition_1', to: 'post_1', on: 'yes' }
+] } };
+var groups = function (id) {
+    return valueGroups(nodeById(id)).filter(function (group) { return group.node.id === 'constants_1'; }).map(function (group) {
+        return (group.skipped ? 'skipped ' : '') + group.values.map(function (value) { return value.token + ':' + value.type; }).join(', ');
+    });
+};
+console.log(JSON.stringify({ post: groups('post_1'), condition: groups('condition_1'), itself: valueGroups(nodeById('constants_1')).map(function (group) { return group.node.id; }) }));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('{{node.constants_1.rate}}:number, {{node.constants_1.sign}}:text'), $result['post'], 'its named rows, never skipped');
+	pg_assert_same($result['post'], $result['condition'], 'the same to the first box');
+	pg_assert_same(array(), $result['itself'], 'a box reads nothing of itself, and the start gives nothing');
+}

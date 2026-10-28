@@ -3354,7 +3354,7 @@ function ws_flow_chain_start($run, $step, $node, $owner)
     }
 
     $source_context = ws_flow_run_context($run);
-    $values = ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
+    $values = ws_flow_pure_values($graph) + ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
         WHERE run_id = '" . (int) $run['id'] . "' AND status IN ('done', 'failed', 'skipped')"));
     $context = json_encode(ws_flow_chain_context($flow, $trigger, $source_context, (string) ($source_context['flow_name'] ?? ''),
         ws_flow_chain_source_result($graph, $node['id'], $values)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

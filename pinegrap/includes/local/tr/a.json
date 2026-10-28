@@ -918,6 +918,7 @@
     "A valid field name could not be found. Please make sure there is at least one valid field name in the first row of the CSV file.": "Geçerli bir alan adı bulunamadı. Lütfen CSV dosyasının ilk satırında en az bir geçerli alan adı olduğundan emin olun.",
     "A value from the page address, compared with is equal to, finds records": "Sayfa adresindeki değer eşittir ile karşılaştırıldı ve kayıt buldu",
     "A value of an earlier box": "Önceki bir kutunun değeri",
+    "A value of the box {var:1} needs a name of small letters, digits and _ that does not start with a digit.": "{var:1} kutusundaki bir değerin küçük harf, rakam ve _ ile yazılmış, rakamla başlamayan bir adı olmalı.",
     "A value to use when the first one fails": "İlki hata verirse kullanılacak değer",
     "A variant set needs at least two variants.": "Bir varyant setinde en az iki varyant olmalıdır.",
     "A variant without a price needs price rules to be priced by.": "Fiyatı olmayan bir varyantın fiyatlanması için fiyat kuralları gerekir.",

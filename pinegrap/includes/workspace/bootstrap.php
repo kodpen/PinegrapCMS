@@ -82,6 +82,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_runs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_run_events.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/steps.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_conditions.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_values.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_anchors.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_templates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_shares.php');
