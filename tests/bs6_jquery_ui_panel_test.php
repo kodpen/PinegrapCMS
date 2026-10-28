@@ -95,3 +95,19 @@ function test_bs6_jquery_ui_panel_files_call_no_widget()
 	$unexpected = array_values(array_diff($found, $allowed));
 	pg_assert_same(array(), $unexpected, 'no panel file calls a jQuery UI widget');
 }
+
+function test_bs6_jquery_ui_panel_css_styles_no_ui_class()
+{
+	// Comments may still name jQuery UI; only selectors count. A selector is
+	// the text before a "{", so property values (url(), var()) are skipped.
+	$css = bs6_jquery_ui_panel_test_source('assets/css/backend.src.css');
+	$css = (string) preg_replace('~/\*.*?\*/~s', '', $css);
+	preg_match_all('/(?:^|[{};])\s*([^{};]+)\{/', $css, $selectors);
+	$found = array();
+	foreach ($selectors[1] as $selector) {
+		if (preg_match('/[.#]ui-[\w-]+/', $selector, $match)) {
+			$found[] = $match[0];
+		}
+	}
+	pg_assert_same(array(), $found, 'backend.src.css styles no jQuery UI class or id');
+}
