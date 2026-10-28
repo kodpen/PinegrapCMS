@@ -6797,7 +6797,7 @@
                 return;
             }
 
-            scheduledList(body, head);
+            scheduledList(body);
         },
 
         showHome: function (asked) {
@@ -16900,18 +16900,10 @@
 
     // Every scheduled action, for staff, by state: the scheduled screen's
     // list and the Scheduled actions section of Flows (workspace_flow.js,
-    // through PGWsKit). New goes into bar, unless options.add is false: in
-    // Flows a new rule is a flow, started from New flow. The list is read
-    // again while it is still on the page.
-    function scheduledList(body, bar, options) {
-        if (!options || (options.add !== false)) {
-            var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('sa_new_long'), 'bi-plus-lg');
-            add.addEventListener('click', function () {
-                scheduledForm({}, null, function () { load(); });
-            });
-            bar.appendChild(add);
-        }
-
+    // through PGWsKit). It offers no New: a new rule is a flow, started
+    // from New flow or Add › Scheduled flow. The list is read again while
+    // it is still on the page.
+    function scheduledList(body) {
         var filters = el('div', 'ws-sa-filters');
         var list = el('div', 'ws-sa-list');
         var status = '';
@@ -17054,8 +17046,9 @@
             }
         };
 
-        // A converted action is changed on its flow's canvas, where its
-        // conditions, step and follow-ups are boxes.
+        // An action is changed on its flow's canvas, where its conditions,
+        // step and follow-ups are boxes; one not converted yet is converted
+        // first (scheduledEdit()).
         if (item.can_edit) {
             var edit = button('btn btn-sm btn-text theme-secondary', t('edit'), 'bi-pencil');
             edit.addEventListener('click', function () {
@@ -17064,7 +17057,7 @@
                     return;
                 }
 
-                scheduledForm(null, item, function (fresh) { refresh({ item: fresh }); });
+                scheduledEdit(item.id, edit);
             });
             tools.appendChild(edit);
         }
@@ -17194,13 +17187,60 @@
         });
     }
 
+    // Edit on an action not converted yet: the conversion tried again
+    // (ws_flow_scheduled_edit), its flow opened on the canvas; an action
+    // the flow still refuses lists why and offers Duplicate, a new flow
+    // where it can be fixed. The action runs on as it is meanwhile.
+    function scheduledEdit(id, trigger) {
+        var free = function () {
+            if (trigger) {
+                trigger.disabled = false;
+            }
+        };
+
+        if (trigger) {
+            trigger.disabled = true;
+        }
+
+        api('ws_flow_scheduled_edit', { id: id }).then(function (result) {
+            if (result.flow_id) {
+                window.location.href = CFG.urls.flows + '?flow=' + result.flow_id;
+                return;
+            }
+
+            free();
+
+            if (!(result.problems || []).length) {
+                toast(result.message);
+                return;
+            }
+
+            var list = el('ul', 'mb-0');
+
+            result.problems.forEach(function (line) {
+                list.appendChild(el('li', '', line));
+            });
+
+            ask(result.message, t('sa_duplicate'), false, list).then(function (yes) {
+                if (yes) {
+                    api('ws_flow_scheduled_copy', { id: id }).then(function (copy) {
+                        flowOpened(copy);
+                    }).catch(fail);
+                }
+            });
+        }).catch(function (error) {
+            free();
+            fail(error);
+        });
+    }
+
     // A scheduled action on the flow canvas (ws_scheduled_get answers its
-    // graph); Edit there opens the form, and the action saved is drawn again.
+    // graph); Edit there opens it as a flow (scheduledEdit()).
     function scheduledGraph(id) {
         api('ws_scheduled_get', { id: id }).then(function (data) {
             window.PGWsFlow.showAction(data.item, data.graph, {
-                edit: data.item.can_edit ? function () {
-                    scheduledForm(null, data.item, function (fresh) { scheduledGraph(fresh.id); });
+                edit: data.item.can_edit ? function (event) {
+                    scheduledEdit(data.item.id, event && event.currentTarget);
                 } : null
             });
         }).catch(fail);

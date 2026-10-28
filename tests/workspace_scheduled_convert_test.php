@@ -99,8 +99,14 @@ function test_workspace_scheduled_convert_wiring()
 	pg_assert_contains("anchor = 'converted'", $convert);
 	pg_assert_contains("WHERE id = '\" . (int) \$row['id'] . \"' AND flow_id = 0\");", $convert);
 	pg_assert_contains("DELETE FROM ws_flows WHERE id = '\" . \$flow_id . \"'", $convert);
-	pg_assert_contains('!empty(ws_flow_problems($graph))', $convert);
-	pg_assert_contains('ws_flow_graph_from_scheduled(ws_scheduled_form_data($viewer, $row), ws_scheduled_money_metrics(), (int) $row[\'id\'])', $convert);
+	pg_assert_contains('$made = ws_scheduled_convert_drawing($row);', $convert);
+	pg_assert_contains("!empty(\$made['problems'])", $convert);
+
+	$drawing = ws_scheduled_convert_test_source('ws_scheduled_convert_drawing');
+
+	pg_assert_contains('ws_change_viewer_for_id($owner)', $drawing, 'drawn as its creator sees it');
+	pg_assert_contains('ws_flow_graph_from_scheduled(ws_scheduled_form_data($viewer, $row), ws_scheduled_money_metrics(), (int) $row[\'id\'])', $drawing);
+	pg_assert_contains('ws_flow_problems($graph)', $drawing);
 
 	$due = ws_scheduled_convert_test_source('ws_scheduled_convert_due');
 
@@ -154,4 +160,41 @@ function test_workspace_scheduled_flow_copy_wiring()
 	pg_assert_contains("api('ws_flow_scheduled_new', { channel_id: self.channel.id })", $js);
 	pg_assert_contains("api('ws_flow_scheduled_copy', { id: item.id })", $js);
 	pg_assert_false(strpos($js, 'scheduledForm({ note_id') !== false, 'the note toolbar has no entry');
+}
+
+// Edit on a card of a row not converted yet tries the conversion again and
+// opens its flow; a row the flow still refuses answers its problems, once
+// each, and Duplicate is offered. The old form is opened from nowhere.
+function test_workspace_scheduled_flow_edit()
+{
+	pg_assert_same(array('The post box has no text.', 'No channel.'), ws_scheduled_flow_edit_problems(array(
+		array('code' => 'bad_config', 'text' => 'The post box has no text.'),
+		array('code' => 'bad_config', 'text' => ' The post box has no text. '),
+		array('code' => 'no_start', 'text' => ''),
+		array('code' => 'bad_config', 'text' => 'No channel.'),
+	)));
+	pg_assert_same(array(), ws_scheduled_flow_edit_problems(null));
+
+	$edit = ws_scheduled_convert_test_source('ws_scheduled_flow_edit');
+
+	pg_assert_contains('ws_scheduled_convert($id);', $edit, 'the conversion tried again');
+	pg_assert_contains("((string) (\$row['anchor'] ?? '') === '')", $edit, 'never a hidden anchor');
+	pg_assert_contains("ws_scheduled_convert_drawing(\$row)['problems']", $edit, 'the problems as the conversion found them');
+
+	$route = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	$start = strpos($route, "case 'ws_flow_scheduled_edit':");
+
+	pg_assert_true($start !== false, 'the route');
+	$route = substr($route, $start, strpos($route, 'return ws_action_ok(ws_scheduled_flow_edit($scheduled));', $start) - $start);
+	pg_assert_contains('ws_can_schedule($viewer)', $route);
+	pg_assert_contains("array('active', 'paused', 'failed')", $route, 'only a row its card lets edit');
+	pg_assert_contains("'ws_flow_scheduled_edit'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/actions.php'));
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_contains("api('ws_flow_scheduled_edit', { id: id })", $js);
+	pg_assert_contains("ask(result.message, t('sa_duplicate'), false, list)", $js);
+	pg_assert_contains('scheduledEdit(item.id, edit);', $js, 'Edit on the card');
+	pg_assert_contains('scheduledEdit(data.item.id, event && event.currentTarget);', $js, 'Edit on the read-only drawing');
+	pg_assert_same(0, preg_match('/scheduledForm\((null|\{\}), /', $js), 'no card, drawing or list opens the form');
 }
