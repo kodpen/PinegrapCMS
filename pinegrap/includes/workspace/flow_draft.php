@@ -1250,3 +1250,99 @@ function ws_flow_draft_patch_open($viewer, $row, $draft)
 
     return array('ok' => true, 'error' => '', 'flow_id' => (int) $flow['id'], 'left' => array());
 }
+
+// ─── Marked on the canvas ───────────────────────────────────────────────
+
+/** How long a patch opened onto a flow stays marked there unless published sooner (seconds). */
+define('WS_FLOW_PATCH_MARK_DAYS', 30);
+
+/**
+ * The boxes a patch marks on the canvas (pure), in the order it made them:
+ * a box it added 'added', a box whose label or settings it set 'changed' (an
+ * added box it then set stays 'added'). A box it removed, or one no longer
+ * on the graph, is not marked; arrows alone mark no box.
+ *
+ * @param mixed $ops   the changes as ws_flow_patch_apply() read them
+ * @param array $graph the draft the canvas shows
+ * @return array list of {id, mark}
+ */
+function ws_flow_patch_marks($ops, $graph)
+{
+    $there = array();
+    $marks = array();
+
+    foreach ((array) ($graph['nodes'] ?? array()) as $node) {
+        if (is_array($node) && isset($node['id'])) {
+            $there[(string) $node['id']] = true;
+        }
+    }
+
+    foreach ((array) $ops as $op) {
+        $what = (is_array($op) && is_scalar($op['op'] ?? null)) ? (string) $op['op'] : '';
+        $id = (is_array($op) && is_scalar($op['id'] ?? null)) ? (string) $op['id'] : '';
+
+        if ($id === '') {
+            continue;
+        }
+
+        if ($what === 'add') {
+            unset($marks[$id]);
+            $marks[$id] = 'added';
+        } elseif (($what === 'set') && !isset($marks[$id])) {
+            $marks[$id] = 'changed';
+        } elseif ($what === 'remove') {
+            unset($marks[$id]);
+        }
+    }
+
+    $list = array();
+
+    foreach ($marks as $id => $mark) {
+        if (isset($there[$id])) {
+            $list[] = array('id' => (string) $id, 'mark' => $mark);
+        }
+    }
+
+    return $list;
+}
+
+/**
+ * The latest patch of Pinegrap AI the person opened onto this flow, marked on
+ * its canvas until the flow is published after it: the card's id and the
+ * boxes it added or changed that are still on the draft. Null when none.
+ *
+ * @param array      $viewer
+ * @param array      $flow    ws_flow_for()
+ * @param array|null $version its live version, ws_flow_version()
+ * @param array      $draft   ws_flow_graph_of($flow)
+ * @return array|null change_id, boxes (ws_flow_patch_marks())
+ */
+function ws_flow_ai_marks($viewer, $flow, $version, $draft)
+{
+    if (!function_exists('ws_changes_ready') || !ws_changes_ready()) {
+        return null;
+    }
+
+    $since = max(is_array($version) ? (int) $version['published_at'] : 0, time() - WS_FLOW_PATCH_MARK_DAYS * 86400);
+
+    // Only cards of this person opened since; the flow is read from each
+    // snapshot, so a few are looked at, newest first.
+    $rows = db_items("SELECT id, snapshot FROM ws_ai_changes
+        WHERE record_type = 'flow' AND action = 'draft' AND status = 'applied'
+            AND decided_by = '" . (int) $viewer['id'] . "' AND decided_at > '" . (int) $since . "'
+        ORDER BY decided_at DESC, id DESC LIMIT 20");
+
+    foreach ((array) $rows as $row) {
+        $snapshot = json_decode((string) $row['snapshot'], true);
+
+        if (!is_array($snapshot) || ((int) ($snapshot['base']['flow_id'] ?? 0) !== (int) $flow['id'])) {
+            continue;
+        }
+
+        $boxes = ws_flow_patch_marks($snapshot['patch'] ?? array(), $draft);
+
+        return empty($boxes) ? null : array('change_id' => (int) $row['id'], 'boxes' => $boxes);
+    }
+
+    return null;
+}

@@ -19319,6 +19319,62 @@ html[data-bs-theme="dark"] .wsf-node-value { --wsf-kind: #e58fd0; }
   border-color: var(--pg-danger);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--pg-danger) 30%, transparent);
 }
+/* A box a patch of Pinegrap AI added or changed: a dashed ring outside the
+   border, so selection and problems still show on the box itself. */
+.wsf-node.wsf-ai-added,
+.wsf-outline-item.wsf-ai-added {
+  --wsf-ai: var(--pg-success);
+  outline: 2px dashed var(--wsf-ai);
+  outline-offset: 3px;
+}
+.wsf-node.wsf-ai-changed,
+.wsf-outline-item.wsf-ai-changed {
+  --wsf-ai: var(--pg-info);
+  outline: 2px dashed var(--wsf-ai);
+  outline-offset: 3px;
+}
+.wsf-ai-badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: .2rem;
+  margin-left: auto;
+  padding: 0 .4rem;
+  border-radius: var(--ws-radius-xs);
+  background: color-mix(in srgb, var(--wsf-ai) 15%, transparent);
+  color: var(--pg-fg-body);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.5;
+  text-transform: none;
+  white-space: nowrap;
+}
+.wsf-node.wsf-bad .wsf-ai-badge {
+  margin-left: 0;
+}
+.wsf-outline-head .wsf-ai-badge {
+  font-size: .72rem;
+}
+.wsf-ai-marks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ws-space-2);
+  margin-bottom: var(--ws-space-3);
+  padding: var(--ws-space-2) var(--ws-space-3);
+  border: 1px dashed var(--pg-info);
+  border-radius: var(--ws-radius);
+  background: var(--pg-info-bg-subtle);
+  color: var(--pg-info-fg-emphasis);
+  font-size: .875rem;
+}
+.wsf-ai-go {
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .wsf-node.wsf-target {
   border-color: var(--ws-accent);
   background: var(--ws-soft);

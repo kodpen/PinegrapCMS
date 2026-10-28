@@ -234,7 +234,11 @@
         // run shown is not being read ({ lost, text }), null while it is.
         poll: { timer: 0, delay: POLL_FIRST, busy: 0, note: null },
         tickAt: 0,
-        share: null         // the Share dialog open: { flow, data (ws_flow_shares), busy }
+        share: null,        // the Share dialog open: { flow, data (ws_flow_shares), busy }
+        // A patch of Pinegrap AI opened onto the flow (ws_flow_ai_marks()):
+        // { change, boxes: { id: 'added' | 'changed' }, order: [id] }, null
+        // when none or the viewer hid its marks.
+        marks: null
     };
 
     var ui = {};
@@ -608,6 +612,8 @@
         bindWindow();
 
         var asked = parseInt((/[?&]flow=([0-9]+)/.exec(window.location.search) || [])[1], 10) || 0;
+        // A box to open with the flow (a draft card's "Edit on the canvas").
+        var askedBox = (/[?&]box=([a-z0-9_]+)(&|$)/.exec(window.location.search) || [])[1] || '';
         var section = FL.scheduled && /[?&]view=scheduled(&|$)/.test(window.location.search);
 
         K.api('ws_flow_list').then(function (data) {
@@ -623,7 +629,11 @@
             if (section) {
                 showScheduled();
             } else if (asked || first) {
-                open(asked || first, first);
+                open(asked || first, first).then(function () {
+                    if (askedBox && state.flow && (state.flow.id === asked) && nodeById(askedBox)) {
+                        select({ type: 'node', id: askedBox }, { reveal: true, focus: true });
+                    }
+                });
             } else {
                 showNone();
             }
@@ -639,6 +649,11 @@
         ui.bar.setAttribute('aria-label', t('fl_toolbar'));
         ui.problemBox = el('div', 'wsf-problems d-none');
         ui.problemBox.id = 'wsf-problems';
+        // The boxes a patch of Pinegrap AI added or changed, each leading to
+        // its box.
+        ui.marksBox = el('div', 'wsf-ai-marks d-none');
+        ui.marksBox.setAttribute('role', 'region');
+        ui.marksBox.setAttribute('aria-label', t('fl_ai_title'));
         ui.conflictBox = el('div', 'alert theme-warning d-flex flex-wrap align-items-center gap-3 py-3 d-none');
         // While a run is shown: which, and the way back to the flow.
         ui.runBox = el('div', 'wsf-run-bar d-none');
@@ -731,6 +746,7 @@
         root.appendChild(ui.conflictBox);
         root.appendChild(ui.runBox);
         root.appendChild(ui.problemBox);
+        root.appendChild(ui.marksBox);
         root.appendChild(ui.app);
         root.appendChild(ui.live);
 
@@ -1587,6 +1603,7 @@
         state.graph = graphOf(state.edit ? flow.draft : (flow.graph || flow.draft));
         state.problems = flow.problems || [];
         state.warnings = flow.warnings || [];
+        state.marks = marksOf(flow);
         state.selected = null;
         state.binding = null;
         state.dirty = false;
@@ -1941,6 +1958,7 @@
         drawSettings();
         drawOutline();
         drawProblems();
+        drawMarks();
         drawState();
     }
 
@@ -2017,6 +2035,7 @@
         titleNode.classList.toggle('wsf-placeholder', missing);
         box.querySelector('.wsf-node-meta').textContent = (title || missing) ? meta : '';
         box.setAttribute('aria-label', t(kindOf(node).name) + ': ' + (title || (missing ? t('fl_untitled_box') : '')) + '. ' + meta);
+        paintMark(box, box.querySelector('.wsf-node-head'), node);
         paintRun(box, node);
     }
 
@@ -2745,6 +2764,118 @@
             showGallery(into);
         });
         parent.appendChild(pick);
+    }
+
+    // ── Marks of a patch from Pinegrap AI ──────────────────────────────
+
+    // The marks of the patch the flow carries, unless the viewer hid that
+    // patch's marks in this browser.
+    function marksOf(flow) {
+        var given = flow.ai_marks;
+
+        if (!state.edit || !given || !given.boxes || !given.boxes.length || marksHidden(given.change_id)) {
+            return null;
+        }
+
+        var marks = { change: given.change_id, boxes: {}, order: [] };
+
+        given.boxes.forEach(function (box) {
+            marks.boxes[box.id] = (box.mark === 'added') ? 'added' : 'changed';
+            marks.order.push(box.id);
+        });
+
+        return marks;
+    }
+
+    function marksHidden(change) {
+        try {
+            return window.localStorage.getItem('pg_wsf_marks_hidden') === String(change);
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function hideMarks() {
+        try {
+            window.localStorage.setItem('pg_wsf_marks_hidden', String(state.marks.change));
+        } catch (error) {
+            // Not kept: the marks come back when the flow is opened again.
+        }
+
+        state.marks = null;
+        drawAll();
+        announce(t('fl_ai_hidden'));
+        ui.viewport.focus({ preventScroll: true });
+    }
+
+    function markOf(id) {
+        return (state.marks && !state.run && state.marks.boxes[id]) || '';
+    }
+
+    // A box (on the canvas or in the outline) a patch added or changed: its
+    // outline, a badge in its heading and the word in its name.
+    function paintMark(box, head, node) {
+        var mark = markOf(node.id);
+        var badge = head.querySelector('.wsf-ai-badge');
+
+        box.classList.toggle('wsf-ai-added', mark === 'added');
+        box.classList.toggle('wsf-ai-changed', mark === 'changed');
+
+        if (badge) {
+            badge.remove();
+        }
+
+        if (!mark) {
+            return;
+        }
+
+        badge = el('span', 'wsf-ai-badge', t(mark === 'added' ? 'fl_ai_added' : 'fl_ai_changed'));
+        badge.insertBefore(K.icon('bi-stars'), badge.firstChild);
+        badge.title = t(mark === 'added' ? 'fl_ai_added_long' : 'fl_ai_changed_long');
+        head.appendChild(badge);
+
+        if (box.hasAttribute('aria-label')) {
+            box.setAttribute('aria-label', box.getAttribute('aria-label') + ' ' + badge.title + '.');
+        }
+    }
+
+    // Over the canvas: what the patch added or changed, each box a button
+    // that selects it, and the way to hide the marks.
+    function drawMarks() {
+        K.clear(ui.marksBox);
+
+        var ids = state.marks ? state.marks.order.filter(function (id) { return !!markOf(id) && !!nodeById(id); }) : [];
+
+        ui.marksBox.classList.toggle('d-none', !ids.length);
+
+        if (!ids.length) {
+            return;
+        }
+
+        var text = el('span', 'wsf-ai-marks-text');
+
+        text.appendChild(K.icon('bi-stars', 'me-1'));
+        text.appendChild(document.createTextNode(t('fl_ai_marked')));
+        ui.marksBox.appendChild(text);
+
+        ids.forEach(function (id) {
+            var node = nodeById(id);
+            var go = K.button('btn btn-sm btn-ghost wsf-ai-go', '', state.marks.boxes[id] === 'added' ? 'bi-plus-circle' : 'bi-pencil');
+
+            go.appendChild(nameText(node));
+            go.title = t(state.marks.boxes[id] === 'added' ? 'fl_ai_added_long' : 'fl_ai_changed_long');
+            go.addEventListener('click', function () {
+                if (nodeById(id)) {
+                    select({ type: 'node', id: id }, { reveal: true, focus: true });
+                }
+            });
+            ui.marksBox.appendChild(go);
+        });
+
+        var hide = K.button('btn btn-sm btn-link ms-auto', t('fl_ai_hide'));
+
+        hide.addEventListener('click', hideMarks);
+        ui.marksBox.appendChild(hide);
     }
 
     function markSelected() {
@@ -5440,6 +5571,7 @@
             head.appendChild(K.icon(kindOf(node).icon, 'me-1'));
             head.appendChild(el('span', 'wsf-outline-kind', t(kindOf(node).name)));
             head.appendChild(el('span', 'wsf-outline-title', outlineTitle(node)));
+            paintMark(item, head, node);
             item.appendChild(head);
 
             // A run shown: how each box went, in words, in place of its
@@ -5542,6 +5674,7 @@
 
             drawOutline();
             drawSettings();
+            drawMarks();
         }
 
         drawState();

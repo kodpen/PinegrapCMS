@@ -17,7 +17,7 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 - D8 AI drafts: F8 of workspace-flows.md, after D1 and D4 (rules below), in three slices:
   - D8a server (done, #2605, workspace/workspace-flow-ai-drafts.md): Pinegrap AI's `propose_flow` tool (schema from `ws_flow_kind_catalogue()`), a full graph for a new flow or a patch (add, connect, remove, set) to a flow the person edits, `read_flow` to read one first, automatic layout, `ws_flow_graph_check()` problems handed back to the model, the A8 draft card (flow_draft.php); a patch card opens onto that flow's draft. Files: includes/workspace/flow_draft.php, ai.php, tests/workspace_flow_draft_test.php.
   - D8b card: the draft card as a mini flow window (boxes and threads drawn small, outbound boxes marked, F4e try per box); a panel action giving the card's graph. Files: assets/js/workspace.js (+ bundle), a panel action.
-  - D8c canvas: a patch opened on the canvas highlights the boxes it added or changed; edits from the card open the box on the canvas. Files: assets/js/workspace_flow.js.
+  - D8c canvas (done, #2725, workspace/workspace-flow-ai-drafts.md): patch boxes marked until publish; `?flow=<id>&box=<id>` for D8b.
 
 - D9 later: lists and a "For each" box (`pass` > 0).
 

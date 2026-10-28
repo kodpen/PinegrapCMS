@@ -2097,6 +2097,9 @@ function ws_flow_detail($viewer, $flow)
         'changed'  => $edit && ($draft !== null) && (($live === null) || ($draft !== $live)),
         'manage'   => ws_flow_share_manager($viewer, $flow),
         'owner_id' => (int) $flow['owner_id'],
+        // The boxes a patch of Pinegrap AI opened here added or changed
+        // (flow_draft.php), marked for whoever may change it.
+        'ai_marks' => ($edit && ($draft !== null)) ? ws_flow_ai_marks($viewer, $flow, $version, $draft) : null,
     );
 }
 
@@ -2177,6 +2180,14 @@ function ws_flow_js_strings()
         'fl_retry'            => lang('Try again'),
         'fl_problems'         => ws_js_template('Problems: {var:1}', 1),
         'fl_no_problems'      => lang('No problems'),
+        'fl_ai_title'         => lang('Changes of Pinegrap AI'),
+        'fl_ai_marked'        => lang("Pinegrap AI's changes, marked until the flow is published:"),
+        'fl_ai_added'         => lang('New'),
+        'fl_ai_changed'       => lang('Changed'),
+        'fl_ai_added_long'    => lang('Added by Pinegrap AI'),
+        'fl_ai_changed_long'  => lang('Changed by Pinegrap AI'),
+        'fl_ai_hide'          => lang('Hide marks'),
+        'fl_ai_hidden'        => lang('The marks are hidden.'),
         'fl_warnings'         => ws_js_template('Warnings: {var:1}', 1),
         'fl_publish'          => lang('Publish'),
         'fl_publish_blocked'  => lang('Fix the problems before the flow is published.'),
