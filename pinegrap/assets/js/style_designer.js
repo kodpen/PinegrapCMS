@@ -1996,6 +1996,25 @@ const StyleDesigner = (function () {
         return _cfFlagOn(hit.translate_values);
     }
 
+    // The kinds a collection field may have beyond its type, and the field
+    // types each is given to: twin of pg_coll_kinds() in
+    // includes/fn/collections.php.
+    var _CF_KINDS = {
+        number:    ['text box'],
+        image:     ['file upload'],
+        reference: ['text box', 'pick list', 'radio button', 'check box']
+    };
+    // The [kind, label] pairs a field of `type` may take.
+    function _cfKindsFor(type) {
+        var labels = {
+            number:    _sdT('Number'),
+            image:     _sdT('Image'),
+            reference: _sdT('Reference to another form')
+        };
+        return Object.keys(_CF_KINDS).filter(function (k) { return _CF_KINDS[k].indexOf(type) !== -1; })
+            .map(function (k) { return [k, labels[k]]; });
+    }
+
     // The control whose record a panel edits: the first control of the group
     // for a radio / checkbox in a <fieldset>, the control itself otherwise.
     function _cfLeadOf(node, root) {
@@ -2388,6 +2407,28 @@ const StyleDesigner = (function () {
                     '</div></div>';
         }
 
+        // A collection field's kind, where the control's type can have one
+        // (pg_coll_field_kind()); a reference names the form it points into.
+        // Offered on a form marked as a collection, and kept in view on a
+        // field that already has a kind.
+        var kinds = _cfKindsFor(leadType);
+        if (kinds.length && (parseInt(settings.collection || 0, 10) || rec.kind)) {
+            if (rec.kind === 'reference' && !_customFormsCache && typeof _fetchCustomForms === 'function') {
+                _fetchCustomForms(function () { _sdSchedulePropsRefresh(); });
+            }
+            var kindNow = (kinds.some(function (k) { return k[0] === rec.kind; })) ? rec.kind : '';
+            html += row(_sdT('Kind'),
+                _cfSel('sd-cf-kind', kindNow, kinds, _sdT('— As its type —')) +
+                (kindNow === 'reference'
+                    ? '<select class="form-control form-control-sm mt-1 sd-cf-ref" aria-label="' + esc(_sdT('Form it points into')) + '">' +
+                          '<option value="0">' + esc(_sdT('— Choose a form —')) + '</option>' +
+                          _swFormOptions(parseInt(rec.ref || 0, 10) || 0) +
+                      '</select>' +
+                      _cfHint(esc(_sdT('The field holds the reference code or the address name of a record of that form; several are separated by commas.')))
+                    : '') +
+                '');
+        }
+
         html += row(_sdT('Contact binding'),
             _cfSel('sd-cf-contact', rec.contact_field || '', contact, null) +
             _cfHint(_sdT('For a signed-in visitor the field is filled from the contact record, and submitting updates that record.')));
@@ -2625,6 +2666,19 @@ const StyleDesigner = (function () {
         });
         on('sd-cf-contact', 'change', function (el) {
             _cfRec(lead).contact_field = el.value;
+            commit(false);
+        });
+        on('sd-cf-kind', 'change', function (el) {
+            var r = _cfRec(lead);
+            if (el.value) r.kind = el.value; else delete r.kind;
+            if (el.value !== 'reference') delete r.ref;
+            // An empty `_cf` turns into an array on the server's round trip.
+            if (!Object.keys(r).length) delete lead.props._cf;
+            commit(true);
+        });
+        on('sd-cf-ref', 'change', function (el) {
+            var v = parseInt(el.value, 10) || 0;
+            if (v) _cfRec(lead).ref = v; else delete _cfRec(lead).ref;
             commit(false);
         });
         on('sd-cf-urlparam', 'change', function (el) {
@@ -2944,6 +2998,8 @@ const StyleDesigner = (function () {
             rec.quiz_answer        = f.quiz_answer || '';
             if (kind === 'textarea') rec.wysiwyg = _cfFlagOn(f.wysiwyg);
             if (f.translate !== undefined) rec.translate = _cfFlagOn(f.translate);
+            if (f.kind) rec.kind = String(f.kind);
+            if (parseInt(f.reference_page_id || 0, 10) > 0) rec.ref = parseInt(f.reference_page_id, 10);
 
             ctrls.forEach(function (c) { _cfSetAttr(c.node, 'name', f.name); });
             var src = _cfLabelSource(ctrls[0]);
@@ -35321,6 +35377,18 @@ const StyleDesigner = (function () {
                                       _sdT('No field carries the <strong>Title</strong> role, so the records get no name and keep their reference code. Select a control and assign it in Form Field → RSS / list role.') +
                                   '</div>'
                                 : '')
+                        ) +
+                        // A collection: its records are the items other
+                        // forms' records point at (a category, an author),
+                        // and its fields can be given a kind.
+                        row(_sdT('Collection'),
+                            '<div class="form-field">' +
+                                '<div class="switch"><input class="sd-cf-sb" data-s="collection" type="checkbox" id="sd-sw-cf-collection"' + (_cfFS.collection ? ' checked' : '') + '></div>' +
+                                '<label for="sd-sw-cf-collection" style="font-size:.72rem">' + esc(_sdT('Use as a collection')) + '</label>' +
+                            '</div>' +
+                            '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
+                                esc(_sdT('Each field can then be given a kind (number, image, a reference to another form) in Form Field → Kind. The records stay this form\'s submissions.')) +
+                            '</div>'
                         ) +
                         row(_sdT('Notification email'),
                             '<input type="text" class="form-control form-control-sm sd-cf-s" data-s="notify_email" value="' + esc(_cfFS.notify_email || '') + '" maxlength="255" placeholder="' + esc(_sdT('sample@site.com')) + '">' +

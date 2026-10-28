@@ -74,6 +74,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_marketplace_remote_products(); // 11.0.40
 	upgrade_2026_11_0_passkey_signin();        // 11.0.41
 	upgrade_2026_11_0_delivered_campaigns();    // 11.0.42
+	upgrade_2026_11_0_collections();            // 11.0.43
 	upgrade_2026_11_0_marketplace_map_code_bin(); // 11.0.44
 	upgrade_2026_11_0_shipment_lookup();        // 11.0.45
 	upgrade_2026_11_0_session_passkey();        // 11.0.46
@@ -1337,6 +1338,21 @@ function upgrade_2026_11_0_erp_invoice_recurring_day() {
 	}
 
 	install_note('ERP: a repeating invoice started from an invoice dated the 29th, 30th or 31st no longer stays on the 28th, 29th or 30th the first short month cut it to; it goes on to the invoice\'s own day, or the last day of a shorter month. A recurrence whose first date was changed by hand keeps its day: stop it and start it again from the invoice to fix it.');
+
+}
+
+// Collections (includes/fn/collections.php): a designer form marked as a
+// collection, and the kind of each of its fields with the form a reference
+// field points into. Pickers, lists, feeds and the API read them without
+// loading the form page's design. VARCHAR, not ENUM, so a new kind needs no
+// migration. Every existing form and field stays as it was (0 and '').
+function upgrade_2026_11_0_collections() {
+
+	install_add_column('custom_form_pages', 'collection', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('form_fields', 'collection_kind', "VARCHAR(32) NOT NULL DEFAULT ''");
+	install_add_column('form_fields', 'reference_page_id', "INT(10) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Forms: a designed form can be marked as a collection, and its fields can be given a kind (number, image, reference to another form); existing forms are unchanged.');
 
 }
 

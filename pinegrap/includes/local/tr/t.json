@@ -1630,6 +1630,7 @@
     "The field has been created.": "Alan oluşturuldu.",
     "The field has been deleted.": "Alan silindi.",
     "The field has been saved.": "Alan kaydedildi.",
+    "The field holds the reference code or the address name of a record of that form; several are separated by commas.": "Alan, o formun bir kaydının başvuru kodunu veya adres adını tutar; birden çoksa virgülle ayrılır.",
     "The field holds the reference code or the address name of the other record; several are separated by commas. Only complete records are read, and never a field kept for staff only.": "Alan, diğer kaydın başvuru kodunu veya adres adını tutar; birden çoksa virgülle ayrılır. Yalnızca tamamlanmış kayıtlar okunur, yalnızca personele ayrılmış alanlar hiçbir zaman okunmaz.",
     "The field must have a name. Please type in a name for the field.": "Alanın bir adı olmalıdır. Lütfen alan için bir ad yazın.",
     "The field name cannot contain the following special characters": "Alanın adı şu özel karakterleri içeremez",
