@@ -1078,6 +1078,7 @@
     "Expiration Date": "Son Kullanma Tarihi",
     "Expiration Month is required.": "Son kullanma ayı zorunludur.",
     "Expiration Year is required.": "Son kullanma yılı zorunludur.",
+    "Expiration date of {var:1}": "{var:1} için son kullanma tarihi",
     "Expiration is required.": "Son kullanma tarihi zorunludur.",
     "Expire Membership": "Üyeliği Sonlandır",
     "Expire membership.": "Üyeliği sona erdir.",

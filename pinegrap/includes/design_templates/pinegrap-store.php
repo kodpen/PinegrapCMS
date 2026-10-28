@@ -872,8 +872,19 @@ $pages[] = array(
     'title'            => lang('Product'),
     'meta_description' => lang('Product details, options and price.'),
     'sitemap'          => false,
+    // Reviews: only a customer who bought the product writes one
+    // (includes/fn/reviews.php), with stars, newest first.
+    'comments'         => array('label' => lang('Review'), 'allow_new' => true, 'rating' => true, 'auto_publish' => true, 'show_date' => true, 'login' => true,
+                                'notify_email' => '{{site_email}}'),
     'tree'             => $page(array(
         $widget('product_detail'),
+        $el('section', 'py-5 border-top', lang('Reviews'), array(
+            $container(array(
+                $row(array(
+                    $col(array($widget('product_reviews')), '', '8'),
+                ), '', 'center'),
+            )),
+        )),
         $benefits('py-5 border-top bg-body-tertiary'),
     )),
 );
@@ -1705,6 +1716,22 @@ $widgets = array(
             'next_page_id'            => '{{tab:cart}}',
             'catalog_listing_page_id' => '{{tab:shop}}',
             'not_found_message'       => lang('Product not found.'),
+        ),
+        'tree'     => 'starter',
+    ),
+    // The product's reviews (the comments widget reads the product in the
+    // address): newest first, never pinned; a store reply shows under its
+    // review.
+    'product_reviews' => array(
+        'page'     => 'product',
+        'requires' => 'ecommerce',
+        'slug'     => lang('reviews'),
+        'config'   => array(
+            'regionType' => 'comments',
+            'order'      => 'newest',
+            'featured'   => 'none',
+            'layout'     => 'flat',
+            'per_page'   => 10,
         ),
         'tree'     => 'starter',
     ),
@@ -2579,7 +2606,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Online Store'),
-    'version'     => '1.0.13',
+    'version'     => '1.1.0',
     'framework'   => 'bootstrap5',
     'order'       => 20,
     'icon'        => 'bi-bag-heart',

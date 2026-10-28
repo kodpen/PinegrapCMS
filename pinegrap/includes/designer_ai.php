@@ -3044,9 +3044,11 @@ function pg_design_ai_ask($user, $args)
         return $fail(lang(array('string' => 'You already have {var:1} requests waiting. Please wait for those to be answered.', 'vars' => $limit)));
     }
 
-    db("INSERT INTO ws_ai_requests (channel_id, message_id, note_id, note_text, requested_by, status, agent, page_id, node_id, design_base, created_at)
+    list($pv_column, $pv_value) = pg_ai_prompt_version_insert();
+
+    db("INSERT INTO ws_ai_requests (channel_id, message_id, note_id, note_text, requested_by, status, agent, page_id, node_id, design_base, created_at" . $pv_column . ")
         VALUES (0, 0, 0, '" . e($prompt) . "', '" . (int) $user['id'] . "', 'queued', '" . e($agent) . "',
-            '" . $page_id . "', '" . e($node_id) . "', '" . e(pg_designer_tree_encode($tree)) . "', '" . time() . "')");
+            '" . $page_id . "', '" . e($node_id) . "', '" . e(pg_designer_tree_encode($tree)) . "', '" . time() . "'" . $pv_value . ")");
 
     $id = (int) mysqli_insert_id(db::$con);
 

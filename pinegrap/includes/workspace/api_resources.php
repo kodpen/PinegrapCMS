@@ -5280,6 +5280,7 @@ function ws_api_assistant_request_present($viewer, $row, $people)
         'sent_at'          => api_time($row['sent_at']),
         'claimed_at'       => api_time($row['claimed_at']),
         'answered_at'      => api_time($row['answered_at']),
+        'prompt_version'   => ((string) ($row['prompt_version'] ?? '') !== '') ? (string) $row['prompt_version'] : null,
     );
 }
 
@@ -5306,6 +5307,7 @@ function ws_api_assistant_request_schema()
         'sent_at'          => 'string?',
         'claimed_at'       => 'string?',
         'answered_at'      => 'string?',
+        'prompt_version'   => 'string?',
     );
 }
 
@@ -5322,7 +5324,7 @@ function ws_api_assistant_requests_rows($where, $limit)
 {
     $columns = array('id', 'channel_id', 'message_id', 'requested_by', 'status', 'reply_message_id', 'error', 'created_at', 'sent_at', 'claimed_at', 'answered_at');
 
-    foreach (array('agent', 'note_id', 'page_id', 'node_id', 'task_id', 'note_text', 'note_reply') as $column) {
+    foreach (array('agent', 'note_id', 'page_id', 'node_id', 'task_id', 'note_text', 'note_reply', 'prompt_version') as $column) {
         if (function_exists('waf_table_has_column') && waf_table_has_column('ws_ai_requests', $column)) {
             $columns[] = $column;
         }

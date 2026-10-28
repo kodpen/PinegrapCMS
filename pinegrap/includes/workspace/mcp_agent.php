@@ -574,8 +574,10 @@ function ws_mcp_agent_after_send($viewer, $channel, $message_id, $body)
         return false;
     }
 
-    db("INSERT INTO ws_ai_requests (channel_id, message_id, requested_by, status, agent, mcp_server_id, created_at)
-        VALUES ('" . (int) $channel['id'] . "', '" . (int) $message_id . "', '" . (int) $viewer['id'] . "', 'queued', 'mcp', '" . (int) $server['id'] . "', '" . time() . "')");
+    list($pv_column, $pv_value) = pg_ai_prompt_version_insert();
+
+    db("INSERT INTO ws_ai_requests (channel_id, message_id, requested_by, status, agent, mcp_server_id, created_at" . $pv_column . ")
+        VALUES ('" . (int) $channel['id'] . "', '" . (int) $message_id . "', '" . (int) $viewer['id'] . "', 'queued', 'mcp', '" . (int) $server['id'] . "', '" . time() . "'" . $pv_value . ")");
 
     ws_message_touch($message_id);
 

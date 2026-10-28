@@ -43,7 +43,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
 - incoming-email-g3.md: G3 of incoming e-mail (reply by e-mail): G3a sending core, G3b box SMTP fields and the reply composer, G3c copy to Sent and bounces
 - incoming-email-plan.md: Incoming e-mail into Workspace channels (G1, G2 done, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
-- legacy-layouts-in-designer.md: Plan (2026-10-19; Y1-Y4, Y6 done): how a classic page's custom layout (layout_type 'custom', data/layouts/<id>.php) lives on in the visual designer once page_designer.php retires; Y1-Y6
+- legacy-layouts-in-designer.md: "Plan (2026-10-19; Y1-Y4, Y5a, Y6 done): a classic page's custom layout in the visual designer"
 - legacy-page-designer-l5-list.md: What step L5 (retire page_designer.php) reroutes or removes beyond the three files: Edit Layout links, help row, menu case, panel actions used only by page_designer.js
 - legacy-page-designer-parity.md: L4 parity list (2026-10-26): what page_designer.php does that the visual designer lacks, and the owner's build-or-drop answer per item (#2484)
 - legacy-page-designer-retirement.md: Plan (2026-10-19, waits for its prerequisites) to open classic pages in the visual designer and retire page_designer.php: placeholder converter L1, entry point, parity list, what leaves

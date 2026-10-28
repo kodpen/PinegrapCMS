@@ -48,7 +48,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - collection-fields.md: Collection forms and field kinds (11.0.43, C2): the three columns, where the kind is written and read, which kinds each field type may have, why the slug kind waits for C5
 - collection-inputs.md: Inputs of a collection's fields by kind (C3, C3b, C3c): number, image, reference, product and page controls on the site form and the panel, radios and boxes, image preview, server checks
 - collection-lists.md: A collection's fields in form lists (C4a): number fields sorted as numbers, reference filters by address name or code (?category=news) printing the record's label, image output
-- collection-references.md: A form list or detail element prints a field of the record a reference points at (__ref binding, spec, one read per form, escaping, what is never read)
+- collection-references.md: A form list or detail element prints a field of the record, product or page a reference points at (__ref binding, spec, one read per form, escaping, what is never read)
 - comment-counters-recount.md: Upgrade step 11.0.33 (data only) counts the comments of form records on designed pages again: two walks, a time pause, a per-database data/temp progress file with a done marker
 - comment-replies.md: Which comment a reply may answer (pg_comment_parent_ok()): same thread, visible to the writer, else refused with the text kept; ?reply_to=, staff mails, API parent_id, deleted parents, page copies
 - comment-thread-rules.md: Comment rules the classic comments block shares with the widget (pg_comments_settings, _allow_new, _viewer, _rows, _thread_order); its HTML stays byte for byte, its quirks kept
@@ -68,7 +68,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - comments-widget-pages.md: Pages and permalinks of the comments widget: per_page units, ?comments_page and ?comment=, the pagination section and fallback, the URL builders, comment=<id> in the redirect, mails and panel
 - comments-widget-panel.md: The comments widget's panel: page comment settings shared with the fixed block, display options, inner-node shortcut, the 15 page settings (pg_comment_editor_keys), save, templates
 - comments-widget-preview.md: The comments widget in the designer's Preview: the editor's unsaved comment settings, the page id and ?r= it draws with, an unsaved page, lists of recent comments, anonymous background renders
-- comments-widget-product-page.md: Product reviews on a designed product page (standard page with a catalog_item_view widget, 2c1, PR #2817): read as catalog detail for the thread, add_comment.php, links, e-mails and recent lists
+- comments-widget-product-page.md: Product reviews on a designed product page (standard page with a catalog_item_view widget): thread, add_comment.php, links, e-mails, recent lists, canvas, templates, aggregateRating
 - comments-widget-recent-editor.md: The recent comments list in the editor: the kind twin, palette, Change type and copies, template starters, default layout, bind lists, fades, canvas states and samples
 - comments-widget-recent-gates.md: Which source pages a list of recent comments reads and why one adds nothing (sign-in pages, record filters included), who sees which comment, the record gate in SQL, 'mine' from the account's creation
 - comments-widget-recent-panel.md: The recent comments list's panel section: what it shows, the pages it offers and how each is labelled, tabs whose components are not loaded yet, notes, record filters, the stored page list
@@ -219,6 +219,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - layout-code-tab.md: A classic page's custom layout (data/layouts/<id>.php) as a code tab of the visual designer: who may edit it, the layout_code endpoint, regenerate, unmodified on save, Ctrl+G, hosted sites
 - layout-form-converter-editor.md: W22b "Convert to design elements" on a custom form page's system region: the button, the layout_code convert action, the widget placed after the region, toasts, rows the sync keeps
 - layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing
+- layout-widget-offer.md: Y5 widget offer beside a custom layout: page type to widget kind, type settings carried into its config, why no 301 while the page keeps its type
 - legacy-region-preview.md: The canvas preview of a classic page's system region drawn by its custom layout (designer/legacy_region_preview): who sees it, the markers, the background render, read only, when it is asked again
 - link-button-inline-children.md: Spans and icons inside a link or button: two ways to hold them, why an inline edit keeps a link's markup, which drops a button accepts, where the label prints beside children.
 - link-target-in-attrs.md: A link's window and rel: props first, _attrs when the prop is empty (link and button link, server and canvas alike), the selection-time fold, starter trees and templates, page bodies drawn before

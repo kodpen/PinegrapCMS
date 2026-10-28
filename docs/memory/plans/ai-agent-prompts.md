@@ -24,7 +24,7 @@ description: Plan (2026-10-21, steps 1, 2, 2b, 3, 4, 5 done): Pinegrap AI's brie
 3. Done (PR #2736): Claude reads its instructions and each request's briefing (`ws_ai_briefing()`) from the site; the pasted prompt is a versioned bootstrap; the card warns when it is old: workspace/workspace-claude-bootstrap.md.
 4. Done (PR #2795): MCP agents get a short preamble (site, asker, place, language, rules, the request in a data block) behind `ws_mcp_servers.agent_preamble` (11.0.111, off by default); outside apps read it from GET /workspace/messages/{id}/preamble: workspace/workspace-agent-preamble.md.
 5. Done (PR #1799): connected apps: `pg_mcp_instructions()` ends with the assistant rules and three lines of its own (confirm writes and deletes with the person, dry_run first, copy nothing to other tools): core/ai-prompt-data-blocks.md.
-6. Each request keeps the prompt version it ran with (every prompt already takes the block through step 1).
+6. Done (PR #2830): each request keeps the rules' version it ran with in `ws_ai_requests.prompt_version` (11.0.112, decided in #2829); the Claude card, the API and the Write with AI log line show it: core/ai-prompt-rules.md.
 
 ## Which questions are answered?
 1. Taken: rules text editable by administrators → (a) code only, by step 1 (#1124); (b), a site note below the rules, stays possible later as data.
@@ -33,4 +33,4 @@ description: Plan (2026-10-21, steps 1, 2, 2b, 3, 4, 5 done): Pinegrap AI's brie
 4. Live injection test on dev with the owner, Pinegrap AI and the routine: yes, when the owner has time (#2443).
 
 ## Where to start?
-- Step 6; the live test (question 4) can run now. Agents of plans/workspace-agent-handles.md use the briefing from the start.
+- The live test (question 4) can run now. Agents of plans/workspace-agent-handles.md use the briefing from the start.

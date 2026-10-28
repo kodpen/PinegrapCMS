@@ -86,3 +86,67 @@ function test_comments_product_view_readers()
 	pg_assert_contains('default:', $query, 'links on any other page type');
 	pg_assert_contains("(\$item_type === 'product') || (\$item_type === 'product_group')", $query, 'a product or group');
 }
+
+// aggregateRating on a designed product page: only when its comments widget
+// draws this product's reviews with their stars.
+function test_comments_product_view_rating_markup()
+{
+	$on = array('comments' => '1', 'comments_rating' => '1');
+	$item = array('item_type' => 'product', 'item_id' => 12);
+
+	pg_assert_true(pg_comment_rating_markup_decision($on, 'catalog detail', true, $item, 12), 'the product\'s starred reviews show');
+	pg_assert_true(pg_comment_rating_markup_decision($on, 'catalog detail', true, $item, '12'), 'an id as text');
+	pg_assert_false(pg_comment_rating_markup_decision(array('comments' => '1', 'comments_rating' => '0'), 'catalog detail', true, $item, 12), 'no stars');
+	pg_assert_false(pg_comment_rating_markup_decision(array('comments' => '0', 'comments_rating' => '1'), 'catalog detail', true, $item, 12), 'comments off');
+	pg_assert_false(pg_comment_rating_markup_decision($on, 'standard', true, $item, 12), 'not a product page');
+	pg_assert_false(pg_comment_rating_markup_decision($on, 'catalog detail', false, $item, 12), 'no comments widget');
+	pg_assert_false(pg_comment_rating_markup_decision($on, 'catalog detail', true, array('item_type' => 'product_group', 'item_id' => 12), 12), 'a select group\'s thread');
+	pg_assert_false(pg_comment_rating_markup_decision($on, 'catalog detail', true, array('item_type' => 'product', 'item_id' => 13), 12), 'another product');
+	pg_assert_false(pg_comment_rating_markup_decision($on, 'catalog detail', true, null, 12), 'no thread');
+	pg_assert_false(pg_comment_rating_markup_decision($on, 'catalog detail', true, $item, 0), 'no product');
+
+	$build = comments_product_view_test_source('includes/fn/widgets_catalog.php', '_pg_build_product_jsonld');
+	pg_assert_contains('if ($rating_shown && (($aggregate_rating = pg_review_product_aggregate_jsonld(', $build, 'the builder asks');
+	pg_assert_contains('pg_comment_product_view_rating_shown($page_id,', (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php'), 'the page passes the answer');
+}
+
+// The canvas reads a designed product page as catalog detail, as the server.
+function test_comments_product_view_canvas()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	pg_assert_contains("if (_sdCommentsProductViewPage(p)) type = 'catalog detail';", $js, 'the thread');
+	pg_assert_contains("return _swTabHasWidget(p, ['catalog_item_view']) && !_swTabHasWidget(p, ['form_item_view']);", $js, 'the same rule');
+}
+
+// The store, boutique and bookshop product page: a reviews widget with
+// stars, newest first, never pinned.
+function test_comments_product_view_templates()
+{
+	foreach (array('pinegrap-store', 'pinegrap-boutique', 'pinegrap-bookshop') as $id) {
+		$tpl = _pg_tpl_include(PG_FUNCTIONS_DIR . '/includes/design_templates/' . $id . '.php');
+		pg_assert_true(is_array($tpl), $id . ' loaded');
+		if (!is_array($tpl)) {
+			continue;
+		}
+
+		$page = null;
+		foreach ($tpl['pages'] as $p) {
+			if (isset($p['key']) && $p['key'] === 'product') {
+				$page = $p;
+			}
+		}
+		pg_assert_true(is_array($page), $id . ': the product page');
+		if (!is_array($page)) {
+			continue;
+		}
+
+		pg_assert_true(!empty($page['comments']['rating']) && !empty($page['comments']['login']), $id . ': comments with stars, signed in');
+		pg_assert_contains('"templateWidget":"product_reviews"', json_encode($page['tree']), $id . ': the reviews on the page');
+
+		$w = isset($tpl['widgets']['product_reviews']) ? $tpl['widgets']['product_reviews'] : null;
+		pg_assert_same('comments', is_array($w) ? $w['config']['regionType'] : null, $id . ': a comments widget');
+		pg_assert_same('none', is_array($w) ? $w['config']['featured'] : null, $id . ': never pinned');
+		pg_assert_same('product', is_array($w) ? $w['page'] : null, $id . ': on the product page');
+		pg_assert_same('ecommerce', is_array($w) ? $w['requires'] : null, $id . ': only with the shop');
+	}
+}

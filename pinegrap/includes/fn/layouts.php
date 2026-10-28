@@ -330,3 +330,176 @@ function pg_layout_region_preview($page_id)
 
     return pg_layout_region_cut($html);
 }
+
+// The system widget kind that can stand in for a classic page type's custom
+// layout, page type => kind: the types render_layout() draws that have a
+// widget. A custom form page is left out: its layout converts into a widget
+// of design elements instead (pg_layout_form_convert()). A type with no
+// widget (order receipt) gets no offer. Pure.
+function pg_layout_widget_kinds()
+{
+    return array(
+        'catalog'                      => 'catalog_listing',
+        'catalog detail'               => 'catalog_item_view',
+        'form list view'               => 'form_list_view',
+        'form item view'               => 'form_item_view',
+        'my account'                   => 'my_account',
+        'my account profile'           => 'account_profile',
+        'email preferences'            => 'email_preferences',
+        'update address book'          => 'address_book',
+        'change password'              => 'change_password',
+        'set password'                 => 'set_password',
+        'login'                        => 'login_form',
+        'forgot password'              => 'forgot_password',
+        'registration entrance'        => 'registration',
+        'membership entrance'          => 'membership',
+        'search results'               => 'search_results',
+        'shopping cart'                => 'shopping_cart',
+        'express order'                => 'express_order',
+        'shipping address and arrival' => 'shipping_address_and_arrival',
+        'shipping method'              => 'shipping_method',
+        'billing information'          => 'billing_information',
+        'order preview'                => 'order_preview',
+        'order form'                   => 'order_form',
+        'photo gallery'                => 'photo_gallery',
+        'view order'                   => 'order_view',
+    );
+}
+
+// The widget settings that carry a classic page's type settings over, for
+// the types whose widget keeps them in its own config: $row is the page's
+// row of the type table, $field_names the custom form's field names by id
+// (a list ordered by a form field). The other widgets read their page's type row themselves
+// (checkout steps, order form, folder and gallery) or need nothing. What a
+// widget has no setting for (columns, image sizes, featured items, the
+// advanced search, a third sort) is not carried. Pure.
+function pg_layout_widget_seed($page_type, array $row, array $field_names = array())
+{
+    $int = function ($key) use ($row) {
+        return isset($row[$key]) ? (int) $row[$key] : 0;
+    };
+    $cfg = array();
+
+    switch ((string) $page_type) {
+        case 'catalog':
+            $cfg['product_group_id'] = $int('product_group_id');
+            $cfg['detail_page_id'] = $int('catalog_detail_page_id');
+            $cfg['search_enabled'] = ($int('search') === 1);
+            break;
+
+        case 'catalog detail':
+            if ($int('next_page_id') > 0) {
+                $cfg['next_page_id'] = $int('next_page_id');
+            }
+            break;
+
+        case 'form list view':
+            $cfg['form_page_id'] = $int('custom_form_page_id');
+            $cfg['detail_page_id'] = $int('form_item_view_page_id');
+            $cfg['max_results'] = $int('maximum_number_of_results');
+            if ($int('maximum_number_of_results_per_page') > 0) {
+                $cfg['items_per_page'] = $int('maximum_number_of_results_per_page');
+            }
+            $cfg['search_enabled'] = ($int('search') === 1);
+            if (isset($row['search_label']) && ((string) $row['search_label'] !== '')) {
+                $cfg['search_label'] = (string) $row['search_label'];
+            }
+            foreach (array('viewer_filter', 'viewer_filter_submitter', 'viewer_filter_watcher', 'viewer_filter_editor') as $key) {
+                $cfg[$key] = ($int($key) === 1);
+            }
+            foreach (array(1 => '', 2 => '_2') as $n => $suffix) {
+                $field = pg_layout_widget_order_field($row, $n, $field_names);
+                if ($field === '') {
+                    continue;
+                }
+                $cfg['order_by' . $suffix . '_field'] = $field;
+                $type = isset($row['order_by_' . $n . '_type']) ? (string) $row['order_by_' . $n . '_type'] : '';
+                $cfg['order_by' . $suffix . '_direction'] = (strpos($type, 'descending') === 0) ? 'DESC' : 'ASC';
+            }
+            break;
+
+        case 'form item view':
+            $cfg['form_page_id'] = $int('custom_form_page_id');
+            break;
+
+    }
+
+    return $cfg;
+}
+
+// The form list widget's name for sort $n (1 or 2) of a classic form list
+// view row: the submitted date or a record statistic as it is, a form field
+// by its name; '' when the widget has no such order (random, the reference
+// code, the submitter...) and the widget's own order applies. Pure.
+function pg_layout_widget_order_field(array $row, $n, array $field_names)
+{
+    $standard = isset($row['order_by_' . $n . '_standard_field']) ? (string) $row['order_by_' . $n . '_standard_field'] : '';
+
+    if ($standard !== '') {
+        $kept = array('submitted_date_and_time', 'number_of_views', 'number_of_comments', 'newest_activity_date_and_time');
+
+        return in_array($standard, $kept, true) ? $standard : '';
+    }
+
+    $field_id = isset($row['order_by_' . $n . '_form_field_id']) ? (int) $row['order_by_' . $n . '_form_field_id'] : 0;
+
+    return (($field_id > 0) && isset($field_names[$field_id])) ? (string) $field_names[$field_id] : '';
+}
+
+// Of the pages that draw a custom layout (pg_layout_custom_page_ids()), those
+// whose type has a widget, page id => ['kind' => widget kind, 'cfg' =>
+// settings carried from the page's type settings]: the visual designer offers
+// to put that widget beside the page's system region, never on its own.
+function pg_layout_widget_offers(array $layout_page_ids)
+{
+    $ids = array();
+
+    foreach ($layout_page_ids as $id) {
+        if ((int) $id > 0) {
+            $ids[(int) $id] = true;
+        }
+    }
+
+    if (!$ids) {
+        return array();
+    }
+
+    $kinds = pg_layout_widget_kinds();
+    $tables = array(
+        'catalog'        => array('catalog_pages', ''),
+        'catalog detail' => array('catalog_detail_pages', ''),
+        'form list view' => array('form_list_view_pages', " AND collection = 'a'"),
+        'form item view' => array('form_item_view_pages', " AND collection = 'a'"),
+    );
+    $out = array();
+
+    foreach ((array) db_items("SELECT page_id, page_type FROM page WHERE page_id IN (" . implode(',', array_keys($ids)) . ")") as $page) {
+        $page_id = (int) $page['page_id'];
+        $type = (string) $page['page_type'];
+
+        if (!isset($kinds[$type])) {
+            continue;
+        }
+
+        $row = array();
+        $field_names = array();
+
+        if (isset($tables[$type])) {
+            $found = db_item("SELECT * FROM " . $tables[$type][0] . " WHERE page_id = '" . $page_id . "'" . $tables[$type][1] . " LIMIT 1");
+            $row = is_array($found) ? $found : array();
+        }
+
+        if (($type === 'form list view') && !empty($row['custom_form_page_id'])) {
+            foreach ((array) db_items("SELECT id, name FROM form_fields WHERE page_id = '" . (int) $row['custom_form_page_id'] . "'") as $field) {
+                $field_names[(int) $field['id']] = (string) $field['name'];
+            }
+        }
+
+        $out[$page_id] = array(
+            'kind' => $kinds[$type],
+            'cfg'  => (object) pg_layout_widget_seed($type, $row, $field_names),
+        );
+    }
+
+    return $out;
+}

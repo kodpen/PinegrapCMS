@@ -119,6 +119,69 @@ function pg_comment_thread_page_type($page_id, $page_type)
 }
 
 /**
+ * Whether a page's Product markup may carry the product's aggregateRating:
+ * the page's comments widget draws that product's reviews with their stars,
+ * since markup may describe only reviews a visitor can read on the page
+ * (includes/fn/reviews.php). Pure: pg_comment_product_view_rating_shown()
+ * reads the facts.
+ *
+ * True when comments and stars are on ($page: comments, comments_rating),
+ * the page reads as catalog detail ($thread_type,
+ * pg_comment_thread_page_type()), places a comments widget, and the thread
+ * of its address ($item, pg_comment_address_item()) is this product's: a
+ * select group's thread counts in no product's rating.
+ *
+ * @param mixed $page
+ * @param mixed $thread_type
+ * @param bool  $has_widget
+ * @param mixed $item
+ * @param mixed $product_id
+ * @return bool
+ */
+function pg_comment_rating_markup_decision($page, $thread_type, $has_widget, $item, $product_id)
+{
+    $on = function ($key) use ($page) {
+        return is_array($page) && isset($page[$key]) && is_scalar($page[$key]) && ((string) $page[$key] === '1');
+    };
+    $product_id = (is_scalar($product_id) && !is_bool($product_id)) ? (int) $product_id : 0;
+
+    return $on('comments') && $on('comments_rating') && ($thread_type === 'catalog detail') && $has_widget
+        && ($product_id > 0) && is_array($item) && isset($item['item_type'], $item['item_id'])
+        && ($item['item_type'] === 'product') && ((int) $item['item_id'] === $product_id);
+}
+
+/**
+ * pg_comment_rating_markup_decision() for page $page_id drawn for this
+ * request's address and the product its catalog_item_view widget shows.
+ *
+ * @param mixed $page_id
+ * @param mixed $product_id
+ * @return bool
+ */
+function pg_comment_product_view_rating_shown($page_id, $product_id)
+{
+    $page_id = (is_scalar($page_id) && !is_bool($page_id)) ? (int) $page_id : 0;
+
+    if (($page_id <= 0) || !function_exists('pg_comments_page_has_widget')) {
+        return false;
+    }
+
+    $page = db_item("SELECT page_type, comments, comments_rating FROM page WHERE page_id = '" . $page_id . "'");
+
+    if (!is_array($page)) {
+        return false;
+    }
+
+    $thread_type = pg_comment_thread_page_type($page_id, $page['page_type']);
+    $has_widget = ($thread_type === 'catalog detail') && pg_comments_page_has_widget($page_id);
+    $item = $has_widget
+        ? pg_comment_address_item($thread_type, pg_comment_address_item_facts($page_id, $thread_type, array(), $thread_type !== (string) $page['page_type']))
+        : null;
+
+    return pg_comment_rating_markup_decision($page, $thread_type, $has_widget, $item, $product_id);
+}
+
+/**
  * Which thread a comment posted to a page may join. Pure: the caller reads
  * the page, its record view widget and the item (pg_comment_thread_verify()).
  *
