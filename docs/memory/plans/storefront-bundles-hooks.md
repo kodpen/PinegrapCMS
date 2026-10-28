@@ -16,9 +16,9 @@ description: Bundles design note, part 2: hook points checked in the code, steps
 
 ## How is the work cut? (about 1,000 product lines each)
 1. Done (#2646): schema 11.0.54, `includes/fn/bundles.php`, refresh, product screen card, delete refusal (`commerce/product-bundles.md`).
-2a. Done (#2691). Counter sale (`local_sale_complete()`) takes a bundle off its components with the `order_item_components` snapshot (`pg_bundle_take_stock()`, ready for the checkout); combined demand in `check_inventory()` (`pg_bundle_cart_allowance()`).
+2a. Done (#2691): counter sale through `pg_bundle_take_stock()`, combined demand in `check_inventory()`.
 2b. Marketplace import (`mp_order_take_stock()`) and its refund restock through `pg_bundle_take_stock()`, refusals in the inventory API, barcode, stock count, the product list's quick and bulk edit of a bundle's stock; refuse binning a component (step 1 refuses only the permanent delete).
-2c. Checkout: the stock loop of the order completion calls `pg_bundle_take_stock($order_item_id, $bundle_id, $quantity, 'checkout', $stock_left)` for a bundle line instead of the plain decrement. Waits for order-completion A2b (#2687), which moves that loop out of `submit_order.php`; build on its function once merged.
+2c. Checkout: the order completion's stock loop calls `pg_bundle_take_stock(..., 'checkout', $stock_left)` for a bundle line. After order-completion A2b (#2687) moves that loop out of `submit_order.php`.
 3. ERP: component snapshot on invoice lines, the `erp_stock_moves` key, component moves on post, return and cancel, profit report check.
 4. API fields, catalog tokens, list source, designer palette and flags.
 
