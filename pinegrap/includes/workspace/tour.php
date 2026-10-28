@@ -32,7 +32,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * everybody is shown the tour once more: what has to happen when the screen
  * changes underneath it.
  */
-define('WS_TOUR_KEY', 'workspace.2');
+define('WS_TOUR_KEY', 'workspace.3');
 
 /**
  * The key the channel screen names in its header.
@@ -65,7 +65,7 @@ function ws_tour_steps($viewer)
         ),
         array(
             'art'       => 'channels',
-            'target'    => array('#ws-root .ws-side-scroll'),
+            'target'    => array('#ws-menu-side .ws-side-scroll'),
             'placement' => 'right',
             'padding'   => 0,
             'title'     => lang('Channels'),
@@ -73,7 +73,7 @@ function ws_tour_steps($viewer)
         ),
         array(
             'art'       => 'search',
-            'target'    => array('#ws-root .ws-side-head'),
+            'target'    => array('#ws-menu-side .ws-side-head'),
             'placement' => 'right',
             'title'     => lang('Search and a new channel'),
             'text'      => lang('Search every conversation you can read from the box. The + button opens a new channel: give it a name, make it public or private, invite people and, when it is about a customer, tie it to them.'),
@@ -101,21 +101,21 @@ function ws_tour_steps($viewer)
         ),
         array(
             'art'       => 'tasks',
-            'target'    => array('#ws-root [data-ws-nav="tasks"]'),
+            'target'    => array('#ws-menu-side [data-ws-nav="tasks"]'),
             'placement' => 'right',
             'title'     => lang('My Tasks'),
             'text'      => lang('The tasks given to you, from every channel, with their dates and urgency. A task keeps its notes, a checklist and a repeat, and the people on it are told when it changes.'),
         ),
         array(
             'art'       => 'board',
-            'target'    => array('#ws-root [data-ws-nav="board"]'),
+            'target'    => array('#ws-menu-side [data-ws-nav="board"]'),
             'placement' => 'right',
             'title'     => lang('Planning Board'),
             'text'      => lang('Who does what on which day, for the whole company or for one person. Work is handed over by dragging it, and clashes with leave, holidays and other work are pointed out.'),
         ),
         array(
             'art'       => 'calendar',
-            'target'    => array('#ws-root [data-ws-nav="calendar"]'),
+            'target'    => array('#ws-menu-side [data-ws-nav="calendar"]'),
             'placement' => 'right',
             'title'     => lang('Work Calendar'),
             'text'      => lang('Tasks, meetings, visits and leave on one calendar, laid over the company\'s working days and holidays.'),
@@ -125,7 +125,7 @@ function ws_tour_steps($viewer)
     if (function_exists('ws_notes_ready') && ws_notes_ready()) {
         $steps[] = array(
             'art'       => 'notes',
-            'target'    => array('#ws-root [data-ws-nav="notes"]'),
+            'target'    => array('#ws-menu-side [data-ws-nav="notes"]'),
             'placement' => 'right',
             'title'     => lang('My Notes'),
             'text'      => lang('Your own notes, with tags, checklists and figures that add themselves up. A note can be shared with a colleague or copied into a channel.'),
@@ -134,7 +134,7 @@ function ws_tour_steps($viewer)
 
     $steps[] = array(
         'art'       => 'timeline',
-        'target'    => array('#ws-root [data-ws-nav="timeline"]'),
+        'target'    => array('#ws-menu-side [data-ws-nav="timeline"]'),
         'placement' => 'right',
         'title'     => lang('Decision Timeline'),
         'text'      => lang('Every decision of every channel you can read, day by day. Each one opens the conversation it was taken in.'),
@@ -142,7 +142,7 @@ function ws_tour_steps($viewer)
 
     $steps[] = array(
         'art'       => 'inbox',
-        'target'    => array('#ws-root [data-ws-nav="inbox"]'),
+        'target'    => array('#ws-menu-side [data-ws-nav="inbox"]'),
         'placement' => 'right',
         'title'     => lang('Inbox'),
         'text'      => lang('Mentions, tasks given to you, notes shared with you and the answers to your questions wait here until you have read them.'),
@@ -153,7 +153,7 @@ function ws_tour_steps($viewer)
     if (function_exists('ws_flows_scheduled') && ws_flows_scheduled($viewer)) {
         $steps[] = array(
             'art'       => 'scheduled',
-            'target'    => array('#ws-root [data-ws-nav="flows"]'),
+            'target'    => array('#ws-menu-side [data-ws-nav="flows"]'),
             'placement' => 'right',
             'optional'  => true,
             'title'     => lang('Flows'),
@@ -162,7 +162,7 @@ function ws_tour_steps($viewer)
     } elseif (function_exists('ws_can_schedule') && ws_can_schedule($viewer)) {
         $steps[] = array(
             'art'       => 'scheduled',
-            'target'    => array('#ws-root [data-ws-nav="scheduled"]'),
+            'target'    => array('#ws-menu-side [data-ws-nav="scheduled"]'),
             'placement' => 'right',
             'optional'  => true,
             'title'     => lang('Scheduled actions'),
@@ -190,7 +190,7 @@ function ws_tour_steps($viewer)
 
     $steps[] = array(
         'art'       => 'finish',
-        'target'    => array('#ws-root [data-ws-tour]'),
+        'target'    => array('#ws-menu-side [data-ws-tour]'),
         'placement' => 'right',
         'title'     => lang('That is all'),
         'text'      => lang('Start a channel of your own, or write in one you are in. This tour is always here: the signpost button above the channel list plays it again.'),

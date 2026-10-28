@@ -17,7 +17,7 @@ description: The run view of the flow canvas (workspace_flow.js, PR #1555): Run,
 - Cancel (`can_cancel`) asks. Close and "All runs" bring the flow back as it was.
 
 ## What did a box receive? (T4, PR #2650)
-- `runReads()` under the box's result: per field, each thread into it (`dataThreads()` of the run's graph) with `runValue()`: `text`, `outcome`, `status` from the step's result, outcome, status, else `steps[].outputs`; a constants box's row; empty for a box skipped or not reached, "not given yet" while it runs. A `{{trigger.*}}` value is not in the run's answer: named, never guessed.
+- `runReads()` under the box's result: per field, each thread into it (`dataThreads()` of the run's graph) with `runValue()`: `text`, `outcome`, `status` from the step's result, outcome, status, else `steps[].outputs`; a constants box's row; a derived box's value is not in the run's answer, so it is named (`fl_run_value_derived`), never worked out again in the browser; empty for a box skipped or not reached, "not given yet" while it runs. A `{{trigger.*}}` value is not in the run's answer: named, never guessed.
 - Once the box ran, the field as filled (`runFilled()`); "Show the template" (`state.runTemplates`) the field as written. The outline's reads (`drawReads()`) add the value. Test `test_workspace_flows_canvas_run_lists_the_values_received`.
 
 ## How is it read again?

@@ -33,4 +33,4 @@ description: privacy_erase.php (PR #1706): erasing one person after a dry run; w
 ## Sandbox (2026-10-25/26)?
 - MariaDB 10.11: of two seeded people only A's rows and files changed; the dry run wrote nothing. Erasing a cashier left their counter sales, the walk-in account, a panel record and one filled in for another contact; another record lost only the address field; a manager on a contact with the admin's address was refused.
 
-Related: docs/memory/core/personal-data-export.md, docs/memory/core/consent-log-and-audit-trail.md, docs/memory/core/audit-trail-writers.md, docs/memory/plans/privacy-data-pack-audit-log.md
+Related: docs/memory/core/personal-data-export.md, docs/memory/core/consent-log-and-audit-trail.md, docs/memory/core/audit-trail-writers.md

@@ -10,9 +10,9 @@ description: Plan (2026-10-19, waits for its prerequisites) to open classic page
 
 ## Steps (one PR each)
 - L1 converter: done (#2337, `designer/classic-style-import.md`): classic placeholders to region nodes, `<meta_tags>`/`<stylesheet>` dropped, title and body on the root.
-- L2 entry point: done (#2370, `designer/classic-style-to-design.md`): style list button, frame as one shared component, page trees placing it, Save makes the row a visual design (framework custom). Left: pages taking the style from their folder (not design pages; keep `style_code`), older cell-based system styles (not offered).
+- L2 entry point: done (#2370, `designer/classic-style-to-design.md`): style list button, frame as one shared component, page trees placing it, Save makes the row a visual design (framework custom); pages taking the style from their folder are converted on Save unless the box is cleared (#2704). Left: older cell-based system styles (not offered).
 - L3 regions: done (`designer/classic-regions-in-designer.md`); wired into the conversion in #2429 (`designer/classic-style-to-design.md`): a converted common region is placed as its component; nothing converts on its own. Left: page regions inside the frame component cannot be moved into the page tree (R5 refuses them inside a component).
-- L4 parity list: decided (#2484), all dropped but P7, built in #2532 (`legacy-page-designer-parity.md`, `designer/classic-style-design-files.md`). Left: the folder-pages Save option (#2411). Page-type fields, layouts: Y2-Y3.
+- L4 parity list: decided (#2484), all dropped but P7, built in #2532 (`legacy-page-designer-parity.md`, `designer/classic-style-design-files.md`); the folder-pages Save option (#2411): done (#2704, `designer/classic-style-folder-pages.md`). Page-type fields, layouts: Y2-Y3.
 - L5 retire: remove the three files, the `page_designer_button` branch in `includes/fn/output.php` (Ctrl+G), the help-table row, the session key `software.page_designer`; `clean_up.php` lists the files; changelog `[NEW]` line; the rest in `legacy-page-designer-l5-list.md`. Gated by Y6.
 
 ## Which rules apply?
@@ -24,9 +24,8 @@ description: Plan (2026-10-19, waits for its prerequisites) to open classic page
 
 ## Open questions
 - Answered 2026-10-27: the frame is (b) one shared component. The owner delegated the answer to the coordinator ("bekleyen işçilere yanıtı sen ver benim yerime", "en makul ve işlevsel seçimle"), consistent with the R2 answer that the source is the shared component.
-- Answered (#2411): on Save of a converted style, "Also convert the N pages that take this style from their folder", default on, the list shown; a step after L2.
 - Answered (#2437): `theme_designer.php` and `view_styles.php` stay while any classic style exists and retire in a later step once conversion covers every style.
 - A classic style on a PHP template file (`style_file`) is not convertible; it stays classic.
 
 ## Where to start?
-- L4's folder-pages option (#2411): Save of a converted style. Left from L1: no panel field edits the root `title`.
+- L5 once Y6 lands. Left from L1: no panel field edits the root `title`.

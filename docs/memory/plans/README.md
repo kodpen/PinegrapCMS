@@ -55,7 +55,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - passkeys.md: Plan (approved 2026-10-19): WebAuthn passkeys as a second factor and for sign-in with a passkey alone
 - payment-driver-layer.md: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b, 4a, 4b, 4b2, 5 done; 4c open): payment drivers beside submit_order.php; iyzico and Stripe on it; one checkout method list, then PayPal v2 and PayTR
 - php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, leftover deprecations, dead remnants; done: #972, #1039, #1930, #1450, #1669, #1744, #1757
-- privacy-data-pack-audit-log.md: Plan (approved 2026-10-19; all steps done, open questions remain): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 - prototype-sharing-code.md: What the code holds for plans/prototype-sharing.md: drafts and their revisions, how a draft opens today, what Preview draws, token links, the password throttle, MCP routes, flow and note rights
 - prototype-sharing.md: Plan (2026-10-24; slices 1-4 done: #1867, #1579, #1595, #1578; 5 later): drafts play as a clickable prototype shared by a view-only link; flows with the team
 - refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
@@ -85,7 +84,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-canvas-workflow-tables.md: Plan (2026-10-23, S1 #1708, S2 #1858, S2b #1987, question 2 open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 - workspace-composer-tools.md: Plan (2026-10-23; 1-9 and 11 done, 10 waits on the owner: schema): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
 - workspace-crm-seams.md: Plan (2026-10-23; 1-8 done, PRs #1621 to #2643; answers 2-4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
-- workspace-flows-api.md: Plan (owner request 2026-10-27, draft): flow API beyond the removed scheduled-actions routes; filters, box catalogue, validate, dry run, versions, run values, retry, templates, events
 - workspace-flows-channels.md: Plan (owner request 2026-10-27, draft): flows started from a channel's Add menu, a Completed flag with the run's result, scheduled work only as flows, no menu or form of its own
 - workspace-flows-data-passing.md: Plan (owner request 2026-10-27, draft being refined): values carried from one Flows box to the next; output schemas, a value picker, reference checks, trigger values, escaping, then AI drafts
 - workspace-flows-data-threads.md: Plan (owner request 2026-10-27, draft being refined): the Flows canvas side of data passing; thin typed threads from a box's bottom into the field they fill, the double-click fork, pure value boxes

@@ -198,6 +198,9 @@ if (!$_POST) {
         'delete_button'  => $component ? '' : $delete_button,
         // ?new_page / ?pick_page / ?copy_page from the design chooser.
         'start_action'   => pg_designer_start_action($user, $style_id),
+        // A classic style's pages that take it from their folder: Save
+        // converts them too unless the box is cleared.
+        'classic_folder_pages' => $classic ? $classic['folder_pages'] : array(),
     ));
 
     $liveform->remove_form();

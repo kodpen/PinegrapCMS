@@ -762,3 +762,46 @@ function pg_bundle_check_inventory($liveform, $order_id, $bundle_ids)
         $liveform->add_notice(lang(array('string' => 'We\'re sorry, the quantity you entered for {var:1} has been reduced because the availabilty of the item is currently limited.', 'vars' => h($description))));
     }
 }
+
+/**
+ * Put back the components a sold bundle line took, from the contents it was
+ * sold with (order_item_components), so an edit of the bundle since then
+ * changes nothing. A component that no longer tracks stock is skipped.
+ *
+ * @param int    $order_item_id
+ * @param int    $quantity bundles to put back
+ * @param string $source   the writer, for pg_product_stock_changed()
+ * @return bool false when the line was not sold as a bundle
+ */
+function pg_bundle_return_stock($order_item_id, $quantity, $source)
+{
+    if (!pg_bundles_ready()) {
+        return false;
+    }
+
+    $components = db_items(
+        "SELECT order_item_components.product_id, order_item_components.quantity, products.inventory, products.inventory_quantity
+        FROM order_item_components
+        INNER JOIN products ON products.id = order_item_components.product_id
+        WHERE order_item_components.order_item_id = '" . (int) $order_item_id . "'");
+
+    if (!$components) {
+        return false;
+    }
+
+    foreach ($components as $component) {
+        if ((string) $component['inventory'] !== '1') {
+            continue;
+        }
+
+        $product_id = (int) $component['product_id'];
+        $before = (int) $component['inventory_quantity'];
+
+        db("UPDATE products SET inventory_quantity = inventory_quantity + '" . (max(1, (int) $component['quantity']) * max(0, (int) $quantity)) . "' WHERE id = '" . $product_id . "'");
+        db("UPDATE products SET out_of_stock = '0' WHERE (id = '" . $product_id . "') AND (inventory_quantity > 0)");
+
+        pg_product_stock_changed($product_id, $before, null, $source);
+    }
+
+    return true;
+}

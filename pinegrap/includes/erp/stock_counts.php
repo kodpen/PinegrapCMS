@@ -191,6 +191,12 @@ function erp_stock_count_add($count_id, $product, $quantity = 1, $set = false)
         return $fail(lang(array('string' => '{var:1} does not track stock, so it is not counted.', 'vars' => $name)));
     }
 
+    // A bundle's stock is its components' (includes/fn/bundles.php): they are
+    // counted, the bundle is not.
+    if (pg_bundle_ids_among(array($product['id']))) {
+        return $fail(lang(array('string' => '{var:1} is a bundle: count the products in it instead.', 'vars' => $name)));
+    }
+
     $quantity = (int) $quantity;
     if (($quantity < 0) || ($quantity > 1000000) || (!$set && ($quantity === 0))) {
         return $fail(lang('Enter a quantity from 1 up.'));

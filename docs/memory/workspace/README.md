@@ -19,6 +19,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - Give a new `workspace.*` webhook event `channel_id` (or `task.channel_id`), or subscriptions narrowed to a channel group never hear it (`workspace-webhook-channel-groups.md`).
 - Put a new record kind in every list `tests/workspace_record_kinds_test.php` lays it against, or in that list's exceptions with the reason (`workspace-record-kinds.md`).
 - Give a new or moved change kind or field, catalogue event, task/order/approval status, `ws_event()` emitter, `ws_scheduled_run()`/`_due()`/`_execute()` call or `ws_scheduled_*` route its line in `workspace_flows_parity_table()`, or tests/workspace_flows_parity_test.php fails (`workspace-flows-parity-test.md`).
+- Put a new place of the workspace in `ws_nav_groups()` under the gate of its screen: the main menu's Workspace list draws only what the server sends and hides nothing itself (`workspace-menu-list.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -88,6 +89,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-condition-values.md: A condition box comparing a value of the run (data-passing D7): the value rule, its operators, reference check, how it holds at run time, masking, the canvas picker
 - workspace-flows-converted-anchor.md: A scheduled action converted into a flow (anchor converted, 5a #2558, 5b): how rows convert after the upgrade, starts, boxes write as the action, write-back, edit by any staff
 - workspace-flows-delay-box.md: The delay box of a flow (F5b, PR #2135): amount and unit up to a week, waits as a waiting box with wake_at, settles done with waited_until, problems, try, canvas form
+- workspace-flows-derived-box.md: The derived value box of a flow (kind value, T3, PR #2701): its allowlisted rules, inputs and value, how a run works it out, the transitive "comes before" check, the canvas form
 - workspace-flows-event-depth.md: The chain depth a flow run's events carry: ws_event_depth() said by a step box around its work, stamped as _depth by ws_event() and pg_event_record(), read by ws_events_start()
 - workspace-flows-from-scheduled.md: A scheduled action as a flow graph (ws_flow_graph_from_scheduled(), PR #2306): how each part maps to a box or arrow, self-retry, money, what is told in left
 - workspace-flows-outputs.md: Values a flow box gives later boxes (data-passing D1-D3): outputs per kind, ws_step_outputs(), ws_step_result_data(), null rules, one-pass fill, escaping per destination
@@ -106,7 +108,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-template-setup.md: Placing a flow template (G2): motion schedule from ws_flow_template_motion(), drawn threads, reduced motion, the setup panel, ws_flow_template_setup action, answers checked on the server
 - workspace-flows-thread-drawing.md: Data threads on the Flows canvas (T1, T2): read from the fields, chips and dots under a box, tones, dimming, the toggle, the outline lines, drawing a thread into a field
 - workspace-flows-trigger-values.md: What a flow's step boxes read of what started the run (#2205, D5 #2341): {{trigger.<field>}} declared per start kind, event and record values, the newcomer, a post box in the channel joined (-1)
-- workspace-flows-value-boxes.md: Value boxes of a flow (T3, decision #2415 1a): the constants box's rows, no arrows and no run row, how its values are read, the check, the canvas form
+- workspace-flows-value-boxes.md: Value boxes of a flow (T3, decision #2415 1a): the constants box's rows, no arrows and no run row, how value boxes are read in a run, the check, the canvas form
 - workspace-flows-value-picker.md: "Add value" in a Flows box's side panel (data-passing D6): the text boxes with value chips, what the list offers, "empty if skipped", how a chip is kept and edited
 - workspace-flows-versions.md: A paused flow resumed on its live version, and a flow's published versions listed, read and brought back into the draft (flow_versions.php, API routes, no schema)
 - workspace-flows-wait-timeout.md: The timeout of a flow task box (F5d): hours to wait, the timeout outcome, counted from the claim, next look capped at the deadline, the task end first, why approvals have none
@@ -114,6 +116,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-mcp-agent-identity.md: One avatar and icon per MCP server asked by its alias ('mcp:<id>'), drawn the same by every server-side place (ws_mcp_agent_identity()); the catalogue entry found by URL; the name kept '@alias'
 - workspace-mcp-servers-api.md: The site's MCP servers in the Workspace API (api_mcp.php, PR #1800): list with state, add, probe, refresh, tool rules; administrators only, no MCP tool; checks and writes shared with the settings card
 - workspace-mcp-servers-card.md: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-made connectors, adding by address, read-only tools on at first read, the form kept after an error, Pinegrap AI failing
+- workspace-menu-list.md: The Workspace list in the main menu (#2545): workspace_side.js draws ws_side_payload() on every panel page; who sees what, inline data vs ws_side, the channel screen's hooks, pill, tour
 - workspace-message-meter.md: The Workspace composer's length meter near WS_MESSAGE_MAX: what is counted, the limit's source, 90 % and over, the send refused early, commands, screen readers, boxes
 - workspace-module-decisions.md: Binding decisions of the Workspace module (channels, tasks, plan board): rights not roles, private channel audit, chat bubble kept apart, multiple assignees, customer context, API scope ceiling
 - workspace-new-sales-quote.md: "New sales quote" in a Workspace channel's menu: the quote editor opened on the current account the channel's customer is or is tied to; who sees it, how the account is found, what is never done
@@ -148,7 +151,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-text-headings.md: Headings "#" to "###" and "---" rules in Workspace notes only (#2649): server rule and fast path, plain text, editor twins, tools, Enter/Backspace, "# " autoformat, the import
 - workspace-text-highlight.md: ==x== as a highlight (<mark>): the pair rule, old shapes that stay text, server and editor twins, plain text, guest page, notes import, sums, table cells
 - workspace-text-lists.md: Lists and quotes in Workspace texts drawn by the server (#1725): which shapes become a list, which stay text so old messages look the same, plain text, guest page, approval mail
-- workspace-ui-notes.md: Where the Workspace screens are drawn and styled, its tokens, colour picker vs plan board legend class names, Turkish initials in the rail, what a closed sidebar section lists, cosmetic leftovers
+- workspace-ui-notes.md: Where the Workspace screens are drawn and styled, its tokens, colour picker vs plan board legend class names, what a closed section of the channel list shows, cosmetic leftovers
 - workspace-ui-scale.md: The Workspace's CSS scale (radii, spaces, avatar sizes, shadows as --ws-* tokens), the keyboard-only focus rings, the dark tones of the nav icons, where the block ends in backend.src.css
 - workspace-unsent-draft.md: The Workspace composer's unsent text kept on the browser (localStorage) per site, viewer, channel and discussion: key, when saved, restored, cleared, limits, what is never kept
 - workspace-upload-refusals.md: What a Workspace channel refuses to take (ws_upload_refused()): the file manager's list, page and script types, Office files with macros (PR #1322); why, every door it covers, the message

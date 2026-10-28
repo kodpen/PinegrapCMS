@@ -20,4 +20,4 @@ description: The box catalogue GET /workspace/flow-kinds (settings read from the
 - `GET /workspace/flow-kinds` (`workspace.flow_kinds.list`): any `workspace:read` caller, one page via `api_ok_list()`; it names no record or person.
 - `GET /workspace/flows/{id}/validate` (`workspace.flows.validate`, WorkspaceFlowValidation): `ws_api_flow_editable()`. Both MCP tools: an assistant drafts from the catalogue and checks the draft; only the person publishes.
 
-Related: docs/memory/workspace/workspace-flows-outputs.md, docs/memory/plans/workspace-flows-api.md
+Related: docs/memory/workspace/workspace-flows-outputs.md

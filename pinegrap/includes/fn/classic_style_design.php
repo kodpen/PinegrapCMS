@@ -211,21 +211,47 @@ function pg_classic_style_component($style_id, $name, $frame, $user)
 }
 
 /**
+ * The $lookup of pg_classic_style_frame() for a <cregion> tag. A common
+ * region already made a shared component is placed as that component: its
+ * tag draws the component anyway (pg_common_region_components()), and the
+ * canvas shows the content instead of a placeholder. Any other <cregion>
+ * stays a region node of its kind; no region is converted here.
+ *
+ * @return callable
+ */
+function pg_classic_style_region_lookup()
+{
+    return function ($name) {
+        $hit = db_item("SELECT cregion_id, cregion_designer_type FROM cregion WHERE cregion_name = '" . e($name) . "' LIMIT 1");
+        if (!is_array($hit)) return array('regionType' => 'common');
+        if ($hit['cregion_designer_type'] === 'yes') return array('regionType' => 'designer');
+        $made = db_item("SELECT id, name FROM shared_components
+                         WHERE category = '" . e(pg_common_region_component_category($hit['cregion_id'])) . "'
+                           AND (system_region_config IS NULL OR system_region_config = '')
+                         ORDER BY id ASC LIMIT 1");
+        if (is_array($made)) return array('sharedId' => (int)$made['id'], 'sharedName' => (string)$made['name']);
+        return array('regionType' => 'common');
+    };
+}
+
+/**
  * A classic style opened in the visual designer (edit_system_style.php
  * ?classic=1): the frame component made, and every page that names the
  * style as its own (page_style) with its converted tree, not yet saved; a
  * page with a tree of its own keeps it.
  * A page that takes the style from its folder is not one of the design's
- * pages: it keeps drawing the style's code.
+ * pages: it is listed in 'folder_pages', and Save converts it only when the
+ * editor's "Also convert" box is left on (pg_classic_style_convert_folder_pages()).
  *
  * @return array  'error' ('' when opened), 'pages' (pg_designer_load_pages()
  *                rows with tree_json and converted = 1), 'css', 'js', 'fonts'
- *                (the assets panel lists, JSON), 'warnings'
+ *                (the assets panel lists, JSON), 'warnings', 'folder_pages'
+ *                (pg_classic_style_folder_pages())
  */
 function pg_classic_style_design_open($style_id, $user)
 {
     $style_id = (int)$style_id;
-    $out = array('error' => '', 'pages' => array(), 'css' => '', 'js' => '', 'fonts' => '', 'warnings' => array());
+    $out = array('error' => '', 'pages' => array(), 'css' => '', 'js' => '', 'fonts' => '', 'warnings' => array(), 'folder_pages' => array());
 
     if ((int)$user['role'] > 1) {
         $out['error'] = lang('Only a designer can open a classic style in the visual designer.');
@@ -238,22 +264,7 @@ function pg_classic_style_design_open($style_id, $user)
         return $out;
     }
 
-    // A common region already made a shared component is placed as that
-    // component: its tag draws the component anyway (pg_common_region_components()),
-    // and the canvas shows the content instead of a placeholder. Any other
-    // <cregion> stays a region node of its kind; no region is converted here.
-    $lookup = function ($name) {
-        $hit = db_item("SELECT cregion_id, cregion_designer_type FROM cregion WHERE cregion_name = '" . e($name) . "' LIMIT 1");
-        if (!is_array($hit)) return array('regionType' => 'common');
-        if ($hit['cregion_designer_type'] === 'yes') return array('regionType' => 'designer');
-        $made = db_item("SELECT id, name FROM shared_components
-                         WHERE category = '" . e(pg_common_region_component_category($hit['cregion_id'])) . "'
-                           AND (system_region_config IS NULL OR system_region_config = '')
-                         ORDER BY id ASC LIMIT 1");
-        if (is_array($made)) return array('sharedId' => (int)$made['id'], 'sharedName' => (string)$made['name']);
-        return array('regionType' => 'common');
-    };
-    $frame = pg_classic_style_frame((string)$row['style_code'], $lookup);
+    $frame = pg_classic_style_frame((string)$row['style_code'], pg_classic_style_region_lookup());
 
     // The style's own design files stay editable in the designer.
     $is_own_file = function ($name) {
@@ -285,5 +296,179 @@ function pg_classic_style_design_open($style_id, $user)
     $out['js']    = $frame['js']    ? encode_json($frame['js'])    : '';
     $out['fonts'] = $frame['fonts'] ? encode_json($frame['fonts']) : '';
     $out['warnings'] = $frame['warnings'];
+    $out['folder_pages'] = pg_classic_style_folder_pages($style_id);
     return $out;
+}
+
+/**
+ * Each folder's desktop style as get_style() works it out: the folder's own
+ * folder_style, else its parent's, up to the root folder (0 there). A
+ * parent that is missing or a loop in the rows ends the walk with 0.
+ *
+ * Pure: no query.
+ *
+ * @param array $folders  rows with folder_id, folder_parent, folder_style, folder_level
+ * @return array  folder_id => style id
+ */
+function pg_classic_style_folder_styles($folders)
+{
+    $by_id = array();
+    foreach ((array)$folders as $f) {
+        if (is_array($f) && isset($f['folder_id'])) $by_id[(int)$f['folder_id']] = $f;
+    }
+    $out = array();
+    foreach (array_keys($by_id) as $start) {
+        $path = array();
+        $id = $start;
+        $style = 0;
+        while (true) {
+            if (isset($out[$id])) { $style = $out[$id]; break; }
+            if (!isset($by_id[$id]) || isset($path[$id])) break;
+            $path[$id] = true;
+            $f = $by_id[$id];
+            if ((int)($f['folder_style'] ?? 0) > 0) { $style = (int)$f['folder_style']; break; }
+            if ((int)($f['folder_level'] ?? 0) === 0) break;
+            $id = (int)($f['folder_parent'] ?? 0);
+        }
+        foreach (array_keys($path) as $seen) $out[$seen] = $style;
+        $out[$start] = $style;
+    }
+    return $out;
+}
+
+/**
+ * The pages that take a style from their folder: no page_style of their
+ * own, no tree of their own, not in the recycle bin, in a folder whose
+ * style (pg_classic_style_folder_styles()) is this one. By name.
+ *
+ * @return array  rows: page_id, page_name, page_folder (ints and strings)
+ */
+function pg_classic_style_folder_pages($style_id)
+{
+    $style_id = (int)$style_id;
+    if ($style_id <= 0 || !pg_multi_page_design_ready()) return array();
+
+    $folders = db_items("SELECT folder_id, folder_parent, folder_style, folder_level FROM folder");
+    $ids = array();
+    foreach (pg_classic_style_folder_styles(is_array($folders) ? $folders : array()) as $folder_id => $folder_style) {
+        if ($folder_style === $style_id) $ids[] = (int)$folder_id;
+    }
+    if (!$ids) return array();
+
+    $rows = db_items(
+        "SELECT page_id, page_name, page_folder FROM page
+         WHERE (page_style = 0 OR page_style IS NULL)
+           AND (page_tree_json IS NULL OR page_tree_json = '')
+           AND page_folder IN (" . implode(',', $ids) . ")" . pg_designer_not_binned_sql() . "
+         ORDER BY page_name ASC, page_id ASC");
+    $out = array();
+    foreach ((is_array($rows) ? $rows : array()) as $r) {
+        $out[] = array('page_id' => (int)$r['page_id'], 'page_name' => (string)$r['page_name'], 'page_folder' => (int)$r['page_folder']);
+    }
+    return $out;
+}
+
+/**
+ * The editor's "Also convert the N pages that take this style from their
+ * folder" box, on by default, with the pages listed. It sits outside the
+ * editor's form and posts with it through its form attribute.
+ *
+ * @param array $pages  pg_classic_style_folder_pages()
+ * @return string  '' when there is none
+ */
+function pg_classic_style_folder_pages_field($pages)
+{
+    $pages = (array)$pages;
+    if (!$pages) return '';
+    $items = '';
+    foreach ($pages as $p) {
+        $items .= '<li>' . h((string)$p['page_name']) . '</li>';
+    }
+    return '
+            <div class="alert theme-secondary py-3 small mb-0" id="sd-classic-folder-pages">
+                <div class="form-field mb-0">
+                    <input class="check" type="checkbox" id="sd-classic-folder-pages-on" name="classic_folder_pages" value="1" form="style_designer_form" checked>
+                    <label for="sd-classic-folder-pages-on">' . h(count($pages) === 1
+                        ? lang('Also convert the page that takes this style from its folder')
+                        : lang(array('string' => 'Also convert the {var:1} pages that take this style from their folder', 'vars' => array(count($pages))))) . '</label>
+                </div>
+                <details class="mt-2">
+                    <summary>' . h(lang('Pages')) . '</summary>
+                    <ul class="mb-0 mt-1">' . $items . '</ul>
+                </details>
+            </div>';
+}
+
+/**
+ * The tree of a page that took the converted style from its folder: the
+ * same tree as the style's own pages (pg_classic_style_page_tree()), with
+ * the design-wide body classes the save folds onto every page added to the
+ * root's classes.
+ *
+ * Pure: no query.
+ *
+ * @param string $body_classes  space-separated classes, '' for none
+ */
+function pg_classic_style_folder_page_tree($root_props, $shared_id, $shared_name, $body_classes)
+{
+    $tree = pg_classic_style_page_tree($root_props, $shared_id, $shared_name);
+    $merged = array();
+    foreach (preg_split('/\s+/', (string)$body_classes . ' ' . (string)($tree['props']['cssClass'] ?? '')) as $cls) {
+        if ($cls !== '' && !in_array($cls, $merged, true)) $merged[] = $cls;
+    }
+    if ($merged) $tree['props']['cssClass'] = implode(' ', $merged);
+    return $tree;
+}
+
+/**
+ * Save of a converted style with "Also convert" on: every page that takes
+ * the style from its folder gets page_style and a tree placing the frame
+ * component, as the style's own pages got at open, and its body drawn. A
+ * page given a style or a tree meanwhile is left alone. Only a designer.
+ *
+ * @param string $body_classes  the design-wide body classes being folded onto the pages
+ * @return array  page ids converted
+ */
+function pg_classic_style_convert_folder_pages($style_id, $user, $body_classes = '')
+{
+    $style_id = (int)$style_id;
+    if ((int)$user['role'] > 1 || !pg_multi_page_design_ready()) return array();
+    $pages = pg_classic_style_folder_pages($style_id);
+    if (!$pages) return array();
+
+    $row = db_item("SELECT style_name, style_code FROM style WHERE style_id = '$style_id' LIMIT 1");
+    if (!is_array($row) || trim((string)$row['style_code']) === '') return array();
+    $frame = pg_classic_style_frame((string)$row['style_code'], pg_classic_style_region_lookup());
+    $component = pg_classic_style_component($style_id, (string)$row['style_name'], $frame['frame'], $user);
+    if (!is_array($component)) return array();
+
+    $tree = pg_classic_style_folder_page_tree($frame['root_props'], $component['id'], $component['name'], $body_classes);
+    $tree_json = pg_designer_tree_encode($tree);
+    if ($tree_json === '') return array();
+
+    // Drawing a page shows and uses up the session's pending form messages;
+    // they belong to the screen this request answers.
+    $has_liveforms = isset($_SESSION['software']['liveforms']);
+    $liveforms     = $has_liveforms ? $_SESSION['software']['liveforms'] : null;
+    unset($_SESSION['software']['liveforms']);
+
+    $done = array();
+    foreach ($pages as $p) {
+        $page_id = (int)$p['page_id'];
+        $code = generate_style_code_from_tree($tree, (string)$p['page_name'], '');
+        db("UPDATE page
+            SET page_style = '$style_id',
+                page_tree_json = '" . e($tree_json) . "',
+                page_tree_code = '" . e((string)$code) . "'
+            WHERE page_id = '$page_id'
+              AND (page_style = 0 OR page_style IS NULL)
+              AND (page_tree_json IS NULL OR page_tree_json = '')
+            LIMIT 1");
+        if (mysqli_affected_rows(db::$con) > 0) $done[] = $page_id;
+    }
+
+    if ($has_liveforms) {
+        $_SESSION['software']['liveforms'] = $liveforms;
+    }
+    return $done;
 }
