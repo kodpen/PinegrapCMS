@@ -543,8 +543,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // Elements shown by a fact of the visit (signed in, cart) or by the
     // page's record stand between
     // markers in the stored body and in shared components; decided here, once
-    // every shared component and widget is drawn (page_facts.php).
-    if (strpos($content, '<!--pg-pf:') !== false) {
+    // every shared component and widget is drawn, and the record's values
+    // printed outside the widget filled in (page_facts.php).
+    if (strpos($content, '<!--pg-pf:') !== false || strpos($content, '{pg-r') !== false) {
         $content = pg_page_facts_apply($content, $email);
     }
     pg_page_record_end($pg_pr_prev);
