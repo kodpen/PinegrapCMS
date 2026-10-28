@@ -441,8 +441,10 @@
                 hooks.palette();
             });
         } else {
+            // Ctrl+K is the panel's own search on such a page: the way to
+            // the workspace's names no key.
             find = link('btn btn-sm btn-text theme-secondary rounded-pill no-popover', workspaceUrl('view=home&palette=1'));
-            find.title = t('pal_shortcut');
+            find.title = t('pal_open');
             find.setAttribute('aria-label', find.title);
             find.setAttribute('data-pg-menu-skip', '');
             find.appendChild(icon('bi-search'));
@@ -530,7 +532,7 @@
             return item.key === (now.screen || '');
         }
 
-        // A section of entries; null when it is closed and nothing goes in.
+        // A section of entries, and whether it is closed.
         function group(title, key) {
             var box = el('div', 'ws-side-section');
             var shut = !!(key && closedParts[key]);
@@ -543,7 +545,7 @@
             }
 
             scroll.appendChild(box);
-            return shut ? null : box;
+            return { box: box, shut: shut };
         }
 
         function emptyLine(kind, text, extra) {
@@ -559,7 +561,7 @@
 
         var nav = state.data.nav || {};
         var titles = state.data.titles || {};
-        var top = group('', '');
+        var top = group('', '').box;
 
         (nav.top || []).forEach(function (item) {
             navLink(top, item, navActive(item), item.inbox ? data.inbox : 0);
@@ -857,13 +859,16 @@
                 return;
             }
 
-            var box = group(titles[key] || '', key);
+            var part = group(titles[key] || '', key);
 
-            if (box) {
-                items.forEach(function (item) {
-                    navLink(box, item, navActive(item), 0);
-                });
-            }
+            // Closed, a section still shows the screen that is open.
+            items.forEach(function (item) {
+                var active = navActive(item);
+
+                if (!part.shut || active) {
+                    navLink(part.box, item, active, 0);
+                }
+            });
         });
 
         // The settings stay at the foot of the list, however long the list

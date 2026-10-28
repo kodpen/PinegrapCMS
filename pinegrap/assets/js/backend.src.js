@@ -683,9 +683,12 @@ $(document).ready(function () {
         var backdrop = getMenuBackdrop();
         $('.software-container').addClass('drawer-open');
         paintMenuToggle();
-        // Next frame, so the element is in the DOM before the opacity transition runs.
+        // Next frame, so the element is in the DOM before the opacity transition
+        // runs; not for a drawer shut again in between.
         window.requestAnimationFrame(function () {
-            backdrop.classList.add('show');
+            if (isMenuDrawerOpen()) {
+                backdrop.classList.add('show');
+            }
         });
     }
 
@@ -1066,10 +1069,9 @@ $(document).ready(function () {
     }
 
     // A panel that opens by itself on the screens it is about (the
-    // Workspace list on the workspace's own screens, data-pg-menu-auto):
-    // whenever the menu shows its labels and no other panel is open, and
-    // only while its row is the page's row, so a pinned My Notes row keeps
-    // the notes screen to itself. The rail has no room for it.
+    // Workspace list on the workspace's own screens, which print
+    // data-pg-menu-auto in it): whenever the menu shows its labels and no
+    // other panel is open. The rail has no room for it.
     function autoMenuPanel(menu) {
         if (!menuPanelsReady || !menu || isMenuRail() || menu.classList.contains('pg-menu-drilled')) {
             return;
@@ -1077,9 +1079,8 @@ $(document).ready(function () {
 
         var marker = menu.querySelector('.pg-menu-panel [data-pg-menu-auto]');
         var panel = marker ? marker.closest('.pg-menu-panel') : null;
-        var row = panel ? document.getElementById(panel.getAttribute('data-pg-menu-row')) : null;
 
-        if (panel && row && row.classList.contains('active')) {
+        if (panel) {
             openMenuPanel(panel, {});
         }
     }

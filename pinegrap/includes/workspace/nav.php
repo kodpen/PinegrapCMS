@@ -186,7 +186,7 @@ function ws_side_nav($groups)
 function ws_side_js_keys()
 {
     return array(
-        'search_messages', 'new_channel', 'tour_start', 'pal_shortcut', 'pinned', 'pin', 'unpin',
+        'search_messages', 'new_channel', 'tour_start', 'pal_shortcut', 'pal_open', 'pinned', 'pin', 'unpin',
         'th_section', 'th_show_all', 'th_show_fewer', 'my_channels', 'other_channels', 'no_channels',
         'side_expand', 'side_collapse', 'grp_expand', 'grp_collapse', 'grp_access', 'grp_empty', 'grp_new',
         'more', 'loading', 'error_generic',

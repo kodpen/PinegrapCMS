@@ -422,9 +422,10 @@
     }
 
     // Brings the list on the screen for a step about it: on the mini rail
-    // the rail widens over the screen while the tour is on it, and the entry
-    // is scrolled into the menu's view. Answers how long the menu takes to
-    // slide open, for the ring to wait.
+    // the rail widens over the screen while the tour is on it (on a tablet
+    // the menu's drawer opens), and the entry is scrolled to the middle of
+    // the menu's view, clear of the list's sticky head and foot. Answers
+    // how long the menu takes to slide open, for the ring to wait.
     function showInList(selectors) {
         var waited = 0;
 
@@ -437,7 +438,7 @@
             var node = document.querySelector(String(selector).replace(/^last:/, ''));
 
             if (node && (typeof node.scrollIntoView === 'function')) {
-                node.scrollIntoView({ block: 'nearest' });
+                node.scrollIntoView({ block: 'center' });
                 return true;
             }
 
@@ -520,9 +521,10 @@
             return !!document.querySelector('#ws-menu-side [data-ws-tour]');
         },
 
-        // A rail widened for the tour goes back once it is over.
+        // A rail widened, or the menu's drawer opened, for the list goes
+        // back once the tour is over; the open menu stays as it is.
         onEnd: function () {
-            if (window.pgMenu && window.pgMenu.isRail()) {
+            if (window.pgMenu) {
                 window.pgMenu.dismiss();
             }
         }
