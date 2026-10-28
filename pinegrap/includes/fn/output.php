@@ -2021,6 +2021,7 @@ function output_header($properties = false)
     $menu_state = pg_menu_state(isset($_COOKIE['softwaremenustatus']) ? $_COOKIE['softwaremenustatus'] : '');
     $menu_expanded_class = ($menu_state === 'expanded') ? ' expanded' : '';
     $menu_hidden_class = '';
+    $menu_navigator_attribute = '';
 
     // The button in the bar sets how the menu shows: on a phone it slides the
     // drawer in and out, on a wide screen it walks mini, open and hidden.
@@ -2029,6 +2030,18 @@ function output_header($properties = false)
     if (isset($properties['hide_menu']) && $properties['hide_menu'] == true) {
         $output_software_sidebar = '';
     } else {
+        // The menu first: a screen whose own navigation sits in one of its
+        // panels (pg_menu_navigator()) shows it open, or narrowed to the
+        // rail, from a cookie of its own; never hidden there, since the
+        // screen would lose its way around.
+        $output_menu = output_menu(array('toolbar' => $toolbar));
+
+        if (pg_menu_navigator()) {
+            $menu_state = pg_menu_navigator_state(isset($_COOKIE['softwaremenunav']) ? $_COOKIE['softwaremenunav'] : '');
+            $menu_expanded_class = ($menu_state === 'expanded') ? ' expanded' : '';
+            $menu_navigator_attribute = ' data-pg-menu-navigator';
+        }
+
         $output_menu_mode_button = pg_menu_mode_button($menu_state);
 
         // Only a screen that draws the menu gives up its column for it.
@@ -2039,7 +2052,7 @@ function output_header($properties = false)
             <nav id="menu" class="z-1  ' . $menu_expanded_class . '" style="position:sticky;left:0;top:0;bottom:0;">
 
                 <div class="menu-body">
-                    ' . output_menu(array('toolbar' => $toolbar)) . '
+                    ' . $output_menu . '
                 </div>
             </nav>
         </div>';
@@ -2201,7 +2214,7 @@ function output_header($properties = false)
     ' . pg_output_email_off_open() . '
     ' . pg_preloader_markup() . '
     <a class="pg-skip-link" href="#content">' . lang('Skip to main content') . '</a>
-    <div class="software-container ' . $menu_expanded_class . $menu_hidden_class . '">
+    <div class="software-container ' . $menu_expanded_class . $menu_hidden_class . '"' . $menu_navigator_attribute . '>
         <div class="software-navbar fixed-top pg-print-none ">
             <nav id="header" class="z-1 position-sticky h-100 p-0 top-0 start-100 navbar navbar-expand bg-software-navbar backdrop" >
                 <ul class="navbar-nav">
@@ -2637,6 +2650,39 @@ function pg_menu_state($value)
     $value = is_string($value) ? $value : '';
 
     return in_array($value, array('expanded', 'collapsed', 'hidden'), true) ? $value : 'collapsed';
+}
+
+/**
+ * The state of the main menu on a navigator screen, a screen whose own way
+ * around sits in a panel of the menu (the Workspace list, the explorer's
+ * tree), from its softwaremenunav cookie: open, unless it was narrowed to
+ * the rail there. Never hidden. The other screens keep softwaremenustatus.
+ *
+ * @param mixed $value
+ * @return string expanded or collapsed
+ */
+function pg_menu_navigator_state($value)
+{
+    return ($value === 'collapsed') ? 'collapsed' : 'expanded';
+}
+
+/**
+ * Whether the menu being drawn holds the screen's own navigation: a panel
+ * output_menu() prints to open by itself (data-pg-menu-auto). output_menu()
+ * raises the flag; output_header() reads it once the menu is built.
+ *
+ * @param bool|null $set true to raise it
+ * @return bool
+ */
+function pg_menu_navigator($set = null)
+{
+    static $navigator = false;
+
+    if ($set === true) {
+        $navigator = true;
+    }
+
+    return $navigator;
 }
 
 /**
@@ -3704,6 +3750,10 @@ function output_menu($properties = false)
             // by counting its links.
             $menu_items[23]['panel'] = true;
             $ws_side_screen = ($toolbar == true) ? '' : ws_side_screen($_SERVER['SCRIPT_NAME'] ?? '');
+
+            if ($ws_side_screen !== '') {
+                pg_menu_navigator(true);
+            }
             $menu_items[23]['data-bs-content'] = ws_side_markup(array(
                 'api'     => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php',
                 'target'  => ($toolbar == true) ? '_parent' : '',

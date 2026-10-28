@@ -609,7 +609,9 @@ $(document).ready(function () {
      *    hidden (no column at all). The button in the bar walks them in that
      *    order, one click at a time: mini, open, hidden, mini again. The state
      *    is kept in the softwaremenustatus cookie, which the server reads to
-     *    draw the page in it (pg_menu_state()).
+     *    draw the page in it (pg_menu_state()). A navigator screen (the
+     *    Workspace, the File Manager, the Catalog Manager) shows it open or
+     *    as the rail only, kept in softwaremenunav (pg_menu_navigator_state()).
      *  - below lg: the sidebar is an off-canvas drawer that slides over the
      *    content, opened and shut by the same button in the bar. The drawer
      *    state is transient and deliberately NOT written to the cookie --
@@ -625,6 +627,12 @@ $(document).ready(function () {
     // The panel this tab keeps open (initMenuPanels()). Assigned up here: the
     // init calls below run before the rest of this section is reached.
     var MENU_PANEL_KEY = 'pgMenuPanel';
+    // A screen whose own navigation sits in a panel of the menu (the
+    // Workspace list, the explorer's tree) shows the menu open on a wide
+    // screen, or narrowed to the rail, never hidden. Its choice is kept apart
+    // in softwaremenunav, so the other screens keep theirs (the server draws
+    // it: pg_menu_navigator_state()). Read up here for the same reason.
+    var MENU_NAVIGATOR = document.querySelector('.software-container[data-pg-menu-navigator]') !== null;
     // Set once initMenuPanels() has run: until then a change of the menu's
     // state opens no panel by itself (autoMenuPanel()).
     var menuPanelsReady = false;
@@ -687,8 +695,13 @@ $(document).ready(function () {
     // The order the button in the bar walks the wide-screen states in.
     var MENU_STATE_NEXT = { collapsed: 'expanded', expanded: 'hidden', hidden: 'collapsed' };
 
-    // The wide-screen state the cookie holds.
+    // The wide-screen state the cookie holds; on a navigator screen open
+    // unless it was narrowed there.
     function savedMenuState() {
+        if (MENU_NAVIGATOR) {
+            return (getCookie('softwaremenunav') === 'collapsed') ? 'collapsed' : 'expanded';
+        }
+
         var state = getCookie('softwaremenustatus');
         return (MENU_STATES.indexOf(state) === -1) ? 'collapsed' : state;
     }
@@ -743,14 +756,37 @@ $(document).ready(function () {
     }
 
     // Chooses a wide-screen state and remembers it, for a year rather than the
-    // day the old expand/collapse cookie lasted.
+    // day the old expand/collapse cookie lasted. A navigator screen keeps its
+    // own, open or narrowed.
     function setMenuState(state) {
+        if (MENU_NAVIGATOR) {
+            if ((state !== 'expanded') && (state !== 'collapsed')) {
+                return;
+            }
+
+            setCookie('softwaremenunav', state, 365);
+            paintMenuState(state);
+            return;
+        }
+
         if (MENU_STATES.indexOf(state) === -1) {
             return;
         }
 
         setCookie('softwaremenustatus', state, 365);
         paintMenuState(state);
+    }
+
+    // The state the button in the bar moves a wide screen on to: mini, open,
+    // hidden in turn, or on a navigator screen open and narrowed in turn.
+    function nextMenuState() {
+        var shown = shownMenuState();
+
+        if (MENU_NAVIGATOR) {
+            return (shown === 'expanded') ? 'collapsed' : 'expanded';
+        }
+
+        return MENU_STATE_NEXT[shown];
     }
 
     function initMenuToggle() {
@@ -763,7 +799,7 @@ $(document).ready(function () {
                 return;
             }
 
-            setMenuState(MENU_STATE_NEXT[shownMenuState()]);
+            setMenuState(nextMenuState());
         });
     }
 
@@ -832,7 +868,8 @@ $(document).ready(function () {
                 $('.software-container').removeClass('menu-hidden');
                 paintMenuToggle();
             } else {
-                // Back to the wide screen: whatever the user last chose there.
+                // Back to the wide screen: whatever the user last chose there
+                // (for this kind of screen).
                 paintMenuState(savedMenuState());
             }
 

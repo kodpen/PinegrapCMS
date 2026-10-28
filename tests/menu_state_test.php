@@ -16,6 +16,8 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(__DIR__ . '/helpers/source_reader.php');
+
 function test_menu_state_reads_the_three_states()
 {
 	pg_assert_same('expanded', pg_menu_state('expanded'), 'expanded');
@@ -69,4 +71,41 @@ function test_menu_mode_button_carries_every_picture_and_label()
 
 	pg_assert_false(strpos($html, 'data-pg-menu-mode') !== false, 'no menu of three any more');
 	pg_assert_false(strpos($html, 'd-lg-none') !== false, 'on every width');
+}
+
+function test_menu_navigator_state_is_open_or_the_rail()
+{
+	pg_assert_same('expanded', pg_menu_navigator_state(''), 'no cookie: open');
+	pg_assert_same('expanded', pg_menu_navigator_state('expanded'), 'open');
+	pg_assert_same('collapsed', pg_menu_navigator_state('collapsed'), 'narrowed there');
+	pg_assert_same('expanded', pg_menu_navigator_state('hidden'), 'never hidden');
+	pg_assert_same('expanded', pg_menu_navigator_state(array('collapsed')), 'anything else: open');
+}
+
+function test_menu_header_draws_a_navigator_screen_from_its_own_cookie()
+{
+	$header = pg_test_function_source('output_header');
+
+	// The menu is built before the button and the classes are chosen.
+	pg_assert_true(strpos($header, '$output_menu = output_menu(') < strpos($header, '$output_menu_mode_button = pg_menu_mode_button($menu_state)'), 'the menu first');
+	pg_assert_contains("if (pg_menu_navigator()) {\n            \$menu_state = pg_menu_navigator_state(isset(\$_COOKIE['softwaremenunav'])", $header, 'its own cookie');
+	pg_assert_contains("\$menu_navigator_attribute = ' data-pg-menu-navigator';", $header, 'marked for the script');
+	pg_assert_contains("\$menu_hidden_class . '\"' . \$menu_navigator_attribute . '>", $header, 'on the container');
+
+	// Only a panel that opens by itself makes a navigator screen.
+	$menu = pg_test_function_source('output_menu');
+	pg_assert_contains("if (\$ws_side_screen !== '') {\n                pg_menu_navigator(true);", $menu, 'the workspace screens');
+}
+
+function test_menu_script_keeps_a_navigator_screen_open_or_narrowed()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+
+	// Read before the init calls: syncMenuMode() paints the saved state there.
+	$flag = strpos($js, "var MENU_NAVIGATOR = document.querySelector('.software-container[data-pg-menu-navigator]') !== null;");
+	pg_assert_true(($flag !== false) && ($flag < strpos($js, 'initResizeCollapseHandler();')), 'the flag is read before the init calls');
+	pg_assert_contains("return (getCookie('softwaremenunav') === 'collapsed') ? 'collapsed' : 'expanded';", $js, 'its saved state');
+	pg_assert_contains("setCookie('softwaremenunav', state, 365);", $js, 'its own cookie');
+	pg_assert_contains("return (shown === 'expanded') ? 'collapsed' : 'expanded';", $js, 'the button narrows and opens, never hides');
+	pg_assert_same(1, substr_count($js, "setCookie('softwaremenustatus'"), 'one place writes the other screens\' state');
 }
