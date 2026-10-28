@@ -8086,8 +8086,8 @@ button.no-popover:focus-visible {
 }
 
 /* Bootstrap 6's text button in the secondary theme is the same object, and
-   the classic screens carry it instead of .btn-ghost (Workspace and the
-   editor still use the class above). Its tokens are set to what the ghost
+   the panel carries it instead of .btn-ghost (only the Workspace flows
+   still use the class above). Its tokens are set to what the ghost
    resolves to, so the two look alike in every state:
    - colours: the ghost's ink and hover surface, not the secondary theme's;
    - focus: the panel-wide focus ring above still wins over the theme's;
@@ -13799,13 +13799,14 @@ a.ws-chip:hover {
 }
 /* A mark the caret or the selection has, on a button of a box's row of
    tools: the tint of the bar over a selection. Undo and redo with nothing to
-   take back draw no frame: .btn-ghost sets no disabled border colour, so the
-   border fell back to the text colour. */
-.ws-rich-tools .btn-ghost[aria-pressed="true"] {
+   take back draw no frame: .btn-text.theme-secondary leaves the disabled
+   border colour at initial, so the border would fall back to the text
+   colour. */
+.ws-rich-tools .btn-text.theme-secondary[aria-pressed="true"] {
   background: rgba(var(--ws-accent-rgb), .15);
   color: rgba(var(--ws-accent-rgb), 1);
 }
-.ws-rich-tools .btn-ghost:disabled {
+.ws-rich-tools .btn-text.theme-secondary:disabled {
   border-color: transparent;
 }
 
