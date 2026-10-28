@@ -724,6 +724,7 @@
     "No items in cart.": "Sepette ürün yok.",
     "No items were found for {var:1}.": "{var:1} için hiçbir öğe bulunamadı.",
     "No items were found for: {var:1}": "{var:1} için ürün bulunamadı",
+    "No key is entered for the transcription service.": "Yazıya dökme hizmeti için anahtar girilmedi.",
     "No key stored": "Anahtar kayıtlı değil",
     "No license key provided in Site Settings. You cannot benefit from some features.": "Site Ayarlarında lisans anahtarı sağlanmadı. Bazı özelliklerden yararlanamazsınız.",
     "No limit": "Limit yok",

@@ -90,6 +90,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_scheduled_anchor(); // 11.0.88
 	upgrade_2026_11_0_api_device_pairings();    // 11.0.70
 	upgrade_2026_11_0_product_bundles();        // 11.0.54
+	upgrade_2026_11_0_workspace_voice();        // 11.0.89
 
 }
 
@@ -2865,5 +2866,55 @@ function upgrade_2026_11_0_product_bundles() {
 	}
 
 	install_note('Products: a product can now be a bundle of other products, sold as one item. Its stock follows its contents and its price can be the sum of their prices less a discount.');
+
+}
+
+// Transcripts of Workspace voice messages (2026.11.0, 11.0.89;
+// includes/workspace/voice.php).
+//
+// ws_voice holds one row per recording, by the file it travels in (a copy of
+// the message in a discussion shares the file and reads the same row):
+// message_id is the message it was posted with, duration_ms and peaks (the
+// waveform levels, one character each) are what the player draws, status is
+// '' (never asked), queued, running, done, failed or skipped, transcript the
+// machine text kept apart from the person's own words, with the language,
+// provider and model that wrote it. ws_channels.voice_access follows
+// ai_access: 0 goes with the kind of channel (public yes, private no), 1 a
+// manager allowed it, 2 not allowed. config holds whether the site's own
+// connection to an OpenAI-compatible /audio/transcriptions endpoint is on and
+// the time a failed call holds the queue back to; its texts (base address,
+// model, the encrypted key, the last error) are config_text rows, as the
+// config row has no room for more long columns.
+function upgrade_2026_11_0_workspace_voice() {
+
+	install_create_table('ws_voice', "CREATE TABLE ws_voice (
+		id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		file_id INT UNSIGNED NOT NULL DEFAULT 0,
+		message_id INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id INT UNSIGNED NOT NULL DEFAULT 0,
+		duration_ms INT UNSIGNED NOT NULL DEFAULT 0,
+		peaks VARCHAR(255) NOT NULL DEFAULT '',
+		status VARCHAR(16) NOT NULL DEFAULT '',
+		transcript MEDIUMTEXT NULL,
+		language VARCHAR(16) NOT NULL DEFAULT '',
+		provider VARCHAR(100) NOT NULL DEFAULT '',
+		model VARCHAR(100) NOT NULL DEFAULT '',
+		attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		error VARCHAR(255) NOT NULL DEFAULT '',
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at INT UNSIGNED NOT NULL DEFAULT 0,
+		transcribed_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_file (file_id),
+		KEY idx_message (message_id),
+		KEY idx_status (status, id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('ws_channels', 'voice_access', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_add_column('config', 'ws_voice_enabled', "TINYINT(1) NOT NULL DEFAULT 0");
+	install_add_column('config', 'ws_voice_hold_until', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: voice messages can be written out as text by a transcription service with the site\'s own key, once an administrator switches it on in the Workspace settings; private channels only where their manager allows it.');
 
 }
