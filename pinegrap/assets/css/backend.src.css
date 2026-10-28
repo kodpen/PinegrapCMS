@@ -19355,9 +19355,12 @@ html[data-bs-theme="dark"] .wsf-node-manual { --wsf-kind: #8fcf9b; }
 html[data-bs-theme="dark"] .wsf-node-task { --wsf-kind: #8fbde3; }
 html[data-bs-theme="dark"] .wsf-node-end { --wsf-kind: #b3ab9b; }
 /* A value box: no arrows, a dashed border in the value colour. */
-.wsf-node-constants { --wsf-kind: #a8468f; }
-html[data-bs-theme="dark"] .wsf-node-constants { --wsf-kind: #e58fd0; }
-.wsf-node.wsf-node-constants {
+.wsf-node-constants,
+.wsf-node-value { --wsf-kind: #a8468f; }
+html[data-bs-theme="dark"] .wsf-node-constants,
+html[data-bs-theme="dark"] .wsf-node-value { --wsf-kind: #e58fd0; }
+.wsf-node.wsf-node-constants,
+.wsf-node.wsf-node-value {
   border-style: dashed;
   border-left-style: solid;
 }

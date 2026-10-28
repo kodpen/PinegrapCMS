@@ -17,4 +17,4 @@ description: A paused flow resumed on its live version, and a flow's published v
 - `POST /workspace/flows/{id}/resume` (`workspace.flows.resume`, `workspace:write`, dry run, `'mcp' => false`, `ws_api_own_words_only()`), as publish: a resumed flow opens tasks in the person's name.
 - `GET /workspace/flows/{id}/versions` (list of WorkspaceFlowVersion, newest first, cursor on n), `GET …/versions/{n}` (WorkspaceFlowVersionDetail: the version, `live`, `graph`), `POST …/versions/{n}/restore` (dry run answers boxes and problems; answer WorkspaceFlow). All three need edit (`ws_api_flow_editable()`, 403 for run or view), are MCP tools and take an application key: a draft never runs.
 
-Related: docs/memory/workspace/workspace-flows-store.md, docs/memory/workspace/workspace-flows-anchors.md, docs/memory/plans/workspace-flows-api.md
+Related: docs/memory/workspace/workspace-flows-store.md, docs/memory/workspace/workspace-flows-anchors.md

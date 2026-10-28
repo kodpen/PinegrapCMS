@@ -258,9 +258,10 @@ function ws_flow_condition_run($run, $step, $node, $owner)
     }
 
     if ($check['rule']['type'] === 'value') {
-        $values = ws_flow_pure_values(ws_flow_run_graph($run)) + ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
+        $values = ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
             WHERE run_id = '" . (int) $run['id'] . "' AND status IN ('done', 'failed', 'skipped')"));
         $values[WS_STEP_TRIGGER] = ws_step_trigger_values_for($owner, ws_flow_run_context($run));
+        $values = ws_flow_pure_values(ws_flow_run_graph($run), $values) + $values;
         $held = ws_flow_condition_value_holds($check['rule'], $values);
         $end = ws_flow_condition_settlement($held['holds']);
 

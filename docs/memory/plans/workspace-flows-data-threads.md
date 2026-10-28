@@ -16,7 +16,7 @@ description: Plan (owner request 2026-10-27, draft being refined): the Flows can
 
 ## What are value boxes?
 - New kinds `value` (derived) and `constants` (hand-written rows: name, type, value). Pure: no side effect, no control arrows, only threads; computed once per run when a reader runs, then reused.
-- Derived rules come from a short allowlist (compare, join, add, subtract, round, date format, add days, record field); parsed, never evaluated as code.
+- Derived rules come from a short allowlist (compare, join, add, subtract, round, date format, add days); parsed, never evaluated as code. Record field was dropped: it reads the database, so the box would not be pure.
 - Their outputs are declared like any box's (D1), so the picker, the reference check and AI see them.
 
 ## How does it stay readable?
@@ -29,7 +29,7 @@ description: Plan (owner request 2026-10-27, draft being refined): the Flows can
 
 - T2 drag from an output dot to a field chip; the fork by double-click and its equivalents. Done (PR #2540, `workspace/workspace-flows-thread-drawing.md`).
 
-- T3 the constants box, then the derived value box with its allowlist. The constants box done (PR #2550, `workspace/workspace-flows-value-boxes.md`); next: the derived value box, a step of its own.
+- T3 the constants box, then the derived value box with its allowlist. Done (PRs #2550, #2701: `workspace/workspace-flows-value-boxes.md`, `workspace/workspace-flows-derived-box.md`).
 
 - T4 the run view lists threads and values per box. Done (PR #2650, `workspace/workspace-flows-run-view.md`).
 
