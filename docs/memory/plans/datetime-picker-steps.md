@@ -26,6 +26,6 @@ description: Panel steps P1-P11 of plans/datetime-picker.md: what each changes, 
 
 - P10 (M) Workspace modules: approvals, customer, recurrence, task_time, task_approval; rebuild bundle. After P9.
 
-- P11 (S) Designer chrome: page schedule (`designer_screen.php` 2247/2251, store `Y-m-d\TH:i`), widget filter rows (`style_designer.js` ~56148); `node --check`. After P3; not beside S4. Stop after it.
+- P11 (S) done (#2854). Page schedule boxes and widget filter value boxes on the control (`ui/pg-date-stores.md`); `pgFields.refresh()` for values a script writes.
 
 - F1 (M) Flows editor (`workspace_flow.js`), by the Flows team, after P9.

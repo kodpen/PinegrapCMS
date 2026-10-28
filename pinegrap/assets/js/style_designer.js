@@ -36721,6 +36721,7 @@ const StyleDesigner = (function () {
                 rerender ? { afterSave: function () { renderProperties(); } } : undefined);
         };
         _swFilterEls.forEach(function (el) {
+            if (window.pgFields) window.pgFields.init(el);
             var sid = 0;
             var any = el.querySelector('[data-sw-id]');
             if (any) sid = parseInt(any.dataset.swId, 10);
@@ -56386,6 +56387,9 @@ const StyleDesigner = (function () {
             var inputType = (type === 'date') ? 'date' : (type === 'date and time') ? 'datetime-local' : (type === 'time') ? 'time' : 'text';
             var val = dyn ? '' : String(f.value == null ? '' : f.value);
             if (inputType === 'datetime-local') val = val.replace(' ', 'T').slice(0, 16);
+            // The native input stays the ISO store the row is read from; the
+            // date-and-time control draws its box (_swFilterEls binding).
+            var valueHook = { date: ' data-pg-date', 'datetime-local': ' data-pg-datetime', time: ' data-pg-time' }[inputType] || '';
 
             html +=
                 '<div class="sd-sw-filter" data-idx="' + i + '"' + keyAttr + (dynBad ? ' data-attr="' + esc(urlParam) + '"' : '') + ' style="display:flex;flex-direction:column;gap:4px;padding:6px;margin-bottom:6px;border:1px solid rgba(128,128,128,.25);border-radius:4px">' +
@@ -56397,7 +56401,7 @@ const StyleDesigner = (function () {
                         ? '<div class="sd-sw-filter-warn" style="font-size:.66rem;color:#b45309;line-height:1.4"><span class="bi bi-exclamation-triangle me-1"></span>' + esc(rowWarn) + '</div>'
                         : '') +
                     '<select class="form-control form-control-sm sd-sw-filter-op" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Operator')) + '">' + opOpts + '</select>' +
-                    '<input type="' + inputType + '" class="form-control form-control-sm sd-sw-filter-value" data-sw-id="' + sid + '" value="' + esc(val) + '" maxlength="255" placeholder="' + esc(_sdT('Value')) + '"' + (dyn ? ' disabled' : '') + '>' +
+                    '<input type="' + inputType + '" class="form-control form-control-sm sd-sw-filter-value" data-sw-id="' + sid + '"' + valueHook + ' value="' + esc(val) + '" maxlength="255" placeholder="' + esc(_sdT('Value')) + '"' + (dyn ? ' disabled' : '') + '>' +
                     (dynOpts.length
                         ? '<div style="display:flex;gap:4px">' +
                               '<select class="form-control form-control-sm sd-sw-filter-dyn" data-sw-id="' + sid + '" aria-label="' + esc(_sdT('Dynamic Value')) + '">' +
@@ -66841,6 +66845,7 @@ const StyleDesigner = (function () {
             if (!k) return;
             if (el.type === 'checkbox') el.checked = !!p[k];
             else el.value = (p[k] == null) ? '' : String(p[k]);
+            _sdDateFieldRefresh(el);
             // A <select> given a value it has no option for reads back as ''
             // — which is how new pages were being saved with folder 0. Fall
             // back to the first option (the root folder) and keep the page
@@ -70825,6 +70830,14 @@ const StyleDesigner = (function () {
         return '';
     }
 
+    // A Page Settings box on the date-and-time control (pg_fields.js): what a
+    // script wrote into its store (value, disabled state) is shown without a
+    // change event, which would read the half-loaded fields into the page.
+    function _sdDateFieldRefresh(el) {
+        if (!el || !el.hasAttribute || !window.pgFields || !window.pgFields.refresh) return;
+        if (el.hasAttribute('data-pg-datetime') || el.hasAttribute('data-pg-date') || el.hasAttribute('data-pg-time')) window.pgFields.refresh(el);
+    }
+
     // The two boxes of Page Settings show the active page; the home page
     // takes neither, and an end before the start is said under them (the
     // save refuses it).
@@ -70835,6 +70848,8 @@ const StyleDesigner = (function () {
         pub.value   = p.page_publish_at || '';
         unpub.value = p.page_unpublish_at || '';
         pub.disabled = unpub.disabled = !!home;
+        _sdDateFieldRefresh(pub);
+        _sdDateFieldRefresh(unpub);
         var line = document.getElementById('sd-page-schedule');
         if (!line) return;
         var text = '', warn = false;
