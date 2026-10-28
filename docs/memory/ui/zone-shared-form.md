@@ -4,7 +4,7 @@ description: add_zone.php and edit_zone.php draw the shipping zone form and read
 ---
 
 ## What is shared?
-- `includes/forms/zone_form.php` (loaded with `require_once(PG_FUNCTIONS_DIR . …)` after `init.php`): `pg_zone_form_cards($values, $country_options, $state_options)` (name, fees, countries, states cards), `pg_zone_form_choices($zone_id = 0)` (country and state options, a zone's own links selected) and `pg_zone_form_rate($value)` (a posted rate in minor units). PR #<n>.
+- `includes/forms/zone_form.php` (loaded with `require_once(PG_FUNCTIONS_DIR . …)` after `init.php`): `pg_zone_form_cards($values, $country_options, $state_options)` (name, fees, countries, states cards), `pg_zone_form_choices($zone_id = 0)` (country and state options, a zone's own links selected) and `pg_zone_form_rate($value)` (a posted rate in minor units). PR #2533.
 - A screen keeps its gates, the edit prefill (`pg_format_input_amount()` of the stored rates), the form tag, buttons (edit adds Delete), the edit screen's hidden `id`, the xref rewrite and the INSERT / UPDATE.
 
 ## How are the options ordered?
