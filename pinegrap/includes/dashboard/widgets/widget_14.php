@@ -175,9 +175,17 @@ function pg_dashboard_widget_14($request, $user)
                 $OUTPUT_P_ROWS = $render_sub_row($P_end_d, $P_day_dif, $P_countdown, 'bi-award-fill', lang('Software License'));
             }
 
+            $output_rows = $OUTPUT_DOMAIN_ROWS . $OUTPUT_HOSTING_ROWS . $OUTPUT_SSL_ROWS . $OUTPUT_P_ROWS;
+
+            // An unreachable licence server, or an answer without
+            // any of the four records, leaves every row empty.
+            if ($output_rows === '') {
+                $output_rows = pg_widget_empty('bi-cloud-slash', lang('Subscription details could not be loaded.'));
+            }
+
             $output_data = '
             <div class="card-body p-0" style="overflow-x:hidden;overflow-y:auto">
-                ' . $OUTPUT_DOMAIN_ROWS . $OUTPUT_HOSTING_ROWS . $OUTPUT_SSL_ROWS . $OUTPUT_P_ROWS . '
+                ' . $output_rows . '
             </div>';
 
             //return success json output

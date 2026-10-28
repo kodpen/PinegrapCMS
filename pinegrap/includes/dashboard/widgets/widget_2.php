@@ -376,17 +376,19 @@ function pg_dashboard_widget_2($request, $user)
                 // The popover is the only place the full
                 // explanation fits, and welcome.php binds it by
                 // delegation from document, so it survives the
-                // markup being injected after page load.
+                // markup being injected after page load. A chip
+                // without a link is a button so the keyboard can
+                // focus it, which is what opens the popover.
                 $check_open = ($health_check['href'] !== '')
                     ? '<a href="' . h($health_check['href']) . '"'
-                    : '<div';
+                    : '<button type="button"';
 
                 $output_checks .= $check_open . ' class="pg-check pg-check-' . $check_tone . ' status-popover"'
                     . ' title="' . h($health_check['title']) . '"'
                     . ' data-bs-toggle="popover"'
                     . ' data-bs-trigger="hover focus"'
                     . ' data-bs-content="' . h($health_check['message']) . '">' . $check_body
-                    . (($health_check['href'] !== '') ? '</a>' : '</div>');
+                    . (($health_check['href'] !== '') ? '</a>' : '</button>');
             }
         }
 

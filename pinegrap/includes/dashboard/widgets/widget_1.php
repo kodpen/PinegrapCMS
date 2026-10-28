@@ -54,9 +54,7 @@ function pg_dashboard_widget_1($request, $user)
                 'status'  => 'success',
                 'message' => lang('Data Received successfully.'),
                 'data'    => '<div class="card-body p-0">'
-                    . pg_widget_empty('bi-map', lang(array(
-                        'string' => 'There is no {var:1} right now.',
-                        'vars'   => lang('Order'))))
+                    . pg_widget_empty('bi-map', lang('No sales yet.'))
                     . '</div>');
         }
 

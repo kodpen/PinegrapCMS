@@ -354,3 +354,34 @@ function test_dashboard_visitor_period_cells_are_pressed_toggles()
 
 	pg_assert_contains('b.setAttribute("aria-pressed", ', $source);
 }
+
+// Every empty state is a whole sentence: "There is no Order right now." put a
+// capitalised singular noun in the middle of one.
+function test_dashboard_empty_states_are_whole_sentences()
+{
+	foreach (glob(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets/widget_*.php') as $path) {
+		pg_assert_true(strpos((string) file_get_contents($path), "'There is no {var:1} right now.'") === false, basename($path));
+	}
+
+	$tr = pg_test_language_map('tr');
+
+	foreach (array('No sales yet.', 'Every product is in stock.', 'No offers right now.', 'No other currencies are set up.',
+		'No orders yet.', 'No open shopping carts.', 'Nobody is online right now.', 'Subscription details could not be loaded.') as $sentence) {
+		pg_assert_true(isset($tr[$sentence]), $sentence);
+	}
+}
+
+// A card whose rows are all skipped or blank still says why it is empty.
+function test_dashboard_cards_never_draw_blank()
+{
+	$rates = dashboard_test_source('includes/dashboard/widgets/widget_16.php');
+	pg_assert_contains("if (\$output_rows === '') {", $rates);
+	pg_assert_contains("lang('No other currencies are set up.')", $rates);
+
+	$subscriptions = dashboard_test_source('includes/dashboard/widgets/widget_14.php');
+	pg_assert_contains("lang('Subscription details could not be loaded.')", $subscriptions);
+
+	// With no activity at all the note is not about a filtered kind.
+	$activity = dashboard_test_source('includes/dashboard/widgets/widget_7.php');
+	pg_assert_contains("lang('No activity recorded yet.')", $activity);
+}

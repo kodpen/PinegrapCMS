@@ -1750,7 +1750,7 @@ function pg_dashboard_brief($user, $changelog_sections)
                 . '<i class="bi bi-list-check" aria-hidden="true"></i>'
                 . '<span class="pg-brief-ws-label">' . h(lang('In progress')) . '</span>'
                 . '<span class="pg-brief-ws-text">' . $greeting_strip_title($greeting_strip_ws['doing']['title']) . '</span>'
-                . '<span class="pg-brief-ws-bar" role="progressbar" aria-valuenow="' . $greeting_strip_percent . '" aria-valuemin="0" aria-valuemax="100">'
+                . '<span class="pg-brief-ws-bar" aria-hidden="true">'
                 . '<span style="width:' . $greeting_strip_percent . '%"></span></span>'
                 . '<span class="pg-brief-ws-pct">' . h(lang(array('string' => '{var:1}%', 'vars' => $greeting_strip_percent))) . '</span>'
                 . '</a>';
