@@ -42,7 +42,7 @@ function test_bs6_designer_toast_markup()
 	$js = bs6_designer_toast_source();
 
 	pg_assert_contains("'toast sd-toast theme-' + ", $js);
-	pg_assert_contains("'toast-body'", $js);
+	pg_assert_contains("'toast-body ", $js);
 	pg_assert_true(strpos($js, 'sd-toast-visible') === false, 'own show class left');
 	pg_assert_true(strpos($js, 'sd-toast-dismiss') === false, 'own close glyph left');
 }
