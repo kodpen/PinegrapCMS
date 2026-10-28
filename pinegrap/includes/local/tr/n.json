@@ -660,6 +660,7 @@
     "No extra selection needed": "Ek seçim gerekmez",
     "No feed is available for {var:1}": "{var:1} için yayın yok",
     "No feedback yet. Tell the next reader whether this guide helped you.": "Henüz geri bildirim yok. Bu rehberin işinize yarayıp yaramadığını sonraki okura söyleyin.",
+    "No field after this box can take this value.": "Bu kutudan sonraki hiçbir alan bu değeri alamaz.",
     "No field carries the <strong>Title</strong> role, so the records get no name and keep their reference code. Select a control and assign it in Form Field → RSS / list role.": "Hiçbir alana <strong>Başlık</strong> rolü verilmedi: kayıtlar ad almaz ve referans koduyla açılmaya devam eder. Bir kontrolü seçip Form Alanı → RSS / liste rolü'nden atayın.",
     "No field carries the <strong>Title</strong> role: the submissions appear unnamed in the list. Select a control and assign it in Form Field → RSS / list role.": "Hiçbir alana <strong>Başlık</strong> rolü verilmedi: gönderimler listede adsız görünür. Bir kontrolü seçip Form Alanı → RSS / liste rolü'nden atayın.",
     "No field of this form is marked as the RSS title, so the page keeps its own title. Pick a field here.": "Bu formda RSS başlığı olarak işaretli bir alan yok, bu yüzden sayfa kendi başlığını korur. Buradan bir alan seçin.",
