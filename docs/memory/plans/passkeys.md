@@ -28,7 +28,7 @@ description: Plan (approved 2026-10-19): WebAuthn passkeys as a second factor an
 
 - 4c3 done (#2557, core/passkey-without-totp.md): the classic account page gives an account with passkeys and no TOTP new recovery codes for the password and a code e-mailed for that purpose (decided in #2392).
 
-- 4c3b done (#PRNUM, core/passkey-without-totp.md): the account security widget offers such an account new recovery codes (password + code e-mailed for `recovery`).
+- 4c3b done (#2717, core/passkey-without-totp.md): the account security widget offers such an account new recovery codes (password + code e-mailed for `recovery`).
 
 - 5 Memory: update `core/passkey-ceremonies.md` and `two-step-sign-in.md` with each step.
 
