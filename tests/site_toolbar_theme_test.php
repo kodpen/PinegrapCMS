@@ -59,7 +59,7 @@ function test_site_toolbar_iframe_matches_the_light_root()
 	$script = site_toolbar_theme_source('frontend.src.js');
 	pg_assert_true(strpos($script, 'function send_toolbar_state(enabled)') !== false, 'the state is sent when it changes');
 	pg_assert_true(strpos($script, '// Update toolbar properties when visitor leaves this page.') === false, 'no beforeunload request for the toolbar state');
-	pg_assert_same(3, substr_count($script, 'send_toolbar_state('), 'the function and its two callers: collapse and expand');
+	pg_assert_same(4, substr_count($script, 'send_toolbar_state('), 'the function and its three callers: collapse, expand, expand after polling');
 }
 
 // Bootstrap 5 names Bootstrap 6 dropped turn the SEO panel's colours invalid.
