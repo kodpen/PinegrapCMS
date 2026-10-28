@@ -1060,7 +1060,7 @@ if ($order_submitted == false) {
             // The card is not updated from the billing block, but a card with no
             // tax number still takes the one typed here: the order keeps none of
             // its own, and the account its invoice goes to is opened from the card.
-            pg_checkout_fill_contact_tax((int) $contact_id, (string) $liveform->get_field_value('tax_number'), (string) $liveform->get_field_value('tax_office'), (int) $user_id);
+            pg_checkout_fill_contact_tax((int) $contact_id, (string) $liveform->get_field_value('tax_number'), (string) $liveform->get_field_value('tax_office'), (int) $user_id, empty($new_contact_id));
         }
 
         // Announced only now: the row above was created empty and has just been

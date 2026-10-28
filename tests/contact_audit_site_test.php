@@ -6,8 +6,9 @@
  * merge: pg_audit_as_site() switches the trail's source to "site" (the
  * member, nobody for a guest; a job stays a job), the source is offered by
  * the audit screen, its filter and the API, every storefront contact writer
- * records through pg_audit_site_record*(), and merge_contacts() writes its
- * lines in both of its merge branches. The writers need a database and are
+ * records through pg_audit_site_record*(), merge_contacts() writes its
+ * lines in both of its merge branches, the membership and recurring payment
+ * jobs write theirs as a job and the checkout tax fill writes one line. The writers need a database and are
  * checked in their source.
  *
  * @author      Erdal Güral (Kodpen)
@@ -79,4 +80,29 @@ function test_contact_audit_site_merge_writes_its_lines_in_both_branches()
 	pg_assert_same(1, substr_count($source, 'pg_contact_merge_audit($remaining_orphan[\'id\'], $audit_before);'), 'the orphan branch writes its lines');
 	pg_assert_true(strpos($source, "pg_audit('merge', 'contact'") !== false, 'one merge line for the contact that stays');
 	pg_assert_true(pg_audit_view_label('action', 'merge') !== 'merge', 'merge has a label');
+}
+
+function test_contact_audit_jobs_record_their_contacts_as_a_job()
+{
+	foreach (array('membership_job.php', 'recurring_payment_job.php') as $file) {
+		$source = contact_audit_site_test_source($file);
+
+		pg_assert_true(strpos($source, 'pg_audit_as_job(true);') !== false, $file . ' writes as a job, also when opened from the panel');
+		pg_assert_same(1, substr_count($source, "pg_audit_fetch('contacts'"), $file . ' reads its contact before the save');
+		pg_assert_same(1, substr_count($source, "pg_audit_record('update', 'contacts'"), $file . ' writes its contact line');
+	}
+}
+
+function test_contact_audit_checkout_tax_fill_records_once()
+{
+	$source = contact_audit_site_test_source('includes/fn/contacts.php');
+
+	pg_assert_true(strpos($source, "pg_audit_site_record('update', 'contacts', \$contact_id, \$audit_before);") !== false, 'the tax fill writes its line as a site visitor');
+	pg_assert_true(strpos($source, 'if ($filled && $audit)') !== false, 'only a fill that took the number writes one');
+
+	// A contact the checkout made gets its create line after the fill, so the
+	// fill writes none for it.
+	foreach (array('billing_information.php', 'express_order.php') as $file) {
+		pg_assert_true(strpos(contact_audit_site_test_source($file), "(int) \$user_id, empty(\$new_contact_id));") !== false, $file . ' leaves a new contact to its create line');
+	}
 }
