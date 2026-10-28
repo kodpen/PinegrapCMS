@@ -62,7 +62,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - prototype-sharing.md: Plan (2026-10-24; slices 1-4 done: #1867, #1579, #1595, #1578; 5 later): drafts play as a clickable prototype shared by a view-only link; flows with the team
 - refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
 - reverse-oauth-leftovers.md: Remaining outside-account connections (calendar, notes, cloud picker, Meta, Merchant, GA4, Business Profile, social, AI), the connect.pinegrap.com broker and open decisions
-- security-findings-2026-10-waf.md: Security findings of the 2026-10-20 firewall and helper scan: 1, 3, 4, 5, 7 done; 2 (proxy headers), 6 (country rule) decided by the owner 2026-10-28; one PR each
+- security-findings-2026-10-waf.md: Security findings of the 2026-10-20 firewall and helper scan: 1, 2, 3, 4, 5, 7 done; 6 (country rule) decided by the owner 2026-10-28; one PR each
 - security-findings-2026-10.md: 2026-10-19 security audit: fixed by that day's PRs and #713; items 2-8 decided by the owner 2026-10-28 (labels, CVV, escape_like, sign-in message, gateway secrets, ERP host, rich text)
 - shipping-carrier-labels.md: Plan (approved 2026-10-19, step 1 done): carrier APIs for label/barcode creation, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct
 - shipping-management.md: Shipping plan (2026-10-08; phases 1-4, 5, 6 and 7a done, phase 1 waits for new carriers): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
