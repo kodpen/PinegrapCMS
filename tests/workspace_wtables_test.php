@@ -216,3 +216,158 @@ function test_workspace_wtables_cells_json()
 	pg_assert_same(array(), ws_wtable_cells_decode(null));
 	pg_assert_same(array(), ws_wtable_cells_decode('"text"'));
 }
+
+// A new table needs a name; a change keeps what it leaves out.
+function test_workspace_wtables_table_input()
+{
+	$new = ws_wtable_table_input_check(array('name' => ' Leads ', 'description' => "First\r\nsecond\x01"), true);
+	pg_assert_true($new['ok']);
+	pg_assert_same(array('name' => 'Leads', 'description' => "First\nsecond"), $new['sets']);
+
+	pg_assert_same('name_empty', ws_wtable_table_input_check(array(), true)['error'], 'a new table without a name');
+	pg_assert_same('name', ws_wtable_table_input_check(array(), true)['field']);
+	pg_assert_same(array('description' => ''), ws_wtable_table_input_check(array('description' => null), false)['sets'], 'a change of the description alone');
+	pg_assert_same('nothing_to_change', ws_wtable_table_input_check(array('other' => 1), false)['error']);
+	pg_assert_same('description_invalid', ws_wtable_table_input_check(array('description' => array()), false)['error']);
+	pg_assert_same('description_invalid', ws_wtable_table_input_check(array('description' => "bad \xC3\x28"), false)['error'], 'not UTF-8');
+	pg_assert_true(ws_wtable_table_input_check(array('description' => str_repeat('ğ', 2000)), false)['ok'], '2000 characters, not bytes');
+	pg_assert_same('description_too_long', ws_wtable_table_input_check(array('description' => str_repeat('a', 2001)), false)['error']);
+	pg_assert_same(422, ws_wtable_table_input_check(array(), true)['status']);
+}
+
+// A new column needs a name and a known type; a change never moves its type.
+function test_workspace_wtables_column_input()
+{
+	$new = ws_wtable_column_input_check(array('name' => 'Amount', 'type' => 'money'));
+	pg_assert_true($new['ok']);
+	pg_assert_same(array('name' => 'Amount', 'type' => 'money', 'options' => array('decimals' => 2, 'currency' => '')), $new['sets'], 'the type\'s default options');
+
+	pg_assert_same('type_unknown', ws_wtable_column_input_check(array('name' => 'A', 'type' => 'rating'))['error']);
+	pg_assert_same('type_unknown', ws_wtable_column_input_check(array('name' => 'A'))['error']);
+	pg_assert_same('choices_empty', ws_wtable_column_input_check(array('name' => 'A', 'type' => 'status'))['error']);
+	pg_assert_same('options', ws_wtable_column_input_check(array('name' => 'A', 'type' => 'status'))['field']);
+
+	$old = array('id' => 5, 'name' => 'Amount', 'type' => 'money', 'options' => array('decimals' => 2, 'currency' => ''));
+	pg_assert_same(array('name' => 'Total'), ws_wtable_column_input_check(array('name' => 'Total'), $old)['sets'], 'a rename keeps the options');
+	pg_assert_same(array('options' => array('decimals' => 0, 'currency' => 'EUR')), ws_wtable_column_input_check(array('options' => array('decimals' => 0, 'currency' => 'eur')), $old)['sets']);
+	pg_assert_same('type_fixed', ws_wtable_column_input_check(array('type' => 'number'), $old)['error']);
+	pg_assert_true(ws_wtable_column_input_check(array('type' => 'money', 'name' => 'X'), $old)['ok'], 'the same type again is no change of type');
+	pg_assert_same('nothing_to_change', ws_wtable_column_input_check(array(), $old)['error']);
+}
+
+function test_workspace_wtables_column_rows()
+{
+	pg_assert_same('{}', ws_wtable_options_encode(array()));
+	pg_assert_same('{"decimals":2,"currency":"TRY"}', ws_wtable_options_encode(array('decimals' => 2, 'currency' => 'TRY')));
+
+	$column = ws_wtable_column_from_row(array('id' => '7', 'table_id' => '3', 'name' => 'Stage', 'type' => 'status', 'options' => '{"choices":[{"key":"new","label":"New","color":""}]}', 'position' => '2', 'created_at' => '10'));
+	pg_assert_same(7, $column['id']);
+	pg_assert_same(array('choices' => array(array('key' => 'new', 'label' => 'New', 'color' => ''))), $column['options']);
+	pg_assert_same(array(), ws_wtable_column_from_row(array('id' => 1, 'table_id' => 1, 'name' => '', 'type' => 'text', 'options' => null, 'position' => 0, 'created_at' => 0))['options'], 'no options read as none');
+	pg_assert_same(array(), ws_wtable_column_from_row(array('id' => 1, 'table_id' => 1, 'name' => '', 'type' => 'text', 'options' => '[broken', 'position' => 0, 'created_at' => 0))['options']);
+}
+
+function ws_wtables_test_source($relative)
+{
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $relative);
+}
+
+// The body of the step function, from its signature to the closing brace at
+// the start of a line.
+function ws_wtables_test_step()
+{
+	if (!preg_match('/^function upgrade_2026_11_0_workspace_wtables\(\) \{\n(.*?)\n\}\n/ms', ws_wtables_test_source('includes/migrations/2026.11.0.php'), $match)) {
+		return '';
+	}
+
+	return $match[1];
+}
+
+function test_workspace_wtables_step_is_called_once()
+{
+	$source = ws_wtables_test_source('includes/migrations/2026.11.0.php');
+
+	preg_match('/function upgrade_to_2026_11_0\(\) \{(.*?)\n\}\n/s', $source, $entry);
+
+	$calls = isset($entry[1]) ? $entry[1] : '';
+
+	pg_assert_same(1, substr_count($calls, "\tupgrade_2026_11_0_workspace_wtables();      // 11.0.110\n"), 'called once, labelled 11.0.110');
+
+	preg_match_all('#// (11\.0\.\d+)\n#', $calls, $labels);
+
+	pg_assert_same(1, count(array_keys($labels[1], '11.0.110', true)), 'no other step carries 11.0.110');
+}
+
+// The four tables, created through the helper with the decided columns.
+function test_workspace_wtables_step_creates_the_tables()
+{
+	$step = ws_wtables_test_step();
+
+	pg_assert_true($step !== '', 'the step function is found');
+
+	$lines = array(
+		'ws_wtables' => array(
+			"user_id      INT UNSIGNED NOT NULL DEFAULT 0,",
+			"name         VARCHAR(255) NOT NULL DEFAULT '',",
+			"description  TEXT NULL,",
+			"row_count    INT UNSIGNED NOT NULL DEFAULT 0,",
+			"revision     INT UNSIGNED NOT NULL DEFAULT 0,",
+			"KEY idx_owner (user_id, updated_at)",
+		),
+		'ws_wtable_columns' => array(
+			"type         VARCHAR(16) NOT NULL DEFAULT 'text',",
+			"options      TEXT NULL,",
+			"position     INT UNSIGNED NOT NULL DEFAULT 0,",
+			"KEY idx_table (table_id, position)",
+		),
+		'ws_wtable_rows' => array(
+			"cells        MEDIUMTEXT NULL,",
+			"revision     INT UNSIGNED NOT NULL DEFAULT 0,",
+			"created_by   INT UNSIGNED NOT NULL DEFAULT 0,",
+			"updated_by   INT UNSIGNED NOT NULL DEFAULT 0,",
+			"KEY idx_table (table_id, position)",
+		),
+		'ws_wtable_shares' => array(
+			"target_type  VARCHAR(16) NOT NULL DEFAULT '',",
+			"target_id    INT UNSIGNED NOT NULL DEFAULT 0,",
+			"level        VARCHAR(16) NOT NULL DEFAULT 'view',",
+			"UNIQUE KEY uq_target (table_id, target_type, target_id),",
+			"KEY idx_target (target_type, target_id, table_id)",
+		),
+	);
+
+	foreach ($lines as $table => $columns) {
+		$start = strpos($step, "install_create_table('" . $table . "', \"CREATE TABLE " . $table . " (");
+
+		pg_assert_true($start !== false, $table . ' created through the helper, which asks first');
+
+		$end = strpos($step, 'COLLATE=utf8mb4_unicode_ci");', (int) $start);
+		$body = substr($step, (int) $start, (int) $end - (int) $start);
+
+		pg_assert_contains(') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4', $body, $table . ' InnoDB utf8mb4');
+
+		foreach ($columns as $line) {
+			pg_assert_contains($line, $body, $table);
+		}
+	}
+
+	pg_assert_same(4, substr_count($step, 'install_create_table('), 'four tables');
+	pg_assert_true(stripos($step, 'ENUM') === false, 'VARCHAR, not ENUM');
+	pg_assert_true(stripos($step, 'FOREIGN KEY') === false, 'no foreign keys');
+	pg_assert_true(stripos($step, 'ALTER TABLE') === false, 'no ALTER of its own');
+	pg_assert_true(strpos($step, 'db(') === false, 'no raw statement');
+	pg_assert_true(preg_match("/install_note\\('(?:[^'\\\\]|\\\\.)+'\\);\\s*\$/", $step) === 1, 'ends with a note for the operator');
+}
+
+// A reinstall drops the four tables with the software's others, and the
+// workspace loads the file.
+function test_workspace_wtables_tables_are_listed_and_loaded()
+{
+	$install = ws_wtables_test_source('install/index.php');
+
+	foreach (array('ws_wtables', 'ws_wtable_columns', 'ws_wtable_rows', 'ws_wtable_shares') as $table) {
+		pg_assert_same(1, substr_count($install, "'" . $table . "',"), $table . ' in get_tables()');
+	}
+
+	pg_assert_same(1, substr_count(ws_wtables_test_source('includes/workspace/bootstrap.php'), "require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtables.php');"));
+}
