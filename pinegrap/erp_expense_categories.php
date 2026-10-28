@@ -177,7 +177,7 @@ pg_page_shell([
                     </div>
                     <div class="form-text px-5 pb-5">' . lang('The account code is optional: the number the accountant books the category under (for example 770 for general expenses). It goes into the accountant\'s pack with each expense. A category switched off is no longer offered for new expenses; the ones already in it keep it.') . ($with_deductible ? ' ' . lang('"Tax taken back" is where a new expense of the category starts: switch it off for spending whose tax cannot be deducted (ask your accountant which). Each expense can still be changed, and the expenses already written keep theirs.') : '') . '</div>
                 </div>
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <button type="submit" class="btn my-1 btn-solid theme-success"' . ($ready ? '' : ' disabled') . '><i class="bi bi-check-circle me-3" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
                     </div>

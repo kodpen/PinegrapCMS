@@ -208,7 +208,7 @@ foreach ($buckets as $key => $label) {
     $output_legend .= '
                         <tr>
                             <td><span class="d-inline-block rounded-circle ' . $bucket_classes[$key] . ' me-3" style="width:.65rem;height:.65rem;"></span>' . h($label) . '</td>
-                            <td class="text-end fg-secondary">' . $share . '%</td>
+                            <td class="text-end fg-secondary">' . erp_percent_text($share) . '</td>
                             <td class="text-end">' . (($amount > 0)
                                 ? '<a href="erp_invoices.php?filter=open&amp;direction=sales&amp;bucket=' . h($key) . '" class="pg-link-body-emphasis">' . h(erp_money_out($amount)) . '</a>'
                                 : '<span class="fg-secondary">' . h(erp_money_out(0)) . '</span>') . '</td>
@@ -274,7 +274,7 @@ if (erp_edoc_installed()) {
                         <tr>
                             <td><i class="bi ' . $edoc_filter['icon'] . ' me-3 fg-' . $edoc_tone . '" aria-hidden="true"></i>' . h($edoc_filter['label']) . '</td>
                             <td class="text-end">' . (($edoc_count > 0)
-                                ? '<a href="erp_invoices.php?edoc=' . $edoc_key . '" class="badge rounded-pill theme-' . $edoc_tone . ' text-decoration-none">' . number_format($edoc_count) . '</a>'
+                                ? '<a href="erp_invoices.php?edoc=' . $edoc_key . '" class="badge rounded-pill theme-' . $edoc_tone . ' text-decoration-none">' . pg_format_number($edoc_count, 0) . '</a>'
                                 : '<span class="fg-secondary">0</span>') . '</td>
                         </tr>';
         }
@@ -289,7 +289,7 @@ if (erp_edoc_installed()) {
                         <tr>
                             <td><i class="bi bi-inbox me-3 fg-' . $inbox_tone . '" aria-hidden="true"></i>' . lang('Incoming e-invoices to take in') . '</td>
                             <td class="text-end">' . (($inbox_count > 0)
-                                ? '<a href="erp_inbox.php" class="badge rounded-pill theme-' . $inbox_tone . ' text-decoration-none">' . number_format($inbox_count) . '</a>'
+                                ? '<a href="erp_inbox.php" class="badge rounded-pill theme-' . $inbox_tone . ' text-decoration-none">' . pg_format_number($inbox_count, 0) . '</a>'
                                 : '<a href="erp_inbox.php" class="fg-secondary text-decoration-none">0</a>') . '</td>
                         </tr>';
         }
