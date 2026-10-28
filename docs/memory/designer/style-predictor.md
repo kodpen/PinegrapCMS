@@ -25,5 +25,8 @@ description: The smart completion predictor assets/js/pg_style_predict.js: its A
 ## Which knowledge is hand-kept, not read from the CSS?
 - `TAG_CLASSES`, `PARENT_CHILDREN` (row → col), toggle hints (`TOGGLE_BY_CLASS`, `TOGGLE_BY_PARENT`, `TOGGLE_VALUES_BY_PARENT`, `TOGGLE_PRIOR`), `ATTR_VALUES` (slide, placement…), `COMMON_ATTRS`, `TAG_ATTRS`, `PSEUDOS`, `UNITS`. Attribute rules: a component's own element gets its option attributes, a trigger `data-bs-toggle`/`target`, an element inside a component `data-bs-dismiss`; Collapse's `toggle` option never adds true/false to `data-bs-toggle`.
 
+## Which decisions shape it?
+- Owner (2026-10-24): deterministic first, never asked per keystroke. An AI suggest button is its own future plan (#2439). Fixed colours ranked last with `replace` is a default the owner may change.
+
 ## How is it tested?
 - `tests/style_predict_test.php` runs it under Node on the shipped vocabulary (skipped without Node).
