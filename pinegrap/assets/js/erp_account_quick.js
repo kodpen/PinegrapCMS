@@ -125,6 +125,7 @@
         });
         form.querySelectorAll('[data-erp-quick-error]').forEach(function (node) {
             node.textContent = '';
+            node.classList.remove('d-block');
         });
         formError.classList.add('d-none');
     }
@@ -254,6 +255,9 @@
                     }
                     if (feedback) {
                         feedback.textContent = errors[field];
+                        // The tax number's message sits after the lookup
+                        // group, out of reach of the .is-invalid ~ rule.
+                        feedback.classList.add('d-block');
                     }
                 });
 
