@@ -812,14 +812,14 @@ $explorer_lang = array(
 // in each, so each area gets its own sentences instead of one set hedged to
 // cover both.  Raise the number after the dot in the key when a tour's own
 // words change, and everyone watches it once more.
-$explorer_tour_key = ($explorer_area == 'catalog') ? 'explorer_catalog.3' : 'explorer_files.3';
+$explorer_tour_key = ($explorer_area == 'catalog') ? 'explorer_catalog.4' : 'explorer_files.4';
 
 $explorer_tour = ($explorer_area == 'catalog')
     ? array(
         array(
             'at' => 'tree',
             'title' => lang('The product group tree'),
-            'text' => lang('Every product group in the store is here. Clicking one opens it now, where the old screen only expanded it. Right-click a group to publish or unpublish it, edit it, rename it or send it to the Recycle Bin, and drag one onto another to move it.')),
+            'text' => lang('Every product group in the store is here, in the Catalog Manager panel of the menu on the left. Clicking one opens it now, where the old screen only expanded it. Right-click a group to publish or unpublish it, edit it, rename it or send it to the Recycle Bin, and drag one onto another to move it.')),
         array(
             'at' => 'tree_menu',
             'title' => lang('The product group menu'),
@@ -851,12 +851,12 @@ $explorer_tour = ($explorer_area == 'catalog')
         array(
             'at' => 'more',
             'title' => lang('Everything else'),
-            'text' => lang('The tree and the preview panel are switched on and off in this menu, and Commerce Management Rights lives here too. So does Watch the tour, if you would like to see this again.')))
+            'text' => lang('The preview panel is switched on and off in this menu, and Commerce Management Rights lives here too. So does Watch the tour, if you would like to see this again.')))
     : array(
         array(
             'at' => 'tree',
             'title' => lang('The folder tree'),
-            'text' => lang('Every folder on the site is here. Clicking one opens it now, where the old screen only expanded it. Right-click a folder for its own menu: a new folder, rename, access rules, settings and delete. Dragging one onto another moves it.')),
+            'text' => lang('Every folder on the site is here, in the File Manager panel of the menu on the left. Clicking one opens it now, where the old screen only expanded it. Right-click a folder for its own menu: a new folder, rename, access rules, settings and delete. Dragging one onto another moves it.')),
         array(
             'at' => 'tree_menu',
             'title' => lang('The folder menu'),
@@ -884,7 +884,7 @@ $explorer_tour = ($explorer_area == 'catalog')
         array(
             'at' => 'more',
             'title' => lang('Everything else'),
-            'text' => lang('The folder tree and the preview panel are switched on and off in this menu, and so are the views across everything -- which is how a phone reaches them. So is Watch the tour, if you would like to see this again.')));
+            'text' => lang('The preview panel is switched on and off in this menu, and so are the views across everything -- which is how a phone reaches them. So is Watch the tour, if you would like to see this again.')));
 
 echo
     pg_page_shell(
@@ -912,9 +912,15 @@ echo
 /* App-shell styles for the combined explorer. Everything derives from
    Bootstrap theme variables so light and dark software themes both work;
    the access control colors come from backend.src.css. */
-/* One pane serves both areas; each hides the rows that are not its own. */
-#explorer_app[data-area="catalog"] .area-files { display: none !important; }
-#explorer_app[data-area="files"] .area-catalog { display: none !important; }
+/* One pane serves both areas; each hides the rows that are not its own. The
+   pane says its area too: on a wide screen it lives in the main menu, outside
+   #explorer_app. */
+:is(#explorer_app, #explorer_tree_pane)[data-area="catalog"] .area-files { display: none !important; }
+:is(#explorer_app, #explorer_tree_pane)[data-area="files"] .area-catalog { display: none !important; }
+
+/* The tree in the File Manager's or Catalog Manager's menu panel: the menu
+   gives it its width and scrolls it. */
+#menu #explorer_tree_pane { width: auto; min-width: 0; border-right: 0; overflow: visible; padding: 0 0 .5rem; user-select: none; }
 
 /* A group or product that is not published reads as present but switched off,
    the same way an archived folder does. */
@@ -1409,7 +1415,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 #explorer_preview_pane .erp-ettn { font-size: .72rem; word-break: break-all; }
 .explorer-item, .tree-row { -webkit-touch-callout: none; }
 @media (max-width: 1023.98px) {
-    #explorer_tree_pane, #explorer_preview_pane { display: none !important; }
+    #explorer_main > #explorer_tree_pane, #explorer_preview_pane { display: none !important; }
     #explorer_app { height: calc(100vh - 120px); }
 }
 }</style>
@@ -1500,7 +1506,6 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         <div class="pg-menu-wrap" id="explorer_more_wrap">
             <button type="button" id="explorer_more_button" class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-display="static" aria-expanded="false"><span class="bi bi-three-dots-vertical"></span></button>
             <ul class="menu pg-menu-end shadow" style="border-radius:.75rem;">
-                <li class="d-none lg:d-block"><button type="button" class="menu-item" id="tree_toggle_button"><span class="bi bi-check2 me-3 opacity-0" data-role="check"></span><?php echo lang('Folder tree'); ?></button></li>
                 <li class="d-none lg:d-block"><button type="button" class="menu-item" id="preview_toggle_button"><span class="bi bi-check2 me-3 opacity-0" data-role="check"></span><?php echo lang('Preview panel'); ?></button></li>
                 <li class="d-none lg:d-block"><hr class="menu-divider" /></li>
                 <!-- The same shortcuts the sidebar carries, for the screens that
@@ -1566,7 +1571,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         <button type="button" id="empty_bin_button" class="btn btn-sm btn-outline theme-danger ms-auto rounded-pill"><span class="bi bi-x-octagon me-1"></span><?php echo lang('Empty Recycle Bin'); ?></button>
     </div>
     <div id="explorer_main">
-        <div id="explorer_tree_pane" class="d-none lg:d-block">
+        <div id="explorer_tree_pane" class="d-none lg:d-block" data-area="<?php echo $explorer_area; ?>">
             <!-- Both areas draw the same pane and hide what does not belong to
                  them, rather than each rendering its own: highlightTree() reaches
                  for these rows by id on every load, and a missing one would be a
@@ -1627,6 +1632,22 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                  store is a deliberate move and it lives in the menu at the top
                  right, where the other ways off this screen already are. -->
         </div>
+        <script>
+            // The tree is the main menu's File Manager or Catalog Manager panel
+            // on this screen (pg_menu_explorer_side(), includes/fn/output.php):
+            // moved there whole before the screen's script runs, so every id
+            // it reaches for is where it looks. Without the panel (the menu
+            // hidden by the screen) it stays here.
+            (function () {
+                var pane = document.getElementById('explorer_tree_pane');
+                var box = document.getElementById('explorer-side-<?php echo $explorer_area; ?>');
+
+                if (pane && box && box.hasAttribute('data-explorer-side-inplace')) {
+                    pane.classList.remove('d-none', 'lg:d-block');
+                    box.appendChild(pane);
+                }
+            })();
+        </script>
         <div id="explorer_content">
             <div class="text-center my-12 empty-note"><span class="spinner-border spinner-border-sm me-3"></span><?php echo lang('Loading'); ?>...</div>
             <div id="explorer_upload_overlay"><div class="text-center fw-bold fg-primary"><span class="bi bi-cloud-arrow-up fs-4xl d-block"></span><?php echo lang('Drop files here to upload them into this folder'); ?></div></div>
@@ -1637,7 +1658,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 </div>
 
 <!-- Right-click menu. Rebuilt for each target; positioned fixed. -->
-<ul id="explorer_menu" class="menu" tabindex="-1"></ul>
+<!-- data-pg-menu-hold: a right click on the tree in a widened menu rail
+     leaves the rail open while this menu is in use (backend.src.js). -->
+<ul id="explorer_menu" class="menu" tabindex="-1" data-pg-menu-hold></ul>
 
 <!-- Asking for a product file.
      A form rather than a link: a selection of several thousand products does
@@ -11949,9 +11972,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     var treeRootList = document.getElementById('explorer_tree_root');
     var treeExpanded = {};
 
-    try { treeExpanded = JSON.parse(storageGet('pg_explorer_tree') || '{}') || {}; } catch (e) { treeExpanded = {}; }
+    // Per area: folder ids and group ids come from different tables, and
+    // the menu draws both trees on one page (explorer_side.js reads the same
+    // keys). A files tree kept under the old shared key is read once.
+    var TREE_KEY = 'pg_explorer_tree_' + state.area;
+    try { treeExpanded = JSON.parse(storageGet(TREE_KEY) || ((state.area === 'files') ? storageGet('pg_explorer_tree') : '') || '{}') || {}; } catch (e) { treeExpanded = {}; }
 
-    function saveTreeExpanded() { storageSet('pg_explorer_tree', JSON.stringify(treeExpanded)); }
+    function saveTreeExpanded() { storageSet(TREE_KEY, JSON.stringify(treeExpanded)); }
 
     function loadTreeChildren(listElement, nodeId, done) {
 
@@ -12371,6 +12398,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         exitAllFiles(nodeId);
+    });
+
+    // In the main menu a click on a row changes the listing in place: the
+    // phone's drawer and a widened rail make way for it, as for a link that
+    // leaves the menu (pgMenu.dismiss()). An arrow only opens its branch.
+    document.getElementById('explorer_tree_pane').addEventListener('click', function (event) {
+        if (!event.target.closest('.tree-row') || event.target.closest('.tree-toggle.bi-chevron-right, [data-role="erp-toggle"], input')) { return; }
+
+        if (window.pgMenu && (typeof window.pgMenu.dismiss === 'function')) {
+            window.pgMenu.dismiss();
+        }
     });
 
     // The two shortcut lists navigate the same way the tree does, and carry
@@ -14874,14 +14912,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         syncPaneButtons();
     }
 
+    // The tree has no switch: it is the main menu's panel, shown and narrowed
+    // with the menu itself.
     function syncPaneButtons() {
-        var treeOpen = !document.getElementById('explorer_tree_pane').classList.contains('pane-hidden');
         var previewOpen = !document.getElementById('explorer_preview_pane').classList.contains('pane-hidden');
-        document.querySelector('#tree_toggle_button [data-role="check"]').classList.toggle('opacity-0', !treeOpen);
         document.querySelector('#preview_toggle_button [data-role="check"]').classList.toggle('opacity-0', !previewOpen);
     }
 
-    document.getElementById('tree_toggle_button').addEventListener('click', function () { togglePane('explorer_tree_pane', 'pg_explorer_tree_open'); });
     document.getElementById('preview_toggle_button').addEventListener('click', function () { togglePane('explorer_preview_pane', 'pg_explorer_preview_open'); });
 
     // A key pressed on a focused button, link or open menu is that control's
@@ -14891,7 +14928,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (!target || !target.closest) { return false; }
 
-        return !!target.closest('button, a[href], [role="button"], [role="menuitem"], [tabindex], summary, video, audio, #pg-chat-root, #explorer_menu, .menu.show');
+        return !!target.closest('button, a[href], [role="button"], [role="menuitem"], [tabindex], summary, video, audio, #pg-chat-root, #explorer_menu, .menu.show, #menu');
     }
 
     // A screen button pressed with the mouse keeps the focus, and Enter
@@ -15279,6 +15316,16 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         var copy = <?php echo encode_json($explorer_tour); ?>;
 
+        // The tree is in the main menu's panel: off the screen in a shut phone
+        // drawer (still laid out, so it has a size) and not drawn on the rail.
+        function treeOnScreen() {
+
+            var pane = document.getElementById('explorer_tree_pane');
+            var box = pane ? pane.getBoundingClientRect() : null;
+
+            return !!box && (pane.getClientRects().length > 0) && (box.right > 0) && (box.left < window.innerWidth);
+        }
+
         var steps = copy.map(function (entry) {
 
             var step = tourAnchor(entry.at);
@@ -15295,6 +15342,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             step.title = entry.title;
             step.text = entry.text;
+
+            if ((entry.at === 'tree') || (entry.at === 'all_row')) {
+                step.skipIf = function () { return !treeOnScreen(); };
+            }
 
             if (entry.at === 'menu') {
                 step.before = tourOpenSampleMenu;
@@ -15317,15 +15368,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 step.after = tourCloseMenu;
                 step.target = function () { return tourMenuTargets; };
 
-                // No tree on a phone, so no tree menu to show either.  Asked
-                // before anything is opened, which saves opening a menu only to
-                // close it again.
-                step.skipIf = function () {
-
-                    var pane = document.getElementById('explorer_tree_pane');
-
-                    return ((!pane) || (!pane.getClientRects().length));
-                };
+                // No tree on the screen, so no tree menu to show either.
+                // Asked before anything is opened, which saves opening a menu
+                // only to close it again.
+                step.skipIf = function () { return !treeOnScreen(); };
             }
 
             return step;
@@ -15355,7 +15401,6 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     // ── Boot ────────────────────────────────────────────────────────────
 
-    applyPaneState('explorer_tree_pane', 'pg_explorer_tree_open', true);
     applyPaneState('explorer_preview_pane', 'pg_explorer_preview_open', true);
     syncPaneButtons();
 

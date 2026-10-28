@@ -162,3 +162,38 @@ function test_explorer_side_in_the_menu_rows_only_under_their_gates()
 	$bundles = pg_js_bundles();
 	pg_assert_same(array('assets/js/explorer_side.js'), $bundles['assets/js/explorer_side.min.js'] ?? null, 'its bundle');
 }
+
+function test_explorer_screen_moves_its_tree_into_the_menu()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_folders.php');
+
+	// Moved whole, right after the pane and before the screen's script, into
+	// the box its own area's panel prints.
+	$pane = strpos($source, '<div id="explorer_tree_pane" class="d-none lg:d-block" data-area="<?php echo $explorer_area; ?>">');
+	$move = strpos($source, "var box = document.getElementById('explorer-side-<?php echo \$explorer_area; ?>');");
+	pg_assert_true(($pane !== false) && ($move !== false) && ($pane < $move) && ($move < strpos($source, "var state = {")), 'the move runs after the pane, before the explorer starts');
+	pg_assert_contains("if (pane && box && box.hasAttribute('data-explorer-side-inplace')) {", $source, 'only into the in-place box');
+
+	// The areas hide each other's rows wherever the pane is.
+	pg_assert_contains(':is(#explorer_app, #explorer_tree_pane)[data-area="catalog"] .area-files { display: none !important; }', $source, 'files rows off in the catalog');
+	pg_assert_contains(':is(#explorer_app, #explorer_tree_pane)[data-area="files"] .area-catalog { display: none !important; }', $source, 'catalog rows off in the files');
+	pg_assert_contains('#explorer_main > #explorer_tree_pane, #explorer_preview_pane { display: none !important; }', $source, 'the phone hides only a pane left in the screen');
+
+	// No switch for it any more, and no stored "off" to obey.
+	pg_assert_false(strpos($source, 'tree_toggle_button') !== false, 'no Folder tree switch');
+	pg_assert_false(strpos($source, 'pg_explorer_tree_open') !== false, 'no stored tree switch');
+
+	// Its own key per area, shared with explorer_side.js.
+	pg_assert_contains("var TREE_KEY = 'pg_explorer_tree_' + state.area;", $source, 'expansion kept per area');
+	pg_assert_contains("this.openKey = 'pg_explorer_tree_' + this.area;", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/explorer_side.js'), 'the same key in the links tree');
+
+	// The tree menu keeps a widened rail open; a navigating click puts it away.
+	pg_assert_contains('<ul id="explorer_menu" class="menu" tabindex="-1" data-pg-menu-hold></ul>', $source, 'the tree menu holds the menu');
+	pg_assert_contains('window.pgMenu.dismiss();', $source, 'the drawer and a widened rail make way');
+	pg_assert_contains("#pg-chat-root, #explorer_menu, .menu.show, #menu');", $source, 'keys in the main menu are its own');
+
+	// The tour says where the tree is now and is seen once more.
+	pg_assert_contains("'explorer_catalog.4' : 'explorer_files.4'", $source, 'tour keys raised');
+	pg_assert_false(strpos($source, 'The folder tree and the preview panel are switched on and off') !== false, 'no word of the old switch');
+	pg_assert_contains("if ((entry.at === 'tree') || (entry.at === 'all_row')) {", $source, 'tree steps skip a tree off the screen');
+}

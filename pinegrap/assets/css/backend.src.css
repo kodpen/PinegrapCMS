@@ -2515,7 +2515,7 @@ body:not(.toolbar) .software-content {
    since the menu clips sideways. */
 #menu .pg-explorer-side {
   overflow-x: auto;
-  font-size: 0.8125rem;
+  font-size: 0.8rem;
   padding-bottom: 0.5rem;
 }
 #menu .pg-explorer-side ul {
@@ -2524,7 +2524,7 @@ body:not(.toolbar) .software-content {
   padding-left: 0.55rem;
   border-left: var(--pg-border-width) solid var(--pg-border-color-translucent);
 }
-#menu .pg-explorer-side [data-explorer-side-root] {
+#menu .pg-explorer-side :is([data-explorer-side-root], #explorer_tree_root) {
   margin-left: 0;
   padding-left: 0;
   border-left: 0;
