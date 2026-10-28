@@ -6,7 +6,7 @@ module: widgets_parts
 
 ## What is the rule?
 - A part the designer placed always wins; a renderer adds its own copy of a block only when the saved tree places none of its tokens: `pg_sw_placed($tree, $tokens)` (`includes/fn/widgets_parts.php`). A binding, a literal `^^token^^` or an attribute `{{token}}` places; a condition never does (`pg_sw_cond_tree_json()`); the name is matched whole.
-- Uses: the cart's item form and gift card rows (the item template's nodes). The order view's parts and cards: [[widget-default-parts-order]], its item blocks [[widget-default-parts-order-items]]. Also [[widget-default-parts-comments]], [[widget-default-parts-breadcrumb]], [[widget-default-parts-cross-sell]], [[widget-default-parts-filter-chips]]. Returns: [[widget-default-parts-returns]]. Cart: [[widget-default-parts-cart-gift-card]], [[widget-default-parts-cart-schedule]]. Order forms: [[widget-default-parts-order-forms]].
+- Uses: the cart's item form and gift card rows (the item template's nodes). The order view's parts and cards: [[widget-default-parts-order]], its item blocks [[widget-default-parts-order-items]]. Also [[widget-default-parts-comments]], [[widget-default-parts-breadcrumb]], [[widget-default-parts-cross-sell]], [[widget-default-parts-filter-chips]]. Returns: [[widget-default-parts-returns]]. Cart: [[widget-default-parts-cart-gift-card]], [[widget-default-parts-cart-schedule]], [[widget-default-parts-cart-form]]. Order forms: [[widget-default-parts-order-forms]].
 
 ## What is a default part?
 - An old token that stood for server-built markup is drawn by real design elements the designer can select and change. `pg_sw_default_part_tokens()`: kind => (token, builder) pairs (pairs, so `check_bindings.php` does not read them as filled).
@@ -21,8 +21,8 @@ module: widgets_parts
 - Same words in the site's language, same classes in the same order, forms keep names, ids and markers; hidden details may change. The test compares the old block with the new output by visible text and class order, and checks the e-mail output.
 
 ## What is left?
-- Form blocks: the cart rows' editable `__item_form_data_html` (the product order form, last). The order view's item blocks: [[widget-default-parts-order-items]].
-- Express order offers; cart row form data; catalog listing body; variant picker; filters (offcanvas, group tree, `__attribute_filters_html`; the pushed chip row as a lead lands before the pushed toolbar: take both). Each check moves to `pg_sw_placed()`; a token freed from a rendered-template `strpos()` leaves `pg_sw_cond_denied_tokens()`. Then the raw keys in `pg_sw_raw_token_keys()` shrink.
+- The order view's item blocks: [[widget-default-parts-order-items]].
+- Express order offers (its product form is still the old block); catalog listing body; variant picker; filters (offcanvas, group tree, `__attribute_filters_html`; the pushed chip row as a lead lands before the pushed toolbar: take both). Each check moves to `pg_sw_placed()`; a token freed from a rendered-template `strpos()` leaves `pg_sw_cond_denied_tokens()`. Then the raw keys in `pg_sw_raw_token_keys()` shrink.
 - Canvas: the band's state chips draw one status badge at a time ([[widget-condition-canvas]]); the timeline's card draws `created`, its sample rows paid, shipped and delivered.
 - A token inside a longer text gets no part (prints empty); a condition on `__timeline` or `__order_status_badge` reads empty.
 - Owed: a browser round (editor, Preview, receipt mail).

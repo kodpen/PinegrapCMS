@@ -13,11 +13,11 @@ description: One list of checkout payment methods (pg_payment_checkout_methods()
 - Designer express order widget (`_eo_render_payment_methods*()`): the whole list with `card_brands` (card only while a brand, Troy included, is on); no recurring or offline-allowed filter, as before.
 - Classic order preview and express order (get_order_preview.php, get_express_order.php, both layouts and both templates): built-in methods keep their own markup; the drivers' methods get a radio after them (`$payment_driver_methods` in custom layouts), count in the block condition, the "only method" checks, the surcharge note and the "no payment method" error.
 - order_preview.php: CSRF skip and page id check use `pg_payment_is_return_mode()`, as express_order.php.
-- view_orders.php filter, `pg_legal_document_payment_methods()`, `erp_payment_method_code()` (a driver's method is ODEMEARACISI): append the drivers' methods.
+- view_orders.php filter, view_order_report.php options, `pg_legal_document_payment_methods()`, `erp_payment_method_code()` (a driver's method is ODEMEARACISI): append the drivers' methods.
 
 ## What still needs a hand edit for a new method?
 - `orders.payment_method` ENUM: a migration step appends it (`install_column_info()`, `install_modify_column()`).
-- view_order_report.php `value_options` and the receipt label map in includes/fn/widgets.php (falls back to the value): not moved in #1743 (files held by another PR).
+- The receipt label map in includes/fn/widgets.php (falls back to the value). view_order_report.php's options append the drivers' methods since #1827.
 - CSP: `pg_payment_csp_sources()` adds only the card driver's hosts (PayTR's iframe needs more, step 4c).
 - frontend.src.js `init_payment_method()` swaps the button label only for PayPal and Pay With Iyzico; a driver's method keeps the standard label.
 - A site's own custom layout draws a driver's radio only if it loops `$payment_driver_methods`.
