@@ -12,8 +12,9 @@
  * PayPal order again and captures it; nothing is taken before the visitor is
  * back and the store order still totals what was approved. The capture's id
  * is the order's transaction id, which refund() and cancel() give money back
- * by. No webhook is needed: the money moves only in complete(), in the
- * visitor's own request.
+ * by. The money moves only in complete(), in the visitor's own request;
+ * notify() hears what PayPal decides later about a capture it left pending
+ * (PAYMENT.CAPTURE.COMPLETED / DENIED, payment_callback.php).
  *
  * The API is called over HTTPS with an OAuth access token from the REST
  * app's client ID and secret (no SDK). Every operation is a thin wrapper
@@ -60,6 +61,12 @@ function pg_payment_paypal_fields()
             'options' => array('live' => lang('Live'), 'sandbox' => lang('Sandbox (test)')),
             'default' => 'live',
         ),
+        array(
+            'name'       => 'webhook_id',
+            'label'      => lang('Webhook ID'),
+            'help'       => lang('Add the webhook address above to the same REST API app with the events Payment capture completed and Payment capture denied, and copy its webhook ID here; without it PayPal\'s messages are refused.'),
+            'max_length' => 64,
+        ),
     );
 }
 
@@ -83,6 +90,11 @@ function pg_payment_paypal_cancel($order, $transaction_id)
     return pg_payment_paypal_cancel_with($order, $transaction_id, pg_payment_paypal_settings(), 'pg_payment_paypal_request');
 }
 
+function pg_payment_paypal_notify($headers, $body)
+{
+    return pg_payment_paypal_notify_with($headers, $body, pg_payment_paypal_settings(), 'pg_payment_paypal_request');
+}
+
 /* ---------------------------------------------------------------------------
    Settings, amounts and the API
    --------------------------------------------------------------------------- */
@@ -91,7 +103,7 @@ function pg_payment_paypal_cancel($order, $transaction_id)
  * The store's PayPal settings.
  *
  * @return array client_id, client_secret, mode ('live' or 'sandbox'),
- *               currency (uppercase ISO code), locale ('' for PayPal's own)
+ *               webhook_id, currency (uppercase ISO code), locale ('' for PayPal's own)
  */
 function pg_payment_paypal_settings()
 {
@@ -101,6 +113,7 @@ function pg_payment_paypal_settings()
         'client_id'     => trim(pg_payment_setting('paypal', 'client_id')),
         'client_secret' => trim(pg_payment_setting('paypal', 'client_secret')),
         'mode'          => (pg_payment_setting('paypal', 'mode') === 'sandbox') ? 'sandbox' : 'live',
+        'webhook_id'    => trim(pg_payment_setting('paypal', 'webhook_id')),
         'currency'      => strtoupper(defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : ''),
         'locale'        => (preg_match('/^[a-z]{2}$/', $locale) === 1) ? $locale : '',
     );
@@ -790,4 +803,134 @@ function pg_payment_paypal_cancel_with($order, $transaction_id, $settings, $http
     $message = ($call['message'] !== '') ? $call['message'] : 'refund ' . ($refund_status !== '' ? $refund_status : 'not made');
 
     return pg_payment_failure($message, array('message' => $message));
+}
+
+/* ---------------------------------------------------------------------------
+   Webhook
+   --------------------------------------------------------------------------- */
+
+/**
+ * The request PayPal's verify-webhook-signature call takes. The event goes in
+ * as the body PayPal sent, byte for byte: decoding and encoding it again
+ * would change it (escaped slashes, number forms) and the check would fail.
+ *
+ * @param array  $headers    lowercase dashed request headers
+ * @param string $body       the event as received
+ * @param string $webhook_id
+ * @return string '' when a header PayPal signs with is missing
+ */
+function pg_payment_paypal_verify_body($headers, $body, $webhook_id)
+{
+    $fields = array(
+        'auth_algo'         => 'paypal-auth-algo',
+        'cert_url'          => 'paypal-cert-url',
+        'transmission_id'   => 'paypal-transmission-id',
+        'transmission_sig'  => 'paypal-transmission-sig',
+        'transmission_time' => 'paypal-transmission-time',
+    );
+
+    $json = '{';
+
+    foreach ($fields as $field => $header) {
+        $value = (is_array($headers) && isset($headers[$header]) && is_string($headers[$header])) ? trim($headers[$header]) : '';
+
+        if ($value === '') {
+            return '';
+        }
+
+        $json .= json_encode($field) . ':' . json_encode($value) . ',';
+    }
+
+    return $json . '"webhook_id":' . json_encode((string) $webhook_id) . ',"webhook_event":' . $body . '}';
+}
+
+/**
+ * Reads a message PayPal sends on its own: checks it with PayPal's
+ * verify-webhook-signature call, then says what it is about.
+ *
+ *   PAYMENT.CAPTURE.COMPLETED  paid: a capture PayPal had left pending settled
+ *   PAYMENT.CAPTURE.DENIED     cancelled: PayPal refused it; nothing was taken
+ *
+ * Every other event is ignored. The order is named by the capture's
+ * custom_id (the store order's id, set when the PayPal order was created),
+ * else by the capture id the order keeps as its transaction id.
+ *
+ * @param array    $headers  lowercase dashed request headers
+ * @param string   $body
+ * @param array    $settings pg_payment_paypal_settings()
+ * @param callable $http
+ * @return array an answer
+ */
+function pg_payment_paypal_notify_with($headers, $body, $settings, $http)
+{
+    if (!isset($settings['webhook_id']) || ($settings['webhook_id'] === '')) {
+        return pg_payment_failure(lang('No webhook ID is stored for PayPal.'), array('signature' => 'no_secret'));
+    }
+
+    $event = json_decode((string) $body, true);
+    $type = (is_array($event) && isset($event['event_type']) && is_string($event['event_type'])) ? $event['event_type'] : '';
+    $capture = (is_array($event) && isset($event['resource']) && is_array($event['resource'])) ? $event['resource'] : null;
+
+    if (($type === '') || ($capture === null)) {
+        return pg_payment_failure(lang('The message cannot be read.'), array('signature' => 'unchecked'));
+    }
+
+    $verify_body = pg_payment_paypal_verify_body($headers, (string) $body, $settings['webhook_id']);
+
+    if ($verify_body === '') {
+        return pg_payment_failure(lang('The message is not signed by PayPal.'), array('signature' => 'no_headers'));
+    }
+
+    $token = pg_payment_paypal_token($settings, $http);
+
+    if ($token['token'] === '') {
+        // PayPal not reached, or the app's keys refused: PayPal sends the
+        // message again later.
+        return pg_payment_unclear('PayPal could not check the message: ' . $token['message'], array('signature' => 'unchecked', 'code' => $token['code']));
+    }
+
+    $check = pg_payment_paypal_read(call_user_func(
+        $http,
+        'POST',
+        pg_payment_paypal_host($settings['mode']) . '/v1/notifications/verify-webhook-signature',
+        array('Authorization: Bearer ' . $token['token'], 'Content-Type: application/json', 'Accept: application/json'),
+        $verify_body));
+
+    if (!$check['ok']) {
+        return ($check['status'] === 0) || ($check['status'] >= 500)
+            ? pg_payment_unclear('PayPal could not check the message: ' . $check['message'], array('signature' => 'unchecked', 'code' => $check['code']))
+            : pg_payment_failure(lang('The message is not signed by PayPal.'), array('signature' => 'refused', 'code' => $check['code']));
+    }
+
+    if (!isset($check['body']['verification_status']) || ($check['body']['verification_status'] !== 'SUCCESS')) {
+        return pg_payment_failure(lang('The message is not signed by PayPal.'), array('signature' => 'invalid'));
+    }
+
+    $raw = array('signature' => 'valid', 'event' => $type, 'id' => (isset($capture['id']) && is_string($capture['id'])) ? $capture['id'] : '');
+    $ignored = array('success' => false, 'error' => lang('This message is not used.'), 'raw' => array('ignored' => true) + $raw);
+
+    if (!in_array($type, array('PAYMENT.CAPTURE.COMPLETED', 'PAYMENT.CAPTURE.DENIED'), true) || !pg_payment_paypal_id_valid($raw['id'])) {
+        return $ignored;
+    }
+
+    $custom_id = (isset($capture['custom_id']) && is_scalar($capture['custom_id'])) ? trim((string) $capture['custom_id']) : '';
+    $money = (isset($capture['amount']) && is_array($capture['amount'])) ? $capture['amount'] : array();
+    $currency = (isset($money['currency_code']) && is_string($money['currency_code'])) ? strtoupper($money['currency_code']) : '';
+    $value = (isset($money['value']) && is_scalar($money['value'])) ? (string) $money['value'] : '';
+
+    if ($type === 'PAYMENT.CAPTURE.COMPLETED') {
+        $line = 'PayPal reports that capture ' . $raw['id'] . ' of ' . $value . ' ' . $currency . ' completed';
+    } else {
+        $line = 'PayPal reports that capture ' . $raw['id'] . ' of ' . $value . ' ' . $currency . ' was DENIED: nothing was taken. Do not ship it';
+    }
+
+    return array(
+        'success'         => true,
+        'status'          => ($type === 'PAYMENT.CAPTURE.COMPLETED') ? 'paid' : 'cancelled',
+        'transaction_id'  => $raw['id'],
+        'order_reference' => (preg_match('/^[1-9][0-9]{0,18}$/', $custom_id) === 1) ? $custom_id : $raw['id'],
+        'amount'          => (($currency === $settings['currency']) && ($value !== '')) ? pg_payment_hundredths($value) : null,
+        'log'             => array($line),
+        'raw'             => $raw,
+    );
 }
