@@ -200,6 +200,7 @@ function ws_openapi_objects()
         'WorkspacePerson'           => 'ws_api_person_schema',
         'WorkspaceMessageSender'    => 'ws_api_message_sender_schema',
         'WorkspaceMessageFile'      => 'ws_api_message_file_schema',
+        'WorkspaceMessageVoice'     => 'ws_api_message_voice_schema',
         'WorkspaceMessageThread'    => 'ws_api_message_thread_schema',
         'WorkspaceMessageNoteCard'  => 'ws_api_message_note_card_schema',
         'WorkspaceApprovalRecord'   => 'ws_api_approval_record_schema',

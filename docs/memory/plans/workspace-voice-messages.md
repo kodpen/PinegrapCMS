@@ -1,6 +1,6 @@
 ---
 name: workspace-voice-messages
-description: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, answers #2417, V3a #2674): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
+description: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, answers #2417, V3a #2674, V3b in progress): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -24,8 +24,8 @@ description: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, ans
 3. Done (#1494): V2 quick voice reply (no schema): a mic on a voice message (tap: a phone's long press opens the menu) sends with `parent_id`; `ws_attach` and `files.create` (dry run too) learn it; quote "Voice message".
 4. V3 transcripts (schema approved in #2417), three PRs, each after the previous merges:
    - V3a (#2674): schema 11.0.89 (`ws_voice`, `ws_channels.voice_access`, two config columns, texts in `config_text`), the settings card, `ws_voice_channel_allowed()`: workspace/workspace-voice-transcripts.md.
-   - V3b: a `ws_voice` row on a voice upload, `ws_voice_transcribe()` run like `ws_ai_kick`/`ws_ai_job()` (pinned HTTPS call, 5-minute cap, hold after failures), then `ws_message_touch()`; delete for everyone removes the row and the text; the channel menu switch (`ws_channel_voice`, private-channel consent naming the provider) and the transcript under the player (`workspace.js`, `actions.php`: wait for draft #2545 or settle with it).
-   - V3c: `file.voice` in `ws_api_message_file_schema()` (MCP reads it), `voice_transcripts` on the channel API writes, `workspace.message.transcribed` with `channel_id`, public channels only.
+   - V3b (in progress): the row on a voice upload, `ws_voice_kick()`/`ws_voice_job()` (pinned HTTPS call, size cap, holds), delete for everyone, `file.voice` in the API and MCP. Server side only: draft #2545 holds `workspace.js` and `actions.php`.
+   - V3c (after #2545 lands or with it): the channel menu switch (`ws_channel_voice`, private-channel consent naming the provider), the transcript under the player, a panel kick for servers without PHP-FPM, duration and peaks from the recorder, `workspace.message.transcribed` with `channel_id`, public channels only.
 5. V4 assistants hear it: transcript in Pinegrap AI's context, `ws_api_claude_request_present()`, `ws_api_channel_context()`, recaps, push, search; a recording with typed tags (mic kept while the box holds only tags) or answering an assistant asks once transcribed.
 6. V5 (optional) answers read aloud by `speechSynthesis`; V6 a recording in a note (`ws_note_file`).
 
@@ -37,4 +37,4 @@ description: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, ans
 5. Cap 5 minutes.
 
 ## Where to start?
-- V3b once V3a has merged.
+- V3c once V3b has merged and #2545 no longer holds `workspace.js` and `actions.php`.

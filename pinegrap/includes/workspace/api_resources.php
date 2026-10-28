@@ -786,6 +786,8 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
                 'size'    => (int) $stored['size'],
                 'url'     => URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path((string) $stored['name']),
                 'api_url' => ws_api_file_url($row['id']),
+                // A voice message's transcript (voice.php).
+                'voice'   => ((ws_file_kind($row['file_name']) === 'audio') && function_exists('ws_voice_api_present')) ? ws_voice_api_present((int) $row['file_id']) : null,
             );
         }
     }
@@ -855,7 +857,20 @@ function ws_api_message_sender_schema()
 
 function ws_api_message_file_schema()
 {
-    return array('name' => 'string', 'kind' => 'string', 'size' => 'integer', 'url' => 'string', 'api_url' => 'string');
+    return array('name' => 'string', 'kind' => 'string', 'size' => 'integer', 'url' => 'string', 'api_url' => 'string', 'voice' => 'WorkspaceMessageVoice?');
+}
+
+// What ws_voice_api_present() returns.
+function ws_api_message_voice_schema()
+{
+    return array(
+        'status'         => 'string',
+        'transcript'     => 'string?',
+        'language'       => 'string?',
+        'provider'       => 'string?',
+        'model'          => 'string?',
+        'transcribed_at' => 'string?',
+    );
 }
 
 function ws_api_message_thread_schema()
@@ -1423,6 +1438,11 @@ function ws_api_files_create($params)
     if (!$result['ok']) {
         ws_upload_discard($stored['file_id']);
         api_fail_validation($result['error'], 'text');
+    }
+
+    // A voice message waits to be written out (voice.php).
+    if (function_exists('ws_voice_queue')) {
+        ws_voice_queue($channel, $result['message_id'], $stored['file_id'], $stored['name']);
     }
 
     $row = ws_message($result['message_id']);

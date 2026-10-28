@@ -660,6 +660,7 @@
     "It could not be saved:": "Kaydedilemedi:",
     "It could not be sent to Claude within a day.": "Bir gün içinde Claude'a iletilemedi.",
     "It could not be sent to Pinegrap AI within a day.": "Bir gün içinde Pinegrap AI'a iletilemedi.",
+    "It could not be sent to the transcription service within a day.": "Bir gün içinde yazıya dökme hizmetine gönderilemedi.",
     "It could not be sent within a day.": "Bir gün içinde gönderilemedi.",
     "It depends on the job. After the first call you get a plan with the steps, the dates and the price before any work starts.": "İşe göre değişir. İlk görüşmeden sonra, çalışma başlamadan önce adımları, tarihleri ve fiyatı içeren bir plan alırsınız.",
     "It expires {var:1} days after delivery.": "Teslimden {var:1} gün sonra geçerliliğini yitirir.",
