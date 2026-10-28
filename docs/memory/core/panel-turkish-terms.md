@@ -17,6 +17,8 @@ description: Turkish words the panel uses for terms that were translated in seve
 
 ## What is left?
 - "From"/"To" are one key each for e-mail senders and date-range filters ("Şundan/Şuna" fits neither); date filters need their own keys, a change across many list screens.
-- The "Member ID" label comes from the `MEMBER_ID_LABEL` setting, whose stored value stays as installed.
+
+## Where does the "Member ID" label come from?
+- From the `MEMBER_ID_LABEL` setting (`config.member_id_label`), shown as stored. The Turkish starter site (`data/backups/turkish_default/sql.sql`) installs "Üye Kimliği"; a site already installed keeps its value until Security settings change it.
 
 Adding or changing a value: `php tools/tr_add.php [--replace]` only (`lang-files.md`).
