@@ -1161,6 +1161,54 @@ function pg_first_image_url_from_html($html)
 }
 
 /**
+ * The share image of an uploaded file when a visitor who is not signed in
+ * may open it (pg_file_open_to_everyone()); null otherwise, so og:image falls
+ * back to the default share image instead of carrying an address that answers
+ * with the sign-in screen.
+ *
+ * @param mixed $file_id files.id
+ * @return array|null array(url, width, height, alt)
+ */
+function pg_og_image_from_open_file($file_id)
+{
+    $file_id = (int) $file_id;
+
+    if ($file_id <= 0) {
+        return null;
+    }
+
+    if (!pg_file_open_to_everyone($file_id)) {
+        return null;
+    }
+
+    return pg_og_image_from_file_id($file_id);
+}
+
+/**
+ * Whether a visitor who is not signed in may open a file: the answer
+ * get_file.php gives such a visitor, asked by the places that publish a
+ * file's address to everyone (og:image, the feed's enclosure). The folder
+ * must be public; a submitted form's upload must also be shown by a public
+ * view of its record, classic or designed (includes/record_files.php). A
+ * file that cannot be read stays closed.
+ *
+ * @param mixed $file_id files.id
+ * @return bool
+ */
+function pg_file_open_to_everyone($file_id)
+{
+    $file_id = (int) $file_id;
+
+    if ($file_id <= 0) {
+        return false;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/record_files.php');
+
+    return pg_record_file_anonymous_access($file_id);
+}
+
+/**
  * Resolve the RSS media field of a submitted form into a share image.
  *
  * The media field is a loose binding: operators point it at a file upload, a
@@ -1202,7 +1250,7 @@ function pg_resolve_submitted_form_og_image($custom_form_page_id, $submitted_for
     }
 
     if ((int) ($media['file_id'] ?? 0) > 0) {
-        return pg_og_image_from_file_id($media['file_id']);
+        return pg_og_image_from_open_file($media['file_id']);
     }
 
     $data = trim((string) ($media['data'] ?? ''));
